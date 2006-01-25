@@ -19,6 +19,7 @@ import doctest
 
 class IterableFileBase(object):
     """Create a file-like object from any iterable"""
+
     def __init__(self, iterable):
         object.__init__(self)
         self._iter = iterable.__iter__()

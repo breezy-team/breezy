@@ -47,6 +47,7 @@ from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
 
+
 class TestCommands(ExternalBase):
 
     def test_help_commands(self):

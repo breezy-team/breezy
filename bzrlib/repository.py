@@ -242,7 +242,12 @@ class Repository(object):
 
     @needs_read_lock
     def print_file(self, file, revision_id):
-        """Print `file` to stdout."""
+        """Print `file` to stdout.
+        
+        FIXME RBC 20060125 as John Meinel points out this is a bad api
+        - it writes to stdout, it assumes that that is valid etc. Fix
+        by creating a new more flexible convenience function.
+        """
         tree = self.revision_tree(revision_id)
         # use inventory as it was in that revision
         file_id = tree.inventory.path2id(file)

@@ -1,14 +1,3 @@
 # This file is for listing TODOs for branches that are being worked on.
 # It should ALWAYS be empty in the mainline or in integration branches.
 
-The purpose of this branch is to separate the storage of history within a
-branch from the logical identity of the branch itself (being the tip
-pointer and revision-history).
-
-The major refactoring here is that historical data (revisions, file
-weaves, etc) are stored not in the Branch itself but in
-`branch.repository`, which is a `Repository` object.
-
-All the immediately accessible history for a Branch is stored in its
-repository, but the repository might hold information on multiple
-branches, to implement what's called "shared storage".

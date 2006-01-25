@@ -61,12 +61,8 @@ BZR_BRANCH_FORMAT_6 = "Bazaar-NG branch, format 6\n"
 # TODO: Some operations like log might retrieve the same revisions
 # repeatedly to calculate deltas.  We could perhaps have a weakref
 # cache in memory to make this faster.  In general anything can be
-# cached in memory between lock and unlock operations.
-
-def find_branch(*ignored, **ignored_too):
-    # XXX: leave this here for about one release, then remove it
-    raise NotImplementedError('find_branch() is not supported anymore, '
-                              'please use one of the new branch constructors')
+# cached in memory between lock and unlock operations. .. nb thats
+# what the transaction identity map provides
 
 
 ######################################################################
@@ -248,7 +244,6 @@ class Branch(object):
                 raise bzrlib.errors.NoSuchRevision(self, stop_revision)
         return other_history[self_len:stop_revision]
 
-    
     def update_revisions(self, other, stop_revision=None):
         """Pull in new perfect-fit revisions."""
         raise NotImplementedError('update_revisions is abstract')
@@ -548,6 +543,7 @@ class BzrBranch(Branch):
             ('ancestry.weave', empty_weave)
         ]
         cfe = self.control_files._escape
+        # FIXME: RBC 20060125 dont peek under the covers
         self.control_files._transport.mkdir_multi([cfe(d) for d in dirs],
                 mode=self.control_files._dir_mode)
         self.control_files.lock_write()
@@ -568,7 +564,7 @@ class BzrBranch(Branch):
         classes to support downlevel branches.  But not yet.
         """
         try:
-            fmt = self.control_files.controlfile('branch-format', 'r').read()
+            fmt = self.control_files.get_utf8('branch-format').read()
         except NoSuchFile:
             raise NotBranchError(path=self.base)
         mutter("got branch format %r", fmt)
@@ -673,7 +669,7 @@ class BzrBranch(Branch):
             mutter("cache hit for revision-history in %s", self)
             return list(history)
         history = [l.rstrip('\r\n') for l in
-                self.control_files.controlfile('revision-history', 'r').readlines()]
+                self.control_files.get_utf8('revision-history').readlines()]
         transaction.map.add_revision_history(history)
         # this call is disabled because revision_history is 
         # not really an object yet, and the transaction is for objects.
@@ -758,7 +754,7 @@ class BzrBranch(Branch):
         _locs = ['parent', 'pull', 'x-pull']
         for l in _locs:
             try:
-                return self.control_files.controlfile(l, 'r').read().strip('\n')
+                return self.control_files.get_utf8(l).read().strip('\n')
             except NoSuchFile:
                 pass
         return None
@@ -778,13 +774,11 @@ class BzrBranch(Branch):
     def set_parent(self, url):
         """See Branch.set_parent."""
         # TODO: Maybe delete old location files?
-        from bzrlib.atomicfile import AtomicFile
-        f = AtomicFile(self.control_files.controlfilename('parent'))
-        try:
-            f.write(url + '\n')
-            f.commit()
-        finally:
-            f.close()
+        # URLs should never be unicode, even on the local fs,
+        # FIXUP this and get_parent in a future branch format bump:
+        # read and rewrite the file, and have the new format code read
+        # using .get not .get_utf8. RBC 20060125
+        self.control_files.put_utf8('parent', url + '\n')
 
     def tree_config(self):
         return TreeConfig(self)

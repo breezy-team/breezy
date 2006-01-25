@@ -16,14 +16,9 @@
 
 """builtin bzr commands"""
 
-# DO NOT change this to cStringIO - it results in control files 
-# written as UCS4
-# FIXIT! (Only deal with byte streams OR unicode at any one layer.)
-# RBC 20051018
 
-from StringIO import StringIO
-import sys
 import os
+import sys
 
 import bzrlib
 from bzrlib import BZRDIR
@@ -601,7 +596,6 @@ class cmd_branch(Command):
                 raise BzrCommandError(msg)
             branch = Branch.open(to_location)
             if name:
-                name = StringIO(name)
                 branch.control_files.put_utf8('branch-name', name)
 
             note('Branched %d revision(s).' % branch.revno())

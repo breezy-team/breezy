@@ -32,7 +32,7 @@ import tempfile
 
 import bzrlib
 from bzrlib.errors import (BzrError,
-                           BzrBadParameter,
+                           BzrBadParameterNotUnicode,
                            NoSuchFile,
                            PathNotChild,
                            )
@@ -603,7 +603,7 @@ def safe_unicode(unicode_or_utf8_string):
     try:
         return unicode_or_utf8_string.decode('utf8')
     except UnicodeDecodeError:
-        raise BzrBadParameter(unicode_or_utf8_string)
+        raise BzrBadParameterNotUnicode(unicode_or_utf8_string)
 
 
 def terminal_width():

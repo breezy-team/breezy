@@ -418,7 +418,7 @@ class WorkingTree(bzrlib.tree.Tree):
         directory but not yet committed.
         """
         try:
-            f = self.branch.control_files.controlfile('pending-merges', 'r')
+            f = self.branch.control_files.get_utf8('pending-merges')
         except NoSuchFile:
             return []
         p = []
@@ -808,14 +808,14 @@ class WorkingTree(bzrlib.tree.Tree):
     def read_basis_inventory(self, revision_id):
         """Read the cached basis inventory."""
         path = self._basis_inventory_name(revision_id)
-        return self.branch.control_files.controlfile(path, 'r').read()
+        return self.branch.control_files.get_utf8(path).read()
         
     @needs_read_lock
     def read_working_inventory(self):
         """Read the working inventory."""
         # ElementTree does its own conversion from UTF-8, so open in
         # binary.
-        f = self.branch.control_files.controlfile('inventory', 'rb')
+        f = self.branch.control_files.get('inventory')
         return bzrlib.xml5.serializer_v5.read_inventory(f)
 
     @needs_write_lock

@@ -71,7 +71,7 @@ import tempfile
 import sys
 import shutil
 
-from bzrlib.branch import Branch, find_branch
+from bzrlib.branch import Branch
 from bzrlib.branch import BZR_BRANCH_FORMAT_5, BZR_BRANCH_FORMAT_6
 import bzrlib.hashcache as hashcache
 from bzrlib.weave import Weave
@@ -210,9 +210,9 @@ class Convert(object):
 
     def _convert_working_inv(self):
         branch = self.branch
-        inv = serializer_v4.read_inventory(branch.control_files.controlfile('inventory', 'rb'))
+        inv = serializer_v4.read_inventory(branch.control_files.get('inventory'))
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
-        branch.control_files.put_utf8('inventory', new_inv_xml)
+        branch.control_files.put('inventory', new_inv_xml)
 
     def _write_all_weaves(self):
         write_a_weave(self.inv_weave, self.base + '/.bzr/inventory.weave')

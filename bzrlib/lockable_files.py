@@ -14,13 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
+from cStringIO import StringIO
+import codecs
 
 import bzrlib
 from bzrlib.decorators import *
 import bzrlib.errors as errors
 from bzrlib.errors import LockError, ReadOnlyError
 from bzrlib.osutils import file_iterator, safe_unicode
+from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import deprecated_method, zero_seven
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
 
@@ -97,6 +100,7 @@ class LockableFiles(object):
         """Return location relative to branch."""
         return self._transport.abspath(self._escape(file_or_path))
 
+    @deprecated_method(zero_seven)
     def controlfile(self, file_or_path, mode='r'):
         """Open a control file for this branch.
 
@@ -109,25 +113,33 @@ class LockableFiles(object):
         put and put_utf8 which atomically replace old versions using
         atomicfile.
         """
-        import codecs
 
         relpath = self._escape(file_or_path)
         #TODO: codecs.open() buffers linewise, so it was overloaded with
         # a much larger buffer, do we need to do the same for getreader/getwriter?
         if mode == 'rb': 
-            return self._transport.get(relpath)
+            return self.get(relpath)
         elif mode == 'wb':
             raise BzrError("Branch.controlfile(mode='wb') is not supported, use put[_utf8]")
         elif mode == 'r':
-            # XXX: Do we really want errors='replace'?   Perhaps it should be
-            # an error, or at least reported, if there's incorrectly-encoded
-            # data inside a file.
-            # <https://launchpad.net/products/bzr/+bug/3823>
-            return codecs.getreader('utf-8')(self._transport.get(relpath), errors='replace')
+            return self.get_utf8(relpath)
         elif mode == 'w':
             raise BzrError("Branch.controlfile(mode='w') is not supported, use put[_utf8]")
         else:
             raise BzrError("invalid controlfile mode %r" % mode)
+
+    @needs_read_lock
+    def get(self, relpath):
+        """Get a file as a bytestream."""
+        relpath = self._escape(relpath)
+        return self._transport.get(relpath)
+
+    @needs_read_lock
+    def get_utf8(self, relpath):
+        """Get a file as a unicode stream."""
+        relpath = self._escape(relpath)
+        # DO NOT introduce an errors=replace here.
+        return codecs.getreader('utf-8')(self._transport.get(relpath))
 
     @needs_write_lock
     def put(self, path, file):
@@ -140,29 +152,21 @@ class LockableFiles(object):
         self._transport.put(self._escape(path), file, mode=self._file_mode)
 
     @needs_write_lock
-    def put_utf8(self, path, file, mode=None):
-        """Write a file, encoding as utf-8.
+    def put_utf8(self, path, a_string):
+        """Write a string, encoding as utf-8.
 
-        :param path: The path to put the file, relative to the .bzr control
-                     directory
-        :param f: A file-like or string object whose contents should be copied.
+        :param path: The path to put the string, relative to the transport root.
+        :param string: A file-like or string object whose contents should be copied.
         """
-        import codecs
-        from iterablefile import IterableFile
-        ctrl_files = []
-        if hasattr(file, 'read'):
-            iterator = file_iterator(file)
-        else:
-            iterator = file
         # IterableFile would not be needed if Transport.put took iterables
         # instead of files.  ADHB 2005-12-25
         # RBC 20060103 surely its not needed anyway, with codecs transcode
         # file support ?
         # JAM 20060103 We definitely don't want encode(..., 'replace')
         # these are valuable files which should have exact contents.
-        encoded_file = IterableFile(b.encode('utf-8') for b in 
-                                    iterator)
-        self.put(path, encoded_file)
+        if not isinstance(a_string, basestring):
+            raise errors.BzrBadParameterNotString(a_string)
+        self.put(path, StringIO(a_string.encode('utf-8')))
 
     def lock_write(self):
         mutter("lock write: %s (%s)", self, self._lock_count)

@@ -1,3 +1,11 @@
+bzr development edition
+
+  INTERNALS:
+  
+    * The internal storage of history, and logical branch identity have now
+      been split into Branch, and Repository. The common locking and file 
+      management routines are now in bzrlib.lockablefiles.
+      
 bzr 0.7rc1 2006-01-09
 
   CHANGES:

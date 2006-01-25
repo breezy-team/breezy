@@ -17,7 +17,7 @@
 from StringIO import StringIO
 
 from bzrlib.branch import Branch
-from bzrlib.errors import NoSuchFile, ReadOnlyError
+from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.transactions import PassThroughTransaction, ReadOnlyTransaction
@@ -33,7 +33,8 @@ class TestLockableFiles(TestCaseInTempDir):
         self.lockable = LockableFiles(transport.clone('.bzr'), 'my-lock')
 
     def test_read_write(self):
-        self.assertRaises(NoSuchFile, self.lockable.controlfile, 'foo')
+        self.assertRaises(NoSuchFile, self.lockable.get, 'foo')
+        self.assertRaises(NoSuchFile, self.lockable.get_utf8, 'foo')
         self.lockable.lock_write()
         try:
             unicode_string = u'bar\u1234'
@@ -44,14 +45,19 @@ class TestLockableFiles(TestCaseInTempDir):
                               StringIO(unicode_string))
             self.lockable.put('foo', StringIO(byte_string))
             self.assertEqual(byte_string,
-                             self.lockable.controlfile('foo', 'rb').read())
+                             self.lockable.get('foo').read())
             self.assertEqual(unicode_string,
-                             self.lockable.controlfile('foo', 'r').read())
-            self.lockable.put_utf8('bar', StringIO(unicode_string))
+                             self.lockable.get_utf8('foo').read())
+            self.assertRaises(BzrBadParameterNotString,
+                              self.lockable.put_utf8,
+                              'bar',
+                              StringIO(unicode_string)
+                              )
+            self.lockable.put_utf8('bar', unicode_string)
             self.assertEqual(unicode_string, 
-                             self.lockable.controlfile('bar', 'r').read())
+                             self.lockable.get_utf8('bar').read())
             self.assertEqual(byte_string, 
-                             self.lockable.controlfile('bar', 'rb').read())
+                             self.lockable.get('bar').read())
         finally:
             self.lockable.unlock()
 

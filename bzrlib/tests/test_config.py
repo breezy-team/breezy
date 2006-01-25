@@ -103,7 +103,7 @@ class FakeControlFiles(object):
     def __init__(self):
         self.email = 'Robert Collins <robertc@example.net>\n'
 
-    def controlfile(self, filename, mode):
+    def get_utf8(self, filename):
         if filename != 'email':
             raise NotImplementedError
         if self.email is not None:
