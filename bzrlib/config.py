@@ -379,7 +379,7 @@ class BranchConfig(Config):
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch.controlfile("email", "r") 
+            return (self.branch.control_files.get_utf8("email") 
                     .read()
                     .decode(bzrlib.user_encoding)
                     .rstrip("\r\n"))
@@ -520,8 +520,8 @@ class TreeConfig(object):
 
     def _get_config(self):
         try:
-            obj = ConfigObj(self.branch.controlfile('branch.conf',
-                                                    'rb').readlines())
+            obj = ConfigObj(self.branch.control_files.get('branch.conf'
+                        ).readlines())
             obj.decode('UTF-8')
         except errors.NoSuchFile:
             obj = ConfigObj()
@@ -558,6 +558,6 @@ class TreeConfig(object):
             cfg_obj.encode('UTF-8')
             out_file = StringIO(''.join([l+'\n' for l in cfg_obj.write()]))
             out_file.seek(0)
-            self.branch.put_controlfile('branch.conf', out_file, encode=False)
+            self.branch.control_files.put('branch.conf', out_file)
         finally:
             self.branch.unlock()

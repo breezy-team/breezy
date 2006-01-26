@@ -238,10 +238,11 @@ def _get_revid_tree(branch, revision, local_branch):
         base_tree = branch.working_tree()
     else:
         if local_branch is not None:
-            greedy_fetch(local_branch, branch, revision)
-            base_tree = local_branch.revision_tree(revision)
+            if local_branch.base != branch.base:
+                greedy_fetch(local_branch, branch, revision)
+            base_tree = local_branch.repository.revision_tree(revision)
         else:
-            base_tree = branch.revision_tree(revision)
+            base_tree = branch.repository.revision_tree(revision)
     return base_tree
 
 
@@ -318,11 +319,11 @@ class Merger(object):
                                                       base_tree, other_tree)
 
     def revision_tree(self, revision_id):
-        return self.this_branch.revision_tree(revision_id)
+        return self.this_branch.repository.revision_tree(revision_id)
 
     def ensure_revision_trees(self):
         if self.this_revision_tree is None:
-            self.this_basis_tree = self.this_branch.revision_tree(
+            self.this_basis_tree = self.this_branch.repository.revision_tree(
                 self.this_basis)
             if self.this_basis == self.this_rev_id:
                 self.this_revision_tree = self.this_basis_tree
@@ -414,7 +415,8 @@ class Merger(object):
             return
         if self.other_rev_id is None:
             return
-        if self.other_rev_id in self.this_branch.get_ancestry(self.this_basis):
+        ancestry = self.this_branch.repository.get_ancestry(self.this_basis)
+        if self.other_rev_id in ancestry:
             return
         self.this_branch.working_tree().add_pending_merge(self.other_rev_id)
 
@@ -434,8 +436,9 @@ class Merger(object):
             self.other_basis = other_branch.last_revision()
             if self.other_basis is None:
                 raise NoCommits(other_branch)
-        fetch(from_branch=other_branch, to_branch=self.this_branch, 
-              last_revision=self.other_basis)
+        if other_branch.base != self.this_branch.base:
+            fetch(from_branch=other_branch, to_branch=self.this_branch, 
+                  last_revision=self.other_basis)
 
     def set_base(self, base_revision):
         mutter("doing merge() with no base_revision specified")
@@ -443,7 +446,7 @@ class Merger(object):
             try:
                 self.base_rev_id = common_ancestor(self.this_basis, 
                                                    self.other_basis, 
-                                                   self.this_branch)
+                                                   self.this_branch.repository)
             except NoCommonAncestor:
                 raise UnrelatedBranches()
             self.base_tree = _get_revid_tree(self.this_branch, self.base_rev_id,

@@ -21,7 +21,7 @@ import os
 import sys
 
 import bzrlib
-from bzrlib.errors import BzrBadParameter
+from bzrlib.errors import BzrBadParameterNotUnicode
 import bzrlib.osutils as osutils
 from bzrlib.tests import TestCaseInTempDir, TestCase
 
@@ -78,4 +78,6 @@ class TestSafeUnicode(TestCase):
         self.assertEqual(u'foo\xae', osutils.safe_unicode('foo\xc2\xae'))
 
     def test_bad_utf8_string(self):
-        self.assertRaises(BzrBadParameter, osutils.safe_unicode, '\xbb\xbb')
+        self.assertRaises(BzrBadParameterNotUnicode,
+                          osutils.safe_unicode,
+                          '\xbb\xbb')

@@ -16,14 +16,9 @@
 
 """builtin bzr commands"""
 
-# DO NOT change this to cStringIO - it results in control files 
-# written as UCS4
-# FIXIT! (Only deal with byte streams OR unicode at any one layer.)
-# RBC 20051018
 
-from StringIO import StringIO
-import sys
 import os
+import sys
 
 import bzrlib
 from bzrlib import BZRDIR
@@ -149,13 +144,13 @@ class cmd_cat_revision(Command):
             raise BzrCommandError('You must supply either --revision or a revision_id')
         b = WorkingTree.open_containing(u'.')[0].branch
         if revision_id is not None:
-            sys.stdout.write(b.get_revision_xml(revision_id))
+            sys.stdout.write(b.repository.get_revision_xml(revision_id))
         elif revision is not None:
             for rev in revision:
                 if rev is None:
                     raise BzrCommandError('You cannot specify a NULL revision.')
                 revno, rev_id = rev.in_history(b)
-                sys.stdout.write(b.get_revision_xml(rev_id))
+                sys.stdout.write(b.repository.get_revision_xml(rev_id))
     
 
 class cmd_revno(Command):
@@ -299,7 +294,7 @@ class cmd_inventory(Command):
             if len(revision) > 1:
                 raise BzrCommandError('bzr inventory --revision takes'
                     ' exactly one revision identifier')
-            inv = tree.branch.get_revision_inventory(
+            inv = tree.branch.repository.get_revision_inventory(
                 revision[0].in_history(tree.branch).rev_id)
 
         for path, entry in inv.entries():
@@ -548,7 +543,6 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
-        from bzrlib.clone import copy_branch
         import errno
         from shutil import rmtree
         if revision is None:
@@ -591,7 +585,7 @@ class cmd_branch(Command):
                 else:
                     raise
             try:
-                copy_branch(br_from, to_location, revision_id, basis_branch)
+                br_from.clone(to_location, revision_id, basis_branch)
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
@@ -602,8 +596,8 @@ class cmd_branch(Command):
                 raise BzrCommandError(msg)
             branch = Branch.open(to_location)
             if name:
-                name = StringIO(name)
-                branch.put_controlfile('branch-name', name)
+                branch.control_files.put_utf8('branch-name', name)
+
             note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
@@ -927,7 +921,7 @@ class cmd_log(Command):
             if tree is None:
                 b, fp = Branch.open_containing(filename)
                 if fp != '':
-                    inv = b.get_inventory(b.last_revision())
+                    inv = b.repository.get_inventory(b.last_revision())
             if fp != '':
                 file_id = inv.path2id(fp)
             else:
@@ -1036,7 +1030,7 @@ class cmd_ls(Command):
         elif relpath:
             relpath += '/'
         if revision is not None:
-            tree = tree.branch.revision_tree(
+            tree = tree.branch.repository.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
         for fp, fc, kind, fid, entry in tree.list_files():
             if fp.startswith(relpath):
@@ -1194,7 +1188,7 @@ class cmd_export(Command):
             if len(revision) != 1:
                 raise BzrError('bzr export --revision takes exactly 1 argument')
             rev_id = revision[0].in_history(b).rev_id
-        t = b.revision_tree(rev_id)
+        t = b.repository.revision_tree(rev_id)
         try:
             export(t, dest, format, root)
         except errors.NoSuchExportFormat, e:
@@ -1650,10 +1644,11 @@ class cmd_remerge(Command):
                 raise BzrCommandError("Sorry, remerge only works after normal"
                                       + " merges.  Not cherrypicking or"
                                       + "multi-merges.")
+            repository = tree.branch.repository
             base_revision = common_ancestor(tree.branch.last_revision(), 
-                                            pending_merges[0], tree.branch)
-            base_tree = tree.branch.revision_tree(base_revision)
-            other_tree = tree.branch.revision_tree(pending_merges[0])
+                                            pending_merges[0], repository)
+            base_tree = repository.revision_tree(base_revision)
+            other_tree = repository.revision_tree(pending_merges[0])
             interesting_ids = None
             if file_list is not None:
                 interesting_ids = set()
@@ -1715,7 +1710,7 @@ class cmd_revert(Command):
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:
             rev_id = revision[0].in_history(tree.branch).rev_id
-        tree.revert(file_list, tree.branch.revision_tree(rev_id),
+        tree.revert(file_list, tree.branch.repository.revision_tree(rev_id),
                     not no_backup)
 
 
@@ -1767,15 +1762,7 @@ class cmd_fetch(Command):
         from bzrlib.branch import Branch
         from_b = Branch.open(from_branch)
         to_b = Branch.open(to_branch)
-        from_b.lock_read()
-        try:
-            to_b.lock_write()
-            try:
-                Fetcher(to_b, from_b)
-            finally:
-                to_b.unlock()
-        finally:
-            from_b.unlock()
+        Fetcher(to_b, from_b)
 
 
 class cmd_missing(Command):
@@ -1818,7 +1805,8 @@ class cmd_missing(Command):
             remote_extra.reverse()
         if local_extra and not theirs_only:
             print "You have %d extra revision(s):" % len(local_extra)
-            for data in iter_log_data(local_extra, local_branch, verbose):
+            for data in iter_log_data(local_extra, local_branch.repository,
+                                      verbose):
                 lf.show(*data)
             printed_local = True
         else:
@@ -1827,7 +1815,8 @@ class cmd_missing(Command):
             if printed_local is True:
                 print "\n\n"
             print "You are missing %d revision(s):" % len(remote_extra)
-            for data in iter_log_data(remote_extra, remote_branch, verbose):
+            for data in iter_log_data(remote_extra, remote_branch.repository, 
+                                      verbose):
                 lf.show(*data)
         if not remote_extra and not local_extra:
             status_code = 0
@@ -1873,7 +1862,7 @@ class cmd_testament(Command):
                 rev_id = b.last_revision()
             else:
                 rev_id = revision[0].in_history(b).rev_id
-            t = Testament.from_revision(b, rev_id)
+            t = Testament.from_revision(b.repository, rev_id)
             if long:
                 sys.stdout.writelines(t.as_text_lines())
             else:
@@ -1909,7 +1898,7 @@ class cmd_annotate(Command):
         branch.lock_read()
         try:
             file_id = tree.inventory.path2id(relpath)
-            tree = branch.revision_tree(branch.last_revision())
+            tree = branch.repository.revision_tree(branch.last_revision())
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, sys.stdout)
         finally:
@@ -1934,11 +1923,11 @@ class cmd_re_sign(Command):
         b = WorkingTree.open_containing(u'.')[0].branch
         gpg_strategy = gpg.GPGStrategy(config.BranchConfig(b))
         if revision_id is not None:
-            b.sign_revision(revision_id, gpg_strategy)
+            b.repository.sign_revision(revision_id, gpg_strategy)
         elif revision is not None:
             if len(revision) == 1:
                 revno, rev_id = revision[0].in_history(b)
-                b.sign_revision(rev_id, gpg_strategy)
+                b.repository.sign_revision(rev_id, gpg_strategy)
             elif len(revision) == 2:
                 # are they both on rh- if so we can walk between them
                 # might be nice to have a range helper for arbitrary
@@ -1950,7 +1939,8 @@ class cmd_re_sign(Command):
                 if from_revno is None or to_revno is None:
                     raise BzrCommandError('Cannot sign a range of non-revision-history revisions')
                 for revno in range(from_revno, to_revno + 1):
-                    b.sign_revision(b.get_rev_id(revno), gpg_strategy)
+                    b.repository.sign_revision(b.get_rev_id(revno), 
+                                               gpg_strategy)
             else:
                 raise BzrCommandError('Please supply either one revision, or a range.')
 
@@ -2003,7 +1993,7 @@ class cmd_uncommit(bzrlib.commands.Command):
         for r in range(revno, b.revno()+1):
             rev_id = b.get_rev_id(r)
             lf = log_formatter('short', to_file=sys.stdout,show_timezone='original')
-            lf.show(r, b.get_revision(rev_id), None)
+            lf.show(r, b.repository.get_revision(rev_id), None)
 
         if dry_run:
             print 'Dry-run, pretending to remove the above revisions.'

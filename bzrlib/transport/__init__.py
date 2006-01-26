@@ -431,6 +431,10 @@ class Transport(object):
 
 
 def get_transport(base):
+    """Open a transport to access a URL or directory.
+
+    base is either a URL or a directory name.  
+    """
     global _protocol_handlers
     if base is None:
         base = u'.'

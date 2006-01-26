@@ -23,7 +23,6 @@ import os
 
 import bzrlib
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -56,7 +55,7 @@ class TestDiff(ExternalBase):
         branch = Branch.initialize('branch1')
         branch.working_tree().add(['file'])
         branch.working_tree().commit('add file')
-        copy_branch(branch, 'branch2')
+        branch.clone('branch2')
         print >> open('branch2/file', 'wb'), 'new content'
         branch2 = Branch.open('branch2')
         branch2.working_tree().commit('update file')
@@ -94,4 +93,3 @@ class TestDiff(ExternalBase):
         print >> open('branch1/file1', 'wb'), 'new line'
         output = self.run_bzr_captured(['diff', '-r', '1..', 'branch1'], retcode=1)
         self.assertTrue('\n-original line\n+new line\n' in output[0])
-

@@ -1,3 +1,17 @@
+bzr development version
+
+  INTERNALS:
+  
+    * The internal storage of history, and logical branch identity have now
+      been split into Branch, and Repository. The common locking and file 
+      management routines are now in bzrlib.lockablefiles. 
+      (Aaron Bentley, Robert Collins, Martin Pool)
+
+  TESTING:
+
+    * SFTP tests now shortcut the SSH negotiation, reducing test overhead
+      for testing SFTP protocol support. (Robey Pointer)
+
 bzr 0.7rc1 2006-01-09
 
   CHANGES:
@@ -274,6 +288,12 @@ bzr 0.7rc1 2006-01-09
     * Simplify handling of DivergedBranches in cmd_pull().
       (Michael Ellerman)
 		   
+   
+    * Branch.controlfile* logic has moved to lockablefiles.LockableFiles, which
+      is exposed as Branch().control_files. Also this has been altered with the
+      controlfile pre/suffix replaced by simple method names like 'get' and
+      'put'. (Aaron Bentley, Robert Collins).
+
     * Deprecated functions and methods can now be marked as such using the 
       bzrlib.symbol_versioning module. Marked method have their docstring
       updated and will issue a DeprecationWarning using the warnings module
