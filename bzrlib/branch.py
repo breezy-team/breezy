@@ -20,7 +20,13 @@ import sys
 import os
 import errno
 from warnings import warn
-import xml.sax.saxutils
+try:
+    import xml.sax.saxutils
+except ImportError:
+    raise ImportError("We were unable to import 'xml.sax.saxutils',"
+                      " most likely you have an xml.pyc or xml.pyo file"
+                      " lying around in your bzrlib directory."
+                      " Please remove it.")
 from cStringIO import StringIO
 
 
