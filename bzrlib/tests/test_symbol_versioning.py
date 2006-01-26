@@ -96,4 +96,4 @@ class TestDeprecationWarnings(TestCase):
         self.assertEqual(True, symbol_versioning.deprecated_passed(False))
         self.assertEqual(False,
                          symbol_versioning.deprecated_passed(
-                            symbol_versioning.deprecated_nonce))
+                            symbol_versioning.DEPRECATED_PARAMETER))

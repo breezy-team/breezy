@@ -365,7 +365,7 @@ class WorkingTree(bzrlib.tree.Tree):
         # args for wt.commit start at message from the Commit.commit method,
         # but with branch a kwarg now, passing in args as is results in the
         #message being used for the branch
-        args = (deprecated_nonce, ) + args
+        args = (DEPRECATED_PARAMETER, ) + args
         Commit().commit(working_tree=self, *args, **kwargs)
         self._set_inventory(self.read_working_inventory())
 

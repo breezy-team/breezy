@@ -711,8 +711,8 @@ class BzrBranch(Branch):
         except UnlistableStore:
             raise UnlistableBranch(from_store)
 
-    def __init__(self, transport, init=deprecated_nonce,
-                 relax_version_check=deprecated_nonce, _format=None,
+    def __init__(self, transport, init=DEPRECATED_PARAMETER,
+                 relax_version_check=DEPRECATED_PARAMETER, _format=None,
                  _control_files=None):
         """Create new branch object at a particular location.
 

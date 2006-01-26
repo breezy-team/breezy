@@ -22,7 +22,7 @@ The methods here allow for api symbol versioning.
 
 __all__ = ['deprecated_function',
            'deprecated_method',
-           'deprecated_nonce',
+           'DEPRECATED_PARAMETER',
            'deprecated_passed',
            'warn', 'set_warning_method', 'zero_seven',
            'zero_eight',
@@ -31,7 +31,7 @@ __all__ = ['deprecated_function',
 from warnings import warn
 
 
-deprecated_nonce = "A deprecated parameter marker."
+DEPRECATED_PARAMETER = "A deprecated parameter marker."
 zero_seven = "%s was deprecated in version 0.7."
 zero_eight = "%s was deprecated in version 0.8."
 
@@ -108,7 +108,7 @@ def deprecated_passed(parameter_value):
     # def __init__(self, bad, other)
     # def __init__(self, **kwargs)
     # RBC 20060116
-    return not parameter_value is deprecated_nonce
+    return not parameter_value is DEPRECATED_PARAMETER
 
 
 def _decorate_docstring(callable, deprecation_version, label,

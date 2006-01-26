@@ -170,7 +170,7 @@ class Commit(object):
             self.config = None
         
     def commit(self,
-               branch=deprecated_nonce, message=None,
+               branch=DEPRECATED_PARAMETER, message=None,
                timestamp=None,
                timezone=None,
                committer=None,
