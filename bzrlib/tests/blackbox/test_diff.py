@@ -23,7 +23,6 @@ import os
 
 import bzrlib
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -93,4 +92,3 @@ class TestDiff(ExternalBase):
         print >> open('branch1/file1', 'wb'), 'new line'
         output = self.run_bzr_captured(['diff', '-r', '1..', 'branch1'], retcode=1)
         self.assertTrue('\n-original line\n+new line\n' in output[0])
-

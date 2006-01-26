@@ -14,42 +14,36 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: build_working_dir can be built on something simpler than merge()
 
 import os
-import shutil
 import errno
 
-import bzrlib.osutils
-import bzrlib.revision
-from bzrlib.merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
-from bzrlib.merge_core import WeaveMerge
-from bzrlib.changeset import generate_changeset, ExceptionConflictHandler
-from bzrlib.changeset import Inventory, Diff3Merge, ReplaceContents
+import bzrlib
+from bzrlib._changeset import generate_changeset, ExceptionConflictHandler
+from bzrlib._changeset import Inventory, Diff3Merge, ReplaceContents
+from bzrlib._merge_core import WeaveMerge
+from bzrlib._merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
 from bzrlib.branch import Branch
+from bzrlib.delta import compare_trees
 from bzrlib.errors import (BzrCommandError,
-                           UnrelatedBranches,
+                           BzrError,
                            NoCommonAncestor,
                            NoCommits,
-                           WorkingTreeNotRevision,
+                           NoSuchRevision,
                            NotBranchError,
                            NotVersionedError,
-                           BzrError)
-from bzrlib.delta import compare_trees
-from bzrlib.trace import mutter, warning, note
+                           UnrelatedBranches,
+                           WorkingTreeNotRevision,
+                           )
 from bzrlib.fetch import greedy_fetch, fetch
-from bzrlib.revision import is_ancestor, NULL_REVISION
+import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
-from bzrlib.revision import common_ancestor
-from bzrlib.errors import NoSuchRevision
+from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
+from bzrlib.trace import mutter, warning, note
 from bzrlib.workingtree import WorkingTree
 
 # TODO: Report back as changes are merged in
-
-# TODO: build_working_dir can be built on something simpler than merge()
-
-# FIXME: merge() parameters seem oriented towards the command line
-# NOTABUG: merge is a helper for commandline functions.  merge_inner is the
-#          the core functionality.
 
 # comments from abentley on irc: merge happens in two stages, each
 # of which generates a changeset object
@@ -57,7 +51,7 @@ from bzrlib.workingtree import WorkingTree
 # stage 1: generate OLD->OTHER,
 # stage 2: use MINE and OLD->OTHER to generate MINE -> RESULT
 
-class MergeConflictHandler(ExceptionConflictHandler):
+class _MergeConflictHandler(ExceptionConflictHandler):
     """Handle conflicts encountered while merging.
 
     This subclasses ExceptionConflictHandler, so that any types of
@@ -204,7 +198,7 @@ class MergeConflictHandler(ExceptionConflictHandler):
 
     def create(self, file_id, path, tree):
         """Uses tree data to create a filesystem object for the file_id"""
-        from changeset import get_contents
+        from bzrlib._changeset import get_contents
         get_contents(tree, file_id)(path, self)
 
     def missing_for_merge(self, file_id, other_path):
@@ -226,8 +220,8 @@ class MergeConflictHandler(ExceptionConflictHandler):
                 note("All changes applied successfully.")
         else:
             note("%d conflicts encountered." % self.conflicts)
-            
-def get_tree(treespec, local_branch=None):
+
+def _get_tree(treespec, local_branch=None):
     location, revno = treespec
     branch = Branch.open_containing(location)[0]
     if revno is None:
@@ -238,23 +232,21 @@ def get_tree(treespec, local_branch=None):
         revision = branch.get_rev_id(revno)
         if revision is None:
             revision = NULL_REVISION
-    return branch, get_revid_tree(branch, revision, local_branch)
+    return branch, _get_revid_tree(branch, revision, local_branch)
 
-def get_revid_tree(branch, revision, local_branch):
+
+def _get_revid_tree(branch, revision, local_branch):
     if revision is None:
         base_tree = branch.working_tree()
     else:
         if local_branch is not None:
-            greedy_fetch(local_branch, branch, revision)
-            base_tree = local_branch.revision_tree(revision)
+            if local_branch.base != branch.base:
+                greedy_fetch(local_branch, branch, revision)
+            base_tree = local_branch.repository.revision_tree(revision)
         else:
-            base_tree = branch.revision_tree(revision)
+            base_tree = branch.repository.revision_tree(revision)
     return base_tree
 
-
-def file_exists(tree, file_id):
-    return tree.has_filename(tree.id2path(file_id))
-    
 
 def build_working_dir(to_dir):
     """Build a working directory in an empty directory.
@@ -276,67 +268,6 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
     merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
                 interesting_ids=interesting_ids)
 
-
-def merge(other_revision, base_revision,
-          check_clean=True, ignore_zero=False,
-          this_dir=None, backup_files=False, merge_type=ApplyMerge3,
-          file_list=None, show_base=False, reprocess=False):
-    """Merge changes into a tree.
-
-    base_revision
-        list(path, revno) Base for three-way merge.  
-        If [None, None] then a base will be automatically determined.
-    other_revision
-        list(path, revno) Other revision for three-way merge.
-    this_dir
-        Directory to merge changes into; '.' by default.
-    check_clean
-        If true, this_dir must have no uncommitted changes before the
-        merge begins.
-    ignore_zero - If true, suppress the "zero conflicts" message when 
-        there are no conflicts; should be set when doing something we expect
-        to complete perfectly.
-    file_list - If supplied, merge only changes to selected files.
-
-    All available ancestors of other_revision and base_revision are
-    automatically pulled into the branch.
-
-    The revno may be -1 to indicate the last revision on the branch, which is
-    the typical case.
-
-    This function is intended for use from the command line; programmatic
-    clients might prefer to call merge_inner(), which has less magic behavior.
-    """
-    if this_dir is None:
-        this_dir = '.'
-    this_tree = WorkingTree.open_containing(this_dir)[0]
-    if show_base and not merge_type is ApplyMerge3:
-        raise BzrCommandError("Show-base is not supported for this merge"
-                              " type. %s" % merge_type)
-    if reprocess and not merge_type is ApplyMerge3:
-        raise BzrCommandError("Reprocess is not supported for this merge"
-                              " type. %s" % merge_type)
-    if reprocess and show_base:
-        raise BzrCommandError("Cannot reprocess and show base.")
-    merger = Merger(this_tree.branch, this_tree=this_tree)
-    merger.check_basis(check_clean)
-    merger.set_other(other_revision)
-    merger.set_base(base_revision)
-    if merger.base_rev_id == merger.other_rev_id:
-        note('Nothing to do.')
-        return 0
-    merger.backup_files = backup_files
-    merger.merge_type = merge_type 
-    merger.set_interesting_files(file_list)
-    merger.show_base = show_base 
-    merger.reprocess = reprocess
-    merger.conflict_handler = MergeConflictHandler(merger.this_tree, 
-                                                   merger.base_tree, 
-                                                   merger.other_tree,
-                                                   ignore_zero=ignore_zero)
-    conflicts = merger.do_merge()
-    merger.set_pending()
-    return conflicts
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 backup_files=False, 
@@ -365,9 +296,9 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
         merger._set_interesting_files(interesting_files)
     merger.show_base = show_base 
     merger.reprocess = reprocess
-    merger.conflict_handler = MergeConflictHandler(merger.this_tree, base_tree, 
-                                                   other_tree,
-                                                   ignore_zero=ignore_zero)
+    merger.conflict_handler = _MergeConflictHandler(merger.this_tree, 
+                                                    base_tree, other_tree,
+                                                    ignore_zero=ignore_zero)
     merger.other_rev_id = other_rev_id
     merger.other_basis = other_rev_id
     return merger.do_merge()
@@ -390,19 +321,18 @@ class Merger(object):
         self.interesting_ids = None
         self.show_base = False
         self.reprocess = False
-        self.conflict_handler = MergeConflictHandler(self.this_tree, base_tree, 
-                                                     other_tree)
+        self.conflict_handler = _MergeConflictHandler(self.this_tree, 
+                                                      base_tree, other_tree)
 
     def revision_tree(self, revision_id):
-        return self.this_branch.revision_tree(revision_id)
+        return self.this_branch.repository.revision_tree(revision_id)
 
     def ensure_revision_trees(self):
         if self.this_revision_tree is None:
-            self.this_basis_tree = self.this_branch.revision_tree(
+            self.this_basis_tree = self.this_branch.repository.revision_tree(
                 self.this_basis)
             if self.this_basis == self.this_rev_id:
                 self.this_revision_tree = self.this_basis_tree
-
 
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
@@ -411,7 +341,6 @@ class Merger(object):
                 raise WorkingTreeNotRevision(self.this_tree)
             other_rev_id = other_basis
             self.other_tree = other_basis_tree
-
 
     def file_revisions(self, file_id):
         self.ensure_revision_trees()
@@ -426,7 +355,6 @@ class Merger(object):
 
         trees = (self.this_basis_tree, self.other_tree)
         return [get_id(tree, file_id) for tree in trees]
-            
 
     def merge_factory(self, file_id, base, other):
         if self.merge_type.history_based:
@@ -477,8 +405,7 @@ class Merger(object):
             return
 
         interesting_ids = set()
-        for fname in file_list:
-            path = self.this_tree.relpath(fname)
+        for path in file_list:
             found_id = False
             for tree in (self.this_tree, self.base_tree, self.other_tree):
                 file_id = tree.inventory.path2id(path)
@@ -486,7 +413,7 @@ class Merger(object):
                     interesting_ids.add(file_id)
                     found_id = True
             if not found_id:
-                raise NotVersionedError(path=fname)
+                raise NotVersionedError(path=path)
         self.interesting_ids = interesting_ids
 
     def set_pending(self):
@@ -494,13 +421,14 @@ class Merger(object):
             return
         if self.other_rev_id is None:
             return
-        if self.other_rev_id in self.this_branch.get_ancestry(self.this_basis):
+        ancestry = self.this_branch.repository.get_ancestry(self.this_basis)
+        if self.other_rev_id in ancestry:
             return
         self.this_tree.add_pending_merge(self.other_rev_id)
 
     def set_other(self, other_revision):
-        other_branch, self.other_tree = get_tree(other_revision, 
-                                                 self.this_branch)
+        other_branch, self.other_tree = _get_tree(other_revision, 
+                                                  self.this_branch)
         if other_revision[1] == -1:
             self.other_rev_id = other_branch.last_revision()
             if self.other_rev_id is None:
@@ -514,8 +442,9 @@ class Merger(object):
             self.other_basis = other_branch.last_revision()
             if self.other_basis is None:
                 raise NoCommits(other_branch)
-        fetch(from_branch=other_branch, to_branch=self.this_branch, 
-              last_revision=self.other_basis)
+        if other_branch.base != self.this_branch.base:
+            fetch(from_branch=other_branch, to_branch=self.this_branch, 
+                  last_revision=self.other_basis)
 
     def set_base(self, base_revision):
         mutter("doing merge() with no base_revision specified")
@@ -523,14 +452,14 @@ class Merger(object):
             try:
                 self.base_rev_id = common_ancestor(self.this_basis, 
                                                    self.other_basis, 
-                                                   self.this_branch)
+                                                   self.this_branch.repository)
             except NoCommonAncestor:
                 raise UnrelatedBranches()
-            self.base_tree = get_revid_tree(self.this_branch, self.base_rev_id,
+            self.base_tree = _get_revid_tree(self.this_branch, self.base_rev_id,
                                             None)
             self.base_is_ancestor = True
         else:
-            base_branch, self.base_tree = get_tree(base_revision)
+            base_branch, self.base_tree = _get_tree(base_revision)
             if base_revision[1] == -1:
                 self.base_rev_id = base_branch.last_revision()
             elif base_revision[1] is None:
@@ -628,8 +557,8 @@ class Merger(object):
         new_inventory_list.sort()
         return new_inventory_list
 
+
 merge_types = {     "merge3": (ApplyMerge3, "Native diff3-style merge"), 
                      "diff3": (Diff3Merge,  "Merge using external diff3"),
                      'weave': (WeaveMerge, "Weave-based merge")
               }
-

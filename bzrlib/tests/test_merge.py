@@ -1,13 +1,14 @@
 import os
 
 from bzrlib.branch import Branch
+from bzrlib.builtins import merge
 from bzrlib.commit import commit
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.merge import merge, transform_tree
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
-from bzrlib.revision import common_ancestor
 from bzrlib.fetch import fetch
+from bzrlib.merge import transform_tree
 from bzrlib.osutils import pathjoin
+from bzrlib.revision import common_ancestor
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
@@ -54,7 +55,7 @@ class TestMerge(TestCaseWithTransport):
         wt1, br2 = self.test_pending_with_null()
         wt1.commit("blah")
         last = wt1.branch.last_revision()
-        self.assertEquals(common_ancestor(last, last, wt1.branch), last)
+        self.assertEquals(common_ancestor(last, last, wt1.branch.repository), last)
 
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""

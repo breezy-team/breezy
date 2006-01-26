@@ -113,9 +113,9 @@ class TestIsAncestor(TestCaseWithTransport):
                 if rev_id in br2_only and not branch is br2:
                     continue
                 mutter('ancestry of {%s}: %r',
-                       rev_id, branch.get_ancestry(rev_id))
-                self.assertEquals(sorted(branch.get_ancestry(rev_id)),
-                                  [None] + sorted(anc))
+                       rev_id, branch.repository.get_ancestry(rev_id))
+                result = sorted(branch.repository.get_ancestry(rev_id))
+                self.assertEquals(result, [None] + sorted(anc))
     
     
     def test_is_ancestor(self):
@@ -158,7 +158,8 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         self.br2.working_tree().commit("Commit fifteen", rev_id="b@u-0-10")
 
         from bzrlib.revision import MultipleRevisionSources
-        self.sources = MultipleRevisionSources(self.br1, self.br2)
+        self.sources = MultipleRevisionSources(self.br1.repository,
+                                               self.br2.repository)
 
     def intervene(self, ancestor, revision, revision_history=None):
         from bzrlib.revision import get_intervening_revisions
@@ -215,7 +216,7 @@ class TestCommonAncestor(TestCaseWithTransport):
         br1, br2 = make_branches(self)
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
-        sources = br1
+        sources = br1.repository
 
         expected_ancestors_list = {revisions[3]:(0, 0), 
                                    revisions[2]:(1, 1),
@@ -254,7 +255,7 @@ class TestCommonAncestor(TestCaseWithTransport):
         br1, br2 = make_branches(self)
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
-        sources = MultipleRevisionSources(br1, br2)
+        sources = MultipleRevisionSources(br1.repository, br2.repository)
         expected_ancestors_list = {revisions[3]:(0, 0), 
                                    revisions[2]:(1, 1),
                                    revisions_2[4]:(2, 1), 
@@ -289,7 +290,7 @@ class TestCommonAncestor(TestCaseWithTransport):
         Ensure it's not order-sensitive
         """
         br1, br2 = make_branches(self)
-        source = MultipleRevisionSources(br1, br2)
+        source = MultipleRevisionSources(br1.repository, br2.repository)
         combined_1 = combined_graph(br1.last_revision(), 
                                     br2.last_revision(), source)
         combined_2 = combined_graph(br2.last_revision(),

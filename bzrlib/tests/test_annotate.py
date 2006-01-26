@@ -31,7 +31,6 @@ import sys
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import has_symlinks
 from bzrlib.tests import TestCaseWithTransport

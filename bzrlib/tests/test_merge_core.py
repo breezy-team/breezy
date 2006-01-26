@@ -3,20 +3,20 @@ import shutil
 import stat
 import sys
 
-from bzrlib.tests import TestCaseWithTransport, TestCase
+from bzrlib.add import smart_add_tree
 from bzrlib.branch import ScratchBranch, Branch
+from bzrlib.builtins import merge
 from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError)
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.osutils import file_kind, rename, sha_file, pathjoin, mkdtemp
-from bzrlib import changeset
-from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
+from bzrlib import _changeset as changeset
+from bzrlib._merge_core import (ApplyMerge3, make_merge_changeset,
                                BackupBeforeChange, ExecFlagMerge, WeaveMerge)
-from bzrlib.changeset import Inventory, apply_changeset, invert_dict, \
+from bzrlib._changeset import Inventory, apply_changeset, invert_dict, \
     get_contents, ReplaceContents, ChangeExecFlag, Diff3Merge
-from bzrlib.clone import copy_branch
-from bzrlib.merge import merge
+from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.workingtree import WorkingTree
 
 
@@ -548,8 +548,6 @@ class FunctionalMergeTest(TestCaseWithTransport):
 
     def test_trivial_star_merge(self):
         """Test that merges in a star shape Just Work.""" 
-        from bzrlib.add import smart_add_tree
-        from bzrlib.merge import merge
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
         tree = WorkingTree.create_standalone('original')
@@ -558,7 +556,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         tree.commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
-        copy_branch(branch, "mary")
+        branch.clone("mary")
         # Now John commits a change
         file = open("original/file1", "wt")
         file.write("John\n")
@@ -589,7 +587,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('a/file', 'wb').write('contents\n')
         wta.add('file')
         wta.commit('base revision', allow_pointless=False)
-        b = copy_branch(a, 'b')
+        b = a.clone('b')
         file('a/file', 'wb').write('other contents\n')
         wta.commit('other revision', allow_pointless=False)
         file('b/file', 'wb').write('this contents contents\n')
@@ -601,7 +599,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertRaises(WorkingTreeNotRevision, merge, ['a', -1], 
                           [None, None], this_dir='b', check_clean=False,
                           merge_type=WeaveMerge)
-        merge(['b', -1], ['b', None], this_dir='b', check_clean=False)
+        b.working_tree().revert([])
         os.unlink('b/file.THIS')
         os.unlink('b/file.OTHER')
         os.unlink('b/file.BASE')

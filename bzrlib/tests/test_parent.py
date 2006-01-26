@@ -18,7 +18,6 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 from bzrlib.osutils import abspath, realpath
 from bzrlib.tests import TestCaseWithTransport
 
@@ -51,5 +50,5 @@ class TestParent(TestCaseWithTransport):
         wt.commit('initial commit')
         
         os.mkdir('to')
-        branch_to = copy_branch(branch_from, 'to', None)
+        branch_to = branch_from.clone('to', None)
         self.assertEquals(branch_to.get_parent(), branch_from.base)

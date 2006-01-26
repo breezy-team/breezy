@@ -71,11 +71,13 @@ import tempfile
 import sys
 from stat import *
 
-from bzrlib.branch import Branch, find_branch
+import bzrlib
+from bzrlib.branch import Branch
 from bzrlib.branch import BZR_BRANCH_FORMAT_5, BZR_BRANCH_FORMAT_6
 from bzrlib.branch import BzrBranchFormat, BzrBranchFormat4, BzrBranchFormat5, BzrBranchFormat6
 from bzrlib.errors import NoSuchFile, UpgradeReadonly
 import bzrlib.hashcache as hashcache
+from bzrlib.lockable_files import LockableFiles
 from bzrlib.osutils import sha_strings, sha_string, pathjoin, abspath
 from bzrlib.ui import ui_factory
 from bzrlib.store.text import TextStore
@@ -99,11 +101,22 @@ class Convert(object):
         self.text_count = 0
         self.revisions = {}
         self.transport = transport
-        self.convert()
-
-    def convert(self):
         if self.transport.is_readonly():
             raise UpgradeReadonly
+        self.control_files = LockableFiles(transport.clone(bzrlib.BZRDIR), 'branch-lock')
+        # Lock the branch (soon to be meta dir) to prevent anyone racing with us
+        # This is currently windows incompatible, it will deadlock. When the upgrade
+        # logic becomes format specific, then we can have the format know how to pass this
+        # on. Also note that we probably have an 'upgrade meta' which upgrades the constituent
+        # parts.
+        print "FIXME: control files reuse" 
+        self.control_files.lock_write()
+        try:
+            self.convert()
+        finally:
+            self.control_files.unlock()
+
+    def convert(self):
         if not self._open_branch():
             return
         note('starting upgrade of %s', self.base)
@@ -200,10 +213,11 @@ class Convert(object):
         return True
 
     def _set_new_format(self, format):
-        self.branch.put_controlfile('branch-format', format)
+        self.branch.control_files.put_utf8('branch-format', format)
 
     def _cleanup_spare_files_after_format4(self):
         transport = self.transport.clone('.bzr')
+        print "FIXME working tree upgrade foo."
         for n in 'merged-patches', 'pending-merged-patches':
             try:
                 ## assert os.path.getsize(p) == 0
@@ -224,9 +238,10 @@ class Convert(object):
 
     def _convert_working_inv(self):
         branch = self.branch
-        inv = serializer_v4.read_inventory(branch.controlfile('inventory', 'rb'))
+        inv = serializer_v4.read_inventory(branch.control_files.get('inventory'))
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
-        branch.put_controlfile('inventory', new_inv_xml)
+        print "fixme inventory is a working tree change."
+        branch.control_files.put('inventory', new_inv_xml)
 
     def _write_all_weaves(self):
         bzr_transport = self.transport.clone('.bzr')
@@ -274,14 +289,14 @@ class Convert(object):
         self.pb.update('loading revision',
                        len(self.revisions),
                        len(self.known_revisions))
-        if not self.branch.revision_store.has_id(rev_id):
+        if not self.branch.repository.revision_store.has_id(rev_id):
             self.pb.clear()
             note('revision {%s} not present in branch; '
                  'will be converted as a ghost',
                  rev_id)
             self.absent_revisions.add(rev_id)
         else:
-            rev_xml = self.branch.revision_store.get(rev_id).read()
+            rev_xml = self.branch.repository.revision_store.get(rev_id).read()
             rev = serializer_v4.read_revision_from_string(rev_xml)
             for parent_id in rev.parent_ids:
                 self.known_revisions.add(parent_id)
@@ -291,7 +306,7 @@ class Convert(object):
 
     def _load_old_inventory(self, rev_id):
         assert rev_id not in self.converted_revs
-        old_inv_xml = self.branch.inventory_store.get(rev_id).read()
+        old_inv_xml = self.branch.repository.inventory_store.get(rev_id).read()
         inv = serializer_v4.read_inventory_from_string(old_inv_xml)
         rev = self.revisions[rev_id]
         if rev.inventory_sha1:
@@ -386,7 +401,8 @@ class Convert(object):
                 return
         parent_indexes = map(w.lookup, previous_revisions)
         if ie.has_text():
-            file_lines = self.branch.text_store.get(ie.text_id).readlines()
+            text = self.branch.repository.text_store.get(ie.text_id)
+            file_lines = text.readlines()
             assert sha_strings(file_lines) == ie.text_sha1
             assert sum(map(len, file_lines)) == ie.text_size
             w.add(rev_id, parent_indexes, file_lines, ie.text_sha1)

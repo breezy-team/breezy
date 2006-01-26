@@ -17,7 +17,7 @@ class TestRevProps(TestCaseWithTransport):
                  revprops=props,
                  allow_pointless=True,
                  rev_id='test@user-1')
-        rev = b.get_revision('test@user-1')
+        rev = b.repository.get_revision('test@user-1')
         self.assertTrue('flavor' in rev.properties)
         self.assertEquals(rev.properties['flavor'], 'choc-mint')
         self.assertEquals(sorted(rev.properties.items()),

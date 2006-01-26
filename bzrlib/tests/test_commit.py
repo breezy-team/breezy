@@ -60,14 +60,14 @@ class TestCommit(TestCaseWithTransport):
         eq = self.assertEquals
         eq(b.revno(), 2)
         rh = b.revision_history()
-        rev = b.get_revision(rh[0])
+        rev = b.repository.get_revision(rh[0])
         eq(rev.message, 'add hello')
 
-        tree1 = b.revision_tree(rh[0])
+        tree1 = b.repository.revision_tree(rh[0])
         text = tree1.get_file_text(file_id)
         eq(text, 'hello world')
 
-        tree2 = b.revision_tree(rh[1])
+        tree2 = b.repository.revision_tree(rh[1])
         eq(tree2.get_file_text(file_id), 'version 2')
 
     def test_delete_commit(self):
@@ -81,7 +81,7 @@ class TestCommit(TestCaseWithTransport):
         os.remove('hello')
         wt.commit('removed hello', rev_id='rev2')
 
-        tree = b.revision_tree('rev2')
+        tree = b.repository.revision_tree('rev2')
         self.assertFalse(tree.has_id('hello-id'))
 
     def test_pointless_commit(self):
@@ -136,12 +136,12 @@ class TestCommit(TestCaseWithTransport):
         eq = self.assertEquals
         eq(b.revno(), 3)
 
-        tree2 = b.revision_tree('test@rev-2')
+        tree2 = b.repository.revision_tree('test@rev-2')
         self.assertTrue(tree2.has_filename('hello'))
         self.assertEquals(tree2.get_file_text('hello-id'), 'hello')
         self.assertEquals(tree2.get_file_text('buongia-id'), 'new text')
         
-        tree3 = b.revision_tree('test@rev-3')
+        tree3 = b.repository.revision_tree('test@rev-3')
         self.assertFalse(tree3.has_filename('hello'))
         self.assertEquals(tree3.get_file_text('buongia-id'), 'new text')
 
@@ -157,7 +157,7 @@ class TestCommit(TestCaseWithTransport):
         tree.commit(message='renamed', rev_id='test@rev-2', allow_pointless=False)
 
         eq = self.assertEquals
-        tree1 = b.revision_tree('test@rev-1')
+        tree1 = b.repository.revision_tree('test@rev-1')
         eq(tree1.id2path('hello-id'), 'hello')
         eq(tree1.get_file_text('hello-id'), 'contents of hello\n')
         self.assertFalse(tree1.has_filename('fruity'))
@@ -165,7 +165,7 @@ class TestCommit(TestCaseWithTransport):
         ie = tree1.inventory['hello-id']
         eq(ie.revision, 'test@rev-1')
 
-        tree2 = b.revision_tree('test@rev-2')
+        tree2 = b.repository.revision_tree('test@rev-2')
         eq(tree2.id2path('hello-id'), 'fruity')
         eq(tree2.get_file_text('hello-id'), 'contents of hello\n')
         self.check_inventory_shape(tree2.inventory, ['fruity'])
@@ -203,7 +203,7 @@ class TestCommit(TestCaseWithTransport):
         wt.commit('three', rev_id=r3, allow_pointless=False)
         self.check_inventory_shape(wt.read_working_inventory(),
                                    ['a', 'a/hello', 'a/b'])
-        self.check_inventory_shape(b.get_revision_inventory(r3),
+        self.check_inventory_shape(b.repository.get_revision_inventory(r3),
                                    ['a', 'a/hello', 'a/b'])
 
         wt.move(['a/hello'], 'a/b')
@@ -212,7 +212,7 @@ class TestCommit(TestCaseWithTransport):
         self.check_inventory_shape(wt.read_working_inventory(),
                                    ['a', 'a/b/hello', 'a/b'])
 
-        inv = b.get_revision_inventory(r4)
+        inv = b.repository.get_revision_inventory(r4)
         eq(inv['hello-id'].revision, r4)
         eq(inv['a-id'].revision, r1)
         eq(inv['b-id'].revision, r3)
@@ -227,7 +227,7 @@ class TestCommit(TestCaseWithTransport):
         wt.remove('hello')
         wt.commit('removed hello', rev_id='rev2')
 
-        tree = b.revision_tree('rev2')
+        tree = b.repository.revision_tree('rev2')
         self.assertFalse(tree.has_id('hello-id'))
 
     def test_committed_ancestry(self):
@@ -246,7 +246,7 @@ class TestCommit(TestCaseWithTransport):
         eq = self.assertEquals
         eq(b.revision_history(), rev_ids)
         for i in range(4):
-            anc = b.get_ancestry(rev_ids[i])
+            anc = b.repository.get_ancestry(rev_ids[i])
             eq(anc, [None] + rev_ids[:i+1])
 
     def test_commit_new_subdir_child_selective(self):
@@ -256,7 +256,7 @@ class TestCommit(TestCaseWithTransport):
         wt.add(['dir', 'dir/file1', 'dir/file2'],
               ['dirid', 'file1id', 'file2id'])
         wt.commit('dir/file1', specific_files=['dir/file1'], rev_id='1')
-        inv = b.get_inventory('1')
+        inv = b.repository.get_inventory('1')
         self.assertEqual('1', inv['dirid'].revision)
         self.assertEqual('1', inv['file1id'].revision)
         # FIXME: This should raise a KeyError I think, rbc20051006
@@ -308,7 +308,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.revision_store.has_id('A', 'sig'))
+        self.failIf(branch.repository.revision_store.has_id('A', 'sig'))
         try:
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
@@ -317,8 +317,10 @@ class TestCommit(TestCaseWithTransport):
                                                       allow_pointless=True,
                                                       rev_id='B',
                                                       working_tree=wt)
-            self.assertEqual(Testament.from_revision(branch,'B').as_short_text(),
-                             branch.revision_store.get('B', 'sig').read())
+            self.assertEqual(Testament.from_revision(branch.repository,
+                             'B').as_short_text(),
+                             branch.repository.revision_store.get('B', 
+                                                               'sig').read())
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
 
@@ -329,7 +331,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.revision_store.has_id('A', 'sig'))
+        self.failIf(branch.repository.revision_store.has_id('A', 'sig'))
         try:
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
@@ -342,7 +344,7 @@ class TestCommit(TestCaseWithTransport):
                               rev_id='B')
             branch = Branch.open(self.get_url('.'))
             self.assertEqual(branch.revision_history(), ['A'])
-            self.failIf(branch.revision_store.has_id('B'))
+            self.failIf(branch.repository.revision_store.has_id('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
 

@@ -102,15 +102,13 @@ class TestWorkingTree(TestCaseWithTransport):
     def test_lock_locks_branch(self):
         tree = WorkingTree.create_standalone('.')
         tree.lock_read()
-        self.assertEqual(1, tree.branch._lock_count)
-        self.assertEqual('r', tree.branch._lock_mode)
+        self.assertEqual('r', tree.branch.peek_lock_mode())
         tree.unlock()
-        self.assertEqual(None, tree.branch._lock_count)
+        self.assertEqual(None, tree.branch.peek_lock_mode())
         tree.lock_write()
-        self.assertEqual(1, tree.branch._lock_count)
-        self.assertEqual('w', tree.branch._lock_mode)
+        self.assertEqual('w', tree.branch.peek_lock_mode())
         tree.unlock()
-        self.assertEqual(None, tree.branch._lock_count)
+        self.assertEqual(None, tree.branch.peek_lock_mode())
  
     def get_pullable_trees(self):
         self.build_tree(['from/', 'from/file', 'to/'])
@@ -123,7 +121,7 @@ class TestWorkingTree(TestCaseWithTransport):
     def test_pull(self):
         tree_a, tree_b = self.get_pullable_trees()
         tree_b.pull(tree_a.branch)
-        self.failUnless(tree_b.branch.has_revision('A'))
+        self.failUnless(tree_b.branch.repository.has_revision('A'))
         self.assertEqual(['A'], tree_b.branch.revision_history())
 
     def test_pull_overwrites(self):
@@ -131,8 +129,8 @@ class TestWorkingTree(TestCaseWithTransport):
         tree_b.commit('foo', rev_id='B')
         self.assertEqual(['B'], tree_b.branch.revision_history())
         tree_b.pull(tree_a.branch, overwrite=True)
-        self.failUnless(tree_b.branch.has_revision('A'))
-        self.failUnless(tree_b.branch.has_revision('B'))
+        self.failUnless(tree_b.branch.repository.has_revision('A'))
+        self.failUnless(tree_b.branch.repository.has_revision('B'))
         self.assertEqual(['A'], tree_b.branch.revision_history())
 
     def test_revert(self):
@@ -221,7 +219,7 @@ class TestWorkingTree(TestCaseWithTransport):
         revid = b.revision_history()[0]
         self.log('first revision_id is {%s}' % revid)
         
-        inv = b.get_revision_inventory(revid)
+        inv = b.repository.get_revision_inventory(revid)
         self.log('contents of inventory: %r' % inv.entries())
 
         self.check_inventory_shape(inv,

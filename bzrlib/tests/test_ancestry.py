@@ -39,10 +39,10 @@ class TestAncestry(TestCaseWithTransport):
                   allow_pointless=True,
                   rev_id='tester@foo--2')
 
-        ancs = b.get_ancestry('tester@foo--2')
+        ancs = b.repository.get_ancestry('tester@foo--2')
         self.assertEqual([None, 'tester@foo--1', 'tester@foo--2'], ancs)
         self.assertEqual([None, 'tester@foo--1'], 
-                         b.get_ancestry('tester@foo--1'))
+                         b.repository.get_ancestry('tester@foo--1'))
 
     def test_none_is_always_an_ancestor(self):
         wt = self.make_branch_and_tree('.')

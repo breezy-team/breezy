@@ -20,7 +20,6 @@ import shutil
 
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
-from bzrlib.commit import commit
 from bzrlib.errors import PointlessCommit, BzrError, PointlessCommit
 from bzrlib.tests.test_revision import make_branches
 from bzrlib.fetch import fetch
@@ -58,7 +57,7 @@ class TestCommitMerge(TestCaseWithTransport):
         self.assertEquals(by.revno(), 2)
         self.assertEquals(list(by.revision_history()),
                           ['y@u-0-1', 'y@u-0-2'])
-        rev = by.get_revision('y@u-0-2')
+        rev = by.repository.get_revision('y@u-0-2')
         self.assertEquals(rev.parent_ids,
                           ['y@u-0-1', 'x@u-0-1'])
 
@@ -92,7 +91,7 @@ class TestCommitMerge(TestCaseWithTransport):
                           specific_files=['ecks'])
         
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
-        tree = by.revision_tree('y@u-0-2')
+        tree = by.repository.revision_tree('y@u-0-2')
         inv = tree.inventory
         self.assertEquals(inv['ecks-id'].revision, 'x@u-0-1')
         self.assertEquals(inv['why-id'].revision, 'y@u-0-1')

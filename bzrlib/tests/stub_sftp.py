@@ -68,6 +68,7 @@ class StubSFTPServer (SFTPServerInterface):
             self.home = home[len(self.root):]
         if (len(self.home) > 0) and (self.home[0] == '/'):
             self.home = self.home[1:]
+        server._test_case.log('sftpserver - new connection')
 
     def _realpath(self, path):
         return self.root + self.canonicalize(path)

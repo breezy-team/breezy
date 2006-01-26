@@ -18,10 +18,9 @@ import os
 import sys
 
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
+from bzrlib.builtins import merge
 import bzrlib.errors
 from bzrlib.fetch import greedy_fetch
-from bzrlib.merge import merge
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_revision import make_branches
@@ -31,7 +30,7 @@ from bzrlib.workingtree import WorkingTree
 
 def has_revision(branch, revision_id):
     try:
-        branch.get_revision_xml(revision_id)
+        branch.repository.get_revision_xml_file(revision_id)
         return True
     except bzrlib.errors.NoSuchRevision:
         return False
@@ -129,8 +128,7 @@ class TestMergeFetch(TestCaseWithTransport):
         wt1 = self.make_branch_and_tree('br1')
         br1 = wt1.branch
         wt1.commit(message='rev 1-1', rev_id='1-1')
-        copy_branch(br1, 'br2')
-        br2 = Branch.open('br2')
+        br2 = br1.clone('br2')
         wt1.commit(message='rev 1-2', rev_id='1-2')
         WorkingTree('br2', br2).commit(message='rev 2-1', rev_id='2-1')
         merge(other_revision=['br1', -1], base_revision=[None, None], 
@@ -139,11 +137,10 @@ class TestMergeFetch(TestCaseWithTransport):
 
     def _check_revs_present(self, br2):
         for rev_id in '1-1', '1-2', '2-1':
-            self.assertTrue(br2.has_revision(rev_id))
-            rev = br2.get_revision(rev_id)
+            self.assertTrue(br2.repository.has_revision(rev_id))
+            rev = br2.repository.get_revision(rev_id)
             self.assertEqual(rev.revision_id, rev_id)
-            self.assertTrue(br2.get_inventory(rev_id))
-
+            self.assertTrue(br2.repository.get_inventory(rev_id))
 
 
 class TestMergeFileHistory(TestCaseWithTransport):
@@ -153,18 +150,18 @@ class TestMergeFileHistory(TestCaseWithTransport):
         wt1 = self.make_branch_and_tree('br1')
         br1 = wt1.branch
         self.build_tree_contents([('br1/file', 'original contents\n')])
-        wt1.add(['file'], ['this-file-id'])
+        wt1.add('file', 'this-file-id')
         wt1.commit(message='rev 1-1', rev_id='1-1')
-        copy_branch(br1, 'br2')
-        br2 = Branch.open('br2')
+        br2 = br1.clone('br2')
+        wt2 = WorkingTree('br2', br2)
         self.build_tree_contents([('br1/file', 'original from 1\n')])
         wt1.commit(message='rev 1-2', rev_id='1-2')
         self.build_tree_contents([('br1/file', 'agreement\n')])
         wt1.commit(message='rev 1-3', rev_id='1-3')
         self.build_tree_contents([('br2/file', 'contents in 2\n')])
-        br2.working_tree().commit(message='rev 2-1', rev_id='2-1')
+        wt2.commit(message='rev 2-1', rev_id='2-1')
         self.build_tree_contents([('br2/file', 'agreement\n')])
-        br2.working_tree().commit(message='rev 2-2', rev_id='2-2')
+        wt2.commit(message='rev 2-2', rev_id='2-2')
 
     def test_merge_fetches_file_history(self):
         """Merge brings across file histories"""
@@ -175,8 +172,9 @@ class TestMergeFileHistory(TestCaseWithTransport):
                              ('1-3', 'agreement\n'),
                              ('2-1', 'contents in 2\n'),
                              ('2-2', 'agreement\n')]:
-            self.assertEqualDiff(br2.revision_tree(rev_id).get_file_text('this-file-id'),
-                                 text)
+            self.assertEqualDiff(
+                br2.repository.revision_tree(
+                    rev_id).get_file_text('this-file-id'), text)
 
 
 class TestHttpFetch(TestCaseWithWebserver):
@@ -189,7 +187,7 @@ class TestHttpFetch(TestCaseWithWebserver):
         print "TestHttpFetch.test_fetch disabled during transition."
         return
         br_a, br_b = make_branches(self)
-        br_rem_a = Branch.open(self.get_remote_url(br_a._transport.base))
+        br_rem_a = Branch.open(self.get_remote_url(br_a.base))
         fetch_steps(self, br_rem_a, br_b, br_a)
 
     def test_weaves_are_retrieved_once(self):

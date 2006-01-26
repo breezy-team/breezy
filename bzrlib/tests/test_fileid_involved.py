@@ -18,6 +18,7 @@ import os
 
 from bzrlib.add import smart_add
 from bzrlib.branch import Branch
+from bzrlib.builtins import merge
 from bzrlib.clone import copy_branch
 from bzrlib.delta import compare_trees
 from bzrlib.fetch import greedy_fetch
@@ -40,9 +41,9 @@ class TestFileIdInvolved(TestCaseWithTransport):
                      revision=branch_from.last_revision())
         base_rev = common_ancestor(branch_from.last_revision(),
                                     wt_to.branch.last_revision(),
-                                    wt_to.branch)
+                                    wt_to.branch.repository)
         merge_inner(wt_to.branch, branch_from.working_tree(), 
-                    wt_to.branch.revision_tree(base_rev),
+                    wt_to.branch.repository.revision_tree(base_rev),
                     this_tree=wt_to)
         wt_to.add_pending_merge(branch_from.last_revision())
 
@@ -66,7 +67,7 @@ class TestFileIdInvolved(TestCaseWithTransport):
         main_wt.commit("Commit one", rev_id="rev-A")
         #-------- end A -----------
 
-        b1 = copy_branch(main_branch, "branch1")
+        b1 = main_branch.clone("branch1")
         self.build_tree(["branch1/d"])
         b1.working_tree().add('d')
         b1.working_tree().commit("branch1, Commit one", rev_id="rev-E")
@@ -78,7 +79,7 @@ class TestFileIdInvolved(TestCaseWithTransport):
 
         #-------- end B -----------
 
-        branch2_branch = copy_branch(main_branch, "branch2")
+        branch2_branch = main_branch.clone("branch2")
         os.chmod("branch2/b",0770)
         branch2_branch.working_tree().commit("branch2, Commit one", 
                                              rev_id="rev-J")
@@ -171,8 +172,8 @@ class TestFileIdInvolved(TestCaseWithTransport):
                 l1 = self.branch.fileid_involved_between_revs(
                     history[start], history[end])
 
-                old_tree = self.branch.revision_tree(history[start])
-                new_tree = self.branch.revision_tree(history[end])
+                old_tree = self.branch.repository.revision_tree(history[start])
+                new_tree = self.branch.repository.revision_tree(history[end])
                 delta = compare_trees(old_tree, new_tree )
 
                 l2 = [id for path, id, kind in delta.added] + \

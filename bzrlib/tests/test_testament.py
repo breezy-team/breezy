@@ -54,7 +54,7 @@ class TestamentTests(TestCaseWithTransport):
 
     def test_null_testament(self):
         """Testament for a revision with no contents."""
-        t = Testament.from_revision(self.b, 'test@user-1')
+        t = Testament.from_revision(self.b.repository, 'test@user-1')
         ass = self.assertTrue
         eq = self.assertEqual
         ass(isinstance(t, Testament))
@@ -65,14 +65,14 @@ class TestamentTests(TestCaseWithTransport):
 
     def test_testment_text_form(self):
         """Conversion of testament to canonical text form."""
-        t = Testament.from_revision(self.b, 'test@user-1')
+        t = Testament.from_revision(self.b.repository, 'test@user-1')
         text_form = t.as_text()
         self.log('testament text form:\n' + text_form)
         self.assertEqual(text_form, REV_1_TESTAMENT)
 
     def test_testament_with_contents(self):
         """Testament containing a file and a directory."""
-        t = Testament.from_revision(self.b, 'test@user-2')
+        t = Testament.from_revision(self.b.repository, 'test@user-2')
         text_form = t.as_text()
         self.log('testament text form:\n' + text_form)
         self.assertEqualDiff(text_form, REV_2_TESTAMENT)
@@ -102,7 +102,7 @@ class TestamentTests(TestCaseWithTransport):
                  timezone=36000,
                  rev_id='test@user-3',
                  committer='test@user')
-        t = Testament.from_revision(self.b, 'test@user-3')
+        t = Testament.from_revision(self.b.repository, 'test@user-3')
         self.assertEqualDiff(t.as_text(), REV_3_TESTAMENT)
 
     def test_testament_revprops(self):
@@ -115,14 +115,14 @@ class TestamentTests(TestCaseWithTransport):
                       rev_id='test@user-3',
                       committer='test@user',
                       revprops=props)
-        t = Testament.from_revision(self.b, 'test@user-3')
+        t = Testament.from_revision(self.b.repository, 'test@user-3')
         self.assertEqualDiff(t.as_text(), REV_PROPS_TESTAMENT)
 
     def test___init__(self):
-        revision = self.b.get_revision('test@user-2')
-        inventory = self.b.get_inventory('test@user-2')
+        revision = self.b.repository.get_revision('test@user-2')
+        inventory = self.b.repository.get_inventory('test@user-2')
         testament_1 = Testament(revision, inventory).as_short_text()
-        testament_2 = Testament.from_revision(self.b, 
+        testament_2 = Testament.from_revision(self.b.repository, 
                                               'test@user-2').as_short_text()
         self.assertEqual(testament_1, testament_2)
                     

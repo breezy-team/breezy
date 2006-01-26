@@ -31,7 +31,7 @@ import codecs
 
 from bzrlib.clone import copy_branch
 from bzrlib.branch import Branch
-from bzrlib.merge import merge
+from bzrlib.builtins import merge
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.status import show_status
 from bzrlib.tests import TestCaseInTempDir
@@ -112,10 +112,10 @@ class BranchStatus(TestCaseInTempDir):
     def test_pending(self):
         """Pending merges display works, including Unicode"""
         mkdir("./branch")
-        wt = WorkingTree.create_standalone('.')
+        wt = WorkingTree.create_standalone('branch')
         b = wt.branch
         wt.commit("Empty commit 1")
-        b_2 = copy_branch(b, './copy')
+        b_2 = b.clone('./copy')
         wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)

@@ -21,7 +21,6 @@ import sys
 
 import bzrlib.branch as branch
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.clone import copy_branch
 from bzrlib.commit import commit
 import bzrlib.errors as errors
 from bzrlib.errors import (NoSuchRevision,
@@ -89,20 +88,20 @@ class TestBranch(TestCaseWithBranch):
         f = Fetcher(from_branch=b1, to_branch=b2)
         eq = self.assertEquals
         eq(f.count_copied, 1)
-        eq(f.last_revision, 'revision-1')
+        eq(f._last_revision, 'revision-1')
 
-        rev = b2.get_revision('revision-1')
-        tree = b2.revision_tree('revision-1')
+        rev = b2.repository.get_revision('revision-1')
+        tree = b2.repository.revision_tree('revision-1')
         eq(tree.get_file_text('foo-id'), 'hello')
 
     def test_revision_tree(self):
         b1 = self.get_branch()
         wt = WorkingTree.create(b1, '.')
         wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
-        tree = b1.revision_tree('revision-1')
-        tree = b1.revision_tree(None)
+        tree = b1.repository.revision_tree('revision-1')
+        tree = b1.repository.revision_tree(None)
         self.assertEqual(len(tree.list_files()), 0)
-        tree = b1.revision_tree(NULL_REVISION)
+        tree = b1.repository.revision_tree(NULL_REVISION)
         self.assertEqual(len(tree.list_files()), 0)
 
     def get_unbalanced_tree_pair(self):
@@ -131,26 +130,26 @@ class TestBranch(TestCaseWithBranch):
         br_a = tree_a.branch
         br_b = tree_b.branch
         # ensure the revision is missing.
-        self.assertRaises(NoSuchRevision, br_b.get_revision, 
+        self.assertRaises(NoSuchRevision, br_b.repository.get_revision, 
                           br_a.revision_history()[0])
         br_a.push_stores(br_b)
         # check that b now has all the data from a's first commit.
-        rev = br_b.get_revision(br_a.revision_history()[0])
-        tree = br_b.revision_tree(br_a.revision_history()[0])
+        rev = br_b.repository.get_revision(br_a.revision_history()[0])
+        tree = br_b.repository.revision_tree(br_a.revision_history()[0])
         for file_id in tree:
             if tree.inventory[file_id].kind == "file":
                 tree.get_file(file_id).read()
 
-    def test_copy_branch(self):
+    def test_clone_branch(self):
         """Copy the stores from one branch to another"""
         tree_a, tree_b = self.get_balanced_branch_pair()
         tree_b.commit("silly commit")
         os.mkdir('c')
-        br_c = copy_branch(tree_a.branch, 'c', basis_branch=tree_b.branch)
+        br_c = tree_a.branch.clone('c', basis_branch=tree_b.branch)
         self.assertEqual(tree_a.branch.revision_history(),
                          br_c.revision_history())
 
-    def test_copy_partial(self):
+    def test_clone_partial(self):
         """Copy only part of the history of a branch."""
         get_transport(self.get_url()).mkdir('a')
         br_a = self.make_branch('a')
@@ -161,7 +160,7 @@ class TestBranch(TestCaseWithBranch):
         self.build_tree(['a/two'])
         wt.add(['two'])
         wt.commit('commit two', rev_id='u@d-2')
-        br_b = copy_branch(br_a, 'b', revision='u@d-1')
+        br_b = br_a.clone('b', revision='u@d-1')
         self.assertEqual(br_b.last_revision(), 'u@d-1')
         self.assertTrue(os.path.exists('b/one'))
         self.assertFalse(os.path.exists('b/two'))
@@ -172,14 +171,16 @@ class TestBranch(TestCaseWithBranch):
         wt = WorkingTree.create(branch, ".")
         wt.add_pending_merge('non:existent@rev--ision--0--2')
         wt.commit('pretend to merge nonexistent-revision', rev_id='first')
-        rev = branch.get_revision(branch.last_revision())
+        rev = branch.repository.get_revision(branch.last_revision())
         self.assertEqual(len(rev.parent_ids), 1)
         # parent_sha1s is not populated now, WTF. rbc 20051003
         self.assertEqual(len(rev.parent_sha1s), 0)
         self.assertEqual(rev.parent_ids[0], 'non:existent@rev--ision--0--2')
 
     def test_bad_revision(self):
-        self.assertRaises(errors.InvalidRevisionId, self.get_branch().get_revision, None)
+        self.assertRaises(errors.InvalidRevisionId,
+                          self.get_branch().repository.get_revision,
+                          None)
 
 # TODO 20051003 RBC:
 # compare the gpg-to-sign info for a commit with a ghost and 
@@ -200,7 +201,7 @@ class TestBranch(TestCaseWithBranch):
                           ['foo@azkhazan-123123-abcabc',
                            'wibble@fofof--20050401--1928390812'])
         wt.commit("commit from base with two merges")
-        rev = b.get_revision(b.revision_history()[0])
+        rev = b.repository.get_revision(b.revision_history()[0])
         self.assertEquals(len(rev.parent_ids), 2)
         self.assertEquals(rev.parent_ids[0],
                           'foo@azkhazan-123123-abcabc')
@@ -214,21 +215,20 @@ class TestBranch(TestCaseWithBranch):
         wt = WorkingTree.create(branch, ".")
         wt.commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
-        branch.sign_revision('A', bzrlib.gpg.LoopbackGPGStrategy(None))
-        self.assertEqual(Testament.from_revision(branch, 'A').as_short_text(),
-                         branch.revision_store.get('A', 'sig').read())
+        strategy = bzrlib.gpg.LoopbackGPGStrategy(None)
+        branch.repository.sign_revision('A', strategy)
+        self.assertEqual(Testament.from_revision(branch.repository, 
+                         'A').as_short_text(),
+                         branch.repository.revision_store.get('A', 
+                         'sig').read())
 
     def test_store_signature(self):
         branch = self.get_branch()
-        branch.store_revision_signature(bzrlib.gpg.LoopbackGPGStrategy(None),
-                                        'FOO', 'A')
-        self.assertEqual('FOO', branch.revision_store.get('A', 'sig').read())
-
-    def test__relcontrolfilename(self):
-        self.assertEqual('.bzr/%25', self.get_branch()._rel_controlfilename('%'))
-        
-    def test__relcontrolfilename_empty(self):
-        self.assertEqual('.bzr', self.get_branch()._rel_controlfilename(''))
+        branch.repository.store_revision_signature(
+            bzrlib.gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+        self.assertEqual('FOO', 
+                         branch.repository.revision_store.get('A', 
+                         'sig').read())
 
     def test_nicks(self):
         """Branch nicknames"""
@@ -241,7 +241,13 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual(branch.nick, 'bzr.ab')
         branch.nick = "Aaron's branch"
         branch.nick = "Aaron's branch"
-        self.failUnless(t.has(t.relpath(branch.controlfilename("branch.conf"))))
+        self.failUnless(
+            t.has(
+                t.relpath(
+                    branch.control_files.controlfilename("branch.conf")
+                    )
+                )
+            )
         self.assertEqual(branch.nick, "Aaron's branch")
         t.move('bzr.ab', 'integration')
         branch = Branch.open(self.get_url('integration'))
@@ -255,7 +261,7 @@ class TestBranch(TestCaseWithBranch):
         branch = self.make_branch('bzr.dev')
         branch.nick = "My happy branch"
         WorkingTree.create(branch, 'bzr.dev').commit('My commit respect da nick.')
-        committed = branch.get_revision(branch.last_revision())
+        committed = branch.repository.get_revision(branch.last_revision())
         self.assertEqual(committed.properties["branch-nick"], 
                          "My happy branch")
 
@@ -380,7 +386,7 @@ class TestBranchTransaction(TestCaseWithBranch):
     def setUp(self):
         super(TestBranchTransaction, self).setUp()
         self.branch = None
-
+        
     def test_default_get_transaction(self):
         """branch.get_transaction on a new branch should give a PassThrough."""
         self.failUnless(isinstance(self.get_branch().get_transaction(),
@@ -401,12 +407,12 @@ class TestBranchTransaction(TestCaseWithBranch):
     def test_finish_readonly_transaction_works(self):
         self.get_branch()._set_transaction(transactions.ReadOnlyTransaction())
         self.get_branch()._finish_transaction()
-        self.assertEqual(None, self.get_branch()._transaction)
+        self.assertEqual(None, self.get_branch().control_files._transaction)
 
     def test_unlock_calls_finish(self):
         self.get_branch().lock_read()
         transaction = InstrumentedTransaction()
-        self.get_branch()._transaction = transaction
+        self.get_branch().control_files._transaction = transaction
         self.get_branch().unlock()
         self.assertEqual(['finish'], transaction.calls)
 
@@ -419,7 +425,7 @@ class TestBranchTransaction(TestCaseWithBranch):
     def test_lock_write_acquires_passthrough_transaction(self):
         self.get_branch().lock_write()
         # cannot use get_transaction as its magic
-        self.failUnless(isinstance(self.get_branch()._transaction,
+        self.failUnless(isinstance(self.get_branch().control_files._transaction,
                                    transactions.PassThroughTransaction))
         self.get_branch().unlock()
 

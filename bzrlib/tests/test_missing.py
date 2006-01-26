@@ -17,10 +17,11 @@
 import os
 
 
+from bzrlib.builtins import merge
 from bzrlib.missing import find_unmerged
-from bzrlib.merge import merge
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
+
 
 class TestMissing(TestCaseWithTransport):
 

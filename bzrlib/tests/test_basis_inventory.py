@@ -37,7 +37,7 @@ class TestBasisInventory(TestCaseWithTransport):
         basis_inv = serializer_v5.read_inventory_from_string(basis_inv_txt)
         #self.assertEquals('r1', basis_inv.revision_id)
         
-        store_inv = b.get_inventory('r1')
+        store_inv = b.repository.get_inventory('r1')
         self.assertEquals(store_inv._byid, basis_inv._byid)
 
         open('b', 'wb').write('b\n')
@@ -49,7 +49,7 @@ class TestBasisInventory(TestCaseWithTransport):
 
         basis_inv_txt = t.read_basis_inventory('r2')
         basis_inv = serializer_v5.read_inventory_from_string(basis_inv_txt)
-        store_inv = b.get_inventory('r2')
+        store_inv = b.repository.get_inventory('r2')
 
         self.assertEquals(store_inv._byid, basis_inv._byid)
 
