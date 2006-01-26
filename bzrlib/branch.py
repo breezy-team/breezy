@@ -393,12 +393,6 @@ class Branch(object):
         if revno < 1 or revno > self.revno():
             raise InvalidRevisionNumber(revno)
         
-    def sign_revision(self, revision_id, gpg_strategy):
-        raise NotImplementedError('sign_revision is abstract')
-
-    def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        raise NotImplementedError('store_revision_signature is abstract')
-
     def clone(self, to_location, revision=None, basis_branch=None, to_branch_type=None):
         """Copy this branch into the existing directory to_location.
 
