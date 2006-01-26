@@ -25,6 +25,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import file_kind, supports_executable, pathjoin
 from bzrlib.merge3 import Merge3
+from bzrlib.trace import mutter
 
 ROOT_PARENT = "root-parent"
 
@@ -540,6 +541,30 @@ class TreeTransform(object):
             raise MalformedTransform(conflicts=conflicts)
         limbo_inv = {}
         inv = self._tree.inventory
+        print self._new_contents.keys()
+        print self._removed_contents
+        for path, trans_id in self._tree_path_ids.iteritems():
+            old_path = self._tree.abspath(path)
+            try:
+                tmp = self._new_contents[trans_id]
+            except KeyError:
+                print "not in new_contents %s %s %d" % (path, trans_id,
+                len(self._new_contents))
+                continue
+            try:
+                kind = file_kind(old_path)
+                if tmp[0] != kind:
+                    continue
+            except OSError, e:
+                if e.errno != errno.ENOENT:
+                    raise
+                continue
+            new_path = self._limbo_name(trans_id)
+            old_stat = os.lstat(old_path)
+            mutter('chmod of %s to %o' % (new_path, old_stat.st_mode))
+            os.chmod(new_path, old_stat.st_mode)
+            raise "hello?"
+
         self._apply_removals(inv, limbo_inv)
         self._apply_insertions(inv, limbo_inv)
         self._tree._write_inventory(inv)
