@@ -339,9 +339,10 @@ class TestCommit(TestCaseWithTransport):
             config = MustSignConfig(branch)
             self.assertRaises(SigningFailed,
                               commit.Commit(config=config).commit,
-                              branch, "base",
+                              message="base",
                               allow_pointless=True,
-                              rev_id='B')
+                              rev_id='B',
+                              working_tree=wt)
             branch = Branch.open(self.get_url('.'))
             self.assertEqual(branch.revision_history(), ['A'])
             self.failIf(branch.repository.revision_store.has_id('B'))

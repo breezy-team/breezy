@@ -393,7 +393,7 @@ class Branch(object):
         if revno < 1 or revno > self.revno():
             raise InvalidRevisionNumber(revno)
         
-    def clone(self, to_location, revision=None, basis_branch=None, to_branch_type=None):
+    def clone(self, to_location, revision=None, basis_branch=None, to_branch_format=None):
         """Copy this branch into the existing directory to_location.
 
         Returns the newly created branch object.
@@ -418,10 +418,10 @@ class Branch(object):
         assert isinstance(to_location, basestring)
         if not bzrlib.osutils.lexists(to_location):
             os.mkdir(to_location)
-        if to_branch_type is None:
-            to_branch_type = BzrBranch
-        print "FIXME use a branch format here"
-        br_to = to_branch_type.initialize(to_location)
+        if to_branch_format is None:
+            br_to = Branch.initialize(to_location)
+        else:
+            br_to = to_branch_format.initialize(to_location)
         mutter("copy branch from %s to %s", self, br_to)
         if basis_branch is not None:
             basis_branch.push_stores(br_to)
@@ -1050,7 +1050,7 @@ class BzrBranch(Branch):
         history = self._get_truncated_history(revision)
         if not bzrlib.osutils.lexists(to_location):
             os.mkdir(to_location)
-        branch_to = Branch.initialize(to_location)
+        branch_to = BzrBranchFormat6().initialize(to_location)
         mutter("copy branch from %s to %s", self, branch_to)
 
         self.repository.copy(branch_to.repository)
@@ -1067,15 +1067,12 @@ class BzrBranch(Branch):
 
     def clone(self, to_location, revision=None, basis_branch=None, to_branch_type=None):
         print "FIXME: clone via create and fetch is probably faster when versioned file comes in."
-        if to_branch_type is None:
-            to_branch_type = BzrBranch
-
-        if to_branch_type == BzrBranch \
-            and self.repository.weave_store.listable() \
-            and self.repository.revision_store.listable():
+        if (to_branch_type is None
+            and self.repository.weave_store.listable()
+            and self.repository.revision_store.listable()):
             return self._clone_weave(to_location, revision, basis_branch)
-
-        return Branch.clone(self, to_location, revision, basis_branch, to_branch_type)
+        else:
+            return Branch.clone(self, to_location, revision, basis_branch, to_branch_type)
 
     def fileid_involved_between_revs(self, from_revid, to_revid):
         """Find file_id(s) which are involved in the changes between revisions.

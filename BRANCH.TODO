@@ -10,6 +10,5 @@
  * add testing news - testcasewithtransport
  * add testing news skips with --one
  * cleanup remnans of check_format in the BzrBranch constructor.
- * upgrade from .bzr to a '.bzr-new', then do a bait and switch.
  * document WorkingTree.create, branch.create, workingtree.create_standalone, branch.init deprecation.
  * branch.clone duplicate code addressing 
