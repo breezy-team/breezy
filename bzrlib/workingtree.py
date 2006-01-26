@@ -50,14 +50,13 @@ import fnmatch
  
 from bzrlib.branch import (Branch,
                            is_control_file,
-                           needs_read_lock,
-                           needs_write_lock,
                            quotefn)
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
                            DivergedBranches,
                            WeaveRevisionNotPresent,
                            NotBranchError,
+                           NoSuchFile,
                            NotVersionedError)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (appendpath,
@@ -78,6 +77,7 @@ from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.trace import mutter
 import bzrlib.xml5
+from bzrlib.decorators import needs_read_lock, needs_write_lock
 
 _non_word_re = None
 def _get_non_word_re():
@@ -251,6 +251,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if path.find('://') != -1:
                 raise NotBranchError(path=path)
         path = abspath(path)
+        orig_path = path[:]
         tail = u''
         while True:
             try:
@@ -265,7 +266,7 @@ class WorkingTree(bzrlib.tree.Tree):
             path = os.path.dirname(path)
             if lastpath == path:
                 # reached the root, whatever that may be
-                raise NotBranchError(path=path)
+                raise NotBranchError(path=orig_path)
 
     def __iter__(self):
         """Iterate through file_ids for this tree.
@@ -426,23 +427,25 @@ class WorkingTree(bzrlib.tree.Tree):
         if updated:
             self.set_pending_merges(p)
 
+    @needs_read_lock
     def pending_merges(self):
         """Return a list of pending merges.
 
         These are revisions that have been merged into the working
         directory but not yet committed.
         """
-        cfn = self.branch._rel_controlfilename('pending-merges')
-        if not self.branch._transport.has(cfn):
+        try:
+            f = self.branch.control_files.get_utf8('pending-merges')
+        except NoSuchFile:
             return []
         p = []
-        for l in self.branch.controlfile('pending-merges', 'r').readlines():
+        for l in f.readlines():
             p.append(l.rstrip('\n'))
         return p
 
     @needs_write_lock
     def set_pending_merges(self, rev_list):
-        self.branch.put_controlfile('pending-merges', '\n'.join(rev_list))
+        self.branch.control_files.put_utf8('pending-merges', '\n'.join(rev_list))
 
     def get_symlink_target(self, file_id):
         return os.readlink(self.id2abspath(file_id))
@@ -691,9 +694,10 @@ class WorkingTree(bzrlib.tree.Tree):
                     other_revision = old_revision_history[-1]
                 else:
                     other_revision = None
+                repository = self.branch.repository
                 merge_inner(self.branch,
                             self.branch.basis_tree(), 
-                            self.branch.revision_tree(other_revision))
+                            repository.revision_tree(other_revision))
             return count
         finally:
             source.unlock()
@@ -809,31 +813,31 @@ class WorkingTree(bzrlib.tree.Tree):
         return 'basis-inventory.%s' % revision_id
 
     def set_last_revision(self, new_revision, old_revision=None):
-        if old_revision:
+        if old_revision is not None:
             try:
                 path = self._basis_inventory_name(old_revision)
-                path = self.branch._rel_controlfilename(path)
-                self.branch._transport.delete(path)
-            except:
+                path = self.branch.control_files._escape(path)
+                self.branch.control_files._transport.delete(path)
+            except NoSuchFile:
                 pass
         try:
-            xml = self.branch.get_inventory_xml(new_revision)
+            xml = self.branch.repository.get_inventory_xml(new_revision)
             path = self._basis_inventory_name(new_revision)
-            self.branch.put_controlfile(path, xml)
+            self.branch.control_files.put_utf8(path, xml)
         except WeaveRevisionNotPresent:
             pass
 
     def read_basis_inventory(self, revision_id):
         """Read the cached basis inventory."""
         path = self._basis_inventory_name(revision_id)
-        return self.branch.controlfile(path, 'r').read()
+        return self.branch.control_files.get_utf8(path).read()
         
     @needs_read_lock
     def read_working_inventory(self):
         """Read the working inventory."""
         # ElementTree does its own conversion from UTF-8, so open in
         # binary.
-        f = self.branch.controlfile('inventory', 'rb')
+        f = self.branch.control_files.get('inventory')
         return bzrlib.xml5.serializer_v5.read_inventory(f)
 
     @needs_write_lock
@@ -935,7 +939,12 @@ class WorkingTree(bzrlib.tree.Tree):
         between multiple working trees, i.e. via shared storage, then we 
         would probably want to lock both the local tree, and the branch.
         """
-        if self._hashcache.needs_write and self.branch._lock_count==1:
+        # FIXME: We want to write out the hashcache only when the last lock on
+        # this working copy is released.  Peeking at the lock count is a bit
+        # of a nasty hack; probably it's better to have a transaction object,
+        # which can do some finalization when it's either successfully or
+        # unsuccessfully completed.  (Denys's original patch did that.)
+        if self._hashcache.needs_write and self.branch.control_files._lock_count==1:
             self._hashcache.write()
         return self.branch.unlock()
 
@@ -947,7 +956,7 @@ class WorkingTree(bzrlib.tree.Tree):
         sio = StringIO()
         bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
         sio.seek(0)
-        f = AtomicFile(self.branch.controlfilename('inventory'))
+        f = AtomicFile(self.branch.control_files.controlfilename('inventory'))
         try:
             pumpfile(sio, f)
             f.commit()

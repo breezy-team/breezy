@@ -33,7 +33,7 @@ import unicodedata
 
 import bzrlib
 from bzrlib.errors import (BzrError,
-                           BzrBadParameter,
+                           BzrBadParameterNotUnicode,
                            NoSuchFile,
                            PathNotChild,
                            )
@@ -337,6 +337,14 @@ def pumpfile(fromfile, tofile):
         tofile.write(b)
 
 
+def file_iterator(input_file, readsize=32768):
+    while True:
+        b = input_file.read(readsize)
+        if len(b) == 0:
+            break
+        yield b
+
+
 def sha_file(f):
     if hasattr(f, 'tell'):
         assert f.tell() == 0
@@ -596,7 +604,7 @@ def safe_unicode(unicode_or_utf8_string):
     try:
         return unicode_or_utf8_string.decode('utf8')
     except UnicodeDecodeError:
-        raise BzrBadParameter(unicode_or_utf8_string)
+        raise BzrBadParameterNotUnicode(unicode_or_utf8_string)
 
 
 _platform_normalizes_filenames = False
