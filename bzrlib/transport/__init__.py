@@ -538,8 +538,9 @@ class TransportTestProviderAdapter(object):
                 result.extend(self.get_transport_test_permutations(reduce(getattr, 
                     (module).split('.')[1:],
                      __import__(module))))
-            except ImportError, e:
-                # This is most likely paramiko failing to be loaded
+            except errors.DependencyNotPresent, e:
+                # Continue even if a dependency prevents us 
+                # from running this test
                 pass
         return result
         

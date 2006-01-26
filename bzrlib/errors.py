@@ -492,3 +492,19 @@ class BzrBadParameterNotUnicode(BzrBadParameter):
 
 class BzrBadParameterNotString(BzrBadParameter):
     """Parameter %(param)s is not a string or unicode string."""
+
+
+class DependencyNotPresent(BzrNewError):
+    """Unable to import library: %(library)s, %(error)s"""
+
+    def __init__(self, library, error):
+        BzrNewError.__init__(self, library=library, error=error)
+
+
+class ParamikoNotPresent(DependencyNotPresent):
+    """Unable to import paramiko (required for sftp support): %(error)s"""
+
+    def __init__(self, error):
+        DependencyNotPresent.__init__(self, 'paramiko', error)
+
+
