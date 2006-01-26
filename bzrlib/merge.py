@@ -22,7 +22,6 @@ import errno
 import bzrlib
 from bzrlib._changeset import generate_changeset, ExceptionConflictHandler
 from bzrlib._changeset import Inventory, Diff3Merge, ReplaceContents
-from bzrlib._merge_core import WeaveMerge
 from bzrlib._merge_core import merge_flex, BackupBeforeChange
 from bzrlib.branch import Branch
 from bzrlib.delta import compare_trees
@@ -39,7 +38,8 @@ import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
 from bzrlib.revision import common_ancestor, MultipleRevisionSources
 from bzrlib.revision import is_ancestor, NULL_REVISION
-from bzrlib.transform import Merge3Merger as ApplyMerge3
+from bzrlib.transform import (Merge3Merger as ApplyMerge3, WeaveMerger, 
+                              Diff3Merger)
 from bzrlib.trace import mutter, warning, note
 
 # TODO: Report back as changes are merged in
@@ -533,13 +533,13 @@ class Merger(object):
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
         if self.reprocess and not self.merge_type.supports_reprocess:
-            raise BzrCommandError("Reprocess is not supported for this merge"
+            raise BzrError("Reprocess is not supported for this merge"
                                   " type. %s" % merge_type)
         else:
             kwargs['reprocess'] = self.reprocess
         if self.show_base and not self.merge_type.supports_show_base:
-            raise BzrCommandError("Showing base is not supported for this"
-                                  " merge type. %s" % merge_type)
+            raise BzrError("Showing base is not supported for this"
+                                  " merge type. %s" % self.merge_type)
         else:
             kwargs['show_base'] = self.show_base
         merge = self.merge_type(**kwargs)
@@ -607,6 +607,6 @@ class Merger(object):
 
 
 merge_types = {     "merge3": (ApplyMerge3, "Native diff3-style merge"), 
-                     "diff3": (Diff3Merge,  "Merge using external diff3"),
-                     'weave': (WeaveMerge, "Weave-based merge")
+                     "diff3": (Diff3Merger,  "Merge using external diff3"),
+                     'weave': (WeaveMerger, "Weave-based merge")
               }

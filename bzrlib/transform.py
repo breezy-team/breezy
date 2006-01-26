@@ -16,12 +16,14 @@
 
 import os
 import errno
+from tempfile import mkdtemp
+from shutil import rmtree
 
 from bzrlib import BZRDIR
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot)
 from bzrlib.inventory import InventoryEntry
-from bzrlib.osutils import file_kind, supports_executable
+from bzrlib.osutils import file_kind, supports_executable, pathjoin
 from bzrlib.merge3 import Merge3
 
 ROOT_PARENT = "root-parent"
@@ -178,10 +180,10 @@ class TreeTransform(object):
         to the target destination.
         """
         f = file(self._limbo_name(trans_id), 'wb')
+        unique_add(self._new_contents, trans_id, 'file')
         for segment in contents:
             f.write(segment)
         f.close()
-        unique_add(self._new_contents, trans_id, 'file')
 
     def create_directory(self, trans_id):
         """Schedule creation of a new directory.
@@ -1168,10 +1170,12 @@ class Merge3Merger(object):
             file_group.append(trans_id)
 
     def _dump_conflicts(self, name, parent_id, file_id, this_lines=None, 
-                        base_lines=None, other_lines=None, set_version=False):
-        data = (('OTHER', self.other_tree, other_lines), 
-                ('THIS', self.this_tree, this_lines),
-                ('BASE', self.base_tree, base_lines))
+                        base_lines=None, other_lines=None, set_version=False,
+                        no_base=False):
+        data = [('OTHER', self.other_tree, other_lines), 
+                ('THIS', self.this_tree, this_lines)]
+        if not no_base:
+            data.append(('BASE', self.base_tree, base_lines))
         versioned = False
         file_group = []
         for suffix, tree, lines in data:
@@ -1225,3 +1229,70 @@ class Merge3Merger(object):
                 if executability is not None:
                     trans_id = self.tt.get_trans_id(file_id)
                     self.tt.set_executability(executability, trans_id)
+
+class WeaveMerger(Merge3Merger):
+    supports_reprocess = False
+    supports_show_base = False
+    def _merged_lines(self, file_id):
+        """Generate the merged lines.
+        There is no distinction between lines that are meant to contain <<<<<<<
+        and conflicts.
+        """
+        if getattr(self.this_tree, 'get_weave', False) is False:
+            # If we have a WorkingTree, try using the basis
+            wt_sha1 = self.this_tree.get_file_sha1(file_id)
+            this_tree = self.this_tree.branch.basis_tree()
+            if this_tree.get_file_sha1(file_id) != wt_sha1:
+                raise WorkingTreeNotRevision(self.this_tree)
+        else:
+            this_tree = self.this_tree
+        weave = this_tree.get_weave(file_id)
+        this_revision_id = this_tree.inventory[file_id].revision
+        other_revision_id = self.other_tree.inventory[file_id].revision
+        this_i = weave.lookup(this_revision_id)
+        other_i = weave.lookup(other_revision_id)
+        plan =  weave.plan_merge(this_i, other_i)
+        return weave.weave_merge(plan)
+
+    def text_merge(self, file_id, trans_id):
+        lines = self._merged_lines(file_id)
+        conflicts = '<<<<<<<\n' in lines
+        self.tt.create_file(lines, trans_id)
+        if conflicts:
+            self.conflicts.append(('text conflict', (file_id)))
+            name = self.tt.final_name(trans_id)
+            parent_id = self.tt.final_parent(trans_id)
+            file_group = self._dump_conflicts(name, parent_id, file_id, 
+                                              no_base=True)
+            file_group.append(trans_id)
+
+
+class Diff3Merger(Merge3Merger):
+    """Use good ol' diff3 to do text merges"""
+    def dump_file(self, temp_dir, name, tree, file_id):
+        out_path = pathjoin(temp_dir, name)
+        out_file = file(out_path, "wb")
+        in_file = tree.get_file(file_id)
+        for line in in_file:
+            out_file.write(line)
+        return out_path
+
+    def text_merge(self, file_id, trans_id):
+        import bzrlib.patch
+        temp_dir = mkdtemp(prefix="bzr-")
+        try:
+            new_file = os.path.join(temp_dir, "new")
+            this = self.dump_file(temp_dir, "this", self.this_tree, file_id)
+            base = self.dump_file(temp_dir, "base", self.base_tree, file_id)
+            other = self.dump_file(temp_dir, "other", self.other_tree, file_id)
+            status = bzrlib.patch.diff3(new_file, this, base, other)
+            if status not in (0, 1):
+                raise BzrError("Unhandled diff3 exit code")
+            self.tt.create_file(file(new_file, "rb"), trans_id)
+            if status == 1:
+                name = self.tt.final_name(trans_id)
+                parent_id = self.tt.final_parent(trans_id)
+                self._dump_conflicts(name, parent_id, file_id)
+            self.conflicts.append(('text conflict', (file_id)))
+        finally:
+            rmtree(temp_dir)
