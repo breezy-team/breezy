@@ -343,6 +343,20 @@ class TestTreeTransform(TestCaseInTempDir):
         transform.version_file('new-root', new_root)
         transform.apply()
 
+    def test_renames(self):
+        create, root = self.get_transform()
+        old = create.new_directory('old-parent', root, 'old-id')
+        intermediate = create.new_directory('intermediate', old, 'im-id')
+        myfile = create.new_file('myfile', intermediate, 'myfile-text',
+                                 'myfile-id')
+        create.apply()
+        rename, root = self.get_transform()
+        old = rename.get_trans_id('old-id')
+        rename.adjust_path('new', root, old)
+        myfile = rename.get_trans_id('myfile-id')
+        rename.set_executability(True, myfile)
+        rename.apply()
+
 
 class TransformGroup(object):
     def __init__(self, dirname):
