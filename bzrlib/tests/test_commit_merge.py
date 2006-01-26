@@ -58,7 +58,7 @@ class TestCommitMerge(TestCaseInTempDir):
         self.assertEquals(by.revno(), 2)
         self.assertEquals(list(by.revision_history()),
                           ['y@u-0-1', 'y@u-0-2'])
-        rev = by.get_revision('y@u-0-2')
+        rev = by.repository.get_revision('y@u-0-2')
         self.assertEquals(rev.parent_ids,
                           ['y@u-0-1', 'x@u-0-1'])
 
@@ -89,7 +89,7 @@ class TestCommitMerge(TestCaseInTempDir):
                           specific_files=['ecks'])
         
         commit(by, 'merge from x', rev_id='y@u-0-2', allow_pointless=False)
-        tree = by.revision_tree('y@u-0-2')
+        tree = by.repository.revision_tree('y@u-0-2')
         inv = tree.inventory
         self.assertEquals(inv['ecks-id'].revision, 'x@u-0-1')
         self.assertEquals(inv['why-id'].revision, 'y@u-0-1')

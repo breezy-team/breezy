@@ -35,6 +35,10 @@ class TestOutsideWT(TestCaseInTempDir):
                          err)
 
     def test_http_log(self):
+        print "FIXME: Use a real http server with no branch initialized in test_outside_wt.test_http_log"
+        # This breaks when there is no wildcard DNS resolver: the error is (correctly) an HTTP error not
+        # NotBranchError.
+        return
         out, err = self.run_bzr('log', 
                                 'http://aosehuasotehu/invalid/', retcode=3)
 
