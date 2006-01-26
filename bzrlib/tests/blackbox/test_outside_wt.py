@@ -20,13 +20,13 @@
 
 import os
 
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import ChrootedTestCase
 
 
-class TestOutsideWT(TestCaseInTempDir):
+class TestOutsideWT(ChrootedTestCase):
     """Test that bzr gives proper errors outside of a working tree."""
 
-    def test_log(self):
+    def test_cwd_log(self):
         os.chdir('/tmp')
         cwd = os.getcwdu()
         out, err = self.run_bzr('log', retcode=3)
@@ -34,19 +34,9 @@ class TestOutsideWT(TestCaseInTempDir):
         self.assertEqual(u'bzr: ERROR: Not a branch: %s\n' % (cwd,),
                          err)
 
-    def test_http_log(self):
-        print "FIXME: Use a real http server with no branch initialized in test_outside_wt.test_http_log"
-        # This breaks when there is no wildcard DNS resolver: the error is (correctly) an HTTP error not
-        # NotBranchError.
-        return
+    def test_url_log(self):
+        url = self.get_readonly_url() + 'subdir/'
         out, err = self.run_bzr('log', 
-                                'http://aosehuasotehu/invalid/', retcode=3)
-
+                                url, retcode=3)
         self.assertEqual(u'bzr: ERROR: Not a branch:'
-                         u' http://aosehuasotehu/invalid/\n', err)
-
-    def test_abs_log(self):
-        out, err = self.run_bzr('log', '/tmp/path/not/branch', retcode=3)
-
-        self.assertEqual(u'bzr: ERROR: Not a branch:'
-                         u' /tmp/path/not/branch/\n', err)
+                         u' %s\n' % url, err)

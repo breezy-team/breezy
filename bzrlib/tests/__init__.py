@@ -741,6 +741,24 @@ class TestCaseWithTransport(TestCaseInTempDir):
         return WorkingTree.create(b, relpath)
 
 
+class ChrootedTestCase(TestCaseWithTransport):
+    """A support class that provides readonly urls outside the local namespace.
+
+    This is done by checking if self.transport_server is a MemoryServer. if it
+    is then we are chrooted already, if it is not then an HttpServer is used
+    for readonly urls.
+
+    TODO RBC 20060127: make this an option to TestCaseWithTransport so it can
+                       be used without needed to redo it when a different 
+                       subclass is in use ?
+    """
+
+    def setUp(self):
+        super(ChrootedTestCase, self).setUp()
+        if not self.transport_server == bzrlib.transport.memory.MemoryServer:
+            self.transport_readonly_server = bzrlib.transport.http.HttpServer
+
+
 def filter_suite_by_re(suite, pattern):
     result = TestSuite()
     filter_re = re.compile(pattern)

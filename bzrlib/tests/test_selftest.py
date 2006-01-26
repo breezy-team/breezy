@@ -23,6 +23,7 @@ import unittest
 import bzrlib
 from bzrlib.tests import (
                           _load_module_by_name,
+                          ChrootedTestCase,
                           TestCase,
                           TestCaseInTempDir,
                           TestCaseWithTransport,
@@ -262,3 +263,12 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.failUnless(isinstance(t, HttpTransport))
         self.failUnless(isinstance(t2, HttpTransport))
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
+
+
+class TestChrootedTest(ChrootedTestCase):
+
+    def test_root_is_root(self):
+        from bzrlib.transport import get_transport
+        t = get_transport(self.get_readonly_url())
+        url = t.base
+        self.assertEqual(url, t.clone('..').base)
