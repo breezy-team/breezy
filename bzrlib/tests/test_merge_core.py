@@ -17,6 +17,7 @@ from bzrlib._changeset import Inventory, apply_changeset, invert_dict, \
     get_contents, ReplaceContents, ChangeExecFlag
 from bzrlib.clone import copy_branch
 from bzrlib.merge import merge
+from bzrlib.transform import Merge3Merger
 from bzrlib.workingtree import WorkingTree
 
 
