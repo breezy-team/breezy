@@ -23,7 +23,8 @@ import bzrlib.branch as branch
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.commit import commit
 import bzrlib.errors as errors
-from bzrlib.errors import (NoSuchRevision,
+from bzrlib.errors import (FileExists,
+                           NoSuchRevision,
                            NoSuchFile,
                            UninitializableFormat,
                            NotBranchError,
@@ -37,6 +38,7 @@ import bzrlib.transactions as transactions
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
+from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
 
 # TODO: Make a branch using basis branch, and check that it 
@@ -57,7 +59,16 @@ class TestCaseWithBranch(TestCaseWithTransport):
 
     def make_branch(self, relpath):
         try:
-            return self.branch_format.initialize(self.get_url(relpath))
+            url = self.get_url(relpath)
+            segments = url.split('/')
+            if segments and segments[-1] not in ('', '.'):
+                parent = '/'.join(segments[:-1])
+                t = get_transport(parent)
+                try:
+                    t.mkdir(segments[-1])
+                except FileExists:
+                    pass
+            return self.branch_format.initialize(url)
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
@@ -229,6 +240,34 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual('FOO', 
                          branch.repository.revision_store.get('A', 
                          'sig').read())
+
+    def test_branch_keeps_signatures(self):
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        wt.branch.repository.sign_revision('A',
+            bzrlib.gpg.LoopbackGPGStrategy(None))
+        #FIXME: clone should work to urls,
+        # wt.clone should work to disks.
+        self.build_tree(['target/'])
+        b2 = wt.branch.clone('target')
+        self.assertEqual(wt.branch.repository.revision_store.get('A', 
+                            'sig').read(),
+                         b2.repository.revision_store.get('A', 
+                            'sig').read())
+
+    def test_upgrade_preserves_signatures(self):
+        # this is in the current test format
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        wt.branch.repository.sign_revision('A',
+            bzrlib.gpg.LoopbackGPGStrategy(None))
+        old_signature = wt.branch.repository.revision_store.get('A',
+            'sig').read()
+        upgrade(wt.basedir)
+        wt = WorkingTree(wt.basedir)
+        new_signature = wt.branch.repository.revision_store.get('A',
+            'sig').read()
+        self.assertEqual(old_signature, new_signature)
 
     def test_nicks(self):
         """Branch nicknames"""

@@ -9,8 +9,6 @@
  * add testing news - branch_implementations
  * add testing news - testcasewithtransport
  * add testing news skips with --one
- * add upgrade test signatures are preserved
- * add 'branch' test signatures are preserved
  * cleanup remnans of check_format in the BzrBranch constructor.
  * fixup test_outside_wt.test_http_log
  * upgrade from .bzr to a '.bzr-new', then do a bait and switch.

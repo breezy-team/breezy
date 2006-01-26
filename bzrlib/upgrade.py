@@ -142,7 +142,9 @@ class Convert(object):
             note("adding prefixes to %s" % store_name) 
             store_transport = bzr_transport.clone(store_name)
             for filename in store_transport.list_dir('.'):
-                if filename.endswith(".weave") or filename.endswith(".gz"):
+                if (filename.endswith(".weave") or
+                    filename.endswith(".gz") or
+                    filename.endswith(".sig")):
                     file_id = os.path.splitext(filename)[0]
                 else:
                     file_id = filename
