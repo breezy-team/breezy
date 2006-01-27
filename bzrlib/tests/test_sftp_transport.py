@@ -228,10 +228,6 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         b.unlock()
         self.failIf(lexists('.bzr/branch-lock.write-lock'))
 
-    def test_no_working_tree(self):
-        b = Branch.create(self._sftp_url)
-        self.assertRaises(errors.NoWorkingTree, b.working_tree)
-
     def test_push_support(self):
         self.build_tree(['a/', 'a/foo'])
         t = WorkingTree.create_standalone('a')

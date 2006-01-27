@@ -116,15 +116,16 @@ class BranchStatus(TestCaseInTempDir):
         b = wt.branch
         wt.commit("Empty commit 1")
         b_2 = b.clone('./copy')
+        wt2 = WorkingTree('copy', b_2)
         wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)
         self.assert_(message.startswith("pending merges:\n"))
         self.assert_(message.endswith("Empty commit 2\n")) 
-        b_2.working_tree().commit("merged")
+        wt2.commit("merged")
         # must be long to make sure we see elipsis at the end
-        b.working_tree().commit("Empty commit 3 " + 
-                                "blah blah blah blah " * 10)
+        wt.commit("Empty commit 3 " + 
+                   "blah blah blah blah " * 10)
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)
         self.assert_(message.startswith("pending merges:\n"))

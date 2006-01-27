@@ -95,13 +95,16 @@ class TestPermissions(TestCaseWithTransport):
         t.add('a')
         t.commit('foo')
 
-        # Delete them because we are modifying the filesystem underneath them
-        del b, t 
         chmod_r('.bzr', 0644, 0755)
         check_mode_r(self, '.bzr', 0644, 0755)
 
-        b = Branch.open('.')
-        t = b.working_tree()
+        # although we are modifying the filesystem
+        # underneath the objects, they are not locked, and thus it must
+        # be safe for most operations. But here we want to observe a 
+        # mode change in the control bits, which current do not refresh
+        # when a new lock is taken out.
+        t = WorkingTree('.')
+        b = t.branch
         assertEqualMode(self, 0755, b.control_files._dir_mode)
         assertEqualMode(self, 0644, b.control_files._file_mode)
 
@@ -117,12 +120,11 @@ class TestPermissions(TestCaseWithTransport):
         t.commit('new b')
         check_mode_r(self, '.bzr', 0644, 0755)
 
-        del b, t
         # Recursively update the modes of all files
         chmod_r('.bzr', 0664, 0775)
         check_mode_r(self, '.bzr', 0664, 0775)
-        b = Branch.open('.')
-        t = b.working_tree()
+        t = WorkingTree('.')
+        b = t.branch
         assertEqualMode(self, 0775, b.control_files._dir_mode)
         assertEqualMode(self, 0664, b.control_files._file_mode)
 
@@ -136,12 +138,11 @@ class TestPermissions(TestCaseWithTransport):
         check_mode_r(self, '.bzr', 0664, 0775)
 
         # Test the group sticky bit
-        del b, t
         # Recursively update the modes of all files
         chmod_r('.bzr', 0664, 02775)
         check_mode_r(self, '.bzr', 0664, 02775)
-        b = Branch.open('.')
-        t = b.working_tree()
+        t = WorkingTree('.')
+        b = t.branch
         assertEqualMode(self, 02775, b.control_files._dir_mode)
         assertEqualMode(self, 0664, b.control_files._file_mode)
 
@@ -249,12 +250,11 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         t_local.commit('foo')
 
         # Delete them because we are modifying the filesystem underneath them
-        del b_local, t_local 
         chmod_r('local/.bzr', 0644, 0755)
         check_mode_r(self, 'local/.bzr', 0644, 0755)
 
-        b_local = Branch.open(u'local')
-        t_local = b_local.working_tree()
+        t = WorkingTree('local')
+        b = t.branch
         assertEqualMode(self, 0755, b_local.control_files._dir_mode)
         assertEqualMode(self, 0644, b_local.control_files._file_mode)
 

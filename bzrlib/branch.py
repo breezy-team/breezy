@@ -255,23 +255,28 @@ class Branch(object):
         If self and other have not diverged, return a list of the revisions
         present in other, but missing from self.
 
+        >>> from bzrlib.workingtree import WorkingTree
         >>> bzrlib.trace.silent = True
         >>> br1 = ScratchBranch()
+        >>> wt1 = WorkingTree(br1.base, br1)
+        ...
         >>> br2 = ScratchBranch()
+        >>> wt2 = WorkingTree(br2.base, br2)
+        ...
         >>> br1.missing_revisions(br2)
         []
-        >>> br2.working_tree().commit("lala!", rev_id="REVISION-ID-1")
+        >>> wt2.commit("lala!", rev_id="REVISION-ID-1")
         >>> br1.missing_revisions(br2)
         [u'REVISION-ID-1']
         >>> br2.missing_revisions(br1)
         []
-        >>> br1.working_tree().commit("lala!", rev_id="REVISION-ID-1")
+        >>> wt1.commit("lala!", rev_id="REVISION-ID-1")
         >>> br1.missing_revisions(br2)
         []
-        >>> br2.working_tree().commit("lala!", rev_id="REVISION-ID-2A")
+        >>> wt2.commit("lala!", rev_id="REVISION-ID-2A")
         >>> br1.missing_revisions(br2)
         [u'REVISION-ID-2A']
-        >>> br1.working_tree().commit("lala!", rev_id="REVISION-ID-2B")
+        >>> wt1.commit("lala!", rev_id="REVISION-ID-2B")
         >>> br1.missing_revisions(br2)
         Traceback (most recent call last):
         DivergedBranches: These branches have diverged.  Try merge.

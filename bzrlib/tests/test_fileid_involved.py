@@ -42,7 +42,7 @@ class TestFileIdInvolved(TestCaseWithTransport):
         base_rev = common_ancestor(branch_from.last_revision(),
                                     wt_to.branch.last_revision(),
                                     wt_to.branch.repository)
-        merge_inner(wt_to.branch, branch_from.working_tree(), 
+        merge_inner(wt_to.branch, branch_from.basis_tree(), 
                     wt_to.branch.repository.revision_tree(base_rev),
                     this_tree=wt_to)
         wt_to.add_pending_merge(branch_from.last_revision())
@@ -69,8 +69,9 @@ class TestFileIdInvolved(TestCaseWithTransport):
 
         b1 = main_branch.clone("branch1")
         self.build_tree(["branch1/d"])
-        b1.working_tree().add('d')
-        b1.working_tree().commit("branch1, Commit one", rev_id="rev-E")
+        bt1 = WorkingTree('branch1', b1)
+        bt1.add('d')
+        bt1.commit("branch1, Commit one", rev_id="rev-E")
 
         #-------- end E -----------
 
@@ -81,8 +82,8 @@ class TestFileIdInvolved(TestCaseWithTransport):
 
         branch2_branch = main_branch.clone("branch2")
         os.chmod("branch2/b",0770)
-        branch2_branch.working_tree().commit("branch2, Commit one", 
-                                             rev_id="rev-J")
+        bt2 = WorkingTree('branch2', branch2_branch)
+        bt2.commit("branch2, Commit one", rev_id="rev-J")
 
         #-------- end J -----------
 
@@ -91,14 +92,13 @@ class TestFileIdInvolved(TestCaseWithTransport):
 
         #-------- end C -----------
 
-        tree = WorkingTree('branch1', b1)
-        tree.rename_one("d","e")
-        tree.commit("branch1, commit two", rev_id="rev-F")
+        bt1.rename_one("d","e")
+        bt1.commit("branch1, commit two", rev_id="rev-F")
 
         #-------- end F -----------
 
         self.touch("branch2/c")
-        branch2_branch.working_tree().commit("branch2, commit two", rev_id="rev-K")
+        bt2.commit("branch2, commit two", rev_id="rev-K")
 
         #-------- end K -----------
 

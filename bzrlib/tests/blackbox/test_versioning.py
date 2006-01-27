@@ -26,6 +26,7 @@ from bzrlib.tests import BzrTestBase, TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 from bzrlib.osutils import pathjoin
+from bzrlib.workingtree import WorkingTree
 
 
 class TestVersioning(TestCaseInTempDir):
@@ -40,10 +41,9 @@ class TestVersioning(TestCaseInTempDir):
         self.run_bzr('mkdir', 'foo', retcode=3)
 
         from bzrlib.diff import compare_trees
-        from bzrlib.branch import Branch
-        b = Branch.open(u'.')
+        wt = WorkingTree('.')
         
-        delta = compare_trees(b.basis_tree(), b.working_tree())
+        delta = compare_trees(wt.basis_tree(), wt)
 
         self.log('delta.added = %r' % delta.added)
 
@@ -65,10 +65,9 @@ class TestVersioning(TestCaseInTempDir):
         os.chdir('..')
 
         from bzrlib.diff import compare_trees
-        from bzrlib.branch import Branch
-        b = Branch.open(u'.')
+        wt = WorkingTree('.')
         
-        delta = compare_trees(b.basis_tree(), b.working_tree())
+        delta = compare_trees(wt.basis_tree(), wt)
 
         self.log('delta.added = %r' % delta.added)
 
@@ -95,21 +94,21 @@ class TestVersioning(TestCaseInTempDir):
         self.failUnless(os.path.isdir('a/b/dir'))
 
         from bzrlib.diff import compare_trees
-        b = Branch.open(u'.')
-        b_a = Branch.open('a')
-        b_b = Branch.open('a/b')
+        wt = WorkingTree('.')
+        wt_a = WorkingTree('a')
+        wt_b = WorkingTree('a/b')
         
-        delta = compare_trees(b.basis_tree(), b.working_tree())
+        delta = compare_trees(wt.basis_tree(), wt)
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)
 
-        delta = compare_trees(b_a.basis_tree(), b_a.working_tree())
+        delta = compare_trees(wt_a.basis_tree(), wt_a)
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)
 
-        delta = compare_trees(b_b.basis_tree(), b_b.working_tree())
+        delta = compare_trees(wt_b.basis_tree(), wt_b)
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)

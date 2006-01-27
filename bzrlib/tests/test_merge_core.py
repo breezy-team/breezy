@@ -563,11 +563,12 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file.close()
         tree.commit("change file1")
         # Mary does too
-        mary_branch = Branch.open("mary")
+        mary_tree = WorkingTree('mary')
+        mary_branch = mary_tree.branch
         file = open("mary/file2", "wt")
         file.write("Mary\n")
         file.close()
-        mary_branch.working_tree().commit("change file2")
+        mary_tree.commit("change file2")
         # john should be able to merge with no conflicts.
         merge_type = ApplyMerge3
         base = [None, None]
@@ -591,7 +592,8 @@ class FunctionalMergeTest(TestCaseWithTransport):
         file('a/file', 'wb').write('other contents\n')
         wta.commit('other revision', allow_pointless=False)
         file('b/file', 'wb').write('this contents contents\n')
-        b.working_tree().commit('this revision', allow_pointless=False)
+        wtb = WorkingTree('b', b)
+        wtb.commit('this revision', allow_pointless=False)
         self.assertEqual(merge(['a', -1], [None, None], this_dir='b'), 1)
         self.assert_(os.path.lexists('b/file.THIS'))
         self.assert_(os.path.lexists('b/file.BASE'))
@@ -599,7 +601,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertRaises(WorkingTreeNotRevision, merge, ['a', -1], 
                           [None, None], this_dir='b', check_clean=False,
                           merge_type=WeaveMerge)
-        b.working_tree().revert([])
+        wtb.revert([])
         os.unlink('b/file.THIS')
         os.unlink('b/file.OTHER')
         os.unlink('b/file.BASE')

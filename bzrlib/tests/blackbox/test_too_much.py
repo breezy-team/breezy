@@ -392,15 +392,15 @@ class TestCommands(ExternalBase):
         self.runbzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
-        a = Branch.open('.')
+        a = WorkingTree('.')
         b = Branch.open('../b')
-        a.repository.get_revision_xml(b.last_revision())
-        self.log('pending merges: %s', a.working_tree().pending_merges())
-        self.assertEquals(a.working_tree().pending_merges(),
+        a.branch.repository.get_revision_xml(b.last_revision())
+        self.log('pending merges: %s', a.pending_merges())
+        self.assertEquals(a.pending_merges(),
                           [b.last_revision()])
         self.runbzr('commit -m merged')
         self.runbzr('merge ../b -r last:1')
-        self.assertEqual(Branch.open('.').working_tree().pending_merges(), [])
+        self.assertEqual(a.pending_merges(), [])
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""

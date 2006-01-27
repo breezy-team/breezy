@@ -72,4 +72,4 @@ class TestApiUsage(TestCase):
         # written. Note that this is an exact equality so that when the number
         # drops, it is not given a buffer but rather this test updated
         # immediately.
-        self.assertEqual(11, occurences)
+        self.assertEqual(14, occurences)
