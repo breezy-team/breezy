@@ -18,6 +18,7 @@ import os
 import errno
 from tempfile import mkdtemp
 from shutil import rmtree
+from stat import S_ISREG
 
 from bzrlib import BZRDIR
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
@@ -172,19 +173,40 @@ class TreeTransform(object):
             return ROOT_PARENT
         return self.get_tree_path_id(os.path.dirname(path))
 
-    def create_file(self, contents, trans_id):
+    def create_file(self, contents, trans_id, mode_id=None):
         """Schedule creation of a new file.
 
         See also new_file.
         
         Contents is an iterator of strings, all of which will be written
         to the target destination.
+
+        New file takes the permissions of any existing file with that id,
+        unless mode_id is specified.
         """
         f = file(self._limbo_name(trans_id), 'wb')
         unique_add(self._new_contents, trans_id, 'file')
         for segment in contents:
             f.write(segment)
         f.close()
+        self._set_mode(trans_id, mode_id, S_ISREG)
+
+    def _set_mode(self, trans_id, mode_id, typefunc):
+        if mode_id is None:
+            mode_id = trans_id
+        try:
+            old_path = self._tree_id_paths[mode_id]
+        except KeyError:
+            return
+        try:
+            mode = os.stat(old_path).st_mode
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                return
+            else:
+                raise
+        if typefunc(mode):
+            os.chmod(self._limbo_name(trans_id), mode)
 
     def create_directory(self, trans_id):
         """Schedule creation of a new directory.
@@ -541,30 +563,6 @@ class TreeTransform(object):
             raise MalformedTransform(conflicts=conflicts)
         limbo_inv = {}
         inv = self._tree.inventory
-        print self._new_contents.keys()
-        print self._removed_contents
-        for path, trans_id in self._tree_path_ids.iteritems():
-            old_path = self._tree.abspath(path)
-            try:
-                tmp = self._new_contents[trans_id]
-            except KeyError:
-                print "not in new_contents %s %s %d" % (path, trans_id,
-                len(self._new_contents))
-                continue
-            try:
-                kind = file_kind(old_path)
-                if tmp[0] != kind:
-                    continue
-            except OSError, e:
-                if e.errno != errno.ENOENT:
-                    raise
-                continue
-            new_path = self._limbo_name(trans_id)
-            old_stat = os.lstat(old_path)
-            mutter('chmod of %s to %o' % (new_path, old_stat.st_mode))
-            os.chmod(new_path, old_stat.st_mode)
-            raise "hello?"
-
         self._apply_removals(inv, limbo_inv)
         self._apply_insertions(inv, limbo_inv)
         self._tree._write_inventory(inv)
@@ -803,11 +801,11 @@ def new_by_entry(tt, entry, parent_id, tree):
         target = entry.get_symlink_target(file_id)
         return tt.new_symlink(name, parent_id, target, file_id)
 
-def create_by_entry(tt, entry, tree, trans_id, lines=None):
+def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
     if entry.kind == "file":
         if lines == None:
             lines = tree.get_file(entry.file_id).readlines()
-        tt.create_file(lines, trans_id)
+        tt.create_file(lines, trans_id, mode_id=mode_id)
     elif entry.kind == "symlink":
         tt.create_symlink(tree.get_symlink_target(entry.file_id), trans_id)
     elif entry.kind == "directory":
@@ -842,6 +840,7 @@ def change_entry(tt, file_id, working_tree, target_tree,
     has_contents, contents_mod, meta_mod, = _entry_changes(file_id, entry, 
                                                            working_tree)
     if contents_mod:
+        mode_id = e_trans_id
         if has_contents:
             if not backups:
                 tt.delete_contents(e_trans_id)
@@ -852,7 +851,7 @@ def change_entry(tt, file_id, working_tree, target_tree,
                 e_trans_id = tt.create_path(entry.name, parent_trans_id)
                 tt.version_file(file_id, e_trans_id)
                 trans_id[file_id] = e_trans_id
-        create_by_entry(tt, entry, target_tree, e_trans_id)
+        create_by_entry(tt, entry, target_tree, e_trans_id, mode_id=mode_id)
         create_entry_executability(tt, entry, e_trans_id)
 
     elif meta_mod:
