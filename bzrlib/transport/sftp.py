@@ -896,6 +896,8 @@ class SingleListener(threading.Thread):
         self._socket.close()
         try:
             self._callback(s, self.stop_event)
+        except socket.error:
+            pass #Ignore socket errors
         except Exception, x:
             # probably a failed test
             warning('Exception from within unit test server thread: %r' % x)
