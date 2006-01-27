@@ -130,7 +130,7 @@ class TestMergeFetch(TestCaseWithTransport):
         wt1.commit(message='rev 1-1', rev_id='1-1')
         br2 = br1.clone('br2')
         wt1.commit(message='rev 1-2', rev_id='1-2')
-        WorkingTree('br2', br2).commit(message='rev 2-1', rev_id='2-1')
+        WorkingTree.create(br2, 'br2').commit(message='rev 2-1', rev_id='2-1')
         merge(other_revision=['br1', -1], base_revision=[None, None], 
               this_dir='br2')
         self._check_revs_present(br2)

@@ -269,7 +269,7 @@ class Commit(object):
         self.branch.lock_write()
         try:
             self.work_inv = self.work_tree.inventory
-            self.basis_tree = self.branch.basis_tree()
+            self.basis_tree = self.work_tree.basis_tree()
             self.basis_inv = self.basis_tree.inventory
 
             self._gather_parents()

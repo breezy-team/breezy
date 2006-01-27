@@ -589,7 +589,7 @@ class cmd_branch(Command):
                 else:
                     raise
             try:
-                br_from.clone(to_location, revision_id, basis_branch)
+                branch = br_from.clone(to_location, revision_id, basis_branch)
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
@@ -598,7 +598,7 @@ class cmd_branch(Command):
                 rmtree(to_location)
                 msg = "The branch %s cannot be used as a --basis"
                 raise BzrCommandError(msg)
-            branch = Branch.open(to_location)
+            WorkingTree.create(branch, to_location)
             if name:
                 branch.control_files.put_utf8('branch-name', name)
 
@@ -618,7 +618,7 @@ class cmd_renames(Command):
     @display_command
     def run(self, dir=u'.'):
         tree = WorkingTree.open_containing(dir)[0]
-        old_inv = tree.branch.basis_tree().inventory
+        old_inv = tree.basis_tree().inventory
         new_inv = tree.read_working_inventory()
 
         renames = list(bzrlib.tree.find_renames(old_inv, new_inv))
@@ -820,7 +820,7 @@ class cmd_deleted(Command):
     @display_command
     def run(self, show_ids=False):
         tree = WorkingTree.open_containing(u'.')[0]
-        old = tree.branch.basis_tree()
+        old = tree.basis_tree()
         for path, ie in old.inventory.iter_entries():
             if not tree.has_id(ie.file_id):
                 if show_ids:
@@ -837,7 +837,7 @@ class cmd_modified(Command):
         from bzrlib.delta import compare_trees
 
         tree = WorkingTree.open_containing(u'.')[0]
-        td = compare_trees(tree.branch.basis_tree(), tree)
+        td = compare_trees(tree.basis_tree(), tree)
 
         for path, id, kind, text_modified, meta_modified in td.modified:
             print path
@@ -850,7 +850,7 @@ class cmd_added(Command):
     @display_command
     def run(self):
         wt = WorkingTree.open_containing(u'.')[0]
-        basis_inv = wt.branch.basis_tree().inventory
+        basis_inv = wt.basis_tree().inventory
         inv = wt.inventory
         for file_id in inv:
             if file_id in basis_inv:
@@ -1684,7 +1684,7 @@ class cmd_remerge(Command):
                     
                     for name, ie in tree.inventory.iter_entries(file_id):
                         interesting_ids.add(ie.file_id)
-            transform_tree(tree, tree.branch.basis_tree(), interesting_ids)
+            transform_tree(tree, tree.basis_tree(), interesting_ids)
             if file_list is None:
                 restore_files = list(tree.iter_conflicts())
             else:

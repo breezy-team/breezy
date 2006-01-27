@@ -320,10 +320,6 @@ class Branch(object):
             raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
-    def working_tree(self):
-        """Return a `Tree` for the working copy if this is a local branch."""
-        raise NotImplementedError('working_tree is abstract')
-
     def pull(self, source, overwrite=False):
         raise NotImplementedError('pull is abstract')
 
@@ -416,10 +412,17 @@ class Branch(object):
         """
         from bzrlib.workingtree import WorkingTree
         assert isinstance(to_location, basestring)
-        if not bzrlib.osutils.lexists(to_location):
-            os.mkdir(to_location)
+        segments = to_location.split('/')
+        if segments and segments[-1] not in ('', '.'):
+            parent = '/'.join(segments[:-1])
+            t = get_transport(parent)
+            try:
+                t.mkdir(segments[-1])
+            except errors.FileExists:
+                pass
         if to_branch_format is None:
-            br_to = Branch.initialize(to_location)
+            # use the default
+            br_to = Branch.create(to_location)
         else:
             br_to = to_branch_format.initialize(to_location)
         mutter("copy branch from %s to %s", self, br_to)
@@ -429,7 +432,6 @@ class Branch(object):
             revision = self.last_revision()
         br_to.update_revisions(self, stop_revision=revision)
         br_to.set_parent(self.base)
-        WorkingTree.create(br_to, to_location).set_root_id(self.get_root_id())
         mutter("copied")
         return br_to
 
@@ -955,20 +957,11 @@ class BzrBranch(Branch):
         
     def basis_tree(self):
         """See Branch.basis_tree."""
-        try:
-            revision_id = self.revision_history()[-1]
-            # FIXME: This is an abstraction violation, the basis tree 
-            # here as defined is on the working tree, the method should
-            # be too. The basis tree for a branch can be different than
-            # that for a working tree. RBC 20051207
-            xml = self.working_tree().read_basis_inventory(revision_id)
-            inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
-            return RevisionTree(self.repository, inv, revision_id)
-        except (IndexError, NoSuchFile, NoWorkingTree), e:
-            return self.repository.revision_tree(self.last_revision())
+        return self.repository.revision_tree(self.last_revision())
 
+    @deprecated_method(zero_eight)
     def working_tree(self):
-        """See Branch.working_tree."""
+        """Create a Working tree object for this branch."""
         from bzrlib.workingtree import WorkingTree
         from bzrlib.transport.local import LocalTransport
         if (self.base.find('://') != -1 or 
@@ -1060,8 +1053,7 @@ class BzrBranch(Branch):
         # .. would template method be useful here?  RBC 20051207
         branch_to.set_parent(self.base)
         branch_to.append_revision(*history)
-        # FIXME: this should be in workingtree.clone
-        WorkingTree.create(branch_to, to_location).set_root_id(self.get_root_id())
+        WorkingTree.create(branch_to, branch_to.base)
         mutter("copied")
         return branch_to
 

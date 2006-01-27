@@ -20,6 +20,7 @@ import os
 
 import bzrlib
 from bzrlib.branch import Branch
+import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
@@ -249,6 +250,11 @@ class TestWorkingTree(TestCaseWithTransport):
                           wt.add,
                           'foo/hello')
 
+    def test_add_missing(self):
+        # adding a msising file -> NoSuchFile
+        wt = self.make_branch_and_tree('.')
+        self.assertRaises(errors.NoSuchFile, wt.add, 'fpp')
+
     def test_remove_verbose(self):
         #FIXME the remove api should not print or otherwise depend on the
         # text UI - RBC 20060124
@@ -264,3 +270,51 @@ class TestWorkingTree(TestCaseWithTransport):
                                                      verbose=True))
         self.assertEqual('?       hello\n', stdout.getvalue())
         self.assertEqual('', stderr.getvalue())
+
+    def test_clone_trivial(self):
+        wt = self.make_branch_and_tree('source')
+        cloned = wt.clone('target')
+        self.assertEqual(cloned.last_revision(), wt.last_revision())
+
+    def test_last_revision(self):
+        wt = self.make_branch_and_tree('source')
+        self.assertEqual(None, wt.last_revision())
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        self.assertEqual('A', wt.last_revision())
+
+    def test_set_last_revision(self):
+        wt = self.make_branch_and_tree('source')
+        self.assertEqual(None, wt.last_revision())
+        # cannot set the last revision to one not in the branch
+        self.assertRaises(errors.NoSuchRevision, wt.set_last_revision, 'A')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        self.assertEqual('A', wt.last_revision())
+        # None is aways in the branch
+        wt.set_last_revision(None)
+        self.assertEqual(None, wt.last_revision())
+        # and now we can set it to 'A'
+        # because the current format mutates the branch to set it,
+        # we need to alter the branch to let this pass.
+        wt.branch.set_revision_history(['A', 'B'])
+        wt.set_last_revision('A')
+        self.assertEqual('A', wt.last_revision())
+
+    def test_clone_and_commit_preserves_last_revision(self):
+        wt = self.make_branch_and_tree('source')
+        cloned = wt.clone('target')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        self.assertNotEqual(cloned.last_revision(), wt.last_revision())
+        
+    def test_basis_tree_returns_last_revision(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        wt.add('foo', 'foo-id')
+        wt.commit('A', rev_id='A')
+        wt.rename_one('foo', 'bar')
+        wt.commit('B', rev_id='B')
+        wt.set_last_revision('B')
+        tree = wt.basis_tree()
+        self.failUnless(tree.has_filename('bar'))
+        wt.set_last_revision('A')
+        tree = wt.basis_tree()
+        self.failUnless(tree.has_filename('foo'))

@@ -55,6 +55,7 @@ from bzrlib.branch import (Branch,
                            is_control_file,
                            quotefn)
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+import bzrlib.errors as errors
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
                            DivergedBranches,
@@ -294,6 +295,19 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def abspath(self, filename):
         return pathjoin(self.basedir, filename)
+    
+    def basis_tree(self):
+        """Return RevisionTree for the current last revision."""
+        revision_id = self.last_revision()
+        if revision_id is not None:
+            try:
+                xml = self.read_basis_inventory(revision_id)
+                inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+                return bzrlib.tree.RevisionTree(self.branch.repository, inv,
+                                                revision_id)
+            except NoSuchFile:
+                pass
+        return self.branch.repository.revision_tree(revision_id)
 
     @staticmethod
     def create(branch, directory):
@@ -318,9 +332,11 @@ class WorkingTree(bzrlib.tree.Tree):
         except OSError, e:
             if e.errno != errno.EEXIST:
                 raise
-        inv = branch.repository.revision_tree(branch.last_revision()).inventory
+        revision_tree = branch.repository.revision_tree(branch.last_revision())
+        inv = revision_tree.inventory
         wt = WorkingTree(directory, branch, inv)
         wt._write_inventory(inv)
+        wt.set_root_id(revision_tree.inventory.root.file_id)
         if branch.last_revision() is not None:
             wt.set_last_revision(branch.last_revision())
         wt.set_pending_merges([])
@@ -358,6 +374,35 @@ class WorkingTree(bzrlib.tree.Tree):
     def _get_store_filename(self, file_id):
         ## XXX: badly named; this is not in the store at all
         return self.abspath(self.id2path(file_id))
+
+    @needs_read_lock
+    def clone(self, to_directory, revision=None):
+        """Copy this working tree to a new directory.
+        
+        Currently this will make a new standalone branch at to_directory,
+        but it is planned to change this to use the same branch style that this
+        current tree uses (standalone if standalone, repository if repository)
+        - so that this really is a clone. FIXME RBC 20060127 do this.
+        FIXME MORE RBC 20060127 failed to reach consensus on this in #bzr.
+
+        If you want a standalone branch, please use branch.clone(to_directory)
+        followed by WorkingTree.create(cloned_branch, to_directory) which is
+        the supported api to produce that.
+
+        revision
+            If not None, the cloned tree will have its last revision set to 
+            revision, and if a branch is being copied it will be informed
+            of the revision to result in. 
+    
+        to_directory -- The destination directory: Must not exist.
+        """
+        to_directory = safe_unicode(to_directory)
+        os.mkdir(to_directory)
+        # FIXME here is where the decision to clone the branch should happen.
+        if revision is None:
+            revision = self.last_revision()
+        cloned_branch = self.branch.clone(to_directory, revision)
+        return  WorkingTree.create(cloned_branch, to_directory)
 
     @needs_write_lock
     def commit(self, *args, **kwargs):
@@ -453,7 +498,9 @@ class WorkingTree(bzrlib.tree.Tree):
 
             try:
                 kind = file_kind(fullpath)
-            except OSError:
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    raise NoSuchFile(fullpath)
                 # maybe something better?
                 raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
 
@@ -753,7 +800,7 @@ class WorkingTree(bzrlib.tree.Tree):
                     other_revision = None
                 repository = self.branch.repository
                 merge_inner(self.branch,
-                            self.branch.basis_tree(), 
+                            self.basis_tree(), 
                             repository.revision_tree(other_revision),
                             this_tree=self)
                 self.set_last_revision(self.branch.last_revision())
@@ -855,6 +902,15 @@ class WorkingTree(bzrlib.tree.Tree):
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
 
+    def last_revision(self):
+        """Return the last revision id of this working tree.
+
+        In early branch formats this was == the branch last_revision,
+        but that cannot be relied upon - for working tree operations,
+        always use tree.last_revision().
+        """
+        return self.branch.last_revision()
+
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock."""
         return self.branch.lock_read()
@@ -870,29 +926,41 @@ class WorkingTree(bzrlib.tree.Tree):
         if old_revision is not None:
             try:
                 path = self._basis_inventory_name(old_revision)
-                path = self.branch.control_files._escape(path)
-                self.branch.control_files._transport.delete(path)
+                path = self._control_files._escape(path)
+                self._control_files._transport.delete(path)
             except NoSuchFile:
                 pass
+        if new_revision is None:
+            self.branch.set_revision_history([])
+            return
+        # current format is locked in with the branch
+        revision_history = self.branch.revision_history()
+        try:
+            position = revision_history.index(new_revision)
+        except ValueError:
+            raise errors.NoSuchRevision(self.branch, new_revision)
+        self.branch.set_revision_history(revision_history[:position + 1])
         try:
             xml = self.branch.repository.get_inventory_xml(new_revision)
             path = self._basis_inventory_name(new_revision)
-            self.branch.control_files.put_utf8(path, xml)
+            self._control_files.put_utf8(path, xml)
         except WeaveRevisionNotPresent:
             pass
 
     def read_basis_inventory(self, revision_id):
         """Read the cached basis inventory."""
         path = self._basis_inventory_name(revision_id)
-        return self.branch.control_files.get_utf8(path).read()
+        return self._control_files.get_utf8(path).read()
         
     @needs_read_lock
     def read_working_inventory(self):
         """Read the working inventory."""
         # ElementTree does its own conversion from UTF-8, so open in
         # binary.
-        return bzrlib.xml5.serializer_v5.read_inventory(
+        result = bzrlib.xml5.serializer_v5.read_inventory(
             self._control_files.get('inventory'))
+        self._set_inventory(result)
+        return result
 
     @needs_write_lock
     def remove(self, files, verbose=False):
@@ -939,7 +1007,7 @@ class WorkingTree(bzrlib.tree.Tree):
     def revert(self, filenames, old_tree=None, backups=True):
         from bzrlib.merge import merge_inner
         if old_tree is None:
-            old_tree = self.branch.basis_tree()
+            old_tree = self.basis_tree()
         merge_inner(self.branch, old_tree,
                     self, ignore_zero=True,
                     backup_files=backups, 
@@ -981,7 +1049,7 @@ class WorkingTree(bzrlib.tree.Tree):
         inv._byid[inv.root.file_id] = inv.root
         for fid in inv:
             entry = inv[fid]
-            if entry.parent_id in (None, orig_root_id):
+            if entry.parent_id == orig_root_id:
                 entry.parent_id = inv.root.file_id
         self._write_inventory(inv)
 
@@ -999,7 +1067,7 @@ class WorkingTree(bzrlib.tree.Tree):
         # of a nasty hack; probably it's better to have a transaction object,
         # which can do some finalization when it's either successfully or
         # unsuccessfully completed.  (Denys's original patch did that.)
-        if self._hashcache.needs_write and self.branch.control_files._lock_count==1:
+        if self._hashcache.needs_write and self._control_files._lock_count==1:
             self._hashcache.write()
         return self.branch.unlock()
 

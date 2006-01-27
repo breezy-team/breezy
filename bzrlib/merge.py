@@ -260,8 +260,8 @@ def build_working_dir(to_dir):
     """
     # RBC 20051019 is this not just 'export' ?
     # AB Well, export doesn't take care of inventory...
-    this_branch = Branch.open_containing(to_dir)[0]
-    transform_tree(this_branch.working_tree(), this_branch.basis_tree())
+    this_tree = WorkingTree.open_containing(to_dir)[0]
+    transform_tree(this_tree, this_tree.basis_tree())
 
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
@@ -387,7 +387,7 @@ class Merger(object):
 
     def compare_basis(self):
         changes = compare_trees(self.this_tree, 
-                                self.this_branch.basis_tree(), False)
+                                self.this_tree.basis_tree(), False)
         if not changes.has_changed():
             self.this_rev_id = self.this_basis
 
