@@ -37,7 +37,7 @@ from warnings import warn
 from bzrlib.transport import Transport
 from bzrlib.errors import (TransportNotPossible, TransportError,
                            NoSuchFile, FileExists)
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 
 
 _FTP_cache = {}
@@ -174,7 +174,7 @@ class FtpTransport(Transport):
             mutter("FTP has not: %s" % self._abspath(relpath))
             return False
 
-    def get(self, relpath, decode=False):
+    def get(self, relpath, decode=False, retries=0):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
@@ -190,9 +190,23 @@ class FtpTransport(Transport):
             ret.seek(0)
             return ret
         except ftplib.error_perm, e:
-            raise NoSuchFile(self.abspath(relpath), extra=extra)
+            raise NoSuchFile(self.abspath(relpath))
+        except ftplib.error_temp, e:
+            if retries > 1:
+                raise e
+            else:
+                warning("FTP temporary error: %s. Retrying." % str(e))
+                self._FTP_instance = None
+                return self.get(relpath, decode, retries+1)
+        except EOFError, e:
+            if retries > 1:
+                raise e
+            else:
+                warning("FTP connection closed. Trying to reopen.")
+                self._FTP_instance = None
+                return self.get(relpath, decode, retries+1)
 
-    def put(self, relpath, fp, mode=None):
+    def put(self, relpath, fp, mode=None, retries=0):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
@@ -208,11 +222,25 @@ class FtpTransport(Transport):
             f.storbinary('STOR '+self._abspath(relpath), fp, 8192)
         except ftplib.error_perm, e:
             if "no such file" in str(e).lower():
-                raise NoSuchFile(msg="Error storing %s: %s"
-                                 % (self.abspath(relpath), str(e)),
-                                 orig_error=e)
+                raise NoSuchFile("Error storing %s: %s"
+                                 % (self.abspath(relpath), str(e)))
             else:
                 raise FtpTransportError(orig_error=e)
+        except ftplib.error_temp, e:
+            if retries > 1:
+                raise e
+            else:
+                warning("FTP temporary error: %s. Retrying." % str(e))
+                self._FTP_instance = None
+                self.put(relpath, fp, mode, retries+1)
+        except EOFError, e:
+            if retries > 1:
+                raise e
+            else:
+                warning("FTP connection closed. Trying to reopen.")
+                self._FTP_instance = None
+                self.put(relpath, fp, mode, retries+1)
+
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
