@@ -160,6 +160,20 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
         files within them.
     """
 
+    old_tree.lock_read()
+    try:
+        new_tree.lock_read()
+        try:
+            return _compare_trees(old_tree, new_tree, want_unchanged,
+                                  specific_files)
+        finally:
+            new_tree.unlock()
+    finally:
+        old_tree.unlock()
+
+
+def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
+
     from osutils import is_inside_any
     
     old_inv = old_tree.inventory

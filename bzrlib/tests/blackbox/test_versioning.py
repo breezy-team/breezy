@@ -171,8 +171,8 @@ class SubdirCommit(TestCaseInTempDir):
         mutter('start selective subdir commit')
         run_bzr('commit', 'a', '-m', 'commit a only')
         
-        old = b.revision_tree(b.get_rev_id(1))
-        new = b.revision_tree(b.get_rev_id(2))
+        old = b.repository.revision_tree(b.get_rev_id(1))
+        new = b.repository.revision_tree(b.get_rev_id(2))
         
         eq(new.get_file_by_path('b/two').read(), 'old contents')
         eq(new.get_file_by_path('top').read(), 'old contents')
@@ -181,14 +181,14 @@ class SubdirCommit(TestCaseInTempDir):
         os.chdir('a')
         # commit from here should do nothing
         run_bzr('commit', '.', '-m', 'commit subdir only', '--unchanged')
-        v3 = b.revision_tree(b.get_rev_id(3))
+        v3 = b.repository.revision_tree(b.get_rev_id(3))
         eq(v3.get_file_by_path('b/two').read(), 'old contents')
         eq(v3.get_file_by_path('top').read(), 'old contents')
         eq(v3.get_file_by_path('a/one').read(), 'new contents')
                 
         # commit in subdirectory commits whole tree
         run_bzr('commit', '-m', 'commit whole tree from subdir')
-        v4 = b.revision_tree(b.get_rev_id(4))
+        v4 = b.repository.revision_tree(b.get_rev_id(4))
         eq(v4.get_file_by_path('b/two').read(), 'new contents')        
         eq(v4.get_file_by_path('top').read(), 'new contents')
         

@@ -88,7 +88,7 @@ def is_ancestor(revision_id, candidate_id, branch):
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
     """
-    return candidate_id in branch.get_ancestry(revision_id)
+    return candidate_id in branch.repository.get_ancestry(revision_id)
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):

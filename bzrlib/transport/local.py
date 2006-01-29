@@ -231,7 +231,12 @@ class LocalTransport(Transport):
         :return: A lock object, which should be passed to Transport.unlock()
         """
         from bzrlib.lock import ReadLock
-        return ReadLock(self.abspath(relpath))
+        path = relpath
+        try:
+            path = self.abspath(relpath)
+            return ReadLock(path)
+        except (IOError, OSError), e:
+            self._translate_error(e, path)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.

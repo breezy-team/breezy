@@ -34,16 +34,15 @@ implemented in different ways on different platforms.  Both have an
 unlock() method.
 """
 
-
-import sys
+import errno
 import os
+import sys
 
 from bzrlib.trace import mutter, note, warning
 from bzrlib.errors import LockError
 
 class _base_Lock(object):
     def _open(self, filename, filemode):
-        import errno
         try:
             self.f = open(filename, filemode)
             return self.f
@@ -54,9 +53,8 @@ class _base_Lock(object):
             # maybe this is an old branch (before may 2005)
             mutter("trying to create missing branch lock %r", filename)
             
-            self.f = open(filename, 'wb')
+            self.f = open(filename, 'wb+')
             return self.f
-
 
     def __del__(self):
         if self.f:
@@ -64,7 +62,6 @@ class _base_Lock(object):
             warn("lock on %r not released" % self.f)
             self.unlock()
             
-
     def unlock(self):
         raise NotImplementedError()
 
@@ -88,24 +85,32 @@ try:
             self.f.close()
             del self.f 
 
-
     class _fcntl_WriteLock(_fcntl_FileLock):
         def __init__(self, filename):
+            # standard IO errors get exposed directly.
+            self._open(filename, 'wb')
             try:
-                fcntl.lockf(self._open(filename, 'wb'), fcntl.LOCK_EX)
-            except Exception, e:
+                fcntl.lockf(self.f, fcntl.LOCK_EX)
+            except IOError, e:
+                # we should be more precise about whats a locking
+                # error and whats a random-other error
                 raise LockError(e)
 
-
     class _fcntl_ReadLock(_fcntl_FileLock):
+
         def __init__(self, filename):
+            # standard IO errors get exposed directly.
+            self._open(filename, 'rb')
             try:
-                fcntl.lockf(self._open(filename, 'rb'), fcntl.LOCK_SH)
-            except Exception, e:
+                fcntl.lockf(self.f, fcntl.LOCK_SH)
+            except IOError, e:
+                # we should be more precise about whats a locking
+                # error and whats a random-other error
                 raise LockError(e)
 
     WriteLock = _fcntl_WriteLock
     ReadLock = _fcntl_ReadLock
+
 
 except ImportError:
     try:
