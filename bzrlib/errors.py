@@ -509,12 +509,15 @@ class BzrBadParameter(BzrNewError):
 
 class BzrBadParameterNotUnicode(BzrBadParameter):
     """Parameter %(param)s is neither unicode nor utf8."""
-    
+
+
 class ReusingTransform(BzrNewError):
     """Attempt to reuse a transform that has already been applied."""
 
+
 class CantMoveRoot(BzrNewError):
     """Moving the root directory is not supported at this time"""
+
 
 class BzrBadParameterNotString(BzrBadParameter):
     """Parameter %(param)s is not a string or unicode string."""
