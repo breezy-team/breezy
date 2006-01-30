@@ -69,10 +69,10 @@ class FtpStatResult(object):
                 f.cwd(pwd)
 
 
+_number_of_retries = 1
+
 class FtpTransport(Transport):
     """This is the transport agent for ftp:// access."""
-
-    _number_of_retries = 1
 
     def __init__(self, base, _provided_instance=None):
         """Set the base path where files will be stored."""
