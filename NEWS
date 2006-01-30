@@ -38,7 +38,7 @@ bzr 0.7rc1 2006-01-09
       will mean that future file will be created with group write permissions.
 
     * The bzr_man.py file has been removed. To create the man page now,
-      use bzr-infogen.py. The new program can also create other files.
+      use ./generate_docs.py man. The new program can also create other files.
       Run "python generate_docs.py --help" for usage information. (Hans
       Ulrich Niedermann & James Blackwell).
 
