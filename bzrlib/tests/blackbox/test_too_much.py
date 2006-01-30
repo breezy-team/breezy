@@ -41,12 +41,12 @@ import shutil
 import sys
 
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import has_symlinks, pathjoin
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
+
 
 class TestCommands(ExternalBase):
 
@@ -346,50 +346,6 @@ class TestCommands(ExternalBase):
         zf = ZipFile('../first-zip')
         self.assert_('first-zip/hello' in zf.namelist(), zf.namelist())
 
-    def test_diff(self):
-        self.example_branch()
-        file('hello', 'wt').write('hello world!')
-        self.runbzr('commit -m fixing hello')
-        output = self.runbzr('diff -r 2..3', backtick=1, retcode=1)
-        self.assert_('\n+hello world!' in output)
-        output = self.runbzr('diff -r last:3..last:1', backtick=1, retcode=1)
-        self.assert_('\n+baz' in output)
-        file('moo', 'wb').write('moo')
-        self.runbzr('add moo')
-        os.unlink('moo')
-        self.runbzr('diff')
-
-    def test_diff_branches(self):
-        self.build_tree(['branch1/', 'branch1/file', 'branch2/'], line_endings='binary')
-        branch = Branch.initialize('branch1')
-        branch.working_tree().add(['file'])
-        branch.working_tree().commit('add file')
-        copy_branch(branch, 'branch2')
-        print >> open('branch2/file', 'wb'), 'new content'
-        branch2 = Branch.open('branch2')
-        branch2.working_tree().commit('update file')
-        # should open branch1 and diff against branch2, 
-        output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 
-                                        'branch1'],
-                                       retcode=1)
-        self.assertEquals(("=== modified file 'file'\n"
-                           "--- file\t\n"
-                           "+++ file\t\n"
-                           "@@ -1,1 +1,1 @@\n"
-                           "-new content\n"
-                           "+contents of branch1/file\n"
-                           "\n", ''), output)
-        output = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
-                                       retcode=1)
-        self.assertEqualDiff(("=== modified file 'file'\n"
-                              "--- file\t\n"
-                              "+++ file\t\n"
-                              "@@ -1,1 +1,1 @@\n"
-                              "-new content\n"
-                              "+contents of branch1/file\n"
-                              "\n", ''), output)
-
-
     def test_branch(self):
         """Branch from one branch to another."""
         os.mkdir('a')
@@ -439,7 +395,7 @@ class TestCommands(ExternalBase):
         # Merging a branch pulls its revision into the tree
         a = Branch.open('.')
         b = Branch.open('../b')
-        a.get_revision_xml(b.last_revision())
+        a.repository.get_revision_xml(b.last_revision())
         self.log('pending merges: %s', a.working_tree().pending_merges())
         self.assertEquals(a.working_tree().pending_merges(),
                           [b.last_revision()])
@@ -597,6 +553,13 @@ class TestCommands(ExternalBase):
                   'subdir\n'
                   'subdir/b\n'
                   , '--versioned')
+
+    def test_cat(self):
+        self.runbzr('init')
+        file("myfile", "wb").write("My contents\n")
+        self.runbzr('add')
+        self.runbzr('commit -m myfile')
+        self.run_bzr_captured('cat -r 1 myfile'.split(' '))
 
     def test_pull_verbose(self):
         """Pull changes from one branch to another and watch the output."""
@@ -825,6 +788,21 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m done',)
         self.runbzr('remerge', retcode=3)
 
+    def test_status(self):
+        os.mkdir('branch1')
+        os.chdir('branch1')
+        self.runbzr('init')
+        self.runbzr('commit --unchanged --message f')
+        self.runbzr('branch . ../branch2')
+        self.runbzr('branch . ../branch3')
+        self.runbzr('commit --unchanged --message peter')
+        os.chdir('../branch2')
+        self.runbzr('merge ../branch1')
+        self.runbzr('commit --unchanged --message pumpkin')
+        os.chdir('../branch3')
+        self.runbzr('merge ../branch2')
+        message = self.capture('status')
+
 
     def test_conflicts(self):
         """Handling of merge conflicts"""
@@ -866,8 +844,10 @@ class TestCommands(ExternalBase):
             from bzrlib.testament import Testament
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
             self.runbzr('re-sign -r revid:A')
-            self.assertEqual(Testament.from_revision(branch,'A').as_short_text(),
-                             branch.revision_store.get('A', 'sig').read())
+            self.assertEqual(Testament.from_revision(branch.repository,
+                             'A').as_short_text(),
+                             branch.repository.revision_store.get('A', 
+                             'sig').read())
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
             
@@ -883,12 +863,16 @@ class TestCommands(ExternalBase):
             from bzrlib.testament import Testament
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
             self.runbzr('re-sign -r 1..')
-            self.assertEqual(Testament.from_revision(branch,'A').as_short_text(),
-                             branch.revision_store.get('A', 'sig').read())
-            self.assertEqual(Testament.from_revision(branch,'B').as_short_text(),
-                             branch.revision_store.get('B', 'sig').read())
-            self.assertEqual(Testament.from_revision(branch,'C').as_short_text(),
-                             branch.revision_store.get('C', 'sig').read())
+            self.assertEqual(
+                Testament.from_revision(branch.repository,'A').as_short_text(),
+                branch.repository.revision_store.get('A', 'sig').read())
+            self.assertEqual(
+                Testament.from_revision(branch.repository,'B').as_short_text(),
+                branch.repository.revision_store.get('B', 'sig').read())
+            self.assertEqual(Testament.from_revision(branch.repository,
+                             'C').as_short_text(),
+                             branch.repository.revision_store.get('C', 
+                             'sig').read())
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
 
@@ -1287,6 +1271,14 @@ class RemoteTests(object):
         url = self.get_remote_url('branch/file')
         output = self.capture('log %s' % url)
         self.assertEqual(8, len(output.split('\n')))
+        # FIXME: rbc 20051128 what is the remainder of this test testing?
+        # - it does not seem to be http specific.
+        copy = branch.clone('branch2')
+        branch.working_tree().commit(message='empty commit')
+        os.chdir('branch2')
+        self.run_bzr('merge', '../branch')
+        copy.working_tree().commit(message='merge')
+        output = self.capture('log')
         
     def test_check(self):
         self.build_tree(['branch/', 'branch/file'])

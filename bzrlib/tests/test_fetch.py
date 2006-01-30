@@ -17,21 +17,19 @@
 import os
 import sys
 
-import bzrlib.errors
-from bzrlib.tests.test_revision import make_branches
-from bzrlib.trace import mutter
 from bzrlib.branch import Branch
+from bzrlib.builtins import merge
+import bzrlib.errors
 from bzrlib.fetch import greedy_fetch
-from bzrlib.merge import merge
-from bzrlib.clone import copy_branch
-
+from bzrlib.tests.test_revision import make_branches
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.trace import mutter
 
 
 def has_revision(branch, revision_id):
     try:
-        branch.get_revision_xml(revision_id)
+        branch.repository.get_revision_xml_file(revision_id)
         return True
     except bzrlib.errors.NoSuchRevision:
         return False
@@ -86,7 +84,7 @@ def fetch_steps(self, br_a, br_b, writable_a):
         self.assertFalse(has_revision(br_a3, br_a.revision_history()[revno]))
     self.assertEqual(greedy_fetch(br_a3, br_a2, br_a.revision_history()[2])[0], 3)
     fetched = greedy_fetch(br_a3, br_a2, br_a.revision_history()[3])[0]
-    self.assertEquals(fetched, 3, "fetched %d instead of 3" % fetched)
+    self.assertEquals(fetched, 6, "fetched %d instead of 6" % fetched)
     # InstallFailed should be raised if the branch is missing the revision
     # that was requested.
     self.assertRaises(bzrlib.errors.InstallFailed, greedy_fetch, br_a3,
@@ -128,7 +126,7 @@ class TestMergeFetch(TestCaseInTempDir):
         os.mkdir('br1')
         br1 = Branch.initialize('br1')
         br1.working_tree().commit(message='rev 1-1', rev_id='1-1')
-        copy_branch(br1, 'br2')
+        br1.clone('br2')
         br2 = Branch.open('br2')
         br1.working_tree().commit(message='rev 1-2', rev_id='1-2')
         br2.working_tree().commit(message='rev 2-1', rev_id='2-1')
@@ -138,10 +136,10 @@ class TestMergeFetch(TestCaseInTempDir):
 
     def _check_revs_present(self, br2):
         for rev_id in '1-1', '1-2', '2-1':
-            self.assertTrue(br2.has_revision(rev_id))
-            rev = br2.get_revision(rev_id)
+            self.assertTrue(br2.repository.has_revision(rev_id))
+            rev = br2.repository.get_revision(rev_id)
             self.assertEqual(rev.revision_id, rev_id)
-            self.assertTrue(br2.get_inventory(rev_id))
+            self.assertTrue(br2.repository.get_inventory(rev_id))
 
 
 
@@ -153,7 +151,7 @@ class TestMergeFileHistory(TestCaseInTempDir):
         self.build_tree_contents([('br1/file', 'original contents\n')])
         br1.working_tree().add(['file'], ['this-file-id'])
         br1.working_tree().commit(message='rev 1-1', rev_id='1-1')
-        copy_branch(br1, 'br2')
+        br1.clone('br2')
         br2 = Branch.open('br2')
         self.build_tree_contents([('br1/file', 'original from 1\n')])
         br1.working_tree().commit(message='rev 1-2', rev_id='1-2')
@@ -173,8 +171,9 @@ class TestMergeFileHistory(TestCaseInTempDir):
                              ('1-3', 'agreement\n'),
                              ('2-1', 'contents in 2\n'),
                              ('2-2', 'agreement\n')]:
-            self.assertEqualDiff(br2.revision_tree(rev_id).get_file_text('this-file-id'),
-                                 text)
+            self.assertEqualDiff(
+                br2.repository.revision_tree(
+                    rev_id).get_file_text('this-file-id'), text)
 
 
 
@@ -184,7 +183,7 @@ class TestHttpFetch(TestCaseWithWebserver):
     def test_fetch(self):
         #highest indices a: 5, b: 7
         br_a, br_b = make_branches(self)
-        br_rem_a = Branch.open(self.get_remote_url(br_a._transport.base))
+        br_rem_a = Branch.open(self.get_remote_url(br_a.base))
         fetch_steps(self, br_rem_a, br_b, br_a)
 
     def test_weaves_are_retrieved_once(self):

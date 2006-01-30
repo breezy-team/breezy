@@ -71,7 +71,7 @@ import tempfile
 import sys
 import shutil
 
-from bzrlib.branch import Branch, find_branch
+from bzrlib.branch import Branch
 from bzrlib.branch import BZR_BRANCH_FORMAT_5, BZR_BRANCH_FORMAT_6
 import bzrlib.hashcache as hashcache
 from bzrlib.weave import Weave
@@ -82,6 +82,11 @@ from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
 from bzrlib.trace import mutter, note, warning
 from bzrlib.osutils import sha_strings, sha_string, pathjoin, abspath
+
+
+# TODO: jam 20060108 Create a new branch format, and as part of upgrade
+#       make sure that ancestry.weave is deleted (it is never used, but
+#       used to be created)
 
 
 class Convert(object):
@@ -102,11 +107,19 @@ class Convert(object):
         self.pb = ui_factory.progress_bar()
         if self.old_format == 4:
             note('starting upgrade from format 4 to 5')
-            self._convert_to_weaves()
+            self.branch.lock_write()
+            try:
+                self._convert_to_weaves()
+            finally:
+                self.branch.unlock()
             self._open_branch()
         if self.old_format == 5:
             note('starting upgrade from format 5 to 6')
-            self._convert_to_prefixed()
+            self.branch.lock_write()
+            try:
+                self._convert_to_prefixed()
+            finally:
+                self.branch.unlock()
             self._open_branch()
         cache = hashcache.HashCache(abspath(self.base))
         cache.clear()
@@ -139,7 +152,7 @@ class Convert(object):
         self.inv_weave = Weave('inventory')
         # holds in-memory weaves for all files
         self.text_weaves = {}
-        os.remove(self.branch.controlfilename('branch-format'))
+        os.remove(self.branch.control_files.controlfilename('branch-format'))
         self._convert_working_inv()
         rev_history = self.branch.revision_history()
         # to_read is a stack holding the revisions we still need to process;
@@ -178,21 +191,18 @@ class Convert(object):
                            self.branch._branch_format)
         return True
 
-
     def _set_new_format(self, format):
-        self.branch.put_controlfile('branch-format', format)
-
+        self.branch.control_files.put_utf8('branch-format', format)
 
     def _cleanup_spare_files(self):
         for n in 'merged-patches', 'pending-merged-patches':
-            p = self.branch.controlfilename(n)
+            p = self.branch.control_files.controlfilename(n)
             if not os.path.exists(p):
                 continue
             ## assert os.path.getsize(p) == 0
             os.remove(p)
         shutil.rmtree(self.base + '/.bzr/inventory-store')
         shutil.rmtree(self.base + '/.bzr/text-store')
-
 
     def _backup_control_dir(self):
         orig = self.base + '/.bzr'
@@ -203,14 +213,11 @@ class Convert(object):
         note('if conversion fails, you can move this directory back to .bzr')
         note('if it succeeds, you can remove this directory if you wish')
 
-
     def _convert_working_inv(self):
         branch = self.branch
-        inv = serializer_v4.read_inventory(branch.controlfile('inventory', 'rb'))
+        inv = serializer_v4.read_inventory(branch.control_files.get('inventory'))
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
-        branch.put_controlfile('inventory', new_inv_xml)
-
-
+        branch.control_files.put('inventory', new_inv_xml)
 
     def _write_all_weaves(self):
         write_a_weave(self.inv_weave, self.base + '/.bzr/inventory.weave')
@@ -248,14 +255,14 @@ class Convert(object):
         self.pb.update('loading revision',
                        len(self.revisions),
                        len(self.known_revisions))
-        if not self.branch.revision_store.has_id(rev_id):
+        if not self.branch.repository.revision_store.has_id(rev_id):
             self.pb.clear()
             note('revision {%s} not present in branch; '
                  'will be converted as a ghost',
                  rev_id)
             self.absent_revisions.add(rev_id)
         else:
-            rev_xml = self.branch.revision_store.get(rev_id).read()
+            rev_xml = self.branch.repository.revision_store.get(rev_id).read()
             rev = serializer_v4.read_revision_from_string(rev_xml)
             for parent_id in rev.parent_ids:
                 self.known_revisions.add(parent_id)
@@ -265,7 +272,7 @@ class Convert(object):
 
     def _load_old_inventory(self, rev_id):
         assert rev_id not in self.converted_revs
-        old_inv_xml = self.branch.inventory_store.get(rev_id).read()
+        old_inv_xml = self.branch.repository.inventory_store.get(rev_id).read()
         inv = serializer_v4.read_inventory_from_string(old_inv_xml)
         rev = self.revisions[rev_id]
         if rev.inventory_sha1:
@@ -360,7 +367,8 @@ class Convert(object):
                 return
         parent_indexes = map(w.lookup, previous_revisions)
         if ie.has_text():
-            file_lines = self.branch.text_store.get(ie.text_id).readlines()
+            text = self.branch.repository.text_store.get(ie.text_id)
+            file_lines = text.readlines()
             assert sha_strings(file_lines) == ie.text_sha1
             assert sum(map(len, file_lines)) == ie.text_size
             w.add(rev_id, parent_indexes, file_lines, ie.text_sha1)

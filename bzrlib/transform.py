@@ -58,7 +58,9 @@ class TreeTransform(object):
         self._tree_id_paths = {}
         self._new_root = self.get_id_tree(tree.get_root_id())
         self.__done = False
-        self._limbodir = self._tree.branch.controlfilename('limbo')
+        # XXX use the WorkingTree LockableFiles, when available
+        control_files = self._tree.branch.control_files
+        self._limbodir = control_files.controlfilename('limbo')
         os.mkdir(self._limbodir)
 
     def finalize(self):
@@ -571,8 +573,7 @@ class TreeTransform(object):
 
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
-        limbo = self._tree.branch.controlfilename('limbo')
-        return os.path.join(limbo, trans_id)
+        return os.path.join(self._limbodir, trans_id)
 
     def _apply_removals(self, inv, limbo_inv):
         """Perform tree operations that remove directory/inventory names.
@@ -581,7 +582,6 @@ class TreeTransform(object):
         need renaming into limbo.  This must be done in strict child-to-parent
         order.
         """
-        limbo = self._tree.branch.controlfilename('limbo')
         tree_paths = list(self._tree_path_ids.iteritems())
         tree_paths.sort(reverse=True)
         for path, trans_id in tree_paths:
@@ -596,7 +596,7 @@ class TreeTransform(object):
                     os.rmdir(full_path)
             elif trans_id in self._new_name or trans_id in self._new_parent:
                 try:
-                    os.rename(full_path, os.path.join(limbo, trans_id))
+                    os.rename(full_path, self._limbo_name(trans_id))
                 except OSError, e:
                     if e.errno != errno.ENOENT:
                         raise
@@ -619,7 +619,6 @@ class TreeTransform(object):
         limbo any files that needed renaming.  This must be done in strict
         parent-to-child order.
         """
-        limbo = self._tree.branch.controlfilename('limbo')
         for path, trans_id in self.new_paths():
             try:
                 kind = self._new_contents[trans_id]
@@ -820,8 +819,7 @@ def find_interesting(working_tree, target_tree, filenames):
         interesting_ids = None
     else:
         interesting_ids = set()
-        for filename in filenames:
-            tree_path = working_tree.relpath(filename)
+        for tree_path in filenames:
             for tree in (working_tree, target_tree):
                 not_found = True
                 file_id = tree.inventory.path2id(tree_path)

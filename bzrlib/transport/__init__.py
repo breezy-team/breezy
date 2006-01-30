@@ -431,6 +431,10 @@ class Transport(object):
 
 
 def get_transport(base):
+    """Open a transport to access a URL or directory.
+
+    base is either a URL or a directory name.  
+    """
     global _protocol_handlers
     if base is None:
         base = u'.'
@@ -533,8 +537,10 @@ class TransportTestProviderAdapter(object):
             try:
                 result.extend(self.get_transport_test_permutations(reduce(getattr, 
                     (module).split('.')[1:],
-                 __import__(module))))
-            except ImportError:
+                     __import__(module))))
+            except errors.DependencyNotPresent, e:
+                # Continue even if a dependency prevents us 
+                # from running this test
                 pass
         return result
         

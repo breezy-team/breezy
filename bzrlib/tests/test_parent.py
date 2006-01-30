@@ -16,9 +16,8 @@
 
 
 import os
-from bzrlib.tests import TestCaseInTempDir
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
+from bzrlib.tests import TestCaseInTempDir
 from bzrlib.osutils import abspath, realpath
 
 
@@ -26,12 +25,12 @@ from bzrlib.osutils import abspath, realpath
 
 
 class TestParent(TestCaseInTempDir):
+
     def test_no_default_parent(self):
         """Branches should have no parent by default"""
         b = Branch.initialize(u'.')
         self.assertEquals(b.get_parent(), None)
         
-    
     def test_set_get_parent(self):
         """Set and then re-get the parent"""
         b = Branch.initialize(u'.')
@@ -50,7 +49,7 @@ class TestParent(TestCaseInTempDir):
         branch_from.working_tree().commit('initial commit')
         
         os.mkdir('to')
-        copy_branch(branch_from, 'to', None)
+        branch_from.clone('to', None)
 
         branch_to = Branch.open('to')
         self.assertEquals(branch_to.get_parent(), branch_from.base)

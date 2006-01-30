@@ -26,6 +26,7 @@ from warnings import warn
 
 
 zero_seven = "%s was deprecated in version 0.7."
+zero_eight = "%s was deprecated in version 0.8."
 
 
 def set_warning_method(method):
