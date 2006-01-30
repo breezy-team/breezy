@@ -19,10 +19,13 @@
 
 "big_bash_completion.py - create bash completion script from built-in bzr help"
 
-import os, sys
-import bzrlib, bzrlib.help, bzrlib.commands
+import os
+import sys
 import time
 
+import bzrlib
+import bzrlib.help
+import bzrlib.commands
 
 def get_filename(options):
     return "%s.bash_completion" % (options.bzr_name)

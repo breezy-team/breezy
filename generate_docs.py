@@ -32,36 +32,12 @@ Examples:
 Run "%(prog)s --help" for the option reference.
 """
 
-# Plan (devised by jblack and ndim 2005-12-10):
-#   * one generate_doc.py script in top level dir right beside bzr
-#   * one tools/doc_generate/ directory (python module)
-#     We did not put the stuff into bzrlib because we thought
-#     that all this stuff doesn't need to get loaded every time you run bzr.
-#     However, I'm not sure that is actually true (ndim 2005-12-11).
-#   * several generator scripts like
-#           tools/doc_generate/autodoc_man_page.py
-#                              autodoc_docbook_xml.py
-#                              autodoc_html.py
-#                              autodoc_bash_completion.py
-#                              autodoc_zsh_completion.py
-#   * scripts are called by running something like
-#     "python2.4 generated_docs.py --man-page"         or
-#     "python2.4 generated_docs.py --bash-completion"   or
-#     "pytohn2.4 generated_docs.py --all"
-#     
-#   * one test case which iterates through all gen_*.py scripts and
-#     tries to generate all the file types, checking that all generators
-#     work (we'll let bzrinfogen/__init__.py provide the list to walk through)
-#   * those generator scripts walk through the command and option data
-#     structures to extract the required information
-#   * the actual names are just prototypes and subject to change
-
-
 import sys
+from optparse import OptionParser
+
 import tools.doc_generate
 
 def main(argv):
-    from optparse import OptionParser
     parser = OptionParser(usage="%prog [options] OUTPUT_FORMAT")
 
     parser.add_option("-s", "--show-filename",
@@ -76,8 +52,8 @@ def main(argv):
                       help="name of bzr executable")
 
     parser.add_option("-e", "--examples",
-                       action="callback", callback=print_extended_help,
-                       help="Examples of ways to call generate_doc")
+                      action="callback", callback=print_extended_help,
+                      help="Examples of ways to call generate_doc")
 
 
     (options, args) = parser.parse_args(argv)
@@ -105,6 +81,11 @@ def main(argv):
     infogen_mod.infogen(options, outfile)
 
 def print_extended_help(option, opt, value, parser):
+    """ Program help examples
+
+    Prints out the examples stored in the docstring. 
+
+    """
         print >>sys.stdout, __doc__ % {"prog":sys.argv[0]}
         sys.exit(0)
 

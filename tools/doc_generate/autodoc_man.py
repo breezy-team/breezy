@@ -23,17 +23,22 @@ TODO:
   * add command aliases
 """
 
-import os, sys
-import bzrlib, bzrlib.help, bzrlib.commands
+import os
+import sys
 import textwrap
 import time
 
+import bzrlib
+import bzrlib.help
+import bzrlib.commands
 
 def get_filename(options):
+    """Provides name of manpage"""
     return "%s.1" % (options.bzr_name)
 
 
 def infogen(options, outfile):
+    """Assembles a man page"""
     t = time.time()
     tt = time.gmtime(t)
     params = \
@@ -42,17 +47,15 @@ def infogen(options, outfile):
              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S +0000",tt),
              "version": bzrlib.__version__,
              }
-
     outfile.write(man_preamble % params)
     outfile.write(man_escape(man_head % params))
-
     outfile.write(man_escape(getcommand_list(params)))
     outfile.write(man_escape(getcommand_help(params)))
-
     outfile.write(man_escape(man_foot % params))
 
 
 def man_escape(string):
+    """Escapes strings for man page compatibility"""
     result = string.replace("\\","\\\\")
     result = result.replace("`","\\`")
     result = result.replace("'","\\'")
@@ -61,12 +64,14 @@ def man_escape(string):
 
 
 def command_name_list():
+    """Builds a list of command names from bzrlib"""
     command_names = bzrlib.commands.builtin_command_names()
     command_names.sort()
     return command_names
 
 
 def getcommand_list (params):
+    """Builds summary help for command names in manpage format"""
     bzrcmd = params["bzrcmd"]
     output = '.SH "COMMAND OVERVIEW"\n'
     for cmd_name in command_name_list():
@@ -84,15 +89,25 @@ def getcommand_list (params):
     return output
 
 
+def getcommand_help(params):
+    """Shows individual options for a bzr command"""
+    output='.SH "COMMAND REFERENCE"\n'
+    for cmd_name in command_name_list():
+        cmd_object = bzrlib.commands.get_cmd_object(cmd_name)
+        if cmd_object.hidden:
+            continue
+        output = output + format_command(params, cmd_object)
+    return output
+
+
 def format_command (params, cmd):
+    """Provides long help for each public command"""
     subsection_header = '.SS "%s"\n' % (bzrlib.help.command_usage(cmd))
     doc = "%s\n" % (cmd.__doc__)
     docsplit = cmd.__doc__.split('\n')
     doc = '\n'.join([docsplit[0]] + [line[4:] for line in docsplit[1:]])
-
     option_str = ""
     options = cmd.options()
-    # option walk code stolen from bzrlib/help.py
     if options:
         option_str = "\nOptions:\n"
         for option_name, option in sorted(options.items()):
@@ -104,22 +119,13 @@ def format_command (params, cmd):
                 assert len(short_name) == 1
                 l += ', -' + short_name
             l += (30 - len(l)) * ' ' + option.help
-            # TODO: split help over multiple lines with correct indenting and 
-            # wrapping
+            # TODO: Split help over multiple lines with
+            # correct indenting and wrapping.
             wrapped = textwrap.fill(l, initial_indent='',
                                     subsequent_indent=30*' ')
             option_str = option_str + wrapped + '\n'       
     return subsection_header + option_str + "\n" + doc + "\n"
 
-
-def getcommand_help(params):
-    output='.SH "COMMAND REFERENCE"\n'
-    for cmd_name in command_name_list():
-        cmd_object = bzrlib.commands.get_cmd_object(cmd_name)
-        if cmd_object.hidden:
-            continue
-        output = output + format_command(params, cmd_object)
-    return output
 
 man_preamble = """\
 Man page for %(bzrcmd)s (bazaar-ng)
