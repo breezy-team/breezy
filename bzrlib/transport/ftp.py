@@ -31,6 +31,7 @@ import os
 import urllib
 import urlparse
 import stat
+import time
 import random
 from warnings import warn
 
@@ -71,6 +72,7 @@ class FtpStatResult(object):
 
 
 _number_of_retries = 1
+_sleep_between_retries = 5
 
 class FtpTransport(Transport):
     """This is the transport agent for ftp:// access."""
@@ -208,6 +210,7 @@ class FtpTransport(Transport):
                 raise
             else:
                 warning("FTP control connection closed. Trying to reopen.")
+                time.sleep(_sleep_between_retries)
                 self._FTP_instance = None
                 return self.get(relpath, decode, retries+1)
 
@@ -255,7 +258,8 @@ class FtpTransport(Transport):
             if retries > _number_of_retries:
                 raise
             else:
-                warning("FTP connection closed. Trying to reopen.")
+                warning("FTP control connection closed. Trying to reopen.")
+                time.sleep(_sleep_between_retries)
                 self._FTP_instance = None
                 self.put(relpath, fp, mode, retries+1)
 
