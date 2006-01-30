@@ -181,6 +181,7 @@ class TransportStore(Store):
         else:
             fn = self._relpath(fileid)
 
+        # FIXME RBC 20051128 this belongs in TextStore.
         fn_gz = fn + '.gz'
         if self._compressed:
             return fn_gz, fn
@@ -226,6 +227,7 @@ class TransportStore(Store):
         super(TransportStore, self).__init__()
         self._transport = a_transport
         self._prefixed = prefixed
+        # FIXME RBC 20051128 this belongs in TextStore.
         self._compressed = compressed
         self._suffixes = set()
 

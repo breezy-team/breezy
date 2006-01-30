@@ -463,6 +463,7 @@ class MustUseDecorated(Exception):
     This should never escape bzr, so does not need to be printable.
     """
 
+
 class MissingText(BzrNewError):
     """Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"""
 
@@ -475,8 +476,19 @@ class MissingText(BzrNewError):
 
 
 class BzrBadParameter(BzrNewError):
-    """Parameter %(param)s is neither unicode nor utf8."""
+    """A bad parameter : %(param)s is not usable.
     
+    This exception should never be thrown, but it is a base class for all
+    parameter-to-function errors.
+    """
     def __init__(self, param):
         BzrNewError.__init__(self)
         self.param = param
+
+
+class BzrBadParameterNotUnicode(BzrBadParameter):
+    """Parameter %(param)s is neither unicode nor utf8."""
+    
+
+class BzrBadParameterNotString(BzrBadParameter):
+    """Parameter %(param)s is not a string or unicode string."""

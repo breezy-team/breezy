@@ -26,7 +26,7 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None):
         revno = len(rh)
 
     files_to_remove = []
-    new_rev_history = AtomicFile(branch.controlfilename('revision-history'))
+    new_rev_history = AtomicFile(branch.control_files.controlfilename('revision-history'))
     for r in range(revno-1, len(rh)):
         rev_id = rh.pop()
         if verbose:

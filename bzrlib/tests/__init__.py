@@ -39,6 +39,7 @@ import bzrlib.branch
 import bzrlib.commands
 from bzrlib.errors import BzrError
 import bzrlib.inventory
+import bzrlib.iterablefile
 import bzrlib.merge3
 import bzrlib.osutils
 import bzrlib.osutils as osutils
@@ -56,14 +57,22 @@ MODULES_TO_DOCTEST = [
                       bzrlib.commands,
                       bzrlib.errors,
                       bzrlib.inventory,
+                      bzrlib.iterablefile,
                       bzrlib.merge3,
                       bzrlib.option,
                       bzrlib.osutils,
                       bzrlib.store
                       ]
 def packages_to_test():
+    """Return a list of packages to test.
+
+    The packages are not globally imported so that import failures are
+    triggered when running selftest, not when importing the command.
+    """
+    import bzrlib.doc
     import bzrlib.tests.blackbox
     return [
+            bzrlib.doc,
             bzrlib.tests.blackbox
             ]
 
@@ -291,6 +300,10 @@ class TestCase(unittest.TestCase):
         if len(missing) > 0:
             raise AssertionError("value(s) %r not present in container %r" % 
                                  (missing, superlist))
+
+    def assertIs(self, left, right):
+        if not (left is right):
+            raise AssertionError("%r is not %r." % (left, right))
 
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
@@ -687,6 +700,7 @@ def test_suite():
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_diff',
+                   'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_fileid_involved',
                    'bzrlib.tests.test_gpg',
@@ -695,6 +709,7 @@ def test_suite():
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_inv',
+                   'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
                    'bzrlib.tests.test_merge',
                    'bzrlib.tests.test_merge3',
