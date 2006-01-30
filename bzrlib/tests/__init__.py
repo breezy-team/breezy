@@ -15,6 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+# TODO: Perhaps there should be an API to find out if bzr running under the
+# test suite -- some plugins might want to avoid making intrusive changes if
+# this is the case.  However, we want behaviour under to test to diverge as
+# little as possible, so this should be used rarely if it's added at all.
+# (Suggestion from j-a-meinel, 2005-11-24)
+
 from cStringIO import StringIO
 import difflib
 import errno
@@ -22,6 +28,7 @@ import logging
 import os
 import re
 import shutil
+import stat
 import sys
 import tempfile
 import unittest
@@ -34,9 +41,11 @@ from bzrlib.errors import BzrError
 import bzrlib.inventory
 import bzrlib.merge3
 import bzrlib.osutils
+import bzrlib.osutils as osutils
 import bzrlib.plugin
 import bzrlib.store
 import bzrlib.trace
+from bzrlib.transport import urlescape
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.tests.treeshape import build_tree_contents
@@ -48,8 +57,9 @@ MODULES_TO_DOCTEST = [
                       bzrlib.errors,
                       bzrlib.inventory,
                       bzrlib.merge3,
+                      bzrlib.option,
                       bzrlib.osutils,
-                      bzrlib.store,
+                      bzrlib.store
                       ]
 def packages_to_test():
     import bzrlib.tests.blackbox
@@ -97,7 +107,7 @@ class _MyResult(unittest._TextTestResult):
         # at the end
         SHOW_DESCRIPTIONS = False
         if self.showAll:
-            width = bzrlib.osutils.terminal_width()
+            width = osutils.terminal_width()
             name_width = width - 15
             what = None
             if SHOW_DESCRIPTIONS:
@@ -156,14 +166,14 @@ class _MyResult(unittest._TextTestResult):
     def printErrorList(self, flavour, errors):
         for test, err in errors:
             self.stream.writeln(self.separator1)
-            self.stream.writeln("%s: %s" % (flavour,self.getDescription(test)))
+            self.stream.writeln("%s: %s" % (flavour, self.getDescription(test)))
             if hasattr(test, '_get_log'):
                 print >>self.stream
                 print >>self.stream, \
-                        ('vvvv[log from %s]' % test).ljust(78,'-')
+                        ('vvvv[log from %s]' % test.id()).ljust(78,'-')
                 print >>self.stream, test._get_log()
                 print >>self.stream, \
-                        ('^^^^[log from %s]' % test).ljust(78,'-')
+                        ('^^^^[log from %s]' % test.id()).ljust(78,'-')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
@@ -257,6 +267,14 @@ class TestCase(unittest.TestCase):
             return
         raise AssertionError("texts not equal:\n" + 
                              self._ndiff_strings(a, b))      
+        
+    def assertStartsWith(self, s, prefix):
+        if not s.startswith(prefix):
+            raise AssertionError('string %r does not start with %r' % (s, prefix))
+
+    def assertEndsWith(self, s, suffix):
+        if not s.endswith(prefix):
+            raise AssertionError('string %r does not end with %r' % (s, suffix))
 
     def assertContainsRe(self, haystack, needle_re):
         """Assert that a contains something matching a regular expression."""
@@ -273,6 +291,18 @@ class TestCase(unittest.TestCase):
         if len(missing) > 0:
             raise AssertionError("value(s) %r not present in container %r" % 
                                  (missing, superlist))
+
+    def assertTransportMode(self, transport, path, mode):
+        """Fail if a path does not have mode mode.
+        
+        If modes are not supported on this platform, the test is skipped.
+        """
+        if sys.platform == 'win32':
+            return
+        path_stat = transport.stat(path)
+        actual_mode = stat.S_IMODE(path_stat.st_mode)
+        self.assertEqual(mode, actual_mode,
+            'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
 
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
@@ -352,6 +382,8 @@ class TestCase(unittest.TestCase):
 
         This should only be called from TestCase.tearDown.
         """
+        # TODO: Perhaps this should keep running cleanups even if 
+        # one of them fails?
         for cleanup_fn in reversed(self._cleanups):
             cleanup_fn()
 
@@ -524,11 +556,11 @@ class TestCaseInTempDir(TestCase):
                 else:
                     raise
             # successfully created
-            TestCaseInTempDir.TEST_ROOT = os.path.abspath(root)
+            TestCaseInTempDir.TEST_ROOT = osutils.abspath(root)
             break
         # make a fake bzr directory there to prevent any tests propagating
         # up onto the source directory's real branch
-        os.mkdir(os.path.join(TestCaseInTempDir.TEST_ROOT, '.bzr'))
+        os.mkdir(osutils.pathjoin(TestCaseInTempDir.TEST_ROOT, '.bzr'))
 
     def setUp(self):
         super(TestCaseInTempDir, self).setUp()
@@ -536,15 +568,16 @@ class TestCaseInTempDir(TestCase):
         _currentdir = os.getcwdu()
         short_id = self.id().replace('bzrlib.tests.', '') \
                    .replace('__main__.', '')
-        self.test_dir = os.path.join(self.TEST_ROOT, short_id)
+        self.test_dir = osutils.pathjoin(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         os.environ['HOME'] = self.test_dir
+        os.environ['APPDATA'] = self.test_dir
         def _leaveDirectory():
             os.chdir(_currentdir)
         self.addCleanup(_leaveDirectory)
         
-    def build_tree(self, shape, line_endings='native'):
+    def build_tree(self, shape, line_endings='native', transport=None):
         """Build a test tree according to a pattern.
 
         shape is a sequence of file specifications.  If the final
@@ -555,34 +588,44 @@ class TestCaseInTempDir(TestCase):
                              in binary mode, exact contents are written
                              in native mode, the line endings match the
                              default platform endings.
+
+        :param transport: A transport to write to, for building trees on 
+                          VFS's. If the transport is readonly or None,
+                          "." is opened automatically.
         """
         # XXX: It's OK to just create them using forward slashes on windows?
+        if transport is None or transport.is_readonly():
+            transport = bzrlib.transport.get_transport(".")
         for name in shape:
             self.assert_(isinstance(name, basestring))
             if name[-1] == '/':
-                os.mkdir(name[:-1])
+                transport.mkdir(urlescape(name[:-1]))
             else:
                 if line_endings == 'binary':
-                    f = file(name, 'wb')
+                    end = '\n'
                 elif line_endings == 'native':
-                    f = file(name, 'wt')
+                    end = os.linesep
                 else:
                     raise BzrError('Invalid line ending request %r' % (line_endings,))
-                print >>f, "contents of", name
-                f.close()
+                content = "contents of %s%s" % (name, end)
+                transport.put(urlescape(name), StringIO(content))
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
 
     def failUnlessExists(self, path):
         """Fail unless path, which may be abs or relative, exists."""
-        self.failUnless(bzrlib.osutils.lexists(path))
+        self.failUnless(osutils.lexists(path))
+
+    def failIfExists(self, path):
+        """Fail if path, which may be abs or relative, exists."""
+        self.failIf(osutils.lexists(path))
         
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
-        self.failUnless(bzrlib.osutils.lexists(path))
+        self.failUnless(osutils.lexists(path))
         self.assertEqualDiff(content, open(path, 'r').read())
-        
+
 
 def filter_suite_by_re(suite, pattern):
     result = TestSuite()
@@ -636,6 +679,7 @@ def test_suite():
                    'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
+                   'bzrlib.tests.test_basis_inventory',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_command',
                    'bzrlib.tests.test_commit',
@@ -645,6 +689,7 @@ def test_suite():
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_fetch',
+                   'bzrlib.tests.test_fileid_involved',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
@@ -659,11 +704,12 @@ def test_suite():
                    'bzrlib.tests.test_msgeditor',
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
+                   'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_parent',
+                   'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_remove',
                    'bzrlib.tests.test_revision',
-                   'bzrlib.tests.test_revision_info',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revprops',
                    'bzrlib.tests.test_reweave',
@@ -671,11 +717,12 @@ def test_suite():
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
-                   'bzrlib.tests.test_sftp',
+                   'bzrlib.tests.test_sftp_transport',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
+                   'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
@@ -689,8 +736,12 @@ def test_suite():
                    'bzrlib.tests.test_workingtree',
                    'bzrlib.tests.test_xml',
                    ]
+    test_transport_implementations = [
+        'bzrlib.tests.test_transport_implementations']
 
-    print '%10s: %s' % ('bzr', os.path.realpath(sys.argv[0]))
+    TestCase.BZRPATH = osutils.pathjoin(
+            osutils.realpath(osutils.dirname(bzrlib.__path__[0])), 'bzr')
+    print '%10s: %s' % ('bzr', osutils.realpath(sys.argv[0]))
     print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
     print
     suite = TestSuite()
@@ -699,6 +750,12 @@ def test_suite():
     # actually wrong, just "no such module".  We should probably override that
     # class, but for the moment just load them ourselves. (mbp 20051202)
     loader = TestLoader()
+    from bzrlib.transport import TransportTestProviderAdapter
+    adapter = TransportTestProviderAdapter()
+    for mod_name in test_transport_implementations:
+        mod = _load_module_by_name(mod_name)
+        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
+            suite.addTests(adapter.adapt(test))
     for mod_name in testmod_names:
         mod = _load_module_by_name(mod_name)
         suite.addTest(loader.loadTestsFromModule(mod))

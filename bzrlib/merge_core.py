@@ -1,16 +1,21 @@
+from os import fdopen
 import os.path
+from tempfile import mkstemp
 
 import changeset
 from changeset import Inventory, apply_changeset, invert_dict
-from bzrlib.osutils import backup_file, rename
+from bzrlib.osutils import backup_file, rename, pathjoin
 from bzrlib.merge3 import Merge3
 import bzrlib
 from bzrlib.atomicfile import AtomicFile
 from changeset import get_contents
 
+
 class ApplyMerge3:
-    history_based = False
     """Contents-change wrapper around merge3.Merge3"""
+
+    history_based = False
+
     def __init__(self, file_id, base, other, show_base=False, reprocess=False):
         self.file_id = file_id
         self.base = base
@@ -33,14 +38,12 @@ class ApplyMerge3:
     def __ne__(self, other):
         return not (self == other)
 
-    def apply(self, filename, conflict_handler, reverse=False):
-        new_file = filename+".new" 
-        if not reverse:
-            base = self.base
-            other = self.other
-        else:
-            base = self.other
-            other = self.base
+    def apply(self, filename, conflict_handler):
+        output_file, new_file = mkstemp(dir=os.path.dirname(filename),
+                                        prefix=os.path.basename(filename))
+        output_file = fdopen(output_file, 'wb')
+        base = self.base
+        other = self.other
         def get_lines(tree):
             if self.file_id not in tree:
                 raise Exception("%s not in tree" % self.file_id)
@@ -51,7 +54,6 @@ class ApplyMerge3:
         m3 = Merge3(base_lines, file(filename, "rb").readlines(), other_lines)
 
         new_conflicts = False
-        output_file = file(new_file, "wb")
         start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
         if self.show_base is True:
             base_marker = '|' * 7
@@ -75,9 +77,12 @@ class ApplyMerge3:
             conflict_handler.merge_conflict(new_file, filename, base_lines,
                                             other_lines)
 
+
 class WeaveMerge:
     """Contents-change wrapper around weave merge"""
+
     history_based = True
+
     def __init__(self, weave, this_revision_id, other_revision_id):
         self.weave = weave
         self.this_revision_id = this_revision_id
@@ -99,7 +104,7 @@ class WeaveMerge:
     def __ne__(self, other):
         return not (self == other)
 
-    def apply(self, filename, conflict_handler, reverse=False):
+    def apply(self, filename, conflict_handler):
         this_i = self.weave.lookup(self.this_revision_id)
         other_i = self.weave.lookup(self.other_revision_id)
         plan = self.weave.plan_merge(this_i, other_i)
@@ -116,8 +121,10 @@ class WeaveMerge:
         else:
             out_file.commit()
 
+
 class BackupBeforeChange:
     """Contents-change wrapper to back up file first"""
+
     def __init__(self, contents_change):
         self.contents_change = contents_change
 
@@ -135,9 +142,9 @@ class BackupBeforeChange:
     def __ne__(self, other):
         return not (self == other)
 
-    def apply(self, filename, conflict_handler, reverse=False):
+    def apply(self, filename, conflict_handler):
         backup_file(filename)
-        self.contents_change.apply(filename, conflict_handler, reverse)
+        self.contents_change.apply(filename, conflict_handler)
 
 
 def invert_invent(inventory):
@@ -158,7 +165,7 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
     new_cset = make_merge_changeset(cset, this, base, other, 
                                     conflict_handler, merge_factory)
     result = apply_changeset(new_cset, invert_invent(this.inventory),
-                             this.basedir, conflict_handler, False)
+                             this.basedir, conflict_handler)
     return result
     
 
@@ -181,6 +188,7 @@ def make_merge_changeset(cset, this, base, other,
 
     return new_cset
 
+
 class ThreeWayConflict(Exception):
     def __init__(self, this, base, other):
         self.this = this
@@ -188,6 +196,7 @@ class ThreeWayConflict(Exception):
         self.other = other
         msg = "Conflict merging %s %s and %s" % (this, base, other)
         Exception.__init__(self, msg)
+
 
 def threeway_select(this, base, other):
     """Returns a value selected by the three-way algorithm.
@@ -239,7 +248,7 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
             parent_dir = {this_parent: this_dir, other_parent: other_dir, 
                           base_parent: base_dir}
             directory = parent_dir[parent]
-            return os.path.join(directory, name)
+            return pathjoin(directory, name)
         else:
             assert parent is None
             return None
@@ -329,13 +338,9 @@ class ExecFlagMerge(object):
         self.other_tree = other_tree
         self.file_id = file_id
 
-    def apply(self, filename, conflict_handler, reverse=False):
-        if not reverse:
-            base = self.base_tree
-            other = self.other_tree
-        else:
-            base = self.other_tree
-            other = self.base_tree
+    def apply(self, filename, conflict_handler):
+        base = self.base_tree
+        other = self.other_tree
         base_exec_flag = base.is_executable(self.file_id)
         other_exec_flag = other.is_executable(self.file_id)
         this_mode = os.stat(filename).st_mode
@@ -356,4 +361,5 @@ class ExecFlagMerge(object):
             else:
                 to_mode = current_mode & ~0111
             os.chmod(filename, to_mode)
+
 

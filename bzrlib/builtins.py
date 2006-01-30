@@ -792,7 +792,7 @@ class cmd_diff(Command):
         if revision is not None:
             if b2 is not None:
                 raise BzrCommandError("Can't specify -r with two branches")
-            if len(revision) == 1:
+            if (len(revision) == 1) or (revision[1].spec is None):
                 return show_diff(tree.branch, revision[0], specific_files=file_list,
                                  external_diff_options=diff_options)
             elif len(revision) == 2:
@@ -858,7 +858,7 @@ class cmd_added(Command):
             if file_id in basis_inv:
                 continue
             path = inv.id2path(file_id)
-            if not os.access(b.abspath(path), os.F_OK):
+            if not os.access(bzrlib.osutils.abspath(path), os.F_OK):
                 continue
             print path
                 
@@ -1461,12 +1461,31 @@ class cmd_selftest(Command):
             bzrlib.ui.ui_factory = save_ui
 
 
+def _get_bzr_branch():
+    """If bzr is run from a branch, return Branch or None"""
+    import bzrlib.errors
+    from bzrlib.branch import Branch
+    from bzrlib.osutils import abspath
+    from os.path import dirname
+    
+    try:
+        branch = Branch.open(dirname(abspath(dirname(__file__))))
+        return branch
+    except bzrlib.errors.BzrError:
+        return None
+    
+
 def show_version():
     print "bzr (bazaar-ng) %s" % bzrlib.__version__
     # is bzrlib itself in a branch?
-    bzrrev = bzrlib.get_bzr_revision()
-    if bzrrev:
-        print "  (bzr checkout, revision %d {%s})" % bzrrev
+    branch = _get_bzr_branch()
+    if branch:
+        rh = branch.revision_history()
+        revno = len(rh)
+        print "  bzr checkout, revision %d" % (revno,)
+        print "  nick: %s" % (branch.nick,)
+        if rh:
+            print "  revid: %s" % (rh[-1],)
     print bzrlib.__copyright__
     print "http://bazaar-ng.org/"
     print
@@ -1952,14 +1971,19 @@ class cmd_uncommit(bzrlib.commands.Command):
     
     In the future, uncommit will create a changeset, which can then
     be re-applied.
+
+    TODO: jam 20060108 Add an option to allow uncommit to remove unreferenced
+              information in 'branch-as-repostory' branches.
+    TODO: jam 20060108 Add the ability for uncommit to remove unreferenced
+              information in shared branches as well.
     """
-    takes_options = ['all', 'verbose', 'revision',
+    takes_options = ['verbose', 'revision',
                     Option('dry-run', help='Don\'t actually make changes'),
                     Option('force', help='Say yes to all questions.')]
     takes_args = ['location?']
     aliases = []
 
-    def run(self, location=None, all=False,
+    def run(self, location=None, 
             dry_run=False, verbose=False,
             revision=None, force=False):
         from bzrlib.branch import Branch
@@ -1996,8 +2020,7 @@ class cmd_uncommit(bzrlib.commands.Command):
                     print 'Canceled'
                     return 0
 
-        uncommit(b, remove_files=all,
-                dry_run=dry_run, verbose=verbose,
+        uncommit(b, dry_run=dry_run, verbose=verbose,
                 revno=revno)
 
 

@@ -20,6 +20,7 @@ import sys
 import os
 import errno
 from warnings import warn
+import xml.sax.saxutils
 from cStringIO import StringIO
 
 
@@ -27,8 +28,8 @@ import bzrlib
 import bzrlib.inventory as inventory
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import (isdir, quotefn,
-                            rename, splitpath, sha_file, appendpath, 
-                            file_kind, abspath)
+                            rename, splitpath, sha_file,
+                            file_kind, abspath, normpath, pathjoin)
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
@@ -133,8 +134,8 @@ class Branch(object):
         while True:
             try:
                 return BzrBranch(t), t.relpath(url)
-            except NotBranchError:
-                pass
+            except NotBranchError, e:
+                mutter('not a branch in: %r %s', t.base, e)
             new_t = t.clone('..')
             if new_t.base == t.base:
                 # reached the root, whatever that may be
@@ -155,7 +156,7 @@ class Branch(object):
 
     def _get_nick(self):
         cfg = self.tree_config()
-        return cfg.get_option(u"nickname", default=self.base.split('/')[-1])
+        return cfg.get_option(u"nickname", default=self.base.split('/')[-2])
 
     def _set_nick(self, nick):
         cfg = self.tree_config()
@@ -487,6 +488,49 @@ class Branch(object):
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         raise NotImplementedError('store_revision_signature is abstract')
 
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """ This function returns the file_id(s) involved in the
+            changes between the from_revid revision and the to_revid
+            revision
+        """
+        raise NotImplementedError('fileid_involved_between_revs is abstract')
+
+    def fileid_involved(self, last_revid=None):
+        """ This function returns the file_id(s) involved in the
+            changes up to the revision last_revid
+            If no parametr is passed, then all file_id[s] present in the
+            repository are returned
+        """
+        raise NotImplementedError('fileid_involved is abstract')
+
+    def fileid_involved_by_set(self, changes):
+        """ This function returns the file_id(s) involved in the
+            changes present in the set 'changes'
+        """
+        raise NotImplementedError('fileid_involved_by_set is abstract')
+
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """ This function returns the file_id(s) involved in the
+            changes between the from_revid revision and the to_revid
+            revision
+        """
+        raise NotImplementedError('fileid_involved_between_revs is abstract')
+
+    def fileid_involved(self, last_revid=None):
+        """ This function returns the file_id(s) involved in the
+            changes up to the revision last_revid
+            If no parametr is passed, then all file_id[s] present in the
+            repository are returned
+        """
+        raise NotImplementedError('fileid_involved is abstract')
+
+    def fileid_involved_by_set(self, changes):
+        """ This function returns the file_id(s) involved in the
+            changes present in the set 'changes'
+        """
+        raise NotImplementedError('fileid_involved_by_set is abstract')
+
+
 class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
 
@@ -512,6 +556,10 @@ class BzrBranch(Branch):
     _lock_count = None
     _lock = None
     _inventory_weave = None
+    # If set to False (by a plugin, etc) BzrBranch will not set the
+    # mode on created files or directories
+    _set_file_mode = True
+    _set_dir_mode = True
     
     # Map some sort of prefix into a namespace
     # stuff like "revno:10", "revid:", etc.
@@ -562,25 +610,23 @@ class BzrBranch(Branch):
         if init:
             self._make_control()
         self._check_format(relax_version_check)
+        self._find_modes()
 
         def get_store(name, compressed=True, prefixed=False):
-            # FIXME: This approach of assuming stores are all entirely compressed
-            # or entirely uncompressed is tidy, but breaks upgrade from 
-            # some existing branches where there's a mixture; we probably 
-            # still want the option to look for both.
             relpath = self._rel_controlfilename(unicode(name))
             store = TextStore(self._transport.clone(relpath),
+                              dir_mode=self._dir_mode,
+                              file_mode=self._file_mode,
                               prefixed=prefixed,
                               compressed=compressed)
-            #if self._transport.should_cache():
-            #    cache_path = os.path.join(self.cache_root, name)
-            #    os.mkdir(cache_path)
-            #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
 
         def get_weave(name, prefixed=False):
             relpath = self._rel_controlfilename(unicode(name))
-            ws = WeaveStore(self._transport.clone(relpath), prefixed=prefixed)
+            ws = WeaveStore(self._transport.clone(relpath),
+                            prefixed=prefixed,
+                            dir_mode=self._dir_mode,
+                            file_mode=self._file_mode)
             if self._transport.should_cache():
                 ws.enable_cache = True
             return ws
@@ -753,7 +799,25 @@ class BzrBranch(Branch):
                     f = codecs.getwriter('utf-8')(f, errors='replace')
             path = self._rel_controlfilename(path)
             ctrl_files.append((path, f))
-        self._transport.put_multi(ctrl_files)
+        self._transport.put_multi(ctrl_files, mode=self._file_mode)
+
+    def _find_modes(self, path=None):
+        """Determine the appropriate modes for files and directories."""
+        try:
+            if path is None:
+                path = self._rel_controlfilename('')
+            st = self._transport.stat(path)
+        except errors.TransportNotPossible:
+            self._dir_mode = 0755
+            self._file_mode = 0644
+        else:
+            self._dir_mode = st.st_mode & 07777
+            # Remove the sticky and execute bits for files
+            self._file_mode = self._dir_mode & ~07111
+        if not self._set_dir_mode:
+            self._dir_mode = None
+        if not self._set_file_mode:
+            self._file_mode = None
 
     def _make_control(self):
         from bzrlib.inventory import Inventory
@@ -771,7 +835,12 @@ class BzrBranch(Branch):
         bzrlib.weavefile.write_weave_v5(Weave(), sio)
         empty_weave = sio.getvalue()
 
-        dirs = [[], 'revision-store', 'weaves']
+        cfn = self._rel_controlfilename
+        # Since we don't have a .bzr directory, inherit the
+        # mode from the root directory
+        self._find_modes(u'.')
+
+        dirs = ['', 'revision-store', 'weaves']
         files = [('README', 
             "This is a Bazaar-NG control directory.\n"
             "Do not change any files in this directory.\n"),
@@ -782,10 +851,8 @@ class BzrBranch(Branch):
             ('pending-merges', ''),
             ('inventory', empty_inv),
             ('inventory.weave', empty_weave),
-            ('ancestry.weave', empty_weave)
         ]
-        cfn = self._rel_controlfilename
-        self._transport.mkdir_multi([cfn(d) for d in dirs])
+        self._transport.mkdir_multi([cfn(d) for d in dirs], mode=self._dir_mode)
         self.put_controlfiles(files)
         mutter('created control directory in ' + self._transport.base)
 
@@ -1006,7 +1073,7 @@ class BzrBranch(Branch):
             return EmptyTree()
         else:
             inv = self.get_revision_inventory(revision_id)
-            return RevisionTree(self.weave_store, inv, revision_id)
+            return RevisionTree(self, inv, revision_id)
 
     def basis_tree(self):
         """See Branch.basis_tree."""
@@ -1014,7 +1081,7 @@ class BzrBranch(Branch):
             revision_id = self.revision_history()[-1]
             xml = self.working_tree().read_basis_inventory(revision_id)
             inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
-            return RevisionTree(self.weave_store, inv, revision_id)
+            return RevisionTree(self, inv, revision_id)
         except (IndexError, NoSuchFile, NoWorkingTree), e:
             return self.revision_tree(self.last_revision())
 
@@ -1091,6 +1158,97 @@ class BzrBranch(Branch):
         self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
                                 revision_id, "sig")
 
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """Find file_id(s) which are involved in the changes between revisions.
+
+        This determines the set of revisions which are involved, and then
+        finds all file ids affected by those revisions.
+        """
+        # TODO: jam 20060119 This code assumes that w.inclusions will
+        #       always be correct. But because of the presence of ghosts
+        #       it is possible to be wrong.
+        #       One specific example from Robert Collins:
+        #       Two branches, with revisions ABC, and AD
+        #       C is a ghost merge of D.
+        #       Inclusions doesn't recognize D as an ancestor.
+        #       If D is ever merged in the future, the weave
+        #       won't be fixed, because AD never saw revision C
+        #       to cause a conflict which would force a reweave.
+        w = self._get_inventory_weave()
+        from_set = set(w.inclusions([w.lookup(from_revid)]))
+        to_set = set(w.inclusions([w.lookup(to_revid)]))
+        included = to_set.difference(from_set)
+        changed = map(w.idx_to_name, included)
+        return self._fileid_involved_by_set(changed)
+
+    def fileid_involved(self, last_revid=None):
+        """Find all file_ids modified in the ancestry of last_revid.
+
+        :param last_revid: If None, last_revision() will be used.
+        """
+        w = self._get_inventory_weave()
+        if not last_revid:
+            changed = set(w._names)
+        else:
+            included = w.inclusions([w.lookup(last_revid)])
+            changed = map(w.idx_to_name, included)
+        return self._fileid_involved_by_set(changed)
+
+    def fileid_involved_by_set(self, changes):
+        """Find all file_ids modified by the set of revisions passed in.
+
+        :param changes: A set() of revision ids
+        """
+        # TODO: jam 20060119 This line does *nothing*, remove it.
+        #       or better yet, change _fileid_involved_by_set so
+        #       that it takes the inventory weave, rather than
+        #       pulling it out by itself.
+        w = self._get_inventory_weave()
+        return self._fileid_involved_by_set(changes)
+
+    def _fileid_involved_by_set(self, changes):
+        """Find the set of file-ids affected by the set of revisions.
+
+        :param changes: A set() of revision ids.
+        :return: A set() of file ids.
+        
+        This peaks at the Weave, interpreting each line, looking to
+        see if it mentions one of the revisions. And if so, includes
+        the file id mentioned.
+        This expects both the Weave format, and the serialization
+        to have a single line per file/directory, and to have
+        fileid="" and revision="" on that line.
+        """
+        assert self._branch_format in (5, 6), \
+            "fileid_involved only supported for branches which store inventory as xml"
+
+        w = self._get_inventory_weave()
+        file_ids = set()
+        for line in w._weave:
+
+            # it is ugly, but it is due to the weave structure
+            if not isinstance(line, basestring): continue
+
+            start = line.find('file_id="')+9
+            if start < 9: continue
+            end = line.find('"', start)
+            assert end>= 0
+            file_id = xml.sax.saxutils.unescape(line[start:end])
+
+            # check if file_id is already present
+            if file_id in file_ids: continue
+
+            start = line.find('revision="')+10
+            if start < 10: continue
+            end = line.find('"', start)
+            assert end>= 0
+            revision_id = xml.sax.saxutils.unescape(line[start:end])
+
+            if revision_id in changes:
+                file_ids.add(file_id)
+
+        return file_ids
+
 
 class ScratchBranch(BzrBranch):
     """Special test class: a branch that cleans up after itself.
@@ -1134,11 +1292,11 @@ class ScratchBranch(BzrBranch):
         ...   orig.base == clone.base
         ...
         False
-        >>> os.path.isfile(os.path.join(clone.base, "file1"))
+        >>> os.path.isfile(pathjoin(clone.base, "file1"))
         True
         """
         from shutil import copytree
-        from tempfile import mkdtemp
+        from bzrlib.osutils import mkdtemp
         base = mkdtemp()
         os.rmdir(base)
         copytree(self.base, base, symlinks=True)
@@ -1152,10 +1310,10 @@ class ScratchBranch(BzrBranch):
 
 def is_control_file(filename):
     ## FIXME: better check
-    filename = os.path.normpath(filename)
+    filename = normpath(filename)
     while filename != '':
         head, tail = os.path.split(filename)
-        ## mutter('check %r for control file' % ((head, tail), ))
+        ## mutter('check %r for control file' % ((head, tail),))
         if tail == bzrlib.BZRDIR:
             return True
         if filename == head:
