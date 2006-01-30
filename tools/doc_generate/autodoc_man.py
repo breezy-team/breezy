@@ -167,32 +167,25 @@ Path where
 is to look for external command.
 .TP
 .I "BZREMAIL"
-E-Mail address of the user. Overrides
-.I "~/.bzr.conf/email" and
-.IR "EMAIL" .
-Example content:
-.I "John Doe <john@example.com>"
+E-Mail address of the user. Overrides default user config.
 .TP
 .I "EMAIL"
-E-Mail address of the user. Overridden by the content of the file
-.I "~/.bzr.conf/email"
-and of the environment variable
-.IR "BZREMAIL" .
+E-Mail address of the user. Overriddes default user config.
 .SH "FILES"
 .TP
-.I "~/.bzr.conf/"
-Directory where all the user\'s settings are stored.
-.TP
-.I "~/.bzr.conf/email"
-Stores name and email address of the user. Overrides content of
-.I "EMAIL"
-environment variable. Example content:
-.I "John Doe <john@example.com>"
+.I "~/.bazaar/bazaar.conf/"
+Contains the default user config. Only one section, [DEFAULT] is allowed. A 
+typical default config file may be similiar to:
+.br
+.br
+.B [DEFAULT]
+.br
+.B email=John Doe <jdoe@isp.com>
 .SH "SEE ALSO"
+.UR http://bazaar.canonical.com/
+.BR http://bazaar.canonical.com/,
 .UR http://www.bazaar-ng.org/
-.BR http://www.bazaar-ng.org/,
-.UR http://www.bazaar-ng.org/doc/
-.BR http://www.bazaar-ng.org/doc/
+.BR http://www.bazaar-ng.org/
 """
 
 if __name__ == '__main__':
