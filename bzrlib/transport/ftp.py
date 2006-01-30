@@ -31,6 +31,7 @@ import os
 import urllib
 import urlparse
 import stat
+import random
 from warnings import warn
 
 
@@ -214,19 +215,29 @@ class FtpTransport(Transport):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
+        :param fp:       File-like or string object.
         :param retries: Number of retries after temporary failures so far
                         for this operation.
 
         TODO: jam 20051215 This should be an atomic put, not overwritting files in place
         TODO: jam 20051215 ftp as a protocol seems to support chmod, but ftplib does not
         """
+        tmp_abspath = '%s.tmp.%.9f.%d.%d' % (self._abspath(relpath), time.time(),
+                        os.getpid(), random.randint(0,0x7FFFFFFF))
         if not hasattr(fp, 'read'):
             fp = StringIO(fp)
         try:
             mutter("FTP put: %s" % self._abspath(relpath))
             f = self._get_FTP()
-            f.storbinary('STOR '+self._abspath(relpath), fp, 8192)
+            try:
+                f.storbinary('STOR '+tmp_abspath, fp)
+                f.rename(tmp_abspath, self._abspath(relpath))
+            except (ftplib.error_temp,EOFError), e:
+                try:
+                    f.delete(tmp_abspath)
+                except:
+                    raise e
+                raise
         except ftplib.error_perm, e:
             if "no such file" in str(e).lower():
                 raise NoSuchFile("Error storing %s: %s"
