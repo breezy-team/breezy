@@ -994,7 +994,9 @@ class Corruption(TestCase):
 class InstrumentedWeave(Weave):
     """Keep track of how many times functions are called."""
     
-    _extract_count = 0
+    def __init__(self, weave_name=None):
+        self._extract_count = 0
+        Weave.__init__(self, weave_name=weave_name)
 
     def _extract(self, versions):
         self._extract_count += 1
@@ -1030,7 +1032,6 @@ class JoinOptimization(TestCase):
 
         self.assertEqual(4, w1._extract_count)
         self.assertEqual(4, w2._extract_count)
-
 
     def test_double_parent(self):
         # It should not be considered illegal to add
