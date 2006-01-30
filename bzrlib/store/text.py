@@ -95,7 +95,7 @@ class TextStore(bzrlib.store.TransportStore):
             raise KeyError(fileid + '-' + str(suffix))
 
         try:
-            result = other._transport.copy_to([path], self._transport, pb=pb,
+            result = other._transport.copy_to([path], self._transport, 
                                               mode=self._file_mode)
         except NoSuchFile:
             if not self._prefixed:
@@ -104,7 +104,7 @@ class TextStore(bzrlib.store.TransportStore):
                 self._transport.mkdir(hash_prefix(fileid)[:-1], mode=self._dir_mode)
             except FileExists:
                 pass
-            result = other._transport.copy_to([path], self._transport, pb=pb,
+            result = other._transport.copy_to([path], self._transport,
                                               mode=self._file_mode)
 
         if result != 1:
