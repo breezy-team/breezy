@@ -72,6 +72,8 @@ class FtpStatResult(object):
 class FtpTransport(Transport):
     """This is the transport agent for ftp:// access."""
 
+    _number_of_retries = 1
+
     def __init__(self, base, _provided_instance=None):
         """Set the base path where files will be stored."""
         assert base.startswith('ftp://') or base.startswith('aftp://')
@@ -178,6 +180,8 @@ class FtpTransport(Transport):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
+        :param retries: Number of retries after temporary failures so far
+                        for this operation.
 
         We're meant to return a file-like object which bzr will
         then read from. For now we do this via the magic of StringIO
@@ -193,16 +197,16 @@ class FtpTransport(Transport):
             raise NoSuchFile(self.abspath(relpath))
         except ftplib.error_temp, e:
             if retries > 1:
-                raise e
+                raise
             else:
                 warning("FTP temporary error: %s. Retrying." % str(e))
                 self._FTP_instance = None
                 return self.get(relpath, decode, retries+1)
-        except EOFError, e:
-            if retries > 1:
-                raise e
+        except EOFError:
+            if retries > _number_of_retries:
+                raise
             else:
-                warning("FTP connection closed. Trying to reopen.")
+                warning("FTP control connection closed. Trying to reopen.")
                 self._FTP_instance = None
                 return self.get(relpath, decode, retries+1)
 
@@ -211,6 +215,9 @@ class FtpTransport(Transport):
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like or string object.
+        :param retries: Number of retries after temporary failures so far
+                        for this operation.
+
         TODO: jam 20051215 This should be an atomic put, not overwritting files in place
         TODO: jam 20051215 ftp as a protocol seems to support chmod, but ftplib does not
         """
@@ -223,19 +230,19 @@ class FtpTransport(Transport):
         except ftplib.error_perm, e:
             if "no such file" in str(e).lower():
                 raise NoSuchFile("Error storing %s: %s"
-                                 % (self.abspath(relpath), str(e)))
+                                 % (self.abspath(relpath), str(e)), extra=e)
             else:
                 raise FtpTransportError(orig_error=e)
         except ftplib.error_temp, e:
-            if retries > 1:
-                raise e
+            if retries > _number_of_retries:
+                raise
             else:
                 warning("FTP temporary error: %s. Retrying." % str(e))
                 self._FTP_instance = None
                 self.put(relpath, fp, mode, retries+1)
-        except EOFError, e:
+        except EOFError:
             if retries > 1:
-                raise e
+                raise
             else:
                 warning("FTP connection closed. Trying to reopen.")
                 self._FTP_instance = None
