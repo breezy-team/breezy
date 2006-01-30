@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 # -*- coding: utf-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
@@ -28,10 +28,14 @@ from bzrlib.tests import TestCaseInTempDir, BzrTestBase
 
 def test_suite():
     testmod_names = [
+                     'bzrlib.tests.blackbox.test_added',
                      'bzrlib.tests.blackbox.test_cat',
+                     'bzrlib.tests.blackbox.test_diff',
                      'bzrlib.tests.blackbox.test_export',
                      'bzrlib.tests.blackbox.test_missing',
+                     'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pull',
+                     'bzrlib.tests.blackbox.test_revert',
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_info',
                      'bzrlib.tests.blackbox.test_too_much',

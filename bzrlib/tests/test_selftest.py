@@ -19,6 +19,7 @@
 import os
 import sys
 import unittest
+import warnings
 
 from bzrlib.tests import (
                           _load_module_by_name,
@@ -27,6 +28,7 @@ from bzrlib.tests import (
                           TestSkipped,
                           TextTestRunner,
                           )
+import bzrlib.errors as errors
 
 
 class SelftestTests(TestCase):
@@ -106,9 +108,12 @@ class TestTransportProviderAdapter(TestCase):
         modules = _get_transport_modules()
         permutation_count = 0
         for module in modules:
-            permutation_count += len(reduce(getattr, 
-                (module + ".get_test_permutations").split('.')[1:],
-                 __import__(module))())
+            try:
+                permutation_count += len(reduce(getattr, 
+                    (module + ".get_test_permutations").split('.')[1:],
+                     __import__(module))())
+            except errors.DependencyNotPresent:
+                pass
         input_test = TestTransportProviderAdapter(
             "test_adapter_sets_transport_class")
         adapter = TransportTestProviderAdapter()
@@ -127,11 +132,17 @@ class TestTransportProviderAdapter(TestCase):
                                             LocalAbspathServer,
                                             LocalURLServer
                                             )
-        from bzrlib.transport.sftp import (SFTPTransport,
-                                           SFTPAbsoluteServer,
-                                           SFTPHomeDirServer,
-                                           SFTPSiblingAbsoluteServer,
-                                           )
+        try:
+            from bzrlib.transport.sftp import (SFTPTransport,
+                                               SFTPAbsoluteServer,
+                                               SFTPHomeDirServer,
+                                               SFTPSiblingAbsoluteServer,
+                                               )
+        except errors.ParamikoNotPresent, e:
+            warnings.warn(str(e))
+            has_paramiko = False
+        else:
+            has_paramiko = True
         from bzrlib.transport.http import (HttpTransport,
                                            HttpServer
                                            )
@@ -162,9 +173,10 @@ class TestTransportProviderAdapter(TestCase):
         local_abspath_test = test_iter.next()
         local_urlpath_test = test_iter.next()
         memory_test = test_iter.next()
-        sftp_abs_test = test_iter.next()
-        sftp_homedir_test = test_iter.next()
-        sftp_sibling_abs_test = test_iter.next()
+        if has_paramiko:
+            sftp_abs_test = test_iter.next()
+            sftp_homedir_test = test_iter.next()
+            sftp_sibling_abs_test = test_iter.next()
         # ftp_test = test_iter.next()
         self.assertRaises(StopIteration, test_iter.next)
         self.assertEqual(LocalTransport, local_relpath_test.transport_class)
@@ -176,13 +188,14 @@ class TestTransportProviderAdapter(TestCase):
         self.assertEqual(LocalTransport, local_urlpath_test.transport_class)
         self.assertEqual(LocalURLServer, local_urlpath_test.transport_server)
 
-        self.assertEqual(SFTPTransport, sftp_abs_test.transport_class)
-        self.assertEqual(SFTPAbsoluteServer, sftp_abs_test.transport_server)
-        self.assertEqual(SFTPTransport, sftp_homedir_test.transport_class)
-        self.assertEqual(SFTPHomeDirServer, sftp_homedir_test.transport_server)
-        self.assertEqual(SFTPTransport, sftp_sibling_abs_test.transport_class)
-        self.assertEqual(SFTPSiblingAbsoluteServer,
-                         sftp_sibling_abs_test.transport_server)
+        if has_paramiko:
+            self.assertEqual(SFTPTransport, sftp_abs_test.transport_class)
+            self.assertEqual(SFTPAbsoluteServer, sftp_abs_test.transport_server)
+            self.assertEqual(SFTPTransport, sftp_homedir_test.transport_class)
+            self.assertEqual(SFTPHomeDirServer, sftp_homedir_test.transport_server)
+            self.assertEqual(SFTPTransport, sftp_sibling_abs_test.transport_class)
+            self.assertEqual(SFTPSiblingAbsoluteServer,
+                             sftp_sibling_abs_test.transport_server)
 
         self.assertEqual(HttpTransport, http_test.transport_class)
         self.assertEqual(HttpServer, http_test.transport_server)

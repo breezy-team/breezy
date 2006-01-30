@@ -39,6 +39,7 @@ import bzrlib.branch
 import bzrlib.commands
 from bzrlib.errors import BzrError
 import bzrlib.inventory
+import bzrlib.iterablefile
 import bzrlib.merge3
 import bzrlib.osutils
 import bzrlib.osutils as osutils
@@ -56,38 +57,24 @@ MODULES_TO_DOCTEST = [
                       bzrlib.commands,
                       bzrlib.errors,
                       bzrlib.inventory,
+                      bzrlib.iterablefile,
                       bzrlib.merge3,
+                      bzrlib.option,
                       bzrlib.osutils,
-                      bzrlib.store,
+                      bzrlib.store
                       ]
 def packages_to_test():
+    """Return a list of packages to test.
+
+    The packages are not globally imported so that import failures are
+    triggered when running selftest, not when importing the command.
+    """
+    import bzrlib.doc
     import bzrlib.tests.blackbox
     return [
+            bzrlib.doc,
             bzrlib.tests.blackbox
             ]
-
-
-class EarlyStoppingTestResultAdapter(object):
-    """An adapter for TestResult to stop at the first first failure or error"""
-
-    def __init__(self, result):
-        self._result = result
-
-    def addError(self, test, err):
-        self._result.addError(test, err)
-        self._result.stop()
-
-    def addFailure(self, test, err):
-        self._result.addFailure(test, err)
-        self._result.stop()
-
-    def __getattr__(self, name):
-        return getattr(self._result, name)
-
-    def __setattr__(self, name, value):
-        if name == '_result':
-            object.__setattr__(self, name, value)
-        return setattr(self._result, name, value)
 
 
 class _MyResult(unittest._TextTestResult):
@@ -95,6 +82,7 @@ class _MyResult(unittest._TextTestResult):
 
     Shows output in a different format, including displaying runtime for tests.
     """
+    stop_early = False
 
     def _elapsedTime(self):
         return "%5dms" % (1000 * (time.time() - self._start_time))
@@ -134,6 +122,8 @@ class _MyResult(unittest._TextTestResult):
         elif self.dots:
             self.stream.write('E')
         self.stream.flush()
+        if self.stop_early:
+            self.stop()
 
     def addFailure(self, test, err):
         unittest.TestResult.addFailure(self, test, err)
@@ -142,6 +132,8 @@ class _MyResult(unittest._TextTestResult):
         elif self.dots:
             self.stream.write('F')
         self.stream.flush()
+        if self.stop_early:
+            self.stop()
 
     def addSuccess(self, test):
         if self.showAll:
@@ -182,8 +174,7 @@ class TextTestRunner(unittest.TextTestRunner):
 
     def _makeResult(self):
         result = _MyResult(self.stream, self.descriptions, self.verbosity)
-        if self.stop_on_failure:
-            result = EarlyStoppingTestResultAdapter(result)
+        result.stop_early = self.stop_on_failure
         return result
 
 
@@ -290,6 +281,10 @@ class TestCase(unittest.TestCase):
         if len(missing) > 0:
             raise AssertionError("value(s) %r not present in container %r" % 
                                  (missing, superlist))
+
+    def assertIs(self, left, right):
+        if not (left is right):
+            raise AssertionError("%r is not %r." % (left, right))
 
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
@@ -686,13 +681,16 @@ def test_suite():
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_diff',
+                   'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_fetch',
+                   'bzrlib.tests.test_fileid_involved',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_inv',
+                   'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
                    'bzrlib.tests.test_merge',
                    'bzrlib.tests.test_merge3',

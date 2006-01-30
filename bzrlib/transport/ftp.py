@@ -194,7 +194,7 @@ class FtpTransport(Transport):
             ret.seek(0)
             return ret
         except ftplib.error_perm, e:
-            raise NoSuchFile(self.abspath(relpath))
+            raise NoSuchFile(self.abspath(relpath), extra=str(e))
         except ftplib.error_temp, e:
             if retries > 1:
                 raise
