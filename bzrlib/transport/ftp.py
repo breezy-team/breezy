@@ -241,7 +241,7 @@ class FtpTransport(Transport):
                 self._FTP_instance = None
                 self.put(relpath, fp, mode, retries+1)
         except EOFError:
-            if retries > 1:
+            if retries > _number_of_retries:
                 raise
             else:
                 warning("FTP connection closed. Trying to reopen.")
