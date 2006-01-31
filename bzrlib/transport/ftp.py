@@ -358,7 +358,11 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             return FtpStatResult(f, self._abspath(relpath))
         except ftplib.error_perm, e:
-            raise TransportError(orig_error=e)
+            if "no such file" in str(e).lower():
+                raise NoSuchFile("Error storing %s: %s"
+                                 % (self.abspath(relpath), str(e)), extra=e)
+            else:
+                raise FtpTransportError(orig_error=e)
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
