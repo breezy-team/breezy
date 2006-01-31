@@ -2,8 +2,12 @@ bzr development version
 
   IMPROVEMENTS:
 
-    * The ftp transport now tries to reconnect after a temporary
-      failure. ftp put is made atomic.
+    * The FTP transport now tries to reconnect after a temporary
+      failure. ftp put is made atomic. (Matthieu Moy)
+
+    * The FTP transport now maintains a pool of connections, and
+      reuses them to avoid multiple connections to the same host (like
+      sftp did). (Daniel Silverstone)
 
   INTERNALS:
   
