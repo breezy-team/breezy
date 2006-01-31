@@ -123,10 +123,13 @@ def generate_rio_version(branch, to_file,
     info.add('build-date', create_date_str())
     info.add('revno', str(branch.revno()))
 
+    # XXX: Compatibility pre/post storage
+    repo = getattr(branch, 'repository', branch)
+
     last_rev_id = branch.last_revision()
     if last_rev_id is not None:
         info.add('revision-id', last_rev_id)
-        rev = branch.get_revision(last_rev_id)
+        rev = repo.get_revision(last_rev_id)
         info.add('date', create_date_str(rev.timestamp, rev.timezone))
 
     if branch.nick is not None:
@@ -147,7 +150,7 @@ def generate_rio_version(branch, to_file,
         revs = branch.revision_history()
         log = Stanza()
         for rev_id in revs:
-            rev = branch.get_revision(rev_id)
+            rev = repo.get_revision(rev_id)
             log.add('id', rev_id)
             log.add('message', rev.message)
             log.add('date', create_date_str(rev.timestamp, rev.timezone))
@@ -222,9 +225,12 @@ def generate_python_version(branch, to_file,
     }
     revisions = []
 
+    # XXX: Compatibility pre/post storage
+    repo = getattr(branch, 'repository', branch)
+
     last_rev_id = branch.last_revision()
     if last_rev_id:
-        rev = branch.get_revision(last_rev_id)
+        rev = repo.get_revision(last_rev_id)
         info['revision_id'] = last_rev_id
         info['date'] = create_date_str(rev.timestamp, rev.timezone)
 
@@ -248,7 +254,7 @@ def generate_python_version(branch, to_file,
     if include_revision_history:
         revs = branch.revision_history()
         for rev_id in revs:
-            rev = branch.get_revision(rev_id)
+            rev = repo.get_revision(rev_id)
             revisions.append((rev_id, rev.message, rev.timestamp, rev.timezone))
         revision_str = pprint.pformat(revisions)
         to_file.write('revisions = ')
