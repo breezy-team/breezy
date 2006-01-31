@@ -32,6 +32,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_cat',
                      'bzrlib.tests.blackbox.test_diff',
                      'bzrlib.tests.blackbox.test_export',
+                     'bzrlib.tests.blackbox.test_find_merge_base',
                      'bzrlib.tests.blackbox.test_missing',
                      'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pull',
