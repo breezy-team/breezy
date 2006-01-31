@@ -71,7 +71,7 @@ class FtpStatResult(object):
                 f.cwd(pwd)
 
 
-_number_of_retries = 1
+_number_of_retries = 2
 _sleep_between_retries = 5
 
 class FtpTransport(Transport):
@@ -199,15 +199,19 @@ class FtpTransport(Transport):
         except ftplib.error_perm, e:
             raise NoSuchFile(self.abspath(relpath), extra=str(e))
         except ftplib.error_temp, e:
-            if retries > 1:
-                raise
+            if retries > _number_of_retries:
+                raise TransportError(msg="FTP temporary error during GET %s. Aborting."
+                                     % self.abspath(relpath),
+                                     orig_error=e)
             else:
                 warning("FTP temporary error: %s. Retrying." % str(e))
                 self._FTP_instance = None
                 return self.get(relpath, decode, retries+1)
-        except EOFError:
+        except EOFError, e:
             if retries > _number_of_retries:
-                raise
+                raise TransportError("FTP control connection closed during GET %s."
+                                     % self.abspath(relpath),
+                                     orig_error=e)
             else:
                 warning("FTP control connection closed. Trying to reopen.")
                 time.sleep(_sleep_between_retries)
@@ -222,7 +226,6 @@ class FtpTransport(Transport):
         :param retries: Number of retries after temporary failures so far
                         for this operation.
 
-        TODO: jam 20051215 This should be an atomic put, not overwritting files in place
         TODO: jam 20051215 ftp as a protocol seems to support chmod, but ftplib does not
         """
         tmp_abspath = '%s.tmp.%.9f.%d.%d' % (self._abspath(relpath), time.time(),
@@ -236,9 +239,12 @@ class FtpTransport(Transport):
                 f.storbinary('STOR '+tmp_abspath, fp)
                 f.rename(tmp_abspath, self._abspath(relpath))
             except (ftplib.error_temp,EOFError), e:
+                warning("Failure during ftp PUT. Deleting temporary file.")
                 try:
                     f.delete(tmp_abspath)
                 except:
+                    warning("Failed to delete temporary file on the server.\nFile: %s"
+                            % tmp_abspath)
                     raise e
                 raise
         except ftplib.error_perm, e:
@@ -249,14 +255,16 @@ class FtpTransport(Transport):
                 raise FtpTransportError(orig_error=e)
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
-                raise
+                raise TransportError("FTP temporary error during PUT %s. Aborting."
+                                     % self.abspath(relpath), orig_error=e)
             else:
                 warning("FTP temporary error: %s. Retrying." % str(e))
                 self._FTP_instance = None
                 self.put(relpath, fp, mode, retries+1)
         except EOFError:
             if retries > _number_of_retries:
-                raise
+                raise TransportError("FTP control connection closed during PUT %s."
+                                     % self.abspath(relpath), orig_error=e)
             else:
                 warning("FTP control connection closed. Trying to reopen.")
                 time.sleep(_sleep_between_retries)
