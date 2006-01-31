@@ -704,7 +704,7 @@ class cmd_ancestry(Command):
         tree = WorkingTree.open_containing(u'.')[0]
         b = tree.branch
         # FIXME. should be tree.last_revision
-        for revision_id in b.get_ancestry(b.last_revision()):
+        for revision_id in b.repository.get_ancestry(b.last_revision()):
             print revision_id
 
 
