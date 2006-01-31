@@ -73,8 +73,8 @@ class bzr_build(build):
     def run(self):
         build.run(self)
 
-        import bzr_man
-        bzr_man.main()
+        import generate_docs
+        generate_docs.main(argv=["bzr", "man"])
 
 ########################
 ## Setup

@@ -9,6 +9,15 @@ bzr development version
       reuses them to avoid multiple connections to the same host (like
       sftp did). (Daniel Silverstone)
 
+    * The bzr_man.py file has been removed. To create the man page now,
+      use ./generate_docs.py man. The new program can also create other files.
+      Run "python generate_docs.py --help" for usage information. (Hans
+      Ulrich Niedermann & James Blackwell).
+
+    * Man Page now gives full help (James Blackwell). Help also updated to 
+      reflect user config now being stored in .bazaar (Hans Ulrich
+      Niedermann)
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now
