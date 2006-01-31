@@ -81,10 +81,12 @@ def packages_to_test():
     import bzrlib.doc
     import bzrlib.tests.blackbox
     import bzrlib.tests.branch_implementations
+    import bzrlib.tests.bzrdir_implementations
     return [
             bzrlib.doc,
             bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
+            bzrlib.tests.bzrdir_implementations,
             ]
 
 
@@ -833,6 +835,7 @@ def test_suite():
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_basis_inventory',
                    'bzrlib.tests.test_branch',
+                   'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_command',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
