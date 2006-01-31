@@ -40,13 +40,13 @@ class BzrDir(object):
     BzrDir instances let you create or open any of the things that can be
     found within .bzr - checkouts, branches and repositories.
     
-    base
-        base directory this is located under.
+    transport
+        the transport which this bzr dir is rooted at (i.e. file:///.../.bzr/)
     """
 
     @staticmethod
     def create(base):
-        """Create a new BzrDir at the url 'bzr'.
+        """Create a new BzrDir at the url 'base'.
         
         This will call the current default formats initialize with base
         as the only parameter.
@@ -55,6 +55,22 @@ class BzrDir(object):
         of that and calling initialize().
         """
         return BzrDirFormat.get_default_format().initialize(safe_unicode(base))
+
+    @staticmethod
+    def create_repository(base):
+        """Create a new BzrDir and Repository at the url 'base'.
+
+        This will use the current default BzrDirFormat, and use whatever 
+        repository format that that uses for bzrdirformat.create_repository.
+
+        The Repository object is returned.
+
+        This must be overridden as an instance method in child classes, where
+        it should take no parameters and construct whatever repository format
+        that child class desires.
+        """
+        bzrdir = BzrDir.create(base)
+        return bzrdir.create_repository()
 
     def __init__(self, _transport, _format):
         """Initialize a Bzr control dir object.
@@ -66,7 +82,7 @@ class BzrDir(object):
         _transport: the transport this dir is based at.
         """
         self._format = _format
-        self._transport = _transport
+        self.transport = _transport
 
     @staticmethod
     def open_unsupported(base):
@@ -118,6 +134,56 @@ class BzrDir(object):
                 raise errors.NotBranchError(path=url)
             t = new_t
 
+    def open_repository(self):
+        """Open the repository object at this BzrDir if one is present.
+        
+        TODO: static convenience version of this?
+        TODO: NoRepositoryError that can be raised.
+        """
+        raise NotImplementedError(self.open_repository)
+
+
+class BzrDir4(BzrDir):
+    """A .bzr version 4 control object."""
+
+    def create_repository(self):
+        """See BzrDir.create_repository."""
+        from bzrlib.repository import RepositoryFormat4
+        return RepositoryFormat4().initialize(self)
+
+    def open_repository(self):
+        """See BzrDir.open_repository."""
+        from bzrlib.repository import RepositoryFormat4
+        return RepositoryFormat4().open(self, _found=True)
+
+
+class BzrDir5(BzrDir):
+    """A .bzr version 5 control object."""
+
+    def create_repository(self):
+        """See BzrDir.create_repository."""
+        from bzrlib.repository import RepositoryFormat5
+        return RepositoryFormat5().initialize(self)
+
+    def open_repository(self):
+        """See BzrDir.open_repository."""
+        from bzrlib.repository import RepositoryFormat5
+        return RepositoryFormat5().open(self, _found=True)
+
+
+class BzrDir6(BzrDir):
+    """A .bzr version 6 control object."""
+
+    def create_repository(self):
+        """See BzrDir.create_repository."""
+        from bzrlib.repository import RepositoryFormat6
+        return RepositoryFormat6().initialize(self)
+
+    def open_repository(self):
+        """See BzrDir.open_repository."""
+        from bzrlib.repository import RepositoryFormat6
+        return RepositoryFormat6().open(self, _found=True)
+
 
 class BzrDirFormat(object):
     """An encapsulation of the initialization and open routines for a format.
@@ -137,7 +203,7 @@ class BzrDirFormat(object):
     """
 
     _default_format = None
-    """The default format used for new branches."""
+    """The default format used for new .bzr dirs."""
 
     _formats = {}
     """The known formats."""
@@ -191,7 +257,7 @@ class BzrDirFormat(object):
                 control_files.put_utf8(file, content)
         finally:
             control_files.unlock()
-        return BzrDir(t, self)
+        return self.open(t, _found=True)
 
     def is_supported(self):
         """Is this format supported?
@@ -210,7 +276,15 @@ class BzrDirFormat(object):
         if not _found:
             assert isinstance(BzrDirFormat.find_format(transport),
                               self.__class__)
-        return BzrDir(transport, self)
+        return self._open(transport)
+
+    def _open(self, transport):
+        """Template method helper for opening BzrDirectories.
+
+        This performs the actual open and any additional logic or parameter
+        passing.
+        """
+        raise NotImplementedError(self._open)
 
     @classmethod
     def register_format(klass, format):
@@ -255,6 +329,10 @@ class BzrDirFormat4(BzrDirFormat):
         """
         return False
 
+    def _open(self, transport):
+        """See BzrDirFormat._open."""
+        return BzrDir4(transport, self)
+
 
 class BzrDirFormat5(BzrDirFormat):
     """Bzr control format 5.
@@ -270,6 +348,10 @@ class BzrDirFormat5(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
 
+    def _open(self, transport):
+        """See BzrDirFormat._open."""
+        return BzrDir5(transport, self)
+
 
 class BzrDirFormat6(BzrDirFormat):
     """Bzr control format 6.
@@ -284,6 +366,10 @@ class BzrDirFormat6(BzrDirFormat):
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 6\n"
+
+    def _open(self, transport):
+        """See BzrDirFormat._open."""
+        return BzrDir6(transport, self)
 
 
 BzrDirFormat.register_format(BzrDirFormat4())

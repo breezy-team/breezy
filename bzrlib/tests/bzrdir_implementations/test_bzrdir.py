@@ -30,9 +30,7 @@ from bzrlib.errors import (FileExists,
                            UninitializableFormat,
                            NotBranchError,
                            )
-import bzrlib.gpg
-from bzrlib.osutils import getcwd
-from bzrlib.revision import NULL_REVISION
+import bzrlib.repository as repository
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
@@ -87,6 +85,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         # storage is made
         # create a standalone_branch , clone that and check all bits are
         # clone.
+        # these should all check that the formats on subthings like repository
+        # are the same as the source format.
         # features that are not supported (like detached working trees for
         # older formats, should catch the error and silently pass the test 
         # as they are honouring the format.
@@ -98,7 +98,6 @@ class TestBzrDir(TestCaseWithBzrDir):
         # same permutations as clone_bzrdir, or nearly so, but we want to
         # have checkouts force creation of a new branch because thats the 
         # desired semantic.
-
 
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
@@ -127,3 +126,29 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertRaises(NotBranchError,
                           self.bzrdir_format.open,
                           get_transport(self.get_readonly_url()))
+
+    def test_create_repository(self):
+        # a bzrdir can construct a repository for itself.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = get_transport(self.get_url())
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository()
+        self.failUnless(isinstance(made_repo, repository.Repository))
+        self.assertEqual(made_control, made_repo.bzrdir)
+        
+    def test_open_repository(self):
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = get_transport(self.get_url())
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository()
+        opened_repo = made_control.open_repository()
+        self.assertEqual(made_control, opened_repo.bzrdir)
+        self.failUnless(isinstance(opened_repo, made_repo.__class__))

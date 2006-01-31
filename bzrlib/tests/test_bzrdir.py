@@ -43,10 +43,18 @@ class TestDefaultFormat(TestCase):
         # creating a bzr dir should now create an instrumented dir.
         try:
             result = bzrdir.BzrDir.create('memory:/')
-            self.assertEqual(result,  'A bzr dir')
+            self.failUnless(isinstance(result, SampleBzrDir))
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
+
+
+class SampleBzrDir(bzrdir.BzrDir):
+    """A sample BzrDir implementation to allow testing static methods."""
+
+    def create_repository(self):
+        """See BzrDir.create_repository."""
+        return "A repository"
 
 
 class SampleBzrDirFormat(bzrdir.BzrDirFormat):
@@ -65,7 +73,7 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
         t = get_transport(url)
         t.mkdir('.bzr')
         t.put('.bzr/branch-format', StringIO(self.get_format_string()))
-        return 'A bzr dir'
+        return SampleBzrDir(t, self)
 
     def is_supported(self):
         return False
@@ -121,6 +129,16 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # now open_downlevel should fail too.
         self.assertRaises(UnknownFormatError, bzrdir.BzrDir.open_unsupported, url)
 
+    def test_create_repository(self):
+        format = SampleBzrDirFormat()
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(format)
+        try:
+            repo = bzrdir.BzrDir.create_repository(self.get_url())
+            self.assertEqual('A repository', repo)
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+        
 
 class ChrootedTests(TestCaseWithTransport):
     """A support class that provides readonly urls outside the local namespace.

@@ -14,8 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from copy import deepcopy
 from cStringIO import StringIO
+from unittest import TestSuite
 
+import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.lockable_files import LockableFiles
@@ -24,6 +27,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.store import copy_all
 from bzrlib.store.weave import WeaveStore
 from bzrlib.store.text import TextStore
+from bzrlib.trace import mutter
 from bzrlib.tree import RevisionTree
 from bzrlib.testament import Testament
 from bzrlib.tree import EmptyTree
@@ -43,25 +47,31 @@ class Repository(object):
     remote) disk.
     """
 
-    def __init__(self, transport, branch_format):
-        # circular dependencies:
-        from bzrlib.branch import (BzrBranchFormat4,
-                                   BzrBranchFormat5,
-                                   BzrBranchFormat6,
-                                   )
+    @staticmethod
+    def create(a_bzrdir):
+        """Construct the current default format repository in a_bzrdir."""
+        return RepositoryFormat.get_default_format().initialize(a_bzrdir)
+
+    def __init__(self, transport, branch_format, _format=None, a_bzrdir=None):
         object.__init__(self)
-        self.control_files = LockableFiles(transport.clone(bzrlib.BZRDIR), 'README')
+        if transport is not None:
+            self.control_files = LockableFiles(transport.clone(bzrlib.BZRDIR), 'README')
+        else: 
+            # TODO: clone into repository if needed
+            self.control_files = LockableFiles(a_bzrdir.transport, 'README')
 
         dir_mode = self.control_files._dir_mode
         file_mode = self.control_files._file_mode
+        self._format = _format
+        self.bzrdir = a_bzrdir
 
         def get_weave(name, prefixed=False):
             if name:
-                name = bzrlib.BZRDIR + '/' + safe_unicode(name)
+                name = safe_unicode(name)
             else:
-                name = bzrlib.BZRDIR
+                name = ''
             relpath = self.control_files._escape(name)
-            weave_transport = transport.clone(relpath)
+            weave_transport = self.control_files._transport.clone(relpath)
             ws = WeaveStore(weave_transport, prefixed=prefixed,
                             dir_mode=dir_mode,
                             file_mode=file_mode)
@@ -76,11 +86,11 @@ class Repository(object):
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
             if name:
-                name = bzrlib.BZRDIR + '/' + safe_unicode(name)
+                name = safe_unicode(name)
             else:
-                name = bzrlib.BZRDIR
+                name = ''
             relpath = self.control_files._escape(name)
-            store = TextStore(transport.clone(relpath),
+            store = TextStore(self.control_files._transport.clone(relpath),
                               prefixed=prefixed, compressed=compressed,
                               dir_mode=dir_mode,
                               file_mode=file_mode)
@@ -90,16 +100,29 @@ class Repository(object):
             #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
 
+        if branch_format is not None:
+            # circular dependencies:
+            from bzrlib.branch import (BzrBranchFormat4,
+                                       BzrBranchFormat5,
+                                       BzrBranchFormat6,
+                                       )
+            if isinstance(branch_format, BzrBranchFormat4):
+                self._format = RepositoryFormat4()
+            elif isinstance(branch_format, BzrBranchFormat5):
+                self._format = RepositoryFormat5()
+            elif isinstance(branch_format, BzrBranchFormat6):
+                self._format = RepositoryFormat6()
+            
 
-        if isinstance(branch_format, BzrBranchFormat4):
+        if isinstance(self._format, RepositoryFormat4):
             self.inventory_store = get_store('inventory-store')
             self.text_store = get_store('text-store')
             self.revision_store = get_store('revision-store')
-        elif isinstance(branch_format, BzrBranchFormat5):
+        elif isinstance(self._format, RepositoryFormat5):
             self.control_weaves = get_weave('')
             self.weave_store = get_weave('weaves')
             self.revision_store = get_store('revision-store', compressed=False)
-        elif isinstance(branch_format, BzrBranchFormat6):
+        elif isinstance(self._format, RepositoryFormat6):
             self.control_weaves = get_weave('')
             self.weave_store = get_weave('weaves', prefixed=True)
             self.revision_store = get_store('revision-store', compressed=False,
@@ -111,6 +134,16 @@ class Repository(object):
 
     def lock_read(self):
         self.control_files.lock_read()
+
+    @staticmethod
+    def open(base):
+        """Open the repository rooted at base.
+
+        For instance, if the repository is at URL/.bzr/repository,
+        Repository.open(URL) -> a Repository instance.
+        """
+        control = bzrdir.BzrDir.open(base)
+        return control.open_repository()
 
     def unlock(self):
         self.control_files.unlock()
@@ -280,3 +313,208 @@ class Repository(object):
     def sign_revision(self, revision_id, gpg_strategy):
         plaintext = Testament.from_revision(self, revision_id).as_short_text()
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
+
+
+class RepositoryFormat(object):
+    """A repository format.
+
+    Formats provide three things:
+     * An initialization routine to construct repository data on disk.
+     * a format string which is used when the BzrDir supports versioned
+       children.
+     * an open routine which returns a Repository instance.
+
+    Formats are placed in an dict by their format string for reference 
+    during opening. These should be subclasses of RepositoryFormat
+    for consistency.
+
+    Once a format is deprecated, just deprecate the initialize and open
+    methods on the format class. Do not deprecate the object, as the 
+    object will be created every system load.
+
+    Common instance attributes:
+    _matchingbzrdir - the bzrdir format that the repository format was
+    originally written to work with. This can be used if manually
+    constructing a bzrdir and repository, or more commonly for test suite
+    parameterisation.
+    """
+
+    _default_format = None
+    """The default format used for new branches."""
+
+    _formats = {}
+    """The known formats."""
+
+    @classmethod
+    def get_default_format(klass):
+        """Return the current default format."""
+        return klass._default_format
+
+    def get_format_string(self):
+        """Return the ASCII format string that identifies this format.
+        
+        Note that in pre format ?? repositories the format string is 
+        not permitted nor written to disk.
+        """
+        raise NotImplementedError(self.get_format_string)
+
+    def initialize(self, a_bzrdir):
+        """Create a weave repository.
+        
+        TODO: when creating split out bzr branch formats, move this to a common
+        base for Format5, Format6. or something like that.
+        """
+        from bzrlib.weavefile import write_weave_v5
+        from bzrlib.weave import Weave
+        
+        # Create an empty weave
+        sio = StringIO()
+        bzrlib.weavefile.write_weave_v5(Weave(), sio)
+        empty_weave = sio.getvalue()
+
+        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        dirs = ['revision-store', 'weaves']
+        lock_file = 'branch-lock'
+        files = [('inventory.weave', StringIO(empty_weave)), 
+                 ]
+        
+        # FIXME: RBC 20060125 dont peek under the covers
+        # NB: no need to escape relative paths that are url safe.
+        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock')
+        control_files.lock_write()
+        control_files._transport.mkdir_multi(dirs,
+                mode=control_files._dir_mode)
+        try:
+            for file, content in files:
+                control_files.put(file, content)
+        finally:
+            control_files.unlock()
+        return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
+
+    def is_supported(self):
+        """Is this format supported?
+
+        Supported formats must be initializable and openable.
+        Unsupported formats may not support initialization or committing or 
+        some other features depending on the reason for not being supported.
+        """
+        return True
+
+    def open(self, a_bzrdir, _found=False):
+        """Return an instance of this format for the bzrdir a_bzrdir.
+        
+        _found is a private parameter, do not use it.
+        """
+        if not _found:
+            raise NotImplementedError
+        return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
+
+    @classmethod
+    def register_format(klass, format):
+        klass._formats[format.get_format_string()] = format
+
+    @classmethod
+    def set_default_format(klass, format):
+        klass._default_format = format
+
+    @classmethod
+    def unregister_format(klass, format):
+        assert klass._formats[format.get_format_string()] is format
+        del klass._formats[format.get_format_string()]
+
+
+class RepositoryFormat4(RepositoryFormat):
+    """Bzr repository format 4.
+
+    This repository format has:
+     - flat stores
+     - TextStores for texts, inventories,revisions.
+
+    This format is deprecated: it indexes texts using a text id which is
+    removed in format 5; initializationa and write support for this format
+    has been removed.
+    """
+
+    def __init__(self):
+        super(RepositoryFormat4, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirFormat4()
+
+    def initialize(self, url):
+        """Format 4 branches cannot be created."""
+        raise errors.UninitializableFormat(self)
+
+    def is_supported(self):
+        """Format 4 is not supported.
+
+        It is not supported because the model changed from 4 to 5 and the
+        conversion logic is expensive - so doing it on the fly was not 
+        feasible.
+        """
+        return False
+
+
+class RepositoryFormat5(RepositoryFormat):
+    """Bzr control format 5.
+
+    This repository format has:
+     - weaves for file texts and inventory
+     - flat stores
+     - TextStores for revisions and signatures.
+    """
+
+    def __init__(self):
+        super(RepositoryFormat5, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirFormat5()
+
+
+class RepositoryFormat6(RepositoryFormat):
+    """Bzr control format 6.
+
+    This repository format has:
+     - weaves for file texts and inventory
+     - hash subdirectory based stores.
+     - TextStores for revisions and signatures.
+    """
+
+    def __init__(self):
+        super(RepositoryFormat6, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirFormat6()
+
+# formats which have no format string are not discoverable
+# and not independently creatable, so are not registered.
+# __default_format = RepositoryFormatXXX()
+# RepositoryFormat.register_format(__default_format)
+# RepositoryFormat.set_default_format(__default_format)
+_legacy_formats = [RepositoryFormat4(),
+                   RepositoryFormat5(),
+                   RepositoryFormat6()]
+
+
+class RepositoryTestProviderAdapter(object):
+    """A tool to generate a suite testing multiple repository formats at once.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_server, transport_readonly_server, and bzrdir_format and
+    repository_format classes into each copy. Each copy is also given a new id()
+    to make it easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, formats):
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self._formats = formats
+    
+    def adapt(self, test):
+        result = TestSuite()
+        for repository_format, bzrdir_format in self._formats:
+            new_test = deepcopy(test)
+            new_test.transport_server = self._transport_server
+            new_test.transport_readonly_server = self._transport_readonly_server
+            new_test.bzrdir_format = bzrdir_format
+            new_test.repository_format = repository_format
+            def make_new_test_id():
+                new_id = "%s(%s)" % (new_test.id(), repository_format.__class__.__name__)
+                return lambda: new_id
+            new_test.id = make_new_test_id()
+            result.addTest(new_test)
+        return result
