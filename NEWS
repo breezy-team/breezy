@@ -1,5 +1,10 @@
 bzr development version
 
+  IMPROVEMENTS:
+
+    * The ftp transport now tries to reconnect after a temporary
+      failure. ftp put is made atomic.
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now
