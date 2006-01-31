@@ -34,7 +34,7 @@ from bzrlib.errors import (ConnectionError,
                            FileExists, 
                            TransportNotPossible, NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError
+                           LockError, ParamikoNotPresent
                            )
 from bzrlib.osutils import pathjoin, fancy_rename
 from bzrlib.trace import mutter, warning, error
@@ -43,9 +43,8 @@ import bzrlib.ui
 
 try:
     import paramiko
-except ImportError:
-    error('The SFTP transport requires paramiko.')
-    raise
+except ImportError, e:
+    raise ParamikoNotPresent(e)
 else:
     from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,
                                SFTP_FLAG_EXCL, SFTP_FLAG_TRUNC,
