@@ -946,7 +946,15 @@ def reweave(wa, wb, pb=None, msg=None):
         if name in wa._name_map:
             lines = wa.get_lines(name)
             if name in wb._name_map:
-                assert lines == wb.get_lines(name)
+                lines_b = wb.get_lines(name)
+                if lines != lines_b:
+                    mutter('Weaves differ on content. rev_id {%s}', name)
+                    mutter('weaves: %s, %s', wa._weave_name, wb._weave_name)
+                    import difflib
+                    lines = list(difflib.unified_diff(lines, lines_b,
+                            wa._weave_name, wb._weave_name))
+                    mutter('lines:\n%s', ''.join(lines))
+                    raise errors.WeaveTextDiffers(name, wa, wb)
         else:
             lines = wb.get_lines(name)
         wr.add(name, combined_parents[name], lines)

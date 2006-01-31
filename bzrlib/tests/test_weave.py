@@ -1053,3 +1053,19 @@ class JoinOptimization(TestCase):
         w1.join(w2) # extract 3a to add txt2 
         w2.join(w1) # extract 3b to add txt1 
 
+
+class MismatchedTexts(TestCase):
+    """Test that merging two weaves with different texts fails."""
+
+    def test_reweave(self):
+        w1 = Weave('a')
+        w2 = Weave('b')
+
+        w1.add('txt0', [], ['a\n'])
+        w2.add('txt0', [], ['a\n'])
+        w1.add('txt1', [0], ['a\n', 'b\n'])
+        w2.add('txt1', [0], ['a\n', 'c\n'])
+
+        self.assertRaises(errors.WeaveTextDiffers, w1.reweave, w2)
+
+
