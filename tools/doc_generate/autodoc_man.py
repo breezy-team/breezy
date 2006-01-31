@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 # Copyright 2005 Canonical Ltd.
 
 # This program is free software; you can redistribute it and/or modify
@@ -16,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""big_man.py - create man page from built-in bzr help and static text
+"""man.py - create man page from built-in bzr help and static text
 
 TODO:
   * use usage information instead of simple "bzr foo" in COMMAND OVERVIEW
@@ -31,6 +29,7 @@ import time
 import bzrlib
 import bzrlib.help
 import bzrlib.commands
+
 
 def get_filename(options):
     """Provides name of manpage"""
@@ -193,7 +192,4 @@ typical default config file may be similiar to:
 .UR http://www.bazaar-ng.org/
 .BR http://www.bazaar-ng.org/
 """
-
-if __name__ == '__main__':
-    main(sys.argv[1:])
 

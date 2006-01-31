@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 # Copyright 2005 Canonical Ltd.
 # Written by Hans Ulrich Niedermann
 
@@ -17,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"big_bash_completion.py - create bash completion script from built-in bzr help"
+"bash_completion.py - create bash completion script from built-in bzr help"
 
 import os
 import sys
@@ -26,6 +24,7 @@ import time
 import bzrlib
 import bzrlib.help
 import bzrlib.commands
+
 
 def get_filename(options):
     return "%s.bash_completion" % (options.bzr_name)
@@ -52,3 +51,4 @@ preamble = """\
 #
 # Generation time: %(timestamp)s
 """
+

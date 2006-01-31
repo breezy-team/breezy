@@ -17,12 +17,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""bzrinitgen/__init__.py - main program for bzr information generation stuff
-
-"""
-
+"""tools/doc_generate/__init__.py - main program for bzr information generation stuff"""
 
 import sys
+
 
 def get_module(target):
     mod_name = "tools.doc_generate.autodoc_%s" % (target)
