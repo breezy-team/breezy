@@ -50,10 +50,8 @@ import stat
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import (Branch,
                            BzrBranchFormat4,
-                           BzrBranchFormat5,
-                           BzrBranchFormat6,
-                           is_control_file,
                            quotefn)
+import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrCheckError,
@@ -209,7 +207,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self.basedir = realpath(basedir)
         # if branch is at our basedir and is a format 6 or less
         if (isinstance(self.branch._branch_format,
-                       (BzrBranchFormat4, BzrBranchFormat5, BzrBranchFormat6))
+                       (BzrBranchFormat4))
             # might be able to share control object
             and self.branch.base.split('/')[-2] == self.basedir.split('/')[-1]):
             self._control_files = self.branch.control_files
@@ -345,12 +343,12 @@ class WorkingTree(bzrlib.tree.Tree):
  
     @staticmethod
     def create_standalone(directory):
-        """Create a checkout and a branch at directory.
+        """Create a checkout and a branch and a repo at directory.
 
         Directory must exist and be empty.
         """
         directory = safe_unicode(directory)
-        b = Branch.create(directory)
+        b = bzrdir.BzrDir.create_branch_and_repo(directory)
         return WorkingTree.create(b, directory)
 
     def relpath(self, abs):
@@ -759,8 +757,9 @@ class WorkingTree(bzrlib.tree.Tree):
         These are files in the working directory that are not versioned or
         control files or ignored.
         
-        >>> from bzrlib.branch import ScratchBranch
-        >>> b = ScratchBranch(files=['foo', 'foo~'])
+        >>> from bzrlib.bzrdir import ScratchDir
+        >>> d = ScratchDir(files=['foo', 'foo~'])
+        >>> b = d.open_branch()
         >>> tree = WorkingTree(b.base, b)
         >>> map(str, tree.unknowns())
         ['foo']
@@ -1087,3 +1086,18 @@ def get_conflicted_stem(path):
     for suffix in CONFLICT_SUFFIXES:
         if path.endswith(suffix):
             return path[:-len(suffix)]
+
+def is_control_file(filename):
+    ## FIXME: better check
+    filename = normpath(filename)
+    while filename != '':
+        head, tail = os.path.split(filename)
+        ## mutter('check %r for control file' % ((head, tail),))
+        if tail == bzrlib.BZRDIR:
+            return True
+        if filename == head:
+            break
+        filename = head
+    return False
+
+

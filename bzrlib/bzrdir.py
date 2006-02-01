@@ -54,8 +54,38 @@ class BzrDir(object):
         If you need a specific format, consider creating an instance
         of that and calling initialize().
         """
+        segments = base.split('/')
+        if segments and segments[-1] not in ('', '.'):
+            parent = '/'.join(segments[:-1])
+            t = bzrlib.transport.get_transport(parent)
+            try:
+                t.mkdir(segments[-1])
+            except errors.FileExists:
+                pass
         return BzrDirFormat.get_default_format().initialize(safe_unicode(base))
 
+    def create_branch(self):
+        """Create a branch in this BzrDir.
+
+        The bzrdirs format will control what branch format is created.
+        For more control see BranchFormatXX.create(a_bzrdir).
+        """
+        raise NotImplementedError(self.create_branch)
+
+    @staticmethod
+    def create_branch_and_repo(base):
+        """Create a new BzrDir, Branch and Repository at the url 'base'.
+
+        This will use the current default BzrDirFormat, and use whatever 
+        repository format that that uses via bzrdir.create_branch and
+        create_repository.
+
+        The created Branch object is returned.
+        """
+        bzrdir = BzrDir.create(base)
+        bzrdir.create_repository()
+        return bzrdir.create_branch()
+        
     @staticmethod
     def create_repository(base):
         """Create a new BzrDir and Repository at the url 'base'.
@@ -82,7 +112,7 @@ class BzrDir(object):
         _transport: the transport this dir is based at.
         """
         self._format = _format
-        self.transport = _transport
+        self.transport = _transport.clone('.bzr')
 
     @staticmethod
     def open_unsupported(base):
@@ -101,11 +131,18 @@ class BzrDir(object):
         if not _unsupported and not format.is_supported():
             # see open_downlevel to open legacy branches.
             raise errors.UnsupportedFormatError(
-                    'sorry, branch format %s not supported' % format,
+                    'sorry, format %s not supported' % format,
                     ['use a different bzr version',
                      'or remove the .bzr directory'
                      ' and "bzr init" again'])
-        return format.open(t)
+        return format.open(t, _found=True)
+
+    def open_branch(self):
+        """Open the branch object at this BzrDir if one is present.
+        
+        TODO: static convenience version of this?
+        """
+        raise NotImplementedError(self.open_branch)
 
     @staticmethod
     def open_containing(url):
@@ -146,10 +183,20 @@ class BzrDir(object):
 class BzrDir4(BzrDir):
     """A .bzr version 4 control object."""
 
+    def create_branch(self):
+        """See BzrDir.create_branch."""
+        from bzrlib.branch import BzrBranchFormat4
+        return BzrBranchFormat4().initialize(self)
+
     def create_repository(self):
         """See BzrDir.create_repository."""
         from bzrlib.repository import RepositoryFormat4
         return RepositoryFormat4().initialize(self)
+
+    def open_branch(self):
+        """See BzrDir.open_branch."""
+        from bzrlib.branch import BzrBranchFormat4
+        return BzrBranchFormat4().open(self, _found=True)
 
     def open_repository(self):
         """See BzrDir.open_repository."""
@@ -160,10 +207,20 @@ class BzrDir4(BzrDir):
 class BzrDir5(BzrDir):
     """A .bzr version 5 control object."""
 
+    def create_branch(self):
+        """See BzrDir.create_branch."""
+        from bzrlib.branch import BzrBranchFormat4
+        return BzrBranchFormat4().initialize(self)
+
     def create_repository(self):
         """See BzrDir.create_repository."""
         from bzrlib.repository import RepositoryFormat5
         return RepositoryFormat5().initialize(self)
+
+    def open_branch(self):
+        """See BzrDir.open_branch."""
+        from bzrlib.branch import BzrBranchFormat4
+        return BzrBranchFormat4().open(self, _found=True)
 
     def open_repository(self):
         """See BzrDir.open_repository."""
@@ -174,10 +231,20 @@ class BzrDir5(BzrDir):
 class BzrDir6(BzrDir):
     """A .bzr version 6 control object."""
 
+    def create_branch(self):
+        """See BzrDir.create_branch."""
+        from bzrlib.branch import BzrBranchFormat4
+        return BzrBranchFormat4().initialize(self)
+
     def create_repository(self):
         """See BzrDir.create_repository."""
         from bzrlib.repository import RepositoryFormat6
         return RepositoryFormat6().initialize(self)
+
+    def open_branch(self):
+        """See BzrDir.open_branch."""
+        from bzrlib.branch import BzrBranchFormat4
+        return BzrBranchFormat4().open(self, _found=True)
 
     def open_repository(self):
         """See BzrDir.open_repository."""
@@ -305,8 +372,9 @@ class BzrDirFormat4(BzrDirFormat):
 
     This format is a combined format for working tree, branch and repository.
     It has:
-     - flat stores
-     - TextStores for texts, inventories,revisions.
+     - Format 1 working trees
+     - Format 4 branches
+     - Format 4 repositories
 
     This format is deprecated: it indexes texts using a text it which is
     removed in format 5; write support for this format has been removed.
@@ -339,9 +407,9 @@ class BzrDirFormat5(BzrDirFormat):
 
     This format is a combined format for working tree, branch and repository.
     It has:
-     - weaves for file texts and inventory
-     - flat stores
-     - TextStores for revisions and signatures.
+     - Format 2 working trees
+     - Format 4 branches
+     - Format 6 repositories
     """
 
     def get_format_string(self):
@@ -358,9 +426,9 @@ class BzrDirFormat6(BzrDirFormat):
 
     This format is a combined format for working tree, branch and repository.
     It has:
-     - weaves for file texts and inventory
-     - hash subdirectory based stores.
-     - TextStores for revisions and signatures.
+     - Format 2 working trees
+     - Format 4 branches
+     - Format 6 repositories
     """
 
     def get_format_string(self):
@@ -406,3 +474,70 @@ class BzrDirTestProviderAdapter(object):
             new_test.id = make_new_test_id()
             result.addTest(new_test)
         return result
+
+
+class ScratchDir(BzrDir6):
+    """Special test class: a bzrdir that cleans up itself..
+
+    >>> d = ScratchDir()
+    >>> base = d.transport.base
+    >>> isdir(base)
+    True
+    >>> b.transport.__del__()
+    >>> isdir(base)
+    False
+    """
+
+    def __init__(self, files=[], dirs=[], transport=None):
+        """Make a test branch.
+
+        This creates a temporary directory and runs init-tree in it.
+
+        If any files are listed, they are created in the working copy.
+        """
+        if transport is None:
+            transport = bzrlib.transport.local.ScratchTransport()
+            # local import for scope restriction
+            BzrDirFormat6().initialize(transport.base)
+            super(ScratchDir, self).__init__(transport, BzrDirFormat6())
+            self.create_repository()
+            self.create_branch()
+            from bzrlib.workingtree import WorkingTree
+            WorkingTree.create(self.open_branch(), transport.base)
+        else:
+            super(ScratchDir, self).__init__(transport, BzrDirFormat6())
+
+        # BzrBranch creates a clone to .bzr and then forgets about the
+        # original transport. A ScratchTransport() deletes itself and
+        # everything underneath it when it goes away, so we need to
+        # grab a local copy to prevent that from happening
+        self._transport = transport
+
+        for d in dirs:
+            self._transport.mkdir(d)
+            
+        for f in files:
+            self._transport.put(f, 'content of %s' % f)
+
+    def clone(self):
+        """
+        >>> orig = ScratchDir(files=["file1", "file2"])
+        >>> os.listdir(orig.base)
+        [u'.bzr', u'file1', u'file2']
+        >>> clone = orig.clone()
+        >>> if os.name != 'nt':
+        ...   os.path.samefile(orig.base, clone.base)
+        ... else:
+        ...   orig.base == clone.base
+        ...
+        False
+        >>> os.listdir(clone.base)
+        [u'.bzr', u'file1', u'file2']
+        """
+        from shutil import copytree
+        from bzrlib.osutils import mkdtemp
+        base = mkdtemp()
+        os.rmdir(base)
+        copytree(self.base, base, symlinks=True)
+        return ScratchDir(
+            transport=bzrlib.transport.local.ScratchTransport(base))

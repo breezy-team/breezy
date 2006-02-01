@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,10 +23,10 @@ import shutil
 import sys
 from unittest import TestSuite
 from warnings import warn
-import xml.sax.saxutils
 
 
 import bzrlib
+import bzrlib.bzrdir as bzrdir
 from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.delta import compare_trees
@@ -87,8 +87,17 @@ class Branch(object):
     # - RBC 20060112
     base = None
 
-    _default_initializer = None
-    """The default initializer for making new branches."""
+    @staticmethod
+    def create(base):
+        """Construct the current default format branch in a_bzrdir.
+
+        This creates the current default BzrDir format, and if that 
+        supports multiple Branch formats, then the default Branch format
+        will take effect.
+        """
+        print "not usable until we have repositories"
+        raise NotImplementedError("not usable right now")
+        return bzrdir.BzrDir.create(base)
 
     def __init__(self, *ignored, **ignored_too):
         raise NotImplementedError('The Branch class is abstract')
@@ -100,21 +109,13 @@ class Branch(object):
         
     @staticmethod
     def open(base, _unsupported=False):
-        """Open an existing branch, rooted at 'base' (url)
-        
-        _unsupported is a private parameter to the Branch class.
+        """Open the repository rooted at base.
+
+        For instance, if the repository is at URL/.bzr/repository,
+        Repository.open(URL) -> a Repository instance.
         """
-        t = get_transport(base)
-        mutter("trying to open %r with transport %r", base, t)
-        format = BzrBranchFormat.find_format(t)
-        if not _unsupported and not format.is_supported():
-            # see open_downlevel to open legacy branches.
-            raise errors.UnsupportedFormatError(
-                    'sorry, branch format %s not supported' % format,
-                    ['use a different bzr version',
-                     'or remove the .bzr directory'
-                     ' and "bzr init" again'])
-        return format.open(t)
+        control = bzrdir.BzrDir.open(base, _unsupported)
+        return control.open_branch()
 
     @staticmethod
     def open_containing(url):
@@ -128,29 +129,8 @@ class Branch(object):
         format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
         """
-        t = get_transport(url)
-        # this gets the normalised url back. I.e. '.' -> the full path.
-        url = t.base
-        while True:
-            try:
-                format = BzrBranchFormat.find_format(t)
-                return format.open(t), t.relpath(url)
-            except NotBranchError, e:
-                mutter('not a branch in: %r %s', t.base, e)
-            new_t = t.clone('..')
-            if new_t.base == t.base:
-                # reached the root, whatever that may be
-                raise NotBranchError(path=url)
-            t = new_t
-
-    @staticmethod
-    def create(base):
-        """Create a new Branch at the url 'bzr'.
-        
-        This will call the current default initializer with base
-        as the only parameter.
-        """
-        return Branch._default_initializer(safe_unicode(base))
+        control, relpath = bzrdir.BzrDir.open_containing(url)
+        return control.open_branch(), relpath
 
     @staticmethod
     @deprecated_function(zero_eight)
@@ -160,16 +140,6 @@ class Branch(object):
         # imported here to prevent scope creep as this is going.
         from bzrlib.workingtree import WorkingTree
         return WorkingTree.create_standalone(safe_unicode(base)).branch
-
-    @staticmethod
-    def get_default_initializer():
-        """Return the initializer being used for new branches."""
-        return Branch._default_initializer
-
-    @staticmethod
-    def set_default_initializer(initializer):
-        """Set the initializer to be used for new branches."""
-        Branch._default_initializer = staticmethod(initializer)
 
     def setup_caching(self, cache_root):
         """Subclasses that care about caching should override this, and set
@@ -190,10 +160,6 @@ class Branch(object):
 
     nick = property(_get_nick, _set_nick)
         
-    def push_stores(self, branch_to):
-        """Copy the content of this branches store to branch_to."""
-        raise NotImplementedError('push_stores is abstract')
-
     def lock_write(self):
         raise NotImplementedError('lock_write is abstract')
         
@@ -257,12 +223,12 @@ class Branch(object):
 
         >>> from bzrlib.workingtree import WorkingTree
         >>> bzrlib.trace.silent = True
-        >>> br1 = ScratchBranch()
+        >>> d1 = bzrdir.ScratchDir()
+        >>> br1 = d1.open_branch()
         >>> wt1 = WorkingTree(br1.base, br1)
-        ...
-        >>> br2 = ScratchBranch()
+        >>> d2 = bzrdir.ScratchDir()
+        >>> br2 = d2.open_branch()
         >>> wt2 = WorkingTree(br2.base, br2)
-        ...
         >>> br1.missing_revisions(br2)
         []
         >>> wt2.commit("lala!", rev_id="REVISION-ID-1")
@@ -427,62 +393,22 @@ class Branch(object):
                 pass
         if to_branch_format is None:
             # use the default
-            br_to = Branch.create(to_location)
+            br_to = bzrdir.BzrDir.create_branch_and_repo(to_location)
         else:
             br_to = to_branch_format.initialize(to_location)
         mutter("copy branch from %s to %s", self, br_to)
-        if basis_branch is not None:
-            basis_branch.push_stores(br_to)
         if revision is None:
             revision = self.last_revision()
+        if basis_branch is not None:
+            basis_branch.repository.push_stores(br_to.repository,
+                                                revision=revision)
         br_to.update_revisions(self, stop_revision=revision)
         br_to.set_parent(self.base)
         mutter("copied")
         return br_to
 
-    def fileid_involved_between_revs(self, from_revid, to_revid):
-        """ This function returns the file_id(s) involved in the
-            changes between the from_revid revision and the to_revid
-            revision
-        """
-        raise NotImplementedError('fileid_involved_between_revs is abstract')
 
-    def fileid_involved(self, last_revid=None):
-        """ This function returns the file_id(s) involved in the
-            changes up to the revision last_revid
-            If no parametr is passed, then all file_id[s] present in the
-            repository are returned
-        """
-        raise NotImplementedError('fileid_involved is abstract')
-
-    def fileid_involved_by_set(self, changes):
-        """ This function returns the file_id(s) involved in the
-            changes present in the set 'changes'
-        """
-        raise NotImplementedError('fileid_involved_by_set is abstract')
-
-    def fileid_involved_between_revs(self, from_revid, to_revid):
-        """ This function returns the file_id(s) involved in the
-            changes between the from_revid revision and the to_revid
-            revision
-        """
-        raise NotImplementedError('fileid_involved_between_revs is abstract')
-
-    def fileid_involved(self, last_revid=None):
-        """ This function returns the file_id(s) involved in the
-            changes up to the revision last_revid
-            If no parametr is passed, then all file_id[s] present in the
-            repository are returned
-        """
-        raise NotImplementedError('fileid_involved is abstract')
-
-    def fileid_involved_by_set(self, changes):
-        """ This function returns the file_id(s) involved in the
-            changes present in the set 'changes'
-        """
-        raise NotImplementedError('fileid_involved_by_set is abstract')
-
-class BzrBranchFormat(object):
+class BranchFormat(object):
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:
@@ -500,19 +426,16 @@ class BzrBranchFormat(object):
     object will be created every time regardless.
     """
 
+    _default_format = None
+    """The default format used for new branches."""
+
     _formats = {}
     """The known formats."""
 
     @classmethod
-    def find_format(klass, transport):
-        """Return the format registered for URL."""
-        try:
-            format_string = transport.get(".bzr/branch-format").read()
-            return klass._formats[format_string]
-        except NoSuchFile:
-            raise NotBranchError(path=transport.base)
-        except KeyError:
-            raise errors.UnknownFormatError(format_string)
+    def get_default_format(klass):
+        """Return the current default format."""
+        return klass._default_format
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
@@ -541,53 +464,21 @@ class BzrBranchFormat(object):
             file_mode = None
         return dir_mode, file_mode
 
-    def initialize(self, url):
-        """Create a branch of this format at url and return an open branch."""
-        t = get_transport(url)
-        from bzrlib.weavefile import write_weave_v5
-        from bzrlib.weave import Weave
-        
-        # Create an empty weave
-        sio = StringIO()
-        bzrlib.weavefile.write_weave_v5(Weave(), sio)
-        empty_weave = sio.getvalue()
-
-        # Since we don't have a .bzr directory, inherit the
-        # mode from the root directory
-        temp_control = LockableFiles(t, '')
-        temp_control._transport.mkdir('.bzr',
-                                      mode=temp_control._dir_mode)
-        file_mode = temp_control._file_mode
-        del temp_control
-        mutter('created control directory in ' + t.base)
-        control = t.clone('.bzr')
-        dirs = ['revision-store', 'weaves']
-        lock_file = 'branch-lock'
-        utf8_files = [('README', 
-                       "This is a Bazaar-NG control directory.\n"
-                       "Do not change any files in this directory.\n"),
-                      ('branch-format', self.get_format_string()),
-                      ('revision-history', ''),
+    def initialize(self, a_bzrdir):
+        """Create a branch of this format in a_bzrdir."""
+        mutter('creating branch in %s', a_bzrdir.transport.base)
+        utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        files = [('inventory.weave', StringIO(empty_weave)), 
-                 ]
         
-        # FIXME: RBC 20060125 dont peek under the covers
-        # NB: no need to escape relative paths that are url safe.
-        control.put(lock_file, StringIO(), mode=file_mode)
-        control_files = LockableFiles(control, lock_file)
+        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock')
         control_files.lock_write()
-        control_files._transport.mkdir_multi(dirs,
-                mode=control_files._dir_mode)
         try:
             for file, content in utf8_files:
                 control_files.put_utf8(file, content)
-            for file, content in files:
-                control_files.put(file, content)
         finally:
             control_files.unlock()
-        return BzrBranch(t, _format=self, _control_files=control_files)
+        return self.open(a_bzrdir, _found=True)
 
     def is_supported(self):
         """Is this format supported?
@@ -598,13 +489,24 @@ class BzrBranchFormat(object):
         """
         return True
 
-    def open(self, transport):
-        """Fill out the data in branch for the branch at url."""
-        return BzrBranch(transport, _format=self)
+    def open(self, a_bzrdir, _found=False):
+        """Return the branch object for a_bzrdir
+
+        _found is a private parameter, do not use it. It is used to indicate
+               if format probing has already be done.
+        """
+        if not _found:
+            # we are being called directly and must probe.
+            raise NotImplementedError
+        return BzrBranch(a_bzrdir.transport.clone('..'), _format=self, a_bzrdir=a_bzrdir)
 
     @classmethod
     def register_format(klass, format):
         klass._formats[format.get_format_string()] = format
+
+    @classmethod
+    def set_default_format(klass, format):
+        klass._default_format = format
 
     @classmethod
     def unregister_format(klass, format):
@@ -612,71 +514,24 @@ class BzrBranchFormat(object):
         del klass._formats[format.get_format_string()]
 
 
-class BzrBranchFormat4(BzrBranchFormat):
+class BzrBranchFormat4(BranchFormat):
     """Bzr branch format 4.
 
     This format has:
-     - flat stores
-     - TextStores for texts, inventories,revisions.
-
-    This format is deprecated: it indexes texts using a text it which is
-    removed in format 5; write support for this format has been removed.
+     - a revision-history file.
     """
 
-    def get_format_string(self):
-        """See BzrBranchFormat.get_format_string()."""
-        return BZR_BRANCH_FORMAT_4
+    def __init__(self):
+        super(BzrBranchFormat4, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirFormat6()
 
-    def initialize(self, url):
-        """Format 4 branches cannot be created."""
-        raise UninitializableFormat(self)
-
-    def is_supported(self):
-        """Format 4 is not supported.
-
-        It is not supported because the model changed from 4 to 5 and the
-        conversion logic is expensive - so doing it on the fly was not 
-        feasible.
-        """
-        return False
-
-
-class BzrBranchFormat5(BzrBranchFormat):
-    """Bzr branch format 5.
-
-    This format has:
-     - weaves for file texts and inventory
-     - flat stores
-     - TextStores for revisions and signatures.
-    """
-
-    def get_format_string(self):
-        """See BzrBranchFormat.get_format_string()."""
-        return BZR_BRANCH_FORMAT_5
-
-
-class BzrBranchFormat6(BzrBranchFormat):
-    """Bzr branch format 6.
-
-    This format has:
-     - weaves for file texts and inventory
-     - hash subdirectory based stores.
-     - TextStores for revisions and signatures.
-    """
-
-    def get_format_string(self):
-        """See BzrBranchFormat.get_format_string()."""
-        return BZR_BRANCH_FORMAT_6
-
-
-BzrBranchFormat.register_format(BzrBranchFormat4())
-BzrBranchFormat.register_format(BzrBranchFormat5())
-BzrBranchFormat.register_format(BzrBranchFormat6())
-
-# TODO: jam 20060108 Create a new branch format, and as part of upgrade
-#       make sure that ancestry.weave is deleted (it is never used, but
-#       used to be created)
-
+# formats which have no format string are not discoverable
+# and not independently creatable, so are not registered.
+# __default_format = BranchFormatXXX()
+# BranchFormat.register_format(__default_format)
+# BranchFormat.set_default_format(__default_format)
+_legacy_formats = [BzrBranchFormat4(),
+                   ]
 
 class BzrBranch(Branch):
     """A branch stored in the actual filesystem.
@@ -697,30 +552,9 @@ class BzrBranch(Branch):
     # This should match a prefix with a function which accepts
     REVISION_NAMESPACES = {}
 
-    def push_stores(self, branch_to):
-        """See Branch.push_stores."""
-        if (not isinstance(self._branch_format, BzrBranchFormat4) or
-            self._branch_format != branch_to._branch_format):
-            from bzrlib.fetch import greedy_fetch
-            mutter("Using fetch logic to push between %s(%s) and %s(%s)",
-                   self, self._branch_format, branch_to, branch_to._branch_format)
-            greedy_fetch(to_branch=branch_to, from_branch=self,
-                         revision=self.last_revision())
-            return
-
-        # format 4 to format 4 logic only.
-        store_pairs = ((self.text_store,      branch_to.text_store),
-                       (self.inventory_store, branch_to.inventory_store),
-                       (self.revision_store,  branch_to.revision_store))
-        try:
-            for from_store, to_store in store_pairs: 
-                copy_all(from_store, to_store)
-        except UnlistableStore:
-            raise UnlistableBranch(from_store)
-
     def __init__(self, transport, init=DEPRECATED_PARAMETER,
                  relax_version_check=DEPRECATED_PARAMETER, _format=None,
-                 _control_files=None):
+                 _control_files=None, a_bzrdir=None):
         """Create new branch object at a particular location.
 
         transport -- A Transport object, defining how to access files.
@@ -733,14 +567,11 @@ class BzrBranch(Branch):
             version is not applied.  This is intended only for
             upgrade/recovery type use; it's not guaranteed that
             all operations will work on old format branches.
-
-        In the test suite, creation of new trees is tested using the
-        `ScratchBranch` class.
         """
-        assert isinstance(transport, Transport), \
-            "%r is not a Transport" % transport
+        self.bzrdir = a_bzrdir
         self._transport = transport
         self._base = self._transport.base
+        self._format = _format
         if _control_files is None:
             _control_files = LockableFiles(self._transport.clone(bzrlib.BZRDIR),
                                            'branch-lock')
@@ -769,13 +600,7 @@ class BzrBranch(Branch):
                         ['use a different bzr version',
                          'or remove the .bzr directory'
                          ' and "bzr init" again'])
-        self.repository = Repository(transport, self._branch_format)
-
-
-    @staticmethod
-    def _initialize(base):
-        """Create a bzr branch in the latest format."""
-        return BzrBranchFormat6().initialize(base)
+        self.repository = self.bzrdir.open_repository()
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)
@@ -1048,12 +873,11 @@ class BzrBranch(Branch):
         history = self._get_truncated_history(revision)
         if not bzrlib.osutils.lexists(to_location):
             os.mkdir(to_location)
-        branch_to = BzrBranchFormat6().initialize(to_location)
+        bzrdir_to = self.bzrdir._format.initialize(to_location)
+        self.repository.clone(bzrdir_to)
+        branch_to = bzrdir_to.create_branch()
         mutter("copy branch from %s to %s", self, branch_to)
 
-        self.repository.copy(branch_to.repository)
-        
-        # must be done *after* history is copied across
         # FIXME duplicate code with base .clone().
         # .. would template method be useful here?  RBC 20051207
         branch_to.set_parent(self.base)
@@ -1070,101 +894,6 @@ class BzrBranch(Branch):
             return self._clone_weave(to_location, revision, basis_branch)
         else:
             return Branch.clone(self, to_location, revision, basis_branch, to_branch_type)
-
-    def fileid_involved_between_revs(self, from_revid, to_revid):
-        """Find file_id(s) which are involved in the changes between revisions.
-
-        This determines the set of revisions which are involved, and then
-        finds all file ids affected by those revisions.
-        """
-        # TODO: jam 20060119 This code assumes that w.inclusions will
-        #       always be correct. But because of the presence of ghosts
-        #       it is possible to be wrong.
-        #       One specific example from Robert Collins:
-        #       Two branches, with revisions ABC, and AD
-        #       C is a ghost merge of D.
-        #       Inclusions doesn't recognize D as an ancestor.
-        #       If D is ever merged in the future, the weave
-        #       won't be fixed, because AD never saw revision C
-        #       to cause a conflict which would force a reweave.
-        w = self.repository.get_inventory_weave()
-        from_set = set(w.inclusions([w.lookup(from_revid)]))
-        to_set = set(w.inclusions([w.lookup(to_revid)]))
-        included = to_set.difference(from_set)
-        changed = map(w.idx_to_name, included)
-        return self._fileid_involved_by_set(changed)
-
-    def fileid_involved(self, last_revid=None):
-        """Find all file_ids modified in the ancestry of last_revid.
-
-        :param last_revid: If None, last_revision() will be used.
-        """
-        w = self.repository.get_inventory_weave()
-        if not last_revid:
-            changed = set(w._names)
-        else:
-            included = w.inclusions([w.lookup(last_revid)])
-            changed = map(w.idx_to_name, included)
-        return self._fileid_involved_by_set(changed)
-
-    def fileid_involved_by_set(self, changes):
-        """Find all file_ids modified by the set of revisions passed in.
-
-        :param changes: A set() of revision ids
-        """
-        # TODO: jam 20060119 This line does *nothing*, remove it.
-        #       or better yet, change _fileid_involved_by_set so
-        #       that it takes the inventory weave, rather than
-        #       pulling it out by itself.
-        w = self.repository.get_inventory_weave()
-        return self._fileid_involved_by_set(changes)
-
-    def _fileid_involved_by_set(self, changes):
-        """Find the set of file-ids affected by the set of revisions.
-
-        :param changes: A set() of revision ids.
-        :return: A set() of file ids.
-        
-        This peaks at the Weave, interpreting each line, looking to
-        see if it mentions one of the revisions. And if so, includes
-        the file id mentioned.
-        This expects both the Weave format, and the serialization
-        to have a single line per file/directory, and to have
-        fileid="" and revision="" on that line.
-        """
-        assert (isinstance(self._branch_format, BzrBranchFormat5) or
-                isinstance(self._branch_format, BzrBranchFormat6)), \
-            "fileid_involved only supported for branches which store inventory as xml"
-
-        w = self.repository.get_inventory_weave()
-        file_ids = set()
-        for line in w._weave:
-
-            # it is ugly, but it is due to the weave structure
-            if not isinstance(line, basestring): continue
-
-            start = line.find('file_id="')+9
-            if start < 9: continue
-            end = line.find('"', start)
-            assert end>= 0
-            file_id = xml.sax.saxutils.unescape(line[start:end])
-
-            # check if file_id is already present
-            if file_id in file_ids: continue
-
-            start = line.find('revision="')+10
-            if start < 10: continue
-            end = line.find('"', start)
-            assert end>= 0
-            revision_id = xml.sax.saxutils.unescape(line[start:end])
-
-            if revision_id in changes:
-                file_ids.add(file_id)
-
-        return file_ids
-
-
-Branch.set_default_initializer(BzrBranch._initialize)
 
 
 class BranchTestProviderAdapter(object):
@@ -1183,96 +912,32 @@ class BranchTestProviderAdapter(object):
     
     def adapt(self, test):
         result = TestSuite()
-        for format in self._formats:
+        for branch_format, bzrdir_format in self._formats:
             new_test = deepcopy(test)
             new_test.transport_server = self._transport_server
             new_test.transport_readonly_server = self._transport_readonly_server
-            new_test.branch_format = format
+            new_test.bzrdir_format = bzrdir_format
+            new_test.branch_format = branch_format
             def make_new_test_id():
-                new_id = "%s(%s)" % (new_test.id(), format.__class__.__name__)
+                new_id = "%s(%s)" % (new_test.id(), branch_format.__class__.__name__)
                 return lambda: new_id
             new_test.id = make_new_test_id()
             result.addTest(new_test)
         return result
 
 
-class ScratchBranch(BzrBranch):
-    """Special test class: a branch that cleans up after itself.
-
-    >>> b = ScratchBranch()
-    >>> isdir(b.base)
-    True
-    >>> bd = b.base
-    >>> b._transport.__del__()
-    >>> isdir(bd)
-    False
-    """
-
-    def __init__(self, files=[], dirs=[], transport=None):
-        """Make a test branch.
-
-        This creates a temporary directory and runs init-tree in it.
-
-        If any files are listed, they are created in the working copy.
-        """
-        if transport is None:
-            transport = bzrlib.transport.local.ScratchTransport()
-            # local import for scope restriction
-            from bzrlib.workingtree import WorkingTree
-            WorkingTree.create_standalone(transport.base)
-            super(ScratchBranch, self).__init__(transport)
-        else:
-            super(ScratchBranch, self).__init__(transport)
-
-        # BzrBranch creates a clone to .bzr and then forgets about the
-        # original transport. A ScratchTransport() deletes itself and
-        # everything underneath it when it goes away, so we need to
-        # grab a local copy to prevent that from happening
-        self._transport = transport
-
-        for d in dirs:
-            self._transport.mkdir(d)
-            
-        for f in files:
-            self._transport.put(f, 'content of %s' % f)
-
-    def clone(self):
-        """
-        >>> orig = ScratchBranch(files=["file1", "file2"])
-        >>> os.listdir(orig.base)
-        [u'.bzr', u'file1', u'file2']
-        >>> clone = orig.clone()
-        >>> if os.name != 'nt':
-        ...   os.path.samefile(orig.base, clone.base)
-        ... else:
-        ...   orig.base == clone.base
-        ...
-        False
-        >>> os.listdir(clone.base)
-        [u'.bzr', u'file1', u'file2']
-        """
-        from shutil import copytree
-        from bzrlib.osutils import mkdtemp
-        base = mkdtemp()
-        os.rmdir(base)
-        copytree(self.base, base, symlinks=True)
-        return ScratchBranch(
-            transport=bzrlib.transport.local.ScratchTransport(base))
-    
-
 ######################################################################
 # predicates
 
 
-def is_control_file(filename):
-    ## FIXME: better check
-    filename = normpath(filename)
-    while filename != '':
-        head, tail = os.path.split(filename)
-        ## mutter('check %r for control file' % ((head, tail),))
-        if tail == bzrlib.BZRDIR:
-            return True
-        if filename == head:
-            break
-        filename = head
-    return False
+@deprecated_function(zero_eight)
+def ScratchBranch(*args, **kwargs):
+    """See bzrlib.bzrdir.ScratchDir."""
+    d = ScratchDir(*args, **kwargs)
+    return d.open_branch()
+
+
+@deprecated_function(zero_eight)
+def is_control_file(*args, **kwargs):
+    """See bzrlib.workingtree.is_control_file."""
+    return bzrlib.workingtree.is_control_file(*args, **kwargs)

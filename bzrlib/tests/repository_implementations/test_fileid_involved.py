@@ -17,18 +17,16 @@
 import os
 
 from bzrlib.add import smart_add
-from bzrlib.branch import Branch
 from bzrlib.builtins import merge
-from bzrlib.clone import copy_branch
 from bzrlib.delta import compare_trees
 from bzrlib.fetch import greedy_fetch
 from bzrlib.merge import merge_inner
 from bzrlib.revision import common_ancestor
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.workingtree import WorkingTree
 
 
-class TestFileIdInvolved(TestCaseWithTransport):
+class TestFileIdInvolved(TestCaseWithRepository):
 
     def touch(self,filename):
         f = file(filename,"a")
@@ -118,44 +116,44 @@ class TestFileIdInvolved(TestCaseWithTransport):
 
     def test_fileid_involved_all_revs(self):
 
-        l = self.branch.fileid_involved( )
+        l = self.branch.repository.fileid_involved( )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["a","b","c","d"])
 
     def test_fileid_involved_one_rev(self):
 
-        l = self.branch.fileid_involved("rev-B" )
+        l = self.branch.repository.fileid_involved("rev-B" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["a","b","c"])
 
     def test_fileid_involved_two_revs(self):
 
-        l = self.branch.fileid_involved_between_revs("rev-B","rev-K" )
+        l = self.branch.repository.fileid_involved_between_revs("rev-B","rev-K" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["b","c"])
 
-        l = self.branch.fileid_involved_between_revs("rev-C","rev-<D>" )
+        l = self.branch.repository.fileid_involved_between_revs("rev-C","rev-<D>" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["b","d"])
 
-        l = self.branch.fileid_involved_between_revs("rev-C","rev-G" )
+        l = self.branch.repository.fileid_involved_between_revs("rev-C","rev-G" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["b","c","d"])
 
-        l = self.branch.fileid_involved_between_revs("rev-E","rev-G" )
+        l = self.branch.repository.fileid_involved_between_revs("rev-E","rev-G" )
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["a", "b","c","d"])
 
     def test_fileid_involved_sets(self):
 
-        l = self.branch.fileid_involved_by_set(set(["rev-B"]))
+        l = self.branch.repository.fileid_involved_by_set(set(["rev-B"]))
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["a"])
 
-        l = self.branch.fileid_involved_by_set(set(["rev-<D>"]))
+        l = self.branch.repository.fileid_involved_by_set(set(["rev-<D>"]))
         self.assertEquals( sorted(map( lambda x: x[0], l )), ["b"])
 
     def test_fileid_involved_compare(self):
 
-        l1 = self.branch.fileid_involved_between_revs("rev-E", "rev-<D>")
-        l2 = self.branch.fileid_involved_by_set(set(["rev-<D>","rev-F","rev-C","rev-B"]))
+        l1 = self.branch.repository.fileid_involved_between_revs("rev-E", "rev-<D>")
+        l2 = self.branch.repository.fileid_involved_by_set(set(["rev-<D>","rev-F","rev-C","rev-B"]))
         self.assertEquals( l1, l2 )
 
-        l1 = self.branch.fileid_involved_between_revs("rev-C", "rev-G")
-        l2 = self.branch.fileid_involved_by_set(
+        l1 = self.branch.repository.fileid_involved_between_revs("rev-C", "rev-G")
+        l2 = self.branch.repository.fileid_involved_by_set(
             set(["rev-G","rev-<D>","rev-F","rev-K","rev-J"]))
         self.assertEquals( l1, l2 )
 
@@ -169,7 +167,7 @@ class TestFileIdInvolved(TestCaseWithTransport):
         for start in range(0,len(history)-1):
             for end in range(start+1,len(history)):
 
-                l1 = self.branch.fileid_involved_between_revs(
+                l1 = self.branch.repository.fileid_involved_between_revs(
                     history[start], history[end])
 
                 old_tree = self.branch.repository.revision_tree(history[start])

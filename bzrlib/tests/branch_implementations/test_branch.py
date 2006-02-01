@@ -20,6 +20,7 @@ import os
 import sys
 
 import bzrlib.branch as branch
+import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.commit import commit
 import bzrlib.errors as errors
@@ -31,7 +32,6 @@ from bzrlib.errors import (FileExists,
                            )
 import bzrlib.gpg
 from bzrlib.osutils import getcwd
-from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
@@ -58,6 +58,10 @@ class TestCaseWithBranch(TestCaseWithTransport):
         return self.branch
 
     def make_branch(self, relpath):
+        repo = self.make_repository(relpath)
+        return self.branch_format.initialize(repo.bzrdir)
+
+    def make_repository(self, relpath):
         try:
             url = self.get_url(relpath)
             segments = url.split('/')
@@ -68,7 +72,8 @@ class TestCaseWithBranch(TestCaseWithTransport):
                     t.mkdir(segments[-1])
                 except FileExists:
                     pass
-            return self.branch_format.initialize(url)
+            made_control = self.bzrdir_format.initialize(url)
+            return made_control.create_repository()
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
@@ -105,16 +110,6 @@ class TestBranch(TestCaseWithBranch):
         tree = b2.repository.revision_tree('revision-1')
         eq(tree.get_file_text('foo-id'), 'hello')
 
-    def test_revision_tree(self):
-        b1 = self.get_branch()
-        wt = WorkingTree.create(b1, '.')
-        wt.commit('lala!', rev_id='revision-1', allow_pointless=True)
-        tree = b1.repository.revision_tree('revision-1')
-        tree = b1.repository.revision_tree(None)
-        self.assertEqual(len(tree.list_files()), 0)
-        tree = b1.repository.revision_tree(NULL_REVISION)
-        self.assertEqual(len(tree.list_files()), 0)
-
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
         get_transport(self.get_url()).mkdir('a')
@@ -132,30 +127,15 @@ class TestBranch(TestCaseWithBranch):
     def get_balanced_branch_pair(self):
         """Returns br_a, br_b as with one commit in a, and b has a's stores."""
         tree_a, tree_b = self.get_unbalanced_tree_pair()
-        tree_a.branch.push_stores(tree_b.branch)
+        tree_a.branch.repository.push_stores(tree_b.branch.repository)
         return tree_a, tree_b
-
-    def test_push_stores(self):
-        """Copy the stores from one branch to another"""
-        tree_a, tree_b = self.get_unbalanced_tree_pair()
-        br_a = tree_a.branch
-        br_b = tree_b.branch
-        # ensure the revision is missing.
-        self.assertRaises(NoSuchRevision, br_b.repository.get_revision, 
-                          br_a.revision_history()[0])
-        br_a.push_stores(br_b)
-        # check that b now has all the data from a's first commit.
-        rev = br_b.repository.get_revision(br_a.revision_history()[0])
-        tree = br_b.repository.revision_tree(br_a.revision_history()[0])
-        for file_id in tree:
-            if tree.inventory[file_id].kind == "file":
-                tree.get_file(file_id).read()
 
     def test_clone_branch(self):
         """Copy the stores from one branch to another"""
         tree_a, tree_b = self.get_balanced_branch_pair()
         tree_b.commit("silly commit")
         os.mkdir('c')
+        # this fails to test that the history from a was not used.
         br_c = tree_a.branch.clone('c', basis_branch=tree_b.branch)
         self.assertEqual(tree_a.branch.revision_history(),
                          br_c.revision_history())
@@ -304,12 +284,6 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual(committed.properties["branch-nick"], 
                          "My happy branch")
 
-    def test_no_ancestry_weave(self):
-        # We no longer need to create the ancestry.weave file
-        # since it is *never* used.
-        branch = Branch.create('.')
-        self.failIfExists('.bzr/ancestry.weave')
-
 
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.
@@ -329,10 +303,7 @@ class ChrootedTests(TestCaseWithBranch):
                           self.get_readonly_url(''))
         self.assertRaises(NotBranchError, Branch.open_containing,
                           self.get_readonly_url('g/p/q'))
-        try:
-            branch = self.branch_format.initialize(self.get_url())
-        except UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
+        branch = self.make_branch('.')
         branch, relpath = Branch.open_containing(self.get_readonly_url(''))
         self.assertEqual('', relpath)
         branch, relpath = Branch.open_containing(self.get_readonly_url('g/p/q'))
@@ -511,19 +482,26 @@ class TestFormat(TestCaseWithBranch):
         # supported formats must be able to init and open
         t = get_transport(self.get_url())
         readonly_t = get_transport(self.get_readonly_url())
-        made_branch = self.branch_format.initialize(t.base)
+        made_branch = self.make_branch('.')
         self.failUnless(isinstance(made_branch, branch.Branch))
-        self.assertEqual(self.branch_format,
-                         branch.BzrBranchFormat.find_format(readonly_t))
-        direct_opened_branch = self.branch_format.open(readonly_t)
-        opened_branch = branch.Branch.open(t.base)
-        self.assertEqual(made_branch._branch_format,
-                         opened_branch._branch_format)
-        self.assertEqual(direct_opened_branch._branch_format,
-                         opened_branch._branch_format)
-        self.failUnless(isinstance(opened_branch, branch.Branch))
 
-    def test_open_not_branch(self):
-        self.assertRaises(NoSuchFile,
-                          self.branch_format.open,
-                          get_transport(self.get_readonly_url()))
+        # find it via bzrdir opening:
+        opened_control = bzrdir.BzrDir.open(readonly_t.base)
+        direct_opened_branch = opened_control.open_branch()
+        self.assertEqual(direct_opened_branch.__class__, made_branch.__class__)
+        self.assertEqual(opened_control, direct_opened_branch.bzrdir)
+        self.failUnless(isinstance(direct_opened_branch._format,
+                        self.branch_format.__class__))
+
+        # find it via Branch.open
+        opened_branch = branch.Branch.open(readonly_t.base)
+        self.failUnless(isinstance(opened_branch, made_branch.__class__))
+        self.assertEqual(made_branch._format.__class__,
+                         opened_branch._format.__class__)
+        # if it has a unique id string, can we probe for it ?
+        try:
+            self.branch_format.get_format_string()
+        except NotImplementedError:
+            return
+        self.assertEqual(self.branch_format,
+                         branch.BranchFormat.find_format(opened_control))

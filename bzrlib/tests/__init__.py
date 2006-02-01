@@ -21,6 +21,7 @@
 # little as possible, so this should be used rarely if it's added at all.
 # (Suggestion from j-a-meinel, 2005-11-24)
 
+import codecs
 from cStringIO import StringIO
 import difflib
 import errno
@@ -33,7 +34,7 @@ import sys
 import tempfile
 import unittest
 import time
-import codecs
+
 
 import bzrlib.branch
 import bzrlib.commands
@@ -729,17 +730,22 @@ class TestCaseWithTransport(TestCaseInTempDir):
 
     def make_branch(self, relpath):
         """Create a branch on the transport at relpath."""
+        repo = self.make_repository(relpath)
+        return repo.bzrdir.create_branch()
+
+    def make_repository(self, relpath):
+        """Create a repository on our default transport at relpath."""
         try:
             url = self.get_url(relpath)
-            segments = relpath.split('/')
+            segments = url.split('/')
             if segments and segments[-1] not in ('', '.'):
-                parent = self.get_url('/'.join(segments[:-1]))
+                parent = '/'.join(segments[:-1])
                 t = bzrlib.transport.get_transport(parent)
                 try:
                     t.mkdir(segments[-1])
                 except FileExists:
                     pass
-            return bzrlib.branch.Branch.create(url)
+            return bzrlib.bzrdir.BzrDir.create_repository(url)
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
@@ -846,7 +852,6 @@ def test_suite():
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_fetch',
-                   'bzrlib.tests.test_fileid_involved',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
@@ -863,7 +868,6 @@ def test_suite():
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
-                   'bzrlib.tests.test_parent',
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_repository',

@@ -127,6 +127,34 @@ class TestBzrDir(TestCaseWithBzrDir):
                           self.bzrdir_format.open,
                           get_transport(self.get_readonly_url()))
 
+    def test_create_branch(self):
+        # a bzrdir can construct a repository for itself.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = get_transport(self.get_url())
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository()
+        made_branch = made_control.create_branch()
+        self.failUnless(isinstance(made_branch, branch.Branch))
+        self.assertEqual(made_control, made_branch.bzrdir)
+        
+    def test_open_branch(self):
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = get_transport(self.get_url())
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository()
+        made_branch = made_control.create_branch()
+        opened_branch = made_control.open_branch()
+        self.assertEqual(made_control, opened_branch.bzrdir)
+        self.failUnless(isinstance(opened_branch, made_branch.__class__))
+
     def test_create_repository(self):
         # a bzrdir can construct a repository for itself.
         if not self.bzrdir_format.is_supported():

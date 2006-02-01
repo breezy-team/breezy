@@ -18,6 +18,7 @@ import os
 import sys
 
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.builtins import merge
 import bzrlib.errors
 from bzrlib.fetch import greedy_fetch
@@ -29,33 +30,30 @@ from bzrlib.workingtree import WorkingTree
 
 
 def has_revision(branch, revision_id):
-    try:
-        branch.repository.get_revision_xml_file(revision_id)
-        return True
-    except bzrlib.errors.NoSuchRevision:
-        return False
-
+    return branch.repository.has_revision(revision_id)
 
 def fetch_steps(self, br_a, br_b, writable_a):
     """A foreign test method for testing fetch locally and remotely."""
     def new_branch(name):
         os.mkdir(name)
         return WorkingTree.create_standalone(name).branch
-            
-    self.assertFalse(has_revision(br_b, br_a.revision_history()[3]))
-    self.assert_(has_revision(br_b, br_a.revision_history()[2]))
+     
+    # TODO RBC 20060201 make this a repository test.
+    repo_b = br_b.repository
+    self.assertFalse(repo_b.has_revision(br_a.revision_history()[3]))
+    self.assertTrue(repo_b.has_revision(br_a.revision_history()[2]))
     self.assertEquals(len(br_b.revision_history()), 7)
     self.assertEquals(greedy_fetch(br_b, br_a, br_a.revision_history()[2])[0], 0)
 
     # greedy_fetch is not supposed to alter the revision history
     self.assertEquals(len(br_b.revision_history()), 7)
-    self.assertFalse(has_revision(br_b, br_a.revision_history()[3]))
+    self.assertFalse(repo_b.has_revision(br_a.revision_history()[3]))
 
     self.assertEquals(len(br_b.revision_history()), 7)
     self.assertEquals(greedy_fetch(br_b, br_a, br_a.revision_history()[3])[0], 1)
-    self.assert_(has_revision(br_b, br_a.revision_history()[3]))
+    self.assertTrue(repo_b.has_revision(br_a.revision_history()[3]))
     self.assertFalse(has_revision(br_a, br_b.revision_history()[6]))
-    self.assert_(has_revision(br_a, br_b.revision_history()[5]))
+    self.assertTrue(br_a.repository.has_revision(br_b.revision_history()[5]))
 
     # When a non-branch ancestor is missing, it should be unlisted...
     # as its not reference from the inventory weave.
@@ -65,28 +63,32 @@ def fetch_steps(self, br_a, br_b, writable_a):
     self.assertEqual(failures, [])
 
     self.assertEqual(greedy_fetch(writable_a, br_b)[0], 1)
-    self.assert_(has_revision(br_a, br_b.revision_history()[3]))
-    self.assert_(has_revision(br_a, br_b.revision_history()[4]))
+    self.assertTrue(has_revision(br_a, br_b.revision_history()[3]))
+    self.assertTrue(has_revision(br_a, br_b.revision_history()[4]))
         
     br_b2 = new_branch('br_b2')
     self.assertEquals(greedy_fetch(br_b2, br_b)[0], 7)
-    self.assert_(has_revision(br_b2, br_b.revision_history()[4]))
-    self.assert_(has_revision(br_b2, br_a.revision_history()[2]))
+    self.assertTrue(has_revision(br_b2, br_b.revision_history()[4]))
+    self.assertTrue(has_revision(br_b2, br_a.revision_history()[2]))
     self.assertFalse(has_revision(br_b2, br_a.revision_history()[3]))
 
     br_a2 = new_branch('br_a2')
     self.assertEquals(greedy_fetch(br_a2, br_a)[0], 9)
-    self.assert_(has_revision(br_a2, br_b.revision_history()[4]))
-    self.assert_(has_revision(br_a2, br_a.revision_history()[3]))
-    self.assert_(has_revision(br_a2, br_a.revision_history()[2]))
+    self.assertTrue(has_revision(br_a2, br_b.revision_history()[4]))
+    self.assertTrue(has_revision(br_a2, br_a.revision_history()[3]))
+    self.assertTrue(has_revision(br_a2, br_a.revision_history()[2]))
 
     br_a3 = new_branch('br_a3')
+    # pulling a branch with no revisions grabs nothing, regardless of 
+    # whats in the inventory.
     self.assertEquals(greedy_fetch(br_a3, br_a2)[0], 0)
     for revno in range(4):
-        self.assertFalse(has_revision(br_a3, br_a.revision_history()[revno]))
+        self.assertFalse(
+            br_a3.repository.has_revision(br_a.revision_history()[revno]))
     self.assertEqual(greedy_fetch(br_a3, br_a2, br_a.revision_history()[2])[0], 3)
+    # pull the 3 revisions introduced by a@u-0-3
     fetched = greedy_fetch(br_a3, br_a2, br_a.revision_history()[3])[0]
-    self.assertEquals(fetched, 6, "fetched %d instead of 6" % fetched)
+    self.assertEquals(fetched, 3, "fetched %d instead of 3" % fetched)
     # InstallFailed should be raised if the branch is missing the revision
     # that was requested.
     self.assertRaises(bzrlib.errors.InstallFailed, greedy_fetch, br_a3,
@@ -96,9 +98,10 @@ def fetch_steps(self, br_a, br_b, writable_a):
     br_a2.append_revision('a-b-c')
     self.assertRaises(bzrlib.errors.InstallFailed, greedy_fetch, br_a3,
                       br_a2)
-
-
     #TODO: test that fetch correctly does reweaving when needed. RBC 20051008
+    # Note that this means - updating the weave when ghosts are filled in to 
+    # add the right parents.
+
 
 class TestFetch(TestCaseWithTransport):
 
@@ -198,7 +201,7 @@ class TestHttpFetch(TestCaseWithWebserver):
         wt.commit("added file")
         print >>open("source/file", 'w'), "blah"
         wt.commit("changed file")
-        target = Branch.create("target/")
+        target = BzrDir.create_branch_and_repo("target/")
         source = Branch.open(self.get_remote_url("source/"))
         self.assertEqual(greedy_fetch(target, source), (2, []))
         # this is the path to the literal file. As format changes 

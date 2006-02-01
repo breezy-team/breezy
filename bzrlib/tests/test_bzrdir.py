@@ -35,7 +35,7 @@ from bzrlib.transport.memory import MemoryServer
 
 class TestDefaultFormat(TestCase):
 
-    def test_get_set_default_initializer(self):
+    def test_get_set_default_format(self):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         # default is BzrDirFormat6
         self.failUnless(isinstance(old_format, bzrdir.BzrDirFormat6))
@@ -55,6 +55,10 @@ class SampleBzrDir(bzrdir.BzrDir):
     def create_repository(self):
         """See BzrDir.create_repository."""
         return "A repository"
+
+    def create_branch(self):
+        """See BzrDir.create_branch."""
+        return "A branch"
 
 
 class SampleBzrDirFormat(bzrdir.BzrDirFormat):
@@ -78,7 +82,7 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
     def is_supported(self):
         return False
 
-    def open(self, transport):
+    def open(self, transport, _found=None):
         return "opened branch."
 
 
@@ -138,7 +142,17 @@ class TestBzrDirFormat(TestCaseWithTransport):
             self.assertEqual('A repository', repo)
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
-        
+
+    def test_create_branch(self):
+        format = SampleBzrDirFormat()
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(format)
+        try:
+            repo = bzrdir.BzrDir.create_branch_and_repo(self.get_url())
+            self.assertEqual('A branch', repo)
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
 
 class ChrootedTests(TestCaseWithTransport):
     """A support class that provides readonly urls outside the local namespace.

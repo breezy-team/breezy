@@ -217,15 +217,17 @@ class TestBranchProviderAdapter(TestCase):
             "test_adapted_tests")
         server1 = "a"
         server2 = "b"
-        formats = ["c", "d"]
+        formats = [("c", "C"), ("d", "D")]
         adapter = BranchTestProviderAdapter(server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
         self.assertEqual(2, len(tests))
-        self.assertEqual(tests[0].branch_format, formats[0])
+        self.assertEqual(tests[0].branch_format, formats[0][0])
+        self.assertEqual(tests[0].bzrdir_format, formats[0][1])
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[1].branch_format, formats[1])
+        self.assertEqual(tests[1].branch_format, formats[1][0])
+        self.assertEqual(tests[1].bzrdir_format, formats[1][1])
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 

@@ -18,7 +18,7 @@ import os
 import socket
 import threading
 
-from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin, lexists
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
@@ -217,7 +217,7 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
 
     def test_lock_file(self):
         """Make sure that a Branch accessed over sftp tries to lock itself."""
-        b = Branch.create(self._sftp_url)
+        b = BzrDir.create_branch_and_repo(self._sftp_url)
         self.failUnlessExists('.bzr/')
         self.failUnlessExists('.bzr/branch-format')
         self.failUnlessExists('.bzr/branch-lock')
@@ -235,8 +235,7 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         t.add('foo')
         t.commit('foo', rev_id='a1')
 
-        os.mkdir('b')
-        b2 = Branch.create(self._sftp_url + '/b')
+        b2 = BzrDir.create_branch_and_repo(self._sftp_url + '/b')
         b2.pull(b)
 
         self.assertEquals(b2.revision_history(), ['a1'])

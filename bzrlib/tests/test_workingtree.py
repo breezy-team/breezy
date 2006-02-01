@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Ltd
+# (C) 2005,2006 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@ import os
 
 import bzrlib
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.tests import TestCaseWithTransport
@@ -184,8 +185,7 @@ class TestWorkingTree(TestCaseWithTransport):
     def test_checkout(self):
         # at this point as we dont have checkout versions, checkout simply
         # populates the required files for a working tree at the dir.
-        self.build_tree(['branch/'])
-        b = Branch.create('branch')
+        b = BzrDir.create_branch_and_repo('branch')
         t = WorkingTree.create(b, 'tree')
         # as we are moving the ownership to working tree, we will check here
         # that its split out correctly

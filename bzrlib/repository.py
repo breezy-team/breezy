@@ -17,9 +17,12 @@
 from copy import deepcopy
 from cStringIO import StringIO
 from unittest import TestSuite
+import xml.sax.saxutils
+
 
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+import bzrlib.errors as errors
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.osutils import safe_unicode
@@ -34,7 +37,6 @@ from bzrlib.tree import EmptyTree
 import bzrlib.xml5
 
 
-
 class Repository(object):
     """Repository holding history for one or more branches.
 
@@ -46,6 +48,19 @@ class Repository(object):
     describe the disk data format and the way of accessing the (possibly 
     remote) disk.
     """
+
+    @needs_read_lock
+    def all_revision_ids(self):
+        """Returns a list of all the revision ids in the repository.
+
+        It would be nice to have this topologically sorted, but its not yet.
+        """
+        possible_ids = self.get_inventory_weave().names()
+        result = []
+        for id in possible_ids:
+            if self.has_revision(id):
+               result.append(id)
+        return result
 
     @staticmethod
     def create(a_bzrdir):
@@ -145,8 +160,40 @@ class Repository(object):
         control = bzrdir.BzrDir.open(base)
         return control.open_repository()
 
+    def push_stores(self, to, revision=NULL_REVISION):
+        """FIXME: document and find a consistent name with other classes."""
+        if (not isinstance(self._format, RepositoryFormat4) or
+            self._format != to._format):
+            from bzrlib.fetch import RepoFetcher
+            mutter("Using fetch logic to push between %s(%s) and %s(%s)",
+                   self, self._format, to, to._format)
+            RepoFetcher(to_repository=to, from_repository=self,
+                         last_revision=revision)
+            return
+
+        # format 4 to format 4 logic only.
+        store_pairs = ((self.text_store,      to.text_store),
+                       (self.inventory_store, to.inventory_store),
+                       (self.revision_store,  to.revision_store))
+        try:
+            for from_store, to_store in store_pairs: 
+                copy_all(from_store, to_store)
+        except UnlistableStore:
+            raise UnlistableBranch(from_store)
+
     def unlock(self):
         self.control_files.unlock()
+
+    @needs_read_lock
+    def clone(self, a_bzrdir):
+        """Clone this repository into a_bzrdir using the current format.
+
+        Currently no check is made that the format of this repository and
+        the bzrdir format are compatible. FIXME RBC 20060201.
+        """
+        result = self._format.initialize(a_bzrdir)
+        self.copy(result)
+        return result
 
     @needs_read_lock
     def copy(self, destination):
@@ -211,6 +258,96 @@ class Repository(object):
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
         self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
                                 revision_id, "sig")
+
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """Find file_id(s) which are involved in the changes between revisions.
+
+        This determines the set of revisions which are involved, and then
+        finds all file ids affected by those revisions.
+        """
+        # TODO: jam 20060119 This code assumes that w.inclusions will
+        #       always be correct. But because of the presence of ghosts
+        #       it is possible to be wrong.
+        #       One specific example from Robert Collins:
+        #       Two branches, with revisions ABC, and AD
+        #       C is a ghost merge of D.
+        #       Inclusions doesn't recognize D as an ancestor.
+        #       If D is ever merged in the future, the weave
+        #       won't be fixed, because AD never saw revision C
+        #       to cause a conflict which would force a reweave.
+        w = self.get_inventory_weave()
+        from_set = set(w.inclusions([w.lookup(from_revid)]))
+        to_set = set(w.inclusions([w.lookup(to_revid)]))
+        included = to_set.difference(from_set)
+        changed = map(w.idx_to_name, included)
+        return self._fileid_involved_by_set(changed)
+
+    def fileid_involved(self, last_revid=None):
+        """Find all file_ids modified in the ancestry of last_revid.
+
+        :param last_revid: If None, last_revision() will be used.
+        """
+        w = self.get_inventory_weave()
+        if not last_revid:
+            changed = set(w._names)
+        else:
+            included = w.inclusions([w.lookup(last_revid)])
+            changed = map(w.idx_to_name, included)
+        return self._fileid_involved_by_set(changed)
+
+    def fileid_involved_by_set(self, changes):
+        """Find all file_ids modified by the set of revisions passed in.
+
+        :param changes: A set() of revision ids
+        """
+        # TODO: jam 20060119 This line does *nothing*, remove it.
+        #       or better yet, change _fileid_involved_by_set so
+        #       that it takes the inventory weave, rather than
+        #       pulling it out by itself.
+        return self._fileid_involved_by_set(changes)
+
+    def _fileid_involved_by_set(self, changes):
+        """Find the set of file-ids affected by the set of revisions.
+
+        :param changes: A set() of revision ids.
+        :return: A set() of file ids.
+        
+        This peaks at the Weave, interpreting each line, looking to
+        see if it mentions one of the revisions. And if so, includes
+        the file id mentioned.
+        This expects both the Weave format, and the serialization
+        to have a single line per file/directory, and to have
+        fileid="" and revision="" on that line.
+        """
+        assert (isinstance(self._format, RepositoryFormat5) or
+                isinstance(self._format, RepositoryFormat6)), \
+            "fileid_involved only supported for branches which store inventory as xml"
+
+        w = self.get_inventory_weave()
+        file_ids = set()
+        for line in w._weave:
+
+            # it is ugly, but it is due to the weave structure
+            if not isinstance(line, basestring): continue
+
+            start = line.find('file_id="')+9
+            if start < 9: continue
+            end = line.find('"', start)
+            assert end>= 0
+            file_id = xml.sax.saxutils.unescape(line[start:end])
+
+            # check if file_id is already present
+            if file_id in file_ids: continue
+
+            start = line.find('revision="')+10
+            if start < 10: continue
+            end = line.find('"', start)
+            assert end>= 0
+            revision_id = xml.sax.saxutils.unescape(line[start:end])
+
+            if revision_id in changes:
+                file_ids.add(file_id)
+        return file_ids
 
     @needs_read_lock
     def get_inventory_weave(self):
@@ -277,6 +414,8 @@ class Repository(object):
         """
         if revision_id is None:
             return [None]
+        if not self.has_revision(revision_id):
+            raise errors.NoSuchRevision(self, revision_id)
         w = self.get_inventory_weave()
         return [None] + map(w.idx_to_name,
                             w.inclusions([w.lookup(revision_id)]))
@@ -340,7 +479,7 @@ class RepositoryFormat(object):
     """
 
     _default_format = None
-    """The default format used for new branches."""
+    """The default format used for new repositories."""
 
     _formats = {}
     """The known formats."""
@@ -406,6 +545,7 @@ class RepositoryFormat(object):
         _found is a private parameter, do not use it.
         """
         if not _found:
+            # we are being called directly and must probe.
             raise NotImplementedError
         return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
 
@@ -489,6 +629,10 @@ _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
                    RepositoryFormat6()]
 
+
+# TODO: jam 20060108 Create a new branch format, and as part of upgrade
+#       make sure that ancestry.weave is deleted (it is never used, but
+#       used to be created)
 
 class RepositoryTestProviderAdapter(object):
     """A tool to generate a suite testing multiple repository formats at once.

@@ -25,6 +25,8 @@ import sys
 
 import bzrlib.branch as branch
 from bzrlib.branch import Branch
+import bzrlib.bzrdir as bzrdir
+import bzrlib.repository as repository
 from bzrlib.revision import is_ancestor
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import get_transport
@@ -44,9 +46,13 @@ class TestUpgrade(TestCaseInTempDir):
         eq = self.assertEquals
         self.build_tree_contents(_upgrade1_template)
         upgrade(u'.')
-        b = Branch.open(u'.')
+        control = bzrdir.BzrDir.open('.')
+        b = control.open_branch()
+        r = control.open_repository()
         # tsk, peeking under the covers.
-        self.failUnless(isinstance(b._branch_format, branch.BzrBranchFormat6))
+        self.failUnless(isinstance(control._format, bzrdir.BzrDirFormat6))
+        self.failUnless(isinstance(b._format, branch.BzrBranchFormat4))
+        self.failUnless(isinstance(r._format, repository.RepositoryFormat6))
         rh = b.revision_history()
         eq(rh,
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',

@@ -36,6 +36,7 @@ import stat
 from StringIO import StringIO
 
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
@@ -207,21 +208,21 @@ class TestPermissions(TestCaseWithTransport):
 
         os.mkdir('b')
         os.chmod('b', 02777)
-        b = Branch.create('b')
+        b = BzrDir.create('b').create_branch()
         assertEqualMode(self, 02777, b.control_files._dir_mode)
         assertEqualMode(self, 00666, b.control_files._file_mode)
         check_mode_r(self, 'b/.bzr', 00666, 02777)
 
         os.mkdir('c')
         os.chmod('c', 02750)
-        b = Branch.create('c')
+        b = BzrDir.create('c').create_branch()
         assertEqualMode(self, 02750, b.control_files._dir_mode)
         assertEqualMode(self, 00640, b.control_files._file_mode)
         check_mode_r(self, 'c/.bzr', 00640, 02750)
 
         os.mkdir('d')
         os.chmod('d', 0700)
-        b = Branch.create('d')
+        b = BzrDir.create('d').create_branch()
         assertEqualMode(self, 0700, b.control_files._dir_mode)
         assertEqualMode(self, 0600, b.control_files._file_mode)
         check_mode_r(self, 'd/.bzr', 00600, 0700)
@@ -260,7 +261,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
 
         os.mkdir('sftp')
         sftp_url = self.get_remote_url('sftp')
-        b_sftp = Branch.create(sftp_url)
+        b_sftp = BzrDir.create_branch_and_repo(sftp_url)
 
         b_sftp.pull(b_local)
         del b_sftp

@@ -26,6 +26,7 @@ from StringIO import StringIO
 
 import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import (NotBranchError,
+                           NoSuchFile,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
@@ -38,7 +39,7 @@ from bzrlib.transport.memory import MemoryServer
 
 class TestDefaultFormat(TestCase):
 
-    def test_get_set_default_initializer(self):
+    def test_get_set_default_format(self):
         old_format = repository.RepositoryFormat.get_default_format()
         # default is None - we cannot create a Repository independently yet
         self.assertEqual(old_format, None)
@@ -77,3 +78,16 @@ class SampleRepositoryFormat(repository.RepositoryFormat):
 
     def open(self, a_bzrdir):
         return "opened repository."
+
+
+class TestFormat6(TestCaseWithTransport):
+
+    def test_no_ancestry_weave(self):
+        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        repo = repository.RepositoryFormat6().initialize(control)
+        # We no longer need to create the ancestry.weave file
+        # since it is *never* used.
+        self.assertRaises(NoSuchFile,
+                          control.transport.get,
+                          'ancestry.weave')
+
