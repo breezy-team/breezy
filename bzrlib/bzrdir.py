@@ -32,6 +32,7 @@ from bzrlib.osutils import safe_unicode
 from bzrlib.trace import mutter
 from bzrlib.symbol_versioning import *
 from bzrlib.transport import get_transport
+from bzrlib.transport.local import LocalTransport
 
 
 class BzrDir(object):
@@ -101,6 +102,28 @@ class BzrDir(object):
         """
         bzrdir = BzrDir.create(base)
         return bzrdir.create_repository()
+
+    @staticmethod
+    def create_standalone_workingtree(base):
+        """Create a new BzrDir, WorkingTree, Branch and Repository at 'base'.
+
+        'base' must be a local path or a file:// url.
+
+        This will use the current default BzrDirFormat, and use whatever 
+        repository format that that uses for bzrdirformat.create_workingtree,
+        create_branch and create_repository.
+
+        The WorkingTree object is returned.
+        """
+        t = get_transport(base)
+        if not isinstance(t, LocalTransport):
+            raise errors.NotLocalUrl(base)
+        bzrdir = BzrDir.create(base)
+        return bzrdir.create_workingtree()
+
+    def create_workingtree(self):
+        """Create a working tree at this BzrDir"""
+        raise NotImplementedError(self.create_workingtree)
 
     def __init__(self, _transport, _format):
         """Initialize a Bzr control dir object.
@@ -179,6 +202,13 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.open_repository)
 
+    def open_workingtree(self):
+        """Open the workingtree object at this BzrDir if one is present.
+        
+        TODO: static convenience version of this?
+        """
+        raise NotImplementedError(self.open_workingtree)
+
 
 class BzrDir4(BzrDir):
     """A .bzr version 4 control object."""
@@ -217,6 +247,11 @@ class BzrDir5(BzrDir):
         from bzrlib.repository import RepositoryFormat5
         return RepositoryFormat5().initialize(self)
 
+    def create_workingtree(self):
+        """See BzrDir.create_workingtree."""
+        from bzrlib.workingtree import WorkingTreeFormat2
+        return WorkingTreeFormat2().initialize(self)
+
     def open_branch(self):
         """See BzrDir.open_branch."""
         from bzrlib.branch import BzrBranchFormat4
@@ -226,6 +261,11 @@ class BzrDir5(BzrDir):
         """See BzrDir.open_repository."""
         from bzrlib.repository import RepositoryFormat5
         return RepositoryFormat5().open(self, _found=True)
+
+    def open_workingtree(self):
+        """See BzrDir.create_workingtree."""
+        from bzrlib.workingtree import WorkingTreeFormat2
+        return WorkingTreeFormat2().open(self, _found=True)
 
 
 class BzrDir6(BzrDir):
@@ -241,6 +281,11 @@ class BzrDir6(BzrDir):
         from bzrlib.repository import RepositoryFormat6
         return RepositoryFormat6().initialize(self)
 
+    def create_workingtree(self):
+        """See BzrDir.create_workingtree."""
+        from bzrlib.workingtree import WorkingTreeFormat2
+        return WorkingTreeFormat2().initialize(self)
+
     def open_branch(self):
         """See BzrDir.open_branch."""
         from bzrlib.branch import BzrBranchFormat4
@@ -250,6 +295,11 @@ class BzrDir6(BzrDir):
         """See BzrDir.open_repository."""
         from bzrlib.repository import RepositoryFormat6
         return RepositoryFormat6().open(self, _found=True)
+
+    def open_workingtree(self):
+        """See BzrDir.create_workingtree."""
+        from bzrlib.workingtree import WorkingTreeFormat2
+        return WorkingTreeFormat2().open(self, _found=True)
 
 
 class BzrDirFormat(object):

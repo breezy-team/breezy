@@ -36,7 +36,7 @@ from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
-from bzrlib.workingtree import WorkingTree
+import bzrlib.workingtree as workingtree
 
 
 class TestCaseWithBzrDir(TestCaseWithTransport):
@@ -180,3 +180,38 @@ class TestBzrDir(TestCaseWithBzrDir):
         opened_repo = made_control.open_repository()
         self.assertEqual(made_control, opened_repo.bzrdir)
         self.failUnless(isinstance(opened_repo, made_repo.__class__))
+
+    def test_create_workingtree(self):
+        # a bzrdir can construct a working tree for itself.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        # this has to be tested with local access as we still support creating 
+        # format 6 bzrdirs
+        t = get_transport('.')
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository()
+        made_branch = made_control.create_branch()
+        made_tree = made_control.create_workingtree()
+        self.failUnless(isinstance(made_tree, workingtree.WorkingTree))
+        self.assertEqual(made_control, made_tree.bzrdir)
+        
+    def test_open_workingtree(self):
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        # this has to be tested with local access as we still support creating 
+        # format 6 bzrdirs
+        t = get_transport('.')
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository()
+        made_branch = made_control.create_branch()
+        made_tree = made_control.create_workingtree()
+        opened_tree = made_control.open_workingtree()
+        self.assertEqual(made_control, opened_tree.bzrdir)
+        self.failUnless(isinstance(opened_tree, made_tree.__class__))
+

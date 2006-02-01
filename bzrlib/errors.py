@@ -140,6 +140,14 @@ class NoWorkingTree(BzrNewError):
         self.base = base
 
 
+class NotLocalUrl(BzrNewError):
+    """%s(url) is not a local path."""
+    
+    def __init__(self, url):
+        BzrNewError.__init__(self)
+        self.url = url
+
+
 class BzrCommandError(BzrError):
     # Error from malformed user command
     # This is being misused as a generic exception

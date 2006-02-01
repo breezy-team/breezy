@@ -83,6 +83,7 @@ from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
+from bzrlib.transport.local import LocalTransport
 import bzrlib.xml5
 
 
@@ -1101,3 +1102,32 @@ def is_control_file(filename):
     return False
 
 
+class WorkingTreeFormat2(object):
+    """The second working tree format. 
+
+    This format modified the hash cache from the format 1 hash cache.
+    """
+
+    def initialize(self, a_bzrdir):
+        """See WorkingTreeFormat.initialize()."""
+        if not isinstance(a_bzrdir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        result = WorkingTree.create(a_bzrdir.open_branch(),
+                                  a_bzrdir.transport.clone('..').base)
+        result.bzrdir = a_bzrdir
+        result._format = self
+        return result
+
+    def open(self, a_bzrdir, _found=False):
+        """Return the WorkingTree object for a_bzrdir
+
+        _found is a private parameter, do not use it. It is used to indicate
+               if format probing has already been done.
+        """
+        if not _found:
+            # we are being called directly and must probe.
+            raise NotImplementedError
+        result = WorkingTree(a_bzrdir.transport.clone('..').base)
+        result.bzrdir = a_bzrdir
+        result._format = self
+        return result

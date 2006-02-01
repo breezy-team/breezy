@@ -22,11 +22,11 @@ For interface contract tests, see tests/bzr_dir_implementations.
 from StringIO import StringIO
 
 import bzrlib.bzrdir as bzrdir
+import bzrlib.errors as errors
 from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
@@ -59,6 +59,10 @@ class SampleBzrDir(bzrdir.BzrDir):
     def create_branch(self):
         """See BzrDir.create_branch."""
         return "A branch"
+
+    def create_workingtree(self):
+        """See BzrDir.create_workingtree."""
+        return "A tree"
 
 
 class SampleBzrDirFormat(bzrdir.BzrDirFormat):
@@ -143,13 +147,28 @@ class TestBzrDirFormat(TestCaseWithTransport):
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
-    def test_create_branch(self):
+    def test_create_branch_and_repo(self):
         format = SampleBzrDirFormat()
         old_format = bzrdir.BzrDirFormat.get_default_format()
         bzrdir.BzrDirFormat.set_default_format(format)
         try:
-            repo = bzrdir.BzrDir.create_branch_and_repo(self.get_url())
-            self.assertEqual('A branch', repo)
+            branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url())
+            self.assertEqual('A branch', branch)
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_standalone_working_tree(self):
+        format = SampleBzrDirFormat()
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(format)
+        try:
+            # note this is deliberately readonly, as this failure should 
+            # occur before any writes.
+            self.assertRaises(errors.NotLocalUrl,
+                              bzrdir.BzrDir.create_standalone_workingtree,
+                              self.get_readonly_url())
+            tree = bzrdir.BzrDir.create_standalone_workingtree('.')
+            self.assertEqual('A tree', tree)
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
