@@ -30,12 +30,13 @@ import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch)
+from bzrlib.log import show_one_log
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
+from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree
-from bzrlib.log import show_one_log
 
 
 def tree_files(file_list, default_branch=u'.'):
@@ -497,7 +498,10 @@ class cmd_push(Command):
                         if new_transport.base == transport.base:
                             raise BzrCommandError("Could not creeate "
                                                   "path prefix.")
-            br_to = Branch.initialize(location)
+            if isinstance(transport, LocalTransport):
+                br_to = WorkingTree.create_standalone(location).branch
+            else:
+                br_to = Branch.create(location)
         old_rh = br_to.revision_history()
         try:
             try:
@@ -704,7 +708,7 @@ class cmd_ancestry(Command):
         tree = WorkingTree.open_containing(u'.')[0]
         b = tree.branch
         # FIXME. should be tree.last_revision
-        for revision_id in b.get_ancestry(b.last_revision()):
+        for revision_id in b.repository.get_ancestry(b.last_revision()):
             print revision_id
 
 
@@ -734,7 +738,7 @@ class cmd_init(Command):
             # locations if the user supplies an extended path
             if not os.path.exists(location):
                 os.mkdir(location)
-        Branch.initialize(location)
+        WorkingTree.create_standalone(location)
 
 
 class cmd_diff(Command):
@@ -1166,8 +1170,8 @@ class cmd_export(Command):
 
     Note: export of tree with non-ascii filenames to zip is not supported.
 
-    Supported formats       Autodetected by extension
-    -----------------       -------------------------
+     Supported formats       Autodetected by extension
+     -----------------       -------------------------
          dir                            -
          tar                          .tar
          tbz2                    .tar.bz2, .tbz2
@@ -1360,16 +1364,14 @@ class cmd_upgrade(Command):
     """Upgrade branch storage to current format.
 
     The check command or bzr developers may sometimes advise you to run
-    this command.
-
-    This version of this command upgrades from the full-text storage
-    used by bzr 0.0.8 and earlier to the weave format (v5).
+    this command. When the default format has changed you may also be warned
+    during other operations to upgrade.
     """
-    takes_args = ['dir?']
+    takes_args = ['url?']
 
-    def run(self, dir=u'.'):
+    def run(self, url='.'):
         from bzrlib.upgrade import upgrade
-        upgrade(dir)
+        upgrade(url)
 
 
 class cmd_whoami(Command):
@@ -1389,9 +1391,10 @@ class cmd_whoami(Command):
         else:
             print config.username()
 
+
 class cmd_nick(Command):
-    """\
-    Print or set the branch nickname.  
+    """Print or set the branch nickname.  
+
     If unset, the tree root directory name is used as the nickname
     To print the current nickname, execute with no argument.  
     """
@@ -1407,6 +1410,7 @@ class cmd_nick(Command):
     def printme(self, branch):
         print branch.nick 
 
+
 class cmd_selftest(Command):
     """Run internal test suite.
     
@@ -1417,18 +1421,46 @@ class cmd_selftest(Command):
     
     If arguments are given, they are regular expressions that say
     which tests should run.
+
+    If the global option '--no-plugins' is given, plugins are not loaded
+    before running the selftests.  This has two effects: features provided or
+    modified by plugins will not be tested, and tests provided by plugins will
+    not be run.
+
+    examples:
+        bzr selftest ignore
+        bzr --no-plugins selftest -v
     """
     # TODO: --list should give a list of all available tests
+
+    # NB: this is used from the class without creating an instance, which is
+    # why it does not have a self parameter.
+    def get_transport_type(typestring):
+        """Parse and return a transport specifier."""
+        if typestring == "sftp":
+            from bzrlib.transport.sftp import SFTPAbsoluteServer
+            return SFTPAbsoluteServer
+        if typestring == "memory":
+            from bzrlib.transport.memory import MemoryServer
+            return MemoryServer
+        msg = "No known transport type %s. Supported types are: sftp\n" %\
+            (typestring)
+        raise BzrCommandError(msg)
+
     hidden = True
     takes_args = ['testspecs*']
-    takes_options = ['verbose', 
+    takes_options = ['verbose',
                      Option('one', help='stop when one test fails'),
                      Option('keep-output', 
-                            help='keep output directories when tests fail')
+                            help='keep output directories when tests fail'),
+                     Option('transport', 
+                            help='Use a different transport by default '
+                                 'throughout the test suite.',
+                            type=get_transport_type),
                     ]
 
     def run(self, testspecs_list=None, verbose=False, one=False,
-            keep_output=False):
+            keep_output=False, transport=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         # we don't want progress meters from the tests to go to the
@@ -1445,7 +1477,8 @@ class cmd_selftest(Command):
             result = selftest(verbose=verbose, 
                               pattern=pattern,
                               stop_on_failure=one, 
-                              keep_output=keep_output)
+                              keep_output=keep_output,
+                              transport=transport)
             if result:
                 bzrlib.trace.info('tests passed')
             else:
@@ -1523,7 +1556,8 @@ class cmd_find_merge_base(Command):
         last1 = branch1.last_revision()
         last2 = branch2.last_revision()
 
-        source = MultipleRevisionSources(branch1, branch2)
+        source = MultipleRevisionSources(branch1.repository, 
+                                         branch2.repository)
         
         base_rev_id = common_ancestor(last1, last2, source)
 
@@ -2045,7 +2079,7 @@ def merge(other_revision, base_revision,
     from bzrlib.merge import Merger, _MergeConflictHandler
     if this_dir is None:
         this_dir = u'.'
-    this_branch = Branch.open_containing(this_dir)[0]
+    this_tree = WorkingTree.open_containing(this_dir)[0]
     if show_base and not merge_type is ApplyMerge3:
         raise BzrCommandError("Show-base is not supported for this merge"
                               " type. %s" % merge_type)
@@ -2054,7 +2088,7 @@ def merge(other_revision, base_revision,
                               " type. %s" % merge_type)
     if reprocess and show_base:
         raise BzrCommandError("Cannot reprocess and show base.")
-    merger = Merger(this_branch)
+    merger = Merger(this_tree.branch, this_tree=this_tree)
     merger.check_basis(check_clean)
     merger.set_other(other_revision)
     merger.set_base(base_revision)

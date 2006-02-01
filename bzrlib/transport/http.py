@@ -211,6 +211,10 @@ class HttpTransport(Transport):
         """Create a directory at the given path."""
         raise TransportNotPossible('http does not support mkdir()')
 
+    def rmdir(self, relpath):
+        """See Transport.rmdir."""
+        raise TransportNotPossible('http does not support rmdir()')
+
     def append(self, relpath, f):
         """Append the text in the file-like object into the final
         location.
