@@ -539,3 +539,6 @@ class UninitializableFormat(BzrNewError):
     def __init__(self, format):
         BzrNewError.__init__(self)
         self.format = format
+
+class CommandDefaultSyntax(BzrNewError):
+    """Sytax error in defaults for "%(command_name)s": %(error)s"""

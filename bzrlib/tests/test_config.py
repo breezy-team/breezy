@@ -32,7 +32,10 @@ sample_config_text = ("[DEFAULT]\n"
                       "email=Robert Collins <robertc@example.com>\n"
                       "editor=vim\n"
                       "gpg_signing_command=gnome-gpg\n"
-                      "user_global_option=something\n")
+                      "user_global_option=something\n"
+                      "[COMMAND_DEFAULTS]\n"
+                      'commit=-m "log message" #evil? possibly.\n'
+                      'merge=--merge-type "weave')
 
 
 sample_always_signatures = ("[DEFAULT]\n"
@@ -352,6 +355,13 @@ class TestGlobalConfigItems(TestCase):
         my_config = self._get_sample_config()
         self.assertEqual(None, my_config.post_commit())
 
+    def test_command_defaults(self):
+        my_config = self._get_sample_config()
+        self.assertEqual(['-m', 'log message'], 
+                         my_config.get_command_defaults('commit'))
+        self.assertEqual([], my_config.get_command_defaults('log'))
+        self.assertRaises(errors.CommandDefaultSyntax, 
+                          my_config.get_command_defaults, 'merge')
 
 class TestLocationConfig(TestCase):
 
