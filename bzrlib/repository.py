@@ -16,17 +16,18 @@
 
 from cStringIO import StringIO
 
+from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.errors import InvalidRevisionId
 from bzrlib.lockable_files import LockableFiles
-from bzrlib.tree import EmptyTree
+from bzrlib.osutils import safe_unicode
 from bzrlib.revision import NULL_REVISION
 from bzrlib.store import copy_all
 from bzrlib.store.weave import WeaveStore
 from bzrlib.store.text import TextStore
-import bzrlib.xml5
 from bzrlib.tree import RevisionTree
-from bzrlib.errors import InvalidRevisionId
 from bzrlib.testament import Testament
-from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.tree import EmptyTree
+import bzrlib.xml5
 
 
 
@@ -43,6 +44,11 @@ class Repository(object):
     """
 
     def __init__(self, transport, branch_format):
+        # circular dependencies:
+        from bzrlib.branch import (BzrBranchFormat4,
+                                   BzrBranchFormat5,
+                                   BzrBranchFormat6,
+                                   )
         object.__init__(self)
         self.control_files = LockableFiles(transport.clone(bzrlib.BZRDIR), 'README')
 
@@ -51,7 +57,7 @@ class Repository(object):
 
         def get_weave(name, prefixed=False):
             if name:
-                name = bzrlib.BZRDIR + '/' + unicode(name)
+                name = bzrlib.BZRDIR + '/' + safe_unicode(name)
             else:
                 name = bzrlib.BZRDIR
             relpath = self.control_files._escape(name)
@@ -63,13 +69,14 @@ class Repository(object):
                 ws.enable_cache = True
             return ws
 
+
         def get_store(name, compressed=True, prefixed=False):
             # FIXME: This approach of assuming stores are all entirely compressed
             # or entirely uncompressed is tidy, but breaks upgrade from 
             # some existing branches where there's a mixture; we probably 
             # still want the option to look for both.
             if name:
-                name = bzrlib.BZRDIR + '/' + unicode(name)
+                name = bzrlib.BZRDIR + '/' + safe_unicode(name)
             else:
                 name = bzrlib.BZRDIR
             relpath = self.control_files._escape(name)
@@ -83,15 +90,16 @@ class Repository(object):
             #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
 
-        if branch_format == 4:
+
+        if isinstance(branch_format, BzrBranchFormat4):
             self.inventory_store = get_store('inventory-store')
             self.text_store = get_store('text-store')
             self.revision_store = get_store('revision-store')
-        elif branch_format == 5:
+        elif isinstance(branch_format, BzrBranchFormat5):
             self.control_weaves = get_weave('')
             self.weave_store = get_weave('weaves')
             self.revision_store = get_store('revision-store', compressed=False)
-        elif branch_format == 6:
+        elif isinstance(branch_format, BzrBranchFormat6):
             self.control_weaves = get_weave('')
             self.weave_store = get_weave('weaves', prefixed=True)
             self.revision_store = get_store('revision-store', compressed=False,
@@ -204,7 +212,7 @@ class Repository(object):
         # TODO: Unify this with get_inventory()
         # bzr 0.0.6 and later imposes the constraint that the inventory_id
         # must be the same as its revision, so this is trivial.
-        if revision_id == None:
+        if revision_id is None:
             # This does not make sense: if there is no revision,
             # then it is the current tree inventory surely ?!
             # and thus get_root_id() is something that looks at the last
@@ -222,7 +230,7 @@ class Repository(object):
         an `EmptyTree` is returned."""
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
-        if revision_id == None or revision_id == NULL_REVISION:
+        if revision_id is None or revision_id == NULL_REVISION:
             return EmptyTree()
         else:
             inv = self.get_revision_inventory(revision_id)

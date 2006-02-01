@@ -27,19 +27,21 @@ from bzrlib._merge_core import merge_flex, ApplyMerge3, BackupBeforeChange
 from bzrlib.branch import Branch
 from bzrlib.delta import compare_trees
 from bzrlib.errors import (BzrCommandError,
-                           NotBranchError,
-                           UnrelatedBranches,
+                           BzrError,
                            NoCommonAncestor,
                            NoCommits,
-                           WorkingTreeNotRevision,
+                           NoSuchRevision,
+                           NotBranchError,
                            NotVersionedError,
-                           BzrError)
+                           UnrelatedBranches,
+                           WorkingTreeNotRevision,
+                           )
 from bzrlib.fetch import greedy_fetch, fetch
 import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
-from bzrlib.revision import common_ancestor, MultipleRevisionSources
-from bzrlib.revision import is_ancestor, NULL_REVISION
+from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
 from bzrlib.trace import mutter, warning, note
+from bzrlib.workingtree import WorkingTree
 
 # TODO: Report back as changes are merged in
 
@@ -274,14 +276,17 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 show_base=False, 
                 reprocess=False, 
                 other_rev_id=None,
-                interesting_files=None):
+                interesting_files=None,
+                this_tree=None):
     """Primary interface for merging. 
 
         typical use is probably 
         'merge_inner(branch, branch.get_revision_tree(other_revision),
                      branch.get_revision_tree(base_revision))'
         """
-    merger = Merger(this_branch, other_tree, base_tree)
+    if this_tree is None:
+        this_tree = this_branch.working_tree()
+    merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree)
     merger.backup_files = backup_files
     merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids
@@ -300,12 +305,13 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
 
 
 class Merger(object):
-    def __init__(self, this_branch, other_tree=None, base_tree=None):
+    def __init__(self, this_branch, other_tree=None, base_tree=None, this_tree=None):
         object.__init__(self)
+        assert this_tree is not None, "this_tree is required"
         self.this_branch = this_branch
         self.this_basis = this_branch.last_revision()
         self.this_rev_id = None
-        self.this_tree = this_branch.working_tree()
+        self.this_tree = this_tree
         self.this_revision_tree = None
         self.this_basis_tree = None
         self.other_tree = other_tree
@@ -380,7 +386,7 @@ class Merger(object):
                 raise BzrCommandError("Working tree has uncommitted changes.")
 
     def compare_basis(self):
-        changes = compare_trees(self.this_branch.working_tree(), 
+        changes = compare_trees(self.this_tree, 
                                 self.this_branch.basis_tree(), False)
         if not changes.has_changed():
             self.this_rev_id = self.this_basis
@@ -418,7 +424,7 @@ class Merger(object):
         ancestry = self.this_branch.repository.get_ancestry(self.this_basis)
         if self.other_rev_id in ancestry:
             return
-        self.this_branch.working_tree().add_pending_merge(self.other_rev_id)
+        self.this_tree.add_pending_merge(self.other_rev_id)
 
     def set_other(self, other_revision):
         other_branch, self.other_tree = _get_tree(other_revision, 
@@ -486,13 +492,13 @@ class Merger(object):
                 path = path[2:]
             adjust_ids.append((path, id))
         if len(adjust_ids) > 0:
-            self.this_branch.working_tree().set_inventory(self.regen_inventory(adjust_ids))
+            self.this_tree.set_inventory(self.regen_inventory(adjust_ids))
         conflicts = self.conflict_handler.conflicts
         self.conflict_handler.finalize()
         return conflicts
 
     def regen_inventory(self, new_entries):
-        old_entries = self.this_branch.working_tree().read_working_inventory()
+        old_entries = self.this_tree.read_working_inventory()
         new_inventory = {}
         by_path = {}
         new_entries_map = {} 
