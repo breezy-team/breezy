@@ -76,15 +76,8 @@ class LockableFiles(object):
     def _find_modes(self):
         """Determine the appropriate modes for files and directories."""
         try:
-            try:
-                st = self._transport.stat('.')
-            except errors.NoSuchFile:
-                # The .bzr/ directory doesn't exist, try to
-                # inherit the permissions from the parent directory
-                # but only try 1 level up
-                temp_transport = self._transport.clone('..')
-                st = temp_transport.stat('.')
-        except (errors.TransportNotPossible, errors.NoSuchFile):
+            st = self._transport.stat('.')
+        except errors.TransportNotPossible:
             self._dir_mode = 0755
             self._file_mode = 0644
         else:

@@ -29,8 +29,8 @@ def deprecated_function():
 
 class TestDeprecationWarnings(TestCase):
 
-    def capture_warning(self, message, category):
-        self._warnings.append((message, category))
+    def capture_warning(self, message, category, stacklevel=None):
+        self._warnings.append((message, category, stacklevel))
 
     def setUp(self):
         super(TestDeprecationWarnings, self).setUp()
@@ -48,7 +48,7 @@ class TestDeprecationWarnings(TestCase):
         expected_warning = (
             "bzrlib.tests.test_symbol_versioning."
             "TestDeprecationWarnings.deprecated_method "
-            "was deprecated in version 0.7.", DeprecationWarning)
+            "was deprecated in version 0.7.", DeprecationWarning, 2)
         expected_docstring = ('Deprecated method docstring.\n'
                               '        \n'
                               '        This might explain stuff.\n'
@@ -63,7 +63,7 @@ class TestDeprecationWarnings(TestCase):
     def test_deprecated_function(self):
         expected_warning = (
             "bzrlib.tests.test_symbol_versioning.deprecated_function "
-            "was deprecated in version 0.7.", DeprecationWarning)
+            "was deprecated in version 0.7.", DeprecationWarning, 2)
         expected_docstring = ('Deprecated function docstring.\n'
                               '\n'
                               'This function was deprecated in version 0.7.\n'
@@ -89,3 +89,11 @@ class TestDeprecationWarnings(TestCase):
             self.assertEqualDiff(expected_module, deprecated_callable.__module__)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
+    
+    def test_deprecated_passed(self):
+        self.assertEqual(True, symbol_versioning.deprecated_passed(None))
+        self.assertEqual(True, symbol_versioning.deprecated_passed(True))
+        self.assertEqual(True, symbol_versioning.deprecated_passed(False))
+        self.assertEqual(False,
+                         symbol_versioning.deprecated_passed(
+                            symbol_versioning.DEPRECATED_PARAMETER))

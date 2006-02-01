@@ -14,22 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import sys
-import os
 
 from cStringIO import StringIO
+import os
+import sys
 
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.branch import Branch
 from bzrlib.revision import is_ancestor
 
 
-class TestAncestry(TestCaseInTempDir):
+class TestAncestry(TestCaseWithTransport):
 
     def test_straightline_ancestry(self):
         """Test ancestry file when just committing."""
-        b = Branch.initialize(u'.')
-        wt = b.working_tree()
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
 
         wt.commit(message='one',
                   allow_pointless=True,
@@ -45,10 +45,10 @@ class TestAncestry(TestCaseInTempDir):
                          b.repository.get_ancestry('tester@foo--1'))
 
     def test_none_is_always_an_ancestor(self):
-        b = Branch.initialize(u'.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
         # note this is tested before any commits are done.
         self.assertEqual(True, is_ancestor(None, None, b))
-        wt = b.working_tree()
         wt.commit(message='one',
                   allow_pointless=True,
                   rev_id='tester@foo--1')

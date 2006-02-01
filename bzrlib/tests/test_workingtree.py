@@ -15,48 +15,50 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from cStringIO import StringIO
 import os
+
+import bzrlib
 from bzrlib.branch import Branch
 from bzrlib.errors import NotBranchError, NotVersionedError
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
 
-class TestTreeDirectory(TestCaseInTempDir):
+class TestTreeDirectory(TestCaseWithTransport):
 
     def test_kind_character(self):
         self.assertEqual(TreeDirectory().kind_character(), '/')
 
 
-class TestTreeEntry(TestCaseInTempDir):
+class TestTreeEntry(TestCaseWithTransport):
 
     def test_kind_character(self):
         self.assertEqual(TreeEntry().kind_character(), '???')
 
 
-class TestTreeFile(TestCaseInTempDir):
+class TestTreeFile(TestCaseWithTransport):
 
     def test_kind_character(self):
         self.assertEqual(TreeFile().kind_character(), '')
 
 
-class TestTreeLink(TestCaseInTempDir):
+class TestTreeLink(TestCaseWithTransport):
 
     def test_kind_character(self):
         self.assertEqual(TreeLink().kind_character(), '')
 
 
-class TestWorkingTree(TestCaseInTempDir):
+class TestWorkingTree(TestCaseWithTransport):
 
     def test_listfiles(self):
-        branch = Branch.initialize(u'.')
+        tree = WorkingTree.create_standalone('.')
         os.mkdir('dir')
         print >> open('file', 'w'), "content"
         if has_symlinks():
             os.symlink('target', 'symlink')
-        tree = branch.working_tree()
         files = list(tree.list_files())
         self.assertEqual(files[0], ('dir', '?', 'directory', None, TreeDirectory()))
         self.assertEqual(files[1], ('file', '?', 'file', None, TreeFile()))
@@ -64,7 +66,7 @@ class TestWorkingTree(TestCaseInTempDir):
             self.assertEqual(files[2], ('symlink', '?', 'symlink', None, TreeLink()))
 
     def test_open_containing(self):
-        branch = Branch.initialize(u'.')
+        branch = WorkingTree.create_standalone('.').branch
         wt, relpath = WorkingTree.open_containing()
         self.assertEqual('', relpath)
         self.assertEqual(wt.basedir + '/', branch.base)
@@ -80,27 +82,25 @@ class TestWorkingTree(TestCaseInTempDir):
                           'file:///' + getcwd())
 
     def test_construct_with_branch(self):
-        branch = Branch.initialize(u'.')
+        branch = WorkingTree.create_standalone('.').branch
         tree = WorkingTree(branch.base, branch)
         self.assertEqual(branch, tree.branch)
         self.assertEqual(branch.base, tree.basedir + '/')
     
     def test_construct_without_branch(self):
-        branch = Branch.initialize(u'.')
+        branch = WorkingTree.create_standalone('.').branch
         tree = WorkingTree(branch.base)
         self.assertEqual(branch.base, tree.branch.base)
         self.assertEqual(branch.base, tree.basedir + '/')
 
     def test_basic_relpath(self):
         # for comprehensive relpath tests, see whitebox.py.
-        branch = Branch.initialize(u'.')
-        tree = WorkingTree(branch.base)
+        tree = WorkingTree.create_standalone('.')
         self.assertEqual('child',
                          tree.relpath(pathjoin(getcwd(), 'child')))
 
     def test_lock_locks_branch(self):
-        branch = Branch.initialize(u'.')
-        tree = WorkingTree(branch.base)
+        tree = WorkingTree.create_standalone('.')
         tree.lock_read()
         self.assertEqual('r', tree.branch.peek_lock_mode())
         tree.unlock()
@@ -110,40 +110,38 @@ class TestWorkingTree(TestCaseInTempDir):
         tree.unlock()
         self.assertEqual(None, tree.branch.peek_lock_mode())
  
-    def get_pullable_branches(self):
+    def get_pullable_trees(self):
         self.build_tree(['from/', 'from/file', 'to/'])
-        br_a = Branch.initialize('from')
-        tree = br_a.working_tree()
+        tree = WorkingTree.create_standalone('from')
         tree.add('file')
         tree.commit('foo', rev_id='A')
-        br_b = Branch.initialize('to')
-        return br_a, br_b
+        tree_b = WorkingTree.create_standalone('to')
+        return tree, tree_b
  
     def test_pull(self):
-        br_a, br_b = self.get_pullable_branches()
-        br_b.working_tree().pull(br_a)
-        self.failUnless(br_b.repository.has_revision('A'))
-        self.assertEqual(['A'], br_b.revision_history())
+        tree_a, tree_b = self.get_pullable_trees()
+        tree_b.pull(tree_a.branch)
+        self.failUnless(tree_b.branch.repository.has_revision('A'))
+        self.assertEqual(['A'], tree_b.branch.revision_history())
 
     def test_pull_overwrites(self):
-        br_a, br_b = self.get_pullable_branches()
-        br_b.working_tree().commit('foo', rev_id='B')
-        self.assertEqual(['B'], br_b.revision_history())
-        br_b.working_tree().pull(br_a, overwrite=True)
-        self.failUnless(br_b.repository.has_revision('A'))
-        self.failUnless(br_b.repository.has_revision('B'))
-        self.assertEqual(['A'], br_b.revision_history())
+        tree_a, tree_b = self.get_pullable_trees()
+        tree_b.commit('foo', rev_id='B')
+        self.assertEqual(['B'], tree_b.branch.revision_history())
+        tree_b.pull(tree_a.branch, overwrite=True)
+        self.failUnless(tree_b.branch.repository.has_revision('A'))
+        self.failUnless(tree_b.branch.repository.has_revision('B'))
+        self.assertEqual(['A'], tree_b.branch.revision_history())
 
     def test_revert(self):
         """Test selected-file revert"""
-        b = Branch.initialize(u'.')
+        tree = WorkingTree.create_standalone('.')
 
         self.build_tree(['hello.txt'])
         file('hello.txt', 'w').write('initial hello')
 
         self.assertRaises(NotVersionedError,
-                          b.working_tree().revert, ['hello.txt'])
-        tree = WorkingTree(b.base, b)
+                          tree.revert, ['hello.txt'])
         tree.add(['hello.txt'])
         tree.commit('create initial hello.txt')
 
@@ -162,8 +160,7 @@ class TestWorkingTree(TestCaseInTempDir):
         self.check_file_contents('hello.txt~', 'new hello')
 
     def test_unknowns(self):
-        b = Branch.initialize(u'.')
-        tree = WorkingTree(u'.', b)
+        tree = WorkingTree.create_standalone('.')
         self.build_tree(['hello.txt',
                          'hello.txt~'])
         self.assertEquals(list(tree.unknowns()),
@@ -171,15 +168,99 @@ class TestWorkingTree(TestCaseInTempDir):
 
     def test_hashcache(self):
         from bzrlib.tests.test_hashcache import pause
-        b = Branch.initialize(u'.')
-        tree = WorkingTree(u'.', b)
+        tree = WorkingTree.create_standalone('.')
         self.build_tree(['hello.txt',
                          'hello.txt~'])
         tree.add('hello.txt')
         pause()
         sha = tree.get_file_sha1(tree.path2id('hello.txt'))
         self.assertEqual(1, tree._hashcache.miss_count)
-        tree2 = WorkingTree(u'.', b)
+        tree2 = WorkingTree('.', tree.branch)
         sha2 = tree2.get_file_sha1(tree2.path2id('hello.txt'))
         self.assertEqual(0, tree2._hashcache.miss_count)
         self.assertEqual(1, tree2._hashcache.hit_count)
+
+    def test_checkout(self):
+        # at this point as we dont have checkout versions, checkout simply
+        # populates the required files for a working tree at the dir.
+        self.build_tree(['branch/'])
+        b = Branch.create('branch')
+        t = WorkingTree.create(b, 'tree')
+        # as we are moving the ownership to working tree, we will check here
+        # that its split out correctly
+        self.failIfExists('branch/.bzr/inventory')
+        self.failIfExists('branch/.bzr/pending-merges')
+        sio = StringIO()
+        bzrlib.xml5.serializer_v5.write_inventory(bzrlib.inventory.Inventory(),
+                                                  sio)
+        self.assertFileEqual(sio.getvalue(), 'tree/.bzr/inventory')
+        self.assertFileEqual('', 'tree/.bzr/pending-merges')
+
+    def test_initialize(self):
+        # initialize should create a working tree and branch in an existing dir
+        t = WorkingTree.create_standalone('.')
+        b = Branch.open('.')
+        self.assertEqual(t.branch.base, b.base)
+        t2 = WorkingTree('.')
+        self.assertEqual(t.basedir, t2.basedir)
+        self.assertEqual(b.base, t2.branch.base)
+        # TODO maybe we should check the branch format? not sure if its
+        # appropriate here.
+
+    def test_rename_dirs(self):
+        """Test renaming directories and the files within them."""
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['dir/', 'dir/sub/', 'dir/sub/file'])
+        wt.add(['dir', 'dir/sub', 'dir/sub/file'])
+
+        wt.commit('create initial state')
+
+        revid = b.revision_history()[0]
+        self.log('first revision_id is {%s}' % revid)
+        
+        inv = b.repository.get_revision_inventory(revid)
+        self.log('contents of inventory: %r' % inv.entries())
+
+        self.check_inventory_shape(inv,
+                                   ['dir', 'dir/sub', 'dir/sub/file'])
+
+        wt.rename_one('dir', 'newdir')
+
+        self.check_inventory_shape(wt.read_working_inventory(),
+                                   ['newdir', 'newdir/sub', 'newdir/sub/file'])
+
+        wt.rename_one('newdir/sub', 'newdir/newsub')
+        self.check_inventory_shape(wt.read_working_inventory(),
+                                   ['newdir', 'newdir/newsub',
+                                    'newdir/newsub/file'])
+
+    def test_add_in_unversioned(self):
+        """Try to add a file in an unversioned directory.
+
+        "bzr add" adds the parent as necessary, but simple working tree add
+        doesn't do that.
+        """
+        from bzrlib.errors import NotVersionedError
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['foo/',
+                         'foo/hello'])
+        self.assertRaises(NotVersionedError,
+                          wt.add,
+                          'foo/hello')
+
+    def test_remove_verbose(self):
+        #FIXME the remove api should not print or otherwise depend on the
+        # text UI - RBC 20060124
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['hello'])
+        wt.add(['hello'])
+        wt.commit(message='add hello')
+        stdout = StringIO()
+        stderr = StringIO()
+        self.assertEqual(None, self.apply_redirected(None, stdout, stderr,
+                                                     wt.remove,
+                                                     ['hello'],
+                                                     verbose=True))
+        self.assertEqual('?       hello\n', stdout.getvalue())
+        self.assertEqual('', stderr.getvalue())
