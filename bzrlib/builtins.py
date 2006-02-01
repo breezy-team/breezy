@@ -1417,11 +1417,20 @@ class cmd_selftest(Command):
     
     If arguments are given, they are regular expressions that say
     which tests should run.
+
+    If the global option '--no-plugins' is given, plugins are not loaded
+    before running the selftests.  This has two effects: features provided or
+    modified by plugins will not be tested, and tests provided by plugins will
+    not be run.
+
+    examples:
+        bzr selftest ignore
+        bzr --no-plugins selftest -v
     """
     # TODO: --list should give a list of all available tests
     hidden = True
     takes_args = ['testspecs*']
-    takes_options = ['verbose', 
+    takes_options = ['verbose',
                      Option('one', help='stop when one test fails'),
                      Option('keep-output', 
                             help='keep output directories when tests fail')
