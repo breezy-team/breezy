@@ -247,6 +247,14 @@ class LocalTransport(Transport):
         from bzrlib.lock import WriteLock
         return WriteLock(self.abspath(relpath))
 
+    def rmdir(self, relpath):
+        """See Transport.rmdir."""
+        path = relpath
+        try:
+            path = self.abspath(relpath)
+            os.rmdir(path)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
 
 class ScratchTransport(LocalTransport):
     """A transport that works in a temporary dir and cleans up after itself.

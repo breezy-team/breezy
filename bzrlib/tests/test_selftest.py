@@ -21,10 +21,13 @@ import sys
 import unittest
 import warnings
 
+import bzrlib
 from bzrlib.tests import (
                           _load_module_by_name,
+                          ChrootedTestCase,
                           TestCase,
                           TestCaseInTempDir,
+                          TestCaseWithTransport,
                           TestSkipped,
                           TextTestRunner,
                           )
@@ -80,6 +83,9 @@ class TestSkippedTest(TestCase):
 class TestTransportProviderAdapter(TestCase):
     """A group of tests that test the transport implementation adaption core.
 
+    This is a meta test that the tests are applied to all available 
+    transports.
+
     This will be generalised in the future which is why it is in this 
     test file even though it is specific to transport tests at the moment.
     """
@@ -127,6 +133,10 @@ class TestTransportProviderAdapter(TestCase):
         # that it does not just use the same one all the time.
         # and that the id is set correctly so that debugging is
         # easy.
+        # 
+        # An instance of this test is actually used as the input
+        # for adapting it to all the available transports
+        # (or i think so - ??? mbp)
         from bzrlib.transport.local import (LocalTransport,
                                             LocalRelpathServer,
                                             LocalAbspathServer,
@@ -167,17 +177,22 @@ class TestTransportProviderAdapter(TestCase):
         input_test = TestTransportProviderAdapter(
             "test_adapter_sets_transport_class")
         suite = TransportTestProviderAdapter().adapt(input_test)
+        # tests are generated in collation order. 
+        # XXX: but i'm not sure the order should really be part of the 
+        # contract of the adapter, should it -- mbp 20060201
         test_iter = iter(suite)
         http_test = test_iter.next()
         local_relpath_test = test_iter.next()
         local_abspath_test = test_iter.next()
         local_urlpath_test = test_iter.next()
         memory_test = test_iter.next()
+        readonly_test = test_iter.next()
         if has_paramiko:
             sftp_abs_test = test_iter.next()
             sftp_homedir_test = test_iter.next()
             sftp_sibling_abs_test = test_iter.next()
         # ftp_test = test_iter.next()
+        # should now be at the end of the test
         self.assertRaises(StopIteration, test_iter.next)
         self.assertEqual(LocalTransport, local_relpath_test.transport_class)
         self.assertEqual(LocalRelpathServer, local_relpath_test.transport_server)
@@ -213,3 +228,71 @@ class TestTransportProviderAdapter(TestCase):
                          "TestTransportProviderAdapter."
                          "test_adapter_sets_transport_class(LocalRelpathServer)",
                          local_relpath_test.id())
+
+
+class TestBranchProviderAdapter(TestCase):
+    """A group of tests that test the branch implementation test adapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        from bzrlib.branch import BranchTestProviderAdapter
+        input_test = TestBranchProviderAdapter(
+            "test_adapted_tests")
+        server1 = "a"
+        server2 = "b"
+        formats = ["c", "d"]
+        adapter = BranchTestProviderAdapter(server1, server2, formats)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].branch_format, formats[0])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].branch_format, formats[1])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+
+
+class TestTestCaseWithTransport(TestCaseWithTransport):
+    """Tests for the convenience functions TestCaseWithTransport introduces."""
+
+    def test_get_readonly_url_none(self):
+        from bzrlib.transport import get_transport
+        from bzrlib.transport.memory import MemoryServer
+        from bzrlib.transport.readonly import ReadonlyTransportDecorator
+        self.transport_server = MemoryServer
+        self.transport_readonly_server = None
+        # calling get_readonly_transport() constructs a decorator on the url
+        # for the server
+        url = self.get_readonly_url()
+        url2 = self.get_readonly_url('foo/bar')
+        t = get_transport(url)
+        t2 = get_transport(url2)
+        self.failUnless(isinstance(t, ReadonlyTransportDecorator))
+        self.failUnless(isinstance(t2, ReadonlyTransportDecorator))
+        self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
+
+    def test_get_readonly_url_http(self):
+        from bzrlib.transport import get_transport
+        from bzrlib.transport.local import LocalRelpathServer
+        from bzrlib.transport.http import HttpServer, HttpTransport
+        self.transport_server = LocalRelpathServer
+        self.transport_readonly_server = HttpServer
+        # calling get_readonly_transport() gives us a HTTP server instance.
+        url = self.get_readonly_url()
+        url2 = self.get_readonly_url('foo/bar')
+        t = get_transport(url)
+        t2 = get_transport(url2)
+        self.failUnless(isinstance(t, HttpTransport))
+        self.failUnless(isinstance(t2, HttpTransport))
+        self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
+
+
+class TestChrootedTest(ChrootedTestCase):
+
+    def test_root_is_root(self):
+        from bzrlib.transport import get_transport
+        t = get_transport(self.get_readonly_url())
+        url = t.base
+        self.assertEqual(url, t.clone('..').base)

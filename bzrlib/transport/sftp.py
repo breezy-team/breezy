@@ -493,54 +493,6 @@ class SFTPTransport (Transport):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, relpath, ': unable to append')
 
-    def copy(self, rel_from, rel_to):
-        """Copy the item at rel_from to the location at rel_to"""
-        path_from = self._remote_path(rel_from)
-        path_to = self._remote_path(rel_to)
-        self._copy_abspaths(path_from, path_to)
-
-    def _copy_abspaths(self, path_from, path_to, mode=None):
-        """Copy files given an absolute path
-
-        :param path_from: Path on remote server to read
-        :param path_to: Path on remote server to write
-        :return: None
-
-        TODO: Should the destination location be atomically created?
-              This has not been specified
-        TODO: This should use some sort of remote copy, rather than
-              pulling the data locally, and then writing it remotely
-        """
-        try:
-            fin = self._sftp.file(path_from, 'rb')
-            try:
-                self._put(path_to, fin, mode=mode)
-            finally:
-                fin.close()
-        except (IOError, paramiko.SSHException), e:
-            self._translate_io_exception(e, path_from, ': unable copy to: %r' % path_to)
-
-    def copy_to(self, relpaths, other, mode=None, pb=None):
-        """Copy a set of entries from self into another Transport.
-
-        :param relpaths: A list/generator of entries to be copied.
-        """
-        if isinstance(other, SFTPTransport) and other._sftp is self._sftp:
-            # Both from & to are on the same remote filesystem
-            # We can use a remote copy, instead of pulling locally, and pushing
-
-            total = self._get_total(relpaths)
-            count = 0
-            for path in relpaths:
-                path_from = self._remote_path(relpath)
-                path_to = other._remote_path(relpath)
-                self._update_pb(pb, 'copy-to', count, total)
-                self._copy_abspaths(path_from, path_to, mode=mode)
-                count += 1
-            return count
-        else:
-            return super(SFTPTransport, self).copy_to(relpaths, other, mode=mode, pb=pb)
-
     def _rename(self, abs_from, abs_to):
         """Do a fancy rename on the remote server.
         
@@ -581,6 +533,14 @@ class SFTPTransport (Transport):
             return self._sftp.listdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
+
+    def rmdir(self, relpath):
+        """See Transport.rmdir."""
+        path = self._remote_path(relpath)
+        try:
+            return self._sftp.rmdir(path)
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, path, ': failed to rmdir')
 
     def stat(self, relpath):
         """Return the stat information for a file."""

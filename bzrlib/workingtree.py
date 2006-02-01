@@ -25,12 +25,9 @@ new revision based on the workingtree and its inventory.
 At the moment every WorkingTree has its own branch.  Remote
 WorkingTrees aren't supported.
 
-To get a WorkingTree, call Branch.working_tree():
+To get a WorkingTree, call WorkingTree(dir[, branch])
 """
 
-
-# TODO: Don't allow WorkingTrees to be constructed for remote branches if 
-# they don't work.
 
 # FIXME: I don't know if writing out the cache from the destructor is really a
 # good idea, because destructors are considered poor taste in Python, and it's
@@ -43,13 +40,21 @@ To get a WorkingTree, call Branch.working_tree():
 # At the momenthey may alias the inventory and have old copies of it in memory.
 
 from copy import deepcopy
+from cStringIO import StringIO
+import errno
+import fnmatch
 import os
 import stat
-import fnmatch
  
+
+from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import (Branch,
+                           BzrBranchFormat4,
+                           BzrBranchFormat5,
+                           BzrBranchFormat6,
                            is_control_file,
                            quotefn)
+from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
                            DivergedBranches,
@@ -58,6 +63,7 @@ from bzrlib.errors import (BzrCheckError,
                            NoSuchFile,
                            NotVersionedError)
 from bzrlib.inventory import InventoryEntry
+from bzrlib.lockable_files import LockableFiles
 from bzrlib.osutils import (appendpath,
                             compact_date,
                             file_kind,
@@ -65,6 +71,7 @@ from bzrlib.osutils import (appendpath,
                             getcwd,
                             pathjoin,
                             pumpfile,
+                            safe_unicode,
                             splitpath,
                             rand_bytes,
                             abspath,
@@ -72,11 +79,12 @@ from bzrlib.osutils import (appendpath,
                             realpath,
                             relpath,
                             rename)
+from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.trace import mutter
+from bzrlib.transport import get_transport
 import bzrlib.xml5
-from bzrlib.decorators import needs_read_lock, needs_write_lock
 
 
 def gen_file_id(name):
@@ -178,7 +186,7 @@ class WorkingTree(bzrlib.tree.Tree):
     not listed in the Inventory and vice versa.
     """
 
-    def __init__(self, basedir=u'.', branch=None):
+    def __init__(self, basedir='.', branch=None, _inventory=None, _control_files=None):
         """Construct a WorkingTree for basedir.
 
         If the branch is not supplied, it is opened automatically.
@@ -190,12 +198,26 @@ class WorkingTree(bzrlib.tree.Tree):
         from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
+        basedir = safe_unicode(basedir)
+        mutter("openeing working tree %r", basedir)
         if branch is None:
             branch = Branch.open(basedir)
         assert isinstance(branch, Branch), \
             "branch %r is not a Branch" % branch
         self.branch = branch
         self.basedir = realpath(basedir)
+        # if branch is at our basedir and is a format 6 or less
+        if (isinstance(self.branch._branch_format,
+                       (BzrBranchFormat4, BzrBranchFormat5, BzrBranchFormat6))
+            # might be able to share control object
+            and self.branch.base.split('/')[-2] == self.basedir.split('/')[-1]):
+            self._control_files = self.branch.control_files
+        elif _control_files is not None:
+            assert False, "not done yet"
+#            self._control_files = _control_files
+        else:
+            self._control_files = LockableFiles(
+                get_transport(self.basedir).clone(bzrlib.BZRDIR), 'branch-lock')
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -211,7 +233,10 @@ class WorkingTree(bzrlib.tree.Tree):
             mutter("write hc")
             hc.write()
 
-        self._set_inventory(self.read_working_inventory())
+        if _inventory is None:
+            self._set_inventory(self.read_working_inventory())
+        else:
+            self._set_inventory(_inventory)
 
     def _set_inventory(self, inv):
         self._inventory = inv
@@ -270,6 +295,48 @@ class WorkingTree(bzrlib.tree.Tree):
     def abspath(self, filename):
         return pathjoin(self.basedir, filename)
 
+    @staticmethod
+    def create(branch, directory):
+        """Create a workingtree for branch at directory.
+
+        If existing_directory already exists it must have a .bzr directory.
+        If it does not exist, it will be created.
+
+        This returns a new WorkingTree object for the new checkout.
+
+        TODO FIXME RBC 20060124 when we have checkout formats in place this
+        should accept an optional revisionid to checkout [and reject this if
+        checking out into the same dir as a pre-checkout-aware branch format.]
+        """
+        try:
+            os.mkdir(directory)
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
+        try:
+            os.mkdir(pathjoin(directory, '.bzr'))
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
+        inv = branch.repository.revision_tree(branch.last_revision()).inventory
+        wt = WorkingTree(directory, branch, inv)
+        wt._write_inventory(inv)
+        if branch.last_revision() is not None:
+            wt.set_last_revision(branch.last_revision())
+        wt.set_pending_merges([])
+        wt.revert([])
+        return wt
+ 
+    @staticmethod
+    def create_standalone(directory):
+        """Create a checkout and a branch at directory.
+
+        Directory must exist and be empty.
+        """
+        directory = safe_unicode(directory)
+        b = Branch.create(directory)
+        return WorkingTree.create(b, directory)
+
     def relpath(self, abs):
         """Return the local path portion from a given absolute path."""
         return relpath(self.basedir, abs)
@@ -293,9 +360,13 @@ class WorkingTree(bzrlib.tree.Tree):
         return self.abspath(self.id2path(file_id))
 
     @needs_write_lock
-    def commit(self, *args, **kw):
+    def commit(self, *args, **kwargs):
         from bzrlib.commit import Commit
-        Commit().commit(self.branch, *args, **kw)
+        # args for wt.commit start at message from the Commit.commit method,
+        # but with branch a kwarg now, passing in args as is results in the
+        #message being used for the branch
+        args = (DEPRECATED_PARAMETER, ) + args
+        Commit().commit(working_tree=self, *args, **kwargs)
         self._set_inventory(self.read_working_inventory())
 
     def id2abspath(self, file_id):
@@ -419,17 +490,19 @@ class WorkingTree(bzrlib.tree.Tree):
         directory but not yet committed.
         """
         try:
-            f = self.branch.control_files.get_utf8('pending-merges')
-        except NoSuchFile:
+            merges_file = self._control_files.get_utf8('pending-merges')
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
             return []
         p = []
-        for l in f.readlines():
+        for l in merges_file.readlines():
             p.append(l.rstrip('\n'))
         return p
 
     @needs_write_lock
     def set_pending_merges(self, rev_list):
-        self.branch.control_files.put_utf8('pending-merges', '\n'.join(rev_list))
+        self._control_files.put_utf8('pending-merges', '\n'.join(rev_list))
 
     def get_symlink_target(self, file_id):
         return os.readlink(self.id2abspath(file_id))
@@ -681,7 +754,9 @@ class WorkingTree(bzrlib.tree.Tree):
                 repository = self.branch.repository
                 merge_inner(self.branch,
                             self.branch.basis_tree(), 
-                            repository.revision_tree(other_revision))
+                            repository.revision_tree(other_revision),
+                            this_tree=self)
+                self.set_last_revision(self.branch.last_revision())
             return count
         finally:
             source.unlock()
@@ -816,8 +891,8 @@ class WorkingTree(bzrlib.tree.Tree):
         """Read the working inventory."""
         # ElementTree does its own conversion from UTF-8, so open in
         # binary.
-        f = self.branch.control_files.get('inventory')
-        return bzrlib.xml5.serializer_v5.read_inventory(f)
+        return bzrlib.xml5.serializer_v5.read_inventory(
+            self._control_files.get('inventory'))
 
     @needs_write_lock
     def remove(self, files, verbose=False):
@@ -868,7 +943,8 @@ class WorkingTree(bzrlib.tree.Tree):
         merge_inner(self.branch, old_tree,
                     self, ignore_zero=True,
                     backup_files=backups, 
-                    interesting_files=filenames)
+                    interesting_files=filenames,
+                    this_tree=self)
         if not len(filenames):
             self.set_pending_merges([])
 
@@ -930,17 +1006,10 @@ class WorkingTree(bzrlib.tree.Tree):
     @needs_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
-        from cStringIO import StringIO
-        from bzrlib.atomicfile import AtomicFile
         sio = StringIO()
         bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
         sio.seek(0)
-        f = AtomicFile(self.branch.control_files.controlfilename('inventory'))
-        try:
-            pumpfile(sio, f)
-            f.commit()
-        finally:
-            f.close()
+        self._control_files.put('inventory', sio)
         self._set_inventory(inv)
         mutter('wrote working inventory')
             

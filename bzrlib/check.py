@@ -98,7 +98,7 @@ class Check(object):
         self.planned_revisions = list(self.planned_revisions)
 
     def report_results(self, verbose):
-        note('checked branch %s format %d',
+        note('checked branch %s format %s',
              self.branch.base, 
              self.branch._branch_format)
 

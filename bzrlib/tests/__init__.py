@@ -37,7 +37,10 @@ import codecs
 
 import bzrlib.branch
 import bzrlib.commands
-from bzrlib.errors import BzrError
+from bzrlib.errors import (BzrError,
+                           FileExists,
+                           UninitializableFormat,
+                           )
 import bzrlib.inventory
 import bzrlib.iterablefile
 import bzrlib.merge3
@@ -47,9 +50,15 @@ import bzrlib.plugin
 import bzrlib.store
 import bzrlib.trace
 from bzrlib.transport import urlescape
+import bzrlib.transport
+from bzrlib.transport.local import LocalRelpathServer
+from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.tests.treeshape import build_tree_contents
+from bzrlib.workingtree import WorkingTree
+
+default_transport = LocalRelpathServer
 
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
@@ -71,9 +80,10 @@ def packages_to_test():
     """
     import bzrlib.doc
     import bzrlib.tests.blackbox
+    import bzrlib.tests.branch_implementations
     return [
             bzrlib.doc,
-            bzrlib.tests.blackbox
+            bzrlib.tests.branch_implementations,
             ]
 
 
@@ -158,7 +168,7 @@ class _MyResult(unittest._TextTestResult):
         for test, err in errors:
             self.stream.writeln(self.separator1)
             self.stream.writeln("%s: %s" % (flavour, self.getDescription(test)))
-            if hasattr(test, '_get_log'):
+            if getattr(test, '_get_log', None) is not None:
                 print >>self.stream
                 print >>self.stream, \
                         ('vvvv[log from %s]' % test.id()).ljust(78,'-')
@@ -224,9 +234,12 @@ class TestCase(unittest.TestCase):
     _log_file_name = None
     _log_contents = ''
 
+    def __init__(self, methodName='testMethod'):
+        super(TestCase, self).__init__(methodName)
+        self._cleanups = []
+
     def setUp(self):
         unittest.TestCase.setUp(self)
-        self._cleanups = []
         self._cleanEnvironment()
         bzrlib.trace.disable_default_logging()
         self._startLogFile()
@@ -306,7 +319,7 @@ class TestCase(unittest.TestCase):
         fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
         encoder, decoder, stream_reader, stream_writer = codecs.lookup('UTF-8')
         self._log_file = stream_writer(os.fdopen(fileno, 'w+'))
-        bzrlib.trace.enable_test_log(self._log_file)
+        self._log_nonce = bzrlib.trace.enable_test_log(self._log_file)
         self._log_file_name = name
         self.addCleanup(self._finishLogFile)
 
@@ -315,7 +328,7 @@ class TestCase(unittest.TestCase):
 
         Read contents into memory, close, and delete.
         """
-        bzrlib.trace.disable_test_log()
+        bzrlib.trace.disable_test_log(self._log_nonce)
         self._log_file.seek(0)
         self._log_contents = self._log_file.read()
         self._log_file.close()
@@ -484,12 +497,12 @@ class TestCase(unittest.TestCase):
         if stdin is None:
             stdin = StringIO("")
         if stdout is None:
-            if hasattr(self, "_log_file"):
+            if getattr(self, "_log_file", None) is not None:
                 stdout = self._log_file
             else:
                 stdout = StringIO()
         if stderr is None:
-            if hasattr(self, "_log_file"):
+            if getattr(self, "_log_file", None is not None):
                 stderr = self._log_file
             else:
                 stderr = StringIO()
@@ -621,6 +634,115 @@ class TestCaseInTempDir(TestCase):
         self.assertEqualDiff(content, open(path, 'r').read())
 
 
+class TestCaseWithTransport(TestCaseInTempDir):
+    """A test case that provides get_url and get_readonly_url facilities.
+
+    These back onto two transport servers, one for readonly access and one for
+    read write access.
+
+    If no explicit class is provided for readonly access, a
+    ReadonlyTransportDecorator is used instead which allows the use of non disk
+    based read write transports.
+
+    If an explicit class is provided for readonly access, that server and the 
+    readwrite one must both define get_url() as resolving to os.getcwd().
+    """
+
+    def __init__(self, methodName='testMethod'):
+        super(TestCaseWithTransport, self).__init__(methodName)
+        self.__readonly_server = None
+        self.__server = None
+        self.transport_server = default_transport
+        self.transport_readonly_server = None
+
+    def get_readonly_url(self, relpath=None):
+        """Get a URL for the readonly transport.
+
+        This will either be backed by '.' or a decorator to the transport 
+        used by self.get_url()
+        relpath provides for clients to get a path relative to the base url.
+        These should only be downwards relative, not upwards.
+        """
+        if self.__readonly_server is None:
+            if self.transport_readonly_server is None:
+                # readonly decorator requested
+                # bring up the server
+                self.get_url()
+                self.__readonly_server = ReadonlyServer()
+                self.__readonly_server.setUp(self.__server)
+            else:
+                self.__readonly_server = self.transport_readonly_server()
+                self.__readonly_server.setUp()
+            self.addCleanup(self.__readonly_server.tearDown)
+        base = self.__readonly_server.get_url()
+        if relpath is not None:
+            if not base.endswith('/'):
+                base = base + '/'
+            base = base + relpath
+        return base
+
+    def get_url(self, relpath=None):
+        """Get a URL for the readwrite transport.
+
+        This will either be backed by '.' or to an equivalent non-file based
+        facility.
+        relpath provides for clients to get a path relative to the base url.
+        These should only be downwards relative, not upwards.
+        """
+        if self.__server is None:
+            self.__server = self.transport_server()
+            self.__server.setUp()
+            self.addCleanup(self.__server.tearDown)
+        base = self.__server.get_url()
+        if relpath is not None and relpath != '.':
+            if not base.endswith('/'):
+                base = base + '/'
+            base = base + relpath
+        return base
+
+    def make_branch(self, relpath):
+        """Create a branch on the transport at relpath."""
+        try:
+            url = self.get_url(relpath)
+            segments = relpath.split('/')
+            if segments and segments[-1] not in ('', '.'):
+                parent = self.get_url('/'.join(segments[:-1]))
+                t = bzrlib.transport.get_transport(parent)
+                try:
+                    t.mkdir(segments[-1])
+                except FileExists:
+                    pass
+            return bzrlib.branch.Branch.create(url)
+        except UninitializableFormat:
+            raise TestSkipped("Format %s is not initializable.")
+
+    def make_branch_and_tree(self, relpath):
+        """Create a branch on the transport and a tree locally.
+
+        Returns the tree.
+        """
+        b = self.make_branch(relpath)
+        return WorkingTree.create(b, relpath)
+
+
+class ChrootedTestCase(TestCaseWithTransport):
+    """A support class that provides readonly urls outside the local namespace.
+
+    This is done by checking if self.transport_server is a MemoryServer. if it
+    is then we are chrooted already, if it is not then an HttpServer is used
+    for readonly urls.
+
+    TODO RBC 20060127: make this an option to TestCaseWithTransport so it can
+                       be used without needed to redo it when a different 
+                       subclass is in use ?
+    """
+
+    def setUp(self):
+        super(ChrootedTestCase, self).setUp()
+        if not self.transport_server == bzrlib.transport.memory.MemoryServer:
+            self.transport_readonly_server = bzrlib.transport.http.HttpServer
+
+
 def filter_suite_by_re(suite, pattern):
     result = TestSuite()
     filter_re = re.compile(pattern)
@@ -631,7 +753,8 @@ def filter_suite_by_re(suite, pattern):
 
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
-              stop_on_failure=False, keep_output=False):
+              stop_on_failure=False, keep_output=False,
+              transport=None):
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
@@ -656,10 +779,22 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 
 
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,
-             keep_output=False):
+             keep_output=False,
+             transport=None):
     """Run the whole test suite under the enhanced runner"""
-    return run_suite(test_suite(), 'testbzr', verbose=verbose, pattern=pattern,
-                     stop_on_failure=stop_on_failure, keep_output=keep_output)
+    global default_transport
+    if transport is None:
+        transport = default_transport
+    old_transport = default_transport
+    default_transport = transport
+    suite = test_suite()
+    try:
+        return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
+                     stop_on_failure=stop_on_failure, keep_output=keep_output,
+                     transport=transport)
+    finally:
+        default_transport = old_transport
+
 
 
 def test_suite():
@@ -703,7 +838,6 @@ def test_suite():
                    'bzrlib.tests.test_parent',
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
-                   'bzrlib.tests.test_remove',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revprops',
@@ -715,7 +849,6 @@ def test_suite():
                    'bzrlib.tests.test_sftp_transport',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_source',
-                   'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_testament',
@@ -747,10 +880,7 @@ def test_suite():
     loader = TestLoader()
     from bzrlib.transport import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
-    for mod_name in test_transport_implementations:
-        mod = _load_module_by_name(mod_name)
-        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
-            suite.addTests(adapter.adapt(test))
+    adapt_modules(test_transport_implementations, adapter, loader, suite)
     for mod_name in testmod_names:
         mod = _load_module_by_name(mod_name)
         suite.addTest(loader.loadTestsFromModule(mod))
@@ -761,9 +891,17 @@ def test_suite():
     for m in (MODULES_TO_DOCTEST):
         suite.addTest(DocTestSuite(m))
     for name, plugin in bzrlib.plugin.all_plugins().items():
-        if hasattr(plugin, 'test_suite'):
+        if getattr(plugin, 'test_suite', None) is not None:
             suite.addTest(plugin.test_suite())
     return suite
+
+
+def adapt_modules(mods_list, adapter, loader, suite):
+    """Adapt the modules in mods_list using adapter and add to suite."""
+    for mod_name in mods_list:
+        mod = _load_module_by_name(mod_name)
+        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
+            suite.addTests(adapter.adapt(test))
 
 
 def _load_module_by_name(mod_name):

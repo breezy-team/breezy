@@ -18,7 +18,7 @@
 """Tests being able to ignore mad filetypes.
 """
 
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.errors import BadFileKindError
 import os
 
@@ -32,25 +32,26 @@ def verify_status(tester, branch, value):
     tester.assertEquals(tof.readlines(), value)
 
 
-class TestBadFiles(TestCaseInTempDir):
+class TestBadFiles(TestCaseWithTransport):
     
     def test_bad_files(self): 
         """Test that bzr will ignore files it doesn't like"""
-        from bzrlib.commit import commit
-        from bzrlib.add import smart_add
+        from bzrlib.add import smart_add_tree
         from bzrlib.branch import Branch
 
-        b = Branch.initialize(u'.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
 
-        self.build_tree(['one', 'two', 'three'])
-        smart_add(u'.')
-        commit(b, "Commit one", rev_id="a@u-0-0")
+        files = ['one', 'two', 'three']
+        self.build_tree(files)
+        wt.add(files)
+        wt.commit("Commit one", rev_id="a@u-0-0")
         self.build_tree(['four'])
-        smart_add(u'.')
-        commit(b, "Commit two", rev_id="a@u-0-1")
+        wt.add(['four'])
+        wt.commit("Commit two", rev_id="a@u-0-1")
         self.build_tree(['five'])
-        smart_add(u'.')
-        commit(b, "Commit three", rev_id="a@u-0-2")
+        wt.add(['five'])
+        wt.commit("Commit three", rev_id="a@u-0-2")
 
         # We should now have a few files, lets try to
         # put some bogus stuff in the tree
@@ -73,14 +74,14 @@ class TestBadFiles(TestCaseInTempDir):
         
         # Make sure smart_add can handle having a bogus
         # file in the way
-        smart_add(u'.')
+        smart_add_tree(wt, '.')
         verify_status(self, b,
                           ['added:\n',
                            '  six\n',
                            'unknown:\n',
                            '  a-fifo\n',
                            ])
-        commit(b, "Commit four", rev_id="a@u-0-3")
+        wt.commit("Commit four", rev_id="a@u-0-3")
 
         verify_status(self, b,
                           ['unknown:\n',
