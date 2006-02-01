@@ -18,21 +18,20 @@
 
 import os
 
-from bzrlib.tests import TestCaseInTempDir
-from bzrlib.branch import Branch
+from bzrlib.osutils import pathjoin
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.workingtree import WorkingTree
 
 
-class NonAsciiTest(TestCaseInTempDir):
+class NonAsciiTest(TestCaseWithTransport):
 
     def test_add_in_nonascii_branch(self):
         """Test adding in a non-ASCII branch."""
         br_dir = u"\u1234"
         try:
-            os.mkdir(br_dir)
-            os.chdir(br_dir)
+            wt = self.make_branch_and_tree(br_dir)
         except UnicodeEncodeError:
-            self.log("filesystem can't accomodate nonascii names")
+            raise TestSkipped("filesystem can't accomodate nonascii names")
             return
-        br = Branch.initialize(u".")
-        file("a", "w").write("hello")
-        br.working_tree().add(["a"], ["a-id"])
+        file(pathjoin(br_dir, "a"), "w").write("hello")
+        wt.add(["a"], ["a-id"])
