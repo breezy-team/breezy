@@ -163,6 +163,9 @@ class Branch(object):
     @deprecated_function(zero_eight)
     def initialize(base):
         """Create a new working tree and branch, rooted at 'base' (url)
+
+        NOTE: This will soon be deprecated in favour of creation
+        through a BzrDir.
         """
         # imported here to prevent scope creep as this is going.
         from bzrlib.workingtree import WorkingTree
