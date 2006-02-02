@@ -146,6 +146,19 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.get_branch_transport)
         
+    def get_workingtree_transport(self, branch_format):
+        """Get the transport for use by workingtree format in this BzrDir.
+
+        Note that bzr dirs that do not support format strings will raise
+        IncompatibleFormat if the workingtree format they are given has
+        a format string, and vice verca.
+
+        If workingtree_format is None, the transport is returned with no 
+        checking. if it is not None, then the returned transport is
+        guaranteed to point to an existing directory ready for use.
+        """
+        raise NotImplementedError(self.get_workingtree_transport)
+        
     def __init__(self, _transport, _format):
         """Initialize a Bzr control dir object.
         
@@ -252,6 +265,16 @@ class BzrDirPreSplitOut(BzrDir):
             return self.transport
         raise errors.IncompatibleFormat(branch_format, self._format)
 
+    def get_workingtree_transport(self, workingtree_format):
+        """See BzrDir.get_workingtree_transport()."""
+        if workingtree_format is None:
+            return self.transport
+        try:
+            workingtree_format.get_format_string()
+        except NotImplementedError:
+            return self.transport
+        raise errors.IncompatibleFormat(workingtree_format, self._format)
+
     def open_branch(self, unsupported=False):
         """See BzrDir.open_branch."""
         from bzrlib.branch import BzrBranchFormat4
@@ -357,6 +380,20 @@ class BzrDirMeta1(BzrDir):
         except errors.FileExists:
             pass
         return self.transport.clone('branch')
+
+    def get_workingtree_transport(self, workingtree_format):
+        """See BzrDir.get_workingtree_transport()."""
+        if workingtree_format is None:
+            return self.transport.clone('checkout')
+        try:
+            workingtree_format.get_format_string()
+        except NotImplementedError:
+            raise errors.IncompatibleFormat(workingtree_format, self._format)
+        try:
+            self.transport.mkdir('checkout')
+        except errors.FileExists:
+            pass
+        return self.transport.clone('checkout')
 
     def open_branch(self, unsupported=False):
         """See BzrDir.open_branch."""

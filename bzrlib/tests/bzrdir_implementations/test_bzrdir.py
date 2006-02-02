@@ -236,3 +236,24 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertTrue(isinstance(found_transport, transport.Transport))
         # and the dir which has been initialized for us must be statable.
         found_transport.stat('.')
+
+    def test_get_workingtree_transport(self):
+        dir = self.make_bzrdir('.')
+        # without a format, get_workingtree_transport gives use a transport
+        # which -may- point to an existing dir.
+        self.assertTrue(isinstance(dir.get_workingtree_transport(None),
+                                   transport.Transport))
+        # with a given format, either the bzr dir supports identifiable
+        # trees, or it supports anonymous tree formats, but not both.
+        anonymous_format = workingtree.WorkingTreeFormat2()
+        identifiable_format = workingtree.WorkingTreeFormat3()
+        try:
+            found_transport = dir.get_workingtree_transport(anonymous_format)
+            self.assertRaises(errors.IncompatibleFormat,
+                              dir.get_workingtree_transport,
+                              identifiable_format)
+        except errors.IncompatibleFormat:
+            found_transport = dir.get_workingtree_transport(identifiable_format)
+        self.assertTrue(isinstance(found_transport, transport.Transport))
+        # and the dir which has been initialized for us must be statable.
+        found_transport.stat('.')
