@@ -4,26 +4,51 @@
 # instead of just the Stats object
 
 import sys
+import thread
+import threading
 from _lsprof import Profiler, profiler_entry, profiler_subentry
 
 __all__ = ['profile', 'Stats']
 
+_g_threadmap = {}
+
+def _thread_profile(f, *args, **kwds):
+    # we lose the first profile point for a new thread in order to trampoline
+    # a new Profile object into place
+    global _g_threadmap
+    thr = thread.get_ident()
+    _g_threadmap[thr] = p = Profiler()
+    # this overrides our sys.setprofile hook:
+    p.enable(subcalls=True)
+
+
 def profile(f, *args, **kwds):
     """XXX docstring"""
+    global _g_threadmap
     p = Profiler()
     p.enable(subcalls=True)
+    threading.setprofile(_thread_profile)
     try:
         ret = f(*args, **kwds)
     finally:
         p.disable()
-    return ret,Stats(p.getstats())
+        for pp in _g_threadmap.values():
+            pp.disable()
+        threading.setprofile(None)
+    
+    threads = {}
+    for tid, pp in _g_threadmap.items():
+        threads[tid] = Stats(pp.getstats(), {})
+    _g_threadmap = {}
+    return ret, Stats(p.getstats(), threads)
 
 
 class Stats(object):
     """XXX docstring"""
 
-    def __init__(self, data):
+    def __init__(self, data, threads):
         self.data = data
+        self.threads = threads
 
     def sort(self, crit="inlinetime"):
         """XXX docstring"""
@@ -71,6 +96,9 @@ class Stats(object):
                         se = e.calls[j]
                         if not isinstance(se.code, str):
                             e.calls[j] = type(se)((label(se.code),) + se[1:])
+        for s in self.threads.values():
+            s.freeze()
+
 
 _fn2mod = {}
 
