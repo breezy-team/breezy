@@ -1222,7 +1222,11 @@ class Merge3Merger(object):
     def merge_executable(self, file_id, file_status):
         if file_status == "deleted":
             return
-        if self.tt.final_kind != "file":
+        trans_id = self.tt.get_trans_id(file_id)
+        try:
+            if self.tt.final_kind(trans_id) != "file":
+                return
+        except NoSuchFile:
             return
         winner = self.scalar_three_way(self.this_tree, self.base_tree, 
                                        self.other_tree, file_id, 
