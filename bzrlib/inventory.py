@@ -735,7 +735,7 @@ class Inventory(object):
         The inventory is created with a default root directory, with
         an id of None.
         """
-        # We are letting Branch.initialize() create a unique inventory
+        # We are letting Branch.create() create a unique inventory
         # root id. Rather than generating a random one here.
         #if root_id is None:
         #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
