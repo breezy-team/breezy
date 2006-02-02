@@ -827,7 +827,7 @@ def find_interesting(working_tree, target_tree, filenames):
                     interesting_ids.add(file_id)
                     not_found = False
                 if not_found:
-                    raise NotVersionedError(path=filename)
+                    raise NotVersionedError(path=tree_path)
     return interesting_ids
 
 

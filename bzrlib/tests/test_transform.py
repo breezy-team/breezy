@@ -17,11 +17,12 @@
 import os
 from bzrlib.branch import Branch
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform, CantMoveRoot)
+                           ReusingTransform, CantMoveRoot, NotVersionedError)
 from bzrlib.osutils import file_kind, has_symlinks
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
-                              resolve_conflicts, Merge3Merger)
+                              resolve_conflicts, Merge3Merger, 
+                              find_interesting)
 
 class TestTreeTransform(TestCaseInTempDir):
     def setUp(self):
@@ -356,6 +357,17 @@ class TestTreeTransform(TestCaseInTempDir):
         myfile = rename.get_trans_id('myfile-id')
         rename.set_executability(True, myfile)
         rename.apply()
+
+    def test_find_interesting(self):
+        create, root = self.get_transform()
+        wt = create._tree
+        create.new_file('vfile', root, 'myfile-text', 'myfile-id')
+        create.new_file('uvfile', root, 'othertext')
+        create.apply()
+        self.assertEqual(find_interesting(wt, wt, ['vfile']),
+                         set(['myfile-id']))
+        self.assertRaises(NotVersionedError, find_interesting, wt, wt,
+                          ['uvfile'])
 
 
 class TransformGroup(object):
