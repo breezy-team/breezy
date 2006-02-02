@@ -22,7 +22,8 @@ from stat import S_ISREG
 
 from bzrlib import BZRDIR
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform, NotVersionedError, CantMoveRoot)
+                           ReusingTransform, NotVersionedError, CantMoveRoot,
+                           WorkingTreeNotRevision)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import file_kind, supports_executable, pathjoin
 from bzrlib.merge3 import Merge3

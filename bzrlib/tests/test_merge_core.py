@@ -13,10 +13,10 @@ import bzrlib.inventory as inventory
 from bzrlib.osutils import file_kind, rename, sha_file, pathjoin, mkdtemp
 from bzrlib import _changeset as changeset
 from bzrlib._merge_core import (ApplyMerge3, make_merge_changeset,
-                               BackupBeforeChange, ExecFlagMerge, WeaveMerge)
+                               BackupBeforeChange, ExecFlagMerge)
 from bzrlib._changeset import Inventory, apply_changeset, invert_dict, \
     get_contents, ReplaceContents, ChangeExecFlag, Diff3Merge
-from bzrlib.transform import Merge3Merger
+from bzrlib.transform import Merge3Merger, WeaveMerger
 from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.workingtree import WorkingTree
 
@@ -574,7 +574,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         base = [None, None]
         other = ("mary", -1)
         self.assertRaises(BzrCommandError, merge, other, base, check_clean=True,
-                          merge_type=WeaveMerge, this_dir="original",
+                          merge_type=WeaveMerger, this_dir="original",
                           show_base=True)
         merge(other, base, check_clean=True, merge_type=merge_type,
               this_dir="original")
@@ -599,13 +599,13 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assert_(os.path.lexists('b/file.OTHER'))
         self.assertRaises(WorkingTreeNotRevision, merge, ['a', -1], 
                           [None, None], this_dir='b', check_clean=False,
-                          merge_type=WeaveMerge)
+                          merge_type=WeaveMerger)
         b.working_tree().revert([])
         os.unlink('b/file.THIS')
         os.unlink('b/file.OTHER')
         os.unlink('b/file.BASE')
         self.assertEqual(merge(['a', -1], [None, None], this_dir='b', 
-                               check_clean=False, merge_type=WeaveMerge), 1)
+                               check_clean=False, merge_type=WeaveMerger), 1)
         self.assert_(os.path.lexists('b/file'))
         self.assert_(os.path.lexists('b/file.THIS'))
         self.assert_(not os.path.lexists('b/file.BASE'))
