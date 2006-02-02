@@ -207,7 +207,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self.branch = branch
         self.basedir = realpath(basedir)
         # if branch is at our basedir and is a format 6 or less
-        if (isinstance(self.branch._branch_format,
+        if (isinstance(self.branch._format,
                        (BzrBranchFormat4))
             # might be able to share control object
             and self.branch.base.split('/')[-2] == self.basedir.split('/')[-1]):
@@ -216,6 +216,7 @@ class WorkingTree(bzrlib.tree.Tree):
             assert False, "not done yet"
 #            self._control_files = _control_files
         else:
+            # FIXME old format use the bzrdir control files.
             self._control_files = LockableFiles(
                 get_transport(self.basedir).clone(bzrlib.BZRDIR), 'branch-lock')
 

@@ -110,6 +110,7 @@ class Branch(object):
         raise NotImplementedError('The Branch class is abstract')
 
     @staticmethod
+    @deprecated_method(zero_eight)
     def open_downlevel(base):
         """Open a branch which may be of an old format."""
         return Branch.open(base, _unsupported=True)
@@ -122,7 +123,7 @@ class Branch(object):
         Repository.open(URL) -> a Repository instance.
         """
         control = bzrdir.BzrDir.open(base, _unsupported)
-        return control.open_branch()
+        return control.open_branch(_unsupported)
 
     @staticmethod
     def open_containing(url):
@@ -443,6 +444,18 @@ class BranchFormat(object):
     """The known formats."""
 
     @classmethod
+    def find_format(klass, a_bzrdir):
+        """Return the format for the branch object in a_bzrdir."""
+        try:
+            transport = a_bzrdir.get_branch_transport(None)
+            format_string = transport.get("format").read()
+            return klass._formats[format_string]
+        except NoSuchFile:
+            raise NotBranchError(path=transport.base)
+        except KeyError:
+            raise errors.UnknownFormatError(format_string)
+
+    @classmethod
     def get_default_format(klass):
         """Return the current default format."""
         return klass._default_format
@@ -476,19 +489,7 @@ class BranchFormat(object):
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
-        mutter('creating branch in %s', a_bzrdir.transport.base)
-        utf8_files = [('revision-history', ''),
-                      ('branch-name', ''),
-                      ]
-        
-        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock')
-        control_files.lock_write()
-        try:
-            for file, content in utf8_files:
-                control_files.put_utf8(file, content)
-        finally:
-            control_files.unlock()
-        return self.open(a_bzrdir, _found=True)
+        raise NotImplementedError(self.initialized)
 
     def is_supported(self):
         """Is this format supported?
@@ -505,10 +506,7 @@ class BranchFormat(object):
         _found is a private parameter, do not use it. It is used to indicate
                if format probing has already be done.
         """
-        if not _found:
-            # we are being called directly and must probe.
-            raise NotImplementedError
-        return BzrBranch(a_bzrdir.transport.clone('..'), _format=self, a_bzrdir=a_bzrdir)
+        raise NotImplementedError(self.open)
 
     @classmethod
     def register_format(klass, format):
@@ -529,17 +527,103 @@ class BzrBranchFormat4(BranchFormat):
 
     This format has:
      - a revision-history file.
+     - a branch-lock lock file [ to be shared with the bzrdir ]
     """
+
+    def initialize(self, a_bzrdir):
+        """Create a branch of this format in a_bzrdir."""
+        mutter('creating branch in %s', a_bzrdir.transport.base)
+        branch_transport = a_bzrdir.get_branch_transport(self)
+        utf8_files = [('revision-history', ''),
+                      ('branch-name', ''),
+                      ]
+        control_files = LockableFiles(branch_transport, 'branch-lock')
+        control_files.lock_write()
+        try:
+            for file, content in utf8_files:
+                control_files.put_utf8(file, content)
+        finally:
+            control_files.unlock()
+        return self.open(a_bzrdir, _found=True)
 
     def __init__(self):
         super(BzrBranchFormat4, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirFormat6()
 
+    def open(self, a_bzrdir, _found=False):
+        """Return the branch object for a_bzrdir
+
+        _found is a private parameter, do not use it. It is used to indicate
+               if format probing has already be done.
+        """
+        if not _found:
+            # we are being called directly and must probe.
+            raise NotImplementedError
+        transport = a_bzrdir.get_branch_transport(self)
+        control_files = LockableFiles(transport, 'branch-lock')
+        return BzrBranch(_format=self,
+                         _control_files=control_files,
+                         a_bzrdir=a_bzrdir)
+
+
+class BzrBranchFormat5(BranchFormat):
+    """Bzr branch format 5.
+
+    This format has:
+     - a revision-history file.
+     - a format string
+     - a lock lock file.
+    """
+
+    def get_format_string(self):
+        """See BranchFormat.get_format_string()."""
+        return "Bazaar-NG branch format 5\n"
+        
+    def initialize(self, a_bzrdir):
+        """Create a branch of this format in a_bzrdir."""
+        mutter('creating branch in %s', a_bzrdir.transport.base)
+        branch_transport = a_bzrdir.get_branch_transport(self)
+
+        utf8_files = [('revision-history', ''),
+                      ('branch-name', ''),
+                      ]
+        lock_file = 'lock'
+        branch_transport.put(lock_file, StringIO()) # TODO get the file mode from the bzrdir lock files., mode=file_mode)
+        control_files = LockableFiles(branch_transport, 'lock')
+        control_files.lock_write()
+        control_files.put_utf8('format', self.get_format_string())
+        try:
+            for file, content in utf8_files:
+                control_files.put_utf8(file, content)
+        finally:
+            control_files.unlock()
+        return self.open(a_bzrdir, _found=True, )
+
+    def __init__(self):
+        super(BzrBranchFormat5, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+
+    def open(self, a_bzrdir, _found=False):
+        """Return the branch object for a_bzrdir
+
+        _found is a private parameter, do not use it. It is used to indicate
+               if format probing has already be done.
+        """
+        if not _found:
+            format = BranchFormat.find_format(a_bzrdir)
+            assert format.__class__ == self.__class__
+        transport = a_bzrdir.get_branch_transport(None)
+        control_files = LockableFiles(transport, 'lock')
+        return BzrBranch(_format=self,
+                         _control_files=control_files,
+                         a_bzrdir=a_bzrdir)
+
+
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-# __default_format = BranchFormatXXX()
-# BranchFormat.register_format(__default_format)
-# BranchFormat.set_default_format(__default_format)
+__default_format = BzrBranchFormat5()
+BranchFormat.register_format(__default_format)
+BranchFormat.set_default_format(__default_format)
 _legacy_formats = [BzrBranchFormat4(),
                    ]
 
@@ -562,7 +646,7 @@ class BzrBranch(Branch):
     # This should match a prefix with a function which accepts
     REVISION_NAMESPACES = {}
 
-    def __init__(self, transport, init=DEPRECATED_PARAMETER,
+    def __init__(self, transport=DEPRECATED_PARAMETER, init=DEPRECATED_PARAMETER,
                  relax_version_check=DEPRECATED_PARAMETER, _format=None,
                  _control_files=None, a_bzrdir=None):
         """Create new branch object at a particular location.
@@ -578,13 +662,15 @@ class BzrBranch(Branch):
             upgrade/recovery type use; it's not guaranteed that
             all operations will work on old format branches.
         """
-        self.bzrdir = a_bzrdir
-        self._transport = transport
+        if a_bzrdir is None:
+            self.bzrdir = bzrdir.BzrDir.open(transport.base)
+        else:
+            self.bzrdir = a_bzrdir
+        self._transport = self.bzrdir.transport.clone('..')
         self._base = self._transport.base
         self._format = _format
         if _control_files is None:
-            _control_files = LockableFiles(self._transport.clone(bzrlib.BZRDIR),
-                                           'branch-lock')
+            raise BzrBadParameterMissing('_control_files')
         self.control_files = _control_files
         if deprecated_passed(init):
             warn("BzrBranch.__init__(..., init=XXX): The init parameter is "
@@ -599,17 +685,23 @@ class BzrBranch(Branch):
         if deprecated_passed(relax_version_check):
             warn("BzrBranch.__init__(..., relax_version_check=XXX_: The "
                  "relax_version_check parameter is deprecated as of bzr 0.8. "
-                 "Please use Branch.open_downlevel, or a BzrBranchFormat's "
+                 "Please use BzrDir.open_downlevel, or a BzrBranchFormat's "
                  "open() method.",
                  DeprecationWarning,
                  stacklevel=2)
             if (not relax_version_check
-                and not self._branch_format.is_supported()):
+                and not self._format.is_supported()):
                 raise errors.UnsupportedFormatError(
                         'sorry, branch format %r not supported' % fmt,
                         ['use a different bzr version',
                          'or remove the .bzr directory'
                          ' and "bzr init" again'])
+        if deprecated_passed(transport):
+            warn("BzrBranch.__init__(transport=XXX...): The transport "
+                 "parameter is deprecated as of bzr 0.8. "
+                 "Please use Branch.open, or bzrdir.open_branch().",
+                 DeprecationWarning,
+                 stacklevel=2)
         self.repository = self.bzrdir.open_repository()
 
     def __str__(self):
@@ -668,15 +760,17 @@ class BzrBranch(Branch):
         """Identify the branch format if needed.
 
         The format is stored as a reference to the format object in
-        self._branch_format for code that needs to check it later.
+        self._format for code that needs to check it later.
 
         The format parameter is either None or the branch format class
         used to open this branch.
+
+        FIXME: DELETE THIS METHOD when pre 0.8 support is removed.
         """
         if format is None:
-            format = BzrBranchFormat.find_format(self._transport)
-        self._branch_format = format
-        mutter("got branch format %s", self._branch_format)
+            format = BzrBranchFormat.find_format(self.bzrdir)
+        self._format = format
+        mutter("got branch format %s", self._format)
 
     @needs_read_lock
     def get_root_id(self):

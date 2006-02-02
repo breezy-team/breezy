@@ -29,7 +29,6 @@ from os import mkdir
 from tempfile import TemporaryFile
 import codecs
 
-from bzrlib.clone import copy_branch
 from bzrlib.branch import Branch
 from bzrlib.builtins import merge
 from bzrlib.revisionspec import RevisionSpec

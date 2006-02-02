@@ -19,6 +19,9 @@
 This file contains canned versions of some old trees, which are instantiated 
 and then upgraded to the new format."""
 
+# TODO queue for upgrade:
+# test the error message when upgrading an unknown BzrDir format.
+
 import base64
 import os
 import sys

@@ -34,6 +34,7 @@ import bzrlib.repository as repository
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
+import bzrlib.transport as transport
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
 import bzrlib.workingtree as workingtree
@@ -215,3 +216,23 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEqual(made_control, opened_tree.bzrdir)
         self.failUnless(isinstance(opened_tree, made_tree.__class__))
 
+    def test_get_branch_transport(self):
+        dir = self.make_bzrdir('.')
+        # without a format, get_branch_transport gives use a transport
+        # which -may- point to an existing dir.
+        self.assertTrue(isinstance(dir.get_branch_transport(None),
+                                   transport.Transport))
+        # with a given format, either the bzr dir supports identifiable
+        # branches, or it supports anonymous  branch formats, but not both.
+        anonymous_format = branch.BzrBranchFormat4()
+        identifiable_format = branch.BzrBranchFormat5()
+        try:
+            found_transport = dir.get_branch_transport(anonymous_format)
+            self.assertRaises(errors.IncompatibleFormat,
+                              dir.get_branch_transport,
+                              identifiable_format)
+        except errors.IncompatibleFormat:
+            found_transport = dir.get_branch_transport(identifiable_format)
+        self.assertTrue(isinstance(found_transport, transport.Transport))
+        # and the dir which has been initialized for us must be statable.
+        found_transport.stat('.')

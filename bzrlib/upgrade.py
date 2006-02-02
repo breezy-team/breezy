@@ -76,7 +76,9 @@ from stat import *
 
 import bzrlib
 from bzrlib.branch import Branch
+import bzrlib.bzrdir as bzrdir
 from bzrlib.bzrdir import BzrDirFormat, BzrDirFormat4, BzrDirFormat5, BzrDirFormat6
+import bzrlib.errors as errors
 from bzrlib.errors import NoSuchFile, UpgradeReadonly
 import bzrlib.hashcache as hashcache
 from bzrlib.lockable_files import LockableFiles
@@ -214,8 +216,9 @@ class Convert(object):
             note('this branch is in the most current format (%s)', self.old_format)
             return False
         if (not isinstance(self.old_format, BzrDirFormat4) and
-            not isinstance(self.old_format, BzrDirFormat5)):
-            raise BzrError("cannot upgrade from branch format %s" %
+            not isinstance(self.old_format, BzrDirFormat5) and
+            not isinstance(self.old_format, bzrdir.BzrDirMetaFormat1)):
+            raise errors.BzrError("cannot upgrade from branch format %s" %
                            self.branch._branch_format)
         return True
 

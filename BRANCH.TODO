@@ -26,3 +26,5 @@ Before:
  14:41 < lifeless> the one in branch.py will be the one that *makes* a branch, ditto that in working tree that makes a branch and tree
 
  * NoRepository error for bzrdir.open_repository()
+
+ * check to use BzrDir 

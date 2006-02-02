@@ -45,6 +45,14 @@ class BzrDir(object):
         the transport which this bzr dir is rooted at (i.e. file:///.../.bzr/)
     """
 
+    def _check_supported(self, format, allow_unsupported):
+        """Check whether format is a supported format.
+
+        If allow_unsupported is True, this is a no-op.
+        """
+        if not allow_unsupported and not format.is_supported():
+            raise errors.UnsupportedFormatError(format)
+
     @staticmethod
     def create(base):
         """Create a new BzrDir at the url 'base'.
@@ -125,6 +133,19 @@ class BzrDir(object):
         """Create a working tree at this BzrDir"""
         raise NotImplementedError(self.create_workingtree)
 
+    def get_branch_transport(self, branch_format):
+        """Get the transport for use by branch format in this BzrDir.
+
+        Note that bzr dirs that do not support format strings will raise
+        IncompatibleFormat if the branch format they are given has
+        a format string, and vice verca.
+
+        If branch_format is None, the transport is returned with no 
+        checking. if it is not None, then the returned transport is
+        guaranteed to point to an existing directory ready for use.
+        """
+        raise NotImplementedError(self.get_branch_transport)
+        
     def __init__(self, _transport, _format):
         """Initialize a Bzr control dir object.
         
@@ -160,8 +181,11 @@ class BzrDir(object):
                      ' and "bzr init" again'])
         return format.open(t, _found=True)
 
-    def open_branch(self):
+    def open_branch(self, unsupported=False):
         """Open the branch object at this BzrDir if one is present.
+
+        If unsupported is True, then no longer supported branch formats can
+        still be opened.
         
         TODO: static convenience version of this?
         """
@@ -210,23 +234,39 @@ class BzrDir(object):
         raise NotImplementedError(self.open_workingtree)
 
 
-class BzrDir4(BzrDir):
-    """A .bzr version 4 control object."""
+class BzrDirPreSplitOut(BzrDir):
+    """A common class for the all-in-one formats."""
 
     def create_branch(self):
         """See BzrDir.create_branch."""
         from bzrlib.branch import BzrBranchFormat4
         return BzrBranchFormat4().initialize(self)
 
+    def get_branch_transport(self, branch_format):
+        """See BzrDir.get_branch_transport()."""
+        if branch_format is None:
+            return self.transport
+        try:
+            branch_format.get_format_string()
+        except NotImplementedError:
+            return self.transport
+        raise errors.IncompatibleFormat(branch_format, self._format)
+
+    def open_branch(self, unsupported=False):
+        """See BzrDir.open_branch."""
+        from bzrlib.branch import BzrBranchFormat4
+        format = BzrBranchFormat4()
+        self._check_supported(format, unsupported)
+        return format.open(self, _found=True)
+
+
+class BzrDir4(BzrDirPreSplitOut):
+    """A .bzr version 4 control object."""
+
     def create_repository(self):
         """See BzrDir.create_repository."""
         from bzrlib.repository import RepositoryFormat4
         return RepositoryFormat4().initialize(self)
-
-    def open_branch(self):
-        """See BzrDir.open_branch."""
-        from bzrlib.branch import BzrBranchFormat4
-        return BzrBranchFormat4().open(self, _found=True)
 
     def open_repository(self):
         """See BzrDir.open_repository."""
@@ -234,13 +274,8 @@ class BzrDir4(BzrDir):
         return RepositoryFormat4().open(self, _found=True)
 
 
-class BzrDir5(BzrDir):
+class BzrDir5(BzrDirPreSplitOut):
     """A .bzr version 5 control object."""
-
-    def create_branch(self):
-        """See BzrDir.create_branch."""
-        from bzrlib.branch import BzrBranchFormat4
-        return BzrBranchFormat4().initialize(self)
 
     def create_repository(self):
         """See BzrDir.create_repository."""
@@ -251,11 +286,6 @@ class BzrDir5(BzrDir):
         """See BzrDir.create_workingtree."""
         from bzrlib.workingtree import WorkingTreeFormat2
         return WorkingTreeFormat2().initialize(self)
-
-    def open_branch(self):
-        """See BzrDir.open_branch."""
-        from bzrlib.branch import BzrBranchFormat4
-        return BzrBranchFormat4().open(self, _found=True)
 
     def open_repository(self):
         """See BzrDir.open_repository."""
@@ -268,13 +298,8 @@ class BzrDir5(BzrDir):
         return WorkingTreeFormat2().open(self, _found=True)
 
 
-class BzrDir6(BzrDir):
+class BzrDir6(BzrDirPreSplitOut):
     """A .bzr version 6 control object."""
-
-    def create_branch(self):
-        """See BzrDir.create_branch."""
-        from bzrlib.branch import BzrBranchFormat4
-        return BzrBranchFormat4().initialize(self)
 
     def create_repository(self):
         """See BzrDir.create_repository."""
@@ -286,10 +311,59 @@ class BzrDir6(BzrDir):
         from bzrlib.workingtree import WorkingTreeFormat2
         return WorkingTreeFormat2().initialize(self)
 
-    def open_branch(self):
+    def open_repository(self):
+        """See BzrDir.open_repository."""
+        from bzrlib.repository import RepositoryFormat6
+        return RepositoryFormat6().open(self, _found=True)
+
+    def open_workingtree(self):
+        """See BzrDir.create_workingtree."""
+        from bzrlib.workingtree import WorkingTreeFormat2
+        return WorkingTreeFormat2().open(self, _found=True)
+
+
+class BzrDirMeta1(BzrDir):
+    """A .bzr meta version 1 control object.
+    
+    This is the first control object where the 
+    individual formats are really split out.
+    """
+
+    def create_branch(self):
+        """See BzrDir.create_branch."""
+        from bzrlib.branch import BranchFormat
+        return BranchFormat.get_default_format().initialize(self)
+
+    def create_repository(self):
+        """See BzrDir.create_repository."""
+        from bzrlib.repository import RepositoryFormat6
+        return RepositoryFormat6().initialize(self)
+
+    def create_workingtree(self):
+        """See BzrDir.create_workingtree."""
+        from bzrlib.workingtree import WorkingTreeFormat2
+        return WorkingTreeFormat2().initialize(self)
+
+    def get_branch_transport(self, branch_format):
+        """See BzrDir.get_branch_transport()."""
+        if branch_format is None:
+            return self.transport.clone('branch')
+        try:
+            branch_format.get_format_string()
+        except NotImplementedError:
+            raise errors.IncompatibleFormat(branch_format, self._format)
+        try:
+            self.transport.mkdir('branch')
+        except errors.FileExists:
+            pass
+        return self.transport.clone('branch')
+
+    def open_branch(self, unsupported=False):
         """See BzrDir.open_branch."""
-        from bzrlib.branch import BzrBranchFormat4
-        return BzrBranchFormat4().open(self, _found=True)
+        from bzrlib.branch import BranchFormat
+        format = BranchFormat.find_format(self)
+        self._check_supported(format, unsupported)
+        return format.open(self, _found=True)
 
     def open_repository(self):
         """See BzrDir.open_repository."""
@@ -490,8 +564,29 @@ class BzrDirFormat6(BzrDirFormat):
         return BzrDir6(transport, self)
 
 
+class BzrDirMetaFormat1(BzrDirFormat):
+    """Bzr meta control format 1
+
+    This is the first format with split out working tree, branch and repository
+    disk storage.
+    It has:
+     - Format 3 working trees
+     - Format 5 branches
+     - Format 7 repositories
+    """
+
+    def get_format_string(self):
+        """See BzrDirFormat.get_format_string()."""
+        return "Bazaar-NG meta directory, format 1\n"
+
+    def _open(self, transport):
+        """See BzrDirFormat._open."""
+        return BzrDirMeta1(transport, self)
+
+
 BzrDirFormat.register_format(BzrDirFormat4())
 BzrDirFormat.register_format(BzrDirFormat5())
+BzrDirFormat.register_format(BzrDirMetaFormat1())
 __default_format = BzrDirFormat6()
 BzrDirFormat.register_format(__default_format)
 BzrDirFormat.set_default_format(__default_format)
