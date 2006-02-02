@@ -320,6 +320,9 @@ class WorkingTree(bzrlib.tree.Tree):
         TODO FIXME RBC 20060124 when we have checkout formats in place this
         should accept an optional revisionid to checkout [and reject this if
         checking out into the same dir as a pre-checkout-aware branch format.]
+
+        XXX: When BzrDir is present, these should be created through that 
+        interface instead.
         """
         try:
             os.mkdir(directory)
@@ -347,6 +350,9 @@ class WorkingTree(bzrlib.tree.Tree):
         """Create a checkout and a branch and a repo at directory.
 
         Directory must exist and be empty.
+
+        XXX: When BzrDir is present, these should be created through that 
+        interface instead.
         """
         directory = safe_unicode(directory)
         b = bzrdir.BzrDir.create_branch_and_repo(directory)

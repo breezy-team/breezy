@@ -93,37 +93,12 @@ def packages_to_test():
             ]
 
 
-class EarlyStoppingTestResultAdapter(object):
-    """An adapter for TestResult to stop at the first first failure or error"""
-
-    def __init__(self, result):
-        self._result = result
-
-    def addError(self, test, err):
-        if (isinstance(err[1], TestSkipped) and 
-            getattr(self, "addSkipped", None) is not None):
-            return self.addSkipped(test, err)    
-        self._result.addError(test, err)
-        self._result.stop()
-
-    def addFailure(self, test, err):
-        self._result.addFailure(test, err)
-        self._result.stop()
-
-    def __getattr__(self, name):
-        return getattr(self._result, name)
-
-    def __setattr__(self, name, value):
-        if name == '_result':
-            object.__setattr__(self, name, value)
-        return setattr(self._result, name, value)
-
-
 class _MyResult(unittest._TextTestResult):
     """Custom TestResult.
 
     Shows output in a different format, including displaying runtime for tests.
     """
+    stop_early = False
 
     def _elapsedTime(self):
         return "%5dms" % (1000 * (time.time() - self._start_time))
@@ -163,6 +138,8 @@ class _MyResult(unittest._TextTestResult):
         elif self.dots:
             self.stream.write('E')
         self.stream.flush()
+        if self.stop_early:
+            self.stop()
 
     def addFailure(self, test, err):
         unittest.TestResult.addFailure(self, test, err)
@@ -171,6 +148,8 @@ class _MyResult(unittest._TextTestResult):
         elif self.dots:
             self.stream.write('F')
         self.stream.flush()
+        if self.stop_early:
+            self.stop()
 
     def addSuccess(self, test):
         if self.showAll:
@@ -211,8 +190,7 @@ class TextTestRunner(unittest.TextTestRunner):
 
     def _makeResult(self):
         result = _MyResult(self.stream, self.descriptions, self.verbosity)
-        if self.stop_on_failure:
-            result = EarlyStoppingTestResultAdapter(result)
+        result.stop_early = self.stop_on_failure
         return result
 
 
@@ -849,8 +827,9 @@ def test_suite():
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_decorators',
+                   'bzrlib.tests.test_diff',
+                   'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',

@@ -23,6 +23,13 @@ import shutil
 import sys
 from unittest import TestSuite
 from warnings import warn
+try:
+    import xml.sax.saxutils
+except ImportError:
+    raise ImportError("We were unable to import 'xml.sax.saxutils',"
+                      " most likely you have an xml.pyc or xml.pyo file"
+                      " lying around in your bzrlib directory."
+                      " Please remove it.")
 
 
 import bzrlib
@@ -33,7 +40,7 @@ from bzrlib.delta import compare_trees
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
-                           DivergedBranches, LockError, 
+                           DivergedBranches, LockError,
                            UninitializableFormat,
                            UnlistableStore,
                            UnlistableBranch, NoSuchFile, NotVersionedError,
@@ -136,6 +143,9 @@ class Branch(object):
     @deprecated_function(zero_eight)
     def initialize(base):
         """Create a new working tree and branch, rooted at 'base' (url)
+
+        NOTE: This will soon be deprecated in favour of creation
+        through a BzrDir.
         """
         # imported here to prevent scope creep as this is going.
         from bzrlib.workingtree import WorkingTree

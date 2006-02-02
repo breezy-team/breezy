@@ -19,6 +19,7 @@
 import os
 import sys
 import unittest
+import warnings
 
 import bzrlib
 from bzrlib.tests import (
@@ -30,6 +31,7 @@ from bzrlib.tests import (
                           TestSkipped,
                           TextTestRunner,
                           )
+import bzrlib.errors as errors
 
 
 class SelftestTests(TestCase):
@@ -81,6 +83,9 @@ class TestSkippedTest(TestCase):
 class TestTransportProviderAdapter(TestCase):
     """A group of tests that test the transport implementation adaption core.
 
+    This is a meta test that the tests are applied to all available 
+    transports.
+
     This will be generalised in the future which is why it is in this 
     test file even though it is specific to transport tests at the moment.
     """
@@ -109,9 +114,12 @@ class TestTransportProviderAdapter(TestCase):
         modules = _get_transport_modules()
         permutation_count = 0
         for module in modules:
-            permutation_count += len(reduce(getattr, 
-                (module + ".get_test_permutations").split('.')[1:],
-                 __import__(module))())
+            try:
+                permutation_count += len(reduce(getattr, 
+                    (module + ".get_test_permutations").split('.')[1:],
+                     __import__(module))())
+            except errors.DependencyNotPresent:
+                pass
         input_test = TestTransportProviderAdapter(
             "test_adapter_sets_transport_class")
         adapter = TransportTestProviderAdapter()
@@ -125,16 +133,26 @@ class TestTransportProviderAdapter(TestCase):
         # that it does not just use the same one all the time.
         # and that the id is set correctly so that debugging is
         # easy.
+        # 
+        # An instance of this test is actually used as the input
+        # for adapting it to all the available transports
+        # (or i think so - ??? mbp)
         from bzrlib.transport.local import (LocalTransport,
                                             LocalRelpathServer,
                                             LocalAbspathServer,
                                             LocalURLServer
                                             )
-        from bzrlib.transport.sftp import (SFTPTransport,
-                                           SFTPAbsoluteServer,
-                                           SFTPHomeDirServer,
-                                           SFTPSiblingAbsoluteServer,
-                                           )
+        try:
+            from bzrlib.transport.sftp import (SFTPTransport,
+                                               SFTPAbsoluteServer,
+                                               SFTPHomeDirServer,
+                                               SFTPSiblingAbsoluteServer,
+                                               )
+        except errors.ParamikoNotPresent, e:
+            warnings.warn(str(e))
+            has_paramiko = False
+        else:
+            has_paramiko = True
         from bzrlib.transport.http import (HttpTransport,
                                            HttpServer
                                            )
@@ -159,6 +177,9 @@ class TestTransportProviderAdapter(TestCase):
         input_test = TestTransportProviderAdapter(
             "test_adapter_sets_transport_class")
         suite = TransportTestProviderAdapter().adapt(input_test)
+        # tests are generated in collation order. 
+        # XXX: but i'm not sure the order should really be part of the 
+        # contract of the adapter, should it -- mbp 20060201
         test_iter = iter(suite)
         http_test = test_iter.next()
         local_relpath_test = test_iter.next()
@@ -166,10 +187,12 @@ class TestTransportProviderAdapter(TestCase):
         local_urlpath_test = test_iter.next()
         memory_test = test_iter.next()
         readonly_test = test_iter.next()
-        sftp_abs_test = test_iter.next()
-        sftp_homedir_test = test_iter.next()
-        sftp_sibling_abs_test = test_iter.next()
+        if has_paramiko:
+            sftp_abs_test = test_iter.next()
+            sftp_homedir_test = test_iter.next()
+            sftp_sibling_abs_test = test_iter.next()
         # ftp_test = test_iter.next()
+        # should now be at the end of the test
         self.assertRaises(StopIteration, test_iter.next)
         self.assertEqual(LocalTransport, local_relpath_test.transport_class)
         self.assertEqual(LocalRelpathServer, local_relpath_test.transport_server)
@@ -180,13 +203,14 @@ class TestTransportProviderAdapter(TestCase):
         self.assertEqual(LocalTransport, local_urlpath_test.transport_class)
         self.assertEqual(LocalURLServer, local_urlpath_test.transport_server)
 
-        self.assertEqual(SFTPTransport, sftp_abs_test.transport_class)
-        self.assertEqual(SFTPAbsoluteServer, sftp_abs_test.transport_server)
-        self.assertEqual(SFTPTransport, sftp_homedir_test.transport_class)
-        self.assertEqual(SFTPHomeDirServer, sftp_homedir_test.transport_server)
-        self.assertEqual(SFTPTransport, sftp_sibling_abs_test.transport_class)
-        self.assertEqual(SFTPSiblingAbsoluteServer,
-                         sftp_sibling_abs_test.transport_server)
+        if has_paramiko:
+            self.assertEqual(SFTPTransport, sftp_abs_test.transport_class)
+            self.assertEqual(SFTPAbsoluteServer, sftp_abs_test.transport_server)
+            self.assertEqual(SFTPTransport, sftp_homedir_test.transport_class)
+            self.assertEqual(SFTPHomeDirServer, sftp_homedir_test.transport_server)
+            self.assertEqual(SFTPTransport, sftp_sibling_abs_test.transport_class)
+            self.assertEqual(SFTPSiblingAbsoluteServer,
+                             sftp_sibling_abs_test.transport_server)
 
         self.assertEqual(HttpTransport, http_test.transport_class)
         self.assertEqual(HttpServer, http_test.transport_server)

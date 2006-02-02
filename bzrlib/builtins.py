@@ -708,7 +708,7 @@ class cmd_ancestry(Command):
         tree = WorkingTree.open_containing(u'.')[0]
         b = tree.branch
         # FIXME. should be tree.last_revision
-        for revision_id in b.get_ancestry(b.last_revision()):
+        for revision_id in b.repository.get_ancestry(b.last_revision()):
             print revision_id
 
 
@@ -1170,8 +1170,8 @@ class cmd_export(Command):
 
     Note: export of tree with non-ascii filenames to zip is not supported.
 
-    Supported formats       Autodetected by extension
-    -----------------       -------------------------
+     Supported formats       Autodetected by extension
+     -----------------       -------------------------
          dir                            -
          tar                          .tar
          tbz2                    .tar.bz2, .tbz2
@@ -1393,8 +1393,8 @@ class cmd_whoami(Command):
 
 
 class cmd_nick(Command):
-    """\
-    Print or set the branch nickname.  
+    """Print or set the branch nickname.  
+
     If unset, the tree root directory name is used as the nickname
     To print the current nickname, execute with no argument.  
     """
@@ -1421,6 +1421,15 @@ class cmd_selftest(Command):
     
     If arguments are given, they are regular expressions that say
     which tests should run.
+
+    If the global option '--no-plugins' is given, plugins are not loaded
+    before running the selftests.  This has two effects: features provided or
+    modified by plugins will not be tested, and tests provided by plugins will
+    not be run.
+
+    examples:
+        bzr selftest ignore
+        bzr --no-plugins selftest -v
     """
     # TODO: --list should give a list of all available tests
 
@@ -1440,7 +1449,7 @@ class cmd_selftest(Command):
 
     hidden = True
     takes_args = ['testspecs*']
-    takes_options = ['verbose', 
+    takes_options = ['verbose',
                      Option('one', help='stop when one test fails'),
                      Option('keep-output', 
                             help='keep output directories when tests fail'),
@@ -1547,7 +1556,8 @@ class cmd_find_merge_base(Command):
         last1 = branch1.last_revision()
         last2 = branch2.last_revision()
 
-        source = MultipleRevisionSources(branch1, branch2)
+        source = MultipleRevisionSources(branch1.repository, 
+                                         branch2.repository)
         
         base_rev_id = common_ancestor(last1, last2, source)
 
