@@ -1812,6 +1812,7 @@ class cmd_missing(Command):
                             'Display changes in the local branch only'),
                      Option('theirs-only', 
                             'Display changes in the remote branch only'), 
+                     'log-format',
                      'line',
                      'long', 
                      'short',
@@ -1820,7 +1821,7 @@ class cmd_missing(Command):
                      ]
 
     def run(self, other_branch=None, reverse=False, mine_only=False,
-            theirs_only=False, long=True, short=False, line=False, 
+            theirs_only=False, log_format=None, long=True, short=False, line=False, 
             show_ids=False, verbose=False):
         from bzrlib.missing import find_unmerged, iter_log_data
         from bzrlib.log import log_formatter
@@ -1833,7 +1834,8 @@ class cmd_missing(Command):
             print "Using last location: " + local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
         local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
-        log_format = get_log_format(long=long, short=short, line=line)
+        if (log_format == None):
+            log_format = get_log_format(long=long, short=short, line=line)
         lf = log_formatter(log_format, sys.stdout,
                            show_ids=show_ids,
                            show_timezone='original')
