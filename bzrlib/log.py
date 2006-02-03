@@ -472,7 +472,7 @@ def log_formatter(name, *args, **kwargs):
     from bzrlib.errors import BzrCommandError
     try:
         return FORMATTERS[name](*args, **kwargs)
-    except IndexError:
+    except KeyError:
         raise BzrCommandError("unknown log formatter: %r" % name)
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
