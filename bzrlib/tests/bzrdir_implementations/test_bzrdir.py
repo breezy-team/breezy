@@ -155,6 +155,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         opened_branch = made_control.open_branch()
         self.assertEqual(made_control, opened_branch.bzrdir)
         self.failUnless(isinstance(opened_branch, made_branch.__class__))
+        self.failUnless(isinstance(opened_branch._format, made_branch._format.__class__))
 
     def test_create_repository(self):
         # a bzrdir can construct a repository for itself.
@@ -181,6 +182,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         opened_repo = made_control.open_repository()
         self.assertEqual(made_control, opened_repo.bzrdir)
         self.failUnless(isinstance(opened_repo, made_repo.__class__))
+        self.failUnless(isinstance(opened_repo._format, made_repo._format.__class__))
 
     def test_create_workingtree(self):
         # a bzrdir can construct a working tree for itself.
@@ -215,6 +217,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         opened_tree = made_control.open_workingtree()
         self.assertEqual(made_control, opened_tree.bzrdir)
         self.failUnless(isinstance(opened_tree, made_tree.__class__))
+        self.failUnless(isinstance(opened_tree._format, made_tree._format.__class__))
 
     def test_get_branch_transport(self):
         dir = self.make_bzrdir('.')

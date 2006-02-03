@@ -25,7 +25,8 @@ new revision based on the workingtree and its inventory.
 At the moment every WorkingTree has its own branch.  Remote
 WorkingTrees aren't supported.
 
-To get a WorkingTree, call WorkingTree(dir[, branch])
+To get a WorkingTree, call bzrdir.open_workingtree() or
+WorkingTree.open(dir).
 """
 
 
@@ -186,7 +187,7 @@ class WorkingTree(bzrlib.tree.Tree):
     not listed in the Inventory and vice versa.
     """
 
-    def __init__(self, basedir='.', branch=None, _inventory=None, _control_files=None):
+    def __init__(self, basedir='.', branch=None, _inventory=None, _control_files=None, _internal=False):
         """Construct a WorkingTree for basedir.
 
         If the branch is not supplied, it is opened automatically.
@@ -194,6 +195,14 @@ class WorkingTree(bzrlib.tree.Tree):
         (branch.base is not cross checked, because for remote branches that
         would be meaningless).
         """
+        if not _internal:
+            # created via open etc.
+            wt = WorkingTree.open(basedir, branch)
+            self.branch = wt.branch
+            self.basedir = wt.basedir
+            self._control_files = wt._control_files
+            self._hashcache = wt._hashcache
+            self._set_inventory(wt._inventory)
         from bzrlib.hashcache import HashCache
         from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
@@ -244,6 +253,16 @@ class WorkingTree(bzrlib.tree.Tree):
         self.path2id = self._inventory.path2id
 
     @staticmethod
+    def open(path=None, _unsupported=False):
+        """Open an existing working tree at path.
+
+        """
+        if path is None:
+            path = os.path.getcwdu()
+        control = bzrdir.BzrDir.open(path, _unsupported)
+        return control.open_workingtree(_unsupported)
+        
+    @staticmethod
     def open_containing(path=None):
         """Open an existing working tree which has its root about path.
         
@@ -255,28 +274,17 @@ class WorkingTree(bzrlib.tree.Tree):
         If there is one, it is returned, along with the unused portion of path.
         """
         if path is None:
-            path = getcwd()
-        else:
-            # sanity check.
-            if path.find('://') != -1:
-                raise NotBranchError(path=path)
-        path = abspath(path)
-        orig_path = path[:]
-        tail = u''
-        while True:
-            try:
-                return WorkingTree(path), tail
-            except NotBranchError:
-                pass
-            if tail:
-                tail = pathjoin(os.path.basename(path), tail)
-            else:
-                tail = os.path.basename(path)
-            lastpath = path
-            path = os.path.dirname(path)
-            if lastpath == path:
-                # reached the root, whatever that may be
-                raise NotBranchError(path=orig_path)
+            path = os.getcwdu()
+        control, relpath = bzrdir.BzrDir.open_containing(path)
+        return control.open_workingtree(), relpath
+
+    @staticmethod
+    def open_downlevel(path=None):
+        """Open an unsupported working tree.
+
+        Only intended for advanced situations like upgrading part of a bzrdir.
+        """
+        return WorkingTree.open(path, _unsupported=True)
 
     def __iter__(self):
         """Iterate through file_ids for this tree.
@@ -325,6 +333,14 @@ class WorkingTree(bzrlib.tree.Tree):
         XXX: When BzrDir is present, these should be created through that 
         interface instead.
         """
+        transport = get_transport(directory)
+        if branch.bzrdir.transport.clone('..').base == transport.base:
+            # same dir 
+            return branch.bzrdir.create_workingtree()
+        # different directory, 
+        # create a branch reference
+        # and now a working tree.
+        raise NotImplementedError
         try:
             os.mkdir(directory)
         except OSError, e:
@@ -337,7 +353,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 raise
         revision_tree = branch.repository.revision_tree(branch.last_revision())
         inv = revision_tree.inventory
-        wt = WorkingTree(directory, branch, inv)
+        wt = WorkingTree(directory, branch, inv, _internal=True)
         wt._write_inventory(inv)
         wt.set_root_id(revision_tree.inventory.root.file_id)
         if branch.last_revision() is not None:
@@ -347,17 +363,15 @@ class WorkingTree(bzrlib.tree.Tree):
         return wt
  
     @staticmethod
+    @deprecated_method(zero_eight)
     def create_standalone(directory):
         """Create a checkout and a branch and a repo at directory.
 
         Directory must exist and be empty.
 
-        XXX: When BzrDir is present, these should be created through that 
-        interface instead.
+        please use BzrDir.create_standalone_workingtree
         """
-        directory = safe_unicode(directory)
-        b = bzrdir.BzrDir.create_branch_and_repo(directory)
-        return WorkingTree.create(b, directory)
+        return bzrdir.BzrDir.create_standalone_workingtree(directory)
 
     def relpath(self, abs):
         """Return the local path portion from a given absolute path."""
@@ -1127,9 +1141,54 @@ class WorkingTreeFormat(object):
     object will be created every time regardless.
     """
 
+    _default_format = None
+    """The default format used for new trees."""
+
+    _formats = {}
+    """The known formats."""
+
+    @classmethod
+    def find_format(klass, a_bzrdir):
+        """Return the format for the working tree object in a_bzrdir."""
+        try:
+            transport = a_bzrdir.get_workingtree_transport(None)
+            format_string = transport.get("format").read()
+            return klass._formats[format_string]
+        except NoSuchFile:
+            raise errors.NotBranchError(path=transport.base)
+        except KeyError:
+            raise errors.UnknownFormatError(format_string)
+
+    @classmethod
+    def get_default_format(klass):
+        """Return the current default format."""
+        return klass._default_format
+
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
+
+    def is_supported(self):
+        """Is this format supported?
+
+        Supported formats can be initialized and opened.
+        Unsupported formats may not support initialization or committing or 
+        some other features depending on the reason for not being supported.
+        """
+        return True
+
+    @classmethod
+    def register_format(klass, format):
+        klass._formats[format.get_format_string()] = format
+
+    @classmethod
+    def set_default_format(klass, format):
+        klass._default_format = format
+
+    @classmethod
+    def unregister_format(klass, format):
+        assert klass._formats[format.get_format_string()] is format
+        del klass._formats[format.get_format_string()]
 
 
 
@@ -1143,11 +1202,24 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        result = WorkingTree.create(a_bzrdir.open_branch(),
-                                  a_bzrdir.transport.clone('..').base)
-        result.bzrdir = a_bzrdir
-        result._format = self
-        return result
+        b = a_bzrdir.open_branch()
+        r = a_bzrdir.open_repository()
+        revision = b.last_revision()
+        basis_tree = r.revision_tree(revision)
+        inv = basis_tree.inventory
+        wt = WorkingTree(a_bzrdir.transport.clone('..').base, b, inv, _internal=True)
+        wt._write_inventory(inv)
+        wt.set_root_id(inv.root.file_id)
+        wt.set_last_revision(revision)
+        wt.set_pending_merges([])
+        wt.revert([])
+        wt.bzrdir = a_bzrdir
+        wt._format = self
+        return wt
+
+    def __init__(self):
+        super(WorkingTreeFormat2, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirFormat6()
 
     def open(self, a_bzrdir, _found=False):
         """Return the WorkingTree object for a_bzrdir
@@ -1158,7 +1230,9 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
-        result = WorkingTree(a_bzrdir.transport.clone('..').base)
+        if not isinstance(a_bzrdir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        result = WorkingTree(a_bzrdir.transport.clone('..').base, _internal=True)
         result.bzrdir = a_bzrdir
         result._format = self
         return result
@@ -1178,11 +1252,27 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        result = WorkingTree.create(a_bzrdir.open_branch(),
-                                  a_bzrdir.transport.clone('..').base)
-        result.bzrdir = a_bzrdir
-        result._format = self
-        return result
+        transport = a_bzrdir.get_workingtree_transport(self)
+        control_files = LockableFiles(transport, 'lock')
+        control_files.put_utf8('format', self.get_format_string())
+        b = a_bzrdir.open_branch()
+        r = a_bzrdir.open_repository()
+        revision = b.last_revision()
+        basis_tree = r.revision_tree(revision)
+        inv = basis_tree.inventory
+        wt = WorkingTree(a_bzrdir.transport.clone('..').base, b, inv, _internal=True)
+        wt._write_inventory(inv)
+        wt.set_root_id(inv.root.file_id)
+        wt.set_last_revision(revision)
+        wt.set_pending_merges([])
+        wt.revert([])
+        wt.bzrdir = a_bzrdir
+        wt._format = self
+        return wt
+
+    def __init__(self):
+        super(WorkingTreeFormat3, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
 
     def open(self, a_bzrdir, _found=False):
         """Return the WorkingTree object for a_bzrdir
@@ -1193,7 +1283,49 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
-        result = WorkingTree(a_bzrdir.transport.clone('..').base)
+        if not isinstance(a_bzrdir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        result = WorkingTree(a_bzrdir.transport.clone('..').base, _internal=True)
         result.bzrdir = a_bzrdir
         result._format = self
+        return result
+
+
+# formats which have no format string are not discoverable
+# and not independently creatable, so are not registered.
+__default_format = WorkingTreeFormat3()
+WorkingTreeFormat.register_format(__default_format)
+WorkingTreeFormat.set_default_format(__default_format)
+_legacy_formats = [WorkingTreeFormat2(),
+                   ]
+
+
+class WorkingTreeTestProviderAdapter(object):
+    """A tool to generate a suite testing multiple workingtree formats at once.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_server, transport_readonly_server, and workingtree_format
+    classes into each copy. Each copy is also given a new id() to make it
+    easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, formats):
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self._formats = formats
+    
+    def adapt(self, test):
+        from bzrlib.tests import TestSuite
+        result = TestSuite()
+        for workingtree_format, bzrdir_format in self._formats:
+            new_test = deepcopy(test)
+            new_test.transport_server = self._transport_server
+            new_test.transport_readonly_server = self._transport_readonly_server
+            new_test.bzrdir_format = bzrdir_format
+            new_test.workingtree_format = workingtree_format
+            def make_new_test_id():
+                new_id = "%s(%s)" % (new_test.id(), workingtree_format.__class__.__name__)
+                return lambda: new_id
+            new_test.id = make_new_test_id()
+            result.addTest(new_test)
         return result

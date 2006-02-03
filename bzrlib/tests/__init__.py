@@ -84,12 +84,14 @@ def packages_to_test():
     import bzrlib.tests.branch_implementations
     import bzrlib.tests.bzrdir_implementations
     import bzrlib.tests.repository_implementations
+    import bzrlib.tests.workingtree_implementations
     return [
             bzrlib.doc,
             bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
             bzrlib.tests.bzrdir_implementations,
             bzrlib.tests.repository_implementations,
+            bzrlib.tests.workingtree_implementations,
             ]
 
 
@@ -711,8 +713,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         repo = self.make_repository(relpath)
         return repo.bzrdir.create_branch()
 
-    def make_repository(self, relpath):
-        """Create a repository on our default transport at relpath."""
+    def make_bzrdir(self, relpath):
         try:
             url = self.get_url(relpath)
             segments = url.split('/')
@@ -723,9 +724,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
                     t.mkdir(segments[-1])
                 except FileExists:
                     pass
-            return bzrlib.bzrdir.BzrDir.create_repository(url)
+            return bzrlib.bzrdir.BzrDir.create(url)
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
+
+    def make_repository(self, relpath):
+        """Create a repository on our default transport at relpath."""
+        made_control = self.make_bzrdir(relpath)
+        return made_control.create_repository()
 
     def make_branch_and_tree(self, relpath):
         """Create a branch on the transport and a tree locally.

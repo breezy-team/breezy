@@ -31,7 +31,7 @@ class TestOutsideWT(ChrootedTestCase):
         cwd = os.getcwdu()
         out, err = self.run_bzr('log', retcode=3)
 
-        self.assertEqual(u'bzr: ERROR: Not a branch: %s\n' % (cwd,),
+        self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (cwd,),
                          err)
 
     def test_url_log(self):

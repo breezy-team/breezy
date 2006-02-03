@@ -21,7 +21,7 @@ import os
 import sys
 
 import bzrlib
-from bzrlib import BZRDIR
+from bzrlib.bzrdir import BzrDir
 from bzrlib._merge_core import ApplyMerge3
 from bzrlib.commands import Command, display_command
 from bzrlib.branch import Branch
@@ -912,28 +912,26 @@ class cmd_log(Command):
             "invalid message argument %r" % message
         direction = (forward and 'forward') or 'reverse'
         
+        # log everything
+        file_id = None
         if filename:
-            # might be a tree:
-            tree = None
-            try:
-                tree, fp = WorkingTree.open_containing(filename)
-                b = tree.branch
-                if fp != '':
-                    inv = tree.read_working_inventory()
-            except NotBranchError:
-                pass
-            if tree is None:
-                b, fp = Branch.open_containing(filename)
-                if fp != '':
-                    inv = b.repository.get_inventory(b.last_revision())
+            # find the file id to log:
+
+            dir, fp = BzrDir.open_containing(filename)
+            b = dir.open_branch()
             if fp != '':
+                try:
+                    # might be a tree:
+                    inv = dir.open_workingtree().inventory
+                except (errors.NotBranchError, errors.NotLocalUrl):
+                    # either no tree, or is remote.
+                    inv = b.basis_tree().inventory
                 file_id = inv.path2id(fp)
-            else:
-                file_id = None  # points to branch root
         else:
-            tree, relpath = WorkingTree.open_containing(u'.')
-            b = tree.branch
-            file_id = None
+            # local dir only
+            # FIXME ? log the current subdir only RBC 20060203 
+            dir, relpath = BzrDir.open_containing('.')
+            b = dir.open_branch()
 
         if revision is None:
             rev1 = None
@@ -972,6 +970,7 @@ class cmd_log(Command):
                  start_revision=rev1,
                  end_revision=rev2,
                  search=message)
+
 
 def get_log_format(long=False, short=False, line=False, default='long'):
     log_format = default
