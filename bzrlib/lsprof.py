@@ -3,6 +3,7 @@
 # I made one modification to profile so that it returns a pair
 # instead of just the Stats object
 
+import logging
 import sys
 import thread
 import threading
@@ -11,6 +12,7 @@ from _lsprof import Profiler, profiler_entry, profiler_subentry
 __all__ = ['profile', 'Stats']
 
 _g_threadmap = {}
+
 
 def _thread_profile(f, *args, **kwds):
     # we lose the first profile point for a new thread in order to trampoline
@@ -99,10 +101,63 @@ class Stats(object):
         for s in self.threads.values():
             s.freeze()
 
+    def calltree(self, file):
+        """Output profiling data in calltree format (for KCacheGrind)."""
+        _CallTreeFilter(self.data).output(file)
+
+
+class _CallTreeFilter(object):
+
+    def __init__(self, data):
+        self.data = data
+        self.out_file = None
+
+    def output(self, out_file):
+        self.out_file = out_file        
+        print >> out_file, 'events: Ticks'
+        self._print_summary()
+        for entry in self.data:
+            self._entry(entry)
+
+    def _print_summary(self):
+        max_cost = 0
+        for entry in self.data:
+            totaltime = int(entry.totaltime * 1000)
+            max_cost = max(max_cost, totaltime)
+        print >> self.out_file, 'summary: %d' % (max_cost,)
+
+    def _entry(self, entry):
+        out_file = self.out_file
+        code = entry.code
+        inlinetime = int(entry.inlinetime * 1000)
+        #print >> out_file, 'ob=%s' % (code.co_filename,)
+        print >> out_file, 'fi=%s' % (code.co_filename,)
+        print >> out_file, 'fn=%s' % (label(code, True),)
+        print >> out_file, '%d %d' % (code.co_firstlineno, inlinetime)
+        # recursive calls are counted in entry.calls
+        if entry.calls:
+            calls = entry.calls
+        else:
+            calls = []
+        for subentry in calls:
+            self._subentry(code.co_firstlineno, subentry)
+        print >> out_file
+
+    def _subentry(self, lineno, subentry):
+        out_file = self.out_file
+        code = subentry.code
+        totaltime = int(subentry.totaltime * 1000)
+        #print >> out_file, 'cob=%s' % (code.co_filename,)
+        print >> out_file, 'cfn=%s' % (label(code, True),)
+        print >> out_file, 'cfi=%s' % (code.co_filename,)
+        print >> out_file, 'calls=%d %d' % (
+            subentry.callcount, code.co_firstlineno)
+        print >> out_file, '%d %d' % (lineno, totaltime)
+
 
 _fn2mod = {}
 
-def label(code):
+def label(code, calltree=False):
     if isinstance(code, str):
         return code
     try:
@@ -120,8 +175,10 @@ def label(code):
                 break
         else:
             mname = _fn2mod[code.co_filename] = '<%s>'%code.co_filename
-    
-    return '%s:%d(%s)' % (mname, code.co_firstlineno, code.co_name)
+    if calltree:
+        return '%s %s:%d' % (code.co_name, mname, code.co_firstlineno)
+    else:
+        return '%s:%d(%s)' % (mname, code.co_firstlineno, code.co_name)
 
 
 if __name__ == '__main__':
