@@ -450,10 +450,17 @@ def line_log(rev, max_chars):
     lf = LineLogFormatter(None)
     return lf.log_string(rev, max_chars)
 
-FORMATTERS = {'long': LongLogFormatter,
+FORMATTERS = {'default': LongLogFormatter,
+              'long': LongLogFormatter,
               'short': ShortLogFormatter,
               'line': LineLogFormatter,
               }
+
+def register_formatter(name, formatter):
+    FORMATTERS[name] = formatter
+
+def set_default_formatter(formatter):
+    FORMATTERS['default'] = formatter
 
 
 def log_formatter(name, *args, **kwargs):

@@ -890,6 +890,7 @@ class cmd_log(Command):
                             help='show from oldest to newest'),
                      'timezone', 'verbose', 
                      'show-ids', 'revision',
+                     'log-format',
                      'line', 'long', 
                      Option('message',
                             help='show revisions whose message matches this regexp',
@@ -902,6 +903,7 @@ class cmd_log(Command):
             show_ids=False,
             forward=False,
             revision=None,
+            log_format=None,
             message=None,
             long=False,
             short=False,
@@ -958,7 +960,9 @@ class cmd_log(Command):
         # in e.g. the default C locale.
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
-        log_format = get_log_format(long=long, short=short, line=line)
+        if (log_format == None):
+            log_format = get_log_format(long=long, short=short, line=line)
+
         lf = log_formatter(log_format,
                            show_ids=show_ids,
                            to_file=outf,
@@ -973,7 +977,7 @@ class cmd_log(Command):
                  end_revision=rev2,
                  search=message)
 
-def get_log_format(long=False, short=False, line=False, default='long'):
+def get_log_format(long=False, short=False, line=False, default='default'):
     log_format = default
     if long:
         log_format = 'long'
