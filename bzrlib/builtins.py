@@ -1822,7 +1822,7 @@ class cmd_missing(Command):
                      ]
 
     def run(self, other_branch=None, reverse=False, mine_only=False,
-            theirs_only=False, log_format=None, long=True, short=False, line=False, 
+            theirs_only=False, log_format=None, long=False, short=False, line=False, 
             show_ids=False, verbose=False):
         from bzrlib.missing import find_unmerged, iter_log_data
         from bzrlib.log import log_formatter
@@ -1836,7 +1836,8 @@ class cmd_missing(Command):
         remote_branch = bzrlib.branch.Branch.open(other_branch)
         local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
         if (log_format == None):
-            log_format = get_log_format(long=long, short=short, line=line)
+            default = bzrlib.config.BranchConfig(local_branch).log_formatter()
+            log_format = get_log_format(long=long, short=short, line=line, default=default)
         lf = log_formatter(log_format, sys.stdout,
                            show_ids=show_ids,
                            show_timezone='original')

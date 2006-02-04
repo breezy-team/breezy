@@ -128,13 +128,10 @@ class Config(object):
         result = self._log_formatter()
         if result is None:
             result = "long"
-        mutter('debug ' + result)
-
         return result
 
     def _log_formatter(self):
         """See log_formatter()."""
-        mutter('debug2 ')
         return None
 
     def __init__(self):
@@ -245,7 +242,6 @@ class IniBasedConfig(Config):
 
     def _log_formatter(self):
         """See Config.log_formatter."""
-        mutter('debug3 ')
         return self._get_user_option('log_formatter')
 
     def __init__(self, get_filename):
