@@ -29,6 +29,7 @@ from bzrlib.errors import (TransportNotPossible, NoSuchFile,
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
+from bzrlib.ui import ui_factory
 
 
 def extract_auth(url, password_manager):
@@ -37,34 +38,33 @@ def extract_auth(url, password_manager):
     password manager.  Return the url, minus those auth parameters (which
     confuse urllib2).
     """
-    assert url.startswith('http://') or url.startswith('https://')
-    scheme, host = url.split('//', 1)
-    if '/' in host:
-        host, path = host.split('/', 1)
-        path = '/' + path
-    else:
-        path = ''
-    port = ''
-    if '@' in host:
-        auth, host = host.split('@', 1)
+    scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
+    assert (scheme == 'http') or (scheme == 'https')
+    
+    if '@' in netloc:
+        auth, netloc = netloc.split('@', 1)
         if ':' in auth:
             username, password = auth.split(':', 1)
         else:
             username, password = auth, None
-        if ':' in host:
-            host, port = host.split(':', 1)
-            port = ':' + port
-        # FIXME: if password isn't given, should we ask for it?
+        if ':' in netloc:
+            host = netloc.split(':', 1)[0]
+        else:
+            host = netloc
+        username = urllib.unquote(username)
         if password is not None:
-            username = urllib.unquote(username)
             password = urllib.unquote(password)
-            password_manager.add_password(None, host, username, password)
-    url = scheme + '//' + host + port + path
+        else:
+            password = ui_factory.get_password(prompt='HTTP %(user)@%(host) password',
+                                               user=username, host=host)
+        password_manager.add_password(None, host, username, password)
+    url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
     return url
+
     
 def get_url(url):
     import urllib2
-    mutter("get_url %s" % url)
+    mutter("get_url %s", url)
     manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
     url = extract_auth(url, manager)
     auth_handler = urllib2.HTTPBasicAuthHandler(manager)
