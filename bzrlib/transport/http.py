@@ -22,6 +22,7 @@ import urllib, urllib2
 import urlparse
 from warnings import warn
 
+import bzrlib
 from bzrlib.transport import Transport, Server
 from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
                            TransportError, ConnectionError)
@@ -68,8 +69,11 @@ def get_url(url):
     url = extract_auth(url, manager)
     auth_handler = urllib2.HTTPBasicAuthHandler(manager)
     opener = urllib2.build_opener(auth_handler)
-    url_f = opener.open(url)
-    return url_f
+
+    request = urllib2.Request(url)
+    request.add_header('User-Agent', 'bzr/%s' % bzrlib.__version__)
+    response = opener.open(request)
+    return response
 
 class HttpTransport(Transport):
     """This is the transport agent for http:// access.
