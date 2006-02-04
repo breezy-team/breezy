@@ -12,6 +12,11 @@ bzr development version
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
       for testing SFTP protocol support. (Robey Pointer)
 
+  IMPROVEMENTS:
+
+    * Default log format can be set in configuration and plugins can register
+      their own formatters. (Erik Bågfors)
+
 bzr 0.7rc1 2006-01-09
 
   CHANGES:
