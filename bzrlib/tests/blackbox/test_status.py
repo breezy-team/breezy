@@ -29,8 +29,6 @@ from os import mkdir
 from tempfile import TemporaryFile
 import codecs
 
-from bzrlib.clone import copy_branch
-from bzrlib.branch import Branch
 from bzrlib.builtins import merge
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.status import show_status
@@ -182,7 +180,7 @@ class TestStatus(TestCaseInTempDir):
         self.build_tree(['hello.txt'])
         result = self.run_bzr("status")[0]
         self.assert_("unknown:\n  hello.txt\n" in result, result)
-        self.run_bzr("add hello.txt")
+        self.run_bzr("add", "hello.txt")
         result = self.run_bzr("status")[0]
         self.assert_("added:\n  hello.txt\n" in result, result)
         self.run_bzr("commit", "-m", "added")
