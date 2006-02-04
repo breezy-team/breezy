@@ -219,21 +219,26 @@ def disable_default_logging():
 
 
 def enable_test_log(to_file):
-    """Redirect logging to a temporary file for a test"""
+    """Redirect logging to a temporary file for a test
+    
+    returns an opaque reference that should be passed to disable_test_log
+    after the test complete.
+    """
     disable_default_logging()
-    global _test_log_hdlr, _trace_file
+    global _trace_file
     hdlr = logging.StreamHandler(to_file)
     hdlr.setLevel(logging.DEBUG)
     hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
     _bzr_logger.addHandler(hdlr)
     _bzr_logger.setLevel(logging.DEBUG)
-    _test_log_hdlr = hdlr
+    result = hdlr, _trace_file
     _trace_file = to_file
+    return result
 
 
-def disable_test_log():
-    _bzr_logger.removeHandler(_test_log_hdlr)
-    _trace_file = None
+def disable_test_log((test_log_hdlr, old_trace_file)):
+    _bzr_logger.removeHandler(test_log_hdlr)
+    _trace_file = old_trace_file
     enable_default_logging()
 
 

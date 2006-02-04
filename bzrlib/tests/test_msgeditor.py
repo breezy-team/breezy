@@ -21,15 +21,15 @@ import sys
 
 from bzrlib.branch import Branch
 from bzrlib.msgeditor import make_commit_message_template
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 
 
-class MsgEditorTest(TestCaseInTempDir):
+class MsgEditorTest(TestCaseWithTransport):
 
     def make_uncommitted_tree(self):
         """Build a branch with uncommitted unicode named changes in the cwd."""
-        b = Branch.initialize('.')
-        working_tree = b.working_tree()
+        working_tree = self.make_branch_and_tree('.')
+        b = working_tree.branch
         filename = u'hell\u00d8'
         try:
             self.build_tree_contents([(filename, 'contents of hello')])

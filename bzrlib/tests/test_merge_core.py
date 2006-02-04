@@ -3,20 +3,20 @@ import shutil
 import stat
 import sys
 
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.add import smart_add_tree
 from bzrlib.branch import ScratchBranch, Branch
+from bzrlib.builtins import merge
 from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError)
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.osutils import file_kind, rename, sha_file, pathjoin, mkdtemp
-from bzrlib import changeset
-from bzrlib.merge_core import (ApplyMerge3, make_merge_changeset,
+from bzrlib import _changeset as changeset
+from bzrlib._merge_core import (ApplyMerge3, make_merge_changeset,
                                BackupBeforeChange, ExecFlagMerge, WeaveMerge)
-from bzrlib.changeset import Inventory, apply_changeset, invert_dict, \
-    get_contents, ReplaceContents, ChangeExecFlag
-from bzrlib.clone import copy_branch
-from bzrlib.merge import merge
+from bzrlib._changeset import Inventory, apply_changeset, invert_dict, \
+    get_contents, ReplaceContents, ChangeExecFlag, Diff3Merge
+from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.workingtree import WorkingTree
 
 
@@ -531,28 +531,37 @@ class MergeTest(TestCase):
             self.assert_(os.lstat(builder.this.full_path("3")).st_mode &0100 == 0000)
         builder.cleanup();
 
+    def test_new_suffix(self):
+        for merge_type in ApplyMerge3, Diff3Merge:
+            builder = MergeBuilder()
+            builder.add_file("1", "0", "name1", "text1", 0755)
+            builder.change_contents("1", other="text3")
+            builder.add_file("2", "0", "name1.new", "text2", 0777)
+            cset = builder.merge_changeset(ApplyMerge3)
+            os.lstat(builder.this.full_path("2"))
+            builder.apply_changeset(cset)
+            os.lstat(builder.this.full_path("2"))
+            builder.cleanup()
 
-class FunctionalMergeTest(TestCaseInTempDir):
+
+class FunctionalMergeTest(TestCaseWithTransport):
 
     def test_trivial_star_merge(self):
         """Test that merges in a star shape Just Work.""" 
-        from bzrlib.add import smart_add_tree
-        from bzrlib.clone import copy_branch
-        from bzrlib.merge import merge
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
-        branch = Branch.initialize("original")
-        tree = WorkingTree('original', branch)
+        tree = WorkingTree.create_standalone('original')
+        branch = tree.branch
         smart_add_tree(tree, ["original"])
         tree.commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
-        copy_branch(branch, "mary")
+        branch.clone("mary")
         # Now John commits a change
         file = open("original/file1", "wt")
         file.write("John\n")
         file.close()
-        branch.working_tree().commit("change file1")
+        tree.commit("change file1")
         # Mary does too
         mary_branch = Branch.open("mary")
         file = open("mary/file2", "wt")
@@ -573,13 +582,14 @@ class FunctionalMergeTest(TestCaseInTempDir):
  
     def test_conflicts(self):
         os.mkdir('a')
-        a = Branch.initialize('a')
+        wta = WorkingTree.create_standalone('a')
+        a = wta.branch
         file('a/file', 'wb').write('contents\n')
-        a.working_tree().add('file')
-        a.working_tree().commit('base revision', allow_pointless=False)
-        b = copy_branch(a, 'b')
+        wta.add('file')
+        wta.commit('base revision', allow_pointless=False)
+        b = a.clone('b')
         file('a/file', 'wb').write('other contents\n')
-        a.working_tree().commit('other revision', allow_pointless=False)
+        wta.commit('other revision', allow_pointless=False)
         file('b/file', 'wb').write('this contents contents\n')
         b.working_tree().commit('this revision', allow_pointless=False)
         self.assertEqual(merge(['a', -1], [None, None], this_dir='b'), 1)
@@ -589,7 +599,7 @@ class FunctionalMergeTest(TestCaseInTempDir):
         self.assertRaises(WorkingTreeNotRevision, merge, ['a', -1], 
                           [None, None], this_dir='b', check_clean=False,
                           merge_type=WeaveMerge)
-        merge(['b', -1], ['b', None], this_dir='b', check_clean=False)
+        b.working_tree().revert([])
         os.unlink('b/file.THIS')
         os.unlink('b/file.OTHER')
         os.unlink('b/file.BASE')
@@ -602,87 +612,78 @@ class FunctionalMergeTest(TestCaseInTempDir):
 
     def test_merge_unrelated(self):
         """Sucessfully merges unrelated branches with no common names"""
-        os.mkdir('a')
-        a = Branch.initialize('a')
+        wta = self.make_branch_and_tree('a')
+        a = wta.branch
         file('a/a_file', 'wb').write('contents\n')
-        a.working_tree().add('a_file')
-        a.working_tree().commit('a_revision', allow_pointless=False)
-        os.mkdir('b')
-        b = Branch.initialize('b')
+        wta.add('a_file')
+        wta.commit('a_revision', allow_pointless=False)
+        wtb = self.make_branch_and_tree('b')
+        b = wtb.branch
         file('b/b_file', 'wb').write('contents\n')
-        b.working_tree().add('b_file')
-        b.working_tree().commit('b_revision', allow_pointless=False)
+        wtb.add('b_file')
+        wtb.commit('b_revision', allow_pointless=False)
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.lexists('a/b_file'))
-        self.assertEqual(a.working_tree().pending_merges(),
+        self.assertEqual(wta.pending_merges(),
                          [b.last_revision()]) 
 
     def test_merge_unrelated_conflicting(self):
         """Sucessfully merges unrelated branches with common names"""
-        os.mkdir('a')
-        a = Branch.initialize('a')
+        wta = self.make_branch_and_tree('a')
+        a = wta.branch
         file('a/file', 'wb').write('contents\n')
-        a.working_tree().add('file')
-        a.working_tree().commit('a_revision', allow_pointless=False)
-        os.mkdir('b')
-        b = Branch.initialize('b')
+        wta.add('file')
+        wta.commit('a_revision', allow_pointless=False)
+        wtb = self.make_branch_and_tree('b')
+        b = wtb.branch
         file('b/file', 'wb').write('contents\n')
-        b.working_tree().add('file')
-        b.working_tree().commit('b_revision', allow_pointless=False)
+        wtb.add('file')
+        wtb.commit('b_revision', allow_pointless=False)
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.lexists('a/file'))
         self.assert_(os.path.lexists('a/file.moved'))
-        self.assertEqual(a.working_tree().pending_merges(), [b.last_revision()])
+        self.assertEqual(wta.pending_merges(), [b.last_revision()])
 
     def test_merge_deleted_conflicts(self):
-        os.mkdir('a')
-        a = Branch.initialize('a')
+        wta = self.make_branch_and_tree('a')
         file('a/file', 'wb').write('contents\n')
-        a.working_tree().add('file')
-        a.working_tree().commit('a_revision', allow_pointless=False)
-        del a
+        wta.add('file')
+        wta.commit('a_revision', allow_pointless=False)
         self.run_bzr('branch', 'a', 'b')
-        a = Branch.open('a')
         os.remove('a/file')
-        a.working_tree().commit('removed file', allow_pointless=False)
+        wta.commit('removed file', allow_pointless=False)
         file('b/file', 'wb').write('changed contents\n')
-        b = Branch.open('b')
-        b.working_tree().commit('changed file', allow_pointless=False)
+        wtb = WorkingTree('b')
+        wtb.commit('changed file', allow_pointless=False)
         merge(['a', -1], ['a', 1], this_dir='b')
         self.failIf(os.path.lexists('b/file'))
 
     def test_merge_metadata_vs_deletion(self):
         """Conflict deletion vs metadata change"""
-        os.mkdir('a')
-        a = Branch.initialize('a')
+        a_wt = self.make_branch_and_tree('a')
         file('a/file', 'wb').write('contents\n')
-        a_wt = a.working_tree()
         a_wt.add('file')
         a_wt.commit('r0')
-        copy_branch(a, 'b')
-        b = Branch.open('b')
-        b_wt = b.working_tree()
+        self.run_bzr('branch', 'a', 'b')
+        b_wt = WorkingTree('b')
         os.chmod('b/file', 0755)
         os.remove('a/file')
         a_wt.commit('removed a')
-        self.assertEqual(a.revno(), 2)
+        self.assertEqual(a_wt.branch.revno(), 2)
         self.assertFalse(os.path.exists('a/file'))
         b_wt.commit('exec a')
         merge(['b', -1], ['b', 0], this_dir='a')
         self.assert_(os.path.exists('a/file'))
 
     def test_merge_swapping_renames(self):
-        os.mkdir('a')
-        a = Branch.initialize('a')
+        a_wt = self.make_branch_and_tree('a')
         file('a/un','wb').write('UN')
         file('a/deux','wb').write('DEUX')
-        a_wt = a.working_tree()
         a_wt.add('un')
         a_wt.add('deux')
         a_wt.commit('r0')
-        copy_branch(a,'b')
-        b = Branch.open('b')
-        b_wt = b.working_tree()
+        self.run_bzr('branch', 'a', 'b')
+        b_wt = WorkingTree('b')
         b_wt.rename_one('un','tmp')
         b_wt.rename_one('deux','un')
         b_wt.rename_one('tmp','deux')
@@ -695,15 +696,12 @@ class FunctionalMergeTest(TestCaseInTempDir):
         self.assertEqual(file('a/deux').read(),'UN')
 
     def test_merge_delete_and_add_same(self):
-        os.mkdir('a')
-        a = Branch.initialize('a')
+        a_wt = self.make_branch_and_tree('a')
         file('a/file', 'wb').write('THIS')
-        a_wt = a.working_tree()
         a_wt.add('file')
         a_wt.commit('r0')
-        copy_branch(a, 'b')
-        b = Branch.open('b')
-        b_wt = b.working_tree()
+        self.run_bzr('branch', 'a', 'b')
+        b_wt = WorkingTree('b')
         os.remove('b/file')
         b_wt.commit('r1')
         file('b/file', 'wb').write('THAT')
@@ -727,15 +725,12 @@ class FunctionalMergeTest(TestCaseInTempDir):
         $ bzr add foo
         $ bzr commit
         """
-        os.mkdir('a')
-        a = Branch.initialize('a')
+        a_wt = self.make_branch_and_tree('a')
         file('a/foo', 'wb').write('A/FOO')
-        a_wt = a.working_tree()
         a_wt.add('foo')
         a_wt.commit('added foo')
-        copy_branch(a, 'b')
-        b = Branch.open('b')
-        b_wt = b.working_tree()
+        self.run_bzr('branch', 'a', 'b')
+        b_wt = WorkingTree('b')
         b_wt.rename_one('foo', 'bar')
         file('b/foo', 'wb').write('B/FOO')
         b_wt.add('foo')
@@ -758,14 +753,12 @@ class FunctionalMergeTest(TestCaseInTempDir):
         $ bzr commit
         """
         os.mkdir('a')
-        a = Branch.initialize('a')
+        a_wt = self.make_branch_and_tree('a')
         file('a/foo', 'wb').write('A/FOO')
-        a_wt = a.working_tree()
         a_wt.add('foo')
         a_wt.commit('added foo')
-        copy_branch(a, 'b')
-        b = Branch.open('b')
-        b_wt = b.working_tree()
+        self.run_bzr('branch', 'a', 'b')
+        b_wt = WorkingTree('b')
         os.mkdir('b/bar')
         b_wt.add('bar')
         b_wt.rename_one('foo', 'bar/foo')
@@ -787,17 +780,14 @@ class FunctionalMergeTest(TestCaseInTempDir):
         $ rmdir foo
         $ bzr commit
         """
-        os.mkdir('a')
-        a = Branch.initialize('a')
+        a_wt = self.make_branch_and_tree('a')
         os.mkdir('a/foo')
         file('a/foo/bar', 'wb').write('A/FOO/BAR')
-        a_wt = a.working_tree()
         a_wt.add('foo')
         a_wt.add('foo/bar')
         a_wt.commit('added foo/bar')
-        copy_branch(a, 'b')
-        b = Branch.open('b')
-        b_wt = b.working_tree()
+        self.run_bzr('branch', 'a', 'b')
+        b_wt = WorkingTree('b')
         b_wt.rename_one('foo/bar', 'bar')
         os.rmdir('b/foo')
         b_wt.remove('foo')
@@ -819,17 +809,14 @@ class FunctionalMergeTest(TestCaseInTempDir):
         $ bzr mv bar foo
         $ bzr commit
         """
-        os.mkdir('a')
-        a = Branch.initialize('a')
+        a_wt = self.make_branch_and_tree('a')
         file('a/foo', 'wb').write('A/FOO')
         file('a/bar', 'wb').write('A/BAR')
-        a_wt = a.working_tree()
         a_wt.add('foo')
         a_wt.add('bar')
         a_wt.commit('added foo and bar')
-        copy_branch(a, 'b')
-        b = Branch.open('b')
-        b_wt = b.working_tree()
+        self.run_bzr('branch', 'a', 'b')
+        b_wt = WorkingTree('b')
         os.unlink('b/foo')
         b_wt.remove('foo')
         b_wt.rename_one('bar', 'foo')

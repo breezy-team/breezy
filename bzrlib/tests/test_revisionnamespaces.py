@@ -17,26 +17,27 @@
 import os
 import time
 
+from bzrlib.builtins import merge
 from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.errors import NoCommonAncestor, NoCommits
 from bzrlib.errors import NoSuchRevision
-from bzrlib.clone import copy_branch
-from bzrlib.merge import merge
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.workingtree import WorkingTree
 
-class TestRevisionNamespaces(TestCaseInTempDir):
+
+class TestRevisionNamespaces(TestCaseWithTransport):
 
     def test_revision_namespaces(self):
         """Test revision specifiers.
 
         These identify revisions by date, etc."""
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
 
-        b = Branch.initialize(u'.')
-
-        b.working_tree().commit('Commit one', rev_id='a@r-0-1', timestamp=time.time() - 60*60*24)
-        b.working_tree().commit('Commit two', rev_id='a@r-0-2')
-        b.working_tree().commit('Commit three', rev_id='a@r-0-3')
+        wt.commit('Commit one', rev_id='a@r-0-1', timestamp=time.time() - 60*60*24)
+        wt.commit('Commit two', rev_id='a@r-0-2')
+        wt.commit('Commit three', rev_id='a@r-0-3')
 
         self.assertEquals(RevisionSpec(None).in_history(b), (0, None))
         self.assertEquals(RevisionSpec(1).in_history(b), (1, 'a@r-0-1'))
@@ -65,16 +66,18 @@ class TestRevisionNamespaces(TestCaseInTempDir):
                           'a@r-0-3')
 
         os.mkdir('newbranch')
-        b2 = Branch.initialize('newbranch')
+        wt2 = self.make_branch_and_tree('newbranch')
+        b2 = wt2.branch
         self.assertRaises(NoCommits, RevisionSpec('ancestor:.').in_history, b2)
 
         os.mkdir('copy')
-        b3 = copy_branch(b, 'copy')
-        b3.working_tree().commit('Commit four', rev_id='b@r-0-4')
+        b3 = b.clone('copy')
+        wt3 = WorkingTree('copy', b3)
+        wt3.commit('Commit four', rev_id='b@r-0-4')
         self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
                           'a@r-0-3')
         merge(['copy', -1], [None, None])
-        b.working_tree().commit('Commit five', rev_id='a@r-0-4')
+        wt.commit('Commit five', rev_id='a@r-0-4')
         self.assertEquals(RevisionSpec('ancestor:copy').in_history(b).rev_id,
                           'b@r-0-4')
         self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
@@ -87,13 +90,14 @@ class TestRevisionNamespaces(TestCaseInTempDir):
     def test_branch_namespace(self):
         """Ensure that the branch namespace pulls in the requisite content."""
         self.build_tree(['branch1/', 'branch1/file', 'branch2/'])
-        branch = Branch.initialize('branch1')
-        branch.working_tree().add(['file'])
-        branch.working_tree().commit('add file')
-        copy_branch(branch, 'branch2')
+        wt = self.make_branch_and_tree('branch1')
+        branch = wt.branch
+        wt.add(['file'])
+        wt.commit('add file')
+        branch.clone('branch2')
         print >> open('branch2/file', 'w'), 'new content'
         branch2 = Branch.open('branch2')
-        branch2.working_tree().commit('update file', rev_id='A')
+        WorkingTree('branch2', branch2).commit('update file', rev_id='A')
         spec = RevisionSpec('branch:./branch2/.bzr/../')
         rev_info = spec.in_history(branch)
         self.assertEqual(rev_info, (None, 'A'))

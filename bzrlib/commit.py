@@ -90,11 +90,13 @@ from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.symbol_versioning import *
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.workingtree import WorkingTree
 
 
+@deprecated_function(zero_seven)
 def commit(*args, **kwargs):
     """Commit a new revision to a branch.
 
@@ -168,7 +170,7 @@ class Commit(object):
             self.config = None
         
     def commit(self,
-               branch, message,
+               branch=DEPRECATED_PARAMETER, message=None,
                timestamp=None,
                timezone=None,
                committer=None,
@@ -177,8 +179,14 @@ class Commit(object):
                allow_pointless=True,
                strict=False,
                verbose=False,
-               revprops=None):
+               revprops=None,
+               working_tree=None):
         """Commit working copy as a new revision.
+
+        branch -- the deprecated branch to commit to. New callers should pass in 
+                  working_tree instead
+
+        message -- the commit message, a mandatory parameter
 
         timestamp -- if not None, seconds-since-epoch for a
              postdated/predated commit.
@@ -201,15 +209,27 @@ class Commit(object):
         """
         mutter('preparing to commit')
 
-        self.branch = branch
-        self.weave_store = branch.weave_store
+        if deprecated_passed(branch):
+            warn("Commit.commit (branch, ...): The branch parameter is "
+                 "deprecated as of bzr 0.8. Please use working_tree= instead.",
+                 DeprecationWarning, stacklevel=2)
+            self.branch = branch
+            self.work_tree = WorkingTree(branch.base, branch)
+        elif working_tree is None:
+            raise BzrError("One of branch and working_tree must be passed into commit().")
+        else:
+            self.work_tree = working_tree
+            self.branch = self.work_tree.branch
+        if message is None:
+            raise BzrError("The message keyword parameter is required for commit().")
+
+        self.weave_store = self.branch.repository.weave_store
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
-        self.revprops = {'branch-nick': branch.nick}
+        self.revprops = {'branch-nick': self.branch.nick}
         if revprops:
             self.revprops.update(revprops)
-        self.work_tree = WorkingTree(branch.base, branch)
 
         if strict:
             # raise an exception as soon as we find a single unknown.
@@ -274,6 +294,11 @@ class Commit(object):
             self._make_revision()
             self.work_tree.set_pending_merges([])
             self.branch.append_revision(self.rev_id)
+            if len(self.parents):
+                precursor = self.parents[0]
+            else:
+                precursor = None
+            self.work_tree.set_last_revision(self.rev_id, precursor)
             self.reporter.completed(self.branch.revno()+1, self.rev_id)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
@@ -290,7 +315,7 @@ class Commit(object):
         """Store the inventory for the new revision."""
         inv_text = serializer_v5.write_inventory_to_string(self.new_inv)
         self.inv_sha1 = sha_string(inv_text)
-        s = self.branch.control_weaves
+        s = self.branch.repository.control_weaves
         s.add_text('inventory', self.rev_id,
                    split_lines(inv_text), self.present_parents,
                    self.branch.get_transaction())
@@ -319,14 +344,15 @@ class Commit(object):
             self.parents.append(precursor_id)
         self.parents += pending_merges
         for revision in self.parents:
-            if self.branch.has_revision(revision):
-                self.parent_invs.append(self.branch.get_inventory(revision))
+            if self.branch.repository.has_revision(revision):
+                inventory = self.branch.repository.get_inventory(revision)
+                self.parent_invs.append(inventory)
                 self.present_parents.append(revision)
 
     def _check_parents_present(self):
         for parent_id in self.parents:
             mutter('commit parent revision {%s}', parent_id)
-            if not self.branch.has_revision(parent_id):
+            if not self.branch.repository.has_revision(parent_id):
                 if parent_id == self.branch.last_revision():
                     warning("parent is missing %r", parent_id)
                     raise HistoryMissing(self.branch, 'revision', parent_id)
@@ -348,9 +374,9 @@ class Commit(object):
         rev_tmp.seek(0)
         if self.config.signature_needed():
             plaintext = Testament(self.rev, self.new_inv).as_short_text()
-            self.branch.store_revision_signature(gpg.GPGStrategy(self.config),
-                                                 plaintext, self.rev_id)
-        self.branch.revision_store.add(rev_tmp, self.rev_id)
+            self.branch.repository.store_revision_signature(
+                gpg.GPGStrategy(self.config), plaintext, self.rev_id)
+        self.branch.repository.revision_store.add(rev_tmp, self.rev_id)
         mutter('new revision_id is {%s}', self.rev_id)
 
     def _remove_deleted(self):
