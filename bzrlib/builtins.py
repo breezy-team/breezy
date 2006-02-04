@@ -961,7 +961,8 @@ class cmd_log(Command):
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
         if (log_format == None):
-            log_format = get_log_format(long=long, short=short, line=line)
+            default = bzrlib.config.BranchConfig(b).log_formatter()
+            log_format = get_log_format(long=long, short=short, line=line, default=default)
 
         lf = log_formatter(log_format,
                            show_ids=show_ids,
@@ -977,7 +978,7 @@ class cmd_log(Command):
                  end_revision=rev2,
                  search=message)
 
-def get_log_format(long=False, short=False, line=False, default='default'):
+def get_log_format(long=False, short=False, line=False, default='long'):
     log_format = default
     if long:
         log_format = 'long'
