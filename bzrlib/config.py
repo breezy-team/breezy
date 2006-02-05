@@ -256,6 +256,15 @@ class GlobalConfig(IniBasedConfig):
     def __init__(self):
         super(GlobalConfig, self).__init__(config_filename)
 
+class AliasConfig(IniBasedConfig):
+    def get_alias(self, value):
+        return self._get_user_option(value)
+
+    def _get_section(self):
+        return "ALIASES"
+
+    def __init__(self):
+        super(AliasConfig, self).__init__(config_filename)
 
 class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""

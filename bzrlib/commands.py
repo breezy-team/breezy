@@ -454,6 +454,15 @@ def apply_lsprofiled(the_callable, *args, **kwargs):
     stats.pprint()
     return ret
 
+def get_alias(cmd):
+    """if an alias for cmd exists, returns the expanded command
+       else returns [cmd]"""
+    import bzrlib.config
+    alias = bzrlib.config.AliasConfig().get_alias(cmd)
+    if (alias):
+        return alias.split(' ')
+    return [cmd]
+
 def run_bzr(argv):
     """Execute a command.
 
@@ -471,6 +480,9 @@ def run_bzr(argv):
     --no-plugins
         Do not load plugin modules at all
 
+    --no-aliases
+        Do not allow aliases
+
     --builtin
         Only use builtin commands.  (Plugins are still allowed to change
         other behaviour.)
@@ -483,7 +495,8 @@ def run_bzr(argv):
     """
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
 
-    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = False
+    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
+                opt_no_aliases = False
 
     # --no-plugins is handled specially at a very early stage. We need
     # to load plugins before doing other command parsing so that they
@@ -496,6 +509,8 @@ def run_bzr(argv):
             opt_lsprof = True
         elif a == '--no-plugins':
             opt_no_plugins = True
+        elif a == '--no-aliases':
+            opt_no_aliases = True
         elif a == '--builtin':
             opt_builtin = True
         elif a in ('--quiet', '-q'):
@@ -520,6 +535,10 @@ def run_bzr(argv):
     if not opt_no_plugins:
         from bzrlib.plugin import load_plugins
         load_plugins()
+
+    if not opt_no_aliases:
+        args = get_alias(argv.pop(0))
+        argv = args + argv
 
     cmd = str(argv.pop(0))
 
