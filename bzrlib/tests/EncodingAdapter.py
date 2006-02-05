@@ -67,8 +67,8 @@ _someone = u'Some\u016f\u0148\u011b'
 _something = u'\u0165ou\u010dk\xfd'
 
 # Hebrew
-# I think this means 'README'
-_readme = u'\u05e9\u05dc\u05d5\u05dd'
+# Shalom -> 'hello' or 'peace', used as a common greeting
+_shalom = u'\u05e9\u05dc\u05d5\u05dd'
 
 class EncodingTestAdapter(object):
     """A tool to generate a suite, testing multiple encodings for a single test.
@@ -88,7 +88,7 @@ class EncodingTestAdapter(object):
         # Permutation 2 of utf-8
         ('utf-8', 2, {'committer':_alexander
                   , 'message':u'Testing ' + _mu
-                  , 'filename':_readme
+                  , 'filename':_shalom
                   , 'directory':_juju}),
         ('iso-8859-1', 0, {'committer':_erik
                   , 'message':u'Testing ' + _mu
