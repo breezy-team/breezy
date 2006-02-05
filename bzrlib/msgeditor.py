@@ -54,7 +54,13 @@ def _run_editor(filename):
     """Try to execute an editor to edit the commit message."""
     for e in _get_editor():
         edargs = e.split(' ')
-        x = call(edargs + [filename])
+        try:
+            x = call(edargs + [filename])
+        except OSError, e:
+           # ENOENT means no such editor
+           if e.errno == errno.ENOENT:
+               continue
+           raise
         if x == 0:
             return True
         elif x == 127:

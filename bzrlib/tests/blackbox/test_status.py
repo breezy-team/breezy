@@ -1,89 +1,197 @@
 # Copyright (C) 2005 by Canonical Ltd
-#
+
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-#
+
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#
+
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""\
-Black-box tests for encoding of bzr status.
+"""Tests of status command.
 
-Status command usually prints output (possible unicode) to sys.stdout.
-When status output is redirected to a file or pipe, or the encoding of sys.stdout
-is not able to encode non-ascii filenames then status
-used to fail because of UnicodeEncode error:
-bzr: ERROR: exceptions.UnicodeEncodeError: 'ascii' codec can't encode characters: ordinal not in range(128)
-
-In case when sys.stdout.encoding is None
-bzr should use bzrlib.user_encoding for output.
-bzr should also use `replace` error handling scheme, to allow
-status to run even if the exact filenames cannot be displayed.
+Most of these depend on the particular formatting used.
+As such they really are blackbox tests even though some of the 
+tests are not using self.capture. If we add tests for the programmatic
+interface later, they will be non blackbox tests.
 """
 
+
 from cStringIO import StringIO
-import os
-import sys
+from os import mkdir
+from tempfile import TemporaryFile
+import codecs
 
-import bzrlib
-from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
-from bzrlib.trace import mutter
+from bzrlib.builtins import merge
+from bzrlib.revisionspec import RevisionSpec
+from bzrlib.status import show_status
+from bzrlib.tests import TestCaseInTempDir
+from bzrlib.workingtree import WorkingTree
 
 
-class TestStatusEncodings(TestCaseInTempDir):
+class BranchStatus(TestCaseInTempDir):
     
-    def setUp(self):
-        TestCaseInTempDir.setUp(self)
-        self.user_encoding = bzrlib.user_encoding
-        self.stdout = sys.stdout
+    def test_branch_status(self): 
+        """Test basic branch status"""
+        wt = WorkingTree.create_standalone('.')
+        b = wt.branch
 
-    def tearDown(self):
-        bzrlib.user_encoding = self.user_encoding
-        sys.stdout = self.stdout
-        TestCaseInTempDir.tearDown(self)
+        # status with nothing
+        tof = StringIO()
+        show_status(b, to_file=tof)
+        self.assertEquals(tof.getvalue(), "")
 
-    def make_uncommitted_tree(self):
-        """Build a branch with uncommitted unicode named changes in the cwd."""
-        b = Branch.initialize(u'.')
-        working_tree = b.working_tree()
-        filename = u'hell\u00d8'
-        try:
-            self.build_tree_contents([(filename, 'contents of hello')])
-        except UnicodeEncodeError:
-            raise TestSkipped("can't build unicode working tree in "
-                "filesystem encoding %s" % sys.getfilesystemencoding())
-        working_tree.add(filename)
-        return working_tree
+        tof = StringIO()
+        self.build_tree(['hello.c', 'bye.c'])
+        wt.add_pending_merge('pending@pending-0-0')
+        show_status(b, to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['unknown:\n',
+                           '  bye.c\n',
+                           '  hello.c\n',
+                           'pending merges:\n',
+                           '  pending@pending-0-0\n'
+                           ])
 
-    def test_stdout_ascii(self):
-        sys.stdout = StringIO()
-        bzrlib.user_encoding = 'ascii'
-        working_tree = self.make_uncommitted_tree()
-        stdout, stderr = self.run_bzr("status")
+    def test_branch_status_revisions(self):
+        """Tests branch status with revisions"""
+        wt = WorkingTree.create_standalone('.')
+        b = wt.branch
 
-        self.assertEquals(stdout, """\
-added:
-  hell?
-""")
+        tof = StringIO()
+        self.build_tree(['hello.c', 'bye.c'])
+        wt.add('hello.c')
+        wt.add('bye.c')
+        wt.commit('Test message')
 
-    def test_stdout_latin1(self):
-        sys.stdout = StringIO()
-        bzrlib.user_encoding = 'latin-1'
-        working_tree = self.make_uncommitted_tree()
-        stdout, stderr = self.run_bzr('status')
+        tof = StringIO()
+        revs =[]
+        revs.append(RevisionSpec(0))
+        
+        show_status(b, to_file=tof, revision=revs)
+        
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['added:\n',
+                           '  bye.c\n',
+                           '  hello.c\n'])
 
-        self.assertEquals(stdout, u"""\
-added:
-  hell\u00d8
-""".encode('latin-1'))
+        self.build_tree(['more.c'])
+        wt.add('more.c')
+        wt.commit('Another test message')
+        
+        tof = StringIO()
+        revs.append(RevisionSpec(1))
+        
+        show_status(b, to_file=tof, revision=revs)
+        
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['added:\n',
+                           '  bye.c\n',
+                           '  hello.c\n'])
+
+    def status_string(self, branch):
+        # use a real file rather than StringIO because it doesn't handle
+        # Unicode very well.
+        tof = codecs.getwriter('utf-8')(TemporaryFile())
+        show_status(branch, to_file=tof)
+        tof.seek(0)
+        return tof.read().decode('utf-8')
+
+    def test_pending(self):
+        """Pending merges display works, including Unicode"""
+        mkdir("./branch")
+        wt = WorkingTree.create_standalone('branch')
+        b = wt.branch
+        wt.commit("Empty commit 1")
+        b_2 = b.clone('./copy')
+        wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
+        merge(["./branch", -1], [None, None], this_dir = './copy')
+        message = self.status_string(b_2)
+        self.assert_(message.startswith("pending merges:\n"))
+        self.assert_(message.endswith("Empty commit 2\n")) 
+        b_2.working_tree().commit("merged")
+        # must be long to make sure we see elipsis at the end
+        b.working_tree().commit("Empty commit 3 " + 
+                                "blah blah blah blah " * 10)
+        merge(["./branch", -1], [None, None], this_dir = './copy')
+        message = self.status_string(b_2)
+        self.assert_(message.startswith("pending merges:\n"))
+        self.assert_("Empty commit 3" in message)
+        self.assert_(message.endswith("...\n")) 
+
+    def test_branch_status_specific_files(self): 
+        """Tests branch status with given specific files"""
+        wt = WorkingTree.create_standalone('.')
+        b = wt.branch
+
+        self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
+        wt.add('directory')
+        wt.add('test.c')
+        wt.commit('testing')
+        
+        tof = StringIO()
+        show_status(b, to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['unknown:\n',
+                           '  bye.c\n',
+                           '  dir2\n',
+                           '  directory/hello.c\n'
+                           ])
+
+        tof = StringIO()
+        show_status(b, specific_files=['bye.c','test.c','absent.c'], to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['unknown:\n',
+                           '  bye.c\n'
+                           ])
+        
+        tof = StringIO()
+        show_status(b, specific_files=['directory'], to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['unknown:\n',
+                           '  directory/hello.c\n'
+                           ])
+        tof = StringIO()
+        show_status(b, specific_files=['dir2'], to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['unknown:\n',
+                           '  dir2\n'
+                           ])
+
+
+class TestStatus(TestCaseInTempDir):
+
+    def test_status(self):
+        self.run_bzr("init")
+        self.build_tree(['hello.txt'])
+        result = self.run_bzr("status")[0]
+        self.assert_("unknown:\n  hello.txt\n" in result, result)
+        self.run_bzr("add", "hello.txt")
+        result = self.run_bzr("status")[0]
+        self.assert_("added:\n  hello.txt\n" in result, result)
+        self.run_bzr("commit", "-m", "added")
+        result = self.run_bzr("status", "-r", "0..1")[0]
+        self.assert_("added:\n  hello.txt\n" in result, result)
+        self.build_tree(['world.txt'])
+        result = self.run_bzr("status", "-r", "0")[0]
+        self.assert_("added:\n  hello.txt\n" \
+                     "unknown:\n  world.txt\n" in result, result)
+
+        result2 = self.run_bzr("status", "-r", "0..")[0]
+        self.assertEquals(result2, result)
+
 

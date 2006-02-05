@@ -17,26 +17,26 @@
 
 import os
 
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
-from bzrlib.commit import Commit
 from bzrlib.conflicts import restore
 from bzrlib.errors import NotConflicted
 
 # TODO: Test commit with some added, and added-but-missing files
+# RBC 20060124 is that not tested in test_commit.py ?
 
-class TestConflicts(TestCaseInTempDir):
+class TestConflicts(TestCaseWithTransport):
 
     def test_conflicts(self):
         """Conflicts are detected properly"""
-        b = Branch.initialize(u'.')
+        tree = self.make_branch_and_tree('.')
+        b = tree.branch
         file('hello', 'w').write('hello world4')
         file('hello.THIS', 'w').write('hello world2')
         file('hello.BASE', 'w').write('hello world1')
         file('hello.OTHER', 'w').write('hello world3')
         file('hello.sploo.BASE', 'w').write('yellow world')
         file('hello.sploo.OTHER', 'w').write('yellow world2')
-        tree = b.working_tree()
         self.assertEqual(len(list(tree.list_files())), 6)
         conflicts = list(tree.iter_conflicts())
         self.assertEqual(len(conflicts), 2)

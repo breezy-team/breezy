@@ -217,9 +217,15 @@ class FileInWrongBranch(BzrNewError):
 
 
 class UnsupportedFormatError(BzrError):
-    """Specified path is a bzr branch that we cannot read."""
+    """Specified path is a bzr branch that we recognize but cannot read."""
     def __str__(self):
         return 'unsupported branch format: %s' % self.args[0]
+
+
+class UnknownFormatError(BzrError):
+    """Specified path is a bzr branch whose format we do not recognize."""
+    def __str__(self):
+        return 'unknown branch format: %s' % self.args[0]
 
 
 class NotVersionedError(BzrNewError):
@@ -261,8 +267,14 @@ class ReadOnlyError(LockError):
 class PointlessCommit(BzrNewError):
     """No changes to commit"""
 
+
+class UpgradeReadonly(BzrNewError):
+    """Upgrade URL cannot work with readonly URL's."""
+
+
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
+
 
 class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):
@@ -380,6 +392,16 @@ class WeaveInvalidChecksum(WeaveError):
     """Text did not match it's checksum: %(message)s"""
 
 
+class WeaveTextDiffers(WeaveError):
+    """Weaves differ on text content. Revision: {%(revision_id)s}, %(weave_a)s, %(weave_b)s"""
+
+    def __init__(self, revision_id, weave_a, weave_b):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave_a = weave_a
+        self.weave_b = weave_b
+
+
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""
     def __init__(self, format):
@@ -492,7 +514,29 @@ class BzrBadParameter(BzrNewError):
 
 class BzrBadParameterNotUnicode(BzrBadParameter):
     """Parameter %(param)s is neither unicode nor utf8."""
-    
+
 
 class BzrBadParameterNotString(BzrBadParameter):
     """Parameter %(param)s is not a string or unicode string."""
+
+
+class DependencyNotPresent(BzrNewError):
+    """Unable to import library: %(library)s, %(error)s"""
+
+    def __init__(self, library, error):
+        BzrNewError.__init__(self, library=library, error=error)
+
+
+class ParamikoNotPresent(DependencyNotPresent):
+    """Unable to import paramiko (required for sftp support): %(error)s"""
+
+    def __init__(self, error):
+        DependencyNotPresent.__init__(self, 'paramiko', error)
+
+
+class UninitializableFormat(BzrNewError):
+    """Format %(format)s cannot be initialised by this version of bzr."""
+
+    def __init__(self, format):
+        BzrNewError.__init__(self)
+        self.format = format

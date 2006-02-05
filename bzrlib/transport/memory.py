@@ -21,10 +21,11 @@ import errno
 from stat import *
 from cStringIO import StringIO
 
+from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
 from bzrlib.trace import mutter
-from bzrlib.errors import TransportError, NoSuchFile, FileExists
 from bzrlib.transport import (Transport, register_transport, Server,
                               urlescape, urlunescape)
+
 
 class MemoryStat(object):
 
@@ -39,7 +40,7 @@ class MemoryStat(object):
 
 
 class MemoryTransport(Transport):
-    """This is the transport agent for local filesystem access."""
+    """This is an in memory file system for transient data storage."""
 
     def __init__(self, url=""):
         """Set the 'base' path where files will be stored."""
@@ -51,6 +52,7 @@ class MemoryTransport(Transport):
         self._cwd = url[url.find(':') + 1:]
         self._dirs = {}
         self._files = {}
+        self._locks = {}
 
     def clone(self, offset=None):
         """See Transport.clone()."""
@@ -71,11 +73,12 @@ class MemoryTransport(Transport):
         result = MemoryTransport(url)
         result._dirs = self._dirs
         result._files = self._files
+        result._locks = self._locks
         return result
 
     def abspath(self, relpath):
         """See Transport.abspath()."""
-        return self.base[:-1] + self._abspath(relpath)
+        return self.base[:-1] + self._abspath(relpath)[len(self._cwd) - 1:]
 
     def append(self, relpath, f):
         """See Transport.append()."""
@@ -146,10 +149,26 @@ class MemoryTransport(Transport):
         for path in self._dirs:
             if (path.startswith(_abspath) and 
                 path[len(_abspath) + 1:].find('/') == -1 and
-                len(path) > len(_abspath)):
+                len(path) > len(_abspath) and
+                path[len(_abspath)] == '/'):
                 result.append(path[len(_abspath) + 1:])
         return result
     
+    def rmdir(self, relpath):
+        """See Transport.rmdir."""
+        _abspath = self._abspath(relpath)
+        if _abspath in self._files:
+            self._translate_error(IOError(errno.ENOTDIR, relpath), relpath)
+        for path in self._files:
+            if path.startswith(_abspath):
+                self._translate_error(IOError(errno.EBUSY, relpath), relpath)
+        for path in self._dirs:
+            if path.startswith(_abspath) and path != _abspath:
+                self._translate_error(IOError(errno.EBUSY, relpath), relpath)
+        if not _abspath in self._dirs:
+            raise NoSuchFile(relpath)
+        del self._dirs[_abspath]
+
     def stat(self, relpath):
         """See Transport.stat()."""
         _abspath = self._abspath(relpath)
@@ -161,13 +180,15 @@ class MemoryTransport(Transport):
         elif _abspath in self._dirs:
             return MemoryStat(0, True, self._dirs[_abspath])
         else:
-            raise NoSuchFile(relpath)
+            raise NoSuchFile(_abspath)
 
-#    def lock_read(self, relpath):
-#   TODO if needed
-#
-#    def lock_write(self, relpath):
-#   TODO if needed
+    def lock_read(self, relpath):
+        """See Transport.lock_read()."""
+        return _MemoryLock(self._abspath(relpath), self)
+
+    def lock_write(self, relpath):
+        """See Transport.lock_write()."""
+        return _MemoryLock(self._abspath(relpath), self)
 
     def _abspath(self, relpath):
         """Generate an internal absolute path."""
@@ -178,7 +199,31 @@ class MemoryTransport(Transport):
             return self._cwd[:-1]
         if relpath.endswith('/'):
             relpath = relpath[:-1]
+        if relpath.startswith('./'):
+            relpath = relpath[2:]
         return self._cwd + relpath
+
+
+class _MemoryLock(object):
+    """This makes a lock."""
+
+    def __init__(self, path, transport):
+        assert isinstance(transport, MemoryTransport)
+        self.path = path
+        self.transport = transport
+        if self.path in self.transport._locks:
+            raise LockError('File %r already locked' % (self.path,))
+        self.transport._locks[self.path] = self
+
+    def __del__(self):
+        # Should this warn, or actually try to cleanup?
+        if self.transport:
+            warn("MemoryLock %r not explicitly unlocked" % (self.path,))
+            self.unlock()
+
+    def unlock(self):
+        del self.transport._locks[self.path]
+        self.transport = None
 
 
 class MemoryServer(Server):
@@ -186,8 +231,17 @@ class MemoryServer(Server):
 
     def setUp(self):
         """See bzrlib.transport.Server.setUp."""
+        self._dirs = {}
+        self._files = {}
+        self._locks = {}
         self._scheme = "memory+%s:" % id(self)
-        register_transport(self._scheme, MemoryTransport)
+        def memory_factory(url):
+            result = MemoryTransport(url)
+            result._dirs = self._dirs
+            result._files = self._files
+            result._locks = self._locks
+            return result
+        register_transport(self._scheme, memory_factory)
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""

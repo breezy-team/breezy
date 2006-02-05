@@ -19,14 +19,14 @@
 import errno
 import getpass
 import os
+import random
 import re
 import stat
+import subprocess
 import sys
+import time
 import urllib
 import urlparse
-import time
-import random
-import subprocess
 import weakref
 
 from bzrlib.config import config_dir, ensure_config_dir_exists
@@ -34,7 +34,7 @@ from bzrlib.errors import (ConnectionError,
                            FileExists, 
                            TransportNotPossible, NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError, InvalidURL
+                           LockError, InvalidURL, ParamikoNotPresent
                            )
 from bzrlib.osutils import pathjoin, fancy_rename
 from bzrlib.trace import mutter, warning, error
@@ -43,9 +43,8 @@ import bzrlib.ui
 
 try:
     import paramiko
-except ImportError:
-    error('The SFTP transport requires paramiko.')
-    raise
+except ImportError, e:
+    raise ParamikoNotPresent(e)
 else:
     from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,
                                SFTP_FLAG_EXCL, SFTP_FLAG_TRUNC,
@@ -54,7 +53,13 @@ else:
     from paramiko.sftp_file import SFTPFile
     from paramiko.sftp_client import SFTPClient
 
-if 'sftp' not in urlparse.uses_netloc: urlparse.uses_netloc.append('sftp')
+if 'sftp' not in urlparse.uses_netloc:
+    urlparse.uses_netloc.append('sftp')
+
+# don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
+_default_do_prefetch = False
+if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 2):
+    _default_do_prefetch = True
 
 
 _close_fds = True
@@ -63,6 +68,7 @@ if sys.platform == 'win32':
     _close_fds = False
 
 _ssh_vendor = None
+
 def _get_ssh_vendor():
     """Find out what version of SSH is on the system."""
     global _ssh_vendor
@@ -70,6 +76,12 @@ def _get_ssh_vendor():
         return _ssh_vendor
 
     _ssh_vendor = 'none'
+
+    if 'BZR_SSH' in os.environ:
+        _ssh_vendor = os.environ['BZR_SSH']
+        if _ssh_vendor == 'paramiko':
+            _ssh_vendor = 'none'
+        return _ssh_vendor
 
     try:
         p = subprocess.Popen(['ssh', '-V'],
@@ -244,12 +256,11 @@ class SFTPLock(object):
             # What specific errors should we catch here?
             pass
 
-
 class SFTPTransport (Transport):
     """
     Transport implementation for SFTP access.
     """
-    _do_prefetch = False # Right now Paramiko's prefetch support causes things to hang
+    _do_prefetch = _default_do_prefetch
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
@@ -354,7 +365,7 @@ class SFTPTransport (Transport):
         try:
             path = self._remote_path(relpath)
             f = self._sftp.file(path, mode='rb')
-            if self._do_prefetch and hasattr(f, 'prefetch'):
+            if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
                 f.prefetch()
             return f
         except (IOError, paramiko.SSHException), e:
@@ -494,54 +505,6 @@ class SFTPTransport (Transport):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, relpath, ': unable to append')
 
-    def copy(self, rel_from, rel_to):
-        """Copy the item at rel_from to the location at rel_to"""
-        path_from = self._remote_path(rel_from)
-        path_to = self._remote_path(rel_to)
-        self._copy_abspaths(path_from, path_to)
-
-    def _copy_abspaths(self, path_from, path_to, mode=None):
-        """Copy files given an absolute path
-
-        :param path_from: Path on remote server to read
-        :param path_to: Path on remote server to write
-        :return: None
-
-        TODO: Should the destination location be atomically created?
-              This has not been specified
-        TODO: This should use some sort of remote copy, rather than
-              pulling the data locally, and then writing it remotely
-        """
-        try:
-            fin = self._sftp.file(path_from, 'rb')
-            try:
-                self._put(path_to, fin, mode=mode)
-            finally:
-                fin.close()
-        except (IOError, paramiko.SSHException), e:
-            self._translate_io_exception(e, path_from, ': unable copy to: %r' % path_to)
-
-    def copy_to(self, relpaths, other, mode=None, pb=None):
-        """Copy a set of entries from self into another Transport.
-
-        :param relpaths: A list/generator of entries to be copied.
-        """
-        if isinstance(other, SFTPTransport) and other._sftp is self._sftp:
-            # Both from & to are on the same remote filesystem
-            # We can use a remote copy, instead of pulling locally, and pushing
-
-            total = self._get_total(relpaths)
-            count = 0
-            for path in relpaths:
-                path_from = self._remote_path(relpath)
-                path_to = other._remote_path(relpath)
-                self._update_pb(pb, 'copy-to', count, total)
-                self._copy_abspaths(path_from, path_to, mode=mode)
-                count += 1
-            return count
-        else:
-            return super(SFTPTransport, self).copy_to(relpaths, other, mode=mode, pb=pb)
-
     def _rename(self, abs_from, abs_to):
         """Do a fancy rename on the remote server.
         
@@ -582,6 +545,14 @@ class SFTPTransport (Transport):
             return self._sftp.listdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
+
+    def rmdir(self, relpath):
+        """See Transport.rmdir."""
+        path = self._remote_path(relpath)
+        try:
+            return self._sftp.rmdir(path)
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, path, ': failed to rmdir')
 
     def stat(self, relpath):
         """Return the stat information for a file."""
@@ -898,6 +869,8 @@ class SingleListener(threading.Thread):
         self._socket.close()
         try:
             self._callback(s, self.stop_event)
+        except socket.error:
+            pass #Ignore socket errors
         except Exception, x:
             # probably a failed test
             warning('Exception from within unit test server thread: %r' % x)

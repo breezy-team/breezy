@@ -114,27 +114,6 @@ class TestVersioning(TestCaseInTempDir):
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)
 
-    def test_working_tree_add_in_unversioned(self):
-        """Try to add a file in an unversioned directory.
-
-        "bzr add" adds the parent as necessary, but simple working tree add
-        doesn't do that.
-        """
-        from bzrlib.branch import Branch
-        from bzrlib.errors import NotVersionedError
-        from bzrlib.workingtree import WorkingTree
-
-        b = Branch.initialize(u'.')
-
-        self.build_tree(['foo/',
-                         'foo/hello'])
-
-        self.assertRaises(NotVersionedError,
-                          WorkingTree(b.base, b).add,
-                          'foo/hello')
-        
-        self.check_branch()
-
     def check_branch(self):
         """After all the above changes, run the check and upgrade commands.
 

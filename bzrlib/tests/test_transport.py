@@ -26,6 +26,7 @@ from bzrlib.errors import (NoSuchFile, FileExists,
 from bzrlib.tests import TestCase
 from bzrlib.transport import (_get_protocol_handlers,
                               _get_transport_modules,
+                              get_transport,
                               register_lazy_transport,
                               _set_protocol_handlers,
                               urlescape, urlunescape
@@ -85,3 +86,31 @@ class MemoryTransportTest(TestCase):
         self.assertEqual(True, transport.listable())
         self.assertEqual(False, transport.should_cache())
         self.assertEqual(False, transport.is_readonly())
+        
+        
+class ReadonlyDecoratorTransportTest(TestCase):
+    """Readonly decoration specific tests."""
+
+    def test_local_parameters(self):
+        import bzrlib.transport.readonly as readonly
+        # connect to . in readonly mode
+        transport = readonly.ReadonlyTransportDecorator('readonly+.')
+        self.assertEqual(True, transport.listable())
+        self.assertEqual(False, transport.should_cache())
+        self.assertEqual(True, transport.is_readonly())
+
+    def test_http_parameters(self):
+        import bzrlib.transport.readonly as readonly
+        from bzrlib.transport.http import HttpServer
+        # connect to . via http which is not listable
+        server = HttpServer()
+        server.setUp()
+        try:
+            transport = get_transport('readonly+' + server.get_url())
+            self.failUnless(isinstance(transport,
+                                       readonly.ReadonlyTransportDecorator))
+            self.assertEqual(False, transport.listable())
+            self.assertEqual(True, transport.should_cache())
+            self.assertEqual(True, transport.is_readonly())
+        finally:
+            server.tearDown()

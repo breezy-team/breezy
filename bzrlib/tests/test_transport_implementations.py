@@ -26,6 +26,7 @@ import stat
 import sys
 
 from bzrlib.errors import (NoSuchFile, FileExists,
+                           LockError,
                            TransportNotPossible, ConnectionError,
                            InvalidURL)
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
@@ -258,18 +259,28 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertTransportMode(t, 'mdmode755', 0755)
 
     def test_copy_to(self):
+        # FIXME: test:   same server to same server (partly done)
+        # same protocol two servers
+        # and    different protocols (done for now except for MemoryTransport.
+        # - RBC 20060122
         from bzrlib.transport.memory import MemoryTransport
+
+        def simple_copy_files(transport_from, transport_to):
+            files = ['a', 'b', 'c', 'd']
+            self.build_tree(files, transport=transport_from)
+            transport_from.copy_to(files, transport_to)
+            for f in files:
+                self.check_transport_contents(transport_to.get(f).read(),
+                                              transport_from, f)
+
         t = self.get_transport()
-
-        files = ['a', 'b', 'c', 'd']
-        self.build_tree(files, transport=t)
-
         temp_transport = MemoryTransport('memory:/')
+        simple_copy_files(t, temp_transport)
+        if not t.is_readonly():
+            t.mkdir('copy_to_simple')
+            t2 = t.clone('copy_to_simple')
+            simple_copy_files(t, t2)
 
-        t.copy_to(files, temp_transport)
-        for f in files:
-            self.check_transport_contents(temp_transport.get(f).read(),
-                                          t, f)
 
         # Test that copying into a missing directory raises
         # NoSuchFile
@@ -485,13 +496,13 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.check_transport_contents(t.get('f2').read(), t, 'c')
         self.check_transport_contents(t.get('f3').read(), t, 'd')
 
-
     def test_delete(self):
         # TODO: Test Transport.delete
         t = self.get_transport()
 
         # Not much to do with a readonly transport
         if t.is_readonly():
+            self.assertRaises(TransportNotPossible, t.delete, 'missing')
             return
 
         t.put('a', StringIO('a little bit of text\n'))
@@ -528,6 +539,50 @@ class TestTransportImplementation(TestCaseInTempDir):
         # working directory, so we can just do a
         # plain "listdir".
         # self.assertEqual([], os.listdir('.'))
+
+    def test_rmdir(self):
+        t = self.get_transport()
+        # Not much to do with a readonly transport
+        if t.is_readonly():
+            self.assertRaises(TransportNotPossible, t.rmdir, 'missing')
+            return
+        t.mkdir('adir')
+        t.mkdir('adir/bdir')
+        t.rmdir('adir/bdir')
+        self.assertRaises(NoSuchFile, t.stat, 'adir/bdir')
+        t.rmdir('adir')
+        self.assertRaises(NoSuchFile, t.stat, 'adir')
+
+    def test_delete_tree(self):
+        t = self.get_transport()
+
+        # Not much to do with a readonly transport
+        if t.is_readonly():
+            self.assertRaises(TransportNotPossible, t.delete_tree, 'missing')
+            return
+
+        # and does it like listing ?
+        t.mkdir('adir')
+        try:
+            t.delete_tree('adir')
+        except TransportNotPossible:
+            # ok, this transport does not support delete_tree
+            return
+        
+        # did it delete that trivial case?
+        self.assertRaises(NoSuchFile, t.stat, 'adir')
+
+        self.build_tree(['adir/',
+                         'adir/file', 
+                         'adir/subdir/', 
+                         'adir/subdir/file', 
+                         'adir/subdir2/',
+                         'adir/subdir2/file',
+                         ], transport=t)
+
+        t.delete_tree('adir')
+        # adir should be gone now.
+        self.assertRaises(NoSuchFile, t.stat, 'adir')
 
     def test_move(self):
         t = self.get_transport()
@@ -631,6 +686,10 @@ class TestTransportImplementation(TestCaseInTempDir):
 
         self.assertListRaises(NoSuchFile, t.stat_multi, ['a', 'c', 'd'])
         self.assertListRaises(NoSuchFile, t.stat_multi, iter(['a', 'c', 'd']))
+        self.build_tree(['subdir/', 'subdir/file'], transport=t)
+        subdir = t.clone('subdir')
+        subdir.stat('./file')
+        subdir.stat('.')
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
@@ -647,18 +706,31 @@ class TestTransportImplementation(TestCaseInTempDir):
 
         # SftpServer creates control files in the working directory
         # so lets move down a directory to avoid those.
-        t.mkdir('wd')
+        if not t.is_readonly():
+            t.mkdir('wd')
+        else:
+            os.mkdir('wd')
         t = t.clone('wd')
 
         self.assertEqual([], sorted_list(u'.'))
-        self.build_tree(['a', 'b', 'c/', 'c/d', 'c/e'], transport=t)
+        # c2 is precisely one letter longer than c here to test that
+        # suffixing is not confused.
+        if not t.is_readonly():
+            self.build_tree(['a', 'b', 'c/', 'c/d', 'c/e', 'c2/'], transport=t)
+        else:
+            self.build_tree(['wd/a', 'wd/b', 'wd/c/', 'wd/c/d', 'wd/c/e', 'wd/c2/'])
 
-        self.assertEqual([u'a', u'b', u'c'], sorted_list(u'.'))
+        self.assertEqual([u'a', u'b', u'c', u'c2'], sorted_list(u'.'))
         self.assertEqual([u'd', u'e'], sorted_list(u'c'))
 
-        t.delete('c/d')
-        t.delete('b')
-        self.assertEqual([u'a', u'c'], sorted_list('.'))
+        if not t.is_readonly():
+            t.delete('c/d')
+            t.delete('b')
+        else:
+            os.unlink('wd/c/d')
+            os.unlink('wd/b')
+            
+        self.assertEqual([u'a', u'c', u'c2'], sorted_list('.'))
         self.assertEqual([u'e'], sorted_list(u'c'))
 
         self.assertListRaises(NoSuchFile, t.list_dir, 'q')
@@ -753,5 +825,46 @@ class TestTransportImplementation(TestCaseInTempDir):
             fname_utf8 = fname.encode('utf-8')
             contents = 'contents of %s\n' % (fname_utf8,)
             self.check_transport_contents(contents, t, urlescape(fname))
+
+    def test_connect_twice_is_same_content(self):
+        # check that our server (whatever it is) is accessable reliably
+        # via get_transport and multiple connections share content.
+        transport = self.get_transport()
+        if transport.is_readonly():
+            return
+        transport.put('foo', StringIO('bar'))
+        transport2 = self.get_transport()
+        self.check_transport_contents('bar', transport2, 'foo')
+        # its base should be usable.
+        transport2 = bzrlib.transport.get_transport(transport.base)
+        self.check_transport_contents('bar', transport2, 'foo')
+
+        # now opening at a relative url should give use a sane result:
+        transport.mkdir('newdir')
+        transport2 = bzrlib.transport.get_transport(transport.base + "newdir")
+        transport2 = transport2.clone('..')
+        self.check_transport_contents('bar', transport2, 'foo')
+
+    def test_lock_write(self):
+        transport = self.get_transport()
+        if transport.is_readonly():
+            self.assertRaises(TransportNotPossible, transport.lock_write, 'foo')
+            return
+        transport.put('lock', StringIO())
+        lock = transport.lock_write('lock')
+        # TODO make this consistent on all platforms:
+        # self.assertRaises(LockError, transport.lock_write, 'lock')
+        lock.unlock()
+
+    def test_lock_read(self):
+        transport = self.get_transport()
+        if transport.is_readonly():
+            file('lock', 'w').close()
+        else:
+            transport.put('lock', StringIO())
+        lock = transport.lock_read('lock')
+        # TODO make this consistent on all platforms:
+        # self.assertRaises(LockError, transport.lock_read, 'lock')
+        lock.unlock()
 
 

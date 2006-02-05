@@ -31,10 +31,12 @@ from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
 def test_suite():
     testmod_names = [
                      'bzrlib.tests.blackbox.test_added',
+                     'bzrlib.tests.blackbox.test_ancestry',
                      'bzrlib.tests.blackbox.test_cat',
                      'bzrlib.tests.blackbox.test_command_encoding',
                      'bzrlib.tests.blackbox.test_diff',
                      'bzrlib.tests.blackbox.test_export',
+                     'bzrlib.tests.blackbox.test_find_merge_base',
                      'bzrlib.tests.blackbox.test_log',
                      'bzrlib.tests.blackbox.test_missing',
                      'bzrlib.tests.blackbox.test_outside_wt',
@@ -42,8 +44,10 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_revert',
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_info',
+                     'bzrlib.tests.blackbox.test_selftest',
                      'bzrlib.tests.blackbox.test_status',
                      'bzrlib.tests.blackbox.test_too_much',
+                     'bzrlib.tests.blackbox.test_upgrade',
                      'bzrlib.tests.blackbox.test_versioning',
                      ]
     test_encodings = [
