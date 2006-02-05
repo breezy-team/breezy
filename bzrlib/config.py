@@ -49,6 +49,14 @@ create_signatures - this option controls whether bzr will always create
                     gpg signatures, never create them, or create them if the
                     branch is configured to require them.
                     NB: This option is planned, but not implemented yet.
+
+In bazaar.conf you can also define aliases in the ALIASES sections, example
+
+[ALIASES]
+lastlog=log --line -r-10..-1
+ll=log --line -r-10..-1
+h=help
+up=pull
 """
 
 

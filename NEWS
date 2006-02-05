@@ -12,6 +12,9 @@ bzr development version
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
       for testing SFTP protocol support. (Robey Pointer)
 
+  IMPROVEMENTS:
+    * It's now possible to set aliases in bazaar.conf (Erik Bågfors)
+
 bzr 0.7rc1 2006-01-09
 
   CHANGES:
