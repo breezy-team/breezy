@@ -47,7 +47,7 @@ z_umlat_c = u'\u017d'
 z_umlat_d = u'Z\u030c'
 
 
-class UnicodeFilename(TestCaseInTempDir):
+class UnicodeFilename(TestCaseWithTransport):
     """Test that UnicodeFilename returns the expected values."""
 
     def test_a_circle(self):
