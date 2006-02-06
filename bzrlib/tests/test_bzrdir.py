@@ -21,16 +21,19 @@ For interface contract tests, see tests/bzr_dir_implementations.
 
 from StringIO import StringIO
 
+import bzrlib.branch as branch
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
 from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
+import bzrlib.repository as repository
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
+import bzrlib.workingtree as workingtree
 
 
 class TestDefaultFormat(TestCase):
@@ -49,6 +52,13 @@ class TestDefaultFormat(TestCase):
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
 
 
+class SampleBranch(branch.Branch):
+    """A dummy branch for guess what, dummy use."""
+
+    def __init__(self, dir):
+        self.bzrdir = dir
+
+
 class SampleBzrDir(bzrdir.BzrDir):
     """A sample BzrDir implementation to allow testing static methods."""
 
@@ -58,7 +68,7 @@ class SampleBzrDir(bzrdir.BzrDir):
 
     def create_branch(self):
         """See BzrDir.create_branch."""
-        return "A branch"
+        return SampleBranch(self)
 
     def create_workingtree(self):
         """See BzrDir.create_workingtree."""
@@ -153,7 +163,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         bzrdir.BzrDirFormat.set_default_format(format)
         try:
             branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url())
-            self.assertEqual('A branch', branch)
+            self.assertTrue(isinstance(branch, SampleBranch))
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
@@ -196,3 +206,23 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqual('', relpath)
         branch, relpath = bzrdir.BzrDir.open_containing(self.get_readonly_url('g/p/q'))
         self.assertEqual('g/p/q', relpath)
+
+
+class TestMeta1DirFormat(TestCaseWithTransport):
+    """Tests specific to the meta1 dir format."""
+
+    def test_right_base_dirs(self):
+        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        t = dir.transport
+        branch_base = t.clone('branch').base
+        self.assertEqual(branch_base, dir.get_branch_transport(None).base)
+        self.assertEqual(branch_base,
+                         dir.get_branch_transport(branch.BzrBranchFormat5()).base)
+        repository_base = t.clone('repository').base
+        self.assertEqual(repository_base, dir.get_repository_transport(None).base)
+        self.assertEqual(repository_base,
+                         dir.get_repository_transport(repository.RepositoryFormat7()).base)
+        checkout_base = t.clone('checkout').base
+        self.assertEqual(checkout_base, dir.get_workingtree_transport(None).base)
+        self.assertEqual(checkout_base,
+                         dir.get_workingtree_transport(workingtree.WorkingTreeFormat3()).base)

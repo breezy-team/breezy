@@ -86,8 +86,8 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
             dir = format._matchingbzrdir.initialize(url)
+            dir.create_repository()
             format.initialize(dir)
-            t = get_transport(url)
             found_format = branch.BranchFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(branch.BzrBranchFormat5(), "bar")

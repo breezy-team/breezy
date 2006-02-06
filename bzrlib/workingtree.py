@@ -318,6 +318,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return self.branch.repository.revision_tree(revision_id)
 
     @staticmethod
+    @deprecated_method(zero_eight)
     def create(branch, directory):
         """Create a workingtree for branch at directory.
 
@@ -333,6 +334,7 @@ class WorkingTree(bzrlib.tree.Tree):
         XXX: When BzrDir is present, these should be created through that 
         interface instead.
         """
+        warn('delete WorkingTree.create', stacklevel=3)
         transport = get_transport(directory)
         if branch.bzrdir.transport.clone('..').base == transport.base:
             # same dir 
@@ -341,26 +343,6 @@ class WorkingTree(bzrlib.tree.Tree):
         # create a branch reference
         # and now a working tree.
         raise NotImplementedError
-        try:
-            os.mkdir(directory)
-        except OSError, e:
-            if e.errno != errno.EEXIST:
-                raise
-        try:
-            os.mkdir(pathjoin(directory, '.bzr'))
-        except OSError, e:
-            if e.errno != errno.EEXIST:
-                raise
-        revision_tree = branch.repository.revision_tree(branch.last_revision())
-        inv = revision_tree.inventory
-        wt = WorkingTree(directory, branch, inv, _internal=True)
-        wt._write_inventory(inv)
-        wt.set_root_id(revision_tree.inventory.root.file_id)
-        if branch.last_revision() is not None:
-            wt.set_last_revision(branch.last_revision())
-        wt.set_pending_merges([])
-        wt.revert([])
-        return wt
  
     @staticmethod
     @deprecated_method(zero_eight)

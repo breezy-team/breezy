@@ -30,6 +30,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.store import copy_all
 from bzrlib.store.weave import WeaveStore
 from bzrlib.store.text import TextStore
+from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 from bzrlib.tree import RevisionTree
 from bzrlib.testament import Testament
@@ -70,10 +71,15 @@ class Repository(object):
     def __init__(self, transport, branch_format, _format=None, a_bzrdir=None):
         object.__init__(self)
         if transport is not None:
+            warn("Repository.__init__(..., transport=XXX): The transport parameter is "
+                 "deprecated and was never in a supported release. Please use "
+                 "bzrdir.open_repository() or bzrdir.open_branch().repository.",
+                 DeprecationWarning,
+                 stacklevel=2)
             self.control_files = LockableFiles(transport.clone(bzrlib.BZRDIR), 'README')
         else: 
             # TODO: clone into repository if needed
-            self.control_files = LockableFiles(a_bzrdir.transport, 'README')
+            self.control_files = LockableFiles(a_bzrdir.get_repository_transport(None), 'README')
 
         dir_mode = self.control_files._dir_mode
         file_mode = self.control_files._file_mode
@@ -138,6 +144,11 @@ class Repository(object):
             self.weave_store = get_weave('weaves')
             self.revision_store = get_store('revision-store', compressed=False)
         elif isinstance(self._format, RepositoryFormat6):
+            self.control_weaves = get_weave('')
+            self.weave_store = get_weave('weaves', prefixed=True)
+            self.revision_store = get_store('revision-store', compressed=False,
+                                            prefixed=True)
+        elif isinstance(self._format, RepositoryFormat7):
             self.control_weaves = get_weave('')
             self.weave_store = get_weave('weaves', prefixed=True)
             self.revision_store = get_store('revision-store', compressed=False,
@@ -319,9 +330,10 @@ class Repository(object):
         to have a single line per file/directory, and to have
         fileid="" and revision="" on that line.
         """
-        assert (isinstance(self._format, RepositoryFormat5) or
-                isinstance(self._format, RepositoryFormat6)), \
-            "fileid_involved only supported for branches which store inventory as xml"
+        assert isinstance(self._format, (RepositoryFormat5,
+                                         RepositoryFormat6,
+                                         RepositoryFormat7)), \
+            "fileid_involved only supported for branches which store inventory as unnested xml"
 
         w = self.get_inventory_weave()
         file_ids = set()
@@ -485,6 +497,18 @@ class RepositoryFormat(object):
     """The known formats."""
 
     @classmethod
+    def find_format(klass, a_bzrdir):
+        """Return the format for the repository object in a_bzrdir."""
+        try:
+            transport = a_bzrdir.get_repository_transport(None)
+            format_string = transport.get("format").read()
+            return klass._formats[format_string]
+        except errors.NoSuchFile:
+            raise errors.NoRepositoryPresent(a_bzrdir)
+        except KeyError:
+            raise errors.UnknownFormatError(format_string)
+
+    @classmethod
     def get_default_format(klass):
         """Return the current default format."""
         return klass._default_format
@@ -620,11 +644,66 @@ class RepositoryFormat6(RepositoryFormat):
         super(RepositoryFormat6, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirFormat6()
 
+
+class RepositoryFormat7(RepositoryFormat):
+    """Bzr repository 7.
+
+    This repository format has:
+     - weaves for file texts and inventory
+     - hash subdirectory based stores.
+     - TextStores for revisions and signatures.
+     - a format marker of its own
+    """
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar-NG Repository format 7"
+
+    def initialize(self, a_bzrdir):
+        """Create a weave repository.
+        """
+        from bzrlib.weavefile import write_weave_v5
+        from bzrlib.weave import Weave
+
+        # Create an empty weave
+        sio = StringIO()
+        bzrlib.weavefile.write_weave_v5(Weave(), sio)
+        empty_weave = sio.getvalue()
+
+        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        dirs = ['revision-store', 'weaves']
+        files = [('inventory.weave', StringIO(empty_weave)), 
+                 ]
+        utf8_files = [('format', self.get_format_string())]
+        
+        # FIXME: RBC 20060125 dont peek under the covers
+        # NB: no need to escape relative paths that are url safe.
+        lock_file = 'lock'
+        repository_transport = a_bzrdir.get_repository_transport(self)
+        repository_transport.put(lock_file, StringIO()) # TODO get the file mode from the bzrdir lock files., mode=file_mode)
+        control_files = LockableFiles(repository_transport, 'lock')
+        control_files.lock_write()
+        control_files._transport.mkdir_multi(dirs,
+                mode=control_files._dir_mode)
+        try:
+            for file, content in files:
+                control_files.put(file, content)
+            for file, content in utf8_files:
+                control_files.put_utf8(file, content)
+        finally:
+            control_files.unlock()
+        return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
+
+    def __init__(self):
+        super(RepositoryFormat7, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+
+
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-# __default_format = RepositoryFormatXXX()
-# RepositoryFormat.register_format(__default_format)
-# RepositoryFormat.set_default_format(__default_format)
+__default_format = RepositoryFormat7()
+RepositoryFormat.register_format(__default_format)
+RepositoryFormat.set_default_format(__default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
                    RepositoryFormat6()]

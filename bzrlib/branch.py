@@ -702,6 +702,7 @@ class BzrBranch(Branch):
                  "Please use Branch.open, or bzrdir.open_branch().",
                  DeprecationWarning,
                  stacklevel=2)
+        # TODO change this to search upwards if needed.
         self.repository = self.bzrdir.open_repository()
 
     def __str__(self):

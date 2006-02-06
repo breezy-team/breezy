@@ -240,6 +240,27 @@ class TestBzrDir(TestCaseWithBzrDir):
         # and the dir which has been initialized for us must be statable.
         found_transport.stat('.')
 
+    def test_get_repository_transport(self):
+        dir = self.make_bzrdir('.')
+        # without a format, get_repository_transport gives use a transport
+        # which -may- point to an existing dir.
+        self.assertTrue(isinstance(dir.get_repository_transport(None),
+                                   transport.Transport))
+        # with a given format, either the bzr dir supports identifiable
+        # repositoryes, or it supports anonymous  repository formats, but not both.
+        anonymous_format = repository.RepositoryFormat6()
+        identifiable_format = repository.RepositoryFormat7()
+        try:
+            found_transport = dir.get_repository_transport(anonymous_format)
+            self.assertRaises(errors.IncompatibleFormat,
+                              dir.get_repository_transport,
+                              identifiable_format)
+        except errors.IncompatibleFormat:
+            found_transport = dir.get_repository_transport(identifiable_format)
+        self.assertTrue(isinstance(found_transport, transport.Transport))
+        # and the dir which has been initialized for us must be statable.
+        found_transport.stat('.')
+
     def test_get_workingtree_transport(self):
         dir = self.make_bzrdir('.')
         # without a format, get_workingtree_transport gives use a transport

@@ -146,6 +146,19 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.get_branch_transport)
         
+    def get_repository_transport(self, repository_format):
+        """Get the transport for use by repository format in this BzrDir.
+
+        Note that bzr dirs that do not support format strings will raise
+        IncompatibleFormat if the repository format they are given has
+        a format string, and vice verca.
+
+        If repository_format is None, the transport is returned with no 
+        checking. if it is not None, then the returned transport is
+        guaranteed to point to an existing directory ready for use.
+        """
+        raise NotImplementedError(self.get_repository_transport)
+        
     def get_workingtree_transport(self, branch_format):
         """Get the transport for use by workingtree format in this BzrDir.
 
@@ -231,11 +244,15 @@ class BzrDir(object):
                 raise errors.NotBranchError(path=url)
             t = new_t
 
-    def open_repository(self):
+    def open_repository(self, _unsupported=False):
         """Open the repository object at this BzrDir if one is present.
-        
+
+        This will not follow the Branch object pointer - its strictly a direct
+        open facility. Most client code should use open_branch().repository to
+        get at a repository.
+
+        _unsupported is a private parameter, not part of the api.
         TODO: static convenience version of this?
-        TODO: NoRepositoryError that can be raised.
         """
         raise NotImplementedError(self.open_repository)
 
@@ -264,6 +281,16 @@ class BzrDirPreSplitOut(BzrDir):
         except NotImplementedError:
             return self.transport
         raise errors.IncompatibleFormat(branch_format, self._format)
+
+    def get_repository_transport(self, repository_format):
+        """See BzrDir.get_repository_transport()."""
+        if repository_format is None:
+            return self.transport
+        try:
+            repository_format.get_format_string()
+        except NotImplementedError:
+            return self.transport
+        raise errors.IncompatibleFormat(repository_format, self._format)
 
     def get_workingtree_transport(self, workingtree_format):
         """See BzrDir.get_workingtree_transport()."""
@@ -359,8 +386,8 @@ class BzrDirMeta1(BzrDir):
 
     def create_repository(self):
         """See BzrDir.create_repository."""
-        from bzrlib.repository import RepositoryFormat6
-        return RepositoryFormat6().initialize(self)
+        from bzrlib.repository import RepositoryFormat
+        return RepositoryFormat.get_default_format().initialize(self)
 
     def create_workingtree(self):
         """See BzrDir.create_workingtree."""
@@ -380,6 +407,20 @@ class BzrDirMeta1(BzrDir):
         except errors.FileExists:
             pass
         return self.transport.clone('branch')
+
+    def get_repository_transport(self, repository_format):
+        """See BzrDir.get_repository_transport()."""
+        if repository_format is None:
+            return self.transport.clone('repository')
+        try:
+            repository_format.get_format_string()
+        except NotImplementedError:
+            raise errors.IncompatibleFormat(repository_format, self._format)
+        try:
+            self.transport.mkdir('repository')
+        except errors.FileExists:
+            pass
+        return self.transport.clone('repository')
 
     def get_workingtree_transport(self, workingtree_format):
         """See BzrDir.get_workingtree_transport()."""
@@ -402,10 +443,12 @@ class BzrDirMeta1(BzrDir):
         self._check_supported(format, unsupported)
         return format.open(self, _found=True)
 
-    def open_repository(self):
+    def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
-        from bzrlib.repository import RepositoryFormat6
-        return RepositoryFormat6().open(self, _found=True)
+        from bzrlib.repository import RepositoryFormat
+        format = RepositoryFormat.find_format(self)
+        self._check_supported(format, unsupported)
+        return format.open(self, _found=True)
 
     def open_workingtree(self, unsupported=False):
         """See BzrDir.create_workingtree."""

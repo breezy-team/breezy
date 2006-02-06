@@ -186,21 +186,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(0, tree2._hashcache.miss_count)
         self.assertEqual(1, tree2._hashcache.hit_count)
 
-    def test_checkout(self):
-        # at this point as we dont have checkout versions, checkout simply
-        # populates the required files for a working tree at the dir.
-        b = BzrDir.create_branch_and_repo('branch')
-        t = WorkingTree.create(b, 'tree')
-        # as we are moving the ownership to working tree, we will check here
-        # that its split out correctly
-        self.failIfExists('branch/.bzr/inventory')
-        self.failIfExists('branch/.bzr/pending-merges')
-        sio = StringIO()
-        bzrlib.xml5.serializer_v5.write_inventory(bzrlib.inventory.Inventory(),
-                                                  sio)
-        self.assertFileEqual(sio.getvalue(), 'tree/.bzr/inventory')
-        self.assertFileEqual('', 'tree/.bzr/pending-merges')
-
     def test_initialize(self):
         # initialize should create a working tree and branch in an existing dir
         t = WorkingTree.create_standalone('.')

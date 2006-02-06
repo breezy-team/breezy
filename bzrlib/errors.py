@@ -211,6 +211,13 @@ class NotBranchError(BzrNewError):
         self.path = path
 
 
+class NoRepositoryPresent(BzrNewError):
+    """Not repository present: %(path)r"""
+    def __init__(self, bzrdir):
+        BzrNewError.__init__(self)
+        self.path = bzrdir.transport.clone('..').base
+
+
 class FileInWrongBranch(BzrNewError):
     """File %(path)s in not in branch %(branch_base)s."""
 
