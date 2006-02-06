@@ -69,6 +69,13 @@ sample_branches_text = ("[http://www.example.com]\n"
                         "post_commit=bzrlib.tests.test_config.post_commit\n"
                         "#testing explicit beats globs\n")
 
+sample_long_alias="log -r-15..-1 --line"
+
+sample_aliases = ("[ALIASES]\n"
+                  "h=help\n"
+                  "ll=" + sample_long_alias + "\n"
+                  )
+
 
 class InstrumentedConfigObj(object):
     """A config obj look-enough-alike to record calls made to it."""
@@ -606,6 +613,25 @@ class TestBranchConfigItems(TestCase):
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          my_config.post_commit())
 
+class TestAliasesConfig(TestCase):
+
+    def test_get_alias(self):
+        config_file = StringIO(sample_aliases)
+        my_config = config.AliasConfig()
+        my_config._parser = my_config._get_parser(file=config_file)
+        self.assertEqual('help', my_config.get_alias('h'))
+
+    def test_get_no_alias(self):
+        config_file = StringIO(sample_aliases)
+        my_config = config.AliasConfig()
+        my_config._parser = my_config._get_parser(file=config_file)
+        self.assertEqual(None, my_config.get_alias('foo'))
+
+    def test_get_long_alias(self):
+        config_file = StringIO(sample_aliases)
+        my_config = config.AliasConfig()
+        my_config._parser = my_config._get_parser(file=config_file)
+        self.assertEqual(sample_long_alias, my_config.get_alias('ll'))
 
 class TestMailAddressExtraction(TestCase):
 
