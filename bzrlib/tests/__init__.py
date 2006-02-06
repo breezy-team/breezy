@@ -285,7 +285,7 @@ class TestCase(unittest.TestCase):
             raise AssertionError('pattern "%s" not found in "%s"'
                     % (needle_re, haystack))
 
-    def AssertSubset(self, sublist, superlist):
+    def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
         missing = []
         for entry in sublist:
