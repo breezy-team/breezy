@@ -1,5 +1,10 @@
 # (C) 2005 Canonical
 
+import threading
+from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+import urllib2
+
+import bzrlib
 from bzrlib.tests import TestCase
 from bzrlib.transport.http import HttpTransport, extract_auth
 
@@ -10,7 +15,7 @@ class FakeManager (object):
     def add_password(self, realm, host, username, password):
         self.credentials.append([realm, host, username, password])
 
-        
+
 class TestHttpUrls(TestCase):
     def test_url_parsing(self):
         f = FakeManager()
@@ -51,3 +56,59 @@ class TestHttpUrls(TestCase):
         eq = self.assertEqualDiff
         eq(t.abspath('.bzr/tree-version'),
            'http://bzr.ozlabs.org/.bzr/tree-version')
+
+
+class RequestHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain;charset=UTF-8')
+        self.end_headers()
+        self.wfile.write('Path: %s\nUser-agent: %s\n' %
+                         (self.path, self.headers.getheader('user-agent', '')))
+        self.close_connection = True
+
+
+class TestHttpConnections(TestCase):
+
+    def setUp(self):
+        """Set up a dummy HTTP server as a thread.
+
+        The server will serve a single request and then quit.
+        """
+        super(TestHttpConnections, self).setUp()
+        self.httpd = HTTPServer(('127.0.0.1', 0), RequestHandler)
+        host, port = self.httpd.socket.getsockname()
+        self.baseurl = 'http://127.0.0.1:%d/' % port
+        self.quit_server = False
+        self.thread = threading.Thread(target=self._run_http)
+        self.thread.start()
+
+    def _run_http(self):
+        while not self.quit_server:
+            self.httpd.handle_request()
+        self.httpd.server_close()
+
+    def tearDown(self):
+        # tell the server to quit, and issue a request to make sure the
+        # mainloop gets run
+        self.quit_server = True
+        try:
+            response = urllib2.urlopen(self.baseurl)
+            response.read()
+        except IOError:
+            # ignore error, in case server has already quit
+            pass
+        self.thread.join()
+        
+        super(TestHttpConnections, self).tearDown()
+
+    def test_http_has(self):
+        t = HttpTransport(self.baseurl)
+        self.assertEqual(t.has('foo/bar'), True)
+
+    def test_http_get(self):
+        t = HttpTransport(self.baseurl)
+        fp = t.get('foo/bar')
+        self.assertEqualDiff(
+            fp.read(),
+            'Path: /foo/bar\nUser-agent: bzr/%s\n' % bzrlib.__version__)
