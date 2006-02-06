@@ -305,10 +305,12 @@ class BadWebserverPath(ValueError):
 class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
-        self.server.test_case.log("webserver - %s - - [%s] %s",
+        self.server.test_case.log('webserver - %s - - [%s] %s "%s" "%s"',
                                   self.address_string(),
                                   self.log_date_time_string(),
-                                  format%args)
+                                  format % args,
+                                  self.headers.get('referer', '-'),
+                                  self.headers.get('user-agent', '-'))
 
     def handle_one_request(self):
         """Handle a single HTTP request.
@@ -354,28 +356,12 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
 class HttpServer(Server):
     """A test server for http transports."""
 
-    _HTTP_PORTS = range(13000, 0x8000)
-
     def _http_start(self):
         httpd = None
-        for port in self._HTTP_PORTS:
-            try:
-                httpd = TestingHTTPServer(('localhost', port),
-                                          TestingHTTPRequestHandler,
-                                          self)
-            except socket.error, e:
-                if e.args[0] == errno.EADDRINUSE:
-                    continue
-                print >>sys.stderr, "Cannot run webserver :-("
-                raise
-            else:
-                break
-
-        if httpd is None:
-            raise WebserverNotAvailable("Cannot run webserver :-( "
-                                        "no free ports in range %s..%s" %
-                                        (_HTTP_PORTS[0], _HTTP_PORTS[-1]))
-
+        httpd = TestingHTTPServer(('localhost', 0),
+                                  TestingHTTPRequestHandler,
+                                  self)
+        host, port = httpd.socket.getsockname()
         self._http_base_url = 'http://localhost:%s/' % port
         self._http_starting.release()
         httpd.socket.settimeout(0.1)
@@ -400,9 +386,9 @@ class HttpServer(Server):
         self._http_starting.release()
         return self._http_base_url + remote_path
 
-    def log(self, *args, **kwargs):
+    def log(self, format, *args):
         """Capture Server log output."""
-        self.logs.append(args[3])
+        self.logs.append(format % args)
 
     def setUp(self):
         """See bzrlib.transport.Server.setUp."""
