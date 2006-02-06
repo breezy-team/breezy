@@ -392,10 +392,10 @@ class cmd_pull(Command):
     If you want to forget your local changes and just update your branch to
     match the remote one, use --overwrite.
     """
-    takes_options = ['remember', 'overwrite', 'verbose']
+    takes_options = ['remember', 'overwrite', 'revision', 'verbose']
     takes_args = ['location?']
 
-    def run(self, location=None, remember=False, overwrite=False, verbose=False):
+    def run(self, location=None, remember=False, overwrite=False, revision=None, verbose=False):
         from shutil import rmtree
         import errno
         # FIXME: too much stuff is in the command class        
@@ -411,8 +411,15 @@ class cmd_pull(Command):
         br_from = Branch.open(location)
         br_to = tree_to.branch
 
+        if revision is None:
+            rev_id = None
+        elif len(revision) == 1:
+            rev_id = revision[0].in_history(br_from).rev_id
+        else:
+            raise BzrCommandError('bzr pull --revision takes one value.')
+
         old_rh = br_to.revision_history()
-        count = tree_to.pull(br_from, overwrite)
+        count = tree_to.pull(br_from, overwrite, rev_id)
 
         if br_to.get_parent() is None or remember:
             br_to.set_parent(location)
