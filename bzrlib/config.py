@@ -27,7 +27,7 @@ email=Your Name <your@email.address>
 check_signatures=require|ignore|check-available(default)
 create_signatures=always|never|when-required(default)
 gpg_signing_command=name-of-program
-log_format=name-of-format
+log_formatter=name-of-format
 
 in branches.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
