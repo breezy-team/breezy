@@ -83,6 +83,7 @@ def packages_to_test():
     import bzrlib.tests.branch_implementations
     return [
             bzrlib.doc,
+            bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
             ]
 
@@ -819,8 +820,9 @@ def test_suite():
                    'bzrlib.tests.test_commit_merge',
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_decorators',
+                   'bzrlib.tests.test_diff',
+                   'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_fileid_involved',
                    'bzrlib.tests.test_gpg',

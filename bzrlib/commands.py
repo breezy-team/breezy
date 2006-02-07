@@ -533,6 +533,9 @@ def run_bzr(argv):
     if not opt_no_plugins:
         from bzrlib.plugin import load_plugins
         load_plugins()
+    else:
+        from bzrlib.plugin import disable_plugins
+        disable_plugins()
 
     cmd = str(argv.pop(0))
 
