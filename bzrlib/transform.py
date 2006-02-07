@@ -1246,16 +1246,15 @@ class Merge3Merger(object):
                     self.tt.set_executability(executability, trans_id)
         else:
             assert winner == "other"
-            if file_status == "modified":
-                if file_id in self.other_tree:
-                    executability = self.other_tree.is_executable(file_id)
-                elif file_id in self.this_tree:
-                    executability = self.this_tree.is_executable(file_id)
-                elif file_id in self.base_tree:
-                    executability = self.base_tree.is_executable(file_id)
-                if executability is not None:
-                    trans_id = self.tt.get_trans_id(file_id)
-                    self.tt.set_executability(executability, trans_id)
+            if file_id in self.other_tree:
+                executability = self.other_tree.is_executable(file_id)
+            elif file_id in self.this_tree:
+                executability = self.this_tree.is_executable(file_id)
+            elif file_id in self.base_tree:
+                executability = self.base_tree.is_executable(file_id)
+            if executability is not None:
+                trans_id = self.tt.get_trans_id(file_id)
+                self.tt.set_executability(executability, trans_id)
 
 class WeaveMerger(Merge3Merger):
     supports_reprocess = False
