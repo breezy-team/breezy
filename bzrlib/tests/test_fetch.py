@@ -201,19 +201,20 @@ class TestHttpFetch(TestCaseWithWebserver):
         target = Branch.create("target/")
         source = Branch.open(self.get_remote_url("source/"))
         self.assertEqual(greedy_fetch(target, source), (2, []))
+        log_pattern = '%%s HTTP/1.1" 200 - "-" "bzr/%s"' % bzrlib.__version__
         # this is the path to the literal file. As format changes 
         # occur it needs to be updated. FIXME: ask the store for the
         # path.
-        weave_suffix = 'weaves/ce/id.weave HTTP/1.1" 200 -'
+        weave_suffix = log_pattern % 'weaves/ce/id.weave'
         self.assertEqual(1,
             len([log for log in self.server.logs if log.endswith(weave_suffix)]))
-        inventory_weave_suffix = 'inventory.weave HTTP/1.1" 200 -'
+        inventory_weave_suffix = log_pattern % 'inventory.weave'
         self.assertEqual(1,
             len([log for log in self.server.logs if log.endswith(
                 inventory_weave_suffix)]))
         # this r-h check test will prevent regressions, but it currently already 
         # passes, before the patch to cache-rh is applied :[
-        revision_history_suffix = 'revision-history HTTP/1.1" 200 -'
+        revision_history_suffix = log_pattern % 'revision-history'
         self.assertEqual(1,
             len([log for log in self.server.logs if log.endswith(
                 revision_history_suffix)]))
@@ -222,6 +223,6 @@ class TestHttpFetch(TestCaseWithWebserver):
         # check there is nothing more to fetch
         source = Branch.open(self.get_remote_url("source/"))
         self.assertEqual(greedy_fetch(target, source), (0, []))
-        self.failUnless(self.server.logs[0].endswith('branch-format HTTP/1.1" 200 -'))
-        self.failUnless(self.server.logs[1].endswith('revision-history HTTP/1.1" 200 -'))
+        self.failUnless(self.server.logs[0].endswith(log_pattern % 'branch-format'))
+        self.failUnless(self.server.logs[1].endswith(log_pattern % 'revision-history'))
         self.assertEqual(2, len(self.server.logs))
