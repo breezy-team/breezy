@@ -566,3 +566,6 @@ class UninitializableFormat(BzrNewError):
 
 class CommandDefaultSyntax(BzrNewError):
     """Sytax error in defaults for "%(command_name)s": %(error)s"""
+
+class NoDiff3(BzrNewError):
+    """Diff3 is not installed on this machine."""

@@ -244,6 +244,7 @@ class TreeTransform(object):
 
     def delete_contents(self, trans_id):
         """Schedule the contents of a path entry for deletion"""
+        self.tree_kind(trans_id)
         self._removed_contents.add(trans_id)
 
     def cancel_deletion(self, trans_id):
@@ -1088,6 +1089,16 @@ class Merge3Merger(object):
                 parent_id_winner = "other"
         if name_winner == "this" and parent_id_winner == "this":
             return
+        if name_winner == "conflict":
+            trans_id = self.tt.get_trans_id(file_id)
+            self.conflicts.append(('name conflict', trans_id, 
+                                  self.name(this_entry, file_id), 
+                                  self.name(other_entry, file_id)))
+        if parent_id_winner == "conflict":
+            trans_id = self.tt.get_trans_id(file_id)
+            self.conflicts.append(('parent conflict', trans_id, 
+                                   self.parent(this_entry, file_id), 
+                                   self.parent(other_entry, file_id)))
         if other_entry is None:
             # it doesn't matter whether the result was 'other' or 
             # 'conflict'-- if there's no 'other', we leave it alone.

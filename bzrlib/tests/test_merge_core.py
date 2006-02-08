@@ -7,12 +7,13 @@ from bzrlib.add import smart_add_tree
 from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.builtins import merge
 from bzrlib.errors import (NotBranchError, NotVersionedError,
-                           WorkingTreeNotRevision, BzrCommandError)
+                           WorkingTreeNotRevision, BzrCommandError, NoDiff3)
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.osutils import file_kind, rename, sha_file, pathjoin, mkdtemp
-from bzrlib.transform import Merge3Merger, WeaveMerger, TreeTransform
-from bzrlib.tests import TestCaseWithTransport, TestCase
+from bzrlib.transform import (Merge3Merger, Diff3Merger, WeaveMerger, 
+                              TreeTransform)
+from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
 from bzrlib.workingtree import WorkingTree
 
 
@@ -36,17 +37,17 @@ class MergeBuilder(object):
             return None
         return pathjoin(self.cset.entries[parent].path, name)
 
-    def add_file(self, id, parent, name, contents, mode):
+    def add_file(self, id, parent, name, contents, executable):
         def new_file(tt):
             parent_id = tt.get_trans_id(parent)
-            tt.new_file(name, parent_id, contents, id)
+            tt.new_file(name, parent_id, contents, id, executable)
         for tt in (self.this_tt, self.base_tt, self.other_tt):
             new_file(tt)
 
-    def merge(self):
+    def merge(self, merge_type=Merge3Merger):
         for tt in (self.this_tt, self.base_tt, self.other_tt):
             tt.apply()
-        m3m = Merge3Merger(self.this, self.this, self.base, self.other)
+        m3m = merge_type(self.this, self.this, self.base, self.other)
         return m3m.conflicts
 
     def list_transforms(self):
@@ -62,37 +63,18 @@ class MergeBuilder(object):
             parent_id = tt.get_trans_id(parent)
             tt.new_symlink(name, parent_id, contents, id)
 
-    def remove_file(self, id, base=False, this=False, other=False):
-        for option, tree in ((base, self.base), (this, self.this), 
-                             (other, self.other)):
-            if option:
-                tree.remove_file(id)
-            if other or base:
-                change = self.cset.entries[id].contents_change
-                if change is None:
-                    change = changeset.ReplaceContents(None, None)
-                    self.cset.entries[id].contents_change = change
-                    def create_file(tree):
-                        return changeset.TreeFileCreate(tree, id)
-                    if not other:
-                        change.new_contents = create_file(self.other)
-                    if not base:
-                        change.old_contents = create_file(self.base)
-                else:
-                    assert isinstance(change, changeset.ReplaceContents)
-                if other:
-                    change.new_contents=None
-                if base:
-                    change.old_contents=None
-                if change.old_contents is None and change.new_contents is None:
-                    change = None
+    def remove_file(self, file_id, base=False, this=False, other=False):
+        for option, tt in self.selected_transforms(this, base, other):
+            if option is True:
+                trans_id = tt.get_trans_id(file_id)
+                tt.cancel_creation(trans_id)
+                tt.cancel_versioning(trans_id)
+                tt.set_executability(None, trans_id)
 
-    def add_dir(self, id, parent, name, mode):
-        path = self.get_cset_path(parent, name)
-        self.base.add_dir(id, parent, name, mode)
-        self.cset.add_entry(changeset.ChangesetEntry(id, parent, path))
-        self.this.add_dir(id, parent, name, mode)
-        self.other.add_dir(id, parent, name, mode)
+    def add_dir(self, file_id, parent, name):
+        for tt in self.list_transforms():
+            parent_id = tt.get_trans_id(parent)
+            tt.new_directory(name, parent_id, file_id)
 
     def change_name(self, id, base=None, this=None, other=None):
         for val, tt in ((base, self.base_tt), (this, self.this_tt), 
@@ -103,36 +85,17 @@ class MergeBuilder(object):
             parent_id = tt.final_parent(trans_id)
             tt.adjust_path(val, parent_id, trans_id)
 
-    def change_parent(self, id, base=None, this=None, other=None):
-        if base is not None:
-            self.change_parent_tree(id, self.base, base)
-            self.cset.entries[id].parent = base
-            self.cset.entries[id].dir = self.cset.entries[base].path
+    def change_parent(self, file_id, base=None, this=None, other=None):
+        for parent, tt in self.selected_transforms(this, base, other):
+            trans_id  = tt.get_trans_id(file_id)
+            parent_id = tt.get_trans_id(parent)
+            tt.adjust_path(tt.final_name(trans_id), parent_id, trans_id)
 
-        if this is not None:
-            self.change_parent_tree(id, self.this, this)
-
-        if other is not None:
-            self.change_parent_tree(id, self.other, other)
-            self.cset.entries[id].new_parent = other
-            self.cset.entries[id].new_dir = \
-                self.cset.entries[other].new_path
-
-    def change_contents(self, id, base=None, this=None, other=None):
-        if base is not None:
-            self.change_contents_tree(id, self.base, base)
-
-        if this is not None:
-            self.change_contents_tree(id, self.this, this)
-
-        if other is not None:
-            self.change_contents_tree(id, self.other, other)
-
-        if base is not None or other is not None:
-            old_contents = file(self.base.full_path(id)).read()
-            new_contents = file(self.other.full_path(id)).read()
-            contents = changeset.ReplaceFileContents(self.base, self.other, id)
-            self.cset.entries[id].contents_change = contents
+    def change_contents(self, file_id, base=None, this=None, other=None):
+        for contents, tt in self.selected_transforms(this, base, other):
+            trans_id = tt.get_trans_id(file_id)
+            tt.cancel_creation(trans_id)
+            tt.create_file(contents, trans_id)
 
     def change_target(self, id, base=None, this=None, other=None):
         for target, tt in self.selected_transforms(this, base, other):
@@ -143,33 +106,8 @@ class MergeBuilder(object):
     def change_perms(self, id, base=None, this=None, other=None):
         for executability, tt in self.selected_transforms(this, base, other):
             trans_id = tt.get_trans_id(id)
-            tt.cancel_creation(trans_id)
-            tt.create_symlink(target, trans_id)
-            sel
-        if base is not None:
-            self.change_perms_tree(id, self.base, base)
-
-        if this is not None:
-            self.change_perms_tree(id, self.this, this)
-
-        if other is not None:
-            self.change_perms_tree(id, self.other, other)
-
-        if base is not None or other is not None:
-            old_exec = self.base.is_executable(id)
-            new_exec = self.other.is_executable(id)
-            metadata = changeset.ChangeExecFlag(old_exec, new_exec)
-            self.cset.entries[id].metadata_change = metadata
-
-    def change_parent_tree(self, id, tree, parent):
-        new_path = tree.child_path(parent, self.cset.entries[id].name)
-        tree.change_path(id, new_path)
-
-    def change_contents_tree(self, id, tree, contents):
-        path = tree.full_path(id)
-        mode = os.stat(path).st_mode
-        file(path, "w").write(contents)
-        os.chmod(path, mode)
+            tt.set_executability(None, trans_id)
+            tt.set_executability(executability, trans_id)
 
     def change_perms_tree(self, id, tree, mode):
         os.chmod(tree.full_path(id), mode)
@@ -234,71 +172,56 @@ class MergeTest(TestCase):
     def test_change_name(self):
         """Test renames"""
         builder = MergeBuilder()
-        builder.add_file("1", "0", "name1", "hello1", 0755)
+        builder.add_file("1", "TREE_ROOT", "name1", "hello1", True)
         builder.change_name("1", other="name2")
-        builder.add_file("2", "0", "name3", "hello2", 0755)
+        builder.add_file("2", "TREE_ROOT", "name3", "hello2", True)
         builder.change_name("2", base="name4")
-        builder.add_file("3", "0", "name5", "hello3", 0755)
+        builder.add_file("3", "TREE_ROOT", "name5", "hello3", True)
         builder.change_name("3", this="name6")
         builder.merge()
         builder.cleanup()
         builder = MergeBuilder()
-        builder.add_file("1", "0", "name1", "hello1", 0644)
+        builder.add_file("1", "TREE_ROOT", "name1", "hello1", False)
         builder.change_name("1", other="name2", this="name3")
-        self.assertRaises(changeset.RenameConflict, builder.merge)
+        conflicts = builder.merge()
+        self.assertEqual(conflicts[0][0], 'name conflict')
         builder.cleanup()
         
     def test_file_moves(self):
         """Test moves"""
         builder = MergeBuilder()
-        builder.add_dir("1", "0", "dir1", 0755)
-        builder.add_dir("2", "0", "dir2", 0755)
-        builder.add_file("3", "1", "file1", "hello1", 0644)
-        builder.add_file("4", "1", "file2", "hello2", 0644)
-        builder.add_file("5", "1", "file3", "hello3", 0644)
+        builder.add_dir("1", "TREE_ROOT", "dir1")
+        builder.add_dir("2", "TREE_ROOT", "dir2")
+        builder.add_file("3", "1", "file1", "hello1", True)
+        builder.add_file("4", "1", "file2", "hello2", True)
+        builder.add_file("5", "1", "file3", "hello3", True)
         builder.change_parent("3", other="2")
-        self.assert_(Inventory(builder.other.inventory_dict).get_parent("3") == "2")
         builder.change_parent("4", this="2")
-        self.assert_(Inventory(builder.this.inventory_dict).get_parent("4") == "2")
         builder.change_parent("5", base="2")
-        self.assert_(Inventory(builder.base.inventory_dict).get_parent("5") == "2")
-        cset = builder.merge_changeset(ApplyMerge3)
-        for id in ("1", "2", "4", "5"):
-            self.assert_(cset.entries[id].is_boring())
-        self.assert_(cset.entries["3"].parent == "1")
-        self.assert_(cset.entries["3"].new_parent == "2")
-        builder.apply_changeset(cset)
+        builder.merge()
         builder.cleanup()
 
         builder = MergeBuilder()
-        builder.add_dir("1", "0", "dir1", 0755)
-        builder.add_dir("2", "0", "dir2", 0755)
-        builder.add_dir("3", "0", "dir3", 0755)
-        builder.add_file("4", "1", "file1", "hello1", 0644)
+        builder.add_dir("1", "TREE_ROOT", "dir1")
+        builder.add_dir("2", "TREE_ROOT", "dir2")
+        builder.add_dir("3", "TREE_ROOT", "dir3")
+        builder.add_file("4", "1", "file1", "hello1", False)
         builder.change_parent("4", other="2", this="3")
-        self.assertRaises(changeset.MoveConflict, 
-                          builder.merge_changeset, ApplyMerge3)
+        conflicts = builder.merge()
+        self.assertEqual(conflicts[0][0], 'parent conflict')
+        self.assertEqual(conflicts[0][2:], ('3', '2'))
         builder.cleanup()
 
     def test_contents_merge(self):
         """Test merge3 merging"""
-        self.do_contents_test(ApplyMerge3)
+        self.do_contents_test(Merge3Merger)
 
     def test_contents_merge2(self):
         """Test diff3 merging"""
-        self.do_contents_test(changeset.Diff3Merge)
-
-    def test_contents_merge3(self):
-        """Test diff3 merging"""
-        def backup_merge(file_id, base, other):
-            return BackupBeforeChange(ApplyMerge3(file_id, base, other))
-        builder = self.contents_test_success(backup_merge)
-        def backup_exists(file_id):
-            return os.path.exists(builder.this.full_path(file_id)+"~")
-        self.assert_(backup_exists("1"))
-        self.assert_(backup_exists("2"))
-        self.assert_(not backup_exists("3"))
-        builder.cleanup()
+        try:
+            self.do_contents_test(Diff3Merger)
+        except NoDiff3:
+            raise TestSkipped("diff3 not available")
 
     def do_contents_test(self, merge_factory):
         """Test merging with specified ContentsChange factory"""
@@ -307,42 +230,28 @@ class MergeTest(TestCase):
         self.contents_test_conflicts(merge_factory)
 
     def contents_test_success(self, merge_factory):
-        from inspect import isclass
         builder = MergeBuilder()
-        builder.add_file("1", "0", "name1", "text1", 0755)
+        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.change_contents("1", other="text4")
-        builder.add_file("2", "0", "name3", "text2", 0655)
+        builder.add_file("2", "TREE_ROOT", "name3", "text2", False)
         builder.change_contents("2", base="text5")
-        builder.add_file("3", "0", "name5", "text3", 0744)
-        builder.add_file("4", "0", "name6", "text4", 0744)
+        builder.add_file("3", "TREE_ROOT", "name5", "text3", True)
+        builder.add_file("4", "TREE_ROOT", "name6", "text4", True)
         builder.remove_file("4", base=True)
-        self.assert_(not builder.cset.entries["4"].is_boring())
-        builder.change_contents("3", this="text6")
-        cset = builder.merge_changeset(merge_factory)
-        self.assert_(cset.entries["1"].contents_change is not None)
-        if isclass(merge_factory):
-            self.assert_(isinstance(cset.entries["1"].contents_change,
-                          merge_factory))
-            self.assert_(isinstance(cset.entries["2"].contents_change,
-                          merge_factory))
-        self.assert_(cset.entries["3"].is_boring())
-        self.assert_(cset.entries["4"].is_boring())
-        builder.apply_changeset(cset)
-        self.assert_(file(builder.this.full_path("1"), "rb").read() == "text4" )
-        self.assert_(file(builder.this.full_path("2"), "rb").read() == "text2" )
-        if sys.platform != "win32":
-            self.assert_(os.stat(builder.this.full_path("1")).st_mode &0777 == 0755)
-            self.assert_(os.stat(builder.this.full_path("2")).st_mode &0777 == 0655)
-            self.assert_(os.stat(builder.this.full_path("3")).st_mode &0777 == 0744)
+        builder.merge()
+        self.assertEqual(builder.this.get_file("1").read(), "text4" )
+        self.assertEqual(builder.this.get_file("2").read(), "text2" )
+        self.assertIs(builder.this.is_executable("1"), True)
+        self.assertIs(builder.this.is_executable("2"), False)
+        self.assertIs(builder.this.is_executable("3"), True)
         return builder
 
     def contents_test_conflicts(self, merge_factory):
         builder = MergeBuilder()
-        builder.add_file("1", "0", "name1", "text1", 0755)
+        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.change_contents("1", other="text4", this="text3")
-        cset = builder.merge_changeset(merge_factory)
-        self.assertRaises(changeset.MergeConflict, builder.apply_changeset,
-                          cset)
+        conflicts = builder.merge(merge_factory)
+        self.assertEqual(conflicts[0][0], 'text conflict')
         builder.cleanup()
 
     def test_symlink_conflicts(self):
@@ -371,35 +280,26 @@ class MergeTest(TestCase):
 
     def test_perms_merge(self):
         builder = MergeBuilder()
-        builder.add_file("1", "0", "name1", "text1", 0755)
-        builder.change_perms("1", other=0644)
-        builder.add_file("2", "0", "name2", "text2", 0755)
-        builder.change_perms("2", base=0644)
-        builder.add_file("3", "0", "name3", "text3", 0755)
-        builder.change_perms("3", this=0644)
-        cset = builder.merge_changeset(ApplyMerge3)
-        self.assert_(cset.entries["1"].metadata_change is not None)
-        self.assert_(isinstance(cset.entries["1"].metadata_change, ExecFlagMerge))
-        self.assert_(isinstance(cset.entries["2"].metadata_change, ExecFlagMerge))
-        self.assert_(cset.entries["3"].is_boring())
-        builder.apply_changeset(cset)
-        if sys.platform != "win32":
-            self.assert_(os.lstat(builder.this.full_path("1")).st_mode &0100 == 0000)
-            self.assert_(os.lstat(builder.this.full_path("2")).st_mode &0100 == 0100)
-            self.assert_(os.lstat(builder.this.full_path("3")).st_mode &0100 == 0000)
+        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.change_perms("1", other=False)
+        builder.add_file("2", "TREE_ROOT", "name2", "text2", True)
+        builder.change_perms("2", base=False)
+        builder.add_file("3", "TREE_ROOT", "name3", "text3", True)
+        builder.change_perms("3", this=False)
+        builder.merge()
+        self.assertIs(builder.this.is_executable("1"), False)
+        self.assertIs(builder.this.is_executable("2"), True)
+        self.assertIs(builder.this.is_executable("3"), False)
         builder.cleanup();
 
     def test_new_suffix(self):
-        for merge_type in ApplyMerge3, Diff3Merge:
-            builder = MergeBuilder()
-            builder.add_file("1", "0", "name1", "text1", 0755)
-            builder.change_contents("1", other="text3")
-            builder.add_file("2", "0", "name1.new", "text2", 0777)
-            cset = builder.merge_changeset(ApplyMerge3)
-            os.lstat(builder.this.full_path("2"))
-            builder.apply_changeset(cset)
-            os.lstat(builder.this.full_path("2"))
-            builder.cleanup()
+        builder = MergeBuilder()
+        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.change_contents("1", other="text3")
+        builder.add_file("2", "TREE_ROOT", "name1.new", "text2", True)
+        builder.merge()
+        os.lstat(builder.this.id2abspath("2"))
+        builder.cleanup()
 
 
 class FunctionalMergeTest(TestCaseWithTransport):
