@@ -2076,7 +2076,7 @@ def merge(other_revision, base_revision,
     clients might prefer to call merge.merge_inner(), which has less magic 
     behavior.
     """
-    from bzrlib.merge import Merger, _MergeConflictHandler
+    from bzrlib.merge import Merger
     if this_dir is None:
         this_dir = u'.'
     this_tree = WorkingTree.open_containing(this_dir)[0]
@@ -2100,10 +2100,6 @@ def merge(other_revision, base_revision,
     merger.set_interesting_files(file_list)
     merger.show_base = show_base 
     merger.reprocess = reprocess
-    merger.conflict_handler = _MergeConflictHandler(merger.this_tree, 
-                                                    merger.base_tree, 
-                                                    merger.other_tree,
-                                                    ignore_zero=ignore_zero)
     conflicts = merger.do_merge()
     merger.set_pending()
     return conflicts

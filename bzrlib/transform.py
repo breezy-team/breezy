@@ -228,6 +228,20 @@ class TreeTransform(object):
         os.symlink(target, self._limbo_name(trans_id))
         unique_add(self._new_contents, trans_id, 'symlink')
 
+    @staticmethod
+    def delete_any(full_path):
+        try:
+            os.unlink(full_path)
+        except OSError, e:
+        # We may be renaming a dangling inventory id
+            if e.errno != errno.EISDIR and e.errno != errno.EACCES:
+                raise
+            os.rmdir(full_path)
+
+    def cancel_creation(self, trans_id):
+        del self._new_contents[trans_id]
+        self.delete_any(self._limbo_name(trans_id))
+
     def delete_contents(self, trans_id):
         """Schedule the contents of a path entry for deletion"""
         self._removed_contents.add(trans_id)
@@ -588,13 +602,7 @@ class TreeTransform(object):
         for path, trans_id in tree_paths:
             full_path = self._tree.abspath(path)
             if trans_id in self._removed_contents:
-                try:
-                    os.unlink(full_path)
-                except OSError, e:
-                # We may be renaming a dangling inventory id
-                    if e.errno != errno.EISDIR and e.errno != errno.EACCES:
-                        raise
-                    os.rmdir(full_path)
+                self.delete_any(full_path)
             elif trans_id in self._new_name or trans_id in self._new_parent:
                 try:
                     os.rename(full_path, self._limbo_name(trans_id))

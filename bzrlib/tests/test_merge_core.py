@@ -11,145 +11,24 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.osutils import file_kind, rename, sha_file, pathjoin, mkdtemp
-from bzrlib import _changeset as changeset
-from bzrlib._merge_core import (ApplyMerge3, make_merge_changeset,
-                               BackupBeforeChange, ExecFlagMerge)
-from bzrlib._changeset import Inventory, apply_changeset, invert_dict, \
-    get_contents, ReplaceContents, ChangeExecFlag, Diff3Merge
-from bzrlib.transform import Merge3Merger, WeaveMerger
+from bzrlib.transform import Merge3Merger, WeaveMerger, TreeTransform
 from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.workingtree import WorkingTree
 
 
-class FalseTree(object):
-    def __init__(self, realtree):
-        self._realtree = realtree
-        self.inventory = self
-
-    def __getitem__(self, file_id):
-        entry = self.make_inventory_entry(file_id)
-        if entry is None:
-            raise KeyError(file_id)
-        return entry
-        
-    def make_inventory_entry(self, file_id):
-        path = self._realtree.inventory_dict.get(file_id)
-        if path is None:
-            return None
-        if path == "":
-            return RootEntry(file_id)
-        dir, name = os.path.split(path)
-        kind = file_kind(self._realtree.abs_path(path))
-        for parent_id, path in self._realtree.inventory_dict.iteritems():
-            if path == dir:
-                break
-        if path != dir:
-            raise Exception("Can't find parent for %s" % name)
-        if kind not in ('directory', 'file', 'symlink'):
-            raise ValueError('unknown kind %r' % kind)
-        if kind == 'directory':
-            return inventory.InventoryDirectory(file_id, name, parent_id)
-        elif kind == 'file':
-            return inventory.InventoryFile(file_id, name, parent_id)
-        else:
-            return inventory.InventoryLink(file_id, name, parent_id)
-
-
-class MergeTree(object):
-    def __init__(self, dir):
-        self.dir = dir;
-        os.mkdir(dir)
-        self.inventory_dict = {'0': ""}
-        self.inventory = FalseTree(self)
-    
-    def child_path(self, parent, name):
-        return pathjoin(self.inventory_dict[parent], name)
-
-    def add_file(self, id, parent, name, contents, mode):
-        path = self.child_path(parent, name)
-        full_path = self.abs_path(path)
-        assert not os.path.exists(full_path)
-        file(full_path, "wb").write(contents)
-        os.chmod(self.abs_path(path), mode)
-        self.inventory_dict[id] = path
-
-    def add_symlink(self, id, parent, name, target):
-        path = self.child_path(parent, name)
-        full_path = self.abs_path(path)
-        assert not os.path.exists(full_path)
-        os.symlink(target, full_path)
-        self.inventory_dict[id] = path
-
-    def remove_file(self, id):
-        os.unlink(self.full_path(id))
-        del self.inventory_dict[id]
-
-    def add_dir(self, id, parent, name, mode):
-        path = self.child_path(parent, name)
-        full_path = self.abs_path(path)
-        assert not os.path.exists(full_path)
-        os.mkdir(self.abs_path(path))
-        os.chmod(self.abs_path(path), mode)
-        self.inventory_dict[id] = path
-
-    def abs_path(self, path):
-        return pathjoin(self.dir, path)
-
-    def full_path(self, id):
-        try:
-            tree_path = self.inventory_dict[id]
-        except KeyError:
-            return None
-        return self.abs_path(tree_path)
-
-    def readonly_path(self, id):
-        return self.full_path(id)
-
-    def __contains__(self, file_id):
-        return file_id in self.inventory_dict
-
-    def has_or_had_id(self, file_id):
-        return file_id in self
-
-    def get_file(self, file_id):
-        path = self.full_path(file_id)
-        return file(path, "rb")
-
-    def id2path(self, file_id):
-        return self.inventory_dict[file_id]
-
-    def id2abspath(self, id):
-        return self.full_path(id)
-
-    def change_path(self, id, path):
-        old_path = pathjoin(self.dir, self.inventory_dict[id])
-        rename(old_path, self.abs_path(path))
-        self.inventory_dict[id] = path
-
-    def is_executable(self, file_id):
-        mode = os.lstat(self.full_path(file_id)).st_mode
-        return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
-
-    def kind(self, file_id):
-        return file_kind(self.full_path(file_id))
-
-    def get_symlink_target(self, file_id):
-        return os.readlink(self.full_path(file_id))
-
-    def get_file_sha1(self, file_id):
-        return sha_file(file(self.full_path(file_id), "rb"))
-
-
 class MergeBuilder(object):
     def __init__(self):
-        self.dir = mkdtemp(prefix="BaZing")
-        self.base = MergeTree(pathjoin(self.dir, "base"))
-        self.this = MergeTree(pathjoin(self.dir, "this"))
-        self.other = MergeTree(pathjoin(self.dir, "other"))
-        
-        self.cset = changeset.Changeset()
-        self.cset.add_entry(changeset.ChangesetEntry("0", 
-                                                     changeset.NULL_ID, "./."))
+        self.dir = mkdtemp(prefix="merge-test")
+        def wt(name):
+           path = pathjoin(self.dir, name)
+           os.mkdir(path)
+           b = Branch.initialize(path)
+           wt = b.working_tree()
+           tt = TreeTransform(wt)
+           return wt, tt
+        self.base, self.base_tt = wt('base') 
+        self.this, self.this_tt = wt('this')
+        self.other, self.other_tt = wt('other')
 
     def get_cset_path(self, parent, name):
         if name is None:
@@ -158,18 +37,30 @@ class MergeBuilder(object):
         return pathjoin(self.cset.entries[parent].path, name)
 
     def add_file(self, id, parent, name, contents, mode):
-        self.base.add_file(id, parent, name, contents, mode)
-        self.this.add_file(id, parent, name, contents, mode)
-        self.other.add_file(id, parent, name, contents, mode)
-        path = self.get_cset_path(parent, name)
-        self.cset.add_entry(changeset.ChangesetEntry(id, parent, path))
+        def new_file(tt):
+            parent_id = tt.get_trans_id(parent)
+            tt.new_file(name, parent_id, contents, id)
+        for tt in (self.this_tt, self.base_tt, self.other_tt):
+            new_file(tt)
+
+    def merge(self):
+        for tt in (self.this_tt, self.base_tt, self.other_tt):
+            tt.apply()
+        m3m = Merge3Merger(self.this, self.this, self.base, self.other)
+        return m3m.conflicts
+
+    def list_transforms(self):
+        return [self.this_tt, self.base_tt, self.other_tt]
+
+    def selected_transforms(self, this, base, other):
+        pairs = [(this, self.this_tt), (base, self.base_tt), 
+                 (other, self.other_tt)]
+        return [(v, tt) for (v, tt) in pairs if v is not None]
 
     def add_symlink(self, id, parent, name, contents):
-        self.base.add_symlink(id, parent, name, contents)
-        self.this.add_symlink(id, parent, name, contents)
-        self.other.add_symlink(id, parent, name, contents)
-        path = self.get_cset_path(parent, name)
-        self.cset.add_entry(changeset.ChangesetEntry(id, parent, path))
+        for tt in self.list_transforms():
+            parent_id = tt.get_trans_id(parent)
+            tt.new_symlink(name, parent_id, contents, id)
 
     def remove_file(self, id, base=False, this=False, other=False):
         for option, tree in ((base, self.base), (this, self.this), 
@@ -204,16 +95,13 @@ class MergeBuilder(object):
         self.other.add_dir(id, parent, name, mode)
 
     def change_name(self, id, base=None, this=None, other=None):
-        if base is not None:
-            self.change_name_tree(id, self.base, base)
-            self.cset.entries[id].name = base
-
-        if this is not None:
-            self.change_name_tree(id, self.this, this)
-
-        if other is not None:
-            self.change_name_tree(id, self.other, other)
-            self.cset.entries[id].new_name = other
+        for val, tt in ((base, self.base_tt), (this, self.this_tt), 
+                        (other, self.other_tt)):
+            if val is None:
+                continue
+            trans_id = tt.get_trans_id(id)
+            parent_id = tt.final_parent(trans_id)
+            tt.adjust_path(val, parent_id, trans_id)
 
     def change_parent(self, id, base=None, this=None, other=None):
         if base is not None:
@@ -247,22 +135,17 @@ class MergeBuilder(object):
             self.cset.entries[id].contents_change = contents
 
     def change_target(self, id, base=None, this=None, other=None):
-        if base is not None:
-            self.change_target_tree(id, self.base, base)
-
-        if this is not None:
-            self.change_target_tree(id, self.this, this)
-
-        if other is not None:
-            self.change_target_tree(id, self.other, other)
-
-        if base is not None or other is not None:
-            old_contents = get_contents(self.base, id)
-            new_contents = get_contents(self.other, id)
-            contents = ReplaceContents(old_contents, new_contents)
-            self.cset.entries[id].contents_change = contents
+        for target, tt in self.selected_transforms(this, base, other):
+            trans_id = tt.get_trans_id(id)
+            tt.cancel_creation(trans_id)
+            tt.create_symlink(target, trans_id)
 
     def change_perms(self, id, base=None, this=None, other=None):
+        for executability, tt in self.selected_transforms(this, base, other):
+            trans_id = tt.get_trans_id(id)
+            tt.cancel_creation(trans_id)
+            tt.create_symlink(target, trans_id)
+            sel
         if base is not None:
             self.change_perms_tree(id, self.base, base)
 
@@ -278,10 +161,6 @@ class MergeBuilder(object):
             metadata = changeset.ChangeExecFlag(old_exec, new_exec)
             self.cset.entries[id].metadata_change = metadata
 
-    def change_name_tree(self, id, tree, name):
-        new_path = tree.child_path(self.cset.entries[id].parent, name)
-        tree.change_path(id, new_path)
-
     def change_parent_tree(self, id, tree, parent):
         new_path = tree.child_path(parent, self.cset.entries[id].name)
         tree.change_path(id, new_path)
@@ -291,11 +170,6 @@ class MergeBuilder(object):
         mode = os.stat(path).st_mode
         file(path, "w").write(contents)
         os.chmod(path, mode)
-
-    def change_target_tree(self, id, tree, target):
-        path = tree.full_path(id)
-        os.unlink(path)
-        os.symlink(target, path)
 
     def change_perms_tree(self, id, tree, mode):
         os.chmod(tree.full_path(id), mode)
@@ -366,26 +240,12 @@ class MergeTest(TestCase):
         builder.change_name("2", base="name4")
         builder.add_file("3", "0", "name5", "hello3", 0755)
         builder.change_name("3", this="name6")
-        cset = builder.merge_changeset(ApplyMerge3)
-        self.failUnless(cset.entries["2"].is_boring())
-        self.assertEqual(cset.entries["1"].name, "name1")
-        self.assertEqual(cset.entries["1"].new_name, "name2")
-        self.failUnless(cset.entries["3"].is_boring())
-        for tree in (builder.this, builder.other, builder.base):
-            self.assertNotEqual(tree.dir, builder.dir)
-            self.assertStartsWith(tree.dir, builder.dir)
-            for path in tree.inventory_dict.itervalues():
-                fullpath = tree.abs_path(path)
-                self.assertStartsWith(fullpath, tree.dir)
-                self.failIf(path.startswith(tree.dir))
-                self.failUnless(os.path.lexists(fullpath))
-        builder.apply_changeset(cset)
+        builder.merge()
         builder.cleanup()
         builder = MergeBuilder()
         builder.add_file("1", "0", "name1", "hello1", 0644)
         builder.change_name("1", other="name2", this="name3")
-        self.assertRaises(changeset.RenameConflict, 
-                          builder.merge_changeset, ApplyMerge3)
+        self.assertRaises(changeset.RenameConflict, builder.merge)
         builder.cleanup()
         
     def test_file_moves(self):
@@ -488,25 +348,22 @@ class MergeTest(TestCase):
     def test_symlink_conflicts(self):
         if sys.platform != "win32":
             builder = MergeBuilder()
-            builder.add_symlink("2", "0", "name2", "target1")
+            builder.add_symlink("2", "TREE_ROOT", "name2", "target1")
             builder.change_target("2", other="target4", base="text3")
-            self.assertRaises(changeset.ThreewayContentsConflict,
-                              builder.merge_changeset, ApplyMerge3)
+            conflicts = builder.merge()
+            self.assertEqual(conflicts, [('contents conflict', ("2"))])
             builder.cleanup()
 
     def test_symlink_merge(self):
         if sys.platform != "win32":
             builder = MergeBuilder()
-            builder.add_symlink("1", "0", "name1", "target1")
-            builder.add_symlink("2", "0", "name2", "target1")
-            builder.add_symlink("3", "0", "name3", "target1")
+            builder.add_symlink("1", "TREE_ROOT", "name1", "target1")
+            builder.add_symlink("2", "TREE_ROOT", "name2", "target1")
+            builder.add_symlink("3", "TREE_ROOT", "name3", "target1")
             builder.change_target("1", this="target2")
             builder.change_target("2", base="target2")
             builder.change_target("3", other="target2")
-            self.assertNotEqual(builder.cset.entries['2'].contents_change,
-                                builder.cset.entries['3'].contents_change)
-            cset = builder.merge_changeset(ApplyMerge3)
-            builder.apply_changeset(cset)
+            builder.merge()
             self.assertEqual(builder.this.get_symlink_target("1"), "target2")
             self.assertEqual(builder.this.get_symlink_target("2"), "target1")
             self.assertEqual(builder.this.get_symlink_target("3"), "target2")
