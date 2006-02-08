@@ -966,7 +966,11 @@ def conflict_pass(tt, conflicts):
                 cur = tt.final_parent(cur)
             tt.adjust_path(tt.final_name(cur), tt.get_tree_parent(cur), cur)
         elif c_type == 'missing parent':
-            tt.cancel_deletion(conflict[1])
+            trans_id = conflict[1]
+            try:
+                tt.cancel_deletion(trans_id)
+            except KeyError:
+                tt.create_directory(trans_id)
         elif c_type == 'unversioned parent':
             tt.version_file(tt.get_tree_file_id(conflict[1]), conflict[1])
 
@@ -1140,6 +1144,7 @@ class Merge3Merger(object):
                     self.tt.delete_contents(trans_id)
                 else:
                     self.tt.cancel_versioning(trans_id)
+                self.conflicts.append(('contents conflict', (file_id)))
                 file_group = self._dump_conflicts(name, parent_id, file_id, 
                                                   set_version=True)
 
