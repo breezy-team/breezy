@@ -32,26 +32,26 @@ def needs_read_lock(unbound):
         def branch_method(self, ...):
             stuff
     """
-    def decorated(self, *args, **kwargs):
+    def read_locked(self, *args, **kwargs):
         self.lock_read()
         try:
             return unbound(self, *args, **kwargs)
         finally:
             self.unlock()
-    decorated.__doc__ = unbound.__doc__
-    decorated.__name__ = unbound.__name__
-    return decorated
+    read_locked.__doc__ = unbound.__doc__
+    read_locked.__name__ = unbound.__name__
+    return read_locked
 
 
 def needs_write_lock(unbound):
     """Decorate unbound to take out and release a write lock."""
-    def decorated(self, *args, **kwargs):
+    def write_locked(self, *args, **kwargs):
         self.lock_write()
         try:
             return unbound(self, *args, **kwargs)
         finally:
             self.unlock()
-    decorated.__doc__ = unbound.__doc__
-    decorated.__name__ = unbound.__name__
-    return decorated
+    write_locked.__doc__ = unbound.__doc__
+    write_locked.__name__ = unbound.__name__
+    return write_locked
 
