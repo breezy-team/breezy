@@ -301,3 +301,22 @@ class TestCommonAncestor(TestCaseWithTransport):
         self.assertEquals(combined_1[2], combined_2[2])
         self.assertEquals(combined_1[3], combined_2[3])
         self.assertEquals(combined_1, combined_2)
+
+    def test_get_history(self):
+        # TODO: test ghosts on the left hand branch's impact
+        # TODO: test ghosts on all parents, we should get some
+        # indicator. i.e. NULL_REVISION
+        # RBC 20060608
+        tree = self.make_branch_and_tree('.')
+        tree.commit('1', rev_id = '1', allow_pointless=True)
+        tree.commit('2', rev_id = '2', allow_pointless=True)
+        tree.commit('3', rev_id = '3', allow_pointless=True)
+        rev = tree.branch.repository.get_revision('1')
+        history = rev.get_history(tree.branch.repository)
+        self.assertEqual([None, '1'], history)
+        rev = tree.branch.repository.get_revision('2')
+        history = rev.get_history(tree.branch.repository)
+        self.assertEqual([None, '1', '2'], history)
+        rev = tree.branch.repository.get_revision('3')
+        history = rev.get_history(tree.branch.repository)
+        self.assertEqual([None, '1', '2' ,'3'], history)
