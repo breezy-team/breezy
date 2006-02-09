@@ -36,8 +36,7 @@ from bzrlib.fetch import greedy_fetch, fetch
 import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
-from bzrlib.transform import (Merge3Merger as ApplyMerge3, WeaveMerger, 
-                              Diff3Merger)
+from bzrlib.transform import (Merge3Merger, WeaveMerger, Diff3Merger)
 from bzrlib.trace import mutter, warning, note
 from bzrlib.workingtree import WorkingTree
 
@@ -100,7 +99,7 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 backup_files=False, 
-                merge_type=ApplyMerge3, 
+                merge_type=Merge3Merger, 
                 interesting_ids=None, 
                 show_base=False, 
                 reprocess=False, 
@@ -353,7 +352,7 @@ class Merger(object):
         return new_inventory_list
 
 
-merge_types = {     "merge3": (ApplyMerge3, "Native diff3-style merge"), 
+merge_types = {     "merge3": (Merge3Merger, "Native diff3-style merge"), 
                      "diff3": (Diff3Merger,  "Merge using external diff3"),
                      'weave': (WeaveMerger, "Weave-based merge")
               }
