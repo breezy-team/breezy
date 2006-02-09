@@ -999,7 +999,7 @@ class Merge3Merger(object):
         self.this_tree = working_tree
         self.base_tree = base_tree
         self.other_tree = other_tree
-        self.conflicts = []
+        self._raw_conflicts = []
         self.cooked_conflicts = []
         self.reprocess = reprocess
         self.show_base = show_base
@@ -1097,14 +1097,14 @@ class Merge3Merger(object):
             return
         if name_winner == "conflict":
             trans_id = self.tt.get_trans_id(file_id)
-            self.conflicts.append(('name conflict', trans_id, 
-                                  self.name(this_entry, file_id), 
-                                  self.name(other_entry, file_id)))
+            self._raw_conflicts.append(('name conflict', trans_id, 
+                                        self.name(this_entry, file_id), 
+                                        self.name(other_entry, file_id)))
         if parent_id_winner == "conflict":
             trans_id = self.tt.get_trans_id(file_id)
-            self.conflicts.append(('parent conflict', trans_id, 
-                                   self.parent(this_entry, file_id), 
-                                   self.parent(other_entry, file_id)))
+            self._raw_conflicts.append(('parent conflict', trans_id, 
+                                        self.parent(this_entry, file_id), 
+                                        self.parent(other_entry, file_id)))
         if other_entry is None:
             # it doesn't matter whether the result was 'other' or 
             # 'conflict'-- if there's no 'other', we leave it alone.
@@ -1171,7 +1171,7 @@ class Merge3Merger(object):
                     self.tt.cancel_versioning(trans_id)
                 file_group = self._dump_conflicts(name, parent_id, file_id, 
                                                   set_version=True)
-                self.conflicts.append(('contents conflict', file_group))
+                self._raw_conflicts.append(('contents conflict', file_group))
 
     def get_lines(self, tree, file_id):
         if file_id in tree:
@@ -1214,7 +1214,7 @@ class Merge3Merger(object):
         merge3_iterator = iter_merge3(retval)
         self.tt.create_file(merge3_iterator, trans_id)
         if retval["text_conflicts"] is True:
-            self.conflicts.append(('text conflict', trans_id))
+            self._raw_conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
             file_group = self._dump_conflicts(name, parent_id, file_id, 
@@ -1290,7 +1290,7 @@ class Merge3Merger(object):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
         name_conflicts = {}
         fp = FinalPaths(self.tt)
-        for conflict in self.conflicts:
+        for conflict in self._raw_conflicts:
             conflict_type = conflict[0]
             if conflict_type in ('name conflict', 'parent conflict'):
                 trans_id = conflict[1]
@@ -1365,7 +1365,7 @@ class WeaveMerger(Merge3Merger):
         conflicts = '<<<<<<<\n' in lines
         self.tt.create_file(lines, trans_id)
         if conflicts:
-            self.conflicts.append(('text conflict', trans_id))
+            self._raw_conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
             file_group = self._dump_conflicts(name, parent_id, file_id, 
@@ -1399,6 +1399,6 @@ class Diff3Merger(Merge3Merger):
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
                 self._dump_conflicts(name, parent_id, file_id)
-            self.conflicts.append(('text conflict', trans_id))
+            self._raw_conflicts.append(('text conflict', trans_id))
         finally:
             rmtree(temp_dir)

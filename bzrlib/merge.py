@@ -311,7 +311,7 @@ class Merger(object):
         else:
             kwargs['show_base'] = self.show_base
         merge = self.merge_type(**kwargs)
-        return len(merge.conflicts)
+        return len(merge.cooked_conflicts)
 
     def regen_inventory(self, new_entries):
         old_entries = self.this_tree.read_working_inventory()
