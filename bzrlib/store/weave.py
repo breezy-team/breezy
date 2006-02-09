@@ -41,24 +41,25 @@ class WeaveStore(TransportStore):
     FILE_SUFFIX = '.weave'
 
     def __init__(self, transport, prefixed=False, precious=False,
-                 dir_mode=None, file_mode=None):
+                 dir_mode=None, file_mode=None, escaped=False):
         super(WeaveStore, self).__init__(transport,
                 dir_mode=dir_mode, file_mode=file_mode,
-                prefixed=prefixed, compressed=False)
+                prefixed=prefixed, compressed=False, escaped=escaped)
         self._precious = precious
 
     def filename(self, file_id):
         """Return the path relative to the transport root."""
-        if self._prefixed:
-            return hash_prefix(file_id) + urllib.quote(file_id) + WeaveStore.FILE_SUFFIX
-        else:
-            return urllib.quote(file_id) + WeaveStore.FILE_SUFFIX
+        return self._relpath(file_id) + WeaveStore.FILE_SUFFIX
 
     def __iter__(self):
         l = len(WeaveStore.FILE_SUFFIX)
         for relpath in self._iter_files_recursive():
             if relpath.endswith(WeaveStore.FILE_SUFFIX):
-                yield os.path.basename(relpath[:-l])
+                path = os.path.basename(relpath[:-l])
+                if self._escaped:
+                    yield urllib.unquote(path)
+                else:
+                    yield path
 
     def has_id(self, fileid):
         return self._transport.has(self.filename(fileid))

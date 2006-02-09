@@ -48,6 +48,7 @@ class Repository(object):
         from bzrlib.branch import (BzrBranchFormat4,
                                    BzrBranchFormat5,
                                    BzrBranchFormat6,
+                                   BzrBranchFormat7_escape,
                                    )
         object.__init__(self)
         self.control_files = LockableFiles(transport.clone(bzrlib.BZRDIR), 'README')
@@ -55,7 +56,7 @@ class Repository(object):
         dir_mode = self.control_files._dir_mode
         file_mode = self.control_files._file_mode
 
-        def get_weave(name, prefixed=False):
+        def get_weave(name, prefixed=False, escaped=False):
             if name:
                 name = bzrlib.BZRDIR + '/' + safe_unicode(name)
             else:
@@ -64,13 +65,13 @@ class Repository(object):
             weave_transport = transport.clone(relpath)
             ws = WeaveStore(weave_transport, prefixed=prefixed,
                             dir_mode=dir_mode,
-                            file_mode=file_mode)
+                            file_mode=file_mode, escaped=escaped)
             if self.control_files._transport.should_cache():
                 ws.enable_cache = True
             return ws
 
 
-        def get_store(name, compressed=True, prefixed=False):
+        def get_store(name, compressed=True, prefixed=False, escaped=False):
             # FIXME: This approach of assuming stores are all entirely compressed
             # or entirely uncompressed is tidy, but breaks upgrade from 
             # some existing branches where there's a mixture; we probably 
@@ -83,7 +84,7 @@ class Repository(object):
             store = TextStore(transport.clone(relpath),
                               prefixed=prefixed, compressed=compressed,
                               dir_mode=dir_mode,
-                              file_mode=file_mode)
+                              file_mode=file_mode, escaped=escaped)
             #if self._transport.should_cache():
             #    cache_path = os.path.join(self.cache_root, name)
             #    os.mkdir(cache_path)
@@ -104,6 +105,11 @@ class Repository(object):
             self.weave_store = get_weave('weaves', prefixed=True)
             self.revision_store = get_store('revision-store', compressed=False,
                                             prefixed=True)
+        elif isinstance(branch_format, BzrBranchFormat7_escape):
+            self.control_weaves = get_weave('', escaped=True)
+            self.weave_store = get_weave('weaves', prefixed=True, escaped=True)
+            self.revision_store = get_store('revision-store', compressed=False,
+                                            prefixed=True, escaped=True)
         self.revision_store.register_suffix('sig')
 
     def lock_write(self):

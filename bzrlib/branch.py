@@ -70,6 +70,7 @@ import bzrlib.xml5
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
 BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
 BZR_BRANCH_FORMAT_6 = "Bazaar-NG branch, format 6\n"
+BZR_BRANCH_FORMAT_7_escape = "Bazaar-NG branch, format 7 escaped stores\n"
 
 
 # TODO: Maybe include checks for common corruption of newlines, etc?
@@ -485,6 +486,7 @@ class Branch(object):
         """
         raise NotImplementedError('fileid_involved_by_set is abstract')
 
+
 class BzrBranchFormat(object):
     """An encapsulation of the initialization and open routines for a format.
 
@@ -672,9 +674,24 @@ class BzrBranchFormat6(BzrBranchFormat):
         return BZR_BRANCH_FORMAT_6
 
 
+class BzrBranchFormat7_escape(BzrBranchFormat):
+    """Bzr branch format 7.
+
+    This format has:
+     - weaves for file texts and inventory
+     - hash subdirectory based stores.
+     - TextStores for revisions and signatures.
+    """
+
+    def get_format_string(self):
+        """See BzrBranchFormat.get_format_string()."""
+        return BZR_BRANCH_FORMAT_7_escape
+
+
 BzrBranchFormat.register_format(BzrBranchFormat4())
 BzrBranchFormat.register_format(BzrBranchFormat5())
 BzrBranchFormat.register_format(BzrBranchFormat6())
+BzrBranchFormat.register_format(BzrBranchFormat7_escape())
 
 # TODO: jam 20060108 Create a new branch format, and as part of upgrade
 #       make sure that ancestry.weave is deleted (it is never used, but
@@ -778,7 +795,7 @@ class BzrBranch(Branch):
     @staticmethod
     def _initialize(base):
         """Create a bzr branch in the latest format."""
-        return BzrBranchFormat6().initialize(base)
+        return BzrBranchFormat7_escape().initialize(base)
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)

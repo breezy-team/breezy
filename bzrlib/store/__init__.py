@@ -222,7 +222,8 @@ class TransportStore(Store):
         raise KeyError(fileid)
 
     def __init__(self, a_transport, prefixed=False, compressed=False,
-                 dir_mode=None, file_mode=None):
+                 dir_mode=None, file_mode=None,
+                 escaped=False):
         assert isinstance(a_transport, transport.Transport)
         super(TransportStore, self).__init__()
         self._transport = a_transport
@@ -230,6 +231,7 @@ class TransportStore(Store):
         # FIXME RBC 20051128 this belongs in TextStore.
         self._compressed = compressed
         self._suffixes = set()
+        self._escaped = escaped
 
         # It is okay for these to be None, it just means they
         # will just use the filesystem defaults
@@ -253,7 +255,10 @@ class TransportStore(Store):
                     if name.endswith('.' + suffix):
                         skip = True
             if not skip:
-                yield name
+                if self._escaped:
+                    yield urllib.unquote(name)
+                else:
+                    yield name
 
     def __len__(self):
         return len(list(self.__iter__()))
@@ -267,10 +272,14 @@ class TransportStore(Store):
                 self._check_fileid(suffix)
         else:
             suffixes = []
+        prefix = ''
         if self._prefixed:
-            path = [hash_prefix(fileid) + fileid]
+            prefix = hash_prefix(fileid)
+        if self._escaped:
+            # We quote file ids before having them urlescaped
+            path = [prefix + urllib.quote(fileid)]
         else:
-            path = [fileid]
+            path = [prefix + fileid]
         path.extend(suffixes)
         return transport.urlescape(u'.'.join(path))
 
