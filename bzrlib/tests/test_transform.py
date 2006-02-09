@@ -19,10 +19,10 @@ from bzrlib.branch import Branch
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot, NotVersionedError)
 from bzrlib.osutils import file_kind, has_symlinks
+from bzrlib.merge import Merge3Merger
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
-                              resolve_conflicts, Merge3Merger, 
-                              find_interesting)
+                              resolve_conflicts, find_interesting)
 
 class TestTreeTransform(TestCaseInTempDir):
     def setUp(self):

@@ -11,9 +11,9 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
 from bzrlib.fetch import Fetcher
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
+from bzrlib.merge import Merge3Merger, Diff3Merger, WeaveMerger
 from bzrlib.osutils import file_kind, rename, sha_file, pathjoin, mkdtemp
-from bzrlib.transform import (Merge3Merger, Diff3Merger, WeaveMerger, 
-                              TreeTransform)
+from bzrlib.transform import TreeTransform
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
 from bzrlib.workingtree import WorkingTree
 

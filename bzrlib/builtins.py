@@ -30,11 +30,11 @@ from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError,
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch)
 from bzrlib.log import show_one_log
+from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
-from bzrlib.transform import Merge3Merger
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import WorkingTree
 
@@ -1610,7 +1610,6 @@ class cmd_merge(Command):
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False):
-        from bzrlib.transform import Merge3Merger
         if merge_type is None:
             merge_type = Merge3Merger
         if branch is None:
@@ -1667,7 +1666,6 @@ class cmd_remerge(Command):
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
         from bzrlib.merge import merge_inner, transform_tree
-        from bzrlib.transform import Merge3Merger
         if merge_type is None:
             merge_type = Merge3Merger
         tree, file_list = tree_files(file_list)
