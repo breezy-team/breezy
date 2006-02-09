@@ -261,6 +261,12 @@ class Merger(object):
             raise BzrError("Showing base is not supported for this"
                                   " merge type. %s" % self.merge_type)
         merge = self.merge_type(**kwargs)
+        if merge.cooked_conflicts == 0:
+            if not self.ignore_zero:
+                note("All changes applied successfully.")
+        else:
+            note("%d conflicts encountered." % len(merge.cooked_conflicts))
+
         return len(merge.cooked_conflicts)
 
     def regen_inventory(self, new_entries):
@@ -351,6 +357,8 @@ class Merge3Merger(object):
                 
             resolve_conflicts(self.tt)
             self.cook_conflicts()
+            for line in conflicts_strings(self.cooked_conflicts):
+                warning(line)
             self.tt.apply()
         finally:
             try:
@@ -674,7 +682,18 @@ class Merge3Merger(object):
             file_id = self.tt.final_file_id(trans_id)
             self.cooked_conflicts.append(('path conflict', file_id, this_path, 
                                          other_path))
-            
+
+
+def conflicts_strings(conflicts):
+    for conflict in conflicts:
+        conflict_type = conflict[0]
+        if conflict_type == 'text conflict':
+            yield 'Text conflict in %s' % conflict[2]
+        elif conflict_type == 'contents conflict':
+            yield 'Contents conflict in %s' % conflict[2]
+        elif conflict_type == 'path conflict':
+            yield 'Path conflict: %s / %s' % conflict[2:]
+
 
 class WeaveMerger(Merge3Merger):
     supports_reprocess = False
