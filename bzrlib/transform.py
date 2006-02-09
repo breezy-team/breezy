@@ -49,6 +49,7 @@ class TreeTransform(object):
         self._removed_contents = set()
         self._new_executability = {}
         self._new_id = {}
+        self._non_present_ids = {}
         self._r_new_id = {}
         self._removed_id = set()
         self._tree_path_ids = {}
@@ -150,9 +151,11 @@ class TreeTransform(object):
             return self._r_new_id[file_id]
         elif file_id in self._tree.inventory:
             return self.get_id_tree(file_id)
+        elif file_id in self._non_present_ids:
+            return self._non_present_ids[file_id]
         else:
             trans_id = self._assign_id()
-            self.version_file(file_id, trans_id)
+            self._non_present_ids[file_id] = trans_id
             return trans_id
 
     def canonical_path(self, path):

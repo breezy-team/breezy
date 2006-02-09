@@ -292,6 +292,12 @@ class MergeTest(TestCase):
             self.assertEqual(builder.this.get_symlink_target("3"), "target2")
             builder.cleanup()
 
+    def test_no_passive_add(self):
+        builder = MergeBuilder()
+        builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
+        builder.remove_file("1", this=True)
+        builder.merge()
+
     def test_perms_merge(self):
         builder = MergeBuilder()
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
