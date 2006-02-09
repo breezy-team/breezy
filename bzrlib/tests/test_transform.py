@@ -150,7 +150,7 @@ class TestTreeTransform(TestCaseInTempDir):
         oz_id = transform2.get_id_tree('oz-id')
         newtip = transform2.new_file('tip', oz_id, 'other', 'tip-id')
         result = transform2.find_conflicts()
-        fp = FinalPaths(transform2._new_root, transform2)
+        fp = FinalPaths(transform2)
         self.assert_('oz/tip' in transform2._tree_path_ids)
         self.assertEqual(fp.get_path(newtip), os.path.join('oz', 'tip'))
         self.assertEqual(len(result), 2)

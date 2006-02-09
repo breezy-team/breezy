@@ -1329,8 +1329,12 @@ class Merge3Merger(object):
             except KeyError:
                 this_name = other_name = self.tt.final_name(trans_id)
             other_path = fp.get_path(trans_id)
-            this_parent_path = fp.get_path(self.tt.get_trans_id(this_parent))
-            this_path = os.path.join(this_parent_path, this_name)
+            if this_parent is not None:
+                this_parent_path = \
+                    fp.get_path(self.tt.get_trans_id(this_parent))
+                this_path = os.path.join(this_parent_path, this_name)
+            else:
+                this_path = "<deleted>"
             file_id = self.tt.final_file_id(trans_id)
             self.cooked_conflicts.append(('path conflict', file_id, this_path, 
                                          other_path))
