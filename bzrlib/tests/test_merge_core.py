@@ -47,8 +47,8 @@ class MergeBuilder(object):
     def merge(self, merge_type=Merge3Merger):
         for tt in (self.this_tt, self.base_tt, self.other_tt):
             tt.apply()
-        m3m = merge_type(self.this, self.this, self.base, self.other)
-        return m3m.conflicts
+        merger = merge_type(self.this, self.this, self.base, self.other)
+        return merger.cooked_conflicts
 
     def list_transforms(self):
         return [self.this_tt, self.base_tt, self.other_tt]
@@ -251,7 +251,7 @@ class MergeTest(TestCase):
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.change_contents("1", other="text4", this="text3")
         conflicts = builder.merge(merge_factory)
-        self.assertEqual(conflicts[0][0], 'text conflict')
+        self.assertEqual(conflicts[0], ('text conflict', '1', ))
         builder.cleanup()
 
     def test_symlink_conflicts(self):
@@ -260,7 +260,7 @@ class MergeTest(TestCase):
             builder.add_symlink("2", "TREE_ROOT", "name2", "target1")
             builder.change_target("2", other="target4", base="text3")
             conflicts = builder.merge()
-            self.assertEqual(conflicts, [('contents conflict', ("2"))])
+            self.assertEqual(conflicts, [('contents conflict', '2', 'name2')])
             builder.cleanup()
 
     def test_symlink_merge(self):

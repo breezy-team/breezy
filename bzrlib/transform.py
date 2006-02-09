@@ -996,6 +996,7 @@ class Merge3Merger(object):
         self.base_tree = base_tree
         self.other_tree = other_tree
         self.conflicts = []
+        self.cooked_conflicts = []
         self.reprocess = reprocess
         self.show_base = show_base
 
@@ -1009,6 +1010,7 @@ class Merge3Merger(object):
                 self.merge_executable(file_id, file_status)
                 
             resolve_conflicts(self.tt)
+            self.cook_conflicts()
             self.tt.apply()
         finally:
             try:
@@ -1279,6 +1281,28 @@ class Merge3Merger(object):
             if executability is not None:
                 trans_id = self.tt.get_trans_id(file_id)
                 self.tt.set_executability(executability, trans_id)
+
+    def cook_conflicts(self):
+        """Convert all conflicts into a form that doesn't depend on trans_id"""
+        name_conflicts = {}
+        for conflict_type, trans_id, this, other in self.conflicts:
+            if conflict_type in ('name conflict', 'parent conflict'):
+                if trans_id not in name_conflicts:
+                    name_conflicts[trans_id] = {}
+                unique_add(name_conflicts[trans_id], conflict_type, 
+                           (this, other))
+        for trans_id, conflicts in name_conflicts.iteritems():
+            try:
+                this_parent, other_parent = conflicts['parent_conflict']
+            except KeyError:
+                this_parent = other_parent = \
+                    self.tt.final_file_id(self.tt.final_parent(trans_id)
+            try:
+                this_name, other_name = conflicts['name_conflict']
+            except KeyError:
+                this_name = other_name = self.tt.final_name(trans_id)
+
+            
 
 class WeaveMerger(Merge3Merger):
     supports_reprocess = False
