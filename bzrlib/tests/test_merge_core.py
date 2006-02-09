@@ -8,6 +8,7 @@ from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.builtins import merge
 from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError, NoDiff3)
+from bzrlib.fetch import Fetcher
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.osutils import file_kind, rename, sha_file, pathjoin, mkdtemp
@@ -45,9 +46,17 @@ class MergeBuilder(object):
             new_file(tt)
 
     def merge(self, merge_type=Merge3Merger):
-        for tt in (self.this_tt, self.base_tt, self.other_tt):
+        self.base_tt.apply()
+        self.base.commit('base commit')
+        for tt, wt in ((self.this_tt, self.this), (self.other_tt, self.other)):
+            wt.branch.pull(self.base.branch)
             tt.apply()
-        merger = merge_type(self.this, self.this, self.base, self.other)
+            wt.commit('branch commit')
+            assert len(wt.branch.revision_history()) == 2
+        Fetcher(self.this.branch, self.other.branch, 
+                self.other.branch.last_revision())
+        other_basis = self.other.branch.basis_tree()
+        merger = merge_type(self.this, self.this, self.base, other_basis)
         return merger.cooked_conflicts
 
     def list_transforms(self):
@@ -223,6 +232,10 @@ class MergeTest(TestCase):
             self.do_contents_test(Diff3Merger)
         except NoDiff3:
             raise TestSkipped("diff3 not available")
+
+    def test_contents_merge3(self):
+        """Test diff3 merging"""
+        self.do_contents_test(WeaveMerger)
 
     def do_contents_test(self, merge_factory):
         """Test merging with specified ContentsChange factory"""
