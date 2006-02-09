@@ -184,8 +184,7 @@ class MergeTest(TestCase):
         builder.add_file("1", "TREE_ROOT", "name1", "hello1", False)
         builder.change_name("1", other="name2", this="name3")
         conflicts = builder.merge()
-        self.assertEqual(conflicts[0], ('path conflict', '1', 'name3', 
-                                        'name2'))
+        self.assertEqual(conflicts, [('path conflict', '1', 'name3', 'name2')])
         builder.cleanup()
         
     def test_file_moves(self):
@@ -211,7 +210,7 @@ class MergeTest(TestCase):
         conflicts = builder.merge()
         path2 = os.path.join('dir2', 'file1')
         path3 = os.path.join('dir3', 'file1')
-        self.assertEqual(conflicts[0], ('path conflict', '4', path3, path2))
+        self.assertEqual(conflicts, [('path conflict', '4', path3, path2)])
         builder.cleanup()
 
     def test_contents_merge(self):
@@ -253,7 +252,7 @@ class MergeTest(TestCase):
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.change_contents("1", other="text4", this="text3")
         conflicts = builder.merge(merge_factory)
-        self.assertEqual(conflicts[0], ('text conflict', '1', 'name1'))
+        self.assertEqual(conflicts, [('text conflict', '1', 'name1')])
         builder.cleanup()
 
     def test_symlink_conflicts(self):
