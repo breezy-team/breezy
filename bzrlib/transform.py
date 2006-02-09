@@ -1343,28 +1343,45 @@ class Merge3Merger(object):
 class WeaveMerger(Merge3Merger):
     supports_reprocess = False
     supports_show_base = False
+
+    def __init__(self, working_tree, this_tree, base_tree, other_tree):
+        self.this_revision_tree = self._get_revision_tree(this_tree)
+        self.other_revision_tree = self._get_revision_tree(other_tree)
+        super(WeaveMerger, self).__init__(working_tree, this_tree, 
+                                          base_tree, other_tree)
+
+    def _get_revision_tree(self, tree):
+        if getattr(tree, 'get_weave', False) is False:
+            # If we have a WorkingTree, try using the basis
+            return tree.branch.basis_tree()
+        else:
+            return tree
+
+    def _check_file(self, file_id):
+        """Check that the revision tree's version of the file matches."""
+        for tree, rt in ((self.this_tree, self.this_revision_tree), 
+                         (self.other_tree, self.other_revision_tree)):
+            if rt is tree:
+                continue
+            if tree.get_file_sha1(file_id) != rt.get_file_sha1(file_id):
+                raise WorkingTreeNotRevision(self.this_tree)
+
     def _merged_lines(self, file_id):
         """Generate the merged lines.
         There is no distinction between lines that are meant to contain <<<<<<<
         and conflicts.
         """
-        if getattr(self.this_tree, 'get_weave', False) is False:
-            # If we have a WorkingTree, try using the basis
-            wt_sha1 = self.this_tree.get_file_sha1(file_id)
-            this_tree = self.this_tree.branch.basis_tree()
-            if this_tree.get_file_sha1(file_id) != wt_sha1:
-                raise WorkingTreeNotRevision(self.this_tree)
-        else:
-            this_tree = self.this_tree
-        weave = this_tree.get_weave(file_id)
-        this_revision_id = this_tree.inventory[file_id].revision
-        other_revision_id = self.other_tree.inventory[file_id].revision
+        weave = self.this_revision_tree.get_weave(file_id)
+        this_revision_id = self.this_revision_tree.inventory[file_id].revision
+        other_revision_id = \
+            self.other_revision_tree.inventory[file_id].revision
         this_i = weave.lookup(this_revision_id)
         other_i = weave.lookup(other_revision_id)
         plan =  weave.plan_merge(this_i, other_i)
         return weave.weave_merge(plan)
 
     def text_merge(self, file_id, trans_id):
+        self._check_file(file_id)
         lines = self._merged_lines(file_id)
         conflicts = '<<<<<<<\n' in lines
         self.tt.create_file(lines, trans_id)

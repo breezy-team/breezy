@@ -300,16 +300,16 @@ class Merger(object):
                   'other_tree': self.other_tree}
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
-        if self.reprocess and not self.merge_type.supports_reprocess:
+        if self.merge_type.supports_reprocess:
+            kwargs['reprocess'] = self.reprocess
+        elif self.reprocess:
             raise BzrError("Reprocess is not supported for this merge"
                                   " type. %s" % merge_type)
-        else:
-            kwargs['reprocess'] = self.reprocess
-        if self.show_base and not self.merge_type.supports_show_base:
+        if self.merge_type.supports_show_base:
+            kwargs['show_base'] = self.show_base
+        elif self.show_base:
             raise BzrError("Showing base is not supported for this"
                                   " merge type. %s" % self.merge_type)
-        else:
-            kwargs['show_base'] = self.show_base
         merge = self.merge_type(**kwargs)
         return len(merge.cooked_conflicts)
 
