@@ -180,27 +180,6 @@ class Merger(object):
         trees = (self.this_basis_tree, self.other_tree)
         return [get_id(tree, file_id) for tree in trees]
 
-    def merge_factory(self, file_id, base, other):
-        if self.merge_type.history_based:
-            if self.show_base is True:
-                raise BzrError("Cannot show base for hisory-based merges")
-            if self.reprocess is True:
-                raise BzrError("Cannot reprocess history-based merges")
-                
-            t_revid, o_revid = self.file_revisions(file_id)
-            weave = self.this_basis_tree.get_weave(file_id)
-            contents_change = self.merge_type(weave, t_revid, o_revid)
-        else:
-            if self.show_base is True or self.reprocess is True:
-                contents_change = self.merge_type(file_id, base, other, 
-                                                  show_base=self.show_base, 
-                                                  reprocess=self.reprocess)
-            else:
-                contents_change = self.merge_type(file_id, base, other)
-        if self.backup_files:
-            contents_change = BackupBeforeChange(contents_change)
-        return contents_change
-
     def check_basis(self, check_clean):
         if self.this_basis is None:
             raise BzrCommandError("This branch has no commits")
