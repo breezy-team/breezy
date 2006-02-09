@@ -64,6 +64,11 @@ class TreeTransform(object):
         self._limbodir = control_files.controlfilename('limbo')
         os.mkdir(self._limbodir)
 
+    def __get_root(self):
+        return self._new_root
+
+    root = property(__get_root)
+
     def finalize(self):
         """Release the working tree lock, if held."""
         if self._tree is None:
@@ -281,7 +286,7 @@ class TreeTransform(object):
     def new_paths(self):
         """Determine the paths of all new and changed files"""
         new_ids = set()
-        fp = FinalPaths(self._new_root, self)
+        fp = FinalPaths(self)
         for id_set in (self._new_name, self._new_parent, self._new_contents,
                        self._new_id, self._new_executability):
             new_ids.update(id_set)
@@ -749,18 +754,17 @@ class FinalPaths(object):
     The underlying tree must not be manipulated between calls, or else
     the results will likely be incorrect.
     """
-    def __init__(self, root, transform):
+    def __init__(self, transform):
         object.__init__(self)
-        self.root = root
         self._known_paths = {}
         self.transform = transform
 
     def _determine_path(self, trans_id):
-        if trans_id == self.root:
+        if trans_id == self.transform.root:
             return ""
         name = self.transform.final_name(trans_id)
         parent_id = self.transform.final_parent(trans_id)
-        if parent_id == self.root:
+        if parent_id == self.transform.root:
             return name
         else:
             return os.path.join(self.get_path(parent_id), name)
@@ -1165,9 +1169,9 @@ class Merge3Merger(object):
                     self.tt.delete_contents(trans_id)
                 else:
                     self.tt.cancel_versioning(trans_id)
-                self.conflicts.append(('contents conflict', (file_id)))
                 file_group = self._dump_conflicts(name, parent_id, file_id, 
                                                   set_version=True)
+                self.conflicts.append(('contents conflict', file_group))
 
     def get_lines(self, tree, file_id):
         if file_id in tree:
@@ -1210,7 +1214,7 @@ class Merge3Merger(object):
         merge3_iterator = iter_merge3(retval)
         self.tt.create_file(merge3_iterator, trans_id)
         if retval["text_conflicts"] is True:
-            self.conflicts.append(('text conflict', (file_id)))
+            self.conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
             file_group = self._dump_conflicts(name, parent_id, file_id, 
@@ -1285,23 +1289,51 @@ class Merge3Merger(object):
     def cook_conflicts(self):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
         name_conflicts = {}
-        for conflict_type, trans_id, this, other in self.conflicts:
+        fp = FinalPaths(self.tt)
+        for conflict in self.conflicts:
+            conflict_type = conflict[0]
             if conflict_type in ('name conflict', 'parent conflict'):
+                trans_id = conflict[1]
+                conflict_args = conflict[2:]
                 if trans_id not in name_conflicts:
                     name_conflicts[trans_id] = {}
                 unique_add(name_conflicts[trans_id], conflict_type, 
-                           (this, other))
+                           conflict_args)
+            if conflict_type == 'contents conflict':
+                for trans_id in conflict[1]:
+                    file_id = self.tt.final_file_id(trans_id)
+                    if file_id is not None:
+                        break
+                path = fp.get_path(trans_id)
+                for suffix in ('.BASE', '.THIS', '.OTHER'):
+                    if path.endswith(suffix):
+                        path = path[:-len(suffix)]
+                        break
+                self.cooked_conflicts.append((conflict_type, file_id, path))
+            if conflict_type == 'text conflict':
+                trans_id = conflict[1]
+                path = fp.get_path(trans_id)
+                file_id = self.tt.final_file_id(trans_id)
+                self.cooked_conflicts.append((conflict_type, file_id, path))
+
         for trans_id, conflicts in name_conflicts.iteritems():
             try:
-                this_parent, other_parent = conflicts['parent_conflict']
+                this_parent, other_parent = conflicts['parent conflict']
+                assert this_parent != other_parent
             except KeyError:
                 this_parent = other_parent = \
-                    self.tt.final_file_id(self.tt.final_parent(trans_id)
+                    self.tt.final_file_id(self.tt.final_parent(trans_id))
             try:
-                this_name, other_name = conflicts['name_conflict']
+                this_name, other_name = conflicts['name conflict']
+                assert this_name != other_name
             except KeyError:
                 this_name = other_name = self.tt.final_name(trans_id)
-
+            other_path = fp.get_path(trans_id)
+            this_parent_path = fp.get_path(self.tt.get_trans_id(this_parent))
+            this_path = os.path.join(this_parent_path, this_name)
+            file_id = self.tt.final_file_id(trans_id)
+            self.cooked_conflicts.append(('path conflict', file_id, this_path, 
+                                         other_path))
             
 
 class WeaveMerger(Merge3Merger):
@@ -1333,7 +1365,7 @@ class WeaveMerger(Merge3Merger):
         conflicts = '<<<<<<<\n' in lines
         self.tt.create_file(lines, trans_id)
         if conflicts:
-            self.conflicts.append(('text conflict', (file_id)))
+            self.conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
             file_group = self._dump_conflicts(name, parent_id, file_id, 
@@ -1367,6 +1399,6 @@ class Diff3Merger(Merge3Merger):
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
                 self._dump_conflicts(name, parent_id, file_id)
-            self.conflicts.append(('text conflict', (file_id)))
+            self.conflicts.append(('text conflict', trans_id))
         finally:
             rmtree(temp_dir)
