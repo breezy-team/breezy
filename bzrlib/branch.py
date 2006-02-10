@@ -1165,8 +1165,7 @@ class BzrBranch(Branch):
         to have a single line per file/directory, and to have
         fileid="" and revision="" on that line.
         """
-        assert (isinstance(self._branch_format, BzrBranchFormat5) or
-                isinstance(self._branch_format, BzrBranchFormat6)), \
+        assert isinstance(self._branch_format, (BzrBranchFormat5, BzrBranchFormat6, BzrBranchFormat7_escape)), \
             "fileid_involved only supported for branches which store inventory as xml"
 
         w = self.repository.get_inventory_weave()

@@ -520,7 +520,8 @@ class Merger(object):
             entry = old_entries[file_id]
             path = id2path(file_id)
             new_inventory[file_id] = (path, file_id, entry.parent_id, 
-                                      entry.kind)
+                                      entry.kind,
+                                      getattr(entry, 'executable', False))
             by_path[path] = file_id
         
         deletions = 0
@@ -543,7 +544,7 @@ class Merger(object):
                 parent = by_path[os.path.dirname(path)]
             abspath = pathjoin(self.this_tree.basedir, path)
             kind = bzrlib.osutils.file_kind(abspath)
-            new_inventory[file_id] = (path, file_id, parent, kind)
+            new_inventory[file_id] = (path, file_id, parent, kind, False)
             by_path[path] = file_id 
 
         # Get a list in insertion order

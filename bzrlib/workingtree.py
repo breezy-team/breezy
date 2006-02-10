@@ -951,7 +951,7 @@ class WorkingTree(bzrlib.tree.Tree):
                                       InventoryFile,
                                       InventoryLink)
         inv = Inventory(self.get_root_id())
-        for path, file_id, parent, kind in new_inventory_list:
+        for path, file_id, parent, kind, executable in new_inventory_list:
             name = os.path.basename(path)
             if name == "":
                 continue
@@ -959,7 +959,9 @@ class WorkingTree(bzrlib.tree.Tree):
             if kind == 'directory':
                 inv.add(InventoryDirectory(file_id, name, parent))
             elif kind == 'file':
-                inv.add(InventoryFile(file_id, name, parent))
+                ie = InventoryFile(file_id, name, parent)
+                ie.executable = executable
+                inv.add(ie)
             elif kind == 'symlink':
                 inv.add(InventoryLink(file_id, name, parent))
             else:
