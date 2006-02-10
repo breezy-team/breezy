@@ -496,15 +496,15 @@ class Merge3Merger(object):
                 if file_id in self.this_tree:
                     # Remove any existing contents
                     self.tt.delete_contents(trans_id)
-                if file_id in self.other_tree.inventory:
+                if file_id in self.other_tree:
                     # OTHER changed the file
                     create_by_entry(self.tt, 
                                     self.other_tree.inventory[file_id], 
                                     self.other_tree, trans_id)
-                    if file_id not in self.this_tree:
+                    if file_id not in self.this_tree.inventory:
                         self.tt.version_file(file_id, trans_id)
                     return "modified"
-                elif file_id in self.this_tree:
+                elif file_id in self.this_tree.inventory:
                     # OTHER deleted the file
                     self.tt.unversion_file(trans_id)
                     return "deleted"
@@ -513,7 +513,7 @@ class Merge3Merger(object):
                 # THIS and OTHER are both files, so text merge.  Either
                 # BASE is a file, or both converted to files, so at least we
                 # have agreement that output should be a file.
-                if file_id not in self.this_tree:
+                if file_id not in self.this_tree.inventory:
                     self.tt.version_file(file_id, trans_id)
                 self.text_merge(file_id, trans_id)
                 return "modified"
