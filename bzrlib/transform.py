@@ -138,7 +138,8 @@ class TreeTransform(object):
         This reflects only files that already exist, not ones that will be
         added by transactions.
         """
-        return self.get_tree_path_id(self._tree.id2path(inventory_id))
+        path = self._tree.inventory.id2path(inventory_id)
+        return self.get_tree_path_id(path)
 
     def get_trans_id(self, file_id):
         """\
@@ -273,6 +274,7 @@ class TreeTransform(object):
 
     def version_file(self, file_id, trans_id):
         """Schedule a file to become versioned."""
+        assert file_id is not None
         unique_add(self._new_id, trans_id, file_id)
         unique_add(self._r_new_id, file_id, trans_id)
 
@@ -334,7 +336,7 @@ class TreeTransform(object):
         # the file is old; the old id is still valid
         if self._new_root == trans_id:
             return self._tree.inventory.root.file_id
-        return self._tree.path2id(path)
+        return self._tree.inventory.path2id(path)
 
     def final_file_id(self, trans_id):
         """\
@@ -345,11 +347,26 @@ class TreeTransform(object):
         """
         try:
             # there is a new id for this file
+            assert self._new_id[trans_id] is not None
             return self._new_id[trans_id]
         except KeyError:
             if trans_id in self._removed_id:
                 return None
         return self.get_tree_file_id(trans_id)
+
+
+    def inactive_file_id(self, trans_id):
+        """Returns the inactive file_id associated with a transaction id.
+        That is, the one in the tree or in non_present_ids.
+        The file_id may actually be active, too.
+        """
+        file_id = self.get_tree_file_id(trans_id)
+        if file_id is not None:
+            return file_id
+        for key, value in self._non_present_ids.iteritems():
+            if value == trans_id:
+                return key
+
 
     def final_parent(self, trans_id):
         """\
@@ -984,4 +1001,4 @@ def conflict_pass(tt, conflicts):
             except KeyError:
                 tt.create_directory(trans_id)
         elif c_type == 'unversioned parent':
-            tt.version_file(tt.get_tree_file_id(conflict[1]), conflict[1])
+            tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
