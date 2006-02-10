@@ -19,13 +19,15 @@
 # TODO: test reporting of http errors
 
 from StringIO import StringIO
+
 import pycurl
 
 from bzrlib.trace import mutter
-from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
+from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError)
 from bzrlib.transport import Transport
 from bzrlib.transport.http import HttpTransportBase
+
 
 class PyCurlTransport(HttpTransportBase):
     """http client transport using pycurl
@@ -46,10 +48,8 @@ class PyCurlTransport(HttpTransportBase):
 
         abspath = self.abspath(relpath)
         if isinstance(abspath, unicode):
-            # probably should raise an error instead; transport paths should
-            # always simply be ascii.
-            abspath = abspath.encode('ascii')
-
+            raise ValueError("paths passed to Transport must be plain strings: "
+                    + `abspath`)
         self.curl.setopt(pycurl.URL, abspath)
         self._set_curl_cache_headers()
         # don't want the body - ie just do a HEAD request
