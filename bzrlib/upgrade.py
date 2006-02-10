@@ -128,14 +128,12 @@ class Convert(object):
         self.pb = ui_factory.progress_bar()
         if isinstance(self.old_format, BzrDirFormat4):
             note('starting upgrade from format 4 to 5')
+            if isinstance(self.transport, LocalTransport):
+                self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
             self._convert_to_weaves()
         if isinstance(self.old_format, BzrDirFormat5):
             note('starting upgrade from format 5 to 6')
             self._convert_to_prefixed()
-        if isinstance(self.transport, LocalTransport):
-            cache = hashcache.HashCache(abspath(self.base))
-            cache.clear()
-            cache.write()
         note("finished")
 
     def _convert_to_prefixed(self):

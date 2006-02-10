@@ -32,7 +32,7 @@ CACHE_HEADER = "### bzr hashcache v5\n"
 import os, stat, time
 import sha
 
-from bzrlib.osutils import sha_file, pathjoin
+from bzrlib.osutils import sha_file, pathjoin, safe_unicode
 from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.errors import BzrError
@@ -94,9 +94,9 @@ class HashCache(object):
     """
     needs_write = False
 
-    def __init__(self, basedir, mode=None):
+    def __init__(self, root, cache_file_name, mode=None):
         """Create a hash cache in base dir, and set the file mode to mode."""
-        self.basedir = basedir
+        self.root = safe_unicode(root)
         self.hit_count = 0
         self.miss_count = 0
         self.stat_count = 0
@@ -105,11 +105,10 @@ class HashCache(object):
         self.update_count = 0
         self._cache = {}
         self._mode = mode
+        self._cache_file_name = safe_unicode(cache_file_name)
 
     def cache_file_name(self):
-        # FIXME: duplicate path logic here, this should be 
-        # something like 'branch.controlfile'.
-        return pathjoin(self.basedir, '.bzr', 'stat-cache')
+        return self._cache_file_name
 
     def clear(self):
         """Discard all cached information.
@@ -118,7 +117,6 @@ class HashCache(object):
         if self._cache:
             self.needs_write = True
             self._cache = {}
-
 
     def scan(self):
         """Scan all files and remove entries where the cache entry is obsolete.
@@ -132,7 +130,7 @@ class HashCache(object):
         prep.sort()
         
         for inum, path, cache_entry in prep:
-            abspath = pathjoin(self.basedir, path)
+            abspath = pathjoin(self.root, path)
             fp = _fingerprint(abspath)
             self.stat_count += 1
             
@@ -148,7 +146,7 @@ class HashCache(object):
     def get_sha1(self, path):
         """Return the sha1 of a file.
         """
-        abspath = pathjoin(self.basedir, path)
+        abspath = pathjoin(self.root, path)
         self.stat_count += 1
         file_fp = _fingerprint(abspath)
         

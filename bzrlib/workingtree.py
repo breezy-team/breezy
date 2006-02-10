@@ -187,7 +187,13 @@ class WorkingTree(bzrlib.tree.Tree):
     not listed in the Inventory and vice versa.
     """
 
-    def __init__(self, basedir='.', branch=None, _inventory=None, _control_files=None, _internal=False, _format=None):
+    def __init__(self, basedir='.',
+                 branch=None,
+                 _inventory=None,
+                 _control_files=None,
+                 _internal=False,
+                 _format=None,
+                 _bzrdir=None):
         """Construct a WorkingTree for basedir.
 
         If the branch is not supplied, it is opened automatically.
@@ -196,6 +202,7 @@ class WorkingTree(bzrlib.tree.Tree):
         would be meaningless).
         """
         self._format = _format
+        self.bzrdir = _bzrdir
         if not _internal:
             # created via open etc.
             wt = WorkingTree.open(basedir)
@@ -205,6 +212,7 @@ class WorkingTree(bzrlib.tree.Tree):
             self._hashcache = wt._hashcache
             self._set_inventory(wt._inventory)
             self._format = wt._format
+            self.bzrdir = wt.bzrdir
         from bzrlib.hashcache import HashCache
         from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
@@ -218,17 +226,18 @@ class WorkingTree(bzrlib.tree.Tree):
         self.branch = branch
         self.basedir = realpath(basedir)
         # if branch is at our basedir and is a format 6 or less
-        if (isinstance(self._format, WorkingTreeFormat2)
-            # might be able to share control object
-            and self.branch.base.split('/')[-2] == self.basedir.split('/')[-1]):
+        if isinstance(self._format, WorkingTreeFormat2):
+            # share control object
             self._control_files = self.branch.control_files
         elif _control_files is not None:
             assert False, "not done yet"
 #            self._control_files = _control_files
         else:
-            # FIXME old format use the bzrdir control files.
+            # only ready for format 3
+            assert isinstance(self._format, WorkingTreeFormat3)
             self._control_files = LockableFiles(
-                get_transport(self.basedir).clone(bzrlib.BZRDIR), 'branch-lock')
+                self.bzrdir.get_workingtree_transport(None),
+                'lock')
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -236,7 +245,8 @@ class WorkingTree(bzrlib.tree.Tree):
         # if needed, or, when the cache sees a change, append it to the hash
         # cache file, and have the parser take the most recent entry for a
         # given path only.
-        hc = self._hashcache = HashCache(basedir, self._control_files._file_mode)
+        cache_filename = self.bzrdir.get_workingtree_transport(None).abspath('stat-cache')
+        hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
         hc.read()
         # is this scan needed ? it makes things kinda slow.
         hc.scan()
@@ -1218,13 +1228,13 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                          branch,
                          inv,
                          _internal=True,
-                         _format=self)
+                         _format=self,
+                         _bzrdir=a_bzrdir)
         wt._write_inventory(inv)
         wt.set_root_id(inv.root.file_id)
         wt.set_last_revision(revision)
         wt.set_pending_merges([])
         wt.revert([])
-        wt.bzrdir = a_bzrdir
         return wt
 
     def __init__(self):
@@ -1242,9 +1252,10 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        result = WorkingTree(a_bzrdir.root_transport.base, _internal=True, _format=self)
-        result.bzrdir = a_bzrdir
-        return result
+        return WorkingTree(a_bzrdir.root_transport.base,
+                           _internal=True,
+                           _format=self,
+                           _bzrdir=a_bzrdir)
 
 
 class WorkingTreeFormat3(WorkingTreeFormat):
@@ -1272,13 +1283,13 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          branch,
                          inv,
                          _internal=True,
-                         _format=self)
+                         _format=self,
+                         _bzrdir=a_bzrdir)
         wt._write_inventory(inv)
         wt.set_root_id(inv.root.file_id)
         wt.set_last_revision(revision)
         wt.set_pending_merges([])
         wt.revert([])
-        wt.bzrdir = a_bzrdir
         return wt
 
     def __init__(self):
@@ -1296,9 +1307,10 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        result = WorkingTree(a_bzrdir.root_transport.base, _internal=True, _format=self)
-        result.bzrdir = a_bzrdir
-        return result
+        return WorkingTree(a_bzrdir.root_transport.base,
+                           _internal=True,
+                           _format=self,
+                           _bzrdir=a_bzrdir)
 
 
 # formats which have no format string are not discoverable

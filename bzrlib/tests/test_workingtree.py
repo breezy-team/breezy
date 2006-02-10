@@ -150,3 +150,32 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         self.assertEqual(format.open(dir), workingtree.WorkingTree.open_downlevel('.'))
         # unregister the format
         workingtree.WorkingTreeFormat.unregister_format(format)
+
+
+class TestWorkingTreeFormat3(TestCaseWithTransport):
+    """Tests specific to WorkingTreeFormat3."""
+
+    def test_disk_layout(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        control.create_repository()
+        control.create_branch()
+        tree = workingtree.WorkingTreeFormat3().initialize(control)
+        # we want:
+        # format 'Bazaar-NG Working Tree format 3'
+        # lock ''
+        # inventory = blank inventory
+        # pending-merges = ''
+        # stat-cache = ??
+        # no inventory.basis yet
+        t = control.get_workingtree_transport(None)
+        self.assertEqualDiff('Bazaar-NG Working Tree format 3',
+                             t.get('format').read())
+        self.assertEqualDiff('', t.get('lock').read())
+        self.assertEqualDiff('<inventory format="5">\n'
+                             '</inventory>\n',
+                             t.get('inventory').read())
+        self.assertEqualDiff('### bzr hashcache v5\n',
+                             t.get('stat-cache').read())
+        self.assertFalse(t.has('inventory.basis'))
+        # TODO RBC 20060210 do a commit, check the inventory.basis is created 
+        # correctly.
