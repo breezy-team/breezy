@@ -18,6 +18,10 @@ bzr development version
       reflect user config now being stored in .bazaar (Hans Ulrich
       Niedermann)
 
+    * It's now possible to set aliases in bazaar.conf (Erik Bågfors)
+
+    * Pull now accepts a --revision argument (Erik Bågfors)
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now
@@ -30,12 +34,6 @@ bzr development version
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
       for testing SFTP protocol support. (Robey Pointer)
 
-  IMPROVEMENTS:
-    * It's now possible to set aliases in bazaar.conf (Erik Bågfors)
-
-  IMPROVEMENTS:
-
-    * pull now accepts a --revision argument (Erik Bågfors)
 
 
 bzr 0.7rc1 2006-01-09
