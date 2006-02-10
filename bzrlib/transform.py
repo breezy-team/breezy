@@ -669,10 +669,7 @@ class TreeTransform(object):
             if trans_id in self._new_id:
                 if kind is None:
                     kind = file_kind(self._tree.abspath(path))
-                try:
-                    inv.add_path(path, kind, self._new_id[trans_id])
-                except:
-                    raise repr((path, kind, self._new_id[trans_id]))
+                inv.add_path(path, kind, self._new_id[trans_id])
             elif trans_id in self._new_name or trans_id in self._new_parent:
                 entry = limbo_inv.get(trans_id)
                 if entry is not None:
