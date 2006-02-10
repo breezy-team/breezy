@@ -64,6 +64,15 @@ class TestHttpConnections(TestCaseWithWebserver):
     def test_http_has(self):
         t = HttpTransport(self.server.get_url())
         self.assertEqual(t.has('foo/bar'), True)
+        self.assertEqual(len(self.server.logs), 1)
+        self.assertTrue(self.server.logs[0].endswith(
+            '"HEAD /foo/bar HTTP/1.1" 200 - "-" "bzr/%s"'
+            % bzrlib.__version__))
+
+        self.assertEqual(t.has('not-found'), False)
+        self.assertTrue(self.server.logs[-1].endswith(
+            '"HEAD /not-found HTTP/1.1" 404 - "-" "bzr/%s"'
+            % bzrlib.__version__))
 
     def test_http_get(self):
         t = HttpTransport(self.server.get_url())

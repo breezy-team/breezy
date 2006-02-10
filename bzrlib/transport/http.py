@@ -61,8 +61,19 @@ def extract_auth(url, password_manager):
             password_manager.add_password(None, host, username, password)
     url = scheme + '//' + host + port + path
     return url
-    
-def get_url(url):
+
+class Request(urllib2.Request):
+    """Request object for urllib2 that allows the method to be overridden."""
+
+    method = None
+
+    def get_method(self):
+        if self.method is not None:
+            return self.method
+        else:
+            return urllib2.Request.get_method(self)
+
+def get_url(url, method=None):
     import urllib2
     mutter("get_url %s" % url)
     manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
@@ -70,7 +81,8 @@ def get_url(url):
     auth_handler = urllib2.HTTPBasicAuthHandler(manager)
     opener = urllib2.build_opener(auth_handler)
 
-    request = urllib2.Request(url)
+    request = Request(url)
+    request.method = method
     request.add_header('User-Agent', 'bzr/%s' % bzrlib.__version__)
     response = opener.open(request)
     return response
@@ -150,9 +162,6 @@ class HttpTransport(Transport):
     def has(self, relpath):
         """Does the target location exist?
 
-        TODO: HttpTransport.has() should use a HEAD request,
-        not a full GET request.
-
         TODO: This should be changed so that we don't use
         urllib2 and get an exception, the code path would be
         cleaner if we just do an http HEAD request, and parse
@@ -161,7 +170,7 @@ class HttpTransport(Transport):
         path = relpath
         try:
             path = self.abspath(relpath)
-            f = get_url(path)
+            f = get_url(path, method='HEAD')
             # Without the read and then close()
             # we tend to have busy sockets.
             f.read()
