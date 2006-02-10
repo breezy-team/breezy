@@ -168,13 +168,13 @@ class Command(object):
         List of argument forms, marked with whether they are optional,
         repeated, etc.
 
-		Examples:
+                Examples:
 
-		['to_location', 'from_branch?', 'file*']
+                ['to_location', 'from_branch?', 'file*']
 
-		'to_location' is required
-		'from_branch' is optional
-		'file' can be specified 0 or more times
+                'to_location' is required
+                'from_branch' is optional
+                'file' can be specified 0 or more times
 
     takes_options
         List of options that may be given for this command.  These can
@@ -520,6 +520,9 @@ def run_bzr(argv):
     if not opt_no_plugins:
         from bzrlib.plugin import load_plugins
         load_plugins()
+    else:
+        from bzrlib.plugin import disable_plugins
+        disable_plugins()
 
     cmd = str(argv.pop(0))
 

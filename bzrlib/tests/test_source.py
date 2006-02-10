@@ -55,11 +55,9 @@ class TestApiUsage(TestCase):
         # do not even think of increasing this number. If you think you need to
         # increase it, then you almost certainly are doing something wrong as
         # the relationship from working_tree to branch is one way.
-        # This number should be 0, but the basis_inventory merge was done
-        # before this test was written. Note that this is an exact equality
-        # so that when the number drops, it is not given a buffer but rather
-        # this test updated immediately.
-        self.assertEqual(2, occurences)
+        # Note that this is an exact equality so that when the number drops, 
+        #it is not given a buffer but rather has this test updated immediately.
+        self.assertEqual(0, occurences)
 
     def test_branch_WorkingTree(self):
         """Test that the number of uses of working_tree in branch is stable."""
@@ -74,4 +72,4 @@ class TestApiUsage(TestCase):
         # written. Note that this is an exact equality so that when the number
         # drops, it is not given a buffer but rather this test updated
         # immediately.
-        self.assertEqual(6, occurences)
+        self.assertEqual(9, occurences)

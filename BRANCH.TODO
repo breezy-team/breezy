@@ -1,3 +1,30 @@
 # This file is for listing TODOs for branches that are being worked on.
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
+
+When merging:
+ * add news - fixed --one with testskipped
+   branch formats are now tested uniformly, preventing regressions as new
+   formats come online.
+ * add news upgrade on url works
+ * add testing news - branch_implementations
+ * add testing news - testcasewithtransport
+ * add testing news skips with --one
+ * document WorkingTree.create, branch.create, workingtree.create_standalone, branch.init deprecation.
+
+Before:
+ * cleanup remnans of check_format in the BzrBranch constructor.
+ * branch.clone duplicate code addressing 
+ * do the following
+ 14:38 < lifeless> core use cases:
+ 14:38 < lifeless>  * new LOD from a tree or branch - dont care about the trees content, would care about its last revision.
+ 14:39 < lifeless>  * new LOD and content checkedout in place from a tree or branch - again, only would use tree to find last revision.
+ 14:40 < lifeless> so, rather than four apis (wt.branch_to, wt.branch_to_working_tree, branch.branch_to, etc.
+ 14:40 < lifeless> I think this is a MetaDir operation - or some such.
+ But I cant think where so I'll stash it as functions in branch.py and working_tree.py with 
+ 'fixmes: find a home'
+ 14:41 < lifeless> the one in branch.py will be the one that *makes* a branch, ditto that in working tree that makes a branch and tree
+
+ * NoRepository error for bzrdir.open_repository()
+
+ * check to use BzrDir 

@@ -15,12 +15,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-from bzrlib.tests import TestCaseInTempDir
-from bzrlib.errors import BzrCommandError, NoSuchRevision
-from bzrlib.branch import Branch
-from bzrlib.revisionspec import RevisionSpec
 
-class TestRevisionInfo(TestCaseInTempDir):
+from bzrlib.errors import BzrCommandError, NoSuchRevision
+from bzrlib.tests import TestCaseWithTransport
+from bzrlib.revisionspec import RevisionSpec
+from bzrlib.workingtree import WorkingTree
+
+
+class TestRevisionInfo(TestCaseWithTransport):
     
     def check_error(self, output, *args):
         """Verify that the expected error matches what bzr says.
@@ -39,14 +41,12 @@ class TestRevisionInfo(TestCaseInTempDir):
         self.assertEquals(self.run_bzr_captured(args)[0], output)
 
     def test_revision_info(self):
-        """Test that 'bzr revision-info' reports the correct thing.
-        """
+        """Test that 'bzr revision-info' reports the correct thing."""
+        wt = self.make_branch_and_tree('.')
 
-        b = Branch.initialize(u'.')
-
-        b.working_tree().commit('Commit one', rev_id='a@r-0-1')
-        b.working_tree().commit('Commit two', rev_id='a@r-0-2')
-        b.working_tree().commit('Commit three', rev_id='a@r-0-3')
+        wt.commit('Commit one', rev_id='a@r-0-1')
+        wt.commit('Commit two', rev_id='a@r-0-2')
+        wt.commit('Commit three', rev_id='a@r-0-3')
 
         # Make sure revision-info without any arguments throws an exception
         self.check_error('bzr: ERROR: '
@@ -85,16 +85,17 @@ class TestRevisionInfo(TestCaseInTempDir):
     def test_cat_revision(self):
         """Test bzr cat-revision.
         """
-        b = Branch.initialize(u'.')
+        wt = self.make_branch_and_tree('.')
+        r = wt.branch.repository
 
-        b.working_tree().commit('Commit one', rev_id='a@r-0-1')
-        b.working_tree().commit('Commit two', rev_id='a@r-0-2')
-        b.working_tree().commit('Commit three', rev_id='a@r-0-3')
+        wt.commit('Commit one', rev_id='a@r-0-1')
+        wt.commit('Commit two', rev_id='a@r-0-2')
+        wt.commit('Commit three', rev_id='a@r-0-3')
 
         revs = {
-            1:b.get_revision_xml('a@r-0-1'),
-            2:b.get_revision_xml('a@r-0-2'),
-            3:b.get_revision_xml('a@r-0-3')
+            1:r.get_revision_xml('a@r-0-1'),
+            2:r.get_revision_xml('a@r-0-2'),
+            3:r.get_revision_xml('a@r-0-3'),
         }
 
         self.check_output(revs[1], 'cat-revision', 'a@r-0-1')

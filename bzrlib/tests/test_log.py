@@ -17,7 +17,7 @@
 import os
 from cStringIO import StringIO
 
-from bzrlib.tests import BzrTestBase, TestCaseInTempDir
+from bzrlib.tests import BzrTestBase, TestCaseWithTransport
 from bzrlib.log import LogFormatter, show_log, LongLogFormatter, ShortLogFormatter
 from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionNumber
@@ -49,7 +49,7 @@ class LogCatcher(LogFormatter):
         self.logs.append(le)
 
 
-class SimpleLogTest(TestCaseInTempDir):
+class SimpleLogTest(TestCaseWithTransport):
 
     def checkDelta(self, delta, **kw):
         """Check the filenames touched by a delta are as expected."""
@@ -65,10 +65,11 @@ class SimpleLogTest(TestCaseInTempDir):
             self.assertEquals(expected, got)
 
     def test_cur_revno(self):
-        b = Branch(u'.', init=True)
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
 
         lf = LogCatcher()
-        b.working_tree().commit('empty commit')
+        wt.commit('empty commit')
         show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
         self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
                           start_revision=2, end_revision=1) 
@@ -84,10 +85,11 @@ class SimpleLogTest(TestCaseInTempDir):
                           start_revision=1, end_revision=-1) 
 
     def test_cur_revno(self):
-        b = Branch.initialize(u'.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
 
         lf = LogCatcher()
-        b.working_tree().commit('empty commit')
+        wt.commit('empty commit')
         show_log(b, lf, verbose=True, start_revision=1, end_revision=1)
         self.assertRaises(InvalidRevisionNumber, show_log, b, lf,
                           start_revision=2, end_revision=1) 
@@ -105,14 +107,15 @@ class SimpleLogTest(TestCaseInTempDir):
     def test_simple_log(self):
         eq = self.assertEquals
         
-        b = Branch.initialize(u'.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
 
         lf = LogCatcher()
         show_log(b, lf)
         # no entries yet
         eq(lf.logs, [])
 
-        b.working_tree().commit('empty commit')
+        wt.commit('empty commit')
         lf = LogCatcher()
         show_log(b, lf, verbose=True)
         eq(len(lf.logs), 1)
@@ -123,8 +126,8 @@ class SimpleLogTest(TestCaseInTempDir):
         self.checkDelta(d)
 
         self.build_tree(['hello'])
-        b.working_tree().add('hello')
-        b.working_tree().commit('add one file')
+        wt.add('hello')
+        wt.commit('add one file')
 
         lf = StringIO()
         # log using regular thing
@@ -152,7 +155,7 @@ class SimpleLogTest(TestCaseInTempDir):
         # commit a log message with control characters
         msg = "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)])
         self.log("original commit message: %r", msg)
-        b.working_tree().commit(msg)
+        wt.commit(msg)
         lf = LogCatcher()
         show_log(b, lf, verbose=True)
         committed_msg = lf.logs[0].rev.message
@@ -167,7 +170,7 @@ class SimpleLogTest(TestCaseInTempDir):
         # valid XML 1.0 characters.
         msg = "\x09" + ''.join([unichr(x) for x in range(0x20, 256)])
         self.log("original commit message: %r", msg)
-        b.working_tree().commit(msg)
+        wt.commit(msg)
         lf = LogCatcher()
         show_log(b, lf, verbose=True)
         committed_msg = lf.logs[0].rev.message
@@ -175,9 +178,9 @@ class SimpleLogTest(TestCaseInTempDir):
         self.assert_(msg == committed_msg)
 
     def test_trailing_newlines(self):
-        b = Branch.initialize(u'.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
         b.nick='test'
-        wt = b.working_tree()
         open('a', 'wb').write('hello moto\n')
         wt.add('a')
         wt.commit('simple log message', rev_id='a1'
@@ -246,9 +249,9 @@ message:
         
         bug #4676
         """
-        b = Branch.initialize(u'.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
         self.build_tree(['a'])
-        wt = b.working_tree()
         wt.add('a')
         # XXX: why does a longer nick show up?
         b.nick = 'test_verbose_log'

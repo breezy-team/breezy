@@ -73,8 +73,8 @@ class bzr_build(build):
     def run(self):
         build.run(self)
 
-        import bzr_man
-        bzr_man.main()
+        import generate_docs
+        generate_docs.main(argv=["bzr", "man"])
 
 ########################
 ## Setup
@@ -88,6 +88,8 @@ setup(name='bzr',
       description='Friendly distributed version control system',
       license='GNU GPL v2',
       packages=['bzrlib',
+                'bzrlib.doc',
+                'bzrlib.doc.api',
                 'bzrlib.export',
                 'bzrlib.plugins',
                 'bzrlib.store',
@@ -103,4 +105,5 @@ setup(name='bzr',
       scripts=['bzr'],
       cmdclass={'install_scripts': my_install_scripts, 'build': bzr_build},
       data_files=[('man/man1', ['bzr.1'])],
+    #   todo: install the txt files from bzrlib.doc.api.
      )

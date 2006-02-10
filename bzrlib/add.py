@@ -20,7 +20,7 @@ import bzrlib.errors as errors
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter, note, warning
 from bzrlib.errors import NotBranchError
-from bzrlib.branch import is_control_file
+from bzrlib.workingtree import is_control_file
 import bzrlib.osutils
 from bzrlib.workingtree import WorkingTree
 

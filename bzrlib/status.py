@@ -15,10 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import sys
-from bzrlib.osutils import is_inside_any
+
 from bzrlib.delta import compare_trees
-from bzrlib.log import line_log
 from bzrlib.errors import NoSuchRevision
+from bzrlib.log import line_log
+from bzrlib.osutils import is_inside_any
+from bzrlib.workingtree import WorkingTree
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
@@ -66,28 +68,26 @@ def show_status(branch, show_unchanged=False,
     try:
         new_is_working_tree = True
         if revision is None:
-            old = branch.basis_tree()
-            new = branch.working_tree()
+            new = WorkingTree(branch.base, branch)
+            old = new.basis_tree()
         elif len(revision) > 0:
             try:
                 rev_id = revision[0].in_history(branch).rev_id
-                old = branch.revision_tree(rev_id)
+                old = branch.repository.revision_tree(rev_id)
             except NoSuchRevision, e:
                 raise BzrCommandError(str(e))
             if len(revision) > 1:
                 try:
                     rev_id = revision[1].in_history(branch).rev_id
-                    new = branch.revision_tree(rev_id)
+                    new = branch.repository.revision_tree(rev_id)
                     new_is_working_tree = False
                 except NoSuchRevision, e:
                     raise BzrCommandError(str(e))
             else:
-                new = branch.working_tree()
+                new = WorkingTree(branch.base, branch)
                 
-
         delta = compare_trees(old, new, want_unchanged=show_unchanged,
                               specific_files=specific_files)
-
         delta.show(to_file,
                    show_ids=show_ids,
                    show_unchanged=show_unchanged)
@@ -109,20 +109,20 @@ def show_pending_merges(new, to_file):
     print >>to_file, 'pending merges:'
     last_revision = branch.last_revision()
     if last_revision is not None:
-        ignore = set(branch.get_ancestry(last_revision))
+        ignore = set(branch.repository.get_ancestry(last_revision))
     else:
         ignore = set()
     for merge in new.pending_merges():
         ignore.add(merge)
         try:
-            m_revision = branch.get_revision(merge)
+            m_revision = branch.repository.get_revision(merge)
             print >> to_file, ' ', line_log(m_revision, 77)
-            inner_merges = branch.get_ancestry(merge)
+            inner_merges = branch.repository.get_ancestry(merge)
             inner_merges.reverse()
             for mmerge in inner_merges:
                 if mmerge in ignore:
                     continue
-                mm_revision = branch.get_revision(mmerge)
+                mm_revision = branch.repository.get_revision(mmerge)
                 print >> to_file, '   ', line_log(mm_revision, 75)
                 ignore.add(mmerge)
         except NoSuchRevision:

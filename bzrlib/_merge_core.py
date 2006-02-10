@@ -1,12 +1,14 @@
+from os import fdopen
 import os.path
+from tempfile import mkstemp
 
-import changeset
-from changeset import Inventory, apply_changeset, invert_dict
+from bzrlib import _changeset
+from bzrlib._changeset import Inventory, apply_changeset, invert_dict
 from bzrlib.osutils import backup_file, rename, pathjoin
 from bzrlib.merge3 import Merge3
 import bzrlib
 from bzrlib.atomicfile import AtomicFile
-from changeset import get_contents
+from bzrlib._changeset import get_contents
 
 
 class ApplyMerge3:
@@ -37,7 +39,9 @@ class ApplyMerge3:
         return not (self == other)
 
     def apply(self, filename, conflict_handler):
-        new_file = filename+".new" 
+        output_file, new_file = mkstemp(dir=os.path.dirname(filename),
+                                        prefix=os.path.basename(filename))
+        output_file = fdopen(output_file, 'wb')
         base = self.base
         other = self.other
         def get_lines(tree):
@@ -50,7 +54,6 @@ class ApplyMerge3:
         m3 = Merge3(base_lines, file(filename, "rb").readlines(), other_lines)
 
         new_conflicts = False
-        output_file = file(new_file, "wb")
         start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
         if self.show_base is True:
             base_marker = '|' * 7
@@ -168,7 +171,7 @@ def merge_flex(this, base, other, changeset_function, inventory_function,
 
 def make_merge_changeset(cset, this, base, other, 
                          conflict_handler, merge_factory):
-    new_cset = changeset.Changeset()
+    new_cset = _changeset.Changeset()
 
     for entry in cset.entries.itervalues():
         if entry.is_boring():
@@ -252,7 +255,7 @@ def make_merged_entry(entry, this, base, other, conflict_handler):
 
     old_path = get_path(old_name, old_parent)
         
-    new_entry = changeset.ChangesetEntry(entry.id, old_parent, old_path)
+    new_entry = _changeset.ChangesetEntry(entry.id, old_parent, old_path)
     new_entry.new_path = get_path(new_name, new_parent)
     new_entry.new_parent = new_parent
     mutter(repr(new_entry))
@@ -274,7 +277,7 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
                                                       other.id2path(entry.id))
         return merge_factory(entry.id, base, other)
 
-    if isinstance(contents, changeset.ReplaceContents):
+    if isinstance(contents, _changeset.ReplaceContents):
         base_contents = contents.old_contents
         other_contents = contents.new_contents
         if base_contents is None and other_contents is None:
@@ -298,8 +301,8 @@ def make_merged_contents(entry, this, base, other, conflict_handler,
                 else:
                     conflict_handler.new_contents_conflict(this_path, 
                         other_contents)
-        elif isinstance(base_contents, changeset.TreeFileCreate) and \
-            isinstance(other_contents, changeset.TreeFileCreate):
+        elif isinstance(base_contents, _changeset.TreeFileCreate) and \
+            isinstance(other_contents, _changeset.TreeFileCreate):
             return make_merge()
         else:
             this_contents = get_contents(this, entry.id)
@@ -320,7 +323,7 @@ def make_merged_metadata(entry, base, other):
     metadata = entry.metadata_change
     if metadata is None:
         return None
-    assert isinstance(metadata, changeset.ChangeExecFlag)
+    assert isinstance(metadata, _changeset.ChangeExecFlag)
     if metadata.new_exec_flag is None:
         return None
     elif metadata.old_exec_flag is None:

@@ -140,6 +140,14 @@ class NoWorkingTree(BzrNewError):
         self.base = base
 
 
+class NotLocalUrl(BzrNewError):
+    """%s(url) is not a local path."""
+    
+    def __init__(self, url):
+        BzrNewError.__init__(self)
+        self.url = url
+
+
 class BzrCommandError(BzrError):
     # Error from malformed user command
     # This is being misused as a generic exception
@@ -203,8 +211,16 @@ class NotBranchError(BzrNewError):
         self.path = path
 
 
+class NoRepositoryPresent(BzrNewError):
+    """Not repository present: %(path)r"""
+    def __init__(self, bzrdir):
+        BzrNewError.__init__(self)
+        self.path = bzrdir.transport.clone('..').base
+
+
 class FileInWrongBranch(BzrNewError):
     """File %(path)s in not in branch %(branch_base)s."""
+
     def __init__(self, branch, path):
         BzrNewError.__init__(self)
         self.branch = branch
@@ -213,9 +229,24 @@ class FileInWrongBranch(BzrNewError):
 
 
 class UnsupportedFormatError(BzrError):
-    """Specified path is a bzr branch that we cannot read."""
+    """Specified path is a bzr branch that we recognize but cannot read."""
     def __str__(self):
         return 'unsupported branch format: %s' % self.args[0]
+
+
+class UnknownFormatError(BzrError):
+    """Specified path is a bzr branch whose format we do not recognize."""
+    def __str__(self):
+        return 'unknown branch format: %s' % self.args[0]
+
+
+class IncompatibleFormat(BzrNewError):
+    """Format %(format)s is not compatible with .bzr version %(bzrdir)s."""
+
+    def __init__(self, format, bzrdir_format):
+        BzrNewError.__init__(self)
+        self.format = format
+        self.bzrdir = bzrdir_format
 
 
 class NotVersionedError(BzrNewError):
@@ -257,8 +288,14 @@ class ReadOnlyError(LockError):
 class PointlessCommit(BzrNewError):
     """No changes to commit"""
 
+
+class UpgradeReadonly(BzrNewError):
+    """Upgrade URL cannot work with readonly URL's."""
+
+
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
+
 
 class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):
@@ -376,6 +413,16 @@ class WeaveInvalidChecksum(WeaveError):
     """Text did not match it's checksum: %(message)s"""
 
 
+class WeaveTextDiffers(WeaveError):
+    """Weaves differ on text content. Revision: {%(revision_id)s}, %(weave_a)s, %(weave_b)s"""
+
+    def __init__(self, revision_id, weave_a, weave_b):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave_a = weave_a
+        self.weave_b = weave_b
+
+
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""
     def __init__(self, format):
@@ -463,6 +510,7 @@ class MustUseDecorated(Exception):
     This should never escape bzr, so does not need to be printable.
     """
 
+
 class MissingText(BzrNewError):
     """Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"""
 
@@ -475,8 +523,45 @@ class MissingText(BzrNewError):
 
 
 class BzrBadParameter(BzrNewError):
-    """Parameter %(param)s is neither unicode nor utf8."""
+    """A bad parameter : %(param)s is not usable.
     
+    This exception should never be thrown, but it is a base class for all
+    parameter-to-function errors.
+    """
     def __init__(self, param):
         BzrNewError.__init__(self)
         self.param = param
+
+
+class BzrBadParameterNotUnicode(BzrBadParameter):
+    """Parameter %(param)s is neither unicode nor utf8."""
+
+
+class BzrBadParameterNotString(BzrBadParameter):
+    """Parameter %(param)s is not a string or unicode string."""
+
+
+class BzrBadParameterMissing(BzrBadParameter):
+    """Parameter $(param)s is required but not present."""
+
+
+class DependencyNotPresent(BzrNewError):
+    """Unable to import library: %(library)s, %(error)s"""
+
+    def __init__(self, library, error):
+        BzrNewError.__init__(self, library=library, error=error)
+
+
+class ParamikoNotPresent(DependencyNotPresent):
+    """Unable to import paramiko (required for sftp support): %(error)s"""
+
+    def __init__(self, error):
+        DependencyNotPresent.__init__(self, 'paramiko', error)
+
+
+class UninitializableFormat(BzrNewError):
+    """Format %(format)s cannot be initialised by this version of bzr."""
+
+    def __init__(self, format):
+        BzrNewError.__init__(self)
+        self.format = format

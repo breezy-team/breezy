@@ -18,11 +18,12 @@ import os
 import socket
 import threading
 
-from bzrlib.branch import Branch
+import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin, lexists
-from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
+from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
 import bzrlib.transport
+from bzrlib.workingtree import WorkingTree
 
 try:
     import paramiko
@@ -31,7 +32,7 @@ except ImportError:
     paramiko_loaded = False
 
 
-class TestCaseWithSFTPServer(TestCaseInTempDir):
+class TestCaseWithSFTPServer(TestCaseWithTransport):
     """A test case base class that provides a sftp server on localhost."""
 
     def setUp(self):
@@ -42,35 +43,14 @@ class TestCaseWithSFTPServer(TestCaseInTempDir):
         if getattr(self, '_get_remote_is_absolute', None) is None:
             self._get_remote_is_absolute = True
         if self._get_remote_is_absolute:
-            self.server = SFTPAbsoluteServer()
+            self.transport_server = SFTPAbsoluteServer
         else:
-            self.server = SFTPHomeDirServer()
-        self.server.setUp()
-        self._sftp_url = self.server.get_url()
-        self._root = self.test_dir
-        # Set to a string in setUp to give sftp server a new homedir.
-        self._override_home = None
-        self._is_setup = False
-        self.sftplogs = []
-
-    def get_remote_url(self, relpath_to_test_root):
-        # FIXME use urljoin ?
-        return self._sftp_url + '/' + relpath_to_test_root
-
-    def tearDown(self):
-        try:
-            self.server.tearDown()
-        finally:
-            TestCaseInTempDir.tearDown(self)
+            self.transport_server = SFTPHomeDirServer
+        self.transport_readonly_server = bzrlib.transport.http.HttpServer
 
     def get_transport(self, path=None):
         """Return a transport relative to self._test_root."""
-        from bzrlib.transport import get_transport
-        transport = get_transport(self._sftp_url)
-        if path is None:
-            return transport
-        else:
-            return transport.clone(path)
+        return bzrlib.transport.get_transport(self.get_url(path))
 
 
 class SFTPLockTests (TestCaseWithSFTPServer):
@@ -102,15 +82,13 @@ class SFTPLockTests (TestCaseWithSFTPServer):
 
     def test_multiple_connections(self):
         t = self.get_transport()
-        self.assertEquals(self.server.logs, 
-                ['sftpserver - authorizing: foo'
-               , 'sftpserver - channel request: session, 1'])
-        self.server.logs = []
+        self.assertTrue('sftpserver - new connection' in self.get_server().logs)
+        self.get_server().logs = []
         # The second request should reuse the first connection
         # SingleListener only allows for a single connection,
         # So the next line fails unless the connection is reused
         t2 = self.get_transport()
-        self.assertEquals(self.server.logs, [])
+        self.assertEquals(self.get_server().logs, [])
 
 
 class SFTPTransportTestRelative(TestCaseWithSFTPServer):
@@ -120,9 +98,9 @@ class SFTPTransportTestRelative(TestCaseWithSFTPServer):
         t = self.get_transport()
         # try what is currently used:
         # remote path = self._abspath(relpath)
-        self.assertEqual(self._root + '/relative', t._remote_path('relative'))
+        self.assertEqual(self.test_dir + '/relative', t._remote_path('relative'))
         # we dont os.path.join because windows gives us the wrong path
-        root_segments = self._root.split('/')
+        root_segments = self.test_dir.split('/')
         root_parent = '/'.join(root_segments[:-1])
         # .. should be honoured
         self.assertEqual(root_parent + '/sibling', t._remote_path('../sibling'))
@@ -156,15 +134,15 @@ class SFTPNonServerTest(TestCase):
 
     def test_parse_url(self):
         from bzrlib.transport.sftp import SFTPTransport
-        s = SFTPTransport('sftp://simple.example.com/%2fhome/source', clone_from=fake)
+        s = SFTPTransport('sftp://simple.example.com/home/source', clone_from=fake)
         self.assertEquals(s._host, 'simple.example.com')
         self.assertEquals(s._port, None)
         self.assertEquals(s._path, '/home/source')
         self.failUnless(s._password is None)
 
-        self.assertEquals(s.base, 'sftp://simple.example.com/%2Fhome/source/')
-        
-        s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/relative', clone_from=fake)
+        self.assertEquals(s.base, 'sftp://simple.example.com/home/source/')
+
+        s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/~/relative', clone_from=fake)
         self.assertEquals(s._host, 'example.com')
         self.assertEquals(s._port, 2222)
         self.assertEquals(s._username, 'robey')
@@ -172,36 +150,25 @@ class SFTPNonServerTest(TestCase):
         self.assertEquals(s._path, 'relative')
 
         # Base should not keep track of the password
-        self.assertEquals(s.base, 'sftp://robey@example.com:2222/relative/')
-
-        # Double slash should be accepted instead of using %2F
-        s = SFTPTransport('sftp://user@example.com:22//absolute/path/', clone_from=fake)
-        self.assertEquals(s._host, 'example.com')
-        self.assertEquals(s._port, 22)
-        self.assertEquals(s._username, 'user')
-        self.assertEquals(s._password, None)
-        self.assertEquals(s._path, '/absolute/path/')
-
-        # Also, don't show the port if it is the default 22
-        self.assertEquals(s.base, 'sftp://user@example.com:22/%2Fabsolute/path/')
+        self.assertEquals(s.base, 'sftp://robey@example.com:2222/~/relative/')
 
     def test_relpath(self):
         from bzrlib.transport.sftp import SFTPTransport
         from bzrlib.errors import PathNotChild
 
-        s = SFTPTransport('sftp://user@host.com//abs/path', clone_from=fake)
-        self.assertEquals(s.relpath('sftp://user@host.com//abs/path/sub'), 'sub')
+        s = SFTPTransport('sftp://user@host.com/abs/path', clone_from=fake)
+        self.assertEquals(s.relpath('sftp://user@host.com/abs/path/sub'), 'sub')
         # Can't test this one, because we actually get an AssertionError
         # TODO: Consider raising an exception rather than an assert
-        #self.assertRaises(PathNotChild, s.relpath, 'http://user@host.com//abs/path/sub')
-        self.assertRaises(PathNotChild, s.relpath, 'sftp://user2@host.com//abs/path/sub')
-        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@otherhost.com//abs/path/sub')
-        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@host.com:33//abs/path/sub')
-        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@host.com/abs/path/sub')
+        #self.assertRaises(PathNotChild, s.relpath, 'http://user@host.com/abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'sftp://user2@host.com/abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@otherhost.com/abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@host.com:33/abs/path/sub')
+        self.assertRaises(PathNotChild, s.relpath, 'sftp://user@host.com/~/rel/path/sub')
 
         # Make sure it works when we don't supply a username
-        s = SFTPTransport('sftp://host.com//abs/path', clone_from=fake)
-        self.assertEquals(s.relpath('sftp://host.com//abs/path/sub'), 'sub')
+        s = SFTPTransport('sftp://host.com/abs/path', clone_from=fake)
+        self.assertEquals(s.relpath('sftp://host.com/abs/path/sub'), 'sub')
 
         # Make sure it works when parts of the path will be url encoded
         # TODO: These may be incorrect, we might need to urllib.urlencode() before
@@ -227,7 +194,7 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
 
     def test_lock_file(self):
         """Make sure that a Branch accessed over sftp tries to lock itself."""
-        b = Branch.initialize(self._sftp_url)
+        b = bzrdir.BzrDir.create_branch_and_repo(self.get_url())
         self.failUnlessExists('.bzr/')
         self.failUnlessExists('.bzr/branch-format')
         self.failUnlessExists('.bzr/branch-lock')
@@ -238,19 +205,14 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         b.unlock()
         self.failIf(lexists('.bzr/branch-lock.write-lock'))
 
-    def test_no_working_tree(self):
-        b = Branch.initialize(self._sftp_url)
-        self.assertRaises(errors.NoWorkingTree, b.working_tree)
-
     def test_push_support(self):
         self.build_tree(['a/', 'a/foo'])
-        b = Branch.initialize('a')
-        t = b.working_tree()
+        t = bzrdir.BzrDir.create_standalone_workingtree('a')
+        b = t.branch
         t.add('foo')
         t.commit('foo', rev_id='a1')
 
-        os.mkdir('b')
-        b2 = Branch.initialize(self._sftp_url + '/b')
+        b2 = bzrdir.BzrDir.create_branch_and_repo(self.get_url('/b'))
         b2.pull(b)
 
         self.assertEquals(b2.revision_history(), ['a1'])
@@ -262,3 +224,10 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         self.assertEquals(b2.revision_history(), ['a1', 'a2'])
 
 
+class SFTPFullHandshakingTest(TestCaseWithSFTPServer):
+    """Verify that a full-handshake (SSH over loopback TCP) sftp connection works."""
+    
+    def test_connection(self):
+        from bzrlib.transport.sftp import SFTPFullAbsoluteServer
+        self.transport_server = SFTPFullAbsoluteServer
+        self.get_transport()

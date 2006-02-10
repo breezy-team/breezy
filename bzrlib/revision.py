@@ -78,6 +78,25 @@ class Revision(object):
                 raise ValueError("invalid property value %r for %r" % 
                                  (name, value))
 
+    def get_history(self, repository):
+        """Return the canonical line-of-history for this revision.
+
+        If ghosts are present this may differ in result from a ghost-free
+        repository.
+        """
+        current_revision = self
+        reversed_result = []
+        while current_revision is not None:
+            reversed_result.append(current_revision.revision_id)
+            if not len (current_revision.parent_ids):
+                reversed_result.append(None)
+                current_revision = None
+            else:
+                next_revision_id = current_revision.parent_ids[0]
+                current_revision = repository.get_revision(next_revision_id)
+        reversed_result.reverse()
+        return reversed_result
+
 
 def is_ancestor(revision_id, candidate_id, branch):
     """Return true if candidate_id is an ancestor of revision_id.
@@ -88,7 +107,7 @@ def is_ancestor(revision_id, candidate_id, branch):
     revisions_source is an object supporting a get_revision operation that
     behaves like Branch's.
     """
-    return candidate_id in branch.get_ancestry(revision_id)
+    return candidate_id in branch.repository.get_ancestry(revision_id)
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):

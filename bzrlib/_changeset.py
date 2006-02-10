@@ -401,9 +401,9 @@ class Diff3Merge(object):
 
     def apply(self, filename, conflict_handler):
         import bzrlib.patch
-        temp_dir = mkdtemp(prefix="bzr-")
+        temp_dir = mkdtemp(prefix="bzr-", dir=os.path.dirname(filename))
         try:
-            new_file = filename+".new"
+            new_file = os.path.join(temp_dir, filename)
             base_file = self.dump_file(temp_dir, "base", self.base)
             other_file = self.dump_file(temp_dir, "other", self.other)
             base = base_file
@@ -647,7 +647,6 @@ class ChangesetEntry(object):
 
         :rtype: bool
         """
-
         return (self.parent != self.new_parent or self.name != self.new_name)
 
     def is_deletion(self, reverse=False):
@@ -1176,29 +1175,6 @@ def apply_changeset(changeset, inventory, dir, conflict_handler=None):
                          changeset, dir, conflict_handler)
     os.rmdir(temp_dir)
     return changed_inventory
-
-
-def apply_changeset_tree(cset, tree):
-    r_inventory = {}
-    for entry in tree.source_inventory().itervalues():
-        inventory[entry.id] = entry.path
-    new_inventory = apply_changeset(cset, r_inventory, tree.basedir)
-    new_entries, remove_entries = \
-        get_inventory_change(inventory, new_inventory, cset)
-    tree.update_source_inventory(new_entries, remove_entries)
-
-
-def get_inventory_change(inventory, new_inventory, cset):
-    new_entries = {}
-    remove_entries = []
-    for entry in cset.entries.itervalues():
-        if entry.needs_rename():
-            new_path = entry.get_new_path(inventory, cset)
-            if new_path is None:
-                remove_entries.append(entry.id)
-            else:
-                new_entries[new_path] = entry.id
-    return new_entries, remove_entries
 
 
 def print_changeset(cset):

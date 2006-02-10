@@ -14,7 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Experiment in converting existing bzr branches to weaves."""
+"""bzr upgrade logic."""
+
+# change upgrade from .bzr to create a '.bzr-new', then do a bait and switch.
+
 
 # To make this properly useful
 #
@@ -65,81 +68,115 @@
 # the moment saves us having to worry about when files need new
 # versions.
 
-
+from cStringIO import StringIO
 import os
 import tempfile
 import sys
-import shutil
+from stat import *
 
-from bzrlib.branch import Branch, find_branch
-from bzrlib.branch import BZR_BRANCH_FORMAT_5, BZR_BRANCH_FORMAT_6
+import bzrlib
+from bzrlib.branch import Branch
+import bzrlib.bzrdir as bzrdir
+from bzrlib.bzrdir import BzrDirFormat, BzrDirFormat4, BzrDirFormat5, BzrDirFormat6
+import bzrlib.errors as errors
+from bzrlib.errors import NoSuchFile, UpgradeReadonly
 import bzrlib.hashcache as hashcache
+from bzrlib.lockable_files import LockableFiles
+from bzrlib.osutils import sha_strings, sha_string, pathjoin, abspath
+from bzrlib.ui import ui_factory
+from bzrlib.store.text import TextStore
+from bzrlib.store.weave import WeaveStore
+from bzrlib.trace import mutter, note, warning
+from bzrlib.transactions import PassThroughTransaction
+from bzrlib.transport import get_transport
+from bzrlib.transport.local import LocalTransport
 from bzrlib.weave import Weave
 from bzrlib.weavefile import read_weave, write_weave
-from bzrlib.ui import ui_factory
-from bzrlib.atomicfile import AtomicFile
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
-from bzrlib.trace import mutter, note, warning
-from bzrlib.osutils import sha_strings, sha_string, pathjoin, abspath
 
 
 class Convert(object):
-    def __init__(self, base_dir):
-        self.base = base_dir
+
+    def __init__(self, transport):
+        self.base = transport.base
         self.converted_revs = set()
         self.absent_revisions = set()
         self.text_count = 0
         self.revisions = {}
-        self.convert()
-
+        self.transport = transport
+        if self.transport.is_readonly():
+            raise UpgradeReadonly
+        self.control_files = LockableFiles(transport.clone(bzrlib.BZRDIR), 'branch-lock')
+        # Lock the branch (soon to be meta dir) to prevent anyone racing with us
+        # This is currently windows incompatible, it will deadlock. When the upgrade
+        # logic becomes format specific, then we can have the format know how to pass this
+        # on. Also note that we probably have an 'upgrade meta' which upgrades the constituent
+        # parts.
+        print "FIXME: control files reuse" 
+        self.control_files.lock_write()
+        try:
+            self.convert()
+        finally:
+            self.control_files.unlock()
 
     def convert(self):
         if not self._open_branch():
             return
-        note('starting upgrade of %s', os.path.abspath(self.base))
+        note('starting upgrade of %s', self.base)
         self._backup_control_dir()
         self.pb = ui_factory.progress_bar()
-        if self.old_format == 4:
+        if isinstance(self.old_format, BzrDirFormat4):
             note('starting upgrade from format 4 to 5')
+            if isinstance(self.transport, LocalTransport):
+                self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
             self._convert_to_weaves()
-            self._open_branch()
-        if self.old_format == 5:
+        if isinstance(self.old_format, BzrDirFormat5):
             note('starting upgrade from format 5 to 6')
             self._convert_to_prefixed()
-            self._open_branch()
-        cache = hashcache.HashCache(abspath(self.base))
-        cache.clear()
-        cache.write()
         note("finished")
-
 
     def _convert_to_prefixed(self):
         from bzrlib.store import hash_prefix
+        bzr_transport = self.transport.clone('.bzr')
+        bzr_transport.delete('branch-format')
         for store_name in ["weaves", "revision-store"]:
             note("adding prefixes to %s" % store_name) 
-            store_dir = pathjoin(self.base, ".bzr", store_name)
-            for filename in os.listdir(store_dir):
-                if filename.endswith(".weave") or filename.endswith(".gz"):
+            store_transport = bzr_transport.clone(store_name)
+            for filename in store_transport.list_dir('.'):
+                if (filename.endswith(".weave") or
+                    filename.endswith(".gz") or
+                    filename.endswith(".sig")):
                     file_id = os.path.splitext(filename)[0]
                 else:
                     file_id = filename
-                prefix_dir = pathjoin(store_dir, hash_prefix(file_id))
-                if not os.path.isdir(prefix_dir):
-                    os.mkdir(prefix_dir)
-                os.rename(pathjoin(store_dir, filename),
-                          pathjoin(prefix_dir, filename))
-        self._set_new_format(BZR_BRANCH_FORMAT_6)
-
+                prefix_dir = hash_prefix(file_id)
+                # FIXME keep track of the dirs made RBC 20060121
+                try:
+                    store_transport.move(filename, prefix_dir + '/' + filename)
+                except NoSuchFile: # catches missing dirs strangely enough
+                    store_transport.mkdir(prefix_dir)
+                    store_transport.move(filename, prefix_dir + '/' + filename)
+        self.old_format = BzrDirFormat6()
+        self._set_new_format(self.old_format.get_format_string())
+        self.bzrdir = self.old_format.open(self.transport)
+        self.branch = self.bzrdir.open_branch()
 
     def _convert_to_weaves(self):
         note('note: upgrade may be faster if all store files are ungzipped first')
-        if not os.path.isdir(self.base + '/.bzr/weaves'):
-            os.mkdir(self.base + '/.bzr/weaves')
+        bzr_transport = self.transport.clone('.bzr')
+        try:
+            # TODO permissions
+            stat = bzr_transport.stat('weaves')
+            if not S_ISDIR(stat.st_mode):
+                bzr_transport.delete('weaves')
+                bzr_transport.mkdir('weaves')
+        except NoSuchFile:
+            bzr_transport.mkdir('weaves')
         self.inv_weave = Weave('inventory')
         # holds in-memory weaves for all files
         self.text_weaves = {}
-        os.remove(self.branch.controlfilename('branch-format'))
+        bzr_transport.delete('branch-format')
         self._convert_working_inv()
         rev_history = self.branch.revision_history()
         # to_read is a stack holding the revisions we still need to process;
@@ -157,85 +194,97 @@ class Convert(object):
             self.pb.update('converting revision', i, len(to_import))
             self._convert_one_rev(rev_id)
         self.pb.clear()
+        self._write_all_weaves()
+        self._write_all_revs()
         note('upgraded to weaves:')
         note('  %6d revisions and inventories' % len(self.revisions))
         note('  %6d revisions not present' % len(self.absent_revisions))
         note('  %6d texts' % self.text_count)
-        self._write_all_weaves()
-        self._write_all_revs()
-        self._cleanup_spare_files()
-        self._set_new_format(BZR_BRANCH_FORMAT_5)
-
+        self._cleanup_spare_files_after_format4()
+        self.old_format = BzrDirFormat5()
+        self._set_new_format(self.old_format.get_format_string())
+        self.bzrdir = self.old_format.open(self.transport)
+        self.branch = self.bzrdir.open_branch()
 
     def _open_branch(self):
-        self.branch = Branch.open_downlevel(self.base)
-        self.old_format = self.branch._branch_format
-        if self.old_format == 6:
-            note('this branch is in the most current format')
+        self.old_format = BzrDirFormat.find_format(self.transport)
+        self.bzrdir = self.old_format.open(self.transport)
+        self.branch = self.bzrdir.open_branch()
+        if isinstance(self.old_format, BzrDirFormat6):
+            note('this branch is in the most current format (%s)', self.old_format)
             return False
-        if self.old_format not in (4, 5):
-            raise BzrError("cannot upgrade from branch format %r" %
+        if (not isinstance(self.old_format, BzrDirFormat4) and
+            not isinstance(self.old_format, BzrDirFormat5) and
+            not isinstance(self.old_format, bzrdir.BzrDirMetaFormat1)):
+            raise errors.BzrError("cannot upgrade from branch format %s" %
                            self.branch._branch_format)
         return True
 
-
     def _set_new_format(self, format):
-        self.branch.put_controlfile('branch-format', format)
+        self.branch.control_files.put_utf8('branch-format', format)
 
-
-    def _cleanup_spare_files(self):
+    def _cleanup_spare_files_after_format4(self):
+        transport = self.transport.clone('.bzr')
+        print "FIXME working tree upgrade foo."
         for n in 'merged-patches', 'pending-merged-patches':
-            p = self.branch.controlfilename(n)
-            if not os.path.exists(p):
-                continue
-            ## assert os.path.getsize(p) == 0
-            os.remove(p)
-        shutil.rmtree(self.base + '/.bzr/inventory-store')
-        shutil.rmtree(self.base + '/.bzr/text-store')
-
+            try:
+                ## assert os.path.getsize(p) == 0
+                transport.delete(n)
+            except NoSuchFile:
+                pass
+        transport.delete_tree('inventory-store')
+        transport.delete_tree('text-store')
 
     def _backup_control_dir(self):
-        orig = self.base + '/.bzr'
-        backup = orig + '.backup'
         note('making backup of tree history')
-        shutil.copytree(orig, backup)
-        note('%s has been backed up to %s', orig, backup)
+        self.transport.copy_tree('.bzr', '.bzr.backup')
+        note('%s.bzr has been backed up to %s.bzr.backup',
+             self.transport.base,
+             self.transport.base)
         note('if conversion fails, you can move this directory back to .bzr')
         note('if it succeeds, you can remove this directory if you wish')
 
-
     def _convert_working_inv(self):
         branch = self.branch
-        inv = serializer_v4.read_inventory(branch.controlfile('inventory', 'rb'))
+        inv = serializer_v4.read_inventory(branch.control_files.get('inventory'))
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
-        branch.put_controlfile('inventory', new_inv_xml)
-
-
+        print "fixme inventory is a working tree change."
+        branch.control_files.put('inventory', new_inv_xml)
 
     def _write_all_weaves(self):
-        write_a_weave(self.inv_weave, self.base + '/.bzr/inventory.weave')
+        bzr_transport = self.transport.clone('.bzr')
+        controlweaves = WeaveStore(bzr_transport, prefixed=False)
+        weave_transport = bzr_transport.clone('weaves')
+        weaves = WeaveStore(weave_transport, prefixed=False)
+        transaction = PassThroughTransaction()
+
+        controlweaves.put_weave('inventory', self.inv_weave, transaction)
         i = 0
         try:
             for file_id, file_weave in self.text_weaves.items():
                 self.pb.update('writing weave', i, len(self.text_weaves))
-                write_a_weave(file_weave, self.base + '/.bzr/weaves/%s.weave' % file_id)
+                weaves.put_weave(file_id, file_weave, transaction)
                 i += 1
         finally:
             self.pb.clear()
 
-
     def _write_all_revs(self):
         """Write all revisions out in new form."""
-        shutil.rmtree(self.base + '/.bzr/revision-store')
-        os.mkdir(self.base + '/.bzr/revision-store')
+        transport = self.transport.clone('.bzr')
+        transport.delete_tree('revision-store')
+        transport.mkdir('revision-store')
+        revision_transport = transport.clone('revision-store')
+        # TODO permissions
+        revision_store = TextStore(revision_transport,
+                                   prefixed=False,
+                                   compressed=True)
         try:
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update('write revision', i, len(self.converted_revs))
-                f = file(self.base + '/.bzr/revision-store/%s' % rev_id, 'wb')
-                try:
-                    serializer_v5.write_revision(self.revisions[rev_id], f)
-                finally:
-                    f.close()
+                rev_tmp = StringIO()
+                serializer_v5.write_revision(self.revisions[rev_id], rev_tmp)
+                rev_tmp.seek(0)
+                revision_store.add(rev_tmp, rev_id)
         finally:
             self.pb.clear()
 
@@ -248,14 +297,14 @@ class Convert(object):
         self.pb.update('loading revision',
                        len(self.revisions),
                        len(self.known_revisions))
-        if not self.branch.revision_store.has_id(rev_id):
+        if not self.branch.repository.revision_store.has_id(rev_id):
             self.pb.clear()
             note('revision {%s} not present in branch; '
                  'will be converted as a ghost',
                  rev_id)
             self.absent_revisions.add(rev_id)
         else:
-            rev_xml = self.branch.revision_store.get(rev_id).read()
+            rev_xml = self.branch.repository.revision_store.get(rev_id).read()
             rev = serializer_v4.read_revision_from_string(rev_xml)
             for parent_id in rev.parent_ids:
                 self.known_revisions.add(parent_id)
@@ -265,7 +314,7 @@ class Convert(object):
 
     def _load_old_inventory(self, rev_id):
         assert rev_id not in self.converted_revs
-        old_inv_xml = self.branch.inventory_store.get(rev_id).read()
+        old_inv_xml = self.branch.repository.inventory_store.get(rev_id).read()
         inv = serializer_v4.read_inventory_from_string(old_inv_xml)
         rev = self.revisions[rev_id]
         if rev.inventory_sha1:
@@ -360,7 +409,8 @@ class Convert(object):
                 return
         parent_indexes = map(w.lookup, previous_revisions)
         if ie.has_text():
-            file_lines = self.branch.text_store.get(ie.text_id).readlines()
+            text = self.branch.repository.text_store.get(ie.text_id)
+            file_lines = text.readlines()
             assert sha_strings(file_lines) == ie.text_sha1
             assert sum(map(len, file_lines)) == ie.text_size
             w.add(rev_id, parent_indexes, file_lines, ie.text_sha1)
@@ -394,13 +444,6 @@ class Convert(object):
         return o
 
 
-def write_a_weave(weave, filename):
-    inv_wf = file(filename, 'wb')
-    try:
-        write_weave(weave, inv_wf)
-    finally:
-        inv_wf.close()
-
-
-def upgrade(base_dir):
-    Convert(base_dir)
+def upgrade(url):
+    t = get_transport(url)
+    Convert(t)

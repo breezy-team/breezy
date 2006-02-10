@@ -16,41 +16,25 @@
 
 
 import os
-from bzrlib.tests import TestCaseInTempDir
+
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 from bzrlib.osutils import abspath, realpath
+from bzrlib.tests import TestCaseWithTransport
 
 
 """Tests for Branch parent URL"""
 
 
-class TestParent(TestCaseInTempDir):
+class TestParent(TestCaseWithTransport):
+
     def test_no_default_parent(self):
         """Branches should have no parent by default"""
-        b = Branch.initialize(u'.')
+        b = self.make_branch('.')
         self.assertEquals(b.get_parent(), None)
         
-    
     def test_set_get_parent(self):
         """Set and then re-get the parent"""
-        b = Branch.initialize(u'.')
+        b = self.make_branch('.')
         url = 'http://bazaar-ng.org/bzr/bzr.dev'
         b.set_parent(url)
         self.assertEquals(b.get_parent(), url)
-
-    def test_branch_sets_parent(self):
-        """The branch command should set the new branch's parent"""
-        from bzrlib.commands import run_bzr
-
-        os.mkdir('from')
-        branch_from = Branch.initialize('from')
-        file('from/foo', 'wt').write('contents of foo')
-        branch_from.working_tree().add('foo')
-        branch_from.working_tree().commit('initial commit')
-        
-        os.mkdir('to')
-        copy_branch(branch_from, 'to', None)
-
-        branch_to = Branch.open('to')
-        self.assertEquals(branch_to.get_parent(), branch_from.base)
