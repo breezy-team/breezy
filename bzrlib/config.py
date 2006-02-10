@@ -27,7 +27,7 @@ email=Your Name <your@email.address>
 check_signatures=require|ignore|check-available(default)
 create_signatures=always|never|when-required(default)
 gpg_signing_command=name-of-program
-log_formatter=name-of-format
+log_format=name-of-format
 
 in branches.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
@@ -123,15 +123,15 @@ class Config(object):
         """See gpg_signing_command()."""
         return None
 
-    def log_formatter(self):
-        """What log formatter should be used"""
-        result = self._log_formatter()
+    def log_format(self):
+        """What log format should be used"""
+        result = self._log_format()
         if result is None:
             result = "long"
         return result
 
-    def _log_formatter(self):
-        """See log_formatter()."""
+    def _log_format(self):
+        """See log_format()."""
         return None
 
     def __init__(self):
@@ -240,9 +240,9 @@ class IniBasedConfig(Config):
         """See Config.gpg_signing_command."""
         return self._get_user_option('gpg_signing_command')
 
-    def _log_formatter(self):
-        """See Config.log_formatter."""
-        return self._get_user_option('log_formatter')
+    def _log_format(self):
+        """See Config.log_format."""
+        return self._get_user_option('log_format')
 
     def __init__(self, get_filename):
         super(IniBasedConfig, self).__init__()
@@ -336,12 +336,12 @@ class LocationConfig(IniBasedConfig):
             return command
         return self._get_global_config()._gpg_signing_command()
 
-    def _log_formatter(self):
-        """See Config.log_formatter."""
-        command = super(LocationConfig, self)._log_formatter()
+    def _log_format(self):
+        """See Config.log_format."""
+        command = super(LocationConfig, self)._log_format()
         if command is not None:
             return command
-        return self._get_global_config()._log_formatter()
+        return self._get_global_config()._log_format()
 
     def _get_user_id(self):
         user_id = super(LocationConfig, self)._get_user_id()
@@ -434,9 +434,9 @@ class BranchConfig(Config):
         """See Config.post_commit."""
         return self._get_location_config()._post_commit()
 
-    def _log_formatter(self):
-        """See Config.log_formatter."""
-        return self._get_location_config()._log_formatter()
+    def _log_format(self):
+        """See Config.log_format."""
+        return self._get_location_config()._log_format()
 
 def ensure_config_dir_exists(path=None):
     """Make sure a configuration directory exists.
