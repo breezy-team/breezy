@@ -494,6 +494,7 @@ class Merge3Merger(object):
                     create_by_entry(self.tt, 
                                     self.other_tree.inventory[file_id], 
                                     self.other_tree, trans_id)
+                    self.tt.version_file(file_id, trans_id)
                     return "modified"
                 if file_id in self.this_tree:
                     self.tt.unversion_file(trans_id)
@@ -502,6 +503,7 @@ class Merge3Merger(object):
                 # If this and other are both files, either base is a file, or
                 # both converted to files, so at least we have agreement that
                 # output should be a file.
+                self.tt.version_file(file_id, trans_id)
                 self.text_merge(file_id, trans_id)
                 return "modified"
             else:
@@ -511,8 +513,6 @@ class Merge3Merger(object):
                 if file_id in self.this_tree.inventory:
                     self.tt.unversion_file(trans_id)
                     self.tt.delete_contents(trans_id)
-                else:
-                    self.tt.cancel_versioning(trans_id)
                 file_group = self._dump_conflicts(name, parent_id, file_id, 
                                                   set_version=True)
                 self._raw_conflicts.append(('contents conflict', file_group))
