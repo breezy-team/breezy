@@ -517,7 +517,7 @@ class BzrBadParameterNotString(BzrBadParameter):
 
 
 class DependencyNotPresent(BzrNewError):
-    """Unable to import library: %(library)s, %(error)s"""
+    """Unable to import library "%(library)s": %(error)s"""
 
     def __init__(self, library, error):
         BzrNewError.__init__(self, library=library, error=error)

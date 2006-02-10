@@ -509,7 +509,16 @@ def register_lazy_transport(scheme, module, classname):
 
     When opening a URL with the given scheme, load the module and then
     instantiate the particular class.  
+
+    If the module raises DependencyNotPresent when it's imported, it is
+    skipped and another implementation of the protocol is tried.  This is
+    intended to be used when the implementation depends on an external
+    implementation that may not be present.  If any other error is raised, it
+    propagates up and the attempt to open the url fails.
     """
+    # TODO: If no implementation of a protocol is available because of missing
+    # dependencies, we should perhaps show the message about what dependency
+    # was missing.
     def _loader(base):
         mod = __import__(module, globals(), locals(), [classname])
         klass = getattr(mod, classname)
@@ -609,10 +618,10 @@ class TransportTestProviderAdapter(object):
 register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
-register_lazy_transport('http://', 'bzrlib.transport.http._urllib', 'HttpTransport')
-register_lazy_transport('https://', 'bzrlib.transport.http._urllib', 'HttpTransport')
-## register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
-## register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
+## register_lazy_transport('http://', 'bzrlib.transport.http._urllib', 'HttpTransport')
+## register_lazy_transport('https://', 'bzrlib.transport.http._urllib', 'HttpTransport')
+register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
+register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')

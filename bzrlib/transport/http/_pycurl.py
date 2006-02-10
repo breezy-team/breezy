@@ -20,13 +20,19 @@
 
 from StringIO import StringIO
 
-import pycurl
-
 from bzrlib.trace import mutter
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
-                           TransportError, ConnectionError)
+                           TransportError, ConnectionError,
+                           DependencyNotPresent)
 from bzrlib.transport import Transport
 from bzrlib.transport.http import HttpTransportBase
+
+try:
+    import pycurl
+except ImportError, e:
+    mutter("failed to import pycurl: %s", e)
+    raise DependencyNotPresent('pycurl', e)
+
 
 
 class PyCurlTransport(HttpTransportBase):
@@ -41,7 +47,7 @@ class PyCurlTransport(HttpTransportBase):
 
     def __init__(self, base):
         super(PyCurlTransport, self).__init__(base)
-        mutter('imported pycurl %s' % pycurl.version)
+        mutter('using pycurl %s' % pycurl.version)
 
     def has(self, relpath):
         self.curl = pycurl.Curl()
