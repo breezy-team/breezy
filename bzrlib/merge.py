@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# TODO: build_working_dir can be built on something simpler than merge()
 
 import os
 import errno
@@ -41,7 +40,6 @@ import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
 from bzrlib.trace import mutter, warning, note
-from bzrlib.workingtree import WorkingTree
 
 # TODO: Report back as changes are merged in
 
@@ -237,7 +235,7 @@ def _get_tree(treespec, local_branch=None):
 
 def _get_revid_tree(branch, revision, local_branch):
     if revision is None:
-        base_tree = branch.working_tree()
+        base_tree = branch.bzrdir.open_workingtree()
     else:
         if local_branch is not None:
             if local_branch.base != branch.base:
@@ -246,22 +244,6 @@ def _get_revid_tree(branch, revision, local_branch):
         else:
             base_tree = branch.repository.revision_tree(revision)
     return base_tree
-
-
-def build_working_dir(to_dir):
-    """Build a working directory in an empty directory.
-
-    to_dir is a directory containing branch metadata but no working files,
-    typically constructed by cloning an existing branch. 
-
-    This is split out as a special idiomatic case of merge.  It could
-    eventually be done by just building the tree directly calling into 
-    lower-level code (e.g. constructing a changeset).
-    """
-    # RBC 20051019 is this not just 'export' ?
-    # AB Well, export doesn't take care of inventory...
-    this_tree = WorkingTree.open_containing(to_dir)[0]
-    transform_tree(this_tree, this_tree.basis_tree())
 
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
@@ -285,7 +267,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                      branch.get_revision_tree(base_revision))'
         """
     if this_tree is None:
-        this_tree = this_branch.working_tree()
+        this_tree = this_branch.bzrdir.open_workingtree()
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree)
     merger.backup_files = backup_files
     merger.merge_type = merge_type

@@ -25,7 +25,7 @@ from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 import bzrlib.workingtree as workingtree
@@ -45,10 +45,10 @@ class TestCaseWithWorkingTree(TestCaseWithTransport):
                 t = get_transport(parent)
                 try:
                     t.mkdir(segments[-1])
-                except FileExists:
+                except errors.FileExists:
                     pass
             return self.bzrdir_format.initialize(url)
-        except UninitializableFormat:
+        except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
     def make_branch_and_tree(self, relpath):
@@ -73,7 +73,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             self.assertEqual(files[2], ('symlink', '?', 'symlink', None, TreeLink()))
 
     def test_open_containing(self):
-        branch = WorkingTree.create_standalone('.').branch
+        branch = self.make_branch_and_tree('.').branch
         wt, relpath = WorkingTree.open_containing()
         self.assertEqual('', relpath)
         self.assertEqual(wt.basedir + '/', branch.base)
@@ -88,25 +88,25 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(wt.basedir + '/', branch.base)
 
     def test_construct_with_branch(self):
-        branch = WorkingTree.create_standalone('.').branch
+        branch = self.make_branch_and_tree('.').branch
         tree = WorkingTree(branch.base, branch)
         self.assertEqual(branch, tree.branch)
         self.assertEqual(branch.base, tree.basedir + '/')
     
     def test_construct_without_branch(self):
-        branch = WorkingTree.create_standalone('.').branch
+        branch = self.make_branch_and_tree('.').branch
         tree = WorkingTree(branch.base)
         self.assertEqual(branch.base, tree.branch.base)
         self.assertEqual(branch.base, tree.basedir + '/')
 
     def test_basic_relpath(self):
         # for comprehensive relpath tests, see whitebox.py.
-        tree = WorkingTree.create_standalone('.')
+        tree = self.make_branch_and_tree('.')
         self.assertEqual('child',
                          tree.relpath(pathjoin(getcwd(), 'child')))
 
     def test_lock_locks_branch(self):
-        tree = WorkingTree.create_standalone('.')
+        tree = self.make_branch_and_tree('.')
         tree.lock_read()
         self.assertEqual('r', tree.branch.peek_lock_mode())
         tree.unlock()
@@ -118,10 +118,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
  
     def get_pullable_trees(self):
         self.build_tree(['from/', 'from/file', 'to/'])
-        tree = WorkingTree.create_standalone('from')
+        tree = self.make_branch_and_tree('from')
         tree.add('file')
         tree.commit('foo', rev_id='A')
-        tree_b = WorkingTree.create_standalone('to')
+        tree_b = self.make_branch_and_tree('to')
         return tree, tree_b
  
     def test_pull(self):
@@ -141,7 +141,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_revert(self):
         """Test selected-file revert"""
-        tree = WorkingTree.create_standalone('.')
+        tree = self.make_branch_and_tree('.')
 
         self.build_tree(['hello.txt'])
         file('hello.txt', 'w').write('initial hello')
@@ -174,7 +174,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_hashcache(self):
         from bzrlib.tests.test_hashcache import pause
-        tree = WorkingTree.create_standalone('.')
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt',
                          'hello.txt~'])
         tree.add('hello.txt')
@@ -188,7 +188,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_initialize(self):
         # initialize should create a working tree and branch in an existing dir
-        t = WorkingTree.create_standalone('.')
+        t = self.make_branch_and_tree('.')
         b = Branch.open('.')
         self.assertEqual(t.branch.base, b.base)
         t2 = WorkingTree('.')
@@ -262,7 +262,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_clone_trivial(self):
         wt = self.make_branch_and_tree('source')
-        cloned = wt.clone('target')
+        cloned_dir = wt.bzrdir.clone('target')
+        cloned = cloned_dir.open_workingtree()
         self.assertEqual(cloned.last_revision(), wt.last_revision())
 
     def test_last_revision(self):
@@ -290,9 +291,27 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_clone_and_commit_preserves_last_revision(self):
         wt = self.make_branch_and_tree('source')
-        cloned = wt.clone('target')
+        cloned_dir = wt.bzrdir.clone('target')
         wt.commit('A', allow_pointless=True, rev_id='A')
-        self.assertNotEqual(cloned.last_revision(), wt.last_revision())
+        self.assertNotEqual(cloned_dir.open_workingtree().last_revision(),
+                            wt.last_revision())
+
+    def test_clone_preserves_content(self):
+        wt = self.make_branch_and_tree('source')
+        self.build_tree(['added', 'deleted', 'notadded'], transport=wt.bzrdir.transport.clone('..'))
+        wt.add('deleted', 'deleted')
+        wt.commit('add deleted')
+        wt.remove('deleted')
+        wt.add('added', 'added')
+        cloned_dir = wt.bzrdir.clone('target')
+        cloned = cloned_dir.open_workingtree()
+        cloned_transport = cloned.bzrdir.transport.clone('..')
+        self.assertFalse(cloned_transport.has('deleted'))
+        self.assertTrue(cloned_transport.has('added'))
+        self.assertFalse(cloned_transport.has('notadded'))
+        self.assertEqual('added', cloned.path2id('added'))
+        self.assertEqual(None, cloned.path2id('deleted'))
+        self.assertEqual(None, cloned.path2id('notadded'))
         
     def test_basis_tree_returns_last_revision(self):
         wt = self.make_branch_and_tree('.')
@@ -308,9 +327,18 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = wt.basis_tree()
         self.failUnless(tree.has_filename('foo'))
 
-    def test_create_where_branch_is(self):
-        b = self.make_branch('.')
-        # should always work
-        wt = WorkingTree.create(b, '.')
-        # and have a format
-        self.assertNotEqual(None, wt._format)
+    def test_clone_tree_revision(self):
+        # make a tree with a last-revision,
+        # and clone it with a different last-revision, this should switch
+        # do it.
+        #
+        # also test that the content is merged
+        # and conflicts recorded.
+        # This should merge between the trees - local edits should be preserved
+        # but other changes occured.
+        # we test this by having one file that does
+        # not change between two revisions, and another that does -
+        # if the changed one is not changed, fail,
+        # if the one that did not change has lost a local change, fail.
+        # 
+        raise TestSkipped('revision limiting is not implemented yet.')

@@ -69,11 +69,13 @@ class TestCaseWithRepository(TestCaseWithBzrDir):
         made_control = self.make_bzrdir(relpath)
         return self.repository_format.initialize(made_control)
 
+
 class TestRepository(TestCaseWithRepository):
 
-    def test_clone_unnamed_format(self):
+    def test_clone_to_default_format(self):
         #TODO: Test that cloning a repository preserves all the information
-        # such as signatures[not tested] etc etc.
+        # such as signatures[not tested yet] etc etc.
+        # when changing to the current default format.
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
@@ -146,7 +148,7 @@ class TestRepository(TestCaseWithRepository):
         tree = wt.branch.repository.revision_tree(NULL_REVISION)
         self.assertEqual(len(tree.list_files()), 0)
 
-    def test_push_stores(self):
+    def test_fetch(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
@@ -154,10 +156,12 @@ class TestRepository(TestCaseWithRepository):
         def check_push_rev1(repo):
             # ensure the revision is missing.
             self.assertRaises(NoSuchRevision, repo.get_revision, 'rev1')
-            tree_a.branch.repository.push_stores(repo, None)
+            # fetch with a limit of NULL_REVISION
+            repo.fetch(tree_a.branch.repository, NULL_REVISION)
             # nothing should have been pushed
             self.assertFalse(repo.has_revision('rev1'))
-            tree_a.branch.repository.push_stores(repo)
+            # fetch with a default limit (grab everything)
+            repo.fetch(tree_a.branch.repository)
             # check that b now has all the data from a's first commit.
             rev = repo.get_revision('rev1')
             tree = repo.revision_tree('rev1')
@@ -173,6 +177,29 @@ class TestRepository(TestCaseWithRepository):
         # makes a this-version repo:
         repo_c = self.make_repository('c')
         check_push_rev1(repo_c)
+
+    def test_clone_bzrdir_repository_revision(self):
+        # make a repository with some revisions,
+        # and clone it, this should not have unreferenced revisions.
+        # also: test cloning with a revision id of NULL_REVISION -> empty repo.
+        raise TestSkipped('revision limiting is not implemented yet.')
+
+    def test_clone_repository_basis_revision(self):
+        raise TestSkipped('the use of a basis should not add noise data to the result.')
+
+    def test_clone_repository_incomplete_source_with_basis(self):
+        # ensure that basis really does grab from the basis by having incomplete source
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
+        source = self.make_repository('source')
+        # this gives us an incomplete repository
+        tree.bzrdir.open_repository().copy_content_into(source)
+        tree.commit('revision 2', rev_id='2', allow_pointless=True)
+        self.assertFalse(source.has_revision('2'))
+        target = source.bzrdir.clone(self.get_url('target'), basis=tree.bzrdir)
+        self.assertTrue(target.open_repository().has_revision('2'))
 
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
@@ -192,8 +219,44 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_all_revision_ids(self):
         # all_revision_ids -> all revisions
-        self.assertEqual(set(['rev1', 'rev2']),
-                         set(self.bzrdir.open_repository().all_revision_ids()))
+        self.assertEqual(['rev1', 'rev2'],
+                         self.bzrdir.open_repository().all_revision_ids())
+
+    def test_missing_revision_ids(self):
+        # revision ids in repository A but not B are returned, fake ones
+        # are stripped. (fake meaning no revision object, but an inventory 
+        # as some formats keyed off inventory data in the past.
+        # make a repository to compare against that claims to have rev1
+        tree_b = self.make_branch_and_tree('rev1_only')
+        # add a real revision 'rev1'
+        tree_b.commit('rev1', rev_id='rev1', allow_pointless=True)
+        repo_a = self.bzrdir.open_repository()
+        repo_b = tree_b.branch.repository
+        self.assertEqual(['rev2'],
+                         repo_b.missing_revision_ids(repo_a))
+
+    def test_missing_revision_ids_default_format(self):
+        # revision ids in repository A but not B are returned, fake ones
+        # are stripped. (fake meaning no revision object, but an inventory 
+        # as some formats keyed off inventory data in the past.
+        # make a repository to compare against that claims to have rev1
+        tree_b = bzrdir.BzrDir.create_standalone_workingtree('rev1_only')
+        # add a real revision 'rev1'
+        tree_b.commit('rev1', rev_id='rev1', allow_pointless=True)
+        repo_a = self.bzrdir.open_repository()
+        repo_b = tree_b.branch.repository
+        self.assertEqual(['rev2'],
+                         repo_b.missing_revision_ids(repo_a))
+
+    def test_missing_revision_ids_revision_limited(self):
+        # revision ids in repository A that are not referenced by the
+        # requested revision are not returned.
+        # make a repository to compare against that is empty
+        tree_b = self.make_branch_and_tree('empty')
+        repo_a = self.bzrdir.open_repository()
+        repo_b = tree_b.branch.repository
+        self.assertEqual(['rev1'],
+                         repo_b.missing_revision_ids(repo_a, revision_id='rev1'))
 
     def test_get_ancestry_missing_revision(self):
         # get_ancestry(missing revision)-> NoSuchRevision

@@ -59,7 +59,12 @@ class TestCaseWithBranch(TestCaseWithTransport):
 
     def make_branch(self, relpath):
         repo = self.make_repository(relpath)
-        return self.branch_format.initialize(repo.bzrdir)
+        # fixme RBC 20060210 this isnt necessarily a fixable thing,
+        # Skipped is the wrong exception to raise.
+        try:
+            return self.branch_format.initialize(repo.bzrdir)
+        except errors.UninitializableFormat:
+            raise TestSkipped('Uninitializable branch format')
 
     def make_repository(self, relpath):
         try:
@@ -93,9 +98,9 @@ class TestBranch(TestCaseWithBranch):
         from bzrlib.fetch import Fetcher
         get_transport(self.get_url()).mkdir('b1')
         get_transport(self.get_url()).mkdir('b2')
-        b1 = self.make_branch('b1')
+        wt = self.make_branch_and_tree('b1')
+        b1 = wt.branch
         b2 = self.make_branch('b2')
-        wt = WorkingTree.create(b1, 'b1')
         file('b1/foo', 'w').write('hello')
         wt.add(['foo'], ['foo-id'])
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
@@ -113,21 +118,19 @@ class TestBranch(TestCaseWithBranch):
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
         get_transport(self.get_url()).mkdir('a')
-        br_a = self.make_branch('a')
-        tree_a = WorkingTree.create(br_a, 'a')
+        tree_a = self.make_branch_and_tree('a')
         file('a/b', 'wb').write('b')
         tree_a.add('b')
         tree_a.commit("silly commit", rev_id='A')
 
         get_transport(self.get_url()).mkdir('b')
-        br_b = self.make_branch('b')
-        tree_b = WorkingTree.create(br_b, 'b')
+        tree_b = self.make_branch_and_tree('b')
         return tree_a, tree_b
 
     def get_balanced_branch_pair(self):
         """Returns br_a, br_b as with one commit in a, and b has a's stores."""
         tree_a, tree_b = self.get_unbalanced_tree_pair()
-        tree_a.branch.repository.push_stores(tree_b.branch.repository)
+        tree_b.branch.repository.fetch(tree_a.branch.repository)
         return tree_a, tree_b
 
     def test_clone_branch(self):
@@ -136,30 +139,62 @@ class TestBranch(TestCaseWithBranch):
         tree_b.commit("silly commit")
         os.mkdir('c')
         # this fails to test that the history from a was not used.
-        br_c = tree_a.branch.clone('c', basis_branch=tree_b.branch)
+        dir_c = tree_a.bzrdir.clone('c', basis=tree_b.bzrdir)
         self.assertEqual(tree_a.branch.revision_history(),
-                         br_c.revision_history())
+                         dir_c.open_branch().revision_history())
 
     def test_clone_partial(self):
         """Copy only part of the history of a branch."""
-        get_transport(self.get_url()).mkdir('a')
-        br_a = self.make_branch('a')
-        wt = WorkingTree.create(br_a, "a")
+        # TODO: RBC 20060208 test with a revision not on revision-history.
+        #       what should that behaviour be ? Emailed the list.
+        wt_a = self.make_branch_and_tree('a')
         self.build_tree(['a/one'])
-        wt.add(['one'])
-        wt.commit('commit one', rev_id='u@d-1')
+        wt_a.add(['one'])
+        wt_a.commit('commit one', rev_id='1')
         self.build_tree(['a/two'])
-        wt.add(['two'])
-        wt.commit('commit two', rev_id='u@d-2')
-        br_b = br_a.clone('b', revision='u@d-1')
-        self.assertEqual(br_b.last_revision(), 'u@d-1')
-        self.assertTrue(os.path.exists('b/one'))
-        self.assertFalse(os.path.exists('b/two'))
+        wt_a.add(['two'])
+        wt_a.commit('commit two', rev_id='2')
+        repo_b = self.make_repository('b')
+        wt_a.bzrdir.open_repository().copy_content_into(repo_b)
+        br_b = wt_a.bzrdir.open_branch().clone(repo_b.bzrdir, revision_id='1')
+        self.assertEqual(br_b.last_revision(), '1')
+
+    def test_sprout_partial(self):
+        # test sprouting with a prefix of the revision-history.
+        # also needs not-on-revision-history behaviour defined.
+        wt_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/one'])
+        wt_a.add(['one'])
+        wt_a.commit('commit one', rev_id='1')
+        self.build_tree(['a/two'])
+        wt_a.add(['two'])
+        wt_a.commit('commit two', rev_id='2')
+        repo_b = self.make_repository('b')
+        wt_a.bzrdir.open_repository().copy_content_into(repo_b)
+        br_b = wt_a.bzrdir.open_branch().sprout(repo_b.bzrdir, revision_id='1')
+        self.assertEqual(br_b.last_revision(), '1')
+
+    def test_clone_branch_nickname(self):
+        # test the nick name is preserved always
+        raise TestSkipped('XXX branch cloning is not yet tested..')
+
+    def test_clone_branch_parent(self):
+        # test the parent is preserved always
+        raise TestSkipped('XXX branch cloning is not yet tested..')
+        
+    def test_sprout_branch_nickname(self):
+        # test the nick name is reset always
+        raise TestSkipped('XXX branch sprouting is not yet tested..')
+
+    def test_sprout_branch_parent(self):
+        source = self.make_branch('source')
+        target = source.bzrdir.sprout(self.get_url('target')).open_branch()
+        self.assertEqual(source.bzrdir.root_transport.base, target.get_parent())
         
     def test_record_initial_ghost_merge(self):
         """A pending merge with no revision present is still a merge."""
-        branch = self.get_branch()
-        wt = WorkingTree.create(branch, ".")
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
         wt.add_pending_merge('non:existent@rev--ision--0--2')
         wt.commit('pretend to merge nonexistent-revision', rev_id='first')
         rev = branch.repository.get_revision(branch.last_revision())
@@ -180,8 +215,8 @@ class TestBranch(TestCaseWithBranch):
         
     def test_pending_merges(self):
         """Tracking pending-merged revisions."""
-        b = self.get_branch()
-        wt = WorkingTree.create(b, '.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
         self.assertEquals(wt.pending_merges(), [])
         wt.add_pending_merge('foo@azkhazan-123123-abcabc')
         self.assertEquals(wt.pending_merges(), ['foo@azkhazan-123123-abcabc'])
@@ -202,8 +237,8 @@ class TestBranch(TestCaseWithBranch):
         self.assertEquals(wt.pending_merges(), [])
 
     def test_sign_existing_revision(self):
-        branch = self.get_branch()
-        wt = WorkingTree.create(branch, ".")
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
         strategy = bzrlib.gpg.LoopbackGPGStrategy(None)
@@ -229,10 +264,10 @@ class TestBranch(TestCaseWithBranch):
         #FIXME: clone should work to urls,
         # wt.clone should work to disks.
         self.build_tree(['target/'])
-        b2 = wt.branch.clone('target')
+        d2 = wt.bzrdir.clone('target')
         self.assertEqual(wt.branch.repository.revision_store.get('A', 
                             'sig').read(),
-                         b2.repository.revision_store.get('A', 
+                         d2.open_repository().revision_store.get('A', 
                             'sig').read())
 
     def test_upgrade_preserves_signatures(self):
@@ -244,7 +279,7 @@ class TestBranch(TestCaseWithBranch):
         old_signature = wt.branch.repository.revision_store.get('A',
             'sig').read()
         upgrade(wt.basedir)
-        wt = WorkingTree(wt.basedir)
+        wt = WorkingTree.open(wt.basedir)
         new_signature = wt.branch.repository.revision_store.get('A',
             'sig').read()
         self.assertEqual(old_signature, new_signature)
@@ -277,9 +312,10 @@ class TestBranch(TestCaseWithBranch):
     def test_commit_nicks(self):
         """Nicknames are committed to the revision"""
         get_transport(self.get_url()).mkdir('bzr.dev')
-        branch = self.make_branch('bzr.dev')
+        wt = self.make_branch_and_tree('bzr.dev')
+        branch = wt.branch
         branch.nick = "My happy branch"
-        WorkingTree.create(branch, 'bzr.dev').commit('My commit respect da nick.')
+        wt.commit('My commit respect da nick.')
         committed = branch.repository.get_revision(branch.last_revision())
         self.assertEqual(committed.properties["branch-nick"], 
                          "My happy branch")

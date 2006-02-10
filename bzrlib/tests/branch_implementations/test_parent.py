@@ -38,17 +38,3 @@ class TestParent(TestCaseWithTransport):
         url = 'http://bazaar-ng.org/bzr/bzr.dev'
         b.set_parent(url)
         self.assertEquals(b.get_parent(), url)
-
-    def test_branch_sets_parent(self):
-        """The branch command should set the new branch's parent"""
-        from bzrlib.commands import run_bzr
-
-        wt = self.make_branch_and_tree('from')
-        branch_from = wt.branch
-        file('from/foo', 'wt').write('contents of foo')
-        wt.add('foo')
-        wt.commit('initial commit')
-        
-        os.mkdir('to')
-        branch_to = branch_from.clone('to', None)
-        self.assertEquals(branch_to.get_parent(), branch_from.base)

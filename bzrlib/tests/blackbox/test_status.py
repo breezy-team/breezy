@@ -33,15 +33,15 @@ from bzrlib.branch import Branch
 from bzrlib.builtins import merge
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.status import show_status
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class BranchStatus(TestCaseInTempDir):
+class BranchStatus(TestCaseWithTransport):
     
     def test_branch_status(self): 
         """Test basic branch status"""
-        wt = WorkingTree.create_standalone('.')
+        wt = self.make_branch_and_tree('.')
         b = wt.branch
 
         # status with nothing
@@ -64,7 +64,7 @@ class BranchStatus(TestCaseInTempDir):
 
     def test_branch_status_revisions(self):
         """Tests branch status with revisions"""
-        wt = WorkingTree.create_standalone('.')
+        wt = self.make_branch_and_tree('.')
         b = wt.branch
 
         tof = StringIO()
@@ -111,11 +111,12 @@ class BranchStatus(TestCaseInTempDir):
     def test_pending(self):
         """Pending merges display works, including Unicode"""
         mkdir("./branch")
-        wt = WorkingTree.create_standalone('branch')
+        wt = self.make_branch_and_tree('branch')
         b = wt.branch
         wt.commit("Empty commit 1")
-        b_2 = b.clone('./copy')
-        wt2 = WorkingTree('copy', b_2)
+        b_2_dir = b.bzrdir.sprout('./copy')
+        b_2 = b_2_dir.open_branch()
+        wt2 = b_2_dir.open_workingtree()
         wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
         merge(["./branch", -1], [None, None], this_dir = './copy')
         message = self.status_string(b_2)
@@ -133,7 +134,7 @@ class BranchStatus(TestCaseInTempDir):
 
     def test_branch_status_specific_files(self): 
         """Tests branch status with given specific files"""
-        wt = WorkingTree.create_standalone('.')
+        wt = self.make_branch_and_tree('.')
         b = wt.branch
 
         self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])

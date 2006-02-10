@@ -463,9 +463,10 @@ class TestExecutable(TestCaseWithTransport):
         # Now make sure that 'bzr branch' also preserves the
         # executable bit
         # TODO: Maybe this should be a blackbox test
-        b2 = b.clone('b2', revision='r1')
+        d2 = b.bzrdir.clone('b2', revision_id='r1')
+        t2 = d2.open_workingtree()
+        b2 = t2.branch
         self.assertEquals('r1', b2.last_revision())
-        t2 = WorkingTree(b2.base, b2)
 
         self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
         self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")

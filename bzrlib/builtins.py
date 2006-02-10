@@ -21,7 +21,7 @@ import os
 import sys
 
 import bzrlib
-from bzrlib.bzrdir import BzrDir
+import bzrlib.bzrdir as bzrdir
 from bzrlib._merge_core import ApplyMerge3
 from bzrlib.commands import Command, display_command
 from bzrlib.branch import Branch
@@ -565,13 +565,16 @@ class cmd_branch(Command):
         br_from.lock_read()
         try:
             if basis is not None:
-                basis_branch = WorkingTree.open_containing(basis)[0].branch
+                basis_dir = bzrdir.BzrDir.open_containing(basis)[0]
             else:
-                basis_branch = None
+                basis_dir = None
             if len(revision) == 1 and revision[0] is not None:
                 revision_id = revision[0].in_history(br_from)[1]
             else:
-                revision_id = None
+                # FIXME - wt.last_revision, fallback to branch, fall back to
+                # None or perhaps NULL_REVISION to mean copy nothing
+                # RBC 20060209
+                revision_id = br_from.last_revision()
             if to_location is None:
                 to_location = os.path.basename(from_location.rstrip("/\\"))
                 name = None
@@ -589,7 +592,8 @@ class cmd_branch(Command):
                 else:
                     raise
             try:
-                branch = br_from.clone(to_location, revision_id, basis_branch)
+                dir = br_from.bzrdir.sprout(to_location, revision_id, basis_dir)
+                branch = dir.open_branch()
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
@@ -917,7 +921,7 @@ class cmd_log(Command):
         if filename:
             # find the file id to log:
 
-            dir, fp = BzrDir.open_containing(filename)
+            dir, fp = bzrdir.BzrDir.open_containing(filename)
             b = dir.open_branch()
             if fp != '':
                 try:
@@ -930,7 +934,7 @@ class cmd_log(Command):
         else:
             # local dir only
             # FIXME ? log the current subdir only RBC 20060203 
-            dir, relpath = BzrDir.open_containing('.')
+            dir, relpath = bzrdir.BzrDir.open_containing('.')
             b = dir.open_branch()
 
         if revision is None:

@@ -550,13 +550,13 @@ class FunctionalMergeTest(TestCaseWithTransport):
         """Test that merges in a star shape Just Work.""" 
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
-        tree = WorkingTree.create_standalone('original')
+        tree = self.make_branch_and_tree('original')
         branch = tree.branch
         smart_add_tree(tree, ["original"])
         tree.commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
-        branch.clone("mary")
+        branch.bzrdir.clone("mary")
         # Now John commits a change
         file = open("original/file1", "wt")
         file.write("John\n")
@@ -583,12 +583,12 @@ class FunctionalMergeTest(TestCaseWithTransport):
  
     def test_conflicts(self):
         os.mkdir('a')
-        wta = WorkingTree.create_standalone('a')
+        wta = self.make_branch_and_tree('a')
         a = wta.branch
         file('a/file', 'wb').write('contents\n')
         wta.add('file')
         wta.commit('base revision', allow_pointless=False)
-        b = a.clone('b')
+        b = a.bzrdir.clone('b').open_branch()
         file('a/file', 'wb').write('other contents\n')
         wta.commit('other revision', allow_pointless=False)
         file('b/file', 'wb').write('this contents contents\n')

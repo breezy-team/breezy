@@ -43,6 +43,8 @@ class BzrDir(object):
     
     transport
         the transport which this bzr dir is rooted at (i.e. file:///.../.bzr/)
+    root_transport
+        a transport connected to the directory this bzr was opened from.
     """
 
     def _check_supported(self, format, allow_unsupported):
@@ -52,6 +54,62 @@ class BzrDir(object):
         """
         if not allow_unsupported and not format.is_supported():
             raise errors.UnsupportedFormatError(format)
+
+    def clone(self, url, revision_id=None, basis=None):
+        """Clone this bzrdir and its contents to url verbatim.
+
+        If urls last component does not exist, it will be created.
+
+        if revision_id is not None, then the clone operation may tune
+            itself to download less data.
+        """
+        self._make_tail(url)
+        result = self._format.initialize(url)
+        basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
+        try:
+            self.open_repository().clone(result, revision_id=revision_id, basis=basis_repo)
+        except errors.NoRepositoryPresent:
+            pass
+        try:
+            self.open_branch().clone(result, revision_id=revision_id)
+        except errors.NotBranchError:
+            pass
+        try:
+            self.open_workingtree().clone(result, basis=basis_tree)
+        except (errors.NotBranchError, errors.NotLocalUrl):
+            pass
+        return result
+
+    def _get_basis_components(self, basis):
+        """Retrieve the basis components that are available at basis."""
+        if basis is None:
+            return None, None, None
+        try:
+            basis_tree = basis.open_workingtree()
+            basis_branch = basis_tree.branch
+            basis_repo = basis_branch.repository
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            basis_tree = None
+            try:
+                basis_branch = basis.open_branch()
+                basis_repo = basis_branch.repository
+            except errors.NotBranchError:
+                basis_branch = None
+                try:
+                    basis_repo = basis.open_repository()
+                except errors.NoRepositoryPresent:
+                    basis_repo = None
+        return basis_repo, basis_branch, basis_tree
+
+    def _make_tail(self, url):
+        segments = url.split('/')
+        if segments and segments[-1] not in ('', '.'):
+            parent = '/'.join(segments[:-1])
+            t = bzrlib.transport.get_transport(parent)
+            try:
+                t.mkdir(segments[-1])
+            except errors.FileExists:
+                pass
 
     @staticmethod
     def create(base):
@@ -183,6 +241,7 @@ class BzrDir(object):
         """
         self._format = _format
         self.transport = _transport.clone('.bzr')
+        self.root_transport = _transport
 
     @staticmethod
     def open_unsupported(base):
@@ -263,14 +322,82 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.open_workingtree)
 
+    def sprout(self, url, revision_id=None, basis=None):
+        """Create a copy of this bzrdir prepared for use as a new line of
+        development.
+
+        If urls last component does not exist, it will be created.
+
+        Attributes related to the identity of the source branch like
+        branch nickname will be cleaned, a working tree is created
+        whether one existed before or not; and a local branch is always
+        created.
+
+        if revision_id is not None, then the clone operation may tune
+            itself to download less data.
+        """
+        self._make_tail(url)
+        result = self._format.initialize(url)
+        basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
+        try:
+            source_branch = self.open_branch()
+            source_repository = source_branch.repository
+        except errors.NotBranchError:
+            source_branch = None
+            try:
+                source_repository = self.open_repository()
+            except errors.NoRepositoryPresent:
+                # copy the basis one if there is one
+                source_repository = basis_repo
+        if source_repository is not None:
+            source_repository.clone(result,
+                                    revision_id=revision_id,
+                                    basis=basis_repo)
+        else:
+            # no repo available, make a new one
+            result.create_repository()
+        if source_branch is not None:
+            source_branch.sprout(result, revision_id=revision_id)
+        else:
+            result.create_branch()
+        try:
+            self.open_workingtree().clone(result,
+                                          revision_id=revision_id, 
+                                          basis=basis_tree)
+        except (errors.NotBranchError, errors.NotLocalUrl):
+            result.create_workingtree()
+        return result
+
 
 class BzrDirPreSplitOut(BzrDir):
     """A common class for the all-in-one formats."""
 
+    def clone(self, url, revision_id=None, basis=None):
+        """See BzrDir.clone()."""
+        from bzrlib.workingtree import WorkingTreeFormat2
+        self._make_tail(url)
+        result = self._format.initialize(url, _cloning=True)
+        basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
+        self.open_repository().clone(result, revision_id=revision_id, basis=basis_repo)
+        self.open_branch().clone(result, revision_id=revision_id)
+        try:
+            self.open_workingtree().clone(result, basis=basis_tree)
+        except errors.NotLocalUrl:
+            # make a new one, this format always has to have one.
+            WorkingTreeFormat2().initialize(result)
+        return result
+
     def create_branch(self):
         """See BzrDir.create_branch."""
-        from bzrlib.branch import BzrBranchFormat4
-        return BzrBranchFormat4().initialize(self)
+        return self.open_branch()
+
+    def create_repository(self):
+        """See BzrDir.create_repository."""
+        return self.open_repository()
+
+    def create_workingtree(self):
+        """See BzrDir.create_workingtree."""
+        return self.open_workingtree()
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
@@ -309,6 +436,27 @@ class BzrDirPreSplitOut(BzrDir):
         self._check_supported(format, unsupported)
         return format.open(self, _found=True)
 
+    def sprout(self, url, revision_id=None, basis=None):
+        """See BzrDir.sprout()."""
+        from bzrlib.workingtree import WorkingTreeFormat2
+        self._make_tail(url)
+        result = self._format.initialize(url, _cloning=True)
+        basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
+        try:
+            self.open_repository().clone(result, revision_id=revision_id, basis=basis_repo)
+        except errors.NoRepositoryPresent:
+            pass
+        try:
+            self.open_branch().sprout(result, revision_id=revision_id)
+        except errors.NotBranchError:
+            pass
+        try:
+            self.open_workingtree().clone(result, basis=basis_tree)
+        except (errors.NotBranchError, errors.NotLocalUrl):
+            # we always want a working tree
+            WorkingTreeFormat2().initialize(result)
+        return result
+
 
 class BzrDir4(BzrDirPreSplitOut):
     """A .bzr version 4 control object."""
@@ -327,16 +475,6 @@ class BzrDir4(BzrDirPreSplitOut):
 class BzrDir5(BzrDirPreSplitOut):
     """A .bzr version 5 control object."""
 
-    def create_repository(self):
-        """See BzrDir.create_repository."""
-        from bzrlib.repository import RepositoryFormat5
-        return RepositoryFormat5().initialize(self)
-
-    def create_workingtree(self):
-        """See BzrDir.create_workingtree."""
-        from bzrlib.workingtree import WorkingTreeFormat2
-        return WorkingTreeFormat2().initialize(self)
-
     def open_repository(self):
         """See BzrDir.open_repository."""
         from bzrlib.repository import RepositoryFormat5
@@ -350,16 +488,6 @@ class BzrDir5(BzrDirPreSplitOut):
 
 class BzrDir6(BzrDirPreSplitOut):
     """A .bzr version 6 control object."""
-
-    def create_repository(self):
-        """See BzrDir.create_repository."""
-        from bzrlib.repository import RepositoryFormat6
-        return RepositoryFormat6().initialize(self)
-
-    def create_workingtree(self):
-        """See BzrDir.create_workingtree."""
-        from bzrlib.workingtree import WorkingTreeFormat2
-        return WorkingTreeFormat2().initialize(self)
 
     def open_repository(self):
         """See BzrDir.open_repository."""
@@ -578,9 +706,9 @@ class BzrDirFormat4(BzrDirFormat):
 
     This format is a combined format for working tree, branch and repository.
     It has:
-     - Format 1 working trees
-     - Format 4 branches
-     - Format 4 repositories
+     - Format 1 working trees [always]
+     - Format 4 branches [always]
+     - Format 4 repositories [always]
 
     This format is deprecated: it indexes texts using a text it which is
     removed in format 5; write support for this format has been removed.
@@ -613,14 +741,30 @@ class BzrDirFormat5(BzrDirFormat):
 
     This format is a combined format for working tree, branch and repository.
     It has:
-     - Format 2 working trees
-     - Format 4 branches
-     - Format 6 repositories
+     - Format 2 working trees [always] 
+     - Format 4 branches [always] 
+     - Format 6 repositories [always]
+       Unhashed stores in the repository.
     """
 
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
+
+    def initialize(self, url, _cloning=False):
+        """Format 5 dirs always have working tree, branch and repository.
+        
+        Except when they are being cloned.
+        """
+        from bzrlib.branch import BzrBranchFormat4
+        from bzrlib.repository import RepositoryFormat5
+        from bzrlib.workingtree import WorkingTreeFormat2
+        result = super(BzrDirFormat5, self).initialize(url)
+        RepositoryFormat5().initialize(result, _internal=True)
+        if not _cloning:
+            BzrBranchFormat4().initialize(result)
+            WorkingTreeFormat2().initialize(result)
+        return result
 
     def _open(self, transport):
         """See BzrDirFormat._open."""
@@ -632,14 +776,34 @@ class BzrDirFormat6(BzrDirFormat):
 
     This format is a combined format for working tree, branch and repository.
     It has:
-     - Format 2 working trees
-     - Format 4 branches
-     - Format 6 repositories
+     - Format 2 working trees [always] 
+     - Format 4 branches [always] 
+     - Format 6 repositories [always]
     """
 
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 6\n"
+
+    def initialize(self, url, _cloning=False):
+        """Format 6 dirs always have working tree, branch and repository.
+        
+        Except when they are being cloned.
+        """
+        from bzrlib.branch import BzrBranchFormat4
+        from bzrlib.repository import RepositoryFormat6
+        from bzrlib.workingtree import WorkingTreeFormat2
+        result = super(BzrDirFormat6, self).initialize(url)
+        RepositoryFormat6().initialize(result, _internal=True)
+        if not _cloning:
+            BzrBranchFormat4().initialize(result)
+            try:
+                WorkingTreeFormat2().initialize(result)
+            except errors.NotLocalUrl:
+                # emulate pre-check behaviour for working tree and silently 
+                # fail.
+                pass
+        return result
 
     def _open(self, transport):
         """See BzrDirFormat._open."""
@@ -652,9 +816,9 @@ class BzrDirMetaFormat1(BzrDirFormat):
     This is the first format with split out working tree, branch and repository
     disk storage.
     It has:
-     - Format 3 working trees
-     - Format 5 branches
-     - Format 7 repositories
+     - Format 3 working trees [optional]
+     - Format 5 branches [optional]
+     - Format 7 repositories [optional]
     """
 
     def get_format_string(self):
@@ -729,8 +893,7 @@ class ScratchDir(BzrDir6):
             super(ScratchDir, self).__init__(transport, BzrDirFormat6())
             self.create_repository()
             self.create_branch()
-            from bzrlib.workingtree import WorkingTree
-            WorkingTree.create(self.open_branch(), transport.base)
+            self.create_workingtree()
         else:
             super(ScratchDir, self).__init__(transport, BzrDirFormat6())
 

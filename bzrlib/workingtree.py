@@ -50,7 +50,6 @@ import stat
 
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import (Branch,
-                           BzrBranchFormat4,
                            quotefn)
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -64,6 +63,7 @@ from bzrlib.errors import (BzrCheckError,
                            NotVersionedError)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.lockable_files import LockableFiles
+from bzrlib.merge import merge_inner, transform_tree
 from bzrlib.osutils import (appendpath,
                             compact_date,
                             file_kind,
@@ -187,7 +187,7 @@ class WorkingTree(bzrlib.tree.Tree):
     not listed in the Inventory and vice versa.
     """
 
-    def __init__(self, basedir='.', branch=None, _inventory=None, _control_files=None, _internal=False):
+    def __init__(self, basedir='.', branch=None, _inventory=None, _control_files=None, _internal=False, _format=None):
         """Construct a WorkingTree for basedir.
 
         If the branch is not supplied, it is opened automatically.
@@ -195,14 +195,16 @@ class WorkingTree(bzrlib.tree.Tree):
         (branch.base is not cross checked, because for remote branches that
         would be meaningless).
         """
+        self._format = _format
         if not _internal:
             # created via open etc.
-            wt = WorkingTree.open(basedir, branch)
+            wt = WorkingTree.open(basedir)
             self.branch = wt.branch
             self.basedir = wt.basedir
             self._control_files = wt._control_files
             self._hashcache = wt._hashcache
             self._set_inventory(wt._inventory)
+            self._format = wt._format
         from bzrlib.hashcache import HashCache
         from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
@@ -216,8 +218,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self.branch = branch
         self.basedir = realpath(basedir)
         # if branch is at our basedir and is a format 6 or less
-        if (isinstance(self.branch._format,
-                       (BzrBranchFormat4))
+        if (isinstance(self._format, WorkingTreeFormat2)
             # might be able to share control object
             and self.branch.base.split('/')[-2] == self.basedir.split('/')[-1]):
             self._control_files = self.branch.control_files
@@ -235,8 +236,9 @@ class WorkingTree(bzrlib.tree.Tree):
         # if needed, or, when the cache sees a change, append it to the hash
         # cache file, and have the parser take the most recent entry for a
         # given path only.
-        hc = self._hashcache = HashCache(basedir)
+        hc = self._hashcache = HashCache(basedir, self._control_files._file_mode)
         hc.read()
+        # is this scan needed ? it makes things kinda slow.
         hc.scan()
 
         if hc.needs_write:
@@ -336,7 +338,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         warn('delete WorkingTree.create', stacklevel=3)
         transport = get_transport(directory)
-        if branch.bzrdir.transport.clone('..').base == transport.base:
+        if branch.bzrdir.root_transport.base == transport.base:
             # same dir 
             return branch.bzrdir.create_workingtree()
         # different directory, 
@@ -378,33 +380,37 @@ class WorkingTree(bzrlib.tree.Tree):
         return self.abspath(self.id2path(file_id))
 
     @needs_read_lock
-    def clone(self, to_directory, revision=None):
-        """Copy this working tree to a new directory.
+    def clone(self, to_bzrdir, revision_id=None, basis=None):
+        """Duplicate this working tree into to_bzr, including all state.
         
-        Currently this will make a new standalone branch at to_directory,
-        but it is planned to change this to use the same branch style that this
-        current tree uses (standalone if standalone, repository if repository)
-        - so that this really is a clone. FIXME RBC 20060127 do this.
-        FIXME MORE RBC 20060127 failed to reach consensus on this in #bzr.
+        Specifically modified files are kept as modified, but
+        ignored and unknown files are discarded.
 
-        If you want a standalone branch, please use branch.clone(to_directory)
-        followed by WorkingTree.create(cloned_branch, to_directory) which is
-        the supported api to produce that.
+        If you want to make a new line of development, see bzrdir.sprout()
 
         revision
             If not None, the cloned tree will have its last revision set to 
-            revision, and if a branch is being copied it will be informed
-            of the revision to result in. 
-    
-        to_directory -- The destination directory: Must not exist.
+            revision, and and difference between the source trees last revision
+            and this one merged in.
+
+        basis
+            If not None, a closer copy of a tree which may have some files in
+            common, and which file content should be preferentially copied from.
         """
-        to_directory = safe_unicode(to_directory)
-        os.mkdir(to_directory)
-        # FIXME here is where the decision to clone the branch should happen.
-        if revision is None:
-            revision = self.last_revision()
-        cloned_branch = self.branch.clone(to_directory, revision)
-        return  WorkingTree.create(cloned_branch, to_directory)
+        # assumes the target bzr dir format is compatible.
+        result = self._format.initialize(to_bzrdir)
+        self.copy_content_into(result, revision_id)
+        return result
+
+    @needs_read_lock
+    def copy_content_into(self, tree, revision_id=None):
+        """Copy the current content and user files of this tree into tree."""
+        if revision_id is None:
+            transform_tree(tree, self)
+        else:
+            # TODO now merge from tree.last_revision to revision
+            transform_tree(tree, self)
+            tree.set_last_revision(revision_id)
 
     @needs_write_lock
     def commit(self, *args, **kwargs):
@@ -563,7 +569,6 @@ class WorkingTree(bzrlib.tree.Tree):
             return 'I'
         else:
             return '?'
-
 
     def list_files(self):
         """Recursively list all files as (path, class, kind, id).
@@ -790,7 +795,6 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_write_lock
     def pull(self, source, overwrite=False):
-        from bzrlib.merge import merge_inner
         source.lock_read()
         try:
             old_revision_history = self.branch.revision_history()
@@ -916,11 +920,21 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock."""
-        return self.branch.lock_read()
+        self.branch.lock_read()
+        try:
+            return self._control_files.lock_read()
+        except:
+            self.branch.unlock()
+            raise
 
     def lock_write(self):
         """See Branch.lock_write, and WorkingTree.unlock."""
-        return self.branch.lock_write()
+        self.branch.lock_write()
+        try:
+            return self._control_files.lock_write()
+        except:
+            self.branch.unlock()
+            raise
 
     def _basis_inventory_name(self, revision_id):
         return 'basis-inventory.%s' % revision_id
@@ -1070,9 +1084,21 @@ class WorkingTree(bzrlib.tree.Tree):
         # of a nasty hack; probably it's better to have a transaction object,
         # which can do some finalization when it's either successfully or
         # unsuccessfully completed.  (Denys's original patch did that.)
-        if self._hashcache.needs_write and self._control_files._lock_count==1:
+        # RBC 20060206 hookinhg into transaction will couple lock and transaction
+        # wrongly. Hookinh into unllock on the control files object is fine though.
+        
+        # TODO: split this per format so there is no ugly if block
+        if self._hashcache.needs_write and (
+            self._control_files._lock_count==1 or 
+            (self._control_files is self.branch.control_files and 
+             self._control_files._lock_count==2)):
             self._hashcache.write()
-        return self.branch.unlock()
+        # reverse order of locking.
+        result = self._control_files.unlock()
+        try:
+            self.branch.unlock()
+        finally:
+            return result
 
     @needs_write_lock
     def _write_inventory(self, inv):
@@ -1184,19 +1210,21 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        b = a_bzrdir.open_branch()
-        r = a_bzrdir.open_repository()
-        revision = b.last_revision()
-        basis_tree = r.revision_tree(revision)
+        branch = a_bzrdir.open_branch()
+        revision = branch.last_revision()
+        basis_tree = branch.repository.revision_tree(revision)
         inv = basis_tree.inventory
-        wt = WorkingTree(a_bzrdir.transport.clone('..').base, b, inv, _internal=True)
+        wt = WorkingTree(a_bzrdir.root_transport.base,
+                         branch,
+                         inv,
+                         _internal=True,
+                         _format=self)
         wt._write_inventory(inv)
         wt.set_root_id(inv.root.file_id)
         wt.set_last_revision(revision)
         wt.set_pending_merges([])
         wt.revert([])
         wt.bzrdir = a_bzrdir
-        wt._format = self
         return wt
 
     def __init__(self):
@@ -1214,9 +1242,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        result = WorkingTree(a_bzrdir.transport.clone('..').base, _internal=True)
+        result = WorkingTree(a_bzrdir.root_transport.base, _internal=True, _format=self)
         result.bzrdir = a_bzrdir
-        result._format = self
         return result
 
 
@@ -1237,19 +1264,21 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         transport = a_bzrdir.get_workingtree_transport(self)
         control_files = LockableFiles(transport, 'lock')
         control_files.put_utf8('format', self.get_format_string())
-        b = a_bzrdir.open_branch()
-        r = a_bzrdir.open_repository()
-        revision = b.last_revision()
-        basis_tree = r.revision_tree(revision)
+        branch = a_bzrdir.open_branch()
+        revision = branch.last_revision()
+        basis_tree = branch.repository.revision_tree(revision)
         inv = basis_tree.inventory
-        wt = WorkingTree(a_bzrdir.transport.clone('..').base, b, inv, _internal=True)
+        wt = WorkingTree(a_bzrdir.root_transport.base,
+                         branch,
+                         inv,
+                         _internal=True,
+                         _format=self)
         wt._write_inventory(inv)
         wt.set_root_id(inv.root.file_id)
         wt.set_last_revision(revision)
         wt.set_pending_merges([])
         wt.revert([])
         wt.bzrdir = a_bzrdir
-        wt._format = self
         return wt
 
     def __init__(self):
@@ -1267,9 +1296,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        result = WorkingTree(a_bzrdir.transport.clone('..').base, _internal=True)
+        result = WorkingTree(a_bzrdir.root_transport.base, _internal=True, _format=self)
         result.bzrdir = a_bzrdir
-        result._format = self
         return result
 
 

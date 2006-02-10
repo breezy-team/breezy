@@ -41,6 +41,7 @@ def test_suite():
     test_branch_implementations = [
         'bzrlib.tests.branch_implementations.test_branch',
         'bzrlib.tests.branch_implementations.test_parent',
+        'bzrlib.tests.branch_implementations.test_permissions',
         ]
     adapter = BranchTestProviderAdapter(
         default_transport,

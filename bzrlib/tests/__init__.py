@@ -37,11 +37,9 @@ import time
 
 
 import bzrlib.branch
+import bzrlib.bzrdir as bzrdir
 import bzrlib.commands
-from bzrlib.errors import (BzrError,
-                           FileExists,
-                           UninitializableFormat,
-                           )
+import bzrlib.errors as errors
 import bzrlib.inventory
 import bzrlib.iterablefile
 import bzrlib.merge3
@@ -57,7 +55,7 @@ from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.tests.treeshape import build_tree_contents
-from bzrlib.workingtree import WorkingTree
+from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
 default_transport = LocalRelpathServer
 
@@ -267,7 +265,7 @@ class TestCase(unittest.TestCase):
                                   charjunk=lambda x: False)
         return ''.join(difflines)
 
-    def assertEqualDiff(self, a, b):
+    def assertEqualDiff(self, a, b, message=None):
         """Assert two texts are equal, if not raise an exception.
         
         This is intended for use with multi-line strings where it can 
@@ -276,9 +274,15 @@ class TestCase(unittest.TestCase):
         # TODO: perhaps override assertEquals to call this for strings?
         if a == b:
             return
-        raise AssertionError("texts not equal:\n" + 
+        if message is None:
+            message = "texts not equal:\n"
+        raise AssertionError(message + 
                              self._ndiff_strings(a, b))      
         
+    def assertEqualMode(self, mode, mode_test):
+        self.assertEqual(mode, mode_test,
+                         'mode mismatch %o != %o' % (mode, mode_test))
+
     def assertStartsWith(self, s, prefix):
         if not s.startswith(prefix):
             raise AssertionError('string %r does not start with %r' % (s, prefix))
@@ -621,7 +625,7 @@ class TestCaseInTempDir(TestCase):
                 elif line_endings == 'native':
                     end = os.linesep
                 else:
-                    raise BzrError('Invalid line ending request %r' % (line_endings,))
+                    raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
                 content = "contents of %s%s" % (name, end)
                 transport.put(urlescape(name), StringIO(content))
 
@@ -671,6 +675,18 @@ class TestCaseWithTransport(TestCaseInTempDir):
         relpath provides for clients to get a path relative to the base url.
         These should only be downwards relative, not upwards.
         """
+        base = self.get_readonly_server().get_url()
+        if relpath is not None:
+            if not base.endswith('/'):
+                base = base + '/'
+            base = base + relpath
+        return base
+
+    def get_readonly_server(self):
+        """Get the server instance for the readonly transport
+
+        This is useful for some tests with specific servers to do diagnostics.
+        """
         if self.__readonly_server is None:
             if self.transport_readonly_server is None:
                 # readonly decorator requested
@@ -682,12 +698,19 @@ class TestCaseWithTransport(TestCaseInTempDir):
                 self.__readonly_server = self.transport_readonly_server()
                 self.__readonly_server.setUp()
             self.addCleanup(self.__readonly_server.tearDown)
-        base = self.__readonly_server.get_url()
-        if relpath is not None:
-            if not base.endswith('/'):
-                base = base + '/'
-            base = base + relpath
-        return base
+        return self.__readonly_server
+
+    def get_server(self):
+        """Get the read/write server instance.
+
+        This is useful for some tests with specific servers that need
+        diagnostics.
+        """
+        if self.__server is None:
+            self.__server = self.transport_server()
+            self.__server.setUp()
+            self.addCleanup(self.__server.tearDown)
+        return self.__server
 
     def get_url(self, relpath=None):
         """Get a URL for the readwrite transport.
@@ -697,11 +720,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         relpath provides for clients to get a path relative to the base url.
         These should only be downwards relative, not upwards.
         """
-        if self.__server is None:
-            self.__server = self.transport_server()
-            self.__server.setUp()
-            self.addCleanup(self.__server.tearDown)
-        base = self.__server.get_url()
+        base = self.get_server().get_url()
         if relpath is not None and relpath != '.':
             if not base.endswith('/'):
                 base = base + '/'
@@ -722,10 +741,10 @@ class TestCaseWithTransport(TestCaseInTempDir):
                 t = bzrlib.transport.get_transport(parent)
                 try:
                     t.mkdir(segments[-1])
-                except FileExists:
+                except errors.FileExists:
                     pass
             return bzrlib.bzrdir.BzrDir.create(url)
-        except UninitializableFormat:
+        except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
     def make_repository(self, relpath):
@@ -738,8 +757,19 @@ class TestCaseWithTransport(TestCaseInTempDir):
 
         Returns the tree.
         """
+        # TODO: always use the local disk path for the working tree,
+        # this obviously requires a format that supports branch references
+        # so check for that by checking bzrdir.BzrDirFormat.get_default_format()
+        # RBC 20060208
         b = self.make_branch(relpath)
-        return WorkingTree.create(b, relpath)
+        try:
+            return b.bzrdir.create_workingtree()
+        except errors.NotLocalUrl:
+            # new formats - catch No tree error and create
+            # a branch reference and a checkout.
+            # old formats at that point - raise TestSkipped.
+            # TODO: rbc 20060208
+            return WorkingTreeFormat2().initialize(bzrdir.BzrDir.open(relpath))
 
 
 class ChrootedTestCase(TestCaseWithTransport):

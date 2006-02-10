@@ -51,14 +51,29 @@ class Repository(object):
     """
 
     @needs_read_lock
-    def all_revision_ids(self):
-        """Returns a list of all the revision ids in the repository.
+    def _all_possible_ids(self):
+        """Return all the possible revisions that we could find."""
+        return self.get_inventory_weave().names()
 
-        It would be nice to have this topologically sorted, but its not yet.
+    @needs_read_lock
+    def all_revision_ids(self):
+        """Returns a list of all the revision ids in the repository. 
+
+        These are in as much topological order as the underlying store can 
+        present: for weaves ghosts may lead to a lack of correctness until
+        the reweave updates the parents list.
         """
-        possible_ids = self.get_inventory_weave().names()
+        result = self._all_possible_ids()
+        return self._eliminate_revisions_not_present(result)
+
+    @needs_read_lock
+    def _eliminate_revisions_not_present(self, revision_ids):
+        """Check every revision id in revision_ids to see if we have it.
+
+        Returns a set of the present revisions.
+        """
         result = []
-        for id in possible_ids:
+        for id in revision_ids:
             if self.has_revision(id):
                result.append(id)
         return result
@@ -161,6 +176,58 @@ class Repository(object):
     def lock_read(self):
         self.control_files.lock_read()
 
+    @needs_read_lock
+    def missing_revision_ids(self, other, revision_id=None):
+        """Return the revision ids that other has that this does not.
+        
+        These are returned in topological order.
+
+        revision_id: only return revision ids included by revision_id.
+        """
+        if self._compatible_formats(other):
+            # fast path for weave-inventory based stores.
+            # we want all revisions to satisft revision_id in other.
+            # but we dont want to stat every file here and there.
+            # we want then, all revisions other needs to satisfy revision_id 
+            # checked, but not those that we have locally.
+            # so the first thing is to get a subset of the revisions to 
+            # satisfy revision_id in other, and then eliminate those that
+            # we do already have. 
+            # this is slow on high latency connection to self, but as as this
+            # disk format scales terribly for push anyway due to rewriting 
+            # inventory.weave, this is considered acceptable.
+            # - RBC 20060209
+            if revision_id is not None:
+                other_ids = other.get_ancestry(revision_id)
+                assert other_ids.pop(0) == None
+            else:
+                other_ids = other._all_possible_ids()
+            other_ids_set = set(other_ids)
+            # other ids is the worst case to pull now.
+            # now we want to filter other_ids against what we actually
+            # have, but dont try to stat what we know we dont.
+            my_ids = set(self._all_possible_ids())
+            possibly_present_revisions = my_ids.intersection(other_ids_set)
+            actually_present_revisions = set(self._eliminate_revisions_not_present(possibly_present_revisions))
+            required_revisions = other_ids_set.difference(actually_present_revisions)
+            required_topo_revisions = [rev_id for rev_id in other_ids if rev_id in required_revisions]
+            if revision_id is not None:
+                # we used get_ancestry to determine other_ids then we are assured all
+                # revisions referenced are present as they are installed in topological order.
+                return required_topo_revisions
+            else:
+                # we only have an estimate of whats available
+                return other._eliminate_revisions_not_present(required_topo_revisions)
+        # slow code path.
+        my_ids = set(self.all_revision_ids())
+        if revision_id is not None:
+            other_ids = other.get_ancestry(revision_id)
+            assert other_ids.pop(0) == None
+        else:
+            other_ids = other.all_revision_ids()
+        result_set = set(other_ids).difference(my_ids)
+        return [rev_id for rev_id in other_ids if rev_id in result_set]
+
     @staticmethod
     def open(base):
         """Open the repository rooted at base.
@@ -171,51 +238,92 @@ class Repository(object):
         control = bzrdir.BzrDir.open(base)
         return control.open_repository()
 
-    def push_stores(self, to, revision=NULL_REVISION):
-        """FIXME: document and find a consistent name with other classes."""
-        if (not isinstance(self._format, RepositoryFormat4) or
-            self._format != to._format):
-            from bzrlib.fetch import RepoFetcher
-            mutter("Using fetch logic to push between %s(%s) and %s(%s)",
-                   self, self._format, to, to._format)
-            RepoFetcher(to_repository=to, from_repository=self,
-                         last_revision=revision)
-            return
+    def _compatible_formats(self, other):
+        """Return True if the stores in self and other are 'compatible'
+        
+        'compatible' means that they are both the same underlying type
+        i.e. both weave stores, or both knits and thus support fast-path
+        operations."""
+        return (isinstance(self._format, (RepositoryFormat5,
+                                          RepositoryFormat6,
+                                          RepositoryFormat7)) and
+                isinstance(other._format, (RepositoryFormat5,
+                                           RepositoryFormat6,
+                                           RepositoryFormat7)))
 
-        # format 4 to format 4 logic only.
-        store_pairs = ((self.text_store,      to.text_store),
-                       (self.inventory_store, to.inventory_store),
-                       (self.revision_store,  to.revision_store))
+    @needs_read_lock
+    def copy_content_into(self, destination, revision_id=None, basis=None):
+        """Make a complete copy of the content in self into destination."""
+        destination.lock_write()
         try:
-            for from_store, to_store in store_pairs: 
-                copy_all(from_store, to_store)
-        except UnlistableStore:
-            raise UnlistableBranch(from_store)
+            # optimised paths:
+            # compatible stores
+            if self._compatible_formats(destination):
+                if basis is not None:
+                    # copy the basis in, then fetch remaining data.
+                    basis.copy_content_into(destination, revision_id)
+                    destination.fetch(self, revision_id=revision_id)
+                else:
+                    # FIXME do not peek!
+                    if self.control_files._transport.listable():
+                        destination.control_weaves.copy_multi(self.control_weaves,
+                                                              ['inventory'])
+                        copy_all(self.weave_store, destination.weave_store)
+                        copy_all(self.revision_store, destination.revision_store)
+                    else:
+                        destination.fetch(self, revision_id=revision_id)
+            # compatible v4 stores
+            elif isinstance(self._format, RepositoryFormat4):
+                if not isinstance(destination._format, RepositoryFormat4):
+                    raise BzrError('cannot copy v4 branches to anything other than v4 branches.')
+                store_pairs = ((self.text_store,      destination.text_store),
+                               (self.inventory_store, destination.inventory_store),
+                               (self.revision_store,  destination.revision_store))
+                try:
+                    for from_store, to_store in store_pairs: 
+                        copy_all(from_store, to_store)
+                except UnlistableStore:
+                    raise UnlistableBranch(from_store)
+            # fallback - 'fetch'
+            else:
+                destination.fetch(self, revision_id=revision_id)
+        finally:
+            destination.unlock()
+
+    @needs_write_lock
+    def fetch(self, source, revision_id=None):
+        """Fetch the content required to construct revision_id from source.
+
+        If revision_id is None all content is copied.
+        """
+        from bzrlib.fetch import RepoFetcher
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               source, source._format, self, self._format)
+        RepoFetcher(to_repository=self, from_repository=source, last_revision=revision_id)
 
     def unlock(self):
         self.control_files.unlock()
 
     @needs_read_lock
-    def clone(self, a_bzrdir):
+    def clone(self, a_bzrdir, revision_id=None, basis=None):
         """Clone this repository into a_bzrdir using the current format.
 
         Currently no check is made that the format of this repository and
         the bzrdir format are compatible. FIXME RBC 20060201.
         """
-        result = self._format.initialize(a_bzrdir)
-        self.copy(result)
+        if not isinstance(a_bzrdir._format, self.bzrdir._format.__class__):
+            # use target default format.
+            result = a_bzrdir.create_repository()
+        # FIXME RBC 20060209 split out the repository type to avoid this check ?
+        elif isinstance(a_bzrdir._format,
+                      (bzrdir.BzrDirFormat4,
+                       bzrdir.BzrDirFormat5,
+                       bzrdir.BzrDirFormat6)):
+            result = a_bzrdir.open_repository()
+        else:
+            result = self._format.initialize(a_bzrdir)
+        self.copy_content_into(result, revision_id, basis)
         return result
-
-    @needs_read_lock
-    def copy(self, destination):
-        destination.lock_write()
-        try:
-            destination.control_weaves.copy_multi(self.control_weaves, 
-                ['inventory'])
-            copy_all(self.weave_store, destination.weave_store)
-            copy_all(self.revision_store, destination.revision_store)
-        finally:
-            destination.unlock()
 
     def has_revision(self, revision_id):
         """True if this branch has a copy of the revision.
@@ -521,7 +629,7 @@ class RepositoryFormat(object):
         """
         raise NotImplementedError(self.get_format_string)
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, _internal=False):
         """Create a weave repository.
         
         TODO: when creating split out bzr branch formats, move this to a common
@@ -529,6 +637,10 @@ class RepositoryFormat(object):
         """
         from bzrlib.weavefile import write_weave_v5
         from bzrlib.weave import Weave
+
+        if not _internal:
+            # always initialized when the bzrdir is.
+            return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
         
         # Create an empty weave
         sio = StringIO()
@@ -603,7 +715,7 @@ class RepositoryFormat4(RepositoryFormat):
         super(RepositoryFormat4, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirFormat4()
 
-    def initialize(self, url):
+    def initialize(self, url, _internal=False):
         """Format 4 branches cannot be created."""
         raise errors.UninitializableFormat(self)
 

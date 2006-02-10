@@ -148,9 +148,7 @@ class Branch(object):
         NOTE: This will soon be deprecated in favour of creation
         through a BzrDir.
         """
-        # imported here to prevent scope creep as this is going.
-        from bzrlib.workingtree import WorkingTree
-        return WorkingTree.create_standalone(safe_unicode(base)).branch
+        return bzrdir.BzrDir.create_standalone_workingtree(base).branch
 
     def setup_caching(self, cache_root):
         """Subclasses that care about caching should override this, and set
@@ -370,53 +368,93 @@ class Branch(object):
         """
         if revno < 1 or revno > self.revno():
             raise InvalidRevisionNumber(revno)
+
+    @needs_read_lock
+    def clone(self, *args, **kwargs):
+        """Clone this branch into to_bzrdir preserving all semantic values.
         
-    def clone(self, to_location, revision=None, basis_branch=None, to_branch_format=None):
-        """Copy this branch into the existing directory to_location.
-
-        Returns the newly created branch object.
-
-        revision
-            If not None, only revisions up to this point will be copied.
-            The head of the new branch will be that revision.  Must be a
-            revid or None.
-    
-        to_location -- The destination directory; must either exist and be 
-            empty, or not exist, in which case it is created.
-    
-        basis_branch
-            A local branch to copy revisions from, related to this branch. 
-            This is used when branching from a remote (slow) branch, and we have
-            a local branch that might contain some relevant revisions.
-    
-        to_branch_type
-            Branch type of destination branch
+        revision_id: if not None, the revision history in the new branch will
+                     be truncated to end with revision_id.
         """
-        from bzrlib.workingtree import WorkingTree
-        assert isinstance(to_location, basestring)
-        segments = to_location.split('/')
-        if segments and segments[-1] not in ('', '.'):
-            parent = '/'.join(segments[:-1])
-            t = get_transport(parent)
-            try:
-                t.mkdir(segments[-1])
-            except errors.FileExists:
-                pass
-        if to_branch_format is None:
-            # use the default
-            br_to = bzrdir.BzrDir.create_branch_and_repo(to_location)
+        # for API compatability, until 0.8 releases we provide the old api:
+        # def clone(self, to_location, revision=None, basis_branch=None, to_branch_format=None):
+        # after 0.8 releases, the *args and **kwargs should be changed:
+        # def clone(self, to_bzrdir, revision_id=None):
+        if (kwargs.get('to_location', None) or
+            kwargs.get('revision', None) or
+            kwargs.get('basis_branch', None) or
+            (len(args) and isinstance(args[0], basestring))):
+            # backwards compatability api:
+            warn("Branch.clone() has been deprecated for BzrDir.clone() from"
+                 " bzrlib 0.8.", DeprecationWarning, stacklevel=3)
+            # get basis_branch
+            if len(args) > 2:
+                basis_branch = args[2]
+            else:
+                basis_branch = kwargs.get('basis_branch', None)
+            if basis_branch:
+                basis = basis_branch.bzrdir
+            else:
+                basis = None
+            # get revision
+            if len(args) > 1:
+                revision_id = args[1]
+            else:
+                revision_id = kwargs.get('revision', None)
+            # get location
+            if len(args):
+                url = args[0]
+            else:
+                # no default to raise if not provided.
+                url = kwargs.get('to_location')
+            return self.bzrdir.clone(url,
+                                     revision_id=revision_id,
+                                     basis=basis).open_branch()
+        # new cleaner api.
+        # generate args by hand 
+        if len(args) > 1:
+            revision_id = args[1]
         else:
-            br_to = to_branch_format.initialize(to_location)
-        mutter("copy branch from %s to %s", self, br_to)
-        if revision is None:
-            revision = self.last_revision()
-        if basis_branch is not None:
-            basis_branch.repository.push_stores(br_to.repository,
-                                                revision=revision)
-        br_to.update_revisions(self, stop_revision=revision)
-        br_to.set_parent(self.base)
-        mutter("copied")
-        return br_to
+            revision_id = kwargs.get('revision_id', None)
+        if len(args):
+            to_bzrdir = args[0]
+        else:
+            # no default to raise if not provided.
+            to_bzrdir = kwargs.get('to_bzrdir')
+        result = self._format.initialize(to_bzrdir)
+        self.copy_content_into(result, revision_id=revision_id)
+        return  result
+
+    @needs_read_lock
+    def sprout(self, to_bzrdir, revision_id=None):
+        """Create a new line of development from the branch, into to_bzrdir.
+        
+        revision_id: if not None, the revision history in the new branch will
+                     be truncated to end with revision_id.
+        """
+        result = self._format.initialize(to_bzrdir)
+        self.copy_content_into(result, revision_id=revision_id)
+        result.set_parent(self.bzrdir.root_transport.base)
+        return result
+
+    @needs_read_lock
+    def copy_content_into(self, destination, revision_id=None):
+        """Copy the content of self into destination.
+
+        revision_id: if not None, the revision history in the new branch will
+                     be truncated to end with revision_id.
+        """
+        new_history = self.revision_history()
+        if revision_id is not None:
+            try:
+                new_history = new_history[:new_history.index(revision_id) + 1]
+            except ValueError:
+                rev = self.repository.get_revision(revision_id)
+                new_history = rev.get_history(self.repository)[1:]
+        destination.set_revision_history(new_history)
+        parent = self.get_parent()
+        if parent:
+            destination.set_parent(parent)
 
 
 class BranchFormat(object):
@@ -619,10 +657,77 @@ class BzrBranchFormat5(BranchFormat):
                          a_bzrdir=a_bzrdir)
 
 
+class BranchReferenceFormat(BranchFormat):
+    """Bzr branch reference format.
+
+    Branch references are used in implementing checkouts, they
+    act as an alias to the real branch which is at some other url.
+
+    This format has:
+     - A location file
+     - a format string
+    """
+
+    def get_format_string(self):
+        """See BranchFormat.get_format_string()."""
+        return "Bazaar-NG Branch Reference Format 1\n"
+        
+    def initialize(self, a_bzrdir, target_branch=None):
+        """Create a branch of this format in a_bzrdir."""
+        if target_branch is None:
+            # this format does not implement branch itself, thus the implicit
+            # creation contract must see it as uninitializable
+            raise errors.UninitializableFormat(self)
+        mutter('creating branch reference in %s', a_bzrdir.transport.base)
+        branch_transport = a_bzrdir.get_branch_transport(self)
+        # FIXME rbc 20060209 one j-a-ms encoding branch lands this str() cast is not needed.
+        branch_transport.put('location', StringIO(str(target_branch.bzrdir.root_transport.base)))
+        branch_transport.put('format', StringIO(self.get_format_string()))
+        return self.open(a_bzrdir, _found=True)
+
+    def __init__(self):
+        super(BranchReferenceFormat, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+
+    def _make_reference_clone_function(format, a_branch):
+        """Create a clone() routine for a branch dynamically."""
+        def clone(to_bzrdir, revision_id=None):
+            """See Branch.clone()."""
+            return format.initialize(to_bzrdir, a_branch)
+            # cannot obey revision_id limits when cloning a reference ...
+            # FIXME RBC 20060210 either nuke revision_id for clone, or
+            # emit some sort of warning/error to the caller ?!
+        return clone
+
+    def open(self, a_bzrdir, _found=False):
+        """Return the branch that the branch reference in a_bzrdir points at.
+
+        _found is a private parameter, do not use it. It is used to indicate
+               if format probing has already be done.
+        """
+        if not _found:
+            format = BranchFormat.find_format(a_bzrdir)
+            assert format.__class__ == self.__class__
+        transport = a_bzrdir.get_branch_transport(None)
+        real_bzrdir = bzrdir.BzrDir.open(transport.get('location').read())
+        result = real_bzrdir.open_branch()
+        # this changes the behaviour of result.clone to create a new reference
+        # rather than a copy of the content of the branch.
+        # I did not use a proxy object because that needs much more extensive
+        # testing, and we are only changing one behaviour at the moment.
+        # If we decide to alter more behaviours - i.e. the implicit nickname
+        # then this should be refactored to introduce a tested proxy branch
+        # and a subclass of that for use in overriding clone() and ....
+        # - RBC 20060210
+        result.clone = self._make_reference_clone_function(result)
+        return result
+
+
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
 __default_format = BzrBranchFormat5()
 BranchFormat.register_format(__default_format)
+BranchFormat.register_format(BranchReferenceFormat())
 BranchFormat.set_default_format(__default_format)
 _legacy_formats = [BzrBranchFormat4(),
                    ]
@@ -633,7 +738,6 @@ class BzrBranch(Branch):
     Note that it's "local" in the context of the filesystem; it doesn't
     really matter if it's on an nfs/smb/afs/coda/... share, as long as
     it's writable, and can be accessed via the normal filesystem API.
-
     """
     # We actually expect this class to be somewhat short-lived; part of its
     # purpose is to try to isolate what bits of the branch logic are tied to
@@ -990,15 +1094,6 @@ class BzrBranch(Branch):
         WorkingTree.create(branch_to, branch_to.base)
         mutter("copied")
         return branch_to
-
-    def clone(self, to_location, revision=None, basis_branch=None, to_branch_type=None):
-        print "FIXME: clone via create and fetch is probably faster when versioned file comes in."
-        if (to_branch_type is None
-            and self.repository.weave_store.listable()
-            and self.repository.revision_store.listable()):
-            return self._clone_weave(to_location, revision, basis_branch)
-        else:
-            return Branch.clone(self, to_location, revision, basis_branch, to_branch_type)
 
 
 class BranchTestProviderAdapter(object):

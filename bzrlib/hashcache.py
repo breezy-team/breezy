@@ -94,7 +94,8 @@ class HashCache(object):
     """
     needs_write = False
 
-    def __init__(self, basedir):
+    def __init__(self, basedir, mode=None):
+        """Create a hash cache in base dir, and set the file mode to mode."""
         self.basedir = basedir
         self.hit_count = 0
         self.miss_count = 0
@@ -103,6 +104,7 @@ class HashCache(object):
         self.removed_count = 0
         self.update_count = 0
         self._cache = {}
+        self._mode = mode
 
     def cache_file_name(self):
         # FIXME: duplicate path logic here, this should be 
@@ -124,6 +126,8 @@ class HashCache(object):
         Obsolete entries are those where the file has been modified or deleted
         since the entry was inserted.        
         """
+        # FIXME optimisation opportunity, on linux [and check other oses]:
+        # rather than iteritems order, stat in inode order.
         prep = [(ce[1][3], path, ce) for (path, ce) in self._cache.iteritems()]
         prep.sort()
         
@@ -202,7 +206,7 @@ class HashCache(object):
         
     def write(self):
         """Write contents of cache to file."""
-        outf = AtomicFile(self.cache_file_name(), 'wb')
+        outf = AtomicFile(self.cache_file_name(), 'wb', new_mode=self._mode)
         try:
             print >>outf, CACHE_HEADER,
 

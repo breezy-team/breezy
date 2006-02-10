@@ -116,6 +116,24 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         # which branch.Open will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, branch.Branch.open, self.get_url())
         # but open_downlevel will work
-        self.assertEqual(format.open(dir), branch.Branch.open_downlevel(self.get_url()))
+        self.assertEqual(format.open(dir), bzrdir.BzrDir.open(self.get_url()).open_branch(unsupported=True))
         # unregister the format
         branch.BranchFormat.unregister_format(format)
+
+
+class TestBranchReference(TestCaseWithTransport):
+    """Tests for the branch reference facility."""
+
+    def test_create_open_reference(self):
+        bzrdirformat = bzrdir.BzrDirMetaFormat1()
+        t = get_transport(self.get_url('.'))
+        t.mkdir('repo')
+        dir = bzrdirformat.initialize(self.get_url('repo'))
+        dir.create_repository()
+        target_branch = dir.create_branch()
+        t.mkdir('branch')
+        branch_dir = bzrdirformat.initialize(self.get_url('branch'))
+        made_branch = branch.BranchReferenceFormat().initialize(branch_dir, target_branch)
+        self.assertEqual(made_branch.base, target_branch.base)
+        opened_branch = branch_dir.open_branch()
+        self.assertEqual(opened_branch.base, target_branch.base)

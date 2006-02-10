@@ -78,7 +78,7 @@ class RepoFetcher(object):
     count_copied -- number of revisions copied
     count_weaves -- number of file weaves copied
     """
-    def __init__(self, to_repository, from_repository, last_revision=NULL_REVISION, pb=None):
+    def __init__(self, to_repository, from_repository, last_revision=None, pb=None):
         if to_repository.bzrdir.transport.base == from_repository.bzrdir.transport.base:
             raise Exception("can't fetch from a repository to itself %s, %s" % 
                             (from_repository.bzrdir.transport.base,
@@ -130,25 +130,18 @@ class RepoFetcher(object):
 
     def _revids_to_fetch(self):
         mutter('fetch up to rev {%s}', self._last_revision)
-        if self._last_revision is None:
-            # explicit limit of None
+        if self._last_revision is NULL_REVISION:
+            # explicit limit of no revisions needed
             return None
-        if (self._last_revision != NULL_REVISION and
+        if (self._last_revision != None and
             self.to_repository.has_revision(self._last_revision)):
             return None
             
         try:
-            if self._last_revision is NULL_REVISION:
-                branch_from_revs = set(self.from_repository.all_revision_ids() +
-                                       [None])
-            else:
-                branch_from_revs = set(
-                    self.from_repository.get_ancestry(self._last_revision))
+            return self.to_repository.missing_revision_ids(self.from_repository,
+                                                           self._last_revision)
         except errors.NoSuchRevision:
             raise InstallFailed([self._last_revision])
-
-        branch_to_revs = set(self.to_repository.all_revision_ids() + [None])
-        return branch_from_revs.difference(branch_to_revs)
 
     def _fetch_revision_texts(self, revs):
         self.to_repository.revision_store.copy_multi(
@@ -276,6 +269,6 @@ class Fetcher(object):
             self._last_revision = from_history[-1]
         else:
             # no history in the source branch
-            self._last_revision = None
+            self._last_revision = NULL_REVISION
 
 fetch = Fetcher

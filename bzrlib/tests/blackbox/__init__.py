@@ -24,7 +24,7 @@ rather starts again from the run_bzr function.
 """
 
 from bzrlib.tests import TestLoader
-from bzrlib.tests import TestCaseInTempDir, BzrTestBase
+from bzrlib.tests import TestCaseWithTransport, BzrTestBase
 
 def test_suite():
     testmod_names = [
@@ -49,7 +49,7 @@ def test_suite():
     return TestLoader().loadTestsFromNames(testmod_names)
 
 
-class ExternalBase(TestCaseInTempDir):
+class ExternalBase(TestCaseWithTransport):
 
     def runbzr(self, args, retcode=0, backtick=False):
         if isinstance(args, basestring):

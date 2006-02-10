@@ -65,9 +65,10 @@ class TestFileIdInvolved(TestCaseWithRepository):
         main_wt.commit("Commit one", rev_id="rev-A")
         #-------- end A -----------
 
-        b1 = main_branch.clone("branch1")
+        d1 = main_branch.bzrdir.clone('branch1')
+        b1 = d1.open_branch()
         self.build_tree(["branch1/d"])
-        bt1 = WorkingTree('branch1', b1)
+        bt1 = d1.open_workingtree()
         bt1.add('d')
         bt1.commit("branch1, Commit one", rev_id="rev-E")
 
@@ -78,9 +79,10 @@ class TestFileIdInvolved(TestCaseWithRepository):
 
         #-------- end B -----------
 
-        branch2_branch = main_branch.clone("branch2")
+        d2 = main_branch.bzrdir.clone('branch2')
+        branch2_branch = d2.open_branch()
+        bt2 = d2.open_workingtree()
         os.chmod("branch2/b",0770)
-        bt2 = WorkingTree('branch2', branch2_branch)
         bt2.commit("branch2, Commit one", rev_id="rev-J")
 
         #-------- end J -----------
