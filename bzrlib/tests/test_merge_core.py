@@ -297,6 +297,7 @@ class MergeTest(TestCase):
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.remove_file("1", this=True)
         builder.merge()
+        builder.cleanup()
 
     def test_perms_merge(self):
         builder = MergeBuilder()

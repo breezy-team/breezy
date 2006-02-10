@@ -468,6 +468,8 @@ class Merge3Merger(object):
             if file_id not in tree:
                 return (None, None)
             kind = tree.kind(file_id)
+            if kind == "root_directory":
+                kind = "directory"
             if kind == "file":
                 contents = tree.get_file_sha1(file_id)
             elif kind == "symlink":
