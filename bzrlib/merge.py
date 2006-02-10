@@ -481,32 +481,42 @@ class Merge3Merger(object):
         base_pair = contents_pair(self.base_tree)
         other_pair = contents_pair(self.other_tree)
         if base_pair == other_pair:
+            # OTHER introduced no changes
             return "unmodified"
         this_pair = contents_pair(self.this_tree)
         if this_pair == other_pair:
+            # THIS and OTHER introduced the same changes
             return "unmodified"
         else:
             trans_id = self.tt.get_trans_id(file_id)
             if this_pair == base_pair:
+                # only OTHER introduced changes
                 if file_id in self.this_tree:
+                    # Remove any existing contents
                     self.tt.delete_contents(trans_id)
                 if file_id in self.other_tree.inventory:
+                    # OTHER changed the file
                     create_by_entry(self.tt, 
                                     self.other_tree.inventory[file_id], 
                                     self.other_tree, trans_id)
-                    self.tt.version_file(file_id, trans_id)
+                    if file_id not in self.this_tree:
+                        self.tt.version_file(file_id, trans_id)
                     return "modified"
-                if file_id in self.this_tree:
+                elif file_id in self.this_tree:
+                    # OTHER deleted the file
                     self.tt.unversion_file(trans_id)
                     return "deleted"
+            #BOTH THIS and OTHER introduced changes; scalar conflict
             elif this_pair[0] == "file" and other_pair[0] == "file":
-                # If this and other are both files, either base is a file, or
-                # both converted to files, so at least we have agreement that
-                # output should be a file.
-                self.tt.version_file(file_id, trans_id)
+                # THIS and OTHER are both files, so text merge.  Either
+                # BASE is a file, or both converted to files, so at least we
+                # have agreement that output should be a file.
+                if file_id not in self.this_tree:
+                    self.tt.version_file(file_id, trans_id)
                 self.text_merge(file_id, trans_id)
                 return "modified"
             else:
+                # Scalar conflict, can't text merge.  Dump conflicts
                 trans_id = self.tt.get_trans_id(file_id)
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
