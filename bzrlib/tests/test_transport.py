@@ -21,7 +21,10 @@ import stat
 from cStringIO import StringIO
 
 from bzrlib.errors import (NoSuchFile, FileExists,
-                           TransportNotPossible, ConnectionError)
+                           TransportNotPossible,
+                           ConnectionError,
+                           DependencyNotPresent,
+                           )
 from bzrlib.tests import TestCase
 from bzrlib.transport import (_get_protocol_handlers,
                               _get_transport_modules,
@@ -29,8 +32,10 @@ from bzrlib.transport import (_get_protocol_handlers,
                               register_lazy_transport,
                               _set_protocol_handlers,
                               urlescape,
+                              Transport,
                               )
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.transport.local import LocalTransport
 
 
 class TestTransport(TestCase):
@@ -61,6 +66,18 @@ class TestTransport(TestCase):
                              _get_transport_modules())
         finally:
             _set_protocol_handlers(handlers)
+
+    def test_transport_dependency(self):
+        """Transport with missing dependency causes no error"""
+        saved_handlers = _get_protocol_handlers()
+        try:
+            register_lazy_transport('foo', 'bzrlib.tests.test_transport',
+                    'BadTransportHandler')
+            t = get_transport('foo://fooserver/foo')
+            # because we failed to load the transport
+            self.assertTrue(isinstance(t, LocalTransport))
+        finally:
+            _set_protocol_handlers(saved_handlers)
             
 
 class TestMemoryTransport(TestCase):
@@ -181,3 +198,12 @@ class ReadonlyDecoratorTransportTest(TestCase):
             self.assertEqual(True, transport.is_readonly())
         finally:
             server.tearDown()
+
+
+class BadTransportHandler(Transport):
+    def __init__(self, base_url):
+        raise DependencyNotPresent('some_lib', 'testing missing dependency')
+
+
+class BackupTransportHandler(Transport):
+    """Test transport that works as a backup for the BadTransportHandler"""

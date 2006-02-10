@@ -28,11 +28,18 @@ from unittest import TestSuite
 
 from bzrlib.trace import mutter, warning
 import bzrlib.errors as errors
+from bzrlib.errors import DependencyNotPresent
 
 _protocol_handlers = {
 }
 
 def register_transport(prefix, klass, override=True):
+    """Register a transport that can be used to open URLs
+
+    Normally you should use register_lazy_transport, which defers loading the
+    implementation until it's actually used, and so avoids pulling in possibly
+    large implementation libraries.
+    """
     global _protocol_handlers
     # trace messages commented out because they're typically 
     # run during import before trace is set up
@@ -491,6 +498,8 @@ def get_transport(base):
 
     base is either a URL or a directory name.  
     """
+    # TODO: give a better error if base looks like a url but there's no
+    # handler for the scheme?
     global _protocol_handlers
     if base is None:
         base = u'.'
@@ -498,7 +507,12 @@ def get_transport(base):
         base = unicode(base)
     for proto, klass in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
-            return klass(base)
+            try:
+                return klass(base)
+            except DependencyNotPresent, e:
+                mutter("failed to instantiate transport %r for %r: %r" %
+                        (klass, base, e))
+                continue
     # The default handler is the filesystem handler
     # which has a lookup of None
     return _protocol_handlers[None](base)

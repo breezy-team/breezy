@@ -34,7 +34,6 @@ except ImportError, e:
     raise DependencyNotPresent('pycurl', e)
 
 
-
 class PyCurlTransport(HttpTransportBase):
     """http client transport using pycurl
 

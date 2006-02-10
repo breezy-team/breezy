@@ -25,6 +25,10 @@ bzr development version
       management routines are now in bzrlib.lockablefiles. 
       (Aaron Bentley, Robert Collins, Martin Pool)
 
+    * Transports can now raise DependencyNotPresent if they need a library
+      which is not installed, and then another implementation will be 
+      tried.  (Martin Pool)
+
     * Remove obsolete (and no-op) `decode` parameter to `Transport.get`.  
       (Martin Pool)
 
