@@ -71,6 +71,10 @@ def _parse_revision_str(revstr):
     BzrError: No namespace registered for string: 'abc'
     >>> _parse_revision_str('branch:../branch2')
     [<RevisionSpec_branch branch:../branch2>]
+    >>> _parse_revision_str('branch:../../branch2')
+    [<RevisionSpec_branch branch:../../branch2>]
+    >>> _parse_revision_str('branch:../../branch2..23')
+    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_int 23>]
     """
     # TODO: Maybe move this into revisionspec.py
     old_format_re = re.compile('\d*:\d*')
@@ -85,20 +89,9 @@ def _parse_revision_str(revstr):
             else:
                 revs.append(RevisionSpec(None))
     else:
-        next_prefix = None
-        for x in revstr.split('..'):
-            if not x:
-                revs.append(RevisionSpec(None))
-            elif x[-1] == ':':
-                # looks like a namespace:.. has happened
-                next_prefix = x + '..'
-            else:
-                if next_prefix is not None:
-                    x = next_prefix + x
-                revs.append(RevisionSpec(x))
-                next_prefix = None
-        if next_prefix is not None:
-            revs.append(RevisionSpec(next_prefix))
+        sep = re.compile("\\.\\.(?!/)")
+        for x in sep.split(revstr):
+            revs.append(RevisionSpec(x or None))
     return revs
 
 

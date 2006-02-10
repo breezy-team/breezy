@@ -20,12 +20,20 @@
 The methods here allow for api symbol versioning.
 """
 
-__all__ = ['warn', 'set_warning_method', 'zero_seven']
+__all__ = ['deprecated_function',
+           'deprecated_method',
+           'DEPRECATED_PARAMETER',
+           'deprecated_passed',
+           'warn', 'set_warning_method', 'zero_seven',
+           'zero_eight',
+           ]
 
 from warnings import warn
 
 
+DEPRECATED_PARAMETER = "A deprecated parameter marker."
 zero_seven = "%s was deprecated in version 0.7."
+zero_eight = "%s was deprecated in version 0.8."
 
 
 def set_warning_method(method):
@@ -53,7 +61,7 @@ def deprecated_function(deprecation_version):
             symbol = "%s.%s" % (callable.__module__, 
                                 callable.__name__
                                 )
-            warn(deprecation_version % symbol, DeprecationWarning)
+            warn(deprecation_version % symbol, DeprecationWarning, stacklevel=2)
             return callable(*args, **kwargs)
         _populate_decorated(callable, deprecation_version, "function",
                             decorated_function)
@@ -76,12 +84,31 @@ def deprecated_method(deprecation_version):
                                    self.__class__.__name__,
                                    callable.__name__
                                    )
-            warn(deprecation_version % symbol, DeprecationWarning)
+            warn(deprecation_version % symbol, DeprecationWarning, stacklevel=2)
             return callable(self, *args, **kwargs)
         _populate_decorated(callable, deprecation_version, "method",
                             decorated_method)
         return decorated_method
     return method_decorator
+
+
+def deprecated_passed(parameter_value):
+    """Return True if parameter_value was used."""
+    # FIXME: it might be nice to have a parameter deprecation decorator. 
+    # it would need to handle positional and *args and **kwargs parameters,
+    # which means some mechanism to describe how the parameter was being
+    # passed before deprecation, and some way to deprecate parameters that
+    # were not at the end of the arg list. Thats needed for __init__ where
+    # we cannot just forward to a new method name.I.e. in the following
+    # examples we would want to have callers that pass any value to 'bad' be
+    # given a warning - because we have applied:
+    # @deprecated_parameter('bad', zero_seven)
+    #
+    # def __init__(self, bad=None)
+    # def __init__(self, bad, other)
+    # def __init__(self, **kwargs)
+    # RBC 20060116
+    return not parameter_value is DEPRECATED_PARAMETER
 
 
 def _decorate_docstring(callable, deprecation_version, label,

@@ -1,3 +1,38 @@
+bzr development version
+
+  IMPROVEMENTS:
+
+    * The FTP transport now tries to reconnect after a temporary
+      failure. ftp put is made atomic. (Matthieu Moy)
+
+    * The FTP transport now maintains a pool of connections, and
+      reuses them to avoid multiple connections to the same host (like
+      sftp did). (Daniel Silverstone)
+
+    * The bzr_man.py file has been removed. To create the man page now,
+      use ./generate_docs.py man. The new program can also create other files.
+      Run "python generate_docs.py --help" for usage information. (Hans
+      Ulrich Niedermann & James Blackwell).
+
+    * Man Page now gives full help (James Blackwell). Help also updated to 
+      reflect user config now being stored in .bazaar (Hans Ulrich
+      Niedermann)
+
+  INTERNALS:
+  
+    * The internal storage of history, and logical branch identity have now
+      been split into Branch, and Repository. The common locking and file 
+      management routines are now in bzrlib.lockablefiles. 
+      (Aaron Bentley, Robert Collins, Martin Pool)
+
+    * Remove obsolete (and no-op) `decode` parameter to `Transport.get`.  
+      (Martin Pool)
+
+  TESTING:
+
+    * SFTP tests now shortcut the SSH negotiation, reducing test overhead
+      for testing SFTP protocol support. (Robey Pointer)
+
 bzr 0.7rc1 2006-01-09
 
   CHANGES:
@@ -27,13 +62,11 @@ bzr 0.7rc1 2006-01-09
       This gives better integration with user settings such as ProxyCommand.
       (James Henstridge)
 
-    * Sftp paths can now be relative, or local, according to the IETF 
-      draft spec.  Paths now take the form:
-      sftp://user:pass@host:port/relative/path
+    * Sftp paths can now be relative, or local, according to the lftp
+      convention. Paths now take the form:
+      sftp://user:pass@host:port/~/relative/path
       or
-      sftp://user:pass@host:port/%2Fabsolute/path
-      or
-      sftp://user:pass@host:port//absolute/path
+      sftp://user:pass@host:port/absolute/path
 
     * Permissions on files underneath .bzr/ are inherited from the .bzr 
       directory. So for a shared repository, simply doing 'chmod -R g+w .bzr/'
@@ -105,8 +138,12 @@ bzr 0.7rc1 2006-01-09
     * 'bzr add' now takes a --dry-run parameter which shows you what would be
       added, but doesn't actually add anything. (Michael Ellerman)
 
-    * bzr add now lists how many files were ignored per glob.  add --verbose
+    * 'bzr add' now lists how many files were ignored per glob.  add --verbose
       lists the specific files.  (Aaron Bentley)
+
+    * 'bzr missing' now supports displaying changes in diverged trees and can
+      be limited to show what either end of the comparison is missing.
+      (Aaron Bently, with a little prompting from Daniel Silverstone)
 
   BUG FIXES:
 
@@ -156,6 +193,8 @@ bzr 0.7rc1 2006-01-09
     * Remove Makefile.in from default ignore list.  (#6413, Tollef Fog 
       Heen, Martin Pool)
 
+    * Fix failure in 'bzr added'.  (Nathan McCallum, Martin Pool)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
@@ -195,6 +234,21 @@ bzr 0.7rc1 2006-01-09
     * Tests can now run TestSkipped if they can't execute for any reason.
       (Martin Pool) (NB: TestSkipped should only be raised for correctable
       reasons - see the wiki spec ImprovingBzrTestSuite).
+
+    * Test sftp with relative, absolute-in-homedir and absolute-not-in-homedir
+      paths for the transport tests. Introduce blackbox remote sftp tests that
+      test the same permutations. (Robert Collins, Robey Pointer)
+
+    * Transport implementation tests are now independent of the local file
+      system, which allows tests for esoteric transports, and for features
+      not available in the local file system. They also repeat for variations
+      on the URL scheme that can introduce issues in the transport code,
+      see bzrlib.transport.TransportTestProviderAdapter() for this.
+      (Robert Collins).
+
+    * TestCase.build_tree uses the transport interface to build trees, pass
+      in a transport parameter to give it an existing connection.
+      (Robert Collins).
 
   INTERNALS:
 
@@ -259,6 +313,12 @@ bzr 0.7rc1 2006-01-09
     * Simplify handling of DivergedBranches in cmd_pull().
       (Michael Ellerman)
 		   
+   
+    * Branch.controlfile* logic has moved to lockablefiles.LockableFiles, which
+      is exposed as Branch().control_files. Also this has been altered with the
+      controlfile pre/suffix replaced by simple method names like 'get' and
+      'put'. (Aaron Bentley, Robert Collins).
+
     * Deprecated functions and methods can now be marked as such using the 
       bzrlib.symbol_versioning module. Marked method have their docstring
       updated and will issue a DeprecationWarning using the warnings module
@@ -266,9 +326,6 @@ bzr 0.7rc1 2006-01-09
 
     * bzrlib.osutils.safe_unicode now exists to provide parameter coercion
       for functions that need unicode strings. (Robert Collins)
-
-    * Remove obsolete (and no-op) `decode` parameter to `Transport.get`.  
-      (Martin Pool)
 
 bzr 0.6 2005-10-28
 

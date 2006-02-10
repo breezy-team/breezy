@@ -59,12 +59,25 @@ class StubSFTPHandle (SFTPHandle):
 
 
 class StubSFTPServer (SFTPServerInterface):
-    def __init__(self, server, root):
+    def __init__(self, server, root, home=None):
         SFTPServerInterface.__init__(self, server)
         self.root = root
-        
+        if home is None:
+            self.home = self.root
+        else:
+            self.home = home[len(self.root):]
+        if (len(self.home) > 0) and (self.home[0] == '/'):
+            self.home = self.home[1:]
+        server._test_case.log('sftpserver - new connection')
+
     def _realpath(self, path):
         return self.root + self.canonicalize(path)
+
+    def canonicalize(self, path):
+        if os.path.isabs(path):
+            return os.path.normpath(path)
+        else:
+            return os.path.normpath('/' + os.path.join(self.home, path))
 
     def chattr(self, path, attr):
         try:
@@ -105,7 +118,7 @@ class StubSFTPServer (SFTPServerInterface):
         try:
             if hasattr(os, 'O_BINARY'):
                 flags |= os.O_BINARY
-            if (attr is not None) and hasattr(attr, 'st_mode'):
+            if getattr(attr, 'st_mode', None):
                 fd = os.open(path, flags, attr.st_mode)
             else:
                 fd = os.open(path, flags)
@@ -151,7 +164,9 @@ class StubSFTPServer (SFTPServerInterface):
     def mkdir(self, path, attr):
         path = self._realpath(path)
         try:
-            if attr is not None and hasattr(attr, 'st_mode'):
+            # Using getattr() in case st_mode is None or 0
+            # both evaluate to False
+            if getattr(attr, 'st_mode', None):
                 os.mkdir(path, attr.st_mode)
             else:
                 os.mkdir(path)

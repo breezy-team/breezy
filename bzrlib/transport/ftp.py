@@ -24,20 +24,37 @@ NAT and other firewalls, so it's best to use it unless you explicitly want
 active, in which case aftp:// will be your friend.
 """
 
-from bzrlib.transport import Transport
+from cStringIO import StringIO
+import errno
+import ftplib
+import os
+import urllib
+import urlparse
+import stat
+import time
+import random
+from warnings import warn
 
+
+from bzrlib.transport import Transport
 from bzrlib.errors import (TransportNotPossible, TransportError,
                            NoSuchFile, FileExists)
+from bzrlib.trace import mutter, warning
 
-import os, errno
-from cStringIO import StringIO
-import ftplib
-import urlparse
-import urllib
-import stat
 
-from bzrlib.branch import Branch
-from bzrlib.trace import mutter
+_FTP_cache = {}
+def _find_FTP(hostname, username, password, is_active):
+    """Find an ftplib.FTP instance attached to this triplet."""
+    key = "%s|%s|%s|%s" % (hostname, username, password, is_active)
+    if key not in _FTP_cache:
+        mutter("Constructing FTP instance against %r" % key)
+        _FTP_cache[key] = ftplib.FTP(hostname, username, password)
+        _FTP_cache[key].set_pasv(not is_active)
+    return _FTP_cache[key]    
+
+
+class FtpTransportError(TransportError):
+    pass
 
 
 class FtpStatResult(object):
@@ -54,6 +71,9 @@ class FtpStatResult(object):
                 f.cwd(pwd)
 
 
+_number_of_retries = 2
+_sleep_between_retries = 5
+
 class FtpTransport(Transport):
     """This is the transport agent for ftp:// access."""
 
@@ -69,7 +89,6 @@ class FtpTransport(Transport):
             self._query, self._fragment) = urlparse.urlparse(self.base)
         self._FTP_instance = _provided_instance
 
-
     def _get_FTP(self):
         """Return the ftplib.FTP instance for this object."""
         if self._FTP_instance is not None:
@@ -84,9 +103,8 @@ class FtpTransport(Transport):
             if ':' in username:
                 username, password = username.split(":", 1)
 
-            mutter("Constructing FTP instance")
-            self._FTP_instance = ftplib.FTP(hostname, username, password)
-            self._FTP_instance.set_pasv(not self.is_active)
+            self._FTP_instance = _find_FTP(hostname, username, password,
+                                           self.is_active)
             return self._FTP_instance
         except ftplib.error_perm, e:
             raise TransportError(msg="Error setting up connection: %s"
@@ -161,14 +179,17 @@ class FtpTransport(Transport):
             mutter("FTP has not: %s" % self._abspath(relpath))
             return False
 
-    def get(self, relpath):
+    def get(self, relpath, decode=False, retries=0):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
+        :param retries: Number of retries after temporary failures so far
+                        for this operation.
 
         We're meant to return a file-like object which bzr will
         then read from. For now we do this via the magic of StringIO
         """
+        # TODO: decode should be deprecated
         try:
             mutter("FTP get: %s" % self._abspath(relpath))
             f = self._get_FTP()
@@ -177,24 +198,80 @@ class FtpTransport(Transport):
             ret.seek(0)
             return ret
         except ftplib.error_perm, e:
-            raise NoSuchFile(self.abspath(relpath), extra=extra)
+            raise NoSuchFile(self.abspath(relpath), extra=str(e))
+        except ftplib.error_temp, e:
+            if retries > _number_of_retries:
+                raise TransportError(msg="FTP temporary error during GET %s. Aborting."
+                                     % self.abspath(relpath),
+                                     orig_error=e)
+            else:
+                warning("FTP temporary error: %s. Retrying." % str(e))
+                self._FTP_instance = None
+                return self.get(relpath, decode, retries+1)
+        except EOFError, e:
+            if retries > _number_of_retries:
+                raise TransportError("FTP control connection closed during GET %s."
+                                     % self.abspath(relpath),
+                                     orig_error=e)
+            else:
+                warning("FTP control connection closed. Trying to reopen.")
+                time.sleep(_sleep_between_retries)
+                self._FTP_instance = None
+                return self.get(relpath, decode, retries+1)
 
-    def put(self, relpath, fp, mode=None):
+    def put(self, relpath, fp, mode=None, retries=0):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
-        :param f:       File-like or string object.
-        TODO: jam 20051215 This should be an atomic put, not overwritting files in place
+        :param fp:       File-like or string object.
+        :param retries: Number of retries after temporary failures so far
+                        for this operation.
+
         TODO: jam 20051215 ftp as a protocol seems to support chmod, but ftplib does not
         """
+        tmp_abspath = '%s.tmp.%.9f.%d.%d' % (self._abspath(relpath), time.time(),
+                        os.getpid(), random.randint(0,0x7FFFFFFF))
         if not hasattr(fp, 'read'):
             fp = StringIO(fp)
         try:
             mutter("FTP put: %s" % self._abspath(relpath))
             f = self._get_FTP()
-            f.storbinary('STOR '+self._abspath(relpath), fp, 8192)
+            try:
+                f.storbinary('STOR '+tmp_abspath, fp)
+                f.rename(tmp_abspath, self._abspath(relpath))
+            except (ftplib.error_temp,EOFError), e:
+                warning("Failure during ftp PUT. Deleting temporary file.")
+                try:
+                    f.delete(tmp_abspath)
+                except:
+                    warning("Failed to delete temporary file on the server.\nFile: %s"
+                            % tmp_abspath)
+                    raise e
+                raise
         except ftplib.error_perm, e:
-            raise TransportError(orig_error=e)
+            if "no such file" in str(e).lower():
+                raise NoSuchFile("Error storing %s: %s"
+                                 % (self.abspath(relpath), str(e)), extra=e)
+            else:
+                raise FtpTransportError(orig_error=e)
+        except ftplib.error_temp, e:
+            if retries > _number_of_retries:
+                raise TransportError("FTP temporary error during PUT %s. Aborting."
+                                     % self.abspath(relpath), orig_error=e)
+            else:
+                warning("FTP temporary error: %s. Retrying." % str(e))
+                self._FTP_instance = None
+                self.put(relpath, fp, mode, retries+1)
+        except EOFError:
+            if retries > _number_of_retries:
+                raise TransportError("FTP control connection closed during PUT %s."
+                                     % self.abspath(relpath), orig_error=e)
+            else:
+                warning("FTP control connection closed. Trying to reopen.")
+                time.sleep(_sleep_between_retries)
+                self._FTP_instance = None
+                self.put(relpath, fp, mode, retries+1)
+
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
@@ -282,7 +359,11 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             return FtpStatResult(f, self._abspath(relpath))
         except ftplib.error_perm, e:
-            raise TransportError(orig_error=e)
+            if "no such file" in str(e).lower():
+                raise NoSuchFile("Error storing %s: %s"
+                                 % (self.abspath(relpath), str(e)), extra=e)
+            else:
+                raise FtpTransportError(orig_error=e)
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
@@ -304,3 +385,9 @@ class FtpTransport(Transport):
         :return: A lock object, which should be passed to Transport.unlock()
         """
         return self.lock_read(relpath)
+
+
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    warn("There are no FTP transport provider tests yet.")
+    return []

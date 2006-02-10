@@ -18,8 +18,8 @@ import urllib, urllib2
 
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
-from bzrlib.transport.http import HttpTransportBase, extract_auth
-from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
+from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
+from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError)
 
 
@@ -127,3 +127,8 @@ class HttpTransport(HttpTransportBase):
         """Delete the item at relpath"""
         raise TransportNotPossible('http does not support delete()')
 
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    # XXX: There are no HTTPS transport provider tests yet.
+    return [(HttpTransport, HttpServer),
+            ]

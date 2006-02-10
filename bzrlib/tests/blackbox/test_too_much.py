@@ -41,11 +41,13 @@ import shutil
 import sys
 
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import has_symlinks, pathjoin
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.workingtree import WorkingTree
+
 
 class TestCommands(ExternalBase):
 
@@ -163,8 +165,7 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m newstuff branch', retcode=3)
 
     def test_ignore_patterns(self):
-        from bzrlib.branch import Branch
-        Branch.initialize('.')
+        self.runbzr('init')
         self.assertEquals(self.capture('unknowns'), '')
 
         file('foo.tmp', 'wt').write('tmp files are ignored')
@@ -258,8 +259,7 @@ class TestCommands(ExternalBase):
 
     def test_mv_modes(self):
         """Test two modes of operation for mv"""
-        from bzrlib.branch import Branch
-        b = Branch.initialize('.')
+        self.runbzr('init')
         self.build_tree(['a', 'c', 'subdir/'])
         self.run_bzr_captured(['add', self.test_dir])
         self.run_bzr_captured(['mv', 'a', 'b'])
@@ -345,50 +345,6 @@ class TestCommands(ExternalBase):
         zf = ZipFile('../first-zip')
         self.assert_('first-zip/hello' in zf.namelist(), zf.namelist())
 
-    def test_diff(self):
-        self.example_branch()
-        file('hello', 'wt').write('hello world!')
-        self.runbzr('commit -m fixing hello')
-        output = self.runbzr('diff -r 2..3', backtick=1, retcode=1)
-        self.assert_('\n+hello world!' in output)
-        output = self.runbzr('diff -r last:3..last:1', backtick=1, retcode=1)
-        self.assert_('\n+baz' in output)
-        file('moo', 'wb').write('moo')
-        self.runbzr('add moo')
-        os.unlink('moo')
-        self.runbzr('diff')
-
-    def test_diff_branches(self):
-        self.build_tree(['branch1/', 'branch1/file', 'branch2/'], line_endings='binary')
-        branch = Branch.initialize('branch1')
-        branch.working_tree().add(['file'])
-        branch.working_tree().commit('add file')
-        copy_branch(branch, 'branch2')
-        print >> open('branch2/file', 'wb'), 'new content'
-        branch2 = Branch.open('branch2')
-        branch2.working_tree().commit('update file')
-        # should open branch1 and diff against branch2, 
-        output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 
-                                        'branch1'],
-                                       retcode=1)
-        self.assertEquals(("=== modified file 'file'\n"
-                           "--- file\t\n"
-                           "+++ file\t\n"
-                           "@@ -1,1 +1,1 @@\n"
-                           "-new content\n"
-                           "+contents of branch1/file\n"
-                           "\n", ''), output)
-        output = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
-                                       retcode=1)
-        self.assertEqualDiff(("=== modified file 'file'\n"
-                              "--- file\t\n"
-                              "+++ file\t\n"
-                              "@@ -1,1 +1,1 @@\n"
-                              "-new content\n"
-                              "+contents of branch1/file\n"
-                              "\n", ''), output)
-
-
     def test_branch(self):
         """Branch from one branch to another."""
         os.mkdir('a')
@@ -438,7 +394,7 @@ class TestCommands(ExternalBase):
         # Merging a branch pulls its revision into the tree
         a = Branch.open('.')
         b = Branch.open('../b')
-        a.get_revision_xml(b.last_revision())
+        a.repository.get_revision_xml(b.last_revision())
         self.log('pending merges: %s', a.working_tree().pending_merges())
         self.assertEquals(a.working_tree().pending_merges(),
                           [b.last_revision()])
@@ -597,6 +553,13 @@ class TestCommands(ExternalBase):
                   'subdir/b\n'
                   , '--versioned')
 
+    def test_cat(self):
+        self.runbzr('init')
+        file("myfile", "wb").write("My contents\n")
+        self.runbzr('add')
+        self.runbzr('commit -m myfile')
+        self.run_bzr_captured('cat -r 1 myfile'.split(' '))
+
     def test_pull_verbose(self):
         """Pull changes from one branch to another and watch the output."""
 
@@ -669,7 +632,7 @@ class TestCommands(ExternalBase):
         
     def test_add_reports(self):
         """add command prints the names of added files."""
-        b = Branch.initialize('.')
+        self.runbzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
         out = self.run_bzr_captured(['add'], retcode=0)[0]
         # the ordering is not defined at the moment
@@ -690,7 +653,7 @@ class TestCommands(ExternalBase):
 
     def test_add_quiet_is(self):
         """add -q does not print the names of added files."""
-        b = Branch.initialize('.')
+        self.runbzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
         out = self.run_bzr_captured(['add', '-q'], retcode=0)[0]
         # the ordering is not defined at the moment
@@ -702,8 +665,7 @@ class TestCommands(ExternalBase):
 
         "bzr add" should add the parent(s) as necessary.
         """
-        from bzrlib.branch import Branch
-        Branch.initialize('.')
+        self.runbzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
         self.run_bzr('add', 'inertiatic/esp')
@@ -726,8 +688,7 @@ class TestCommands(ExternalBase):
 
         "bzr add" should do this happily.
         """
-        from bzrlib.branch import Branch
-        Branch.initialize('.')
+        self.runbzr('init')
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
         self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
         self.run_bzr('add', '--no-recurse', 'inertiatic')
@@ -737,14 +698,14 @@ class TestCommands(ExternalBase):
 
     def test_subdir_add(self):
         """Add in subdirectory should add only things from there down"""
-        from bzrlib.branch import Branch
+        from bzrlib.workingtree import WorkingTree
         
         eq = self.assertEqual
         ass = self.assert_
         chdir = os.chdir
         
-        b = Branch.initialize('.')
-        t = b.working_tree()
+        t = WorkingTree.create_standalone('.')
+        b = t.branch
         self.build_tree(['src/', 'README'])
         
         eq(sorted(t.unknowns()),
@@ -824,6 +785,21 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m done',)
         self.runbzr('remerge', retcode=3)
 
+    def test_status(self):
+        os.mkdir('branch1')
+        os.chdir('branch1')
+        self.runbzr('init')
+        self.runbzr('commit --unchanged --message f')
+        self.runbzr('branch . ../branch2')
+        self.runbzr('branch . ../branch3')
+        self.runbzr('commit --unchanged --message peter')
+        os.chdir('../branch2')
+        self.runbzr('merge ../branch1')
+        self.runbzr('commit --unchanged --message pumpkin')
+        os.chdir('../branch3')
+        self.runbzr('merge ../branch2')
+        message = self.capture('status')
+
 
     def test_conflicts(self):
         """Handling of merge conflicts"""
@@ -858,36 +834,44 @@ class TestCommands(ExternalBase):
         """Test re signing of data."""
         import bzrlib.gpg
         oldstrategy = bzrlib.gpg.GPGStrategy
-        branch = Branch.initialize('.')
-        branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
+        wt = WorkingTree.create_standalone('.')
+        branch = wt.branch
+        wt.commit("base", allow_pointless=True, rev_id='A')
         try:
             # monkey patch gpg signing mechanism
             from bzrlib.testament import Testament
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
             self.runbzr('re-sign -r revid:A')
-            self.assertEqual(Testament.from_revision(branch,'A').as_short_text(),
-                             branch.revision_store.get('A', 'sig').read())
+            self.assertEqual(Testament.from_revision(branch.repository,
+                             'A').as_short_text(),
+                             branch.repository.revision_store.get('A', 
+                             'sig').read())
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
             
     def test_resign_range(self):
         import bzrlib.gpg
         oldstrategy = bzrlib.gpg.GPGStrategy
-        branch = Branch.initialize('.')
-        branch.working_tree().commit("base", allow_pointless=True, rev_id='A')
-        branch.working_tree().commit("base", allow_pointless=True, rev_id='B')
-        branch.working_tree().commit("base", allow_pointless=True, rev_id='C')
+        wt = WorkingTree.create_standalone('.')
+        branch = wt.branch
+        wt.commit("base", allow_pointless=True, rev_id='A')
+        wt.commit("base", allow_pointless=True, rev_id='B')
+        wt.commit("base", allow_pointless=True, rev_id='C')
         try:
             # monkey patch gpg signing mechanism
             from bzrlib.testament import Testament
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
             self.runbzr('re-sign -r 1..')
-            self.assertEqual(Testament.from_revision(branch,'A').as_short_text(),
-                             branch.revision_store.get('A', 'sig').read())
-            self.assertEqual(Testament.from_revision(branch,'B').as_short_text(),
-                             branch.revision_store.get('B', 'sig').read())
-            self.assertEqual(Testament.from_revision(branch,'C').as_short_text(),
-                             branch.revision_store.get('C', 'sig').read())
+            self.assertEqual(
+                Testament.from_revision(branch.repository,'A').as_short_text(),
+                branch.repository.revision_store.get('A', 'sig').read())
+            self.assertEqual(
+                Testament.from_revision(branch.repository,'B').as_short_text(),
+                branch.repository.revision_store.get('B', 'sig').read())
+            self.assertEqual(Testament.from_revision(branch.repository,
+                             'C').as_short_text(),
+                             branch.repository.revision_store.get('C', 
+                             'sig').read())
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
 
@@ -1266,13 +1250,14 @@ class OldTests(ExternalBase):
             progress("skipping symlink tests")
 
 
-class HttpTests(TestCaseWithWebserver):
+class RemoteTests(object):
     """Test bzr ui commands against remote branches."""
 
     def test_branch(self):
         os.mkdir('from')
-        branch = Branch.initialize('from')
-        branch.working_tree().commit('empty commit for nonsense', allow_pointless=True)
+        wt = WorkingTree.create_standalone('from')
+        branch = wt.branch
+        wt.commit('empty commit for nonsense', allow_pointless=True)
         url = self.get_remote_url('from')
         self.run_bzr('branch', url, 'to')
         branch = Branch.open('to')
@@ -1280,17 +1265,41 @@ class HttpTests(TestCaseWithWebserver):
 
     def test_log(self):
         self.build_tree(['branch/', 'branch/file'])
-        branch = Branch.initialize('branch')
-        branch.working_tree().add(['file'])
-        branch.working_tree().commit('add file', rev_id='A')
+        self.capture('init branch')
+        self.capture('add branch/file')
+        self.capture('commit -m foo branch')
         url = self.get_remote_url('branch/file')
         output = self.capture('log %s' % url)
         self.assertEqual(8, len(output.split('\n')))
         
     def test_check(self):
         self.build_tree(['branch/', 'branch/file'])
-        branch = Branch.initialize('branch')
-        branch.working_tree().add(['file'])
-        branch.working_tree().commit('add file', rev_id='A')
+        self.capture('init branch')
+        self.capture('add branch/file')
+        self.capture('commit -m foo branch')
         url = self.get_remote_url('branch/')
         self.run_bzr('check', url)
+    
+    
+class HTTPTests(TestCaseWithWebserver, RemoteTests):
+    """Test various commands against a HTTP server."""
+    
+    
+class SFTPTestsAbsolute(TestCaseWithSFTPServer, RemoteTests):
+    """Test various commands against a SFTP server using abs paths."""
+
+    
+class SFTPTestsAbsoluteSibling(TestCaseWithSFTPServer, RemoteTests):
+    """Test various commands against a SFTP server using abs paths."""
+
+    def setUp(self):
+        super(SFTPTestsAbsoluteSibling, self).setUp()
+        self._override_home = '/dev/noone/runs/tests/here'
+
+    
+class SFTPTestsRelative(TestCaseWithSFTPServer, RemoteTests):
+    """Test various commands against a SFTP server using homedir rel paths."""
+
+    def setUp(self):
+        super(SFTPTestsRelative, self).setUp()
+        self._get_remote_is_absolute = False
