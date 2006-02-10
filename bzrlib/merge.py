@@ -261,7 +261,7 @@ class Merger(object):
             raise BzrError("Showing base is not supported for this"
                                   " merge type. %s" % self.merge_type)
         merge = self.merge_type(**kwargs)
-        if merge.cooked_conflicts == 0:
+        if len(merge.cooked_conflicts) == 0:
             if not self.ignore_zero:
                 note("All changes applied successfully.")
         else:
