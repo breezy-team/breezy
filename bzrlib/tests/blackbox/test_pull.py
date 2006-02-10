@@ -101,6 +101,33 @@ class TestPull(ExternalBase):
         self.runbzr('pull ../b')
         self.runbzr('pull ../b')
 
+    def test_pull_revision(self):
+        """Pull some changes from one branch to another."""
+        os.mkdir('a')
+        os.chdir('a')
+
+        self.example_branch()
+        file('hello2', 'wt').write('foo')
+        self.runbzr('add hello2')
+        self.runbzr('commit -m setup hello2')
+        file('goodbye2', 'wt').write('baz')
+        self.runbzr('add goodbye2')
+        self.runbzr('commit -m setup goodbye2')
+
+        os.chdir('..')
+        self.runbzr('branch -r 1 a b')
+        os.chdir('b')
+        self.runbzr('pull -r 2')
+        a = Branch.open('../a')
+        b = Branch.open('.')
+        self.assertEquals(a.revno(),4)
+        self.assertEquals(b.revno(),2)
+        self.runbzr('pull -r 3')
+        self.assertEquals(b.revno(),3)
+        self.runbzr('pull -r 4')
+        self.assertEquals(a.revision_history(), b.revision_history())
+
+
     def test_overwrite_uptodate(self):
         # Make sure pull --overwrite overwrites
         # even if the target branch has merged

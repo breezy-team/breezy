@@ -447,11 +447,17 @@ def apply_profiled(the_callable, *args, **kwargs):
         os.remove(pfname)
 
 
-def apply_lsprofiled(the_callable, *args, **kwargs):
+def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     from bzrlib.lsprof import profile
-    ret,stats = profile(the_callable,*args,**kwargs)
+    import cPickle
+    ret, stats = profile(the_callable, *args, **kwargs)
     stats.sort()
-    stats.pprint()
+    if filename is None:
+        stats.pprint()
+    else:
+        stats.freeze()
+        cPickle.dump(stats, open(filename, 'w'), 2)
+        print 'Profile data written to %r.' % filename
     return ret
 
 def get_alias(cmd):
@@ -497,16 +503,23 @@ def run_bzr(argv):
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
                 opt_no_aliases = False
+    opt_lsprof_file = None
 
     # --no-plugins is handled specially at a very early stage. We need
     # to load plugins before doing other command parsing so that they
     # can override commands, but this needs to happen first.
 
-    for a in argv:
+    argv_copy = []
+    i = 0
+    while i < len(argv):
+        a = argv[i]
         if a == '--profile':
             opt_profile = True
         elif a == '--lsprof':
             opt_lsprof = True
+        elif a == '--lsprof-file':
+            opt_lsprof_file = argv[i + 1]
+            i += 1
         elif a == '--no-plugins':
             opt_no_plugins = True
         elif a == '--no-aliases':
@@ -516,9 +529,10 @@ def run_bzr(argv):
         elif a in ('--quiet', '-q'):
             be_quiet()
         else:
-            continue
-        argv.remove(a)
+            argv_copy.append(a)
+        i += 1
 
+    argv = argv_copy
     if (not argv) or (argv[0] == '--help'):
         from bzrlib.help import help
         if len(argv) > 1:
@@ -535,6 +549,9 @@ def run_bzr(argv):
     if not opt_no_plugins:
         from bzrlib.plugin import load_plugins
         load_plugins()
+    else:
+        from bzrlib.plugin import disable_plugins
+        disable_plugins()
 
     if not opt_no_aliases:
         args = get_alias(argv.pop(0))
@@ -546,7 +563,7 @@ def run_bzr(argv):
 
     try:
         if opt_lsprof:
-            ret = apply_lsprofiled(cmd_obj.run_argv, argv)
+            ret = apply_lsprofiled(opt_lsprof_file, cmd_obj.run_argv, argv)
         elif opt_profile:
             ret = apply_profiled(cmd_obj.run_argv, argv)
         else:
