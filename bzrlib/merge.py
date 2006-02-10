@@ -544,7 +544,11 @@ class Merger(object):
                 parent = by_path[os.path.dirname(path)]
             abspath = pathjoin(self.this_tree.basedir, path)
             kind = bzrlib.osutils.file_kind(abspath)
-            new_inventory[file_id] = (path, file_id, parent, kind, False)
+            if file_id in self.base_tree.inventory:
+                executable = self.base_tree.inventory[file_id].executable
+            else:
+                executable = False
+            new_inventory[file_id] = (path, file_id, parent, kind, executable)
             by_path[path] = file_id 
 
         # Get a list in insertion order
