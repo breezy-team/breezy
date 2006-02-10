@@ -674,8 +674,8 @@ class TreeTransform(object):
                 entry = limbo_inv.get(trans_id)
                 if entry is not None:
                     entry.name = self.final_name(trans_id)
-                    parent_trans_id = self.final_parent(trans_id)
-                    entry.parent_id = self.final_file_id(parent_trans_id)
+                    parent_path = os.path.dirname(path)
+                    entry.parent_id = self._tree.inventory.path2id(parent_path)
                     inv.add(entry)
 
             # requires files and inventory entries to be in place

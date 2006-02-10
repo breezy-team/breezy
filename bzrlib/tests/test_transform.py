@@ -236,6 +236,50 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertIs(self.wt.path2id('dying_directory/dying_file'), None)
         mfile2_path = self.wt.abspath(os.path.join('new_directory','mfile2'))
 
+    def test_both_rename(self):
+        create_tree,root = self.get_transform()
+        newdir = create_tree.new_directory('selftest', root, 'selftest-id')
+        create_tree.new_file('blackbox.py', newdir, 'hello1', 'blackbox-id')
+        create_tree.apply()        
+        mangle_tree,root = self.get_transform()
+        selftest = mangle_tree.get_id_tree('selftest-id')
+        blackbox = mangle_tree.get_id_tree('blackbox-id')
+        mangle_tree.adjust_path('test', root, selftest)
+        mangle_tree.adjust_path('test_too_much', root, selftest)
+        mangle_tree.set_executability(True, blackbox)
+        mangle_tree.apply()
+
+    def test_both_rename2(self):
+        create_tree,root = self.get_transform()
+        bzrlib = create_tree.new_directory('bzrlib', root, 'bzrlib-id')
+        tests = create_tree.new_directory('tests', bzrlib, 'tests-id')
+        blackbox = create_tree.new_directory('blackbox', tests, 'blackbox-id')
+        create_tree.new_file('test_too_much.py', blackbox, 'hello1', 
+                             'test_too_much-id')
+        create_tree.apply()        
+        mangle_tree,root = self.get_transform()
+        bzrlib = mangle_tree.get_id_tree('bzrlib-id')
+        tests = mangle_tree.get_id_tree('tests-id')
+        test_too_much = mangle_tree.get_id_tree('test_too_much-id')
+        mangle_tree.adjust_path('selftest', bzrlib, tests)
+        mangle_tree.adjust_path('blackbox.py', tests, test_too_much) 
+        mangle_tree.set_executability(True, test_too_much)
+        mangle_tree.apply()
+
+    def test_both_rename3(self):
+        create_tree,root = self.get_transform()
+        tests = create_tree.new_directory('tests', root, 'tests-id')
+        create_tree.new_file('test_too_much.py', tests, 'hello1', 
+                             'test_too_much-id')
+        create_tree.apply()        
+        mangle_tree,root = self.get_transform()
+        tests = mangle_tree.get_id_tree('tests-id')
+        test_too_much = mangle_tree.get_id_tree('test_too_much-id')
+        mangle_tree.adjust_path('selftest', root, tests)
+        mangle_tree.adjust_path('blackbox.py', tests, test_too_much) 
+        mangle_tree.set_executability(True, test_too_much)
+        mangle_tree.apply()
+
     def test_move_dangling_ie(self):
         create_tree, root = self.get_transform()
         # prepare tree
