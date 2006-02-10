@@ -16,6 +16,7 @@
 
 from cStringIO import StringIO
 import codecs
+#import traceback
 
 import bzrlib
 from bzrlib.decorators import *
@@ -24,7 +25,7 @@ from bzrlib.errors import LockError, ReadOnlyError
 from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.symbol_versioning import *
 from bzrlib.symbol_versioning import deprecated_method, zero_eight
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 
 
@@ -57,6 +58,9 @@ class LockableFiles(object):
         self.lock_name = lock_name
         self._transaction = None
         self._find_modes()
+
+    def __str__(self):
+        return 'LockableFiles(%s, %s)' % (self.lock_name, self._transport.base)
 
     def __del__(self):
         if self._lock_mode or self._lock:
@@ -162,7 +166,7 @@ class LockableFiles(object):
         self.put(path, StringIO(a_string.encode('utf-8')))
 
     def lock_write(self):
-        mutter("lock write: %s (%s)", self, self._lock_count)
+        #mutter("lock write: %s (%s)", self, self._lock_count)
         # TODO: Upgrade locking to support using a Transport,
         # and potentially a remote locking protocol
         if self._lock_mode:
@@ -171,6 +175,8 @@ class LockableFiles(object):
                                 self._lock_mode)
             self._lock_count += 1
         else:
+            #note('write locking %s', self)
+            #traceback.print_stack()
             self._lock = self._transport.lock_write(
                     self._escape(self.lock_name))
             self._lock_mode = 'w'
@@ -178,12 +184,14 @@ class LockableFiles(object):
             self._set_transaction(transactions.PassThroughTransaction())
 
     def lock_read(self):
-        mutter("lock read: %s (%s)", self, self._lock_count)
+        #mutter("lock read: %s (%s)", self, self._lock_count)
         if self._lock_mode:
             assert self._lock_mode in ('r', 'w'), \
                    "invalid lock mode %r" % self._lock_mode
             self._lock_count += 1
         else:
+            #note('read locking %s', self)
+            #traceback.print_stack()
             self._lock = self._transport.lock_read(
                     self._escape(self.lock_name))
             self._lock_mode = 'r'
@@ -193,13 +201,15 @@ class LockableFiles(object):
             self.get_transaction().set_cache_size(5000)
                         
     def unlock(self):
-        mutter("unlock: %s (%s)", self, self._lock_count)
+        #mutter("unlock: %s (%s)", self, self._lock_count)
         if not self._lock_mode:
             raise LockError('branch %r is not locked' % (self))
 
         if self._lock_count > 1:
             self._lock_count -= 1
         else:
+            #note('unlocking %s', self)
+            #traceback.print_stack()
             self._finish_transaction()
             self._lock.unlock()
             self._lock = None

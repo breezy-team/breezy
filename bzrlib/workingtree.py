@@ -206,18 +206,7 @@ class WorkingTree(bzrlib.tree.Tree):
             "branch %r is not a Branch" % branch
         self.branch = branch
         self.basedir = realpath(basedir)
-        # if branch is at our basedir and is a format 6 or less
-        if (isinstance(self.branch._branch_format,
-                       (BzrBranchFormat4, BzrBranchFormat5, BzrBranchFormat6))
-            # might be able to share control object
-            and self.branch.base.split('/')[-2] == self.basedir.split('/')[-1]):
-            self._control_files = self.branch.control_files
-        elif _control_files is not None:
-            assert False, "not done yet"
-#            self._control_files = _control_files
-        else:
-            self._control_files = LockableFiles(
-                get_transport(self.basedir).clone(bzrlib.BZRDIR), 'branch-lock')
+        self._control_files = self.branch.control_files
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
