@@ -17,10 +17,13 @@
 """builtin bzr commands"""
 
 
+import errno
 import os
+from shutil import rmtree
 import sys
 
 import bzrlib
+import bzrlib.branch as branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib._merge_core import ApplyMerge3
 from bzrlib.commands import Command, display_command
@@ -396,8 +399,6 @@ class cmd_pull(Command):
     takes_args = ['location?']
 
     def run(self, location=None, remember=False, overwrite=False, verbose=False):
-        from shutil import rmtree
-        import errno
         # FIXME: too much stuff is in the command class        
         tree_to = WorkingTree.open_containing(u'.')[0]
         stored_loc = tree_to.branch.get_parent()
@@ -459,8 +460,6 @@ class cmd_push(Command):
             create_prefix=False, verbose=False):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
-        import errno
-        from shutil import rmtree
         from bzrlib.transport import get_transport
         
         tree_from = WorkingTree.open_containing(u'.')[0]
@@ -547,8 +546,6 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
-        import errno
-        from shutil import rmtree
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -609,6 +606,53 @@ class cmd_branch(Command):
             note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
+
+
+class cmd_checkout(Command):
+    """Create a new checkout of an existing branch.
+
+    If the TO_LOCATION is omitted, the last component of the BRANCH_LOCATION will
+    be used.  In other words, "checkout ../foo/bar" will attempt to create ./bar.
+
+    To retrieve the branch as of a particular revision, supply the --revision
+    parameter, as in "checkout foo/bar -r 5". Note that this will be immediately
+    out of date [so you cannot commit] but it may be useful (i.e. to examine old
+    code.)
+
+    --basis is to speed up checking out from remote branches.  When specified, it
+    uses the inventory and file contents from the basis branch in preference to the
+    branch being checked out. [Not implemented yet.]
+    """
+    takes_args = ['branch_location', 'to_location?']
+    # takes_options = ['revision', 'basis']
+
+    def run(self, branch_location, to_location=None, revision=None, basis=None):
+        if revision is None:
+            revision = [None]
+        elif len(revision) > 1:
+            raise BzrCommandError(
+                'bzr checkout --revision takes exactly 1 revision value')
+        source = Branch.open(branch_location)
+        if len(revision) == 1 and revision[0] is not None:
+            revision_id = revision[0].in_history(source)[1]
+        else:
+            revision_id = None
+        if to_location is None:
+            to_location = os.path.basename(branch_location.rstrip("/\\"))
+        try:
+            os.mkdir(to_location)
+        except OSError, e:
+            if e.errno == errno.EEXIST:
+                raise BzrCommandError('Target directory "%s" already'
+                                      ' exists.' % to_location)
+            if e.errno == errno.ENOENT:
+                raise BzrCommandError('Parent of "%s" does not exist.' %
+                                      to_location)
+            else:
+                raise
+        checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
+        branch.BranchReferenceFormat().initialize(checkout, source)
+        checkout.create_workingtree()
 
 
 class cmd_renames(Command):
