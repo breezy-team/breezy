@@ -99,7 +99,7 @@ class TestPermissions(TestCaseWithTransport):
         # be safe for most operations. But here we want to observe a 
         # mode change in the control bits, which current do not refresh
         # when a new lock is taken out.
-        t = WorkingTree('.')
+        t = WorkingTree.open('.')
         b = t.branch
         self.assertEqualMode(0755, b.control_files._dir_mode)
         self.assertEqualMode(0644, b.control_files._file_mode)
@@ -119,7 +119,7 @@ class TestPermissions(TestCaseWithTransport):
         # Recursively update the modes of all files
         chmod_r('.bzr', 0664, 0775)
         check_mode_r(self, '.bzr', 0664, 0775)
-        t = WorkingTree('.')
+        t = WorkingTree.open('.')
         b = t.branch
         self.assertEqualMode(0775, b.control_files._dir_mode)
         self.assertEqualMode(0664, b.control_files._file_mode)
@@ -137,7 +137,7 @@ class TestPermissions(TestCaseWithTransport):
         # Recursively update the modes of all files
         chmod_r('.bzr', 0664, 02775)
         check_mode_r(self, '.bzr', 0664, 02775)
-        t = WorkingTree('.')
+        t = WorkingTree.open('.')
         b = t.branch
         self.assertEqualMode(02775, b.control_files._dir_mode)
         self.assertEqualMode(0664, b.control_files._file_mode)
@@ -212,7 +212,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         chmod_r('local/.bzr', 0644, 0755)
         check_mode_r(self, 'local/.bzr', 0644, 0755)
 
-        t = WorkingTree('local')
+        t = WorkingTree.open('local')
         b = t.branch
         self.assertEqualMode(0755, b_local.control_files._dir_mode)
         self.assertEqualMode(0644, b_local.control_files._file_mode)

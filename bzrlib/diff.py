@@ -17,7 +17,6 @@
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
-from bzrlib.workingtree import WorkingTree
 
 # TODO: Rather than building a changeset object, we should probably
 # invoke callbacks on an object.  That object can either accumulate a
@@ -160,7 +159,7 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
         output = sys.stdout
 
     if from_spec is None:
-        old_tree = WorkingTree(b.base, b)
+        old_tree = b.bzrdir.open_workingtree()
         if b2 is None:
             old_tree = old_tree = old_tree.basis_tree()
     else:
@@ -168,9 +167,9 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
 
     if revision2 is None:
         if b2 is None:
-            new_tree = WorkingTree(b.base, b)
+            new_tree = b.bzrdir.open_workingtree()
         else:
-            new_tree = WorkingTree(b2.base, b2)
+            new_tree = b2.bzrdir.open_workingtree()
     else:
         new_tree = b.repository.revision_tree(revision2.in_history(b).rev_id)
 

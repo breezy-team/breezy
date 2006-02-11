@@ -79,6 +79,7 @@ from bzrlib.osutils import (appendpath,
                             realpath,
                             relpath,
                             rename)
+from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
@@ -188,7 +189,7 @@ class WorkingTree(bzrlib.tree.Tree):
     """
 
     def __init__(self, basedir='.',
-                 branch=None,
+                 branch=DEPRECATED_PARAMETER,
                  _inventory=None,
                  _control_files=None,
                  _internal=False,
@@ -204,7 +205,11 @@ class WorkingTree(bzrlib.tree.Tree):
         self._format = _format
         self.bzrdir = _bzrdir
         if not _internal:
-            # created via open etc.
+            # not created via open etc.
+            warn("WorkingTree() is deprecated ass of bzr version 0.8. "
+                 "Please use bzrdir.open_workingtree or WorkingTree.open().",
+                 DeprecationWarning,
+                 stacklevel=2)
             wt = WorkingTree.open(basedir)
             self.branch = wt.branch
             self.basedir = wt.basedir
@@ -219,11 +224,18 @@ class WorkingTree(bzrlib.tree.Tree):
             "base directory %r is not a string" % basedir
         basedir = safe_unicode(basedir)
         mutter("openeing working tree %r", basedir)
-        if branch is None:
-            branch = Branch.open(basedir)
-        assert isinstance(branch, Branch), \
-            "branch %r is not a Branch" % branch
-        self.branch = branch
+        if deprecated_passed(branch):
+            if not _internal:
+                warn("WorkingTree(..., branch=XXX) is deprecated as of bzr 0.8."
+                     " Please use bzrdir.open_workingtree().",
+                     DeprecationWarning,
+                     stacklevel=2
+                     )
+            self.branch = branch
+        else:
+            self.branch = self.bzrdir.open_branch()
+        assert isinstance(self.branch, Branch), \
+            "branch %r is not a Branch" % self.branch
         self.basedir = realpath(basedir)
         # if branch is at our basedir and is a format 6 or less
         if isinstance(self._format, WorkingTreeFormat2):
@@ -779,7 +791,7 @@ class WorkingTree(bzrlib.tree.Tree):
         >>> from bzrlib.bzrdir import ScratchDir
         >>> d = ScratchDir(files=['foo', 'foo~'])
         >>> b = d.open_branch()
-        >>> tree = WorkingTree(b.base, b)
+        >>> tree = d.open_workingtree()
         >>> map(str, tree.unknowns())
         ['foo']
         >>> tree.add('foo')
@@ -919,6 +931,7 @@ class WorkingTree(bzrlib.tree.Tree):
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
 
+    @needs_read_lock
     def last_revision(self):
         """Return the last revision id of this working tree.
 
@@ -949,17 +962,18 @@ class WorkingTree(bzrlib.tree.Tree):
     def _basis_inventory_name(self, revision_id):
         return 'basis-inventory.%s' % revision_id
 
+    @needs_write_lock
     def set_last_revision(self, new_revision, old_revision=None):
-        if old_revision is not None:
-            try:
-                path = self._basis_inventory_name(old_revision)
-                path = self._control_files._escape(path)
-                self._control_files._transport.delete(path)
-            except NoSuchFile:
-                pass
+        """Change the last revision in the working tree."""
+        self._remove_old_basis(old_revision)
+        if self._change_last_revision(new_revision):
+            self._cache_basis_inventory(new_revision)
+
+    def _change_last_revision(self, new_revision):
+        """Template method part of set_last_revision to perform the change."""
         if new_revision is None:
             self.branch.set_revision_history([])
-            return
+            return False
         # current format is locked in with the branch
         revision_history = self.branch.revision_history()
         try:
@@ -967,12 +981,26 @@ class WorkingTree(bzrlib.tree.Tree):
         except ValueError:
             raise errors.NoSuchRevision(self.branch, new_revision)
         self.branch.set_revision_history(revision_history[:position + 1])
+        return True
+
+    def _cache_basis_inventory(self, new_revision):
+        """Cache new_revision as the basis inventory."""
         try:
             xml = self.branch.repository.get_inventory_xml(new_revision)
             path = self._basis_inventory_name(new_revision)
             self._control_files.put_utf8(path, xml)
         except WeaveRevisionNotPresent:
             pass
+
+    def _remove_old_basis(self, old_revision):
+        """Remove the old basis inventory 'old_revision'."""
+        if old_revision is not None:
+            try:
+                path = self._basis_inventory_name(old_revision)
+                path = self._control_files._escape(path)
+                self._control_files._transport.delete(path)
+            except NoSuchFile:
+                pass
 
     def read_basis_inventory(self, revision_id):
         """Read the cached basis inventory."""
@@ -1119,7 +1147,40 @@ class WorkingTree(bzrlib.tree.Tree):
         self._control_files.put('inventory', sio)
         self._set_inventory(inv)
         mutter('wrote working inventory')
-            
+
+
+class WorkingTree3(WorkingTree):
+    """This is the Format 3 working tree.
+
+    This differs from the base WorkingTree by:
+     - having its own file lock
+     - having its own last-revision property.
+    """
+
+    @needs_read_lock
+    def last_revision(self):
+        """See WorkingTree.last_revision."""
+        try:
+            return self._control_files.get_utf8('last-revision').read()
+        except NoSuchFile:
+            return None
+
+    def _change_last_revision(self, revision_id):
+        """See WorkingTree._change_last_revision."""
+        if revision_id is None or revision_id == NULL_REVISION:
+            try:
+                self._control_files._transport.delete('last-revision')
+            except errors.NoSuchFile:
+                pass
+            return False
+        else:
+            try:
+                self.branch.revision_history().index(revision_id)
+            except ValueError:
+                raise errors.NoSuchRevision(self.branch, revision_id)
+            self._control_files.put_utf8('last-revision', revision_id)
+            return True
+
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 def get_conflicted_stem(path):
@@ -1173,7 +1234,7 @@ class WorkingTreeFormat(object):
             format_string = transport.get("format").read()
             return klass._formats[format_string]
         except NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NoWorkingTree(base=transport.base)
         except KeyError:
             raise errors.UnknownFormatError(format_string)
 
@@ -1279,7 +1340,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         revision = branch.last_revision()
         basis_tree = branch.repository.revision_tree(revision)
         inv = basis_tree.inventory
-        wt = WorkingTree(a_bzrdir.root_transport.base,
+        wt = WorkingTree3(a_bzrdir.root_transport.base,
                          branch,
                          inv,
                          _internal=True,
@@ -1307,7 +1368,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        return WorkingTree(a_bzrdir.root_transport.base,
+        return WorkingTree3(a_bzrdir.root_transport.base,
                            _internal=True,
                            _format=self,
                            _bzrdir=a_bzrdir)

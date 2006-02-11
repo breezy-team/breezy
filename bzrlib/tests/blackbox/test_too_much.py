@@ -407,7 +407,7 @@ class TestCommands(ExternalBase):
         self.runbzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
-        a = WorkingTree('.')
+        a = WorkingTree.open('.')
         b = Branch.open('../b')
         a.branch.repository.get_revision_xml(b.last_revision())
         self.log('pending merges: %s', a.pending_merges())

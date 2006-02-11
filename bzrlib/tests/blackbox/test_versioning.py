@@ -41,7 +41,7 @@ class TestVersioning(TestCaseInTempDir):
         self.run_bzr('mkdir', 'foo', retcode=3)
 
         from bzrlib.diff import compare_trees
-        wt = WorkingTree('.')
+        wt = WorkingTree.open('.')
         
         delta = compare_trees(wt.basis_tree(), wt)
 
@@ -65,7 +65,7 @@ class TestVersioning(TestCaseInTempDir):
         os.chdir('..')
 
         from bzrlib.diff import compare_trees
-        wt = WorkingTree('.')
+        wt = WorkingTree.open('.')
         
         delta = compare_trees(wt.basis_tree(), wt)
 
@@ -94,9 +94,9 @@ class TestVersioning(TestCaseInTempDir):
         self.failUnless(os.path.isdir('a/b/dir'))
 
         from bzrlib.diff import compare_trees
-        wt = WorkingTree('.')
-        wt_a = WorkingTree('a')
-        wt_b = WorkingTree('a/b')
+        wt = WorkingTree.open('.')
+        wt_a = WorkingTree.open('a')
+        wt_b = WorkingTree.open('a/b')
         
         delta = compare_trees(wt.basis_tree(), wt)
         self.assertEquals(len(delta.added), 1)

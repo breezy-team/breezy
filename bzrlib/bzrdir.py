@@ -76,7 +76,7 @@ class BzrDir(object):
             pass
         try:
             self.open_workingtree().clone(result, basis=basis_tree)
-        except (errors.NotBranchError, errors.NotLocalUrl):
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
             pass
         return result
 
@@ -364,7 +364,7 @@ class BzrDir(object):
             self.open_workingtree().clone(result,
                                           revision_id=revision_id, 
                                           basis=basis_tree)
-        except (errors.NotBranchError, errors.NotLocalUrl):
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
             result.create_workingtree()
         return result
 

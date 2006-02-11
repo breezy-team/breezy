@@ -214,7 +214,7 @@ class Commit(object):
                  "deprecated as of bzr 0.8. Please use working_tree= instead.",
                  DeprecationWarning, stacklevel=2)
             self.branch = branch
-            self.work_tree = WorkingTree(branch.base, branch)
+            self.work_tree = self.branch.bzrdir.open_workingtree()
         elif working_tree is None:
             raise BzrError("One of branch and working_tree must be passed into commit().")
         else:
