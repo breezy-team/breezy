@@ -356,3 +356,15 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # if the one that did not change has lost a local change, fail.
         # 
         raise TestSkipped('revision limiting is not implemented yet.')
+
+    def test_initialize_with_revision_id(self):
+        # a bzrdir can construct a working tree for itself @ a specific revision.
+        source = self.make_branch_and_tree('source')
+        source.commit('a', rev_id='a', allow_pointless=True)
+        source.commit('b', rev_id='b', allow_pointless=True)
+        self.build_tree(['new/'])
+        made_control = self.bzrdir_format.initialize('new')
+        source.branch.repository.clone(made_control)
+        source.branch.clone(made_control)
+        made_tree = self.workingtree_format.initialize(made_control, revision_id='a')
+        self.assertEqual('a', made_tree.last_revision())

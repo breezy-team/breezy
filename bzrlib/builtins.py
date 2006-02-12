@@ -624,7 +624,7 @@ class cmd_checkout(Command):
     branch being checked out. [Not implemented yet.]
     """
     takes_args = ['branch_location', 'to_location?']
-    # takes_options = ['revision', 'basis']
+    takes_options = ['revision'] # , 'basis']
 
     def run(self, branch_location, to_location=None, revision=None, basis=None):
         if revision is None:
@@ -652,7 +652,7 @@ class cmd_checkout(Command):
                 raise
         checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
         branch.BranchReferenceFormat().initialize(checkout, source)
-        checkout.create_workingtree()
+        checkout.create_workingtree(revision_id)
 
 
 class cmd_renames(Command):

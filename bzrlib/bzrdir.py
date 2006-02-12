@@ -187,8 +187,11 @@ class BzrDir(object):
         bzrdir = BzrDir.create_branch_and_repo(safe_unicode(base)).bzrdir
         return bzrdir.create_workingtree()
 
-    def create_workingtree(self):
-        """Create a working tree at this BzrDir"""
+    def create_workingtree(self, revision_id=None):
+        """Create a working tree at this BzrDir.
+        
+        revision_id: create it as of this revision id.
+        """
         raise NotImplementedError(self.create_workingtree)
 
     def get_branch_transport(self, branch_format):
@@ -395,9 +398,18 @@ class BzrDirPreSplitOut(BzrDir):
         """See BzrDir.create_repository."""
         return self.open_repository()
 
-    def create_workingtree(self):
+    def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree."""
-        return self.open_workingtree()
+        # this looks buggy but is not -really-
+        # clone and sprout will have set the revision_id
+        # and that will have set it for us, its only
+        # specific uses of create_workingtree in isolation
+        # that can do wonky stuff here, and that only
+        # happens for creating checkouts, which cannot be 
+        # done on this format anyway. So - acceptable wart.
+        result = self.open_workingtree()
+        result.set_last_revision(revision_id)
+        return result
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
@@ -517,10 +529,10 @@ class BzrDirMeta1(BzrDir):
         from bzrlib.repository import RepositoryFormat
         return RepositoryFormat.get_default_format().initialize(self)
 
-    def create_workingtree(self):
+    def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree."""
         from bzrlib.workingtree import WorkingTreeFormat
-        return WorkingTreeFormat.get_default_format().initialize(self)
+        return WorkingTreeFormat.get_default_format().initialize(self, revision_id)
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
@@ -579,7 +591,7 @@ class BzrDirMeta1(BzrDir):
         return format.open(self, _found=True)
 
     def open_workingtree(self, unsupported=False):
-        """See BzrDir.create_workingtree."""
+        """See BzrDir.open_workingtree."""
         from bzrlib.workingtree import WorkingTreeFormat
         format = WorkingTreeFormat.find_format(self)
         self._check_supported(format, unsupported)

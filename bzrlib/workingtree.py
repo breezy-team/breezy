@@ -1277,11 +1277,22 @@ class WorkingTreeFormat2(WorkingTreeFormat):
     This format modified the hash cache from the format 1 hash cache.
     """
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, revision_id=None):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         branch = a_bzrdir.open_branch()
+        if revision_id is not None:
+            branch.lock_write()
+            try:
+                revision_history = branch.revision_history()
+                try:
+                    position = revision_history.index(revision_id)
+                except ValueError:
+                    raise errors.NoSuchRevision(branch, revision_id)
+                branch.set_revision_history(revision_history[:position + 1])
+            finally:
+                branch.unlock()
         revision = branch.last_revision()
         basis_tree = branch.repository.revision_tree(revision)
         inv = basis_tree.inventory
@@ -1329,17 +1340,22 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar-NG Working Tree format 3"
 
-    def initialize(self, a_bzrdir):
-        """See WorkingTreeFormat.initialize()."""
+    def initialize(self, a_bzrdir, revision_id=None):
+        """See WorkingTreeFormat.initialize().
+        
+        revision_id allows creating a working tree at a differnet
+        revision than the branch is at.
+        """
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         transport = a_bzrdir.get_workingtree_transport(self)
         control_files = LockableFiles(transport, 'lock')
         control_files.put_utf8('format', self.get_format_string())
         branch = a_bzrdir.open_branch()
-        revision = branch.last_revision()
-        basis_tree = branch.repository.revision_tree(revision)
-        inv = basis_tree.inventory
+        if revision_id is None:
+            revision_id = branch.last_revision()
+        new_basis_tree = branch.repository.revision_tree(revision_id)
+        inv = new_basis_tree.inventory
         wt = WorkingTree3(a_bzrdir.root_transport.base,
                          branch,
                          inv,
@@ -1348,7 +1364,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          _bzrdir=a_bzrdir)
         wt._write_inventory(inv)
         wt.set_root_id(inv.root.file_id)
-        wt.set_last_revision(revision)
+        wt.set_last_revision(revision_id)
         wt.set_pending_merges([])
         wt.revert([])
         return wt

@@ -31,7 +31,11 @@ class TestCheckout(ExternalBase):
     
     def setUp(self):
         super(TestCheckout, self).setUp()
-        bzrdir.BzrDir.create_standalone_workingtree('branch')
+        tree = bzrdir.BzrDir.create_standalone_workingtree('branch')
+        tree.commit('1', rev_id='1', allow_pointless=True)
+        self.build_tree(['branch/added_in_2'])
+        tree.add('added_in_2')
+        tree.commit('2', rev_id='2')
 
     def test_checkout_makes_checkout(self):
         self.runbzr('checkout branch checkout')
@@ -40,3 +44,12 @@ class TestCheckout(ExternalBase):
         result = bzrdir.BzrDir.open('checkout')
         self.assertEqual(source.open_branch().bzrdir.root_transport.base,
                          result.open_branch().bzrdir.root_transport.base)
+
+    def test_checkout_dash_r(self):
+        self.runbzr('checkout -r -2 branch checkout')
+        # the working tree should now be at revision '1' with the content
+        # from 1.
+        result = bzrdir.BzrDir.open('checkout')
+        self.assertEqual('1', result.open_workingtree().last_revision())
+        self.failIfExists('checkout/added_in_2')
+
