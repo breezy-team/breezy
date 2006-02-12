@@ -420,6 +420,7 @@ class TreeTransform(object):
         conflicts.extend(self._parent_type_conflicts(by_parent))
         conflicts.extend(self._improper_versioning())
         conflicts.extend(self._executability_conflicts())
+        conflicts.extend(self._overwrite_conflicts())
         return conflicts
 
     def _add_tree_children(self):
@@ -526,6 +527,19 @@ class TreeTransform(object):
                     non_file = True
                 if non_file is True:
                     conflicts.append(('non-file executability', trans_id))
+        return conflicts
+
+    def _overwrite_conflicts(self):
+        """Check for overwrites (not permitted on Win32)"""
+        conflicts = []
+        for trans_id in self._new_contents:
+            try:
+                self.tree_kind(trans_id)
+            except NoSuchFile:
+                continue
+            if trans_id not in self._removed_contents:
+                conflicts.append(('overwrite', trans_id,
+                                 self.final_name(trans_id)))
         return conflicts
 
     def _duplicate_entries(self, by_parent):

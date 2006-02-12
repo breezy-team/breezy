@@ -516,6 +516,11 @@ class Merge3Merger(object):
                 if file_id not in self.this_tree.inventory:
                     self.tt.version_file(file_id, trans_id)
                 self.text_merge(file_id, trans_id)
+                try:
+                    self.tt.tree_kind(trans_id)
+                    self.tt.delete_contents(trans_id)
+                except NoSuchFile:
+                    pass
                 return "modified"
             else:
                 # Scalar conflict, can't text merge.  Dump conflicts
