@@ -20,26 +20,37 @@ class TestAliases(TestCaseInTempDir):
             self.assert_(config_filename() + "exists, abort")
             
         os.mkdir(config_dir())
-        open(config_filename(),'wb').write('[ALIASES]\nc=cat\nc1=cat -r 1')
+        CONFIG=("[ALIASES]\n"
+                "c=cat\n"
+                "c1=cat -r 1\n"
+                "c2=cat -r 1 -r2\n")
 
-        str = 'foo\n'
+        open(config_filename(),'wb').write(CONFIG)
+
+
+        str1 = 'foo\n'
+        str2 = 'bar\n'
 
         bzr('init')
-        open('a', 'wb').write(str)
+        open('a', 'wb').write(str1)
         bzr('add', 'a')
 
         bzr('commit', '-m', '1')
 
-        self.assertEquals(bzr('c', 'a'), str)
+        self.assertEquals(bzr('c', 'a'), str1)
 
-        open('a', 'wb').write('baz\n')
+        open('a', 'wb').write(str2)
         bzr('commit', '-m', '2')
 
-        self.assertEquals(bzr('c', 'a'), 'baz\n')
-        self.assertEquals(bzr('c1', 'a'), str)
+        self.assertEquals(bzr('c', 'a'), str2)
+        self.assertEquals(bzr('c1', 'a'), str1)
+        self.assertEquals(bzr('c1', '--revision', '2', 'a'), str2)
 
         # If --no-alias isn't working, we will not get retcode=3
         bzr('--no-aliases', 'c', 'a', retcode=3)
 
-
-
+        bzr('c', '-r1', '-r2', retcode=3)
+        bzr('c1', '-r1', '-r2', retcode=3)
+        bzr('c2', retcode=3)
+        bzr('c2', '-r1', retcode=3)
+        bzr('c2', '-r1', retcode=3)
