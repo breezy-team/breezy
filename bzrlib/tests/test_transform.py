@@ -495,6 +495,8 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(os.path.exists(this.wt.abspath('i.BASE')), False)
 
     def test_file_merge(self):
+        if not has_symlinks():
+            raise TestSkipped('Symlinks are not supported on this platform')
         base = TransformGroup("BASE")
         this = TransformGroup("THIS")
         other = TransformGroup("OTHER")
@@ -582,8 +584,7 @@ class TestTransformMerge(TestCaseInTempDir):
         this.tt.new_file('h1', this_b, 'h1', 'h')
 
         base.tt.new_file('i', base.root, 'i', 'i')
-        this.tt.new_directory('i1', this_a, 'i')
-        other.tt.new_symlink('i', this_b, 'i', 'i')
+        other.tt.new_directory('i1', this_b, 'i')
 
         for tg in [this, base, other]:
             tg.tt.apply()
