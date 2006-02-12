@@ -118,24 +118,10 @@ class TestCommands(ExternalBase):
         nick = self.runbzr("nick",backtick=True)
         self.assertEqual(nick, 'moo\n')
 
-
     def test_invalid_commands(self):
         self.runbzr("pants", retcode=3)
         self.runbzr("--pants off", retcode=3)
         self.runbzr("diff --message foo", retcode=3)
-
-    def test_empty_commit(self):
-        self.runbzr("init")
-        self.build_tree(['hello.txt'])
-        self.runbzr("commit -m empty", retcode=3)
-        self.runbzr("add hello.txt")
-        self.runbzr("commit -m added")       
-
-    def test_empty_commit_message(self):
-        self.runbzr("init")
-        file('foo.c', 'wt').write('int main() {}')
-        self.runbzr(['add', 'foo.c'])
-        self.runbzr(["commit", "-m", ""] , retcode=3) 
 
     def test_remove_deleted(self):
         self.runbzr("init")
@@ -144,26 +130,6 @@ class TestCommands(ExternalBase):
         self.runbzr(['commit', '-m', 'added a'])
         os.unlink('a')
         self.runbzr(['remove', 'a'])
-
-    def test_other_branch_commit(self):
-        # this branch is to ensure consistent behaviour, whether we're run
-        # inside a branch, or not.
-        os.mkdir('empty_branch')
-        os.chdir('empty_branch')
-        self.runbzr('init')
-        os.mkdir('branch')
-        os.chdir('branch')
-        self.runbzr('init')
-        file('foo.c', 'wt').write('int main() {}')
-        file('bar.c', 'wt').write('int main() {}')
-        os.chdir('..')
-        self.runbzr(['add', 'branch/foo.c'])
-        self.runbzr(['add', 'branch'])
-        # can't commit files in different trees; sane error
-        self.runbzr('commit -m newstuff branch/foo.c .', retcode=3)
-        self.runbzr('commit -m newstuff branch/foo.c')
-        self.runbzr('commit -m newstuff branch')
-        self.runbzr('commit -m newstuff branch', retcode=3)
 
     def test_ignore_patterns(self):
         self.runbzr('init')
