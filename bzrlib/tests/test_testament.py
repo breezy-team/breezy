@@ -231,6 +231,7 @@ properties:
     test branch
 """
 
+
 REV_UNICODE_COMMIT_TESTAMENT = u"""\
 bazaar-ng testament version 1
 revision-id: test@user-3
