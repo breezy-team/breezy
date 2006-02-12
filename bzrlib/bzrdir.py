@@ -217,7 +217,7 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.get_repository_transport)
         
-    def get_workingtree_transport(self, branch_format):
+    def get_workingtree_transport(self, tree_format):
         """Get the transport for use by workingtree format in this BzrDir.
 
         Note that bzr dirs that do not support format strings will raise
@@ -236,8 +236,8 @@ class BzrDir(object):
         Only really common logic should reside here, concrete classes should be
         made with varying behaviours.
 
-        _format: the format that is creating this BzrDir instance.
-        _transport: the transport this dir is based at.
+        :param _format: the format that is creating this BzrDir instance.
+        :param _transport: the transport this dir is based at.
         """
         self._format = _format
         self.transport = _transport.clone('.bzr')
@@ -250,7 +250,7 @@ class BzrDir(object):
         
     @staticmethod
     def open(base, _unsupported=False):
-        """Open an existing branch, rooted at 'base' (url)
+        """Open an existing bzrdir, rooted at 'base' (url)
         
         _unsupported is a private parameter to the BzrDir class.
         """
@@ -743,7 +743,7 @@ class BzrDirFormat5(BzrDirFormat):
     It has:
      - Format 2 working trees [always] 
      - Format 4 branches [always] 
-     - Format 6 repositories [always]
+     - Format 5 repositories [always]
        Unhashed stores in the repository.
     """
 
