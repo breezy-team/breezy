@@ -114,8 +114,7 @@ class Testament(object):
         hashed in that encoding.
         """
         r = []
-        def a(s):
-            r.append(s)
+        a = r.append
         a('bazaar-ng testament version 1\n')
         a('revision-id: %s\n' % self.revision_id)
         a('committer: %s\n' % self.committer)
