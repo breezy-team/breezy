@@ -1139,6 +1139,23 @@ class WorkingTree(bzrlib.tree.Tree):
             return result
 
     @needs_write_lock
+    def update(self):
+        self.branch.lock_read()
+        try:
+            if self.last_revision() == self.branch.last_revision():
+                return
+            basis = self.basis_tree()
+            to_tree = self.branch.basis_tree()
+            result = merge_inner(self.branch,
+                                 to_tree,
+                                 basis,
+                                 this_tree=self)
+            self.set_last_revision(self.branch.last_revision())
+            return result
+        finally:
+            self.branch.unlock()
+
+    @needs_write_lock
     def _write_inventory(self, inv):
         """Write inventory as the current inventory."""
         sio = StringIO()

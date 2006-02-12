@@ -599,7 +599,6 @@ class cmd_branch(Command):
                 rmtree(to_location)
                 msg = "The branch %s cannot be used as a --basis"
                 raise BzrCommandError(msg)
-            WorkingTree.create(branch, to_location)
             if name:
                 branch.control_files.put_utf8('branch-name', name)
 
@@ -673,6 +672,33 @@ class cmd_renames(Command):
         renames.sort()
         for old_name, new_name in renames:
             print "%s => %s" % (old_name, new_name)        
+
+
+class cmd_update(Command):
+    """Update a tree to have the latest code committed to its branch.
+    
+    This will perform a merge into the working tree, and may generate
+    conflicts. If you have any uncommitted changes, you will still 
+    need to commit them after the update.
+    """
+    takes_args = ['dir?']
+
+    def run(self, dir='.'):
+        tree = WorkingTree.open_containing(dir)[0]
+        tree.lock_write()
+        try:
+            if tree.last_revision() == tree.branch.last_revision():
+                note("Tree is up to date.")
+                return
+            conflicts = tree.update()
+            note('Updated to revision %d.' %
+                 (tree.branch.revision_id_to_revno(tree.last_revision()),))
+            if conflicts != 0:
+                return 1
+            else:
+                return 0
+        finally:
+            tree.unlock()
 
 
 class cmd_info(Command):

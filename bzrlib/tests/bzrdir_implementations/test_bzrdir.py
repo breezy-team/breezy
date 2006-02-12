@@ -147,7 +147,8 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = source.bzrdir
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
-        self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
+                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
 
     def test_clone_bzrdir_branch_reference(self):
         # cloning should preserve the reference status of the branch in a bzrdir

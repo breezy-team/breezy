@@ -45,6 +45,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_selftest',
                      'bzrlib.tests.blackbox.test_status',
                      'bzrlib.tests.blackbox.test_too_much',
+                     'bzrlib.tests.blackbox.test_update',
                      'bzrlib.tests.blackbox.test_upgrade',
                      'bzrlib.tests.blackbox.test_versioning',
                      ]

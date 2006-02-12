@@ -408,7 +408,8 @@ class BzrDirPreSplitOut(BzrDir):
         # happens for creating checkouts, which cannot be 
         # done on this format anyway. So - acceptable wart.
         result = self.open_workingtree()
-        result.set_last_revision(revision_id)
+        if revision_id is not None:
+            result.set_last_revision(revision_id)
         return result
 
     def get_branch_transport(self, branch_format):

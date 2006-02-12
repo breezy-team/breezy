@@ -19,6 +19,7 @@ from cStringIO import StringIO
 import os
 
 import bzrlib
+import bzrlib.branch as branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.bzrdir import BzrDir
@@ -373,3 +374,68 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         tree.commit('foo', rev_id='foo', allow_pointless=True)
         self.assertEqual('foo', tree.last_revision())
+
+    def test_update_sets_last_revision(self):
+        # working tree formats from the meta-dir format and newer support
+        # setting the last revision on a tree independently of that on the 
+        # branch. Its concievable that some future formats may want to 
+        # couple them again (i.e. because its really a smart server and
+        # the working tree will always match the branch). So we test
+        # that formats where initialising a branch does not initialise a 
+        # tree - and thus have separable entities - support skewing the 
+        # two things.
+        main_branch = self.make_branch('tree')
+        try:
+            # if there is a working tree now, this is not supported.
+            main_branch.bzrdir.open_workingtree()
+            return
+        except errors.NoWorkingTree:
+            pass
+        wt = main_branch.bzrdir.create_workingtree()
+        # create an out of date working tree by making a checkout in this
+        # current format
+        self.build_tree(['checkout/', 'tree/file'])
+        checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
+        branch.BranchReferenceFormat().initialize(checkout, main_branch)
+        old_tree = self.workingtree_format.initialize(checkout)
+        # now commit to 'tree'
+        wt.add('file')
+        wt.commit('A', rev_id='A')
+        # and update old_tree
+        self.assertEqual(0, old_tree.update())
+        self.failUnlessExists('checkout/file')
+        self.assertEqual('A', old_tree.last_revision())
+
+    def test_update_returns_conflict_count(self):
+        # working tree formats from the meta-dir format and newer support
+        # setting the last revision on a tree independently of that on the 
+        # branch. Its concievable that some future formats may want to 
+        # couple them again (i.e. because its really a smart server and
+        # the working tree will always match the branch). So we test
+        # that formats where initialising a branch does not initialise a 
+        # tree - and thus have separable entities - support skewing the 
+        # two things.
+        main_branch = self.make_branch('tree')
+        try:
+            # if there is a working tree now, this is not supported.
+            main_branch.bzrdir.open_workingtree()
+            return
+        except errors.NoWorkingTree:
+            pass
+        wt = main_branch.bzrdir.create_workingtree()
+        # create an out of date working tree by making a checkout in this
+        # current format
+        self.build_tree(['checkout/', 'tree/file'])
+        checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
+        branch.BranchReferenceFormat().initialize(checkout, main_branch)
+        old_tree = self.workingtree_format.initialize(checkout)
+        # now commit to 'tree'
+        wt.add('file')
+        wt.commit('A', rev_id='A')
+        # and add a file file to the checkout
+        self.build_tree(['checkout/file'])
+        old_tree.add('file')
+        # and update old_tree
+        self.assertEqual(1, old_tree.update())
+        self.assertEqual('A', old_tree.last_revision())
+
