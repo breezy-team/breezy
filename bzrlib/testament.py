@@ -137,7 +137,7 @@ class Testament(object):
             for l in r:
                 assert isinstance(l, basestring), \
                     '%r of type %s is not a plain string' % (l, type(l))
-        return r
+        return [line.encode('utf-8') for line in r]
 
     def _escape_path(self, path):
         assert not contains_linebreaks(path)

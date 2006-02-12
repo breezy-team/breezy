@@ -118,6 +118,16 @@ class TestamentTests(TestCaseWithTransport):
         t = Testament.from_revision(self.b.repository, 'test@user-3')
         self.assertEqualDiff(t.as_text(), REV_PROPS_TESTAMENT)
 
+    def test_testament_unicode_commit_message(self):
+        self.b.working_tree().commit(
+            message=u'non-ascii commit \N{COPYRIGHT SIGN} me',
+            timestamp=1129025493,
+            timezone=36000,
+            rev_id='test@user-3',
+            committer='test@user')
+        t = Testament.from_revision(self.b.repository, 'test@user-3')
+        self.assertEqualDiff(t.as_text(), REV_UNICODE_COMMIT_TESTAMENT)
+
     def test___init__(self):
         revision = self.b.repository.get_revision('test@user-2')
         inventory = self.b.repository.get_inventory('test@user-2')
@@ -220,3 +230,22 @@ properties:
   branch-nick:
     test branch
 """
+
+REV_UNICODE_COMMIT_TESTAMENT = u"""\
+bazaar-ng testament version 1
+revision-id: test@user-3
+committer: test@user
+timestamp: 1129025493
+timezone: 36000
+parents:
+  test@user-2
+message:
+  non-ascii commit \N{COPYRIGHT SIGN} me
+inventory:
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73
+  directory src src-id
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
+properties:
+  branch-nick:
+    test branch
+""".encode('utf-8')
