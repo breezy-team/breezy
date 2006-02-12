@@ -368,3 +368,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         source.branch.clone(made_control)
         made_tree = self.workingtree_format.initialize(made_control, revision_id='a')
         self.assertEqual('a', made_tree.last_revision())
+
+    def test_commit_sets_last_revision(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.commit('foo', rev_id='foo', allow_pointless=True)
+        self.assertEqual('foo', tree.last_revision())
