@@ -29,7 +29,6 @@ from os import mkdir
 from tempfile import TemporaryFile
 import codecs
 
-from bzrlib.branch import Branch
 from bzrlib.builtins import merge
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.status import show_status
@@ -172,3 +171,27 @@ class BranchStatus(TestCaseInTempDir):
                           ['unknown:\n',
                            '  dir2\n'
                            ])
+
+
+class TestStatus(TestCaseInTempDir):
+
+    def test_status(self):
+        self.run_bzr("init")
+        self.build_tree(['hello.txt'])
+        result = self.run_bzr("status")[0]
+        self.assert_("unknown:\n  hello.txt\n" in result, result)
+        self.run_bzr("add", "hello.txt")
+        result = self.run_bzr("status")[0]
+        self.assert_("added:\n  hello.txt\n" in result, result)
+        self.run_bzr("commit", "-m", "added")
+        result = self.run_bzr("status", "-r", "0..1")[0]
+        self.assert_("added:\n  hello.txt\n" in result, result)
+        self.build_tree(['world.txt'])
+        result = self.run_bzr("status", "-r", "0")[0]
+        self.assert_("added:\n  hello.txt\n" \
+                     "unknown:\n  world.txt\n" in result, result)
+
+        result2 = self.run_bzr("status", "-r", "0..")[0]
+        self.assertEquals(result2, result)
+
+

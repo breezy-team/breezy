@@ -74,7 +74,7 @@ def show_status(branch, show_unchanged=False,
                 old = branch.repository.revision_tree(rev_id)
             except NoSuchRevision, e:
                 raise BzrCommandError(str(e))
-            if len(revision) > 1:
+            if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
                     rev_id = revision[1].in_history(branch).rev_id
                     new = branch.repository.revision_tree(rev_id)

@@ -396,6 +396,16 @@ class WeaveTextDiffers(WeaveError):
         self.weave_b = weave_b
 
 
+class WeaveTextDiffers(WeaveError):
+    """Weaves differ on text content. Revision: {%(revision_id)s}, %(weave_a)s, %(weave_b)s"""
+
+    def __init__(self, revision_id, weave_a, weave_b):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave_a = weave_a
+        self.weave_b = weave_b
+
+
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""
     def __init__(self, format):
