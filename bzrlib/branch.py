@@ -430,7 +430,7 @@ class Branch(object):
             os.mkdir(to_location)
         if to_branch_type is None:
             to_branch_type = BzrBranch
-        print "FIXME use a branch format here"
+        # FIXME use a branch format here
         br_to = to_branch_type.initialize(to_location)
         mutter("copy branch from %s to %s", self, br_to)
         if basis_branch is not None:
@@ -1077,7 +1077,8 @@ class BzrBranch(Branch):
         return branch_to
 
     def clone(self, to_location, revision=None, basis_branch=None, to_branch_type=None):
-        print "FIXME: clone via create and fetch is probably faster when versioned file comes in."
+        # FIXME: clone via create and fetch is probably faster when versioned
+        # file comes in.
         if to_branch_type is None:
             to_branch_type = BzrBranch
 
