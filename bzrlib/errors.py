@@ -549,5 +549,6 @@ class UninitializableFormat(BzrNewError):
         BzrNewError.__init__(self)
         self.format = format
 
+
 class NoDiff3(BzrNewError):
     """Diff3 is not installed on this machine."""

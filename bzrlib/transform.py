@@ -142,8 +142,7 @@ class TreeTransform(object):
         return self.get_tree_path_id(path)
 
     def get_trans_id(self, file_id):
-        """\
-        Determine or set the transaction id associated with a file ID.
+        """Determine or set the transaction id associated with a file ID.
         A new id is only created for file_ids that were never present.  If
         a transaction has been unversioned, it is deliberately still returned.
         (this will likely lead to an unversioned parent conflict.)
@@ -312,8 +311,7 @@ class TreeTransform(object):
                 raise NoSuchFile(path)
 
     def final_kind(self, trans_id):
-        """\
-        Determine the final file kind, after any changes applied.
+        """Determine the final file kind, after any changes applied.
         
         Raises NoSuchFile if the file does not exist/has no contents.
         (It is conceivable that a path would be created without the
@@ -339,8 +337,7 @@ class TreeTransform(object):
         return self._tree.inventory.path2id(path)
 
     def final_file_id(self, trans_id):
-        """\
-        Determine the file id after any changes are applied, or None.
+        """Determine the file id after any changes are applied, or None.
         
         None indicates that the file will not be versioned after changes are
         applied.
@@ -369,8 +366,7 @@ class TreeTransform(object):
 
 
     def final_parent(self, trans_id):
-        """\
-        Determine the parent file_id, after any changes are applied.
+        """Determine the parent file_id, after any changes are applied.
 
         ROOT_PARENT is returned for the tree root.
         """
@@ -424,8 +420,7 @@ class TreeTransform(object):
         return conflicts
 
     def _add_tree_children(self):
-        """\
-        Add all the children of all active parents to the known paths.
+        """Add all the children of all active parents to the known paths.
 
         Active parents are those which gain children, and those which are
         removed.  This is a necessary first step in detecting conflicts.
@@ -492,8 +487,7 @@ class TreeTransform(object):
         return conflicts
 
     def _improper_versioning(self):
-        """\
-        Cannot version a file with no contents, or a bad type.
+        """Cannot version a file with no contents, or a bad type.
         
         However, existing entries with no contents are okay.
         """
@@ -605,8 +599,7 @@ class TreeTransform(object):
         return False
             
     def apply(self):
-        """\
-        Apply all changes to the inventory and filesystem.
+        """Apply all changes to the inventory and filesystem.
         
         If filesystem or inventory conflicts are present, MalformedTransform
         will be thrown.
@@ -726,8 +719,7 @@ class TreeTransform(object):
 
     def new_file(self, name, parent_id, contents, file_id=None, 
                  executable=None):
-        """\
-        Convenience method to create files.
+        """Convenience method to create files.
         
         name is the name of the file to create.
         parent_id is the transaction id of the parent directory of the file.
@@ -742,8 +734,7 @@ class TreeTransform(object):
         return trans_id
 
     def new_directory(self, name, parent_id, file_id=None):
-        """\
-        Convenience method to create directories.
+        """Convenience method to create directories.
 
         name is the name of the directory to create.
         parent_id is the transaction id of the parent directory of the
@@ -755,8 +746,7 @@ class TreeTransform(object):
         return trans_id 
 
     def new_symlink(self, name, parent_id, target, file_id=None):
-        """\
-        Convenience method to create symbolic link.
+        """Convenience method to create symbolic link.
         
         name is the name of the symlink to create.
         parent_id is the transaction id of the parent directory of the symlink.
@@ -775,8 +765,7 @@ def joinpath(parent, child):
         return os.path.join(parent, child)
 
 class FinalPaths(object):
-    """\
-    Make path calculation cheap by memoizing paths.
+    """Make path calculation cheap by memoizing paths.
 
     The underlying tree must not be manipulated between calls, or else
     the results will likely be incorrect.
@@ -910,8 +899,7 @@ def change_entry(tt, file_id, working_tree, target_tree,
 
 
 def _entry_changes(file_id, entry, working_tree):
-    """\
-    Determine in which ways the inventory entry has changed.
+    """Determine in which ways the inventory entry has changed.
 
     Returns booleans: has_contents, content_mod, meta_mod
     has_contents means there are currently contents, but they differ
