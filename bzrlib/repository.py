@@ -629,42 +629,15 @@ class RepositoryFormat(object):
         """
         raise NotImplementedError(self.get_format_string)
 
-    def initialize(self, a_bzrdir, _internal=False):
-        """Create a weave repository.
-        
-        TODO: when creating split out bzr branch formats, move this to a common
-        base for Format5, Format6. or something like that.
+    def initialize(self, a_bzrdir, shared=False):
+        """Initialize a repository of this format in a_bzrdir.
+
+        :param a_bzrdir: The bzrdir to put the new repository in it.
+        :param shared: The repository should be initialized as a sharable one.
+
+        This may raise UninitializableFormat if shared repository are not
+        compatible the a_bzrdir.
         """
-        from bzrlib.weavefile import write_weave_v5
-        from bzrlib.weave import Weave
-
-        if not _internal:
-            # always initialized when the bzrdir is.
-            return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
-        
-        # Create an empty weave
-        sio = StringIO()
-        bzrlib.weavefile.write_weave_v5(Weave(), sio)
-        empty_weave = sio.getvalue()
-
-        mutter('creating repository in %s.', a_bzrdir.transport.base)
-        dirs = ['revision-store', 'weaves']
-        lock_file = 'branch-lock'
-        files = [('inventory.weave', StringIO(empty_weave)), 
-                 ]
-        
-        # FIXME: RBC 20060125 dont peek under the covers
-        # NB: no need to escape relative paths that are url safe.
-        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock')
-        control_files.lock_write()
-        control_files._transport.mkdir_multi(dirs,
-                mode=control_files._dir_mode)
-        try:
-            for file, content in files:
-                control_files.put(file, content)
-        finally:
-            control_files.unlock()
-        return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
 
     def is_supported(self):
         """Is this format supported?
@@ -699,7 +672,51 @@ class RepositoryFormat(object):
         del klass._formats[format.get_format_string()]
 
 
-class RepositoryFormat4(RepositoryFormat):
+class PreSplitOutRepositoryFormat(RepositoryFormat):
+    """Base class for the pre split out repository formats."""
+
+    def initialize(self, a_bzrdir, shared=False, _internal=False):
+        """Create a weave repository.
+        
+        TODO: when creating split out bzr branch formats, move this to a common
+        base for Format5, Format6. or something like that.
+        """
+        from bzrlib.weavefile import write_weave_v5
+        from bzrlib.weave import Weave
+
+        if shared:
+            raise errors.IncompatibleFormat(self, a_bzrdir._format)
+
+        if not _internal:
+            # always initialized when the bzrdir is.
+            return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
+        
+        # Create an empty weave
+        sio = StringIO()
+        bzrlib.weavefile.write_weave_v5(Weave(), sio)
+        empty_weave = sio.getvalue()
+
+        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        dirs = ['revision-store', 'weaves']
+        lock_file = 'branch-lock'
+        files = [('inventory.weave', StringIO(empty_weave)), 
+                 ]
+        
+        # FIXME: RBC 20060125 dont peek under the covers
+        # NB: no need to escape relative paths that are url safe.
+        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock')
+        control_files.lock_write()
+        control_files._transport.mkdir_multi(dirs,
+                mode=control_files._dir_mode)
+        try:
+            for file, content in files:
+                control_files.put(file, content)
+        finally:
+            control_files.unlock()
+        return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
+
+
+class RepositoryFormat4(PreSplitOutRepositoryFormat):
     """Bzr repository format 4.
 
     This repository format has:
@@ -715,7 +732,7 @@ class RepositoryFormat4(RepositoryFormat):
         super(RepositoryFormat4, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirFormat4()
 
-    def initialize(self, url, _internal=False):
+    def initialize(self, url, shared=False, _internal=False):
         """Format 4 branches cannot be created."""
         raise errors.UninitializableFormat(self)
 
@@ -729,7 +746,7 @@ class RepositoryFormat4(RepositoryFormat):
         return False
 
 
-class RepositoryFormat5(RepositoryFormat):
+class RepositoryFormat5(PreSplitOutRepositoryFormat):
     """Bzr control format 5.
 
     This repository format has:
@@ -743,7 +760,7 @@ class RepositoryFormat5(RepositoryFormat):
         self._matchingbzrdir = bzrdir.BzrDirFormat5()
 
 
-class RepositoryFormat6(RepositoryFormat):
+class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """Bzr control format 6.
 
     This repository format has:
@@ -765,14 +782,18 @@ class RepositoryFormat7(RepositoryFormat):
      - hash subdirectory based stores.
      - TextStores for revisions and signatures.
      - a format marker of its own
+     - an optional 'shared-storage' flag
     """
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Repository format 7"
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, shared=False):
         """Create a weave repository.
+
+        :param shared: If true the repository will be initialized as a shared
+                       repository.
         """
         from bzrlib.weavefile import write_weave_v5
         from bzrlib.weave import Weave
@@ -802,6 +823,8 @@ class RepositoryFormat7(RepositoryFormat):
                 control_files.put(file, content)
             for file, content in utf8_files:
                 control_files.put_utf8(file, content)
+            if shared == True:
+                control_files.put_utf8('shared-storage', '')
         finally:
             control_files.unlock()
         return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)

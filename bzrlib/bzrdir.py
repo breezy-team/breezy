@@ -154,12 +154,14 @@ class BzrDir(object):
         return bzrdir.create_branch()
         
     @staticmethod
-    def create_repository(base):
+    def create_repository(base, shared=False):
         """Create a new BzrDir and Repository at the url 'base'.
 
         This will use the current default BzrDirFormat, and use whatever 
         repository format that that uses for bzrdirformat.create_repository.
 
+        ;param shared: Create a shared repository rather than a standalone
+                       repository.
         The Repository object is returned.
 
         This must be overridden as an instance method in child classes, where
@@ -391,8 +393,10 @@ class BzrDirPreSplitOut(BzrDir):
         """See BzrDir.create_branch."""
         return self.open_branch()
 
-    def create_repository(self):
+    def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
+        if shared:
+            raise errors.IncompatibleFormat('shared repository', self._format)
         return self.open_repository()
 
     def create_workingtree(self):
@@ -461,10 +465,10 @@ class BzrDirPreSplitOut(BzrDir):
 class BzrDir4(BzrDirPreSplitOut):
     """A .bzr version 4 control object."""
 
-    def create_repository(self):
+    def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
         from bzrlib.repository import RepositoryFormat4
-        return RepositoryFormat4().initialize(self)
+        return RepositoryFormat4().initialize(self, shared)
 
     def open_repository(self):
         """See BzrDir.open_repository."""
@@ -512,10 +516,10 @@ class BzrDirMeta1(BzrDir):
         from bzrlib.branch import BranchFormat
         return BranchFormat.get_default_format().initialize(self)
 
-    def create_repository(self):
+    def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
         from bzrlib.repository import RepositoryFormat
-        return RepositoryFormat.get_default_format().initialize(self)
+        return RepositoryFormat.get_default_format().initialize(self, shared)
 
     def create_workingtree(self):
         """See BzrDir.create_workingtree."""
