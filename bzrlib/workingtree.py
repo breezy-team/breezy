@@ -227,7 +227,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if deprecated_passed(branch):
             if not _internal:
                 warn("WorkingTree(..., branch=XXX) is deprecated as of bzr 0.8."
-                     " Please use bzrdir.open_workingtree().",
+                     " Please use bzrdir.open_workingtree() or WorkingTree.open().",
                      DeprecationWarning,
                      stacklevel=2
                      )
