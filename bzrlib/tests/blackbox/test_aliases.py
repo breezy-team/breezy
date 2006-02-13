@@ -8,6 +8,7 @@ from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
 from bzrlib.config import (config_dir, config_filename)
 
+
 class TestAliases(TestCaseInTempDir):
 
     def test_aliases(self):
@@ -16,7 +17,8 @@ class TestAliases(TestCaseInTempDir):
             return self.run_bzr(*args, **kwargs)[0]
 
         if os.path.isfile(config_filename()):
-            # Something is wrong in environment, we risk overwriting users config 
+            # Something is wrong in environment, 
+            # we risk overwriting users config 
             self.assert_(config_filename() + "exists, abort")
             
         os.mkdir(config_dir())
@@ -52,5 +54,4 @@ class TestAliases(TestCaseInTempDir):
         bzr('c', '-r1', '-r2', retcode=3)
         bzr('c1', '-r1', '-r2', retcode=3)
         bzr('c2', retcode=3)
-        bzr('c2', '-r1', retcode=3)
         bzr('c2', '-r1', retcode=3)

@@ -477,6 +477,7 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
         print 'Profile data written to %r.' % filename
     return ret
 
+
 def get_alias(cmd):
     """if an alias for cmd exists, returns the expanded command
        else returns None"""
@@ -485,6 +486,7 @@ def get_alias(cmd):
     if (alias):
         return alias.split(' ')
     return None
+
 
 def run_bzr(argv):
     """Execute a command.
