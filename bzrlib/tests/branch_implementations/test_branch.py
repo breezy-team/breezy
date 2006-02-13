@@ -345,6 +345,22 @@ class ChrootedTests(TestCaseWithBranch):
         branch, relpath = Branch.open_containing(self.get_readonly_url('g/p/q'))
         self.assertEqual('g/p/q', relpath)
         
+    def test_find_repository_no_repository(self):
+        # loopback test to check the current format fails to find a 
+        # share repository correctly.
+        if not self.branch_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        # supported formats must be able to init and open
+        url = self.get_url()
+        made_control = self.bzrdir_format.initialize(url)
+        opened_control = bzrdir.BzrDir.open(self.get_readonly_url())
+        self.assertRaises(errors.NoRepositoryPresent,
+                          self.branch_format.find_repository,
+                          opened_control)
+
 # TODO: rewrite this as a regular unittest, without relying on the displayed output        
 #         >>> from bzrlib.commit import commit
 #         >>> bzrlib.trace.silent = True
@@ -541,3 +557,17 @@ class TestFormat(TestCaseWithBranch):
             return
         self.assertEqual(self.branch_format,
                          branch.BranchFormat.find_format(opened_control))
+
+    def test_find_repository_no_repo_under_standalone_branch(self):
+        # branch formats that support shared storage need to find their
+        # repository using the defined search order:
+        # * the branch's bzrdir
+        # * every containing bzrdir until the root or a non shared repo is
+        #   found.
+        parent_bzrdir = self.make_branch('.')
+        url = self.get_url('childbzrdir')
+        get_transport(self.get_url()).mkdir('childbzrdir')
+        made_control = self.bzrdir_format.initialize(url)
+        self.assertRaises(errors.NoRepositoryPresent,
+                          self.branch_format.find_repository,
+                          made_control)

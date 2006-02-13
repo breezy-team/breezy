@@ -493,6 +493,15 @@ class BranchFormat(object):
         except KeyError:
             raise errors.UnknownFormatError(format_string)
 
+    def find_repository(self, a_bzrdir):
+        """Find the repository that should be used for a_bzrdir.
+
+        This does not require a branch as we use it to find the repo for
+        new branches as well as to hook existing branches up to their
+        repository.
+        """
+        raise errors.NoRepositoryPresent(a_bzrdir)
+
     @classmethod
     def get_default_format(klass):
         """Return the current default format."""
