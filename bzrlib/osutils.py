@@ -620,4 +620,4 @@ def terminal_width():
         return 80
 
 def supports_executable():
-    return os.name != "nt"
+    return sys.platform != "win32"
