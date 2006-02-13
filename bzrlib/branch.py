@@ -500,6 +500,23 @@ class BranchFormat(object):
         new branches as well as to hook existing branches up to their
         repository.
         """
+        next_transport = a_bzrdir.root_transport
+        while True:
+            try:
+                found_bzrdir = bzrdir.BzrDir.open_containing_transport(
+                    next_transport)[0]
+            except errors.NotBranchError:
+                raise errors.NoRepositoryPresent(a_bzrdir)
+            try:
+                repository = found_bzrdir.open_repository()
+            except errors.NoRepositoryPresent:
+                next_transport = found_bzrdir.root_transport.clone('..')
+                continue
+            if ((found_bzrdir.root_transport.base == 
+                 a_bzrdir.root_transport.base) or repository.is_shared()):
+                return repository
+            else:
+                raise errors.NoRepositoryPresent(a_bzrdir)
         raise errors.NoRepositoryPresent(a_bzrdir)
 
     @classmethod

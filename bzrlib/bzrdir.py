@@ -282,7 +282,16 @@ class BzrDir(object):
     def open_containing(url):
         """Open an existing branch which contains url.
         
-        This probes for a branch at url, and searches upwards from there.
+        :param url: url to search from.
+        See open_containing_transport for more detail.
+        """
+        return BzrDir.open_containing_transport(get_transport(url))
+    
+    @staticmethod
+    def open_containing_transport(a_transport):
+        """Open an existing branch which contains a_transport.base
+
+        This probes for a branch at a_transport, and searches upwards from there.
 
         Basically we keep looking up until we find the control directory or
         run into the root.  If there isn't one, raises NotBranchError.
@@ -290,20 +299,19 @@ class BzrDir(object):
         format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
         """
-        t = get_transport(url)
         # this gets the normalised url back. I.e. '.' -> the full path.
-        url = t.base
+        url = a_transport.base
         while True:
             try:
-                format = BzrDirFormat.find_format(t)
-                return format.open(t), t.relpath(url)
+                format = BzrDirFormat.find_format(a_transport)
+                return format.open(a_transport), a_transport.relpath(url)
             except errors.NotBranchError, e:
-                mutter('not a branch in: %r %s', t.base, e)
-            new_t = t.clone('..')
-            if new_t.base == t.base:
+                mutter('not a branch in: %r %s', a_transport.base, e)
+            new_t = a_transport.clone('..')
+            if new_t.base == a_transport.base:
                 # reached the root, whatever that may be
                 raise errors.NotBranchError(path=url)
-            t = new_t
+            a_transport = new_t
 
     def open_repository(self, _unsupported=False):
         """Open the repository object at this BzrDir if one is present.

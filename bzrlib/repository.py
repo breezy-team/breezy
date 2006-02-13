@@ -513,6 +513,12 @@ class Repository(object):
             return self.get_inventory(revision_id)
 
     @needs_read_lock
+    def is_shared(self):
+        """Return True if this repository is flagged as a shared repository."""
+        # FIXME format 4-6 cannot be shared, this is technically faulty.
+        return self.control_files._transport.has('shared-storage')
+
+    @needs_read_lock
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 

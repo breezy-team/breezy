@@ -155,6 +155,7 @@ class TestRepository(TestCaseWithRepository):
             return
         self.failUnless(isinstance(made_repo, repository.Repository))
         self.assertEqual(made_control, made_repo.bzrdir)
+        self.assertTrue(made_repo.is_shared())
 
     def test_revision_tree(self):
         wt = self.make_branch_and_tree('.')

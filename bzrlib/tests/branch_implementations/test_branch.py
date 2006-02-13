@@ -66,7 +66,7 @@ class TestCaseWithBranch(TestCaseWithTransport):
         except errors.UninitializableFormat:
             raise TestSkipped('Uninitializable branch format')
 
-    def make_repository(self, relpath):
+    def make_repository(self, relpath, shared=False):
         try:
             url = self.get_url(relpath)
             segments = url.split('/')
@@ -78,7 +78,7 @@ class TestCaseWithBranch(TestCaseWithTransport):
                 except FileExists:
                     pass
             made_control = self.bzrdir_format.initialize(url)
-            return made_control.create_repository()
+            return made_control.create_repository(shared=shared)
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
@@ -354,9 +354,17 @@ class ChrootedTests(TestCaseWithBranch):
             # they may not be initializable.
             return
         # supported formats must be able to init and open
-        url = self.get_url()
+        url = self.get_url('subdir')
+        get_transport(self.get_url()).mkdir('subdir')
         made_control = self.bzrdir_format.initialize(url)
-        opened_control = bzrdir.BzrDir.open(self.get_readonly_url())
+        try:
+            repo = made_control.open_repository()
+            # if there is a repository, then the format cannot ever hit this 
+            # code path.
+            return
+        except errors.NoRepositoryPresent:
+            pass
+        opened_control = bzrdir.BzrDir.open(self.get_readonly_url('subdir'))
         self.assertRaises(errors.NoRepositoryPresent,
                           self.branch_format.find_repository,
                           opened_control)
@@ -559,15 +567,113 @@ class TestFormat(TestCaseWithBranch):
                          branch.BranchFormat.find_format(opened_control))
 
     def test_find_repository_no_repo_under_standalone_branch(self):
-        # branch formats that support shared storage need to find their
-        # repository using the defined search order:
-        # * the branch's bzrdir
-        # * every containing bzrdir until the root or a non shared repo is
-        #   found.
-        parent_bzrdir = self.make_branch('.')
+        # finding a repo stops at standalone branches even if there is a
+        # higher repository available.
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            # need a shared repository to test this.
+            return
+        url = self.get_url('intermediate')
+        get_transport(self.get_url()).mkdir('intermediate')
+        get_transport(self.get_url()).mkdir('intermediate/child')
+        made_control = self.bzrdir_format.initialize(url)
+        made_control.create_repository()
+        innermost_control = self.bzrdir_format.initialize(
+            self.get_url('intermediate/child'))
+        try:
+            child_repo = innermost_control.open_repository()
+            # if there is a repository, then the format cannot ever hit this 
+            # code path.
+            return
+        except errors.NoRepositoryPresent:
+            pass
+        self.assertRaises(errors.NoRepositoryPresent,
+                          self.branch_format.find_repository,
+                          innermost_control)
+
+    def test_find_repository_containing_shared_repository(self):
+        # find repo inside a shared repo with an empty control dir
+        # returns the shared repo.
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            # need a shared repository to test this.
+            return
         url = self.get_url('childbzrdir')
         get_transport(self.get_url()).mkdir('childbzrdir')
         made_control = self.bzrdir_format.initialize(url)
-        self.assertRaises(errors.NoRepositoryPresent,
-                          self.branch_format.find_repository,
-                          made_control)
+        try:
+            child_repo = made_control.open_repository()
+            # if there is a repository, then the format cannot ever hit this 
+            # code path.
+            return
+        except errors.NoRepositoryPresent:
+            pass
+        found_repo = self.branch_format.find_repository(made_control)
+        self.assertEqual(repo.bzrdir.root_transport.base,
+                         found_repo.bzrdir.root_transport.base)
+        
+    def test_find_repository_standalone_with_containing_shared_repository(self):
+        # find repo inside a standalone repo inside a shared repo finds the standalone repo
+        try:
+            containing_repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            # need a shared repository to test this.
+            return
+        child_repo = self.make_repository('childrepo')
+        opened_control = bzrdir.BzrDir.open(self.get_url('childrepo'))
+        found_repo = self.branch_format.find_repository(opened_control)
+        self.assertEqual(child_repo.bzrdir.root_transport.base,
+                         found_repo.bzrdir.root_transport.base)
+
+    def test_find_repository_shared_within_shared_repository(self):
+        # find repo at a shared repo inside a shared repo finds the inner repo
+        try:
+            containing_repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            # need a shared repository to test this.
+            return
+        url = self.get_url('childrepo')
+        get_transport(self.get_url()).mkdir('childrepo')
+        child_control = self.bzrdir_format.initialize(url)
+        child_repo = child_control.create_repository(shared=True)
+        opened_control = bzrdir.BzrDir.open(self.get_url('childrepo'))
+        found_repo = self.branch_format.find_repository(opened_control)
+        self.assertEqual(child_repo.bzrdir.root_transport.base,
+                         found_repo.bzrdir.root_transport.base)
+        self.assertNotEqual(child_repo.bzrdir.root_transport.base,
+                            containing_repo.bzrdir.root_transport.base)
+
+    def test_find_repository_with_nested_dirs_works(self):
+        # find repo inside a bzrdir inside a bzrdir inside a shared repo 
+        # finds the outer shared repo.
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            # need a shared repository to test this.
+            return
+        url = self.get_url('intermediate')
+        get_transport(self.get_url()).mkdir('intermediate')
+        get_transport(self.get_url()).mkdir('intermediate/child')
+        made_control = self.bzrdir_format.initialize(url)
+        try:
+            child_repo = made_control.open_repository()
+            # if there is a repository, then the format cannot ever hit this 
+            # code path.
+            return
+        except errors.NoRepositoryPresent:
+            pass
+        innermost_control = self.bzrdir_format.initialize(
+            self.get_url('intermediate/child'))
+        try:
+            child_repo = innermost_control.open_repository()
+            # if there is a repository, then the format cannot ever hit this 
+            # code path.
+            return
+        except errors.NoRepositoryPresent:
+            pass
+        found_repo = self.branch_format.find_repository(innermost_control)
+        self.assertEqual(repo.bzrdir.root_transport.base,
+                         found_repo.bzrdir.root_transport.base)
+        
