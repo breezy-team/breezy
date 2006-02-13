@@ -27,9 +27,9 @@ from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
 class TestTreeTransform(TestCaseInTempDir):
     def setUp(self):
         super(TestTreeTransform, self).setUp()
-        os.mkdir('branchdir')
-        self.branch = Branch.initialize('branchdir')
+        self.branch = Branch.initialize('.')
         self.wt = self.branch.working_tree()
+        os.chdir('..')
 
     def get_transform(self):
         transform = TreeTransform(self.wt)

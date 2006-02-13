@@ -56,8 +56,7 @@ class TreeTransform(object):
         self._tree_id_paths = {}
         self._new_root = self.get_id_tree(tree.get_root_id())
         self.__done = False
-        # XXX use the WorkingTree LockableFiles, when available
-        control_files = self._tree.branch.control_files
+        control_files = self._tree._control_files
         self._limbodir = control_files.controlfilename('limbo')
         os.mkdir(self._limbodir)
 
@@ -370,7 +369,6 @@ class TreeTransform(object):
         for key, value in self._non_present_ids.iteritems():
             if value == trans_id:
                 return key
-
 
     def final_parent(self, trans_id):
         """Determine the parent file_id, after any changes are applied.
