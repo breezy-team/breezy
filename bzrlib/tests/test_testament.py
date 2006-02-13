@@ -126,7 +126,8 @@ class TestamentTests(TestCaseWithTransport):
             rev_id='test@user-3',
             committer='test@user')
         t = Testament.from_revision(self.b.repository, 'test@user-3')
-        self.assertEqualDiff(t.as_text(), REV_UNICODE_COMMIT_TESTAMENT)
+        self.assertEqualDiff(
+            t.as_text(), SAMPLE_UNICODE_TESTAMENT.encode('utf-8'))
 
     def test___init__(self):
         revision = self.b.repository.get_revision('test@user-2')
@@ -232,7 +233,7 @@ properties:
 """
 
 
-REV_UNICODE_COMMIT_TESTAMENT = u"""\
+SAMPLE_UNICODE_TESTAMENT = u"""\
 bazaar-ng testament version 1
 revision-id: test@user-3
 committer: test@user
@@ -249,4 +250,4 @@ inventory:
 properties:
   branch-nick:
     test branch
-""".encode('utf-8')
+"""
