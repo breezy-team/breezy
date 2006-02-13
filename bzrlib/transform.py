@@ -67,7 +67,7 @@ class TreeTransform(object):
     root = property(__get_root)
 
     def finalize(self):
-        """Release the working tree lock, if held."""
+        """Release the working tree lock, if held, clean up limbo dir."""
         if self._tree is None:
             return
         for trans_id, kind in self._new_contents.iteritems():
@@ -199,6 +199,11 @@ class TreeTransform(object):
         self._set_mode(trans_id, mode_id, S_ISREG)
 
     def _set_mode(self, trans_id, mode_id, typefunc):
+        """Set the mode of new file contents.
+        The mode_id is the existing file to get the mode from (often the same
+        as trans_id).  The operation is only performed if there's a mode match
+        according to typefunc.
+        """
         if mode_id is None:
             mode_id = trans_id
         try:
@@ -234,6 +239,7 @@ class TreeTransform(object):
 
     @staticmethod
     def delete_any(full_path):
+        """Delete a file or directory."""
         try:
             os.unlink(full_path)
         except OSError, e:
@@ -243,6 +249,7 @@ class TreeTransform(object):
             os.rmdir(full_path)
 
     def cancel_creation(self, trans_id):
+        """Cancel the creation of new file contents."""
         del self._new_contents[trans_id]
         self.delete_any(self._limbo_name(trans_id))
 
@@ -353,7 +360,7 @@ class TreeTransform(object):
 
 
     def inactive_file_id(self, trans_id):
-        """Returns the inactive file_id associated with a transaction id.
+        """Return the inactive file_id associated with a transaction id.
         That is, the one in the tree or in non_present_ids.
         The file_id may actually be active, too.
         """
@@ -398,6 +405,7 @@ class TreeTransform(object):
         return by_parent
 
     def path_changed(self, trans_id):
+        """Return True if a trans_id's path has changed."""
         return trans_id in self._new_name or trans_id in self._new_parent
 
     def find_conflicts(self):
@@ -786,6 +794,7 @@ class FinalPaths(object):
             return os.path.join(self.get_path(parent_id), name)
 
     def get_path(self, trans_id):
+        """Find the final path associated with a trans_id"""
         if trans_id not in self._known_paths:
             self._known_paths[trans_id] = self._determine_path(trans_id)
         return self._known_paths[trans_id]
@@ -817,6 +826,7 @@ def build_tree(branch, tree):
         tt.finalize()
 
 def new_by_entry(tt, entry, parent_id, tree):
+    """Create a new file according to its inventory entry"""
     name = entry.name
     kind = entry.kind
     if kind == 'file':
@@ -831,6 +841,7 @@ def new_by_entry(tt, entry, parent_id, tree):
         return tt.new_symlink(name, parent_id, target, file_id)
 
 def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
+    """Create new file contents according to an inventory entry."""
     if entry.kind == "file":
         if lines == None:
             lines = tree.get_file(entry.file_id).readlines()
@@ -841,10 +852,13 @@ def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
         tt.create_directory(trans_id)
 
 def create_entry_executability(tt, entry, trans_id):
+    """Set the executability of a trans_id according to an inventory entry"""
     if entry.kind == "file":
         tt.set_executability(entry.executable, trans_id)
 
+
 def find_interesting(working_tree, target_tree, filenames):
+    """Find the ids corresponding to specified filenames."""
     if not filenames:
         interesting_ids = None
     else:
@@ -863,6 +877,7 @@ def find_interesting(working_tree, target_tree, filenames):
 
 def change_entry(tt, file_id, working_tree, target_tree, 
                  get_trans_id, backups, trans_id):
+    """Replace a file_id's contents with those from a target tree."""
     e_trans_id = get_trans_id(file_id)
     entry = target_tree.inventory[file_id]
     has_contents, contents_mod, meta_mod, = _entry_changes(file_id, entry, 
@@ -930,6 +945,7 @@ def _entry_changes(file_id, entry, working_tree):
 
 
 def revert(working_tree, target_tree, filenames, backups=False):
+    """Revert a working tree's contents to those of a target tree."""
     interesting_ids = find_interesting(working_tree, target_tree, filenames)
     def interesting(file_id):
         return interesting_ids is None or file_id in interesting_ids
@@ -976,6 +992,7 @@ def resolve_conflicts(tt):
 
 
 def conflict_pass(tt, conflicts):
+    """Resolve some classes of conflicts."""
     for c_type, conflict in ((c[0], c) for c in conflicts):
         if c_type == 'duplicate id':
             tt.unversion_file(conflict[1])

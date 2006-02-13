@@ -337,6 +337,7 @@ class Merge3Merger(object):
     history_based = False
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  reprocess=False, show_base=False):
+        """Initialize the merger object and perform the merge."""
         object.__init__(self)
         self.this_tree = working_tree
         self.base_tree = base_tree
@@ -368,24 +369,28 @@ class Merge3Merger(object):
        
     @staticmethod
     def parent(entry, file_id):
+        """Determine the parent for a file_id (used as a key method)"""
         if entry is None:
             return None
         return entry.parent_id
 
     @staticmethod
     def name(entry, file_id):
+        """Determine the name for a file_id (used as a key method)"""
         if entry is None:
             return None
         return entry.name
     
     @staticmethod
     def contents_sha1(tree, file_id):
+        """Determine the sha1 of the file contents (used as a key method)."""
         if file_id not in tree:
             return None
         return tree.get_file_sha1(file_id)
 
     @staticmethod
     def executable(tree, file_id):
+        """Determine the executability of a file-id (used as a key method)."""
         if file_id not in tree:
             return None
         if tree.kind(file_id) != "file":
@@ -394,6 +399,7 @@ class Merge3Merger(object):
 
     @staticmethod
     def kind(tree, file_id):
+        """Determine the kind of a file-id (used as a key method)."""
         if file_id not in tree:
             return None
         return tree.kind(file_id)
@@ -419,6 +425,7 @@ class Merge3Merger(object):
             return "other"
 
     def merge_names(self, file_id):
+        """Perform a merge on file_id names and parents"""
         def get_entry(tree):
             if file_id in tree.inventory:
                 return tree.inventory[file_id]
@@ -464,6 +471,7 @@ class Merge3Merger(object):
 
 
     def merge_contents(self, file_id):
+        """Performa a merge on file_id contents."""
         def contents_pair(tree):
             if file_id not in tree:
                 return (None, None)
@@ -535,6 +543,7 @@ class Merge3Merger(object):
                 self._raw_conflicts.append(('contents conflict', file_group))
 
     def get_lines(self, tree, file_id):
+        """Return the lines in a file, or an empty list."""
         if file_id in tree:
             return tree.get_file(file_id).readlines()
         else:
@@ -586,6 +595,11 @@ class Merge3Merger(object):
     def _dump_conflicts(self, name, parent_id, file_id, this_lines=None, 
                         base_lines=None, other_lines=None, set_version=False,
                         no_base=False):
+        """Emit conflict files.
+        If this_lines, base_lines, or other_lines are omitted, they will be
+        determined automatically.  If set_version is true, the .OTHER, .THIS
+        or .BASE (in that order) will be created as versioned files.
+        """
         data = [('OTHER', self.other_tree, other_lines), 
                 ('THIS', self.this_tree, this_lines)]
         if not no_base:
@@ -604,6 +618,7 @@ class Merge3Merger(object):
            
     def _conflict_file(self, name, parent_id, tree, file_id, suffix, 
                        lines=None):
+        """Emit a single conflict file."""
         name = name + '.' + suffix
         trans_id = self.tt.create_path(name, parent_id)
         entry = tree.inventory[file_id]
@@ -611,6 +626,7 @@ class Merge3Merger(object):
         return trans_id
 
     def merge_executable(self, file_id, file_status):
+        """Perform a merge on the execute bit."""
         if file_status == "deleted":
             return
         trans_id = self.tt.get_trans_id(file_id)
@@ -702,6 +718,7 @@ class Merge3Merger(object):
 
 
 def conflicts_strings(conflicts):
+    """Generate strings for the provided conflicts"""
     for conflict in conflicts:
         conflict_type = conflict[0]
         if conflict_type == 'text conflict':
@@ -713,6 +730,7 @@ def conflicts_strings(conflicts):
 
 
 class WeaveMerger(Merge3Merger):
+    """Merger that does weave merges."""
     supports_reprocess = False
     supports_show_base = False
 
@@ -723,6 +741,9 @@ class WeaveMerger(Merge3Merger):
                                           base_tree, other_tree)
 
     def _get_revision_tree(self, tree):
+        """Return a revision tree releated to this tree.
+        If the tree is a WorkingTree, the basis will be returned.
+        """
         if getattr(tree, 'get_weave', False) is False:
             # If we have a WorkingTree, try using the basis
             return tree.branch.basis_tree()
@@ -753,6 +774,10 @@ class WeaveMerger(Merge3Merger):
         return weave.weave_merge(plan)
 
     def text_merge(self, file_id, trans_id):
+        """Perform a (weave) text merge for a given file and file-id.
+        If conflicts are encountered, .THIS and .OTHER files will be emitted,
+        and a conflict will be noted.
+        """
         self._check_file(file_id)
         lines = self._merged_lines(file_id)
         conflicts = '<<<<<<<\n' in lines
@@ -777,6 +802,10 @@ class Diff3Merger(Merge3Merger):
         return out_path
 
     def text_merge(self, file_id, trans_id):
+        """Perform a diff3 merge using a specified file-id and trans-id.
+        If conflicts are encountered, .BASE, .THIS. and .OTHER conflict files
+        will be dumped, and a will be conflict noted.
+        """
         import bzrlib.patch
         temp_dir = mkdtemp(prefix="bzr-")
         try:
