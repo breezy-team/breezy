@@ -1556,8 +1556,7 @@ class cmd_find_merge_base(Command):
         last1 = branch1.last_revision()
         last2 = branch2.last_revision()
 
-        source = MultipleRevisionSources(branch1.repository, 
-                                         branch2.repository)
+        source = MultipleRevisionSources(branch1, branch2)
         
         base_rev_id = common_ancestor(last1, last2, source)
 
