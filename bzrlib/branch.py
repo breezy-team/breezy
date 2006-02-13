@@ -300,7 +300,7 @@ class Branch(object):
             raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
-    def pull(self, source, overwrite=False):
+    def pull(self, source, overwrite=False, stop_revision=None):
         raise NotImplementedError('pull is abstract')
 
     def basis_tree(self):
@@ -964,6 +964,7 @@ class BzrBranch(Branch):
     def update_revisions(self, other, stop_revision=None):
         """See Branch.update_revisions."""
         from bzrlib.fetch import greedy_fetch
+
         if stop_revision is None:
             stop_revision = other.last_revision()
         ### Should this be checking is_ancestor instead of revision_history?
@@ -1009,13 +1010,13 @@ class BzrBranch(Branch):
         return WorkingTree(self.base, branch=self)
 
     @needs_write_lock
-    def pull(self, source, overwrite=False):
+    def pull(self, source, overwrite=False, stop_revision=None):
         """See Branch.pull."""
         source.lock_read()
         try:
             old_count = len(self.revision_history())
             try:
-                self.update_revisions(source)
+                self.update_revisions(source,stop_revision)
             except DivergedBranches:
                 if not overwrite:
                     raise
