@@ -33,21 +33,23 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import has_symlinks
-from bzrlib.tests import TestCaseInTempDir, BzrTestBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.annotate import annotate_file
 
 
-class TestAnnotate(TestCaseInTempDir):
+class TestAnnotate(TestCaseWithTransport):
+
     def setUp(self):
         super(TestAnnotate, self).setUp()
-        b = Branch.initialize(u'.')
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
         self.build_tree_contents([('hello.txt', 'my helicopter\n'),
                                   ('nomail.txt', 'nomail\n')])
-        b.working_tree().add(['hello.txt'])
-        b.working_tree().commit('add hello', 
+        wt.add(['hello.txt'])
+        wt.commit('add hello', 
                                 committer='test@user')
-        b.working_tree().add(['nomail.txt'])
-        b.working_tree().commit('add nomail', committer='no mail')
+        wt.add(['nomail.txt'])
+        wt.commit('add nomail', committer='no mail')
 
     def test_help_annotate(self):
         """Annotate command exists"""

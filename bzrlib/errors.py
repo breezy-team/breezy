@@ -213,9 +213,15 @@ class FileInWrongBranch(BzrNewError):
 
 
 class UnsupportedFormatError(BzrError):
-    """Specified path is a bzr branch that we cannot read."""
+    """Specified path is a bzr branch that we recognize but cannot read."""
     def __str__(self):
         return 'unsupported branch format: %s' % self.args[0]
+
+
+class UnknownFormatError(BzrError):
+    """Specified path is a bzr branch whose format we do not recognize."""
+    def __str__(self):
+        return 'unknown branch format: %s' % self.args[0]
 
 
 class NotVersionedError(BzrNewError):
@@ -256,6 +262,10 @@ class ReadOnlyError(LockError):
 
 class PointlessCommit(BzrNewError):
     """No changes to commit"""
+
+
+class UpgradeReadonly(BzrNewError):
+    """Upgrade URL cannot work with readonly URL's."""
 
 
 class StrictCommitFailed(Exception):
@@ -503,7 +513,7 @@ class BzrBadParameter(BzrNewError):
 
 class BzrBadParameterNotUnicode(BzrBadParameter):
     """Parameter %(param)s is neither unicode nor utf8."""
-    
+
 
 class BzrBadParameterNotString(BzrBadParameter):
     """Parameter %(param)s is not a string or unicode string."""
@@ -521,3 +531,11 @@ class ParamikoNotPresent(DependencyNotPresent):
 
     def __init__(self, error):
         DependencyNotPresent.__init__(self, 'paramiko', error)
+
+
+class UninitializableFormat(BzrNewError):
+    """Format %(format)s cannot be initialised by this version of bzr."""
+
+    def __init__(self, format):
+        BzrNewError.__init__(self)
+        self.format = format

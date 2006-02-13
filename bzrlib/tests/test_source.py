@@ -59,7 +59,7 @@ class TestApiUsage(TestCase):
         # before this test was written. Note that this is an exact equality
         # so that when the number drops, it is not given a buffer but rather
         # this test updated immediately.
-        self.assertEqual(2, occurences)
+        self.assertEqual(1, occurences)
 
     def test_branch_WorkingTree(self):
         """Test that the number of uses of working_tree in branch is stable."""
@@ -74,4 +74,4 @@ class TestApiUsage(TestCase):
         # written. Note that this is an exact equality so that when the number
         # drops, it is not given a buffer but rather this test updated
         # immediately.
-        self.assertEqual(6, occurences)
+        self.assertEqual(13, occurences)
