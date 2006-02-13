@@ -320,6 +320,24 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual(committed.properties["branch-nick"], 
                          "My happy branch")
 
+    def test_create_open_branch_uses_repository(self):
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        repo.bzrdir.root_transport.mkdir('child')
+        child_dir = self.bzrdir_format.initialize('child')
+        try:
+            child_branch = self.branch_format.initialize(child_dir)
+        except errors.UninitializableFormat:
+            # branch references are not default init'able.
+            return
+        self.assertEqual(repo.bzrdir.root_transport.base,
+                         child_branch.repository.bzrdir.root_transport.base)
+        child_branch = bzrlib.branch.Branch.open(self.get_url('child'))
+        self.assertEqual(repo.bzrdir.root_transport.base,
+                         child_branch.repository.bzrdir.root_transport.base)
+
 
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.
