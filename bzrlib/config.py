@@ -57,7 +57,6 @@ import os
 import sys
 from fnmatch import fnmatch
 import re
-import shlex
 
 import bzrlib
 import bzrlib.errors as errors
@@ -184,15 +183,6 @@ class Config(object):
             return True
         return False
 
-    def get_command_defaults(self, command_name):
-        """Return the default options"""
-        # All these template methods look like overengineering to me.  Is it
-        # clear that we want to support a variety of configuration formats?
-        return self._get_command_defaults(command_name)
-
-    def _get_command_defaults(self, command_name):
-        return []
-
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -256,17 +246,6 @@ class IniBasedConfig(Config):
         raise errors.BzrError("Invalid signatures policy '%s'"
                               % signature_string)
 
-    def _get_command_defaults(self, command_name):
-        try:
-            defaults = self._get_parser().get_value("COMMAND_DEFAULTS", 
-                                                    command_name)
-        except KeyError:
-            return []
-        try:
-            return shlex.split(defaults)
-        except ValueError, e:
-            raise errors.CommandDefaultSyntax(command_name=command_name, 
-                                              error=e)
 
 class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""

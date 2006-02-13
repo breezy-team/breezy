@@ -34,16 +34,13 @@ from inspect import getdoc
 import errno
 
 import bzrlib
-from bzrlib.config import GlobalConfig
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, be_quiet
 from bzrlib.errors import (BzrError, 
                            BzrCheckError,
                            BzrCommandError,
                            BzrOptionError,
-                           NotBranchError,
-                           CommandDefaultSyntax,
-                           )
+                           NotBranchError)
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib import BZRDIR
 from bzrlib.option import Option
@@ -211,16 +208,9 @@ class Command(object):
             r[o.name] = o
         return r
 
-    def run_argv(self, argv, defaults=None):
+    def run_argv(self, argv):
         """Parse command line and run."""
-        if defaults is not None:
-            args, opts = parse_args(self, defaults)
-        else:
-            args = []
-            opts = {}
-        cmd_args, cmd_opts = parse_args(self, argv)
-        args.extend(cmd_args)
-        opts.update(cmd_opts)
+        args, opts = parse_args(self, argv)
         if 'help' in opts:  # e.g. bzr add --help
             from bzrlib.help import help_on_command
             help_on_command(self.name())
@@ -494,13 +484,12 @@ def run_bzr(argv):
     argv = [a.decode(bzrlib.user_encoding) for a in argv]
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = False
-    opt_no_defaults = False
 
     # --no-plugins is handled specially at a very early stage. We need
     # to load plugins before doing other command parsing so that they
     # can override commands, but this needs to happen first.
 
-    for a in argv[:]:
+    for a in argv:
         if a == '--profile':
             opt_profile = True
         elif a == '--lsprof':
@@ -511,8 +500,6 @@ def run_bzr(argv):
             opt_builtin = True
         elif a in ('--quiet', '-q'):
             be_quiet()
-        elif a in ('--no-defaults',):
-            opt_no_defaults = True
         else:
             continue
         argv.remove(a)
@@ -540,17 +527,14 @@ def run_bzr(argv):
     cmd = str(argv.pop(0))
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
-    if opt_no_defaults is True:
-        cmd_defaults = []
-    else:
-        cmd_defaults = GlobalConfig().get_command_defaults(cmd_obj.name())
+
     try:
         if opt_lsprof:
-            ret = apply_lsprofiled(cmd_obj.run_argv, argv, cmd_defaults)
+            ret = apply_lsprofiled(cmd_obj.run_argv, argv)
         elif opt_profile:
-            ret = apply_profiled(cmd_obj.run_argv, argv, cmd_defaults)
+            ret = apply_profiled(cmd_obj.run_argv, argv)
         else:
-            ret = cmd_obj.run_argv(argv, cmd_defaults)
+            ret = cmd_obj.run_argv(argv)
         return ret or 0
     finally:
         # reset, in case we may do other commands later within the same process

@@ -32,9 +32,7 @@ sample_config_text = ("[DEFAULT]\n"
                       "email=Robert Collins <robertc@example.com>\n"
                       "editor=vim\n"
                       "gpg_signing_command=gnome-gpg\n"
-                      "user_global_option=something\n"
-                      "[COMMAND_DEFAULTS]\n"
-                      'commit=-m "log message" #evil? possibly.')
+                      "user_global_option=something\n")
 
 
 sample_always_signatures = ("[DEFAULT]\n"
@@ -320,14 +318,11 @@ class TestGlobalConfigItems(TestCase):
                          my_config.signature_checking())
         self.assertEqual(False, my_config.signature_needed())
 
-    def _config_from_str(self, config_str):
-        config_file = StringIO(config_str)
+    def _get_sample_config(self):
+        config_file = StringIO(sample_config_text)
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
         return my_config
-
-    def _get_sample_config(self):
-        return self._config_from_str(sample_config_text)
 
     def test_gpg_signing_command(self):
         my_config = self._get_sample_config()
@@ -356,22 +351,6 @@ class TestGlobalConfigItems(TestCase):
     def test_post_commit_default(self):
         my_config = self._get_sample_config()
         self.assertEqual(None, my_config.post_commit())
-
-    def test_command_defaults(self):
-        my_config = self._get_sample_config()
-        self.assertEqual(['-m', 'log message'], 
-                         my_config.get_command_defaults('commit'))
-        self.assertEqual([], my_config.get_command_defaults('log'))
-
-    def test_bogus_command_default(self):
-        my_config = self._config_from_str("""[COMMAND_DEFAULTS]
-                                          merge=--merge-type 'weave'
-                                          remerge=--merge-type 'weave
-                                          """)
-        self.assertEqual(['--merge-type', 'weave'], 
-                         my_config.get_command_defaults('merge'))
-        self.assertRaises(errors.CommandDefaultSyntax, 
-                          my_config.get_command_defaults, 'remerge')
 
 
 class TestLocationConfig(TestCase):

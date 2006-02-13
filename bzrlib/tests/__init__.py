@@ -83,7 +83,6 @@ def packages_to_test():
     import bzrlib.tests.branch_implementations
     return [
             bzrlib.doc,
-            bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
             ]
 
@@ -439,10 +438,6 @@ class TestCase(unittest.TestCase):
         handler.setLevel(logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
-        if isinstance(argv, basestring):
-            argv = '--no-defaults ' + argv
-        else:
-            argv = ['--no-defaults'] + list(argv)
         try:
             result = self.apply_redirected(None, stdout, stderr,
                                            bzrlib.commands.run_bzr_catch_errors,

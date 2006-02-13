@@ -109,7 +109,7 @@ class Convert(object):
         # logic becomes format specific, then we can have the format know how to pass this
         # on. Also note that we probably have an 'upgrade meta' which upgrades the constituent
         # parts.
-        # FIXME: control files reuse
+        print "FIXME: control files reuse" 
         self.control_files.lock_write()
         try:
             self.convert()
@@ -219,7 +219,7 @@ class Convert(object):
 
     def _cleanup_spare_files_after_format4(self):
         transport = self.transport.clone('.bzr')
-        # FIXME working tree upgrade foo.
+        print "FIXME working tree upgrade foo."
         for n in 'merged-patches', 'pending-merged-patches':
             try:
                 ## assert os.path.getsize(p) == 0
@@ -242,7 +242,7 @@ class Convert(object):
         branch = self.branch
         inv = serializer_v4.read_inventory(branch.control_files.get('inventory'))
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
-        # FIXME inventory is a working tree change.
+        print "fixme inventory is a working tree change."
         branch.control_files.put('inventory', new_inv_xml)
 
     def _write_all_weaves(self):
