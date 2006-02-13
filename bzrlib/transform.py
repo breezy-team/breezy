@@ -20,7 +20,8 @@ from stat import S_ISREG
 
 from bzrlib import BZRDIR
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform, NotVersionedError, CantMoveRoot)
+                           ReusingTransform, NotVersionedError, CantMoveRoot,
+                           ExistingLimbo, ImmortalLimbo)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import file_kind, supports_executable, pathjoin
 from bzrlib.trace import mutter
@@ -42,6 +43,18 @@ class TreeTransform(object):
         object.__init__(self)
         self._tree = tree
         self._tree.lock_write()
+        try:
+            control_files = self._tree._control_files
+            self._limbodir = control_files.controlfilename('limbo')
+            try:
+                os.mkdir(self._limbodir)
+            except OSError, e:
+                if e.errno == errno.EEXIST:
+                    raise ExistingLimbo(self._limbodir)
+        except: 
+            self._tree.unlock()
+            raise
+
         self._id_number = 0
         self._new_name = {}
         self._new_parent = {}
@@ -56,9 +69,6 @@ class TreeTransform(object):
         self._tree_id_paths = {}
         self._new_root = self.get_id_tree(tree.get_root_id())
         self.__done = False
-        control_files = self._tree._control_files
-        self._limbodir = control_files.controlfilename('limbo')
-        os.mkdir(self._limbodir)
 
     def __get_root(self):
         return self._new_root
@@ -69,15 +79,21 @@ class TreeTransform(object):
         """Release the working tree lock, if held, clean up limbo dir."""
         if self._tree is None:
             return
-        for trans_id, kind in self._new_contents.iteritems():
-            path = self._limbo_name(trans_id)
-            if kind == "directory":
-                os.rmdir(path)
-            else:
-                os.unlink(path)
-        os.rmdir(self._limbodir)
-        self._tree.unlock()
-        self._tree = None
+        try:
+            for trans_id, kind in self._new_contents.iteritems():
+                path = self._limbo_name(trans_id)
+                if kind == "directory":
+                    os.rmdir(path)
+                else:
+                    os.unlink(path)
+            try:
+                os.rmdir(self._limbodir)
+            except OSError:
+                # We don't especially care *why* the dir is immortal.
+                raise ImmortalLimbo(self._limbodir)
+        finally:
+            self._tree.unlock()
+            self._tree = None
 
     def _assign_id(self):
         """Produce a new tranform id"""

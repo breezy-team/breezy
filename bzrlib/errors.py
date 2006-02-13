@@ -562,3 +562,23 @@ class UninitializableFormat(BzrNewError):
 
 class NoDiff3(BzrNewError):
     """Diff3 is not installed on this machine."""
+
+
+class ExistingLimbo(BzrNewError):
+    """This tree contains left-over files from a failed operation.
+    Please examine %(limbo_dir)s to see if it contains any files you wish to
+    keep, and delete it when you are done.
+    """
+    def __init__(self, limbo_dir):
+       BzrNewError.__init__(self)
+       self.limbo_dir = limbo_dir
+
+
+class ImmortalLimbo(BzrNewError):
+    """Unable to delete transform temporary directory $(limbo_dir)s.
+    Please examine %(limbo_dir)s to see if it contains any files you wish to
+    keep, and delete it when you are done.
+    """
+    def __init__(self, limbo_dir):
+       BzrNewError.__init__(self)
+       self.limbo_dir = limbo_dir

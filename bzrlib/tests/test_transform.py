@@ -17,7 +17,8 @@
 import os
 from bzrlib.branch import Branch
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform, CantMoveRoot, NotVersionedError)
+                           ReusingTransform, CantMoveRoot, NotVersionedError,
+                           ExistingLimbo, ImmortalLimbo, LockError)
 from bzrlib.osutils import file_kind, has_symlinks
 from bzrlib.merge import Merge3Merger
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
@@ -36,6 +37,18 @@ class TestTreeTransform(TestCaseInTempDir):
         #self.addCleanup(transform.finalize)
         return transform, transform.get_id_tree(self.wt.get_root_id())
 
+    def test_existing_limbo(self):
+        limbo_name = self.wt._control_files.controlfilename('limbo')
+        transform, root = self.get_transform()
+        os.mkdir(os.path.join(limbo_name, 'hehe'))
+        self.assertRaises(ImmortalLimbo, transform.apply)
+        self.assertRaises(LockError, self.wt.unlock)
+        self.assertRaises(ExistingLimbo, self.get_transform)
+        self.assertRaises(LockError, self.wt.unlock)
+        os.rmdir(os.path.join(limbo_name, 'hehe'))
+        os.rmdir(limbo_name)
+        transform, root = self.get_transform()
+        transform.apply()
 
     def test_build(self):
         transform, root = self.get_transform() 
