@@ -256,6 +256,10 @@ class Repository(object):
         """Make a complete copy of the content in self into destination."""
         destination.lock_write()
         try:
+            try:
+                destination.set_make_working_trees(self.make_working_trees())
+            except NotImplementedError:
+                pass
             # optimised paths:
             # compatible stores
             if self._compatible_formats(destination):
@@ -321,7 +325,7 @@ class Repository(object):
                        bzrdir.BzrDirFormat6)):
             result = a_bzrdir.open_repository()
         else:
-            result = self._format.initialize(a_bzrdir)
+            result = self._format.initialize(a_bzrdir, shared=self.is_shared())
         self.copy_content_into(result, revision_id, basis)
         return result
 
@@ -573,6 +577,38 @@ class Repository(object):
 
     def get_transaction(self):
         return self.control_files.get_transaction()
+
+    @needs_write_lock
+    def set_make_working_trees(self, new_value):
+        """Set the policy flag for making working trees when creating branches.
+
+        This only applies to branches that use this repository.
+
+        The default is 'True'.
+        :param new_value: True to restore the default, False to disable making
+                          working trees.
+        """
+        # FIXME: split out into a new class/strategy ?
+        if isinstance(self._format, (RepositoryFormat4,
+                                     RepositoryFormat5,
+                                     RepositoryFormat6)):
+            raise NotImplementedError(self.set_make_working_trees)
+        if new_value:
+            try:
+                self.control_files._transport.delete('no-working-trees')
+            except errors.NoSuchFile:
+                return
+        else:
+            self.control_files.put_utf8('no-working-trees', '')
+    
+    def make_working_trees(self):
+        """Returns the policy for making working trees on new branches."""
+        # FIXME: split out into a new class/strategy ?
+        if isinstance(self._format, (RepositoryFormat4,
+                                     RepositoryFormat5,
+                                     RepositoryFormat6)):
+            return True
+        return self.control_files._transport.has('no-working-trees')
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):

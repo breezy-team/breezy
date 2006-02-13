@@ -220,6 +220,23 @@ class TestRepository(TestCaseWithRepository):
         target = source.bzrdir.clone(self.get_url('target'), basis=tree.bzrdir)
         self.assertTrue(target.open_repository().has_revision('2'))
 
+    def test_clone_shared_no_tree(self):
+        # cloning a shared repository keeps it shared
+        # and preserves the make_working_tree setting.
+        made_control = self.make_bzrdir('source')
+        try:
+            made_repo = made_control.create_repository(shared=True)
+        except errors.IncompatibleFormat:
+            # not all repository formats understand being shared, or
+            # may only be shared in some circumstances.
+            return
+        made_repo.set_make_working_trees(False)
+        result = made_control.clone(self.get_url('target'))
+        self.failUnless(isinstance(made_repo, repository.Repository))
+        self.assertEqual(made_control, made_repo.bzrdir)
+        self.assertTrue(result.open_repository().is_shared())
+        self.assertFalse(result.open_repository().make_working_trees())
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
