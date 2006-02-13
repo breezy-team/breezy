@@ -20,7 +20,7 @@ import os
 from stat import *
 import sys
 
-import bzrlib.branch as branch
+import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.commit import commit
@@ -155,7 +155,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = branch.BranchReferenceFormat().initialize(dir,
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
@@ -198,7 +198,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = branch.BranchReferenceFormat().initialize(dir,
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
@@ -301,7 +301,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = branch.BranchReferenceFormat().initialize(dir,
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
@@ -349,7 +349,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = branch.BranchReferenceFormat().initialize(dir,
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
@@ -373,7 +373,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = branch.BranchReferenceFormat().initialize(dir,
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
@@ -468,7 +468,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
-        self.failUnless(isinstance(made_branch, branch.Branch))
+        self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
         self.assertEqual(made_control, made_branch.bzrdir)
         
     def test_open_branch(self):
@@ -568,8 +568,8 @@ class TestBzrDir(TestCaseWithBzrDir):
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
         # branches, or it supports anonymous  branch formats, but not both.
-        anonymous_format = branch.BzrBranchFormat4()
-        identifiable_format = branch.BzrBranchFormat5()
+        anonymous_format = bzrlib.branch.BzrBranchFormat4()
+        identifiable_format = bzrlib.branch.BzrBranchFormat5()
         try:
             found_transport = dir.get_branch_transport(anonymous_format)
             self.assertRaises(errors.IncompatibleFormat,

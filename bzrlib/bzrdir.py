@@ -472,7 +472,10 @@ class BzrDirPreSplitOut(BzrDir):
 
 
 class BzrDir4(BzrDirPreSplitOut):
-    """A .bzr version 4 control object."""
+    """A .bzr version 4 control object.
+    
+    This is a deprecated format and may be removed after sept 2006.
+    """
 
     def create_repository(self):
         """See BzrDir.create_repository."""
@@ -486,7 +489,10 @@ class BzrDir4(BzrDirPreSplitOut):
 
 
 class BzrDir5(BzrDirPreSplitOut):
-    """A .bzr version 5 control object."""
+    """A .bzr version 5 control object.
+
+    This is a deprecated format and may be removed after sept 2006.
+    """
 
     def open_repository(self):
         """See BzrDir.open_repository."""
@@ -500,7 +506,10 @@ class BzrDir5(BzrDirPreSplitOut):
 
 
 class BzrDir6(BzrDirPreSplitOut):
-    """A .bzr version 6 control object."""
+    """A .bzr version 6 control object.
+
+    This is a deprecated format and may be removed after sept 2006.
+    """
 
     def open_repository(self):
         """See BzrDir.open_repository."""

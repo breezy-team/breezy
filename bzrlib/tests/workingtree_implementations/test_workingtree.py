@@ -19,7 +19,7 @@ from cStringIO import StringIO
 import os
 
 import bzrlib
-import bzrlib.branch as branch
+import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.bzrdir import BzrDir
@@ -396,7 +396,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        branch.BranchReferenceFormat().initialize(checkout, main_branch)
+        bzrlib.branch.BranchReferenceFormat().initialize(checkout, main_branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
@@ -427,7 +427,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        branch.BranchReferenceFormat().initialize(checkout, main_branch)
+        bzrlib.branch.BranchReferenceFormat().initialize(checkout, main_branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')

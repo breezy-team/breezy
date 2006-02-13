@@ -234,7 +234,7 @@ class Commit(object):
 
         # check for out of date working trees
         if self.work_tree.last_revision() != self.branch.last_revision():
-            raise errors.OutOfDateTree
+            raise errors.OutOfDateTree(self.work_tree)
 
         if strict:
             # raise an exception as soon as we find a single unknown.

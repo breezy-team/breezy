@@ -206,7 +206,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self.bzrdir = _bzrdir
         if not _internal:
             # not created via open etc.
-            warn("WorkingTree() is deprecated ass of bzr version 0.8. "
+            warn("WorkingTree() is deprecated as of bzr version 0.8. "
                  "Please use bzrdir.open_workingtree or WorkingTree.open().",
                  DeprecationWarning,
                  stacklevel=2)

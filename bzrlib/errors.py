@@ -570,3 +570,7 @@ class UninitializableFormat(BzrNewError):
 
 class OutOfDateTree(BzrNewError):
     """Working tree is out of date, please run 'bzr update'."""
+
+    def __init__(self, tree):
+        BzrNewError.__init__(self)
+        self.tree = tree

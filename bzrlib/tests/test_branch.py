@@ -24,7 +24,7 @@ also see this file.
 
 from StringIO import StringIO
 
-import bzrlib.branch as branch
+import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
@@ -37,10 +37,10 @@ from bzrlib.transport import get_transport
 class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
-        old_format = branch.BranchFormat.get_default_format()
+        old_format = bzrlib.branch.BranchFormat.get_default_format()
         # default is 5
-        self.assertTrue(isinstance(old_format, branch.BzrBranchFormat5))
-        branch.BranchFormat.set_default_format(SampleBranchFormat())
+        self.assertTrue(isinstance(old_format, bzrlib.branch.BzrBranchFormat5))
+        bzrlib.branch.BranchFormat.set_default_format(SampleBranchFormat())
         try:
             # the default branch format is used by the meta dir format
             # which is not the default bzrdir format at this point
@@ -48,11 +48,11 @@ class TestDefaultFormat(TestCase):
             result = dir.create_branch()
             self.assertEqual(result, 'A branch')
         finally:
-            branch.BranchFormat.set_default_format(old_format)
-        self.assertEqual(old_format, branch.BranchFormat.get_default_format())
+            bzrlib.branch.BranchFormat.set_default_format(old_format)
+        self.assertEqual(old_format, bzrlib.branch.BranchFormat.get_default_format())
 
 
-class SampleBranchFormat(branch.BranchFormat):
+class SampleBranchFormat(bzrlib.branch.BranchFormat):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the 
@@ -88,21 +88,21 @@ class TestBzrBranchFormat(TestCaseWithTransport):
             dir = format._matchingbzrdir.initialize(url)
             dir.create_repository()
             format.initialize(dir)
-            found_format = branch.BranchFormat.find_format(dir)
+            found_format = bzrlib.branch.BranchFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
-        check_format(branch.BzrBranchFormat5(), "bar")
+        check_format(bzrlib.branch.BzrBranchFormat5(), "bar")
         
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(NotBranchError,
-                          branch.BranchFormat.find_format,
+                          bzrlib.branch.BranchFormat.find_format,
                           dir)
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleBranchFormat().initialize(dir)
         self.assertRaises(UnknownFormatError,
-                          branch.BranchFormat.find_format,
+                          bzrlib.branch.BranchFormat.find_format,
                           dir)
 
     def test_register_unregister_format(self):
@@ -112,13 +112,13 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         # make a branch
         format.initialize(dir)
         # register a format for it.
-        branch.BranchFormat.register_format(format)
+        bzrlib.branch.BranchFormat.register_format(format)
         # which branch.Open will refuse (not supported)
-        self.assertRaises(UnsupportedFormatError, branch.Branch.open, self.get_url())
+        self.assertRaises(UnsupportedFormatError, bzrlib.branch.Branch.open, self.get_url())
         # but open_downlevel will work
         self.assertEqual(format.open(dir), bzrdir.BzrDir.open(self.get_url()).open_branch(unsupported=True))
         # unregister the format
-        branch.BranchFormat.unregister_format(format)
+        bzrlib.branch.BranchFormat.unregister_format(format)
 
 
 class TestBranchReference(TestCaseWithTransport):
@@ -133,7 +133,7 @@ class TestBranchReference(TestCaseWithTransport):
         target_branch = dir.create_branch()
         t.mkdir('branch')
         branch_dir = bzrdirformat.initialize(self.get_url('branch'))
-        made_branch = branch.BranchReferenceFormat().initialize(branch_dir, target_branch)
+        made_branch = bzrlib.branch.BranchReferenceFormat().initialize(branch_dir, target_branch)
         self.assertEqual(made_branch.base, target_branch.base)
         opened_branch = branch_dir.open_branch()
         self.assertEqual(opened_branch.base, target_branch.base)

@@ -23,11 +23,11 @@ from shutil import rmtree
 import sys
 
 import bzrlib
-import bzrlib.branch as branch
+import bzrlib.branch
+from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib._merge_core import ApplyMerge3
 from bzrlib.commands import Command, display_command
-from bzrlib.branch import Branch
 from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
@@ -650,7 +650,7 @@ class cmd_checkout(Command):
             else:
                 raise
         checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
-        branch.BranchReferenceFormat().initialize(checkout, source)
+        bzrlib.branch.BranchReferenceFormat().initialize(checkout, source)
         checkout.create_workingtree(revision_id)
 
 

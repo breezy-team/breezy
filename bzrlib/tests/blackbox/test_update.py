@@ -93,5 +93,3 @@ class TestUpdate(ExternalBase):
                          err.split('\n')[1:3])
         self.assertContainsRe(err, 'Diff3 conflict encountered in.*file\n')
         self.assertEqual('', out)
-        self.failUnlessExists('checkout2/file')
-

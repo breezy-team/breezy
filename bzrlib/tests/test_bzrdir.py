@@ -21,7 +21,7 @@ For interface contract tests, see tests/bzr_dir_implementations.
 
 from StringIO import StringIO
 
-import bzrlib.branch as branch
+import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
 from bzrlib.errors import (NotBranchError,
@@ -52,7 +52,7 @@ class TestDefaultFormat(TestCase):
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
 
 
-class SampleBranch(branch.Branch):
+class SampleBranch(bzrlib.branch.Branch):
     """A dummy branch for guess what, dummy use."""
 
     def __init__(self, dir):
@@ -217,7 +217,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         branch_base = t.clone('branch').base
         self.assertEqual(branch_base, dir.get_branch_transport(None).base)
         self.assertEqual(branch_base,
-                         dir.get_branch_transport(branch.BzrBranchFormat5()).base)
+                         dir.get_branch_transport(bzrlib.branch.BzrBranchFormat5()).base)
         repository_base = t.clone('repository').base
         self.assertEqual(repository_base, dir.get_repository_transport(None).base)
         self.assertEqual(repository_base,
