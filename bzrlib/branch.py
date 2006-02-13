@@ -334,7 +334,7 @@ class Branch(object):
         """Return a `Tree` for the working copy if this is a local branch."""
         raise NotImplementedError('working_tree is abstract')
 
-    def pull(self, source, overwrite=False):
+    def pull(self, source, overwrite=False, stop_revision=None):
         raise NotImplementedError('pull is abstract')
 
     def basis_tree(self):
@@ -430,7 +430,7 @@ class Branch(object):
             os.mkdir(to_location)
         if to_branch_type is None:
             to_branch_type = BzrBranch
-        print "FIXME use a branch format here"
+        # FIXME use a branch format here
         br_to = to_branch_type.initialize(to_location)
         mutter("copy branch from %s to %s", self, br_to)
         if basis_branch is not None:
@@ -933,6 +933,7 @@ class BzrBranch(Branch):
     def update_revisions(self, other, stop_revision=None):
         """See Branch.update_revisions."""
         from bzrlib.fetch import greedy_fetch
+
         if stop_revision is None:
             stop_revision = other.last_revision()
         ### Should this be checking is_ancestor instead of revision_history?
@@ -987,13 +988,13 @@ class BzrBranch(Branch):
         return WorkingTree(self.base, branch=self)
 
     @needs_write_lock
-    def pull(self, source, overwrite=False):
+    def pull(self, source, overwrite=False, stop_revision=None):
         """See Branch.pull."""
         source.lock_read()
         try:
             old_count = len(self.revision_history())
             try:
-                self.update_revisions(source)
+                self.update_revisions(source,stop_revision)
             except DivergedBranches:
                 if not overwrite:
                     raise
@@ -1076,7 +1077,8 @@ class BzrBranch(Branch):
         return branch_to
 
     def clone(self, to_location, revision=None, basis_branch=None, to_branch_type=None):
-        print "FIXME: clone via create and fetch is probably faster when versioned file comes in."
+        # FIXME: clone via create and fetch is probably faster when versioned
+        # file comes in.
         if to_branch_type is None:
             to_branch_type = BzrBranch
 
