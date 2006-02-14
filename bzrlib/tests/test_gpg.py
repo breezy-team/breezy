@@ -35,7 +35,7 @@ class TestCommandLine(TestCase):
 
     def test_signing_command_line(self):
         my_gpg = gpg.GPGStrategy(FakeConfig())
-        self.assertEqual(['false',  '--clearsign'],
+        self.assertEqual(['false',  '--output', '-', '--clearsign'],
                          my_gpg._command_line())
 
     def test_checks_return_code(self):
@@ -56,12 +56,12 @@ class TestCommandLine(TestCase):
             # It is too much work to make sys.stdout be in binary mode.
             # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/65443
             my_gpg._command_line = lambda:[sys.executable, '-c',
-                    'import sys; sys.stdout.write(sys.stdin.read())']
+                    'import sys; sys.stdout.write(open(sys.argv[-1].read()))']
             new_content = content.replace('\n', '\r\n')
 
             self.assertEqual(new_content, my_gpg.sign(content))
         else:
-            my_gpg._command_line = lambda:['cat', '-']
+            my_gpg._command_line = lambda:['cat']
             self.assertEqual(content, my_gpg.sign(content))
 
 
