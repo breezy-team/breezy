@@ -445,7 +445,7 @@ class BzrDir(object):
 class BzrDirPreSplitOut(BzrDir):
     """A common class for the all-in-one formats."""
 
-    def clone(self, url, revision_id=None, basis=None):
+    def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         """See BzrDir.clone()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)

@@ -110,6 +110,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
     
+    def test_clone_bzrdir_empty_force_new_ignored(self):
+        # the force_new parameter should have no effect on an empty
+        # bzrdir's clone logic
+        dir = self.make_bzrdir('source')
+        target = dir.clone(self.get_url('target'), force_new_repo=True)
+        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
+    
     def test_clone_bzrdir_repository(self):
         dir = self.make_bzrdir('source')
         repo = dir.create_repository()
