@@ -395,7 +395,7 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.open_workingtree)
 
-    def sprout(self, url, revision_id=None, basis=None):
+    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.
 
@@ -420,15 +420,33 @@ class BzrDir(object):
             try:
                 source_repository = self.open_repository()
             except errors.NoRepositoryPresent:
-                # copy the basis one if there is one
+                # copy the entire basis one if there is one
+                # but there is no repository.
                 source_repository = basis_repo
-        if source_repository is not None:
+        if force_new_repo:
+            result_repo = None
+        else:
+            try:
+                result_repo = result.find_repository()
+            except errors.NoRepositoryPresent:
+                result_repo = None
+        if source_repository is None and result_repo is not None:
+            pass
+        elif source_repository is None and result_repo is None:
+            # no repo available, make a new one
+            result.create_repository()
+        elif source_repository is not None and result_repo is None:
+            # have soure, and want to make a new target repo
             source_repository.clone(result,
                                     revision_id=revision_id,
                                     basis=basis_repo)
         else:
-            # no repo available, make a new one
-            result.create_repository()
+            # fetch needed content into target.
+            if basis_repo:
+                # XXX FIXME RBC 20060214 need tests for this when the basis
+                # is incomplete
+                result_repo.fetch(basis_repo, revision_id=revision_id)
+            result_repo.fetch(source_repository, revision_id=revision_id)
         if source_branch is not None:
             source_branch.sprout(result, revision_id=revision_id)
         else:

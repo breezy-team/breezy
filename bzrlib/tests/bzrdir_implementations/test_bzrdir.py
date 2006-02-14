@@ -111,7 +111,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
     
     def test_clone_bzrdir_empty_force_new_ignored(self):
-        # the force_new parameter should have no effect on an empty
+        # the force_new_repo parameter should have no effect on an empty
         # bzrdir's clone logic
         dir = self.make_bzrdir('source')
         target = dir.clone(self.get_url('target'), force_new_repo=True)
@@ -148,7 +148,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertRaises(errors.NoRepositoryPresent, target.open_repository)
         
-    def test_clone_bzrdir_repository_under_shared_force_new(self):
+    def test_clone_bzrdir_repository_under_shared_force_new_repo(self):
         dir = self.make_bzrdir('source')
         repo = dir.create_repository()
         # add some content to differentiate from an empty repository.
@@ -337,6 +337,31 @@ class TestBzrDir(TestCaseWithBzrDir):
         target.open_repository()
         target.open_branch()
         target.open_workingtree()
+
+    def test_sprout_bzrdir_empty_under_shared_repo(self):
+        # sprouting an empty dir into a repo uses the repo
+        dir = self.make_bzrdir('source')
+        try:
+            self.make_repository('target', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        target = dir.sprout(self.get_url('target/child'))
+        self.assertRaises(errors.NoRepositoryPresent, target.open_repository)
+        target.open_branch()
+        target.open_workingtree()
+
+    def test_sprout_bzrdir_empty_under_shared_repo(self):
+        # the force_new_repo parameter should force use of a new repo in an empty
+        # bzrdir's sprout logic
+        dir = self.make_bzrdir('source')
+        try:
+            self.make_repository('target', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        target = dir.sprout(self.get_url('target/child'), force_new_repo=True)
+        target.open_repository()
+        target.open_branch()
+        target.open_workingtree()
     
     def test_sprout_bzrdir_repository(self):
         dir = self.make_bzrdir('source')
@@ -350,6 +375,44 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.sprout(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
+
+    def test_sprout_bzrdir_repository_under_shared(self):
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
+        tree.bzrdir.open_branch().set_revision_history([])
+        tree.set_last_revision(None)
+        tree.commit('revision 2', rev_id='2')
+        source = self.make_repository('source')
+        tree.bzrdir.open_repository().copy_content_into(source)
+        dir = source.bzrdir
+        try:
+            shared_repo = self.make_repository('target', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        target = dir.sprout(self.get_url('target/child'))
+        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertTrue(shared_repo.has_revision('1'))
+
+    def test_sprout_bzrdir_repository_under_shared_force_new_repo(self):
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
+        tree.bzrdir.open_branch().set_revision_history([])
+        tree.set_last_revision(None)
+        tree.commit('revision 2', rev_id='2')
+        source = self.make_repository('source')
+        tree.bzrdir.open_repository().copy_content_into(source)
+        dir = source.bzrdir
+        try:
+            shared_repo = self.make_repository('target', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        target = dir.sprout(self.get_url('target/child'), force_new_repo=True)
+        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertFalse(shared_repo.has_revision('1'))
 
     def test_sprout_bzrdir_repository_revision(self):
         # test for revision limiting, [smoke test, not corner case checks].
@@ -382,6 +445,43 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
 
+    def test_sprout_bzrdir_branch_and_repo_shared(self):
+        # sprouting a branch with a repo into a shared repo uses the shared
+        # repo
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
+        source = self.make_branch('source')
+        tree.bzrdir.open_repository().copy_content_into(source.repository)
+        tree.bzrdir.open_branch().copy_content_into(source)
+        dir = source.bzrdir
+        try:
+            shared_repo = self.make_repository('target', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        target = dir.sprout(self.get_url('target/child'))
+        self.assertTrue(shared_repo.has_revision('1'))
+
+    def test_sprout_bzrdir_branch_and_repo_shared_force_new_repo(self):
+        # sprouting a branch with a repo into a shared repo uses the shared
+        # repo
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
+        source = self.make_branch('source')
+        tree.bzrdir.open_repository().copy_content_into(source.repository)
+        tree.bzrdir.open_branch().copy_content_into(source)
+        dir = source.bzrdir
+        try:
+            shared_repo = self.make_repository('target', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        target = dir.sprout(self.get_url('target/child'), force_new_repo=True)
+        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertFalse(shared_repo.has_revision('1'))
+
     def test_sprout_bzrdir_branch_reference(self):
         # sprouting should create a repository if needed and a sprouted branch.
         referenced_branch = self.make_branch('referencced')
@@ -400,6 +500,57 @@ class TestBzrDir(TestCaseWithBzrDir):
         # and as we dont support repositories being detached yet, a repo in 
         # place
         target.open_repository()
+
+    def test_sprout_bzrdir_branch_reference_shared(self):
+        # sprouting should create a repository if needed and a sprouted branch.
+        referenced_tree = self.make_branch_and_tree('referenced')
+        referenced_tree.commit('1', rev_id='1', allow_pointless=True)
+        dir = self.make_bzrdir('source')
+        try:
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
+                referenced_tree.branch)
+        except errors.IncompatibleFormat:
+            # this is ok too, not all formats have to support references.
+            return
+        self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
+        try:
+            shared_repo = self.make_repository('target', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        target = dir.sprout(self.get_url('target/child'))
+        self.assertNotEqual(dir.transport.base, target.transport.base)
+        # we want target to have a branch that is in-place.
+        self.assertEqual(target, target.open_branch().bzrdir)
+        # and we want no repository as the target is shared
+        self.assertRaises(errors.NoRepositoryPresent, 
+                          target.open_repository)
+        # and we want revision '1' in the shared repo
+        self.assertTrue(shared_repo.has_revision('1'))
+
+    def test_sprout_bzrdir_branch_reference_shared_force_new_repo(self):
+        # sprouting should create a repository if needed and a sprouted branch.
+        referenced_tree = self.make_branch_and_tree('referenced')
+        referenced_tree.commit('1', rev_id='1', allow_pointless=True)
+        dir = self.make_bzrdir('source')
+        try:
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
+                referenced_tree.branch)
+        except errors.IncompatibleFormat:
+            # this is ok too, not all formats have to support references.
+            return
+        self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
+        try:
+            shared_repo = self.make_repository('target', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        target = dir.sprout(self.get_url('target/child'), force_new_repo=True)
+        self.assertNotEqual(dir.transport.base, target.transport.base)
+        # we want target to have a branch that is in-place.
+        self.assertEqual(target, target.open_branch().bzrdir)
+        # and we want revision '1' in the new repo
+        self.assertTrue(target.open_repository().has_revision('1'))
+        # but not the shared one
+        self.assertFalse(shared_repo.has_revision('1'))
 
     def test_sprout_bzrdir_branch_revision(self):
         # test for revision limiting, [smoke test, not corner case checks].
