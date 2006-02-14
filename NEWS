@@ -18,6 +18,12 @@ bzr development version
       reflect user config now being stored in .bazaar (Hans Ulrich
       Niedermann)
 
+    * 'bzr re-sign' now allows multiple revisions to be supplied on the command
+      line. You can now use the following command to sign all of your old commits.
+        find .bzr/revision-store// -name my@email-* \
+          | sed 's/.*\/\/..\///' \
+          | xargs bzr re-sign
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now

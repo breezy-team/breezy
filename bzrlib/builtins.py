@@ -1955,20 +1955,21 @@ class cmd_re_sign(Command):
     # TODO be able to replace existing ones.
 
     hidden = True # is this right ?
-    takes_args = ['revision_id?']
+    takes_args = ['revision_id*']
     takes_options = ['revision']
     
-    def run(self, revision_id=None, revision=None):
+    def run(self, revision_id_list=None, revision=None):
         import bzrlib.config as config
         import bzrlib.gpg as gpg
-        if revision_id is not None and revision is not None:
+        if revision_id_list is not None and revision is not None:
             raise BzrCommandError('You can only supply one of revision_id or --revision')
-        if revision_id is None and revision is None:
+        if revision_id_list is None and revision is None:
             raise BzrCommandError('You must supply either --revision or a revision_id')
         b = WorkingTree.open_containing(u'.')[0].branch
         gpg_strategy = gpg.GPGStrategy(config.BranchConfig(b))
-        if revision_id is not None:
-            b.repository.sign_revision(revision_id, gpg_strategy)
+        if revision_id_list is not None:
+            for revision_id in revision_id_list:
+                b.repository.sign_revision(revision_id, gpg_strategy)
         elif revision is not None:
             if len(revision) == 1:
                 revno, rev_id = revision[0].in_history(b)
