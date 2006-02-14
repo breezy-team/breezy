@@ -493,32 +493,6 @@ class BranchFormat(object):
         except KeyError:
             raise errors.UnknownFormatError(format_string)
 
-    def find_repository(self, a_bzrdir):
-        """Find the repository that should be used for a_bzrdir.
-
-        This does not require a branch as we use it to find the repo for
-        new branches as well as to hook existing branches up to their
-        repository.
-        """
-        next_transport = a_bzrdir.root_transport
-        while True:
-            try:
-                found_bzrdir = bzrdir.BzrDir.open_containing_transport(
-                    next_transport)[0]
-            except errors.NotBranchError:
-                raise errors.NoRepositoryPresent(a_bzrdir)
-            try:
-                repository = found_bzrdir.open_repository()
-            except errors.NoRepositoryPresent:
-                next_transport = found_bzrdir.root_transport.clone('..')
-                continue
-            if ((found_bzrdir.root_transport.base == 
-                 a_bzrdir.root_transport.base) or repository.is_shared()):
-                return repository
-            else:
-                raise errors.NoRepositoryPresent(a_bzrdir)
-        raise errors.NoRepositoryPresent(a_bzrdir)
-
     @classmethod
     def get_default_format(klass):
         """Return the current default format."""
@@ -683,7 +657,7 @@ class BzrBranchFormat5(BranchFormat):
         return BzrBranch(_format=self,
                          _control_files=control_files,
                          a_bzrdir=a_bzrdir,
-                         _repository=self.find_repository(a_bzrdir))
+                         _repository=a_bzrdir.find_repository())
 
 
 class BranchReferenceFormat(BranchFormat):

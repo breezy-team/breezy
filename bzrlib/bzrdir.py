@@ -55,21 +55,42 @@ class BzrDir(object):
         if not allow_unsupported and not format.is_supported():
             raise errors.UnsupportedFormatError(format)
 
-    def clone(self, url, revision_id=None, basis=None):
+    def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         """Clone this bzrdir and its contents to url verbatim.
 
         If urls last component does not exist, it will be created.
 
         if revision_id is not None, then the clone operation may tune
             itself to download less data.
+        :param force_new_repo: Do not use a shared repository for the target 
+                               even if one is available.
         """
         self._make_tail(url)
-        result = self._format.initialize(url)
         basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
+        result = self._format.initialize(url)
         try:
-            self.open_repository().clone(result, revision_id=revision_id, basis=basis_repo)
+            local_repo = self.find_repository()
         except errors.NoRepositoryPresent:
-            pass
+            local_repo = None
+        if local_repo:
+            # may need to copy content in
+            if force_new_repo:
+                local_repo.clone(result, revision_id=revision_id, basis=basis_repo)
+            else:
+                try:
+                    result_repo = result.find_repository()
+                    # fetch content this dir needs.
+                    if basis_repo:
+                        # XXX FIXME RBC 20060214 need tests for this when the basis
+                        # is incomplete
+                        result_repo.fetch(basis_repo, revision_id=revision_id)
+                    result_repo.fetch(local_repo, revision_id=revision_id)
+                except errors.NoRepositoryPresent:
+                    # needed to make one anyway.
+                    local_repo.clone(result, revision_id=revision_id, basis=basis_repo)
+        # 1 if there is a branch present
+        #   make sure its content is available in the target repository
+        #   clone it.
         try:
             self.open_branch().clone(result, revision_id=revision_id)
         except errors.NotBranchError:
@@ -140,17 +161,26 @@ class BzrDir(object):
         raise NotImplementedError(self.create_branch)
 
     @staticmethod
-    def create_branch_and_repo(base):
+    def create_branch_and_repo(base, force_new_repo=False):
         """Create a new BzrDir, Branch and Repository at the url 'base'.
 
         This will use the current default BzrDirFormat, and use whatever 
         repository format that that uses via bzrdir.create_branch and
-        create_repository.
+        create_repository. If a shared repository is available that is used
+        preferentially.
 
         The created Branch object is returned.
+
+        :param base: The URL to create the branch at.
+        :param force_new_repo: If True a new repository is always created.
         """
         bzrdir = BzrDir.create(base)
-        bzrdir.create_repository()
+        if force_new_repo:
+            bzrdir.create_repository()
+        try:
+            repo = bzrdir.find_repository()
+        except errors.NoRepositoryPresent:
+            bzrdir.create_repository()
         return bzrdir.create_branch()
         
     @staticmethod
@@ -192,6 +222,36 @@ class BzrDir(object):
     def create_workingtree(self):
         """Create a working tree at this BzrDir"""
         raise NotImplementedError(self.create_workingtree)
+
+    def find_repository(self):
+        """Find the repository that should be used for a_bzrdir.
+
+        This does not require a branch as we use it to find the repo for
+        new branches as well as to hook existing branches up to their
+        repository.
+        """
+        try:
+            return self.open_repository()
+        except errors.NoRepositoryPresent:
+            pass
+        next_transport = self.root_transport.clone('..')
+        while True:
+            try:
+                found_bzrdir = BzrDir.open_containing_transport(
+                    next_transport)[0]
+            except errors.NotBranchError:
+                raise errors.NoRepositoryPresent(self)
+            try:
+                repository = found_bzrdir.open_repository()
+            except errors.NoRepositoryPresent:
+                next_transport = found_bzrdir.root_transport.clone('..')
+                continue
+            if ((found_bzrdir.root_transport.base == 
+                 self.root_transport.base) or repository.is_shared()):
+                return repository
+            else:
+                raise errors.NoRepositoryPresent(self)
+        raise errors.NoRepositoryPresent(self)
 
     def get_branch_transport(self, branch_format):
         """Get the transport for use by branch format in this BzrDir.

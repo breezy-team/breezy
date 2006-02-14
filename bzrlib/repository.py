@@ -253,7 +253,11 @@ class Repository(object):
 
     @needs_read_lock
     def copy_content_into(self, destination, revision_id=None, basis=None):
-        """Make a complete copy of the content in self into destination."""
+        """Make a complete copy of the content in self into destination.
+        
+        This is a destructive operation! Do not use it on existing 
+        repositories.
+        """
         destination.lock_write()
         try:
             try:
@@ -597,7 +601,7 @@ class Repository(object):
             try:
                 self.control_files._transport.delete('no-working-trees')
             except errors.NoSuchFile:
-                return
+                pass
         else:
             self.control_files.put_utf8('no-working-trees', '')
     
@@ -608,7 +612,7 @@ class Repository(object):
                                      RepositoryFormat5,
                                      RepositoryFormat6)):
             return True
-        return self.control_files._transport.has('no-working-trees')
+        return not self.control_files._transport.has('no-working-trees')
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):

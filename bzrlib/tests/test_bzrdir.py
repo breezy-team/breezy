@@ -66,6 +66,10 @@ class SampleBzrDir(bzrdir.BzrDir):
         """See BzrDir.create_repository."""
         return "A repository"
 
+    def open_repository(self):
+        """See BzrDir.open_repository."""
+        return "A repository"
+
     def create_branch(self):
         """See BzrDir.create_branch."""
         return SampleBranch(self)
@@ -157,13 +161,39 @@ class TestBzrDirFormat(TestCaseWithTransport):
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
-    def test_create_branch_and_repo(self):
+    def test_create_branch_and_repo_uses_default(self):
         format = SampleBzrDirFormat()
         old_format = bzrdir.BzrDirFormat.get_default_format()
         bzrdir.BzrDirFormat.set_default_format(format)
         try:
             branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url())
             self.assertTrue(isinstance(branch, SampleBranch))
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_and_repo_under_shared(self):
+        # creating a branch and repo in a shared repo uses the
+        # shared repository
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            self.make_repository('.', shared=True)
+            branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url('child'))
+            self.assertRaises(errors.NoRepositoryPresent,
+                              branch.bzrdir.open_repository)
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_and_repo_under_shared_force_new(self):
+        # creating a branch and repo in a shared repo can be forced to 
+        # make a new repo
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            self.make_repository('.', shared=True)
+            branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url('child'),
+                                                          force_new_repo=True)
+            branch.bzrdir.open_repository()
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
