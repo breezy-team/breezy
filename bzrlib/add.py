@@ -130,7 +130,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
 
         if kind == 'directory':
             try:
-                sub_branch = WorkingTree(af)
+                sub_branch = WorkingTree.open(af)
                 sub_tree = True
             except NotBranchError:
                 sub_tree = False

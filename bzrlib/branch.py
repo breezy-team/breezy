@@ -234,10 +234,10 @@ class Branch(object):
         >>> bzrlib.trace.silent = True
         >>> d1 = bzrdir.ScratchDir()
         >>> br1 = d1.open_branch()
-        >>> wt1 = WorkingTree(br1.base, br1)
+        >>> wt1 = d1.open_workingtree()
         >>> d2 = bzrdir.ScratchDir()
         >>> br2 = d2.open_branch()
-        >>> wt2 = WorkingTree(br2.base, br2)
+        >>> wt2 = d2.open_workingtree()
         >>> br1.missing_revisions(br2)
         []
         >>> wt2.commit("lala!", rev_id="REVISION-ID-1")
@@ -1007,7 +1007,7 @@ class BzrBranch(Branch):
         if (self.base.find('://') != -1 or 
             not isinstance(self._transport, LocalTransport)):
             raise NoWorkingTree(self.base)
-        return WorkingTree(self.base, branch=self)
+        return self.bzrdir.open_workingtree()
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None):

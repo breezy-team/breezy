@@ -105,6 +105,7 @@ class BzrNewError(BzrError):
 
 class BzrCheckError(BzrNewError):
     """Internal check failed: %(message)s"""
+
     def __init__(self, message):
         BzrNewError.__init__(self)
         self.message = message
@@ -578,3 +579,11 @@ class UninitializableFormat(BzrNewError):
     def __init__(self, format):
         BzrNewError.__init__(self)
         self.format = format
+
+
+class OutOfDateTree(BzrNewError):
+    """Working tree is out of date, please run 'bzr update'."""
+
+    def __init__(self, tree):
+        BzrNewError.__init__(self)
+        self.tree = tree

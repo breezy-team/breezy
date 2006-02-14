@@ -24,7 +24,6 @@ from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.inventory as inventory
 from bzrlib.osutils import has_symlinks, rename, pathjoin
 from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.workingtree import WorkingTree
 
 
 class TestInventory(TestCase):
@@ -401,13 +400,13 @@ class TestExecutable(TestCaseWithTransport):
 
         a_id = "a-20051208024829-849e76f7968d7a86"
         b_id = "b-20051208024829-849e76f7968d7a86"
-        t = WorkingTree('b1', b)
-        self.assertEqual(['a', 'b'], [cn for cn,ie in t.inventory.iter_entries()])
+        wt = wt.bzrdir.open_workingtree()
+        self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
 
-        self.failUnless(t.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(t.is_executable(b_id), "'b' gained an execute bit")
+        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(wt.is_executable(b_id), "'b' gained an execute bit")
 
-        t.commit('adding a,b', rev_id='r1')
+        wt.commit('adding a,b', rev_id='r1')
 
         rev_tree = b.repository.revision_tree('r1')
         self.failUnless(rev_tree.is_executable(a_id), "'a' lost the execute bit")
@@ -419,46 +418,38 @@ class TestExecutable(TestCaseWithTransport):
         # Make sure the entries are gone
         os.remove('b1/a')
         os.remove('b1/b')
-        self.failIf(t.has_id(a_id))
-        self.failIf(t.has_filename('a'))
-        self.failIf(t.has_id(b_id))
-        self.failIf(t.has_filename('b'))
+        self.failIf(wt.has_id(a_id))
+        self.failIf(wt.has_filename('a'))
+        self.failIf(wt.has_id(b_id))
+        self.failIf(wt.has_filename('b'))
 
         # Make sure that revert is able to bring them back,
         # and sets 'a' back to being executable
 
-        t.revert(['a', 'b'], rev_tree, backups=False)
-        self.assertEqual(['a', 'b'], [cn for cn,ie in t.inventory.iter_entries()])
+        wt.revert(['a', 'b'], rev_tree, backups=False)
+        self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
 
-        self.failUnless(t.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(t.is_executable(b_id), "'b' gained an execute bit")
+        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(wt.is_executable(b_id), "'b' gained an execute bit")
 
         # Now remove them again, and make sure that after a
         # commit, they are still marked correctly
         os.remove('b1/a')
         os.remove('b1/b')
-        t.commit('removed', rev_id='r2')
+        wt.commit('removed', rev_id='r2')
 
-        self.assertEqual([], [cn for cn,ie in t.inventory.iter_entries()])
-        self.failIf(t.has_id(a_id))
-        self.failIf(t.has_filename('a'))
-        self.failIf(t.has_id(b_id))
-        self.failIf(t.has_filename('b'))
+        self.assertEqual([], [cn for cn,ie in wt.inventory.iter_entries()])
+        self.failIf(wt.has_id(a_id))
+        self.failIf(wt.has_filename('a'))
+        self.failIf(wt.has_id(b_id))
+        self.failIf(wt.has_filename('b'))
 
         # Now revert back to the previous commit
-        t.revert([], rev_tree, backups=False)
-        # TODO: FIXME: For some reason, after revert, the tree does not 
-        # regenerate its working inventory, so we have to manually delete
-        # the working tree, and create a new one
-        # This seems to happen any time you do a merge operation on the
-        # working tree
-        del t
-        t = WorkingTree('b1', b)
+        wt.revert([], rev_tree, backups=False)
+        self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
 
-        self.assertEqual(['a', 'b'], [cn for cn,ie in t.inventory.iter_entries()])
-
-        self.failUnless(t.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(t.is_executable(b_id), "'b' gained an execute bit")
+        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(wt.is_executable(b_id), "'b' gained an execute bit")
 
         # Now make sure that 'bzr branch' also preserves the
         # executable bit
@@ -480,7 +471,7 @@ class TestExecutable(TestCaseWithTransport):
         # Now commit the changes on the first branch
         # so that the second branch can pull the changes
         # and make sure that the executable bit has been copied
-        t.commit('resurrected', rev_id='r3')
+        wt.commit('resurrected', rev_id='r3')
 
         t2.pull(b)
         self.assertEquals('r3', b2.last_revision())

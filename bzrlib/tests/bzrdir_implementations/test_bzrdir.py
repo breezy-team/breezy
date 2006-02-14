@@ -20,7 +20,7 @@ import os
 from stat import *
 import sys
 
-import bzrlib.branch as branch
+import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.commit import commit
@@ -147,14 +147,15 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = source.bzrdir
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
-        self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
+                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
 
     def test_clone_bzrdir_branch_reference(self):
         # cloning should preserve the reference status of the branch in a bzrdir
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = branch.BranchReferenceFormat().initialize(dir,
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
@@ -189,7 +190,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/stat-cache'])
+                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
 
     def test_clone_bzrdir_tree_branch_reference(self):
         # a tree with a branch reference (aka a checkout) 
@@ -197,7 +198,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = branch.BranchReferenceFormat().initialize(dir,
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
@@ -206,7 +207,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/stat-cache'])
+                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
 
     def test_clone_bzrdir_tree_revision(self):
         # test for revision limiting, [smoke test, not corner case checks].
@@ -300,7 +301,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = branch.BranchReferenceFormat().initialize(dir,
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
@@ -340,7 +341,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.sprout(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/stat-cache'])
+                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
 
     def test_sprout_bzrdir_tree_branch_reference(self):
         # sprouting should create a repository if needed and a sprouted branch.
@@ -348,7 +349,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = branch.BranchReferenceFormat().initialize(dir,
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
@@ -372,7 +373,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
-            reference = branch.BranchReferenceFormat().initialize(dir,
+            reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
                 referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
@@ -467,7 +468,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
-        self.failUnless(isinstance(made_branch, branch.Branch))
+        self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
         self.assertEqual(made_control, made_branch.bzrdir)
         
     def test_open_branch(self):
@@ -529,6 +530,18 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.failUnless(isinstance(made_tree, workingtree.WorkingTree))
         self.assertEqual(made_control, made_tree.bzrdir)
         
+    def test_create_workingtree_revision(self):
+        # a bzrdir can construct a working tree for itself @ a specific revision.
+        source = self.make_branch_and_tree('source')
+        source.commit('a', rev_id='a', allow_pointless=True)
+        source.commit('b', rev_id='b', allow_pointless=True)
+        self.build_tree(['new/'])
+        made_control = self.bzrdir_format.initialize('new')
+        source.branch.repository.clone(made_control)
+        source.branch.clone(made_control)
+        made_tree = made_control.create_workingtree(revision_id='a')
+        self.assertEqual('a', made_tree.last_revision())
+        
     def test_open_workingtree(self):
         if not self.bzrdir_format.is_supported():
             # unsupported formats are not loopback testable
@@ -555,8 +568,8 @@ class TestBzrDir(TestCaseWithBzrDir):
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
         # branches, or it supports anonymous  branch formats, but not both.
-        anonymous_format = branch.BzrBranchFormat4()
-        identifiable_format = branch.BzrBranchFormat5()
+        anonymous_format = bzrlib.branch.BzrBranchFormat4()
+        identifiable_format = bzrlib.branch.BzrBranchFormat5()
         try:
             found_transport = dir.get_branch_transport(anonymous_format)
             self.assertRaises(errors.IncompatibleFormat,

@@ -19,7 +19,6 @@
 import os
 import sys
 
-import bzrlib.branch as branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.commit import commit

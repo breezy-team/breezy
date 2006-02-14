@@ -39,7 +39,7 @@ class TestMerge(TestCaseWithTransport):
     def test_pending_with_null(self):
         """When base is forced to revno 0, pending_merges is set"""
         wt2 = self.test_unrelated()
-        wt1 = WorkingTree('.')
+        wt1 = WorkingTree.open('.')
         br1 = wt1.branch
         fetch(from_branch=wt2.branch, to_branch=br1)
         # merge all of branch 2 into branch 1 even though they 
