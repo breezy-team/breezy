@@ -49,4 +49,3 @@ class UITests(TestCase):
         # self.assertEquals(ui.get_password(u"%(user)s please type 'bogus'",
         #                                   user=u'some\u1234')
         #                  , 'bogus')
-

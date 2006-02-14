@@ -22,6 +22,7 @@ import unittest
 import warnings
 
 import bzrlib
+from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
                           _load_module_by_name,
                           ChrootedTestCase,
@@ -74,7 +75,7 @@ class TestSkippedTest(TestCase):
         # must be hidden in here so it's not run as a real test
         def skipping_test():
             raise TestSkipped('test intentionally skipped')
-        runner = TextTestRunner(stream=self._log_file)
+        runner = TextTestRunner(stream=self._log_file, keep_output=True)
         test = unittest.FunctionTestCase(skipping_test)
         result = runner.run(test)
         self.assertTrue(result.wasSuccessful())
@@ -296,3 +297,84 @@ class TestChrootedTest(ChrootedTestCase):
         t = get_transport(self.get_readonly_url())
         url = t.base
         self.assertEqual(url, t.clone('..').base)
+
+
+class MockProgress(_BaseProgressBar):
+    """Progress-bar standin that records calls.
+
+    Useful for testing pb using code.
+    """
+
+    def __init__(self):
+        _BaseProgressBar.__init__(self)
+        self.calls = []
+
+    def tick(self):
+        self.calls.append(('tick',))
+
+    def update(self, msg=None, current=None, total=None):
+        self.calls.append(('update', msg, current, total))
+
+    def clear(self):
+        self.calls.append(('clear',))
+
+
+class TestResult(TestCase):
+
+    def test_progress_bar_style_quiet(self):
+        # test using a progress bar.
+        dummy_test = TestResult('test_progress_bar_style_quiet')
+        dummy_error = (Exception, None, [])
+        mypb = MockProgress()
+        mypb.update('Running tests', 0, 4)
+        last_calls = mypb.calls[:]
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1,
+                                        pb=mypb)
+        self.assertEqual(last_calls, mypb.calls)
+
+        # an error 
+        result.startTest(dummy_test)
+        # starting a test changes nothing (the runner does the priming update)
+        self.assertEqual(last_calls, mypb.calls)
+        result.addError(dummy_test, dummy_error)
+        self.assertEqual(last_calls + [('update', None, 1, None)], mypb.calls)
+        last_calls = mypb.calls[:]
+
+        # a failure
+        result.startTest(dummy_test)
+        result.addFailure(dummy_test, dummy_error)
+        self.assertEqual(last_calls + [('update', None, 2, None)], mypb.calls)
+        last_calls = mypb.calls[:]
+
+        # a success
+        result.startTest(dummy_test)
+        result.addSuccess(dummy_test)
+        self.assertEqual(last_calls + [('update', None, 3, None)], mypb.calls)
+        last_calls = mypb.calls[:]
+
+        # a skip
+        result.startTest(dummy_test)
+        result.addSkipped(dummy_test, dummy_error)
+        self.assertEqual(last_calls + [('update', None, 4, None)], mypb.calls)
+        last_calls = mypb.calls[:]
+
+
+class TestRunner(TestCase):
+
+    def dummy_test(self):
+        pass
+
+    def test_accepts_and_uses_pb_parameter(self):
+        test = TestRunner('dummy_test')
+        mypb = MockProgress()
+        self.assertEqual([], mypb.calls)
+        runner = TextTestRunner(stream=self._log_file, pb=mypb, keep_output=True)
+        result = runner.run(test)
+        self.assertEqual(1, result.testsRun)
+        self.assertEqual(('update', 'Running tests', 0, 1), mypb.calls[0])
+        self.assertEqual(('update', None, 1, None), mypb.calls[1])
+        self.assertEqual(('update', 'Cleaning up', 0, 1), mypb.calls[2])
+        self.assertEqual(('clear',), mypb.calls[3])
+        self.assertEqual(4, len(mypb.calls))

@@ -83,7 +83,6 @@ class _BaseProgressBar(object):
         self.show_count = show_count
 
 
-
 class DummyProgress(_BaseProgressBar):
     """Progress-bar standin that does nothing.
 
@@ -174,12 +173,18 @@ class TTYProgressBar(_BaseProgressBar):
         
 
     def tick(self):
-        self.update(self.last_msg, self.last_cnt, self.last_total)
+        self.update(None, self.last_cnt, self.last_total)
                  
 
 
     def update(self, msg, current_cnt=None, total_cnt=None):
         """Update and redraw progress bar."""
+
+        if msg is None:
+            msg = self.last_msg
+
+        if total_cnt is None:
+            total_cnt = self.last_total
 
         if current_cnt < 0:
             current_cnt = 0

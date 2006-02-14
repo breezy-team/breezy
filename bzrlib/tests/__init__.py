@@ -47,6 +47,7 @@ import bzrlib.merge3
 import bzrlib.osutils
 import bzrlib.osutils as osutils
 import bzrlib.plugin
+import bzrlib.progress as progress
 import bzrlib.store
 import bzrlib.trace
 from bzrlib.transport import urlescape
@@ -94,6 +95,10 @@ class _MyResult(unittest._TextTestResult):
     Shows output in a different format, including displaying runtime for tests.
     """
     stop_early = False
+    
+    def __init__(self, stream, descriptions, verbosity, pb=None):
+        unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
+        self.pb = pb
 
     def _elapsedTime(self):
         return "%5dms" % (1000 * (time.time() - self._start_time))
@@ -130,8 +135,10 @@ class _MyResult(unittest._TextTestResult):
         unittest.TestResult.addError(self, test, err)
         if self.showAll:
             self.stream.writeln("ERROR %s" % self._elapsedTime())
-        elif self.dots:
+        elif self.dots and self.pb is None:
             self.stream.write('E')
+        elif self.dots:
+            self.pb.update(None, self.testsRun, None)
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -140,8 +147,10 @@ class _MyResult(unittest._TextTestResult):
         unittest.TestResult.addFailure(self, test, err)
         if self.showAll:
             self.stream.writeln(" FAIL %s" % self._elapsedTime())
-        elif self.dots:
+        elif self.dots and self.pb is None:
             self.stream.write('F')
+        elif self.dots:
+            self.pb.update(None, self.testsRun, None)
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -149,8 +158,10 @@ class _MyResult(unittest._TextTestResult):
     def addSuccess(self, test):
         if self.showAll:
             self.stream.writeln('   OK %s' % self._elapsedTime())
-        elif self.dots:
+        elif self.dots and self.pb is None:
             self.stream.write('~')
+        elif self.dots:
+            self.pb.update(None, self.testsRun, None)
         self.stream.flush()
         unittest.TestResult.addSuccess(self, test)
 
@@ -158,8 +169,10 @@ class _MyResult(unittest._TextTestResult):
         if self.showAll:
             print >>self.stream, ' SKIP %s' % self._elapsedTime()
             print >>self.stream, '     %s' % skip_excinfo[1]
-        elif self.dots:
+        elif self.dots and self.pb is None:
             self.stream.write('S')
+        elif self.dots:
+            self.pb.update(None, self.testsRun, None)
         self.stream.flush()
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
@@ -180,12 +193,68 @@ class _MyResult(unittest._TextTestResult):
             self.stream.writeln("%s" % err)
 
 
-class TextTestRunner(unittest.TextTestRunner):
+class TextTestRunner(object):
     stop_on_failure = False
 
+    def __init__(self,
+                 stream=sys.stderr,
+                 descriptions=0,
+                 verbosity=1,
+                 keep_output=False,
+                 pb=None):
+        self.stream = unittest._WritelnDecorator(stream)
+        self.descriptions = descriptions
+        self.verbosity = verbosity
+        self.keep_output = keep_output
+        self.pb = pb
+
     def _makeResult(self):
-        result = _MyResult(self.stream, self.descriptions, self.verbosity)
+        result = _MyResult(self.stream,
+                           self.descriptions,
+                           self.verbosity,
+                           pb=self.pb)
         result.stop_early = self.stop_on_failure
+        return result
+
+    def run(self, test):
+        "Run the given test case or test suite."
+        result = self._makeResult()
+        startTime = time.time()
+        if self.pb is not None:
+            self.pb.update('Running tests', 0, test.countTestCases())
+        test.run(result)
+        stopTime = time.time()
+        timeTaken = stopTime - startTime
+        result.printErrors()
+        self.stream.writeln(result.separator2)
+        run = result.testsRun
+        self.stream.writeln("Ran %d test%s in %.3fs" %
+                            (run, run != 1 and "s" or "", timeTaken))
+        self.stream.writeln()
+        if not result.wasSuccessful():
+            self.stream.write("FAILED (")
+            failed, errored = map(len, (result.failures, result.errors))
+            if failed:
+                self.stream.write("failures=%d" % failed)
+            if errored:
+                if failed: self.stream.write(", ")
+                self.stream.write("errors=%d" % errored)
+            self.stream.writeln(")")
+        else:
+            self.stream.writeln("OK")
+        if self.pb is not None:
+            self.pb.update('Cleaning up', 0, 1)
+        # This is still a little bogus, 
+        # but only a little. Folk not using our testrunner will
+        # have to delete their temp directories themselves.
+        if result.wasSuccessful() and not self.keep_output:
+            if TestCaseInTempDir.TEST_ROOT is not None:
+                shutil.rmtree(TestCaseInTempDir.TEST_ROOT) 
+        else:
+            self.stream.write("Failed tests working directories are in '%s'\n"
+                              % TestCaseInTempDir.TEST_ROOT)
+        if self.pb is not None:
+            self.pb.clear()
         return result
 
 
@@ -759,23 +828,19 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
+        pb = None
     else:
         verbosity = 1
+        pb = progress.ProgressBar()
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
-                            verbosity=verbosity)
+                            verbosity=verbosity,
+                            keep_output=keep_output,
+                            pb=pb)
     runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
         suite = filter_suite_by_re(suite, pattern)
     result = runner.run(suite)
-    # This is still a little bogus, 
-    # but only a little. Folk not using our testrunner will
-    # have to delete their temp directories themselves.
-    if result.wasSuccessful() or not keep_output:
-        if TestCaseInTempDir.TEST_ROOT is not None:
-            shutil.rmtree(TestCaseInTempDir.TEST_ROOT) 
-    else:
-        print "Failed tests working directories are in '%s'\n" % TestCaseInTempDir.TEST_ROOT
     return result.wasSuccessful()
 
 
