@@ -17,14 +17,15 @@
 
 import os
 
-from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
+from bzrlib.errors import NoSuchRevision
 from bzrlib.commit import commit
 from bzrlib.fetch import fetch
 from bzrlib.revision import (find_present_ancestors, combined_graph,
                              is_ancestor, MultipleRevisionSources)
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
-from bzrlib.errors import NoSuchRevision
+from bzrlib.workingtree import WorkingTree
 
 # XXX: Make this a method of a merge base case
 def make_branches(self):
@@ -144,18 +145,19 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         from bzrlib.commit import commit
         TestCaseWithTransport.setUp(self)
         self.br1, self.br2 = make_branches(self)
-
-        self.br2.working_tree().commit("Commit eleven", rev_id="b@u-0-7")
-        self.br2.working_tree().commit("Commit twelve", rev_id="b@u-0-8")
-        self.br2.working_tree().commit("Commit thirtteen", rev_id="b@u-0-9")
+        wt1 = self.br1.bzrdir.open_workingtree()
+        wt2 = self.br2.bzrdir.open_workingtree()
+        wt2.commit("Commit eleven", rev_id="b@u-0-7")
+        wt2.commit("Commit twelve", rev_id="b@u-0-8")
+        wt2.commit("Commit thirtteen", rev_id="b@u-0-9")
 
         fetch(from_branch=self.br2, to_branch=self.br1)
-        self.br1.working_tree().add_pending_merge(self.br2.revision_history()[6])
-        self.br1.working_tree().commit("Commit fourtten", rev_id="a@u-0-6")
+        wt1.add_pending_merge(self.br2.revision_history()[6])
+        wt1.commit("Commit fourtten", rev_id="a@u-0-6")
 
         fetch(from_branch=self.br1, to_branch=self.br2)
-        self.br2.working_tree().add_pending_merge(self.br1.revision_history()[6])
-        self.br2.working_tree().commit("Commit fifteen", rev_id="b@u-0-10")
+        wt2.add_pending_merge(self.br1.revision_history()[6])
+        wt2.commit("Commit fifteen", rev_id="b@u-0-10")
 
         from bzrlib.revision import MultipleRevisionSources
         self.sources = MultipleRevisionSources(self.br1.repository,
@@ -299,3 +301,22 @@ class TestCommonAncestor(TestCaseWithTransport):
         self.assertEquals(combined_1[2], combined_2[2])
         self.assertEquals(combined_1[3], combined_2[3])
         self.assertEquals(combined_1, combined_2)
+
+    def test_get_history(self):
+        # TODO: test ghosts on the left hand branch's impact
+        # TODO: test ghosts on all parents, we should get some
+        # indicator. i.e. NULL_REVISION
+        # RBC 20060608
+        tree = self.make_branch_and_tree('.')
+        tree.commit('1', rev_id = '1', allow_pointless=True)
+        tree.commit('2', rev_id = '2', allow_pointless=True)
+        tree.commit('3', rev_id = '3', allow_pointless=True)
+        rev = tree.branch.repository.get_revision('1')
+        history = rev.get_history(tree.branch.repository)
+        self.assertEqual([None, '1'], history)
+        rev = tree.branch.repository.get_revision('2')
+        history = rev.get_history(tree.branch.repository)
+        self.assertEqual([None, '1', '2'], history)
+        rev = tree.branch.repository.get_revision('3')
+        history = rev.get_history(tree.branch.repository)
+        self.assertEqual([None, '1', '2' ,'3'], history)

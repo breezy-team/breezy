@@ -20,7 +20,7 @@ import bzrlib.errors as errors
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter, note, warning
 from bzrlib.errors import NotBranchError
-from bzrlib.branch import is_control_file
+from bzrlib.workingtree import is_control_file
 import bzrlib.osutils
 from bzrlib.workingtree import WorkingTree
 
@@ -130,7 +130,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
 
         if kind == 'directory':
             try:
-                sub_branch = WorkingTree(af)
+                sub_branch = WorkingTree.open(af)
                 sub_tree = True
             except NotBranchError:
                 sub_tree = False

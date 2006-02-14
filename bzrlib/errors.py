@@ -105,6 +105,7 @@ class BzrNewError(BzrError):
 
 class BzrCheckError(BzrNewError):
     """Internal check failed: %(message)s"""
+
     def __init__(self, message):
         BzrNewError.__init__(self)
         self.message = message
@@ -138,6 +139,14 @@ class NoWorkingTree(BzrNewError):
     def __init__(self, base):
         BzrNewError.__init__(self)
         self.base = base
+
+
+class NotLocalUrl(BzrNewError):
+    """%s(url) is not a local path."""
+    
+    def __init__(self, url):
+        BzrNewError.__init__(self)
+        self.url = url
 
 
 class BzrCommandError(BzrError):
@@ -203,8 +212,16 @@ class NotBranchError(BzrNewError):
         self.path = path
 
 
+class NoRepositoryPresent(BzrNewError):
+    """Not repository present: %(path)r"""
+    def __init__(self, bzrdir):
+        BzrNewError.__init__(self)
+        self.path = bzrdir.transport.clone('..').base
+
+
 class FileInWrongBranch(BzrNewError):
     """File %(path)s in not in branch %(branch_base)s."""
+
     def __init__(self, branch, path):
         BzrNewError.__init__(self)
         self.branch = branch
@@ -222,6 +239,15 @@ class UnknownFormatError(BzrError):
     """Specified path is a bzr branch whose format we do not recognize."""
     def __str__(self):
         return 'unknown branch format: %s' % self.args[0]
+
+
+class IncompatibleFormat(BzrNewError):
+    """Format %(format)s is not compatible with .bzr version %(bzrdir)s."""
+
+    def __init__(self, format, bzrdir_format):
+        BzrNewError.__init__(self)
+        self.format = format
+        self.bzrdir = bzrdir_format
 
 
 class NotVersionedError(BzrNewError):
@@ -529,6 +555,10 @@ class BzrBadParameterNotString(BzrBadParameter):
     """Parameter %(param)s is not a string or unicode string."""
 
 
+class BzrBadParameterMissing(BzrBadParameter):
+    """Parameter $(param)s is required but not present."""
+
+
 class DependencyNotPresent(BzrNewError):
     """Unable to import library: %(library)s, %(error)s"""
 
@@ -549,3 +579,11 @@ class UninitializableFormat(BzrNewError):
     def __init__(self, format):
         BzrNewError.__init__(self)
         self.format = format
+
+
+class OutOfDateTree(BzrNewError):
+    """Working tree is out of date, please run 'bzr update'."""
+
+    def __init__(self, tree):
+        BzrNewError.__init__(self)
+        self.tree = tree
