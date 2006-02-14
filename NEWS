@@ -30,6 +30,11 @@ bzr development version
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
       for testing SFTP protocol support. (Robey Pointer)
 
+  IMPROVEMENTS:
+
+    * pull now accepts a --revision argument (Erik Bågfors)
+
+
 bzr 0.7rc1 2006-01-09
 
   CHANGES:

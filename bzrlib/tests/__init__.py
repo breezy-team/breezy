@@ -83,6 +83,7 @@ def packages_to_test():
     import bzrlib.tests.branch_implementations
     return [
             bzrlib.doc,
+            bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
             ]
 

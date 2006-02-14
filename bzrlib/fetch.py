@@ -163,7 +163,7 @@ class Fetcher(object):
         count = 0
         num_file_ids = len(file_ids)
         for file_id in file_ids:
-            self.pb.update("merge weave merge", count, num_file_ids)
+            self.pb.update("merge weaves", count, num_file_ids)
             count +=1
             to_weave = self.to_weaves.get_weave_or_empty(file_id,
                 self.to_branch.get_transaction())
