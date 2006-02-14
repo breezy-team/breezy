@@ -17,17 +17,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Branch implementation tests for bzr.
+"""WorkingTree implementation tests for bzr.
 
-These test the conformance of all the branch variations to the expected API.
-Specific tests for individual formats are in the tests/test_branch file 
-rather than in tests/branch_implementations/*.py.
+These test the conformance of all the workingtre variations to the expected API.
+Specific tests for individual formats are in the tests/test_workingtree file 
+rather than in tests/workingtree_implementations/*.py.
 """
 
-from bzrlib.branch import (BranchFormat,
-                           BranchTestProviderAdapter,
-                           _legacy_formats,
-                           )
+from bzrlib.workingtree import (WorkingTreeFormat,
+                                WorkingTreeTestProviderAdapter,
+                                _legacy_formats,
+                                )
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
@@ -38,18 +38,16 @@ from bzrlib.tests import (
 
 def test_suite():
     result = TestSuite()
-    test_branch_implementations = [
-        'bzrlib.tests.branch_implementations.test_branch',
-        'bzrlib.tests.branch_implementations.test_parent',
-        'bzrlib.tests.branch_implementations.test_permissions',
+    test_workingtree_implementations = [
+        'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]
-    adapter = BranchTestProviderAdapter(
+    adapter = WorkingTreeTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         [(format, format._matchingbzrdir) for format in 
-         BranchFormat._formats.values() + _legacy_formats])
+         WorkingTreeFormat._formats.values() + _legacy_formats])
     loader = TestLoader()
-    adapt_modules(test_branch_implementations, adapter, loader, result)
+    adapt_modules(test_workingtree_implementations, adapter, loader, result)
     return result

@@ -17,13 +17,16 @@
 """builtin bzr commands"""
 
 
+import errno
 import os
+from shutil import rmtree
 import sys
 
 import bzrlib
-from bzrlib import BZRDIR
-from bzrlib.commands import Command, display_command
+import bzrlib.branch
 from bzrlib.branch import Branch
+import bzrlib.bzrdir as bzrdir
+from bzrlib.commands import Command, display_command
 from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
@@ -396,8 +399,6 @@ class cmd_pull(Command):
     takes_args = ['location?']
 
     def run(self, location=None, remember=False, overwrite=False, revision=None, verbose=False):
-        from shutil import rmtree
-        import errno
         # FIXME: too much stuff is in the command class        
         tree_to = WorkingTree.open_containing(u'.')[0]
         stored_loc = tree_to.branch.get_parent()
@@ -466,8 +467,6 @@ class cmd_push(Command):
             create_prefix=False, verbose=False):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
-        import errno
-        from shutil import rmtree
         from bzrlib.transport import get_transport
         
         tree_from = WorkingTree.open_containing(u'.')[0]
@@ -554,8 +553,6 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
-        import errno
-        from shutil import rmtree
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -572,13 +569,16 @@ class cmd_branch(Command):
         br_from.lock_read()
         try:
             if basis is not None:
-                basis_branch = WorkingTree.open_containing(basis)[0].branch
+                basis_dir = bzrdir.BzrDir.open_containing(basis)[0]
             else:
-                basis_branch = None
+                basis_dir = None
             if len(revision) == 1 and revision[0] is not None:
                 revision_id = revision[0].in_history(br_from)[1]
             else:
-                revision_id = None
+                # FIXME - wt.last_revision, fallback to branch, fall back to
+                # None or perhaps NULL_REVISION to mean copy nothing
+                # RBC 20060209
+                revision_id = br_from.last_revision()
             if to_location is None:
                 to_location = os.path.basename(from_location.rstrip("/\\"))
                 name = None
@@ -596,7 +596,8 @@ class cmd_branch(Command):
                 else:
                     raise
             try:
-                br_from.clone(to_location, revision_id, basis_branch)
+                dir = br_from.bzrdir.sprout(to_location, revision_id, basis_dir)
+                branch = dir.open_branch()
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
@@ -605,13 +606,59 @@ class cmd_branch(Command):
                 rmtree(to_location)
                 msg = "The branch %s cannot be used as a --basis"
                 raise BzrCommandError(msg)
-            branch = Branch.open(to_location)
             if name:
                 branch.control_files.put_utf8('branch-name', name)
 
             note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
+
+
+class cmd_checkout(Command):
+    """Create a new checkout of an existing branch.
+
+    If the TO_LOCATION is omitted, the last component of the BRANCH_LOCATION will
+    be used.  In other words, "checkout ../foo/bar" will attempt to create ./bar.
+
+    To retrieve the branch as of a particular revision, supply the --revision
+    parameter, as in "checkout foo/bar -r 5". Note that this will be immediately
+    out of date [so you cannot commit] but it may be useful (i.e. to examine old
+    code.)
+
+    --basis is to speed up checking out from remote branches.  When specified, it
+    uses the inventory and file contents from the basis branch in preference to the
+    branch being checked out. [Not implemented yet.]
+    """
+    takes_args = ['branch_location', 'to_location?']
+    takes_options = ['revision'] # , 'basis']
+
+    def run(self, branch_location, to_location=None, revision=None, basis=None):
+        if revision is None:
+            revision = [None]
+        elif len(revision) > 1:
+            raise BzrCommandError(
+                'bzr checkout --revision takes exactly 1 revision value')
+        source = Branch.open(branch_location)
+        if len(revision) == 1 and revision[0] is not None:
+            revision_id = revision[0].in_history(source)[1]
+        else:
+            revision_id = None
+        if to_location is None:
+            to_location = os.path.basename(branch_location.rstrip("/\\"))
+        try:
+            os.mkdir(to_location)
+        except OSError, e:
+            if e.errno == errno.EEXIST:
+                raise BzrCommandError('Target directory "%s" already'
+                                      ' exists.' % to_location)
+            if e.errno == errno.ENOENT:
+                raise BzrCommandError('Parent of "%s" does not exist.' %
+                                      to_location)
+            else:
+                raise
+        checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
+        bzrlib.branch.BranchReferenceFormat().initialize(checkout, source)
+        checkout.create_workingtree(revision_id)
 
 
 class cmd_renames(Command):
@@ -625,13 +672,40 @@ class cmd_renames(Command):
     @display_command
     def run(self, dir=u'.'):
         tree = WorkingTree.open_containing(dir)[0]
-        old_inv = tree.branch.basis_tree().inventory
+        old_inv = tree.basis_tree().inventory
         new_inv = tree.read_working_inventory()
 
         renames = list(bzrlib.tree.find_renames(old_inv, new_inv))
         renames.sort()
         for old_name, new_name in renames:
             print "%s => %s" % (old_name, new_name)        
+
+
+class cmd_update(Command):
+    """Update a tree to have the latest code committed to its branch.
+    
+    This will perform a merge into the working tree, and may generate
+    conflicts. If you have any uncommitted changes, you will still 
+    need to commit them after the update.
+    """
+    takes_args = ['dir?']
+
+    def run(self, dir='.'):
+        tree = WorkingTree.open_containing(dir)[0]
+        tree.lock_write()
+        try:
+            if tree.last_revision() == tree.branch.last_revision():
+                note("Tree is up to date.")
+                return
+            conflicts = tree.update()
+            note('Updated to revision %d.' %
+                 (tree.branch.revision_id_to_revno(tree.last_revision()),))
+            if conflicts != 0:
+                return 1
+            else:
+                return 0
+        finally:
+            tree.unlock()
 
 
 class cmd_info(Command):
@@ -827,7 +901,7 @@ class cmd_deleted(Command):
     @display_command
     def run(self, show_ids=False):
         tree = WorkingTree.open_containing(u'.')[0]
-        old = tree.branch.basis_tree()
+        old = tree.basis_tree()
         for path, ie in old.inventory.iter_entries():
             if not tree.has_id(ie.file_id):
                 if show_ids:
@@ -844,7 +918,7 @@ class cmd_modified(Command):
         from bzrlib.delta import compare_trees
 
         tree = WorkingTree.open_containing(u'.')[0]
-        td = compare_trees(tree.branch.basis_tree(), tree)
+        td = compare_trees(tree.basis_tree(), tree)
 
         for path, id, kind, text_modified, meta_modified in td.modified:
             print path
@@ -857,7 +931,7 @@ class cmd_added(Command):
     @display_command
     def run(self):
         wt = WorkingTree.open_containing(u'.')[0]
-        basis_inv = wt.branch.basis_tree().inventory
+        basis_inv = wt.basis_tree().inventory
         inv = wt.inventory
         for file_id in inv:
             if file_id in basis_inv:
@@ -919,28 +993,26 @@ class cmd_log(Command):
             "invalid message argument %r" % message
         direction = (forward and 'forward') or 'reverse'
         
+        # log everything
+        file_id = None
         if filename:
-            # might be a tree:
-            tree = None
-            try:
-                tree, fp = WorkingTree.open_containing(filename)
-                b = tree.branch
-                if fp != '':
-                    inv = tree.read_working_inventory()
-            except NotBranchError:
-                pass
-            if tree is None:
-                b, fp = Branch.open_containing(filename)
-                if fp != '':
-                    inv = b.repository.get_inventory(b.last_revision())
+            # find the file id to log:
+
+            dir, fp = bzrdir.BzrDir.open_containing(filename)
+            b = dir.open_branch()
             if fp != '':
+                try:
+                    # might be a tree:
+                    inv = dir.open_workingtree().inventory
+                except (errors.NotBranchError, errors.NotLocalUrl):
+                    # either no tree, or is remote.
+                    inv = b.basis_tree().inventory
                 file_id = inv.path2id(fp)
-            else:
-                file_id = None  # points to branch root
         else:
-            tree, relpath = WorkingTree.open_containing(u'.')
-            b = tree.branch
-            file_id = None
+            # local dir only
+            # FIXME ? log the current subdir only RBC 20060203 
+            dir, relpath = bzrdir.BzrDir.open_containing('.')
+            b = dir.open_branch()
 
         if revision is None:
             rev1 = None
@@ -983,6 +1055,7 @@ class cmd_log(Command):
                  start_revision=rev1,
                  end_revision=rev2,
                  search=message)
+
 
 def get_log_format(long=False, short=False, line=False, default='long'):
     log_format = default
@@ -1703,7 +1776,7 @@ class cmd_remerge(Command):
                     
                     for name, ie in tree.inventory.iter_entries(file_id):
                         interesting_ids.add(ie.file_id)
-            transform_tree(tree, tree.branch.basis_tree(), interesting_ids)
+            transform_tree(tree, tree.basis_tree(), interesting_ids)
             if file_list is None:
                 restore_files = list(tree.iter_conflicts())
             else:

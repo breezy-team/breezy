@@ -20,7 +20,7 @@
 
 import os
 
-from bzrlib.branch import Branch, BzrBranchFormat5
+import bzrlib.bzrdir as bzrdir
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transport import get_transport
 
@@ -33,7 +33,7 @@ class TestUpgrade(TestCaseWithTransport):
         # setup a format 5 branch we can upgrade from.
         t = get_transport(self.get_url())
         t.mkdir('old_branch')
-        BzrBranchFormat5().initialize(self.get_url('old_branch'))
+        bzrdir.BzrDirFormat5().initialize(self.get_url('old_branch'))
 
     def test_readonly_url_error(self):
         (out, err) = self.run_bzr_captured(

@@ -19,6 +19,7 @@
 import time
 
 from bzrlib.osutils import format_date
+from bzrlib.workingtree import WorkingTree
 
 
 def _countiter(it):
@@ -46,8 +47,8 @@ def show_info(b):
 
     count_version_dirs = 0
 
-    basis = b.basis_tree()
-    working = b.working_tree()
+    working = b.bzrdir.open_workingtree()
+    basis = working.basis_tree()
     work_inv = working.inventory
     delta = diff.compare_trees(basis, working, want_unchanged=True)
     

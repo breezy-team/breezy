@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# TODO: build_working_dir can be built on something simpler than merge()
 
 import os
 import errno
@@ -42,7 +41,6 @@ from bzrlib.osutils import rename, pathjoin
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
 from bzrlib.transform import TreeTransform, resolve_conflicts, FinalPaths, create_by_entry, unique_add
 from bzrlib.trace import mutter, warning, note
-from bzrlib.workingtree import WorkingTree
 
 # TODO: Report back as changes are merged in
 
@@ -68,7 +66,7 @@ def _get_tree(treespec, local_branch=None):
 
 def _get_revid_tree(branch, revision, local_branch):
     if revision is None:
-        base_tree = branch.working_tree()
+        base_tree = branch.bzrdir.open_workingtree()
     else:
         if local_branch is not None:
             if local_branch.base != branch.base:
@@ -161,7 +159,7 @@ class Merger(object):
 
     def compare_basis(self):
         changes = compare_trees(self.this_tree, 
-                                self.this_branch.basis_tree(), False)
+                                self.this_tree.basis_tree(), False)
         if not changes.has_changed():
             self.this_rev_id = self.this_basis
 
