@@ -19,7 +19,7 @@
 import os
 import sys
 
-import bzrlib.branch as branch
+import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.commit import commit
@@ -537,7 +537,7 @@ class TestFormat(TestCaseWithBranch):
         t = get_transport(self.get_url())
         readonly_t = get_transport(self.get_readonly_url())
         made_branch = self.make_branch('.')
-        self.failUnless(isinstance(made_branch, branch.Branch))
+        self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
 
         # find it via bzrdir opening:
         opened_control = bzrdir.BzrDir.open(readonly_t.base)
@@ -548,7 +548,7 @@ class TestFormat(TestCaseWithBranch):
                         self.branch_format.__class__))
 
         # find it via Branch.open
-        opened_branch = branch.Branch.open(readonly_t.base)
+        opened_branch = bzrlib.branch.Branch.open(readonly_t.base)
         self.failUnless(isinstance(opened_branch, made_branch.__class__))
         self.assertEqual(made_branch._format.__class__,
                          opened_branch._format.__class__)
@@ -558,4 +558,4 @@ class TestFormat(TestCaseWithBranch):
         except NotImplementedError:
             return
         self.assertEqual(self.branch_format,
-                         branch.BranchFormat.find_format(opened_control))
+                         bzrlib.branch.BranchFormat.find_format(opened_control))

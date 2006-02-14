@@ -87,7 +87,7 @@ class SampleTreeFormat(workingtree.WorkingTreeFormat):
         """See WorkingTreeFormat.get_format_string()."""
         return "Sample tree format."
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, revision_id=None):
         """Sample branches cannot be created."""
         t = a_bzrdir.get_workingtree_transport(self)
         t.put('format', StringIO(self.get_format_string()))
@@ -119,7 +119,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         
     def test_find_format_no_tree(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize('.')
-        self.assertRaises(NotBranchError,
+        self.assertRaises(errors.NoWorkingTree,
                           workingtree.WorkingTreeFormat.find_format,
                           dir)
 
@@ -144,8 +144,6 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         workingtree.WorkingTreeFormat.register_format(format)
         # which branch.Open will refuse (not supported)
         self.assertRaises(errors.UnsupportedFormatError, workingtree.WorkingTree.open, '.')
-        # compatability
-        self.assertRaises(errors.UnsupportedFormatError, workingtree.WorkingTree, '.')
         # but open_downlevel will work
         self.assertEqual(format.open(dir), workingtree.WorkingTree.open_downlevel('.'))
         # unregister the format
@@ -177,5 +175,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertEqualDiff('### bzr hashcache v5\n',
                              t.get('stat-cache').read())
         self.assertFalse(t.has('inventory.basis'))
+        # no last-revision file means 'None' or 'NULLREVISION'
+        self.assertFalse(t.has('last-revision'))
         # TODO RBC 20060210 do a commit, check the inventory.basis is created 
-        # correctly.
+        # correctly and last-revision file becomes present.

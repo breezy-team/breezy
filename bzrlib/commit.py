@@ -79,6 +79,7 @@ from bzrlib.osutils import (local_time_offset,
                             sha_string, sha_strings, sha_file, isdir, isfile,
                             split_lines)
 import bzrlib.config
+import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
                            ConflictsInTree,
@@ -214,7 +215,7 @@ class Commit(object):
                  "deprecated as of bzr 0.8. Please use working_tree= instead.",
                  DeprecationWarning, stacklevel=2)
             self.branch = branch
-            self.work_tree = WorkingTree(branch.base, branch)
+            self.work_tree = self.branch.bzrdir.open_workingtree()
         elif working_tree is None:
             raise BzrError("One of branch and working_tree must be passed into commit().")
         else:
@@ -230,6 +231,10 @@ class Commit(object):
         self.revprops = {'branch-nick': self.branch.nick}
         if revprops:
             self.revprops.update(revprops)
+
+        # check for out of date working trees
+        if self.work_tree.last_revision() != self.branch.last_revision():
+            raise errors.OutOfDateTree(self.work_tree)
 
         if strict:
             # raise an exception as soon as we find a single unknown.

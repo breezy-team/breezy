@@ -145,8 +145,8 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         from bzrlib.commit import commit
         TestCaseWithTransport.setUp(self)
         self.br1, self.br2 = make_branches(self)
-        wt1 = WorkingTree(self.br1.base, self.br1)
-        wt2 = WorkingTree(self.br2.base, self.br2)
+        wt1 = self.br1.bzrdir.open_workingtree()
+        wt2 = self.br2.bzrdir.open_workingtree()
         wt2.commit("Commit eleven", rev_id="b@u-0-7")
         wt2.commit("Commit twelve", rev_id="b@u-0-8")
         wt2.commit("Commit thirtteen", rev_id="b@u-0-9")

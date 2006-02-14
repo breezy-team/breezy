@@ -20,7 +20,6 @@ from bzrlib.delta import compare_trees
 from bzrlib.errors import NoSuchRevision
 from bzrlib.log import line_log
 from bzrlib.osutils import is_inside_any
-from bzrlib.workingtree import WorkingTree
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
@@ -68,7 +67,7 @@ def show_status(branch, show_unchanged=False,
     try:
         new_is_working_tree = True
         if revision is None:
-            new = WorkingTree(branch.base, branch)
+            new = branch.bzrdir.open_workingtree()
             old = new.basis_tree()
         elif len(revision) > 0:
             try:
@@ -76,7 +75,7 @@ def show_status(branch, show_unchanged=False,
                 old = branch.repository.revision_tree(rev_id)
             except NoSuchRevision, e:
                 raise BzrCommandError(str(e))
-            if len(revision) > 1:
+            if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
                     rev_id = revision[1].in_history(branch).rev_id
                     new = branch.repository.revision_tree(rev_id)
@@ -84,7 +83,7 @@ def show_status(branch, show_unchanged=False,
                 except NoSuchRevision, e:
                     raise BzrCommandError(str(e))
             else:
-                new = WorkingTree(branch.base, branch)
+                new = branch.bzrdir.open_workingtree()
                 
         delta = compare_trees(old, new, want_unchanged=show_unchanged,
                               specific_files=specific_files)

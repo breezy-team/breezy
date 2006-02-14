@@ -47,7 +47,7 @@ def show_info(b):
 
     count_version_dirs = 0
 
-    working = WorkingTree(b.base, b)
+    working = b.bzrdir.open_workingtree()
     basis = working.basis_tree()
     work_inv = working.inventory
     delta = diff.compare_trees(basis, working, want_unchanged=True)

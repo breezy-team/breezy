@@ -105,6 +105,7 @@ class BzrNewError(BzrError):
 
 class BzrCheckError(BzrNewError):
     """Internal check failed: %(message)s"""
+
     def __init__(self, message):
         BzrNewError.__init__(self)
         self.message = message
@@ -326,17 +327,20 @@ class UnrelatedBranches(BzrCommandError):
             " specified."
         BzrCommandError.__init__(self, msg)
 
+
 class NoCommonAncestor(BzrError):
     def __init__(self, revision_a, revision_b):
         msg = "Revisions have no common ancestor: %s %s." \
             % (revision_a, revision_b) 
         BzrError.__init__(self, msg)
 
+
 class NoCommonRoot(BzrError):
     def __init__(self, revision_a, revision_b):
         msg = "Revisions are not derived from the same root: %s %s." \
             % (revision_a, revision_b) 
         BzrError.__init__(self, msg)
+
 
 class NotAncestor(BzrError):
     def __init__(self, rev_id, not_ancestor_id):
@@ -361,14 +365,17 @@ class AmbiguousBase(BzrError):
         BzrError.__init__(self, msg)
         self.bases = bases
 
+
 class NoCommits(BzrError):
     def __init__(self, branch):
         msg = "Branch %s has no commits." % branch
         BzrError.__init__(self, msg)
 
+
 class UnlistableStore(BzrError):
     def __init__(self, store):
         BzrError.__init__(self, "Store %s is not listable" % store)
+
 
 class UnlistableBranch(BzrError):
     def __init__(self, br):
@@ -441,6 +448,7 @@ class TransportError(BzrError):
         self.msg = msg
         self.orig_error = orig_error
 
+
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
     """This is for transports where a specific function is explicitly not
@@ -462,9 +470,11 @@ class ConnectionReset(TransportError):
     """The connection has been closed."""
     pass
 
+
 class ConflictsInTree(BzrError):
     def __init__(self):
         BzrError.__init__(self, "Working tree has conflicts.")
+
 
 class ParseConfigError(BzrError):
     def __init__(self, errors, filename):
@@ -474,10 +484,12 @@ class ParseConfigError(BzrError):
             (filename, ('\n'.join(e.message for e in errors)))
         BzrError.__init__(self, message)
 
+
 class SigningFailed(BzrError):
     def __init__(self, command_line):
         BzrError.__init__(self, "Failed to gpg sign data with command '%s'"
                                % command_line)
+
 
 class WorkingTreeNotRevision(BzrError):
     def __init__(self, tree):
@@ -485,9 +497,11 @@ class WorkingTreeNotRevision(BzrError):
                           " last commit, but weave merge requires that it be"
                           " unchanged." % tree.basedir)
 
+
 class CantReprocessAndShowBase(BzrNewError):
     """Can't reprocess and show base.
 Reprocessing obscures relationship of conflicting lines to base."""
+
 
 class GraphCycleError(BzrNewError):
     """Cycle in graph %(graph)r"""
@@ -565,3 +579,11 @@ class UninitializableFormat(BzrNewError):
     def __init__(self, format):
         BzrNewError.__init__(self)
         self.format = format
+
+
+class OutOfDateTree(BzrNewError):
+    """Working tree is out of date, please run 'bzr update'."""
+
+    def __init__(self, tree):
+        BzrNewError.__init__(self)
+        self.tree = tree

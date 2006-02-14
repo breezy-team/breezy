@@ -234,10 +234,10 @@ class Branch(object):
         >>> bzrlib.trace.silent = True
         >>> d1 = bzrdir.ScratchDir()
         >>> br1 = d1.open_branch()
-        >>> wt1 = WorkingTree(br1.base, br1)
+        >>> wt1 = d1.open_workingtree()
         >>> d2 = bzrdir.ScratchDir()
         >>> br2 = d2.open_branch()
-        >>> wt2 = WorkingTree(br2.base, br2)
+        >>> wt2 = d2.open_workingtree()
         >>> br1.missing_revisions(br2)
         []
         >>> wt2.commit("lala!", rev_id="REVISION-ID-1")
@@ -300,7 +300,7 @@ class Branch(object):
             raise bzrlib.errors.NoSuchRevision(self, revno)
         return history[revno - 1]
 
-    def pull(self, source, overwrite=False):
+    def pull(self, source, overwrite=False, stop_revision=None):
         raise NotImplementedError('pull is abstract')
 
     def basis_tree(self):
@@ -966,6 +966,7 @@ class BzrBranch(Branch):
     def update_revisions(self, other, stop_revision=None):
         """See Branch.update_revisions."""
         from bzrlib.fetch import greedy_fetch
+
         if stop_revision is None:
             stop_revision = other.last_revision()
         ### Should this be checking is_ancestor instead of revision_history?
@@ -1008,16 +1009,16 @@ class BzrBranch(Branch):
         if (self.base.find('://') != -1 or 
             not isinstance(self._transport, LocalTransport)):
             raise NoWorkingTree(self.base)
-        return WorkingTree(self.base, branch=self)
+        return self.bzrdir.open_workingtree()
 
     @needs_write_lock
-    def pull(self, source, overwrite=False):
+    def pull(self, source, overwrite=False, stop_revision=None):
         """See Branch.pull."""
         source.lock_read()
         try:
             old_count = len(self.revision_history())
             try:
-                self.update_revisions(source)
+                self.update_revisions(source,stop_revision)
             except DivergedBranches:
                 if not overwrite:
                     raise

@@ -26,7 +26,7 @@ import base64
 import os
 import sys
 
-import bzrlib.branch as branch
+import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 import bzrlib.repository as repository
@@ -56,7 +56,7 @@ class TestUpgrade(TestCaseInTempDir):
         t = control.open_workingtree()
         # tsk, peeking under the covers.
         self.failUnless(isinstance(control._format, bzrdir.BzrDirFormat6))
-        self.failUnless(isinstance(b._format, branch.BzrBranchFormat4))
+        self.failUnless(isinstance(b._format, bzrlib.branch.BzrBranchFormat4))
         self.failUnless(isinstance(r._format, repository.RepositoryFormat6))
         self.failUnless(isinstance(t._format, workingtree.WorkingTreeFormat2))
         rh = b.revision_history()

@@ -17,14 +17,17 @@
 """builtin bzr commands"""
 
 
+import errno
 import os
+from shutil import rmtree
 import sys
 
 import bzrlib
+import bzrlib.branch
+from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib._merge_core import ApplyMerge3
 from bzrlib.commands import Command, display_command
-from bzrlib.branch import Branch
 from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
@@ -392,12 +395,10 @@ class cmd_pull(Command):
     If you want to forget your local changes and just update your branch to
     match the remote one, use --overwrite.
     """
-    takes_options = ['remember', 'overwrite', 'verbose']
+    takes_options = ['remember', 'overwrite', 'revision', 'verbose']
     takes_args = ['location?']
 
-    def run(self, location=None, remember=False, overwrite=False, verbose=False):
-        from shutil import rmtree
-        import errno
+    def run(self, location=None, remember=False, overwrite=False, revision=None, verbose=False):
         # FIXME: too much stuff is in the command class        
         tree_to = WorkingTree.open_containing(u'.')[0]
         stored_loc = tree_to.branch.get_parent()
@@ -411,8 +412,15 @@ class cmd_pull(Command):
         br_from = Branch.open(location)
         br_to = tree_to.branch
 
+        if revision is None:
+            rev_id = None
+        elif len(revision) == 1:
+            rev_id = revision[0].in_history(br_from).rev_id
+        else:
+            raise BzrCommandError('bzr pull --revision takes one value.')
+
         old_rh = br_to.revision_history()
-        count = tree_to.pull(br_from, overwrite)
+        count = tree_to.pull(br_from, overwrite, rev_id)
 
         if br_to.get_parent() is None or remember:
             br_to.set_parent(location)
@@ -459,8 +467,6 @@ class cmd_push(Command):
             create_prefix=False, verbose=False):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
-        import errno
-        from shutil import rmtree
         from bzrlib.transport import get_transport
         
         tree_from = WorkingTree.open_containing(u'.')[0]
@@ -547,8 +553,6 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
-        import errno
-        from shutil import rmtree
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -602,13 +606,59 @@ class cmd_branch(Command):
                 rmtree(to_location)
                 msg = "The branch %s cannot be used as a --basis"
                 raise BzrCommandError(msg)
-            WorkingTree.create(branch, to_location)
             if name:
                 branch.control_files.put_utf8('branch-name', name)
 
             note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
+
+
+class cmd_checkout(Command):
+    """Create a new checkout of an existing branch.
+
+    If the TO_LOCATION is omitted, the last component of the BRANCH_LOCATION will
+    be used.  In other words, "checkout ../foo/bar" will attempt to create ./bar.
+
+    To retrieve the branch as of a particular revision, supply the --revision
+    parameter, as in "checkout foo/bar -r 5". Note that this will be immediately
+    out of date [so you cannot commit] but it may be useful (i.e. to examine old
+    code.)
+
+    --basis is to speed up checking out from remote branches.  When specified, it
+    uses the inventory and file contents from the basis branch in preference to the
+    branch being checked out. [Not implemented yet.]
+    """
+    takes_args = ['branch_location', 'to_location?']
+    takes_options = ['revision'] # , 'basis']
+
+    def run(self, branch_location, to_location=None, revision=None, basis=None):
+        if revision is None:
+            revision = [None]
+        elif len(revision) > 1:
+            raise BzrCommandError(
+                'bzr checkout --revision takes exactly 1 revision value')
+        source = Branch.open(branch_location)
+        if len(revision) == 1 and revision[0] is not None:
+            revision_id = revision[0].in_history(source)[1]
+        else:
+            revision_id = None
+        if to_location is None:
+            to_location = os.path.basename(branch_location.rstrip("/\\"))
+        try:
+            os.mkdir(to_location)
+        except OSError, e:
+            if e.errno == errno.EEXIST:
+                raise BzrCommandError('Target directory "%s" already'
+                                      ' exists.' % to_location)
+            if e.errno == errno.ENOENT:
+                raise BzrCommandError('Parent of "%s" does not exist.' %
+                                      to_location)
+            else:
+                raise
+        checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
+        bzrlib.branch.BranchReferenceFormat().initialize(checkout, source)
+        checkout.create_workingtree(revision_id)
 
 
 class cmd_renames(Command):
@@ -629,6 +679,33 @@ class cmd_renames(Command):
         renames.sort()
         for old_name, new_name in renames:
             print "%s => %s" % (old_name, new_name)        
+
+
+class cmd_update(Command):
+    """Update a tree to have the latest code committed to its branch.
+    
+    This will perform a merge into the working tree, and may generate
+    conflicts. If you have any uncommitted changes, you will still 
+    need to commit them after the update.
+    """
+    takes_args = ['dir?']
+
+    def run(self, dir='.'):
+        tree = WorkingTree.open_containing(dir)[0]
+        tree.lock_write()
+        try:
+            if tree.last_revision() == tree.branch.last_revision():
+                note("Tree is up to date.")
+                return
+            conflicts = tree.update()
+            note('Updated to revision %d.' %
+                 (tree.branch.revision_id_to_revno(tree.last_revision()),))
+            if conflicts != 0:
+                return 1
+            else:
+                return 0
+        finally:
+            tree.unlock()
 
 
 class cmd_info(Command):
@@ -944,7 +1021,11 @@ class cmd_log(Command):
             rev1 = rev2 = revision[0].in_history(b).revno
         elif len(revision) == 2:
             rev1 = revision[0].in_history(b).revno
-            rev2 = revision[1].in_history(b).revno
+            if revision[1].spec is None:
+                # missing end-range means last known revision
+                rev2 = b.revno()
+            else:
+                rev2 = revision[1].in_history(b).revno
         else:
             raise BzrCommandError('bzr log --revision takes one or two values.')
 
