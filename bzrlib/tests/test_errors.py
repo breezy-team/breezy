@@ -1,33 +1,31 @@
-# Copyright (C) 2005 by Canonical Ltd
-
+# Copyright (C) 2006 by Canonical Ltd
+#   Authors: Robert Collins <robert.collins@canonical.com>
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os
+"""Tests for the formatting and construction of errors."""
 
-import bzrlib
+import bzrlib.bzrdir as bzrdir
+import bzrlib.errors as errors
 from bzrlib.tests import TestCaseWithTransport
 
 
-class TestCaseWithWebserver(TestCaseWithTransport):
-    """A support class that provides readonly urls that are http://.
+class TestErrors(TestCaseWithTransport):
 
-    This is done by forcing the readonly server to be an http one. This 
-    will current fail if the primary transport is not backed by regular disk
-    files.
-    """
-
-    def setUp(self):
-        super(TestCaseWithWebserver, self).setUp()
-        self.transport_readonly_server = bzrlib.transport.http.HttpServer
+    def test_no_repo(self):
+        dir = bzrdir.BzrDir.create(self.get_url())
+        error = errors.NoRepositoryPresent(dir)
+        self.assertNotEqual(-1, str(error).find(repr(dir.transport.clone('..').base)))
+        self.assertEqual(-1, str(error).find(repr(dir.transport.base)))

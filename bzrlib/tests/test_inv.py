@@ -152,7 +152,7 @@ class TestEntryDiffing(TestCaseWithTransport):
         self.tree_1 = self.branch.repository.revision_tree('1')
         self.inv_1 = self.branch.repository.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
-        self.tree_2 = self.branch.working_tree()
+        self.tree_2 = self.wt
         self.inv_2 = self.tree_2.read_working_inventory()
         self.file_2 = self.inv_2['fileid']
         if has_symlinks():
@@ -346,7 +346,7 @@ class TestPreviousHeads(TestCaseWithTransport):
         self.wt.add_pending_merge('B')
         self.wt.commit('merge in B', rev_id='D')
         self.inv_D = self.branch.repository.get_inventory('D')
-        self.file_active = self.branch.working_tree().inventory['fileid']
+        self.file_active = self.wt.inventory['fileid']
         self.weave = self.branch.repository.weave_store.get_weave('fileid',
             self.branch.get_transaction())
         
@@ -463,10 +463,10 @@ class TestExecutable(TestCaseWithTransport):
         # Now make sure that 'bzr branch' also preserves the
         # executable bit
         # TODO: Maybe this should be a blackbox test
-        b.clone('b2', revision='r1')
-        b2 = Branch.open('b2')
+        d2 = b.bzrdir.clone('b2', revision_id='r1')
+        t2 = d2.open_workingtree()
+        b2 = t2.branch
         self.assertEquals('r1', b2.last_revision())
-        t2 = b2.working_tree()
 
         self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
         self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
@@ -475,9 +475,6 @@ class TestExecutable(TestCaseWithTransport):
         # Make sure pull will delete the files
         t2.pull(b)
         self.assertEquals('r2', b2.last_revision())
-        # FIXME: Same thing here, t2 needs to be recreated
-        del t2
-        t2 = b2.working_tree()
         self.assertEqual([], [cn for cn,ie in t2.inventory.iter_entries()])
 
         # Now commit the changes on the first branch
@@ -486,9 +483,6 @@ class TestExecutable(TestCaseWithTransport):
         t.commit('resurrected', rev_id='r3')
 
         t2.pull(b)
-        # FIXME: And here
-        del t2
-        t2 = b2.working_tree()
         self.assertEquals('r3', b2.last_revision())
         self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
 

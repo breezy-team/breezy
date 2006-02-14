@@ -550,24 +550,25 @@ class FunctionalMergeTest(TestCaseWithTransport):
         """Test that merges in a star shape Just Work.""" 
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
-        tree = WorkingTree.create_standalone('original')
+        tree = self.make_branch_and_tree('original')
         branch = tree.branch
         smart_add_tree(tree, ["original"])
         tree.commit("start branch.", verbose=False)
         # Mary branches it.
         self.build_tree(("mary/",))
-        branch.clone("mary")
+        branch.bzrdir.clone("mary")
         # Now John commits a change
         file = open("original/file1", "wt")
         file.write("John\n")
         file.close()
         tree.commit("change file1")
         # Mary does too
-        mary_branch = Branch.open("mary")
+        mary_tree = WorkingTree('mary')
+        mary_branch = mary_tree.branch
         file = open("mary/file2", "wt")
         file.write("Mary\n")
         file.close()
-        mary_branch.working_tree().commit("change file2")
+        mary_tree.commit("change file2")
         # john should be able to merge with no conflicts.
         merge_type = ApplyMerge3
         base = [None, None]
@@ -582,16 +583,17 @@ class FunctionalMergeTest(TestCaseWithTransport):
  
     def test_conflicts(self):
         os.mkdir('a')
-        wta = WorkingTree.create_standalone('a')
+        wta = self.make_branch_and_tree('a')
         a = wta.branch
         file('a/file', 'wb').write('contents\n')
         wta.add('file')
         wta.commit('base revision', allow_pointless=False)
-        b = a.clone('b')
+        b = a.bzrdir.clone('b').open_branch()
         file('a/file', 'wb').write('other contents\n')
         wta.commit('other revision', allow_pointless=False)
         file('b/file', 'wb').write('this contents contents\n')
-        b.working_tree().commit('this revision', allow_pointless=False)
+        wtb = WorkingTree('b', b)
+        wtb.commit('this revision', allow_pointless=False)
         self.assertEqual(merge(['a', -1], [None, None], this_dir='b'), 1)
         self.assert_(os.path.lexists('b/file.THIS'))
         self.assert_(os.path.lexists('b/file.BASE'))
@@ -599,7 +601,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertRaises(WorkingTreeNotRevision, merge, ['a', -1], 
                           [None, None], this_dir='b', check_clean=False,
                           merge_type=WeaveMerge)
-        b.working_tree().revert([])
+        wtb.revert([])
         os.unlink('b/file.THIS')
         os.unlink('b/file.OTHER')
         os.unlink('b/file.BASE')

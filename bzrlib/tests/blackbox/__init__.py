@@ -23,8 +23,12 @@ command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
-from bzrlib.tests import (TestLoader, TestSuite, _load_module_by_name,
-                          TestCaseInTempDir, BzrTestBase)
+from bzrlib.tests import (
+                          _load_module_by_name,
+                          TestCaseWithTransport,
+                          TestSuite,
+                          TestLoader,
+                          )
 
 def test_suite():
     testmod_names = [
@@ -56,7 +60,7 @@ def test_suite():
     return suite
 
 
-class ExternalBase(TestCaseInTempDir):
+class ExternalBase(TestCaseWithTransport):
 
     def runbzr(self, args, retcode=0, backtick=False):
         if isinstance(args, basestring):

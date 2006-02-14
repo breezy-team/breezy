@@ -25,7 +25,8 @@ new revision based on the workingtree and its inventory.
 At the moment every WorkingTree has its own branch.  Remote
 WorkingTrees aren't supported.
 
-To get a WorkingTree, call WorkingTree(dir[, branch])
+To get a WorkingTree, call bzrdir.open_workingtree() or
+WorkingTree.open(dir).
 """
 
 
@@ -49,12 +50,10 @@ import stat
 
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import (Branch,
-                           BzrBranchFormat4,
-                           BzrBranchFormat5,
-                           BzrBranchFormat6,
-                           is_control_file,
                            quotefn)
+import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+import bzrlib.errors as errors
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
                            DivergedBranches,
@@ -64,6 +63,7 @@ from bzrlib.errors import (BzrCheckError,
                            NotVersionedError)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.lockable_files import LockableFiles
+from bzrlib.merge import merge_inner, transform_tree
 from bzrlib.osutils import (appendpath,
                             compact_date,
                             file_kind,
@@ -84,6 +84,7 @@ from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
+from bzrlib.transport.local import LocalTransport
 import bzrlib.xml5
 
 
@@ -186,7 +187,13 @@ class WorkingTree(bzrlib.tree.Tree):
     not listed in the Inventory and vice versa.
     """
 
-    def __init__(self, basedir='.', branch=None, _inventory=None, _control_files=None):
+    def __init__(self, basedir='.',
+                 branch=None,
+                 _inventory=None,
+                 _control_files=None,
+                 _internal=False,
+                 _format=None,
+                 _bzrdir=None):
         """Construct a WorkingTree for basedir.
 
         If the branch is not supplied, it is opened automatically.
@@ -194,6 +201,18 @@ class WorkingTree(bzrlib.tree.Tree):
         (branch.base is not cross checked, because for remote branches that
         would be meaningless).
         """
+        self._format = _format
+        self.bzrdir = _bzrdir
+        if not _internal:
+            # created via open etc.
+            wt = WorkingTree.open(basedir)
+            self.branch = wt.branch
+            self.basedir = wt.basedir
+            self._control_files = wt._control_files
+            self._hashcache = wt._hashcache
+            self._set_inventory(wt._inventory)
+            self._format = wt._format
+            self.bzrdir = wt.bzrdir
         from bzrlib.hashcache import HashCache
         from bzrlib.trace import note, mutter
         assert isinstance(basedir, basestring), \
@@ -207,17 +226,18 @@ class WorkingTree(bzrlib.tree.Tree):
         self.branch = branch
         self.basedir = realpath(basedir)
         # if branch is at our basedir and is a format 6 or less
-        if (isinstance(self.branch._branch_format,
-                       (BzrBranchFormat4, BzrBranchFormat5, BzrBranchFormat6))
-            # might be able to share control object
-            and self.branch.base.split('/')[-2] == self.basedir.split('/')[-1]):
+        if isinstance(self._format, WorkingTreeFormat2):
+            # share control object
             self._control_files = self.branch.control_files
         elif _control_files is not None:
             assert False, "not done yet"
 #            self._control_files = _control_files
         else:
+            # only ready for format 3
+            assert isinstance(self._format, WorkingTreeFormat3)
             self._control_files = LockableFiles(
-                get_transport(self.basedir).clone(bzrlib.BZRDIR), 'branch-lock')
+                self.bzrdir.get_workingtree_transport(None),
+                'lock')
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -225,8 +245,10 @@ class WorkingTree(bzrlib.tree.Tree):
         # if needed, or, when the cache sees a change, append it to the hash
         # cache file, and have the parser take the most recent entry for a
         # given path only.
-        hc = self._hashcache = HashCache(basedir)
+        cache_filename = self.bzrdir.get_workingtree_transport(None).abspath('stat-cache')
+        hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
         hc.read()
+        # is this scan needed ? it makes things kinda slow.
         hc.scan()
 
         if hc.needs_write:
@@ -243,6 +265,16 @@ class WorkingTree(bzrlib.tree.Tree):
         self.path2id = self._inventory.path2id
 
     @staticmethod
+    def open(path=None, _unsupported=False):
+        """Open an existing working tree at path.
+
+        """
+        if path is None:
+            path = os.path.getcwdu()
+        control = bzrdir.BzrDir.open(path, _unsupported)
+        return control.open_workingtree(_unsupported)
+        
+    @staticmethod
     def open_containing(path=None):
         """Open an existing working tree which has its root about path.
         
@@ -254,28 +286,17 @@ class WorkingTree(bzrlib.tree.Tree):
         If there is one, it is returned, along with the unused portion of path.
         """
         if path is None:
-            path = getcwd()
-        else:
-            # sanity check.
-            if path.find('://') != -1:
-                raise NotBranchError(path=path)
-        path = abspath(path)
-        orig_path = path[:]
-        tail = u''
-        while True:
-            try:
-                return WorkingTree(path), tail
-            except NotBranchError:
-                pass
-            if tail:
-                tail = pathjoin(os.path.basename(path), tail)
-            else:
-                tail = os.path.basename(path)
-            lastpath = path
-            path = os.path.dirname(path)
-            if lastpath == path:
-                # reached the root, whatever that may be
-                raise NotBranchError(path=orig_path)
+            path = os.getcwdu()
+        control, relpath = bzrdir.BzrDir.open_containing(path)
+        return control.open_workingtree(), relpath
+
+    @staticmethod
+    def open_downlevel(path=None):
+        """Open an unsupported working tree.
+
+        Only intended for advanced situations like upgrading part of a bzrdir.
+        """
+        return WorkingTree.open(path, _unsupported=True)
 
     def __iter__(self):
         """Iterate through file_ids for this tree.
@@ -294,8 +315,22 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def abspath(self, filename):
         return pathjoin(self.basedir, filename)
+    
+    def basis_tree(self):
+        """Return RevisionTree for the current last revision."""
+        revision_id = self.last_revision()
+        if revision_id is not None:
+            try:
+                xml = self.read_basis_inventory(revision_id)
+                inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+                return bzrlib.tree.RevisionTree(self.branch.repository, inv,
+                                                revision_id)
+            except NoSuchFile:
+                pass
+        return self.branch.repository.revision_tree(revision_id)
 
     @staticmethod
+    @deprecated_method(zero_eight)
     def create(branch, directory):
         """Create a workingtree for branch at directory.
 
@@ -311,37 +346,26 @@ class WorkingTree(bzrlib.tree.Tree):
         XXX: When BzrDir is present, these should be created through that 
         interface instead.
         """
-        try:
-            os.mkdir(directory)
-        except OSError, e:
-            if e.errno != errno.EEXIST:
-                raise
-        try:
-            os.mkdir(pathjoin(directory, '.bzr'))
-        except OSError, e:
-            if e.errno != errno.EEXIST:
-                raise
-        inv = branch.repository.revision_tree(branch.last_revision()).inventory
-        wt = WorkingTree(directory, branch, inv)
-        wt._write_inventory(inv)
-        if branch.last_revision() is not None:
-            wt.set_last_revision(branch.last_revision())
-        wt.set_pending_merges([])
-        wt.revert([])
-        return wt
+        warn('delete WorkingTree.create', stacklevel=3)
+        transport = get_transport(directory)
+        if branch.bzrdir.root_transport.base == transport.base:
+            # same dir 
+            return branch.bzrdir.create_workingtree()
+        # different directory, 
+        # create a branch reference
+        # and now a working tree.
+        raise NotImplementedError
  
     @staticmethod
+    @deprecated_method(zero_eight)
     def create_standalone(directory):
-        """Create a checkout and a branch at directory.
+        """Create a checkout and a branch and a repo at directory.
 
         Directory must exist and be empty.
 
-        XXX: When BzrDir is present, these should be created through that 
-        interface instead.
+        please use BzrDir.create_standalone_workingtree
         """
-        directory = safe_unicode(directory)
-        b = Branch.create(directory)
-        return WorkingTree.create(b, directory)
+        return bzrdir.BzrDir.create_standalone_workingtree(directory)
 
     def relpath(self, abs):
         """Return the local path portion from a given absolute path."""
@@ -364,6 +388,39 @@ class WorkingTree(bzrlib.tree.Tree):
     def _get_store_filename(self, file_id):
         ## XXX: badly named; this is not in the store at all
         return self.abspath(self.id2path(file_id))
+
+    @needs_read_lock
+    def clone(self, to_bzrdir, revision_id=None, basis=None):
+        """Duplicate this working tree into to_bzr, including all state.
+        
+        Specifically modified files are kept as modified, but
+        ignored and unknown files are discarded.
+
+        If you want to make a new line of development, see bzrdir.sprout()
+
+        revision
+            If not None, the cloned tree will have its last revision set to 
+            revision, and and difference between the source trees last revision
+            and this one merged in.
+
+        basis
+            If not None, a closer copy of a tree which may have some files in
+            common, and which file content should be preferentially copied from.
+        """
+        # assumes the target bzr dir format is compatible.
+        result = self._format.initialize(to_bzrdir)
+        self.copy_content_into(result, revision_id)
+        return result
+
+    @needs_read_lock
+    def copy_content_into(self, tree, revision_id=None):
+        """Copy the current content and user files of this tree into tree."""
+        if revision_id is None:
+            transform_tree(tree, self)
+        else:
+            # TODO now merge from tree.last_revision to revision
+            transform_tree(tree, self)
+            tree.set_last_revision(revision_id)
 
     @needs_write_lock
     def commit(self, *args, **kwargs):
@@ -459,7 +516,9 @@ class WorkingTree(bzrlib.tree.Tree):
 
             try:
                 kind = file_kind(fullpath)
-            except OSError:
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    raise NoSuchFile(fullpath)
                 # maybe something better?
                 raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
 
@@ -520,7 +579,6 @@ class WorkingTree(bzrlib.tree.Tree):
             return 'I'
         else:
             return '?'
-
 
     def list_files(self):
         """Recursively list all files as (path, class, kind, id).
@@ -718,8 +776,9 @@ class WorkingTree(bzrlib.tree.Tree):
         These are files in the working directory that are not versioned or
         control files or ignored.
         
-        >>> from bzrlib.branch import ScratchBranch
-        >>> b = ScratchBranch(files=['foo', 'foo~'])
+        >>> from bzrlib.bzrdir import ScratchDir
+        >>> d = ScratchDir(files=['foo', 'foo~'])
+        >>> b = d.open_branch()
         >>> tree = WorkingTree(b.base, b)
         >>> map(str, tree.unknowns())
         ['foo']
@@ -746,11 +805,10 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None):
-        from bzrlib.merge import merge_inner
         source.lock_read()
         try:
             old_revision_history = self.branch.revision_history()
-            count = self.branch.pull(source, overwrite,stop_revision)
+            count = self.branch.pull(source, overwrite, stop_revision)
             new_revision_history = self.branch.revision_history()
             if new_revision_history != old_revision_history:
                 if len(old_revision_history):
@@ -759,7 +817,7 @@ class WorkingTree(bzrlib.tree.Tree):
                     other_revision = None
                 repository = self.branch.repository
                 merge_inner(self.branch,
-                            self.branch.basis_tree(), 
+                            self.basis_tree(), 
                             repository.revision_tree(other_revision),
                             this_tree=self)
                 self.set_last_revision(self.branch.last_revision())
@@ -861,13 +919,32 @@ class WorkingTree(bzrlib.tree.Tree):
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
 
+    def last_revision(self):
+        """Return the last revision id of this working tree.
+
+        In early branch formats this was == the branch last_revision,
+        but that cannot be relied upon - for working tree operations,
+        always use tree.last_revision().
+        """
+        return self.branch.last_revision()
+
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock."""
-        return self.branch.lock_read()
+        self.branch.lock_read()
+        try:
+            return self._control_files.lock_read()
+        except:
+            self.branch.unlock()
+            raise
 
     def lock_write(self):
         """See Branch.lock_write, and WorkingTree.unlock."""
-        return self.branch.lock_write()
+        self.branch.lock_write()
+        try:
+            return self._control_files.lock_write()
+        except:
+            self.branch.unlock()
+            raise
 
     def _basis_inventory_name(self, revision_id):
         return 'basis-inventory.%s' % revision_id
@@ -876,29 +953,41 @@ class WorkingTree(bzrlib.tree.Tree):
         if old_revision is not None:
             try:
                 path = self._basis_inventory_name(old_revision)
-                path = self.branch.control_files._escape(path)
-                self.branch.control_files._transport.delete(path)
+                path = self._control_files._escape(path)
+                self._control_files._transport.delete(path)
             except NoSuchFile:
                 pass
+        if new_revision is None:
+            self.branch.set_revision_history([])
+            return
+        # current format is locked in with the branch
+        revision_history = self.branch.revision_history()
+        try:
+            position = revision_history.index(new_revision)
+        except ValueError:
+            raise errors.NoSuchRevision(self.branch, new_revision)
+        self.branch.set_revision_history(revision_history[:position + 1])
         try:
             xml = self.branch.repository.get_inventory_xml(new_revision)
             path = self._basis_inventory_name(new_revision)
-            self.branch.control_files.put_utf8(path, xml)
+            self._control_files.put_utf8(path, xml)
         except WeaveRevisionNotPresent:
             pass
 
     def read_basis_inventory(self, revision_id):
         """Read the cached basis inventory."""
         path = self._basis_inventory_name(revision_id)
-        return self.branch.control_files.get_utf8(path).read()
+        return self._control_files.get_utf8(path).read()
         
     @needs_read_lock
     def read_working_inventory(self):
         """Read the working inventory."""
         # ElementTree does its own conversion from UTF-8, so open in
         # binary.
-        return bzrlib.xml5.serializer_v5.read_inventory(
+        result = bzrlib.xml5.serializer_v5.read_inventory(
             self._control_files.get('inventory'))
+        self._set_inventory(result)
+        return result
 
     @needs_write_lock
     def remove(self, files, verbose=False):
@@ -945,7 +1034,7 @@ class WorkingTree(bzrlib.tree.Tree):
     def revert(self, filenames, old_tree=None, backups=True):
         from bzrlib.merge import merge_inner
         if old_tree is None:
-            old_tree = self.branch.basis_tree()
+            old_tree = self.basis_tree()
         merge_inner(self.branch, old_tree,
                     self, ignore_zero=True,
                     backup_files=backups, 
@@ -987,7 +1076,7 @@ class WorkingTree(bzrlib.tree.Tree):
         inv._byid[inv.root.file_id] = inv.root
         for fid in inv:
             entry = inv[fid]
-            if entry.parent_id in (None, orig_root_id):
+            if entry.parent_id == orig_root_id:
                 entry.parent_id = inv.root.file_id
         self._write_inventory(inv)
 
@@ -1005,9 +1094,21 @@ class WorkingTree(bzrlib.tree.Tree):
         # of a nasty hack; probably it's better to have a transaction object,
         # which can do some finalization when it's either successfully or
         # unsuccessfully completed.  (Denys's original patch did that.)
-        if self._hashcache.needs_write and self.branch.control_files._lock_count==1:
+        # RBC 20060206 hookinhg into transaction will couple lock and transaction
+        # wrongly. Hookinh into unllock on the control files object is fine though.
+        
+        # TODO: split this per format so there is no ugly if block
+        if self._hashcache.needs_write and (
+            self._control_files._lock_count==1 or 
+            (self._control_files is self.branch.control_files and 
+             self._control_files._lock_count==2)):
             self._hashcache.write()
-        return self.branch.unlock()
+        # reverse order of locking.
+        result = self._control_files.unlock()
+        try:
+            self.branch.unlock()
+        finally:
+            return result
 
     @needs_write_lock
     def _write_inventory(self, inv):
@@ -1025,3 +1126,228 @@ def get_conflicted_stem(path):
     for suffix in CONFLICT_SUFFIXES:
         if path.endswith(suffix):
             return path[:-len(suffix)]
+
+def is_control_file(filename):
+    ## FIXME: better check
+    filename = normpath(filename)
+    while filename != '':
+        head, tail = os.path.split(filename)
+        ## mutter('check %r for control file' % ((head, tail),))
+        if tail == bzrlib.BZRDIR:
+            return True
+        if filename == head:
+            break
+        filename = head
+    return False
+
+
+class WorkingTreeFormat(object):
+    """An encapsulation of the initialization and open routines for a format.
+
+    Formats provide three things:
+     * An initialization routine,
+     * a format string,
+     * an open routine.
+
+    Formats are placed in an dict by their format string for reference 
+    during workingtree opening. Its not required that these be instances, they
+    can be classes themselves with class methods - it simply depends on 
+    whether state is needed for a given format or not.
+
+    Once a format is deprecated, just deprecate the initialize and open
+    methods on the format class. Do not deprecate the object, as the 
+    object will be created every time regardless.
+    """
+
+    _default_format = None
+    """The default format used for new trees."""
+
+    _formats = {}
+    """The known formats."""
+
+    @classmethod
+    def find_format(klass, a_bzrdir):
+        """Return the format for the working tree object in a_bzrdir."""
+        try:
+            transport = a_bzrdir.get_workingtree_transport(None)
+            format_string = transport.get("format").read()
+            return klass._formats[format_string]
+        except NoSuchFile:
+            raise errors.NotBranchError(path=transport.base)
+        except KeyError:
+            raise errors.UnknownFormatError(format_string)
+
+    @classmethod
+    def get_default_format(klass):
+        """Return the current default format."""
+        return klass._default_format
+
+    def get_format_string(self):
+        """Return the ASCII format string that identifies this format."""
+        raise NotImplementedError(self.get_format_string)
+
+    def is_supported(self):
+        """Is this format supported?
+
+        Supported formats can be initialized and opened.
+        Unsupported formats may not support initialization or committing or 
+        some other features depending on the reason for not being supported.
+        """
+        return True
+
+    @classmethod
+    def register_format(klass, format):
+        klass._formats[format.get_format_string()] = format
+
+    @classmethod
+    def set_default_format(klass, format):
+        klass._default_format = format
+
+    @classmethod
+    def unregister_format(klass, format):
+        assert klass._formats[format.get_format_string()] is format
+        del klass._formats[format.get_format_string()]
+
+
+
+class WorkingTreeFormat2(WorkingTreeFormat):
+    """The second working tree format. 
+
+    This format modified the hash cache from the format 1 hash cache.
+    """
+
+    def initialize(self, a_bzrdir):
+        """See WorkingTreeFormat.initialize()."""
+        if not isinstance(a_bzrdir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        branch = a_bzrdir.open_branch()
+        revision = branch.last_revision()
+        basis_tree = branch.repository.revision_tree(revision)
+        inv = basis_tree.inventory
+        wt = WorkingTree(a_bzrdir.root_transport.base,
+                         branch,
+                         inv,
+                         _internal=True,
+                         _format=self,
+                         _bzrdir=a_bzrdir)
+        wt._write_inventory(inv)
+        wt.set_root_id(inv.root.file_id)
+        wt.set_last_revision(revision)
+        wt.set_pending_merges([])
+        wt.revert([])
+        return wt
+
+    def __init__(self):
+        super(WorkingTreeFormat2, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirFormat6()
+
+    def open(self, a_bzrdir, _found=False):
+        """Return the WorkingTree object for a_bzrdir
+
+        _found is a private parameter, do not use it. It is used to indicate
+               if format probing has already been done.
+        """
+        if not _found:
+            # we are being called directly and must probe.
+            raise NotImplementedError
+        if not isinstance(a_bzrdir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        return WorkingTree(a_bzrdir.root_transport.base,
+                           _internal=True,
+                           _format=self,
+                           _bzrdir=a_bzrdir)
+
+
+class WorkingTreeFormat3(WorkingTreeFormat):
+    """The second working tree format updated to record a format marker.
+
+    This format modified the hash cache from the format 1 hash cache.
+    """
+
+    def get_format_string(self):
+        """See WorkingTreeFormat.get_format_string()."""
+        return "Bazaar-NG Working Tree format 3"
+
+    def initialize(self, a_bzrdir):
+        """See WorkingTreeFormat.initialize()."""
+        if not isinstance(a_bzrdir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        transport = a_bzrdir.get_workingtree_transport(self)
+        control_files = LockableFiles(transport, 'lock')
+        control_files.put_utf8('format', self.get_format_string())
+        branch = a_bzrdir.open_branch()
+        revision = branch.last_revision()
+        basis_tree = branch.repository.revision_tree(revision)
+        inv = basis_tree.inventory
+        wt = WorkingTree(a_bzrdir.root_transport.base,
+                         branch,
+                         inv,
+                         _internal=True,
+                         _format=self,
+                         _bzrdir=a_bzrdir)
+        wt._write_inventory(inv)
+        wt.set_root_id(inv.root.file_id)
+        wt.set_last_revision(revision)
+        wt.set_pending_merges([])
+        wt.revert([])
+        return wt
+
+    def __init__(self):
+        super(WorkingTreeFormat3, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+
+    def open(self, a_bzrdir, _found=False):
+        """Return the WorkingTree object for a_bzrdir
+
+        _found is a private parameter, do not use it. It is used to indicate
+               if format probing has already been done.
+        """
+        if not _found:
+            # we are being called directly and must probe.
+            raise NotImplementedError
+        if not isinstance(a_bzrdir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        return WorkingTree(a_bzrdir.root_transport.base,
+                           _internal=True,
+                           _format=self,
+                           _bzrdir=a_bzrdir)
+
+
+# formats which have no format string are not discoverable
+# and not independently creatable, so are not registered.
+__default_format = WorkingTreeFormat3()
+WorkingTreeFormat.register_format(__default_format)
+WorkingTreeFormat.set_default_format(__default_format)
+_legacy_formats = [WorkingTreeFormat2(),
+                   ]
+
+
+class WorkingTreeTestProviderAdapter(object):
+    """A tool to generate a suite testing multiple workingtree formats at once.
+
+    This is done by copying the test once for each transport and injecting
+    the transport_server, transport_readonly_server, and workingtree_format
+    classes into each copy. Each copy is also given a new id() to make it
+    easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, formats):
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self._formats = formats
+    
+    def adapt(self, test):
+        from bzrlib.tests import TestSuite
+        result = TestSuite()
+        for workingtree_format, bzrdir_format in self._formats:
+            new_test = deepcopy(test)
+            new_test.transport_server = self._transport_server
+            new_test.transport_readonly_server = self._transport_readonly_server
+            new_test.bzrdir_format = bzrdir_format
+            new_test.workingtree_format = workingtree_format
+            def make_new_test_id():
+                new_id = "%s(%s)" % (new_test.id(), workingtree_format.__class__.__name__)
+                return lambda: new_id
+            new_test.id = make_new_test_id()
+            result.addTest(new_test)
+        return result

@@ -67,12 +67,14 @@ class WeaveStore(TransportStore):
         return self._transport.get(self.filename(file_id))
 
     def _put(self, file_id, f):
-        if self._prefixed:
-            try:
-                self._transport.mkdir(hash_prefix(file_id), mode=self._dir_mode)
-            except FileExists:
-                pass
-        return self._transport.put(self.filename(file_id), f, mode=self._file_mode)
+        # less round trips to mkdir on failure than mkdir always
+        try:
+            return self._transport.put(self.filename(file_id), f, mode=self._file_mode)
+        except NoSuchFile:
+            if not self._prefixed:
+                raise
+            self._transport.mkdir(hash_prefix(file_id), mode=self._dir_mode)
+            return self._transport.put(self.filename(file_id), f, mode=self._file_mode)
 
     def get_weave(self, file_id, transaction):
         weave = transaction.map.find_weave(file_id)

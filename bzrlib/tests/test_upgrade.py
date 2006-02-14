@@ -19,16 +19,22 @@
 This file contains canned versions of some old trees, which are instantiated 
 and then upgraded to the new format."""
 
+# TODO queue for upgrade:
+# test the error message when upgrading an unknown BzrDir format.
+
 import base64
 import os
 import sys
 
 import bzrlib.branch as branch
 from bzrlib.branch import Branch
+import bzrlib.bzrdir as bzrdir
+import bzrlib.repository as repository
 from bzrlib.revision import is_ancestor
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
+import bzrlib.workingtree as workingtree
 
 
 class TestUpgrade(TestCaseInTempDir):
@@ -44,18 +50,24 @@ class TestUpgrade(TestCaseInTempDir):
         eq = self.assertEquals
         self.build_tree_contents(_upgrade1_template)
         upgrade(u'.')
-        b = Branch.open(u'.')
+        control = bzrdir.BzrDir.open('.')
+        b = control.open_branch()
+        r = control.open_repository()
+        t = control.open_workingtree()
         # tsk, peeking under the covers.
-        self.failUnless(isinstance(b._branch_format, branch.BzrBranchFormat6))
+        self.failUnless(isinstance(control._format, bzrdir.BzrDirFormat6))
+        self.failUnless(isinstance(b._format, branch.BzrBranchFormat4))
+        self.failUnless(isinstance(r._format, repository.RepositoryFormat6))
+        self.failUnless(isinstance(t._format, workingtree.WorkingTreeFormat2))
         rh = b.revision_history()
         eq(rh,
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
-        t = b.repository.revision_tree(rh[0])
+        rt = b.repository.revision_tree(rh[0])
         foo_id = 'foo-20051004035605-91e788d1875603ae'
-        eq(t.get_file_text(foo_id), 'initial contents\n')
-        t = b.repository.revision_tree(rh[1])
-        eq(t.get_file_text(foo_id), 'new contents\n')
+        eq(rt.get_file_text(foo_id), 'initial contents\n')
+        rt = b.repository.revision_tree(rh[1])
+        eq(rt.get_file_text(foo_id), 'new contents\n')
         # check a backup was made:
         transport = get_transport(b.base)
         transport.stat('.bzr.backup')
