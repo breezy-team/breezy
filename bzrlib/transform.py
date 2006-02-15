@@ -1001,38 +1001,69 @@ def revert(working_tree, target_tree, filenames, backups=False):
 
 def resolve_conflicts(tt):
     """Make many conflict-resolution attempts, but die if they fail"""
+    new_conflicts = set()
     for n in range(10):
         conflicts = tt.find_conflicts()
         if len(conflicts) == 0:
-            return
-        conflict_pass(tt, conflicts)
+            return new_conflicts
+        new_conflicts.update(conflict_pass(tt, conflicts))
     raise MalformedTransform(conflicts=conflicts)
 
 
 def conflict_pass(tt, conflicts):
     """Resolve some classes of conflicts."""
+    new_conflicts = set()
     for c_type, conflict in ((c[0], c) for c in conflicts):
         if c_type == 'duplicate id':
             tt.unversion_file(conflict[1])
+            new_conflicts.add((c_type, conflict[1], conflict[2], 
+                               'Unversioned existing file'))
         elif c_type == 'duplicate':
             # files that were renamed take precedence
             new_name = tt.final_name(conflict[1])+'.moved'
             final_parent = tt.final_parent(conflict[1])
             if tt.path_changed(conflict[1]):
                 tt.adjust_path(new_name, final_parent, conflict[2])
+                new_conflicts.add((c_type, conflict[2], conflict[1], 
+                                   'Moved existing file'))
             else:
                 tt.adjust_path(new_name, final_parent, conflict[1])
+                new_conflicts.add((c_type, conflict[1], conflict[2], 
+                                   'Moved existing file', ))
         elif c_type == 'parent loop':
             # break the loop by undoing one of the ops that caused the loop
             cur = conflict[1]
             while not tt.path_changed(cur):
                 cur = tt.final_parent(cur)
+            new_conflicts.add((c_type, cur, tt.final_parent(cur), 
+                               'Cancelled move'))
             tt.adjust_path(tt.final_name(cur), tt.get_tree_parent(cur), cur)
+            
         elif c_type == 'missing parent':
             trans_id = conflict[1]
             try:
                 tt.cancel_deletion(trans_id)
+                new_conflicts.add((c_type, 'Not deleting', trans_id))
             except KeyError:
                 tt.create_directory(trans_id)
+                new_conflicts.add((c_type, 'Created directory.', trans_id))
         elif c_type == 'unversioned parent':
             tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
+            new_conflicts.add((c_type, 'Versioned parent directory.', 
+                               conflict[1]))
+    return new_conflicts
+
+def cook_conflicts(raw_conflicts, tt):
+    conflicts = sorted(list(iter_cook_conflicts()))
+
+def iter_cook_conflicts(raw_conflicts, tt):
+    cooked_conflicts = []
+    fp = FinalPaths(self.tt)
+    for conflict in raw_conflicts:
+        c_type = conflict[0]
+        modified_path = pf.get_path(conflict[1])
+        conflicting_path = pf.get_path(conflict[2])
+        action = conflict[3]
+        if c_type == 'duplicate_id':
+            yield modified_path, "Conflict versioning %s.  %s %s" % \
+                (conflicting_path, modified_path)
