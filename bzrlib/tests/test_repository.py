@@ -69,7 +69,7 @@ class SampleRepositoryFormat(repository.RepositoryFormat):
         """See RepositoryFormat.get_format_string()."""
         return "Sample .bzr repository format."
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, shared=False):
         """Initialize a repository in a BzrDir"""
         t = a_bzrdir.get_repository_transport(self)
         t.put('format', StringIO(self.get_format_string()))
@@ -154,6 +154,54 @@ class TestFormat7(TestCaseWithTransport):
         self.assertEqualDiff('Bazaar-NG Repository format 7',
                              t.get('format').read())
         self.assertEqualDiff('', t.get('lock').read())
+        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
+        self.assertEqualDiff('# bzr weave file v5\n'
+                             'w\n'
+                             'W\n',
+                             t.get('inventory.weave').read())
+
+    def test_shared_disk_layout(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = repository.RepositoryFormat7().initialize(control, shared=True)
+        # we want:
+        # format 'Bazaar-NG Repository format 7'
+        # lock ''
+        # inventory.weave == empty_weave
+        # empty revision-store directory
+        # empty weaves directory
+        # a 'shared-storage' marker file.
+        t = control.get_repository_transport(None)
+        self.assertEqualDiff('Bazaar-NG Repository format 7',
+                             t.get('format').read())
+        self.assertEqualDiff('', t.get('lock').read())
+        self.assertEqualDiff('', t.get('shared-storage').read())
+        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
+        self.assertEqualDiff('# bzr weave file v5\n'
+                             'w\n'
+                             'W\n',
+                             t.get('inventory.weave').read())
+
+    def test_shared_no_tree_disk_layout(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = repository.RepositoryFormat7().initialize(control, shared=True)
+        repo.set_make_working_trees(False)
+        # we want:
+        # format 'Bazaar-NG Repository format 7'
+        # lock ''
+        # inventory.weave == empty_weave
+        # empty revision-store directory
+        # empty weaves directory
+        # a 'shared-storage' marker file.
+        t = control.get_repository_transport(None)
+        self.assertEqualDiff('Bazaar-NG Repository format 7',
+                             t.get('format').read())
+        self.assertEqualDiff('', t.get('lock').read())
+        self.assertEqualDiff('', t.get('shared-storage').read())
+        self.assertEqualDiff('', t.get('no-working-trees').read())
+        repo.set_make_working_trees(True)
+        self.assertFalse(t.has('no-working-trees'))
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
         self.assertEqualDiff('# bzr weave file v5\n'

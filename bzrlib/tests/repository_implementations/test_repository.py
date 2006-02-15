@@ -125,7 +125,7 @@ class TestRepository(TestCaseWithRepository):
                          repository.RepositoryFormat.find_format(opened_control))
 
     def test_create_repository(self):
-        # a repository can be constructedzrdir can construct a repository for itself.
+        # bzrdir can construct a repository for itself.
         if not self.bzrdir_format.is_supported():
             # unsupported formats are not loopback testable
             # because the default open will not open them and
@@ -136,6 +136,25 @@ class TestRepository(TestCaseWithRepository):
         made_repo = made_control.create_repository()
         self.failUnless(isinstance(made_repo, repository.Repository))
         self.assertEqual(made_control, made_repo.bzrdir)
+        
+    def test_create_repository_shared(self):
+        # bzrdir can construct a shared repository.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = get_transport(self.get_url())
+        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_repo = made_control.create_repository(shared=True)
+        except errors.IncompatibleFormat:
+            # not all repository formats understand being shared, or
+            # may only be shared in some circumstances.
+            return
+        self.failUnless(isinstance(made_repo, repository.Repository))
+        self.assertEqual(made_control, made_repo.bzrdir)
+        self.assertTrue(made_repo.is_shared())
 
     def test_revision_tree(self):
         wt = self.make_branch_and_tree('.')
@@ -200,6 +219,23 @@ class TestRepository(TestCaseWithRepository):
         target = source.bzrdir.clone(self.get_url('target'), basis=tree.bzrdir)
         self.assertTrue(target.open_repository().has_revision('2'))
 
+    def test_clone_shared_no_tree(self):
+        # cloning a shared repository keeps it shared
+        # and preserves the make_working_tree setting.
+        made_control = self.make_bzrdir('source')
+        try:
+            made_repo = made_control.create_repository(shared=True)
+        except errors.IncompatibleFormat:
+            # not all repository formats understand being shared, or
+            # may only be shared in some circumstances.
+            return
+        made_repo.set_make_working_trees(False)
+        result = made_control.clone(self.get_url('target'))
+        self.failUnless(isinstance(made_repo, repository.Repository))
+        self.assertEqual(made_control, made_repo.bzrdir)
+        self.assertTrue(result.open_repository().is_shared())
+        self.assertFalse(result.open_repository().make_working_trees())
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
@@ -261,4 +297,3 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         # get_ancestry(missing revision)-> NoSuchRevision
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_ancestry, 'orphan')
-        

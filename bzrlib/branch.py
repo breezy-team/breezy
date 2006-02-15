@@ -601,7 +601,8 @@ class BzrBranchFormat4(BranchFormat):
         control_files = LockableFiles(transport, 'branch-lock')
         return BzrBranch(_format=self,
                          _control_files=control_files,
-                         a_bzrdir=a_bzrdir)
+                         a_bzrdir=a_bzrdir,
+                         _repository=a_bzrdir.open_repository())
 
 
 class BzrBranchFormat5(BranchFormat):
@@ -610,7 +611,8 @@ class BzrBranchFormat5(BranchFormat):
     This format has:
      - a revision-history file.
      - a format string
-     - a lock lock file.
+     - a lock file.
+     - works with shared repositories.
     """
 
     def get_format_string(self):
@@ -654,7 +656,8 @@ class BzrBranchFormat5(BranchFormat):
         control_files = LockableFiles(transport, 'lock')
         return BzrBranch(_format=self,
                          _control_files=control_files,
-                         a_bzrdir=a_bzrdir)
+                         a_bzrdir=a_bzrdir,
+                         _repository=a_bzrdir.find_repository())
 
 
 class BranchReferenceFormat(BranchFormat):
@@ -752,7 +755,7 @@ class BzrBranch(Branch):
 
     def __init__(self, transport=DEPRECATED_PARAMETER, init=DEPRECATED_PARAMETER,
                  relax_version_check=DEPRECATED_PARAMETER, _format=None,
-                 _control_files=None, a_bzrdir=None):
+                 _control_files=None, a_bzrdir=None, _repository=None):
         """Create new branch object at a particular location.
 
         transport -- A Transport object, defining how to access files.
@@ -806,8 +809,7 @@ class BzrBranch(Branch):
                  "Please use Branch.open, or bzrdir.open_branch().",
                  DeprecationWarning,
                  stacklevel=2)
-        # TODO change this to search upwards if needed.
-        self.repository = self.bzrdir.open_repository()
+        self.repository = _repository
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)
