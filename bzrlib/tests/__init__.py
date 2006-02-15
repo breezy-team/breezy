@@ -108,29 +108,51 @@ class _MyResult(unittest._TextTestResult):
     def _elapsedTime(self):
         return "%5dms" % (1000 * (time.time() - self._start_time))
 
+    def _ellipsise_unimportant_words(self, a_string, final_width,
+                                   keep_start=False):
+        """Add ellipsese (sp?) for overly long strings.
+        
+        :param keep_start: If true preserve the start of a_string rather
+                           than the end of it.
+        """
+        if keep_start:
+            if len(a_string) > final_width:
+                result = a_string[:final_width-3] + '...'
+            else:
+                result = a_string
+        else:
+            if len(a_string) > final_width:
+                result = '...' + a_string[3-final_width:]
+            else:
+                result = a_string
+        return result.ljust(final_width)
+
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
         # In a short description, the important words are in
         # the beginning, but in an id, the important words are
         # at the end
         SHOW_DESCRIPTIONS = False
+
+        if not self.showAll and self.dots and self.pb is not None:
+            final_width = 13
+        else:
+            final_width = osutils.terminal_width()
+            final_width = final_width - 15
+        what = None
+        if SHOW_DESCRIPTIONS:
+            what = test.shortDescription()
+            if what:
+                what = self._ellipsise_unimportant_words(what, final_width, keep_start=True)
+        if what is None:
+            what = test.id()
+            if what.startswith('bzrlib.tests.'):
+                what = what[13:]
+            what = self._ellipsise_unimportant_words(what, final_width)
         if self.showAll:
-            width = osutils.terminal_width()
-            name_width = width - 15
-            what = None
-            if SHOW_DESCRIPTIONS:
-                what = test.shortDescription()
-                if what:
-                    if len(what) > name_width:
-                        what = what[:name_width-3] + '...'
-            if what is None:
-                what = test.id()
-                if what.startswith('bzrlib.tests.'):
-                    what = what[13:]
-                if len(what) > name_width:
-                    what = '...' + what[3-name_width:]
-            what = what.ljust(name_width)
             self.stream.write(what)
+        elif self.dots and self.pb is not None:
+            self.pb.update(what, self.testsRun - 1, None)
         self.stream.flush()
         self._start_time = time.time()
 
@@ -143,7 +165,7 @@ class _MyResult(unittest._TextTestResult):
         elif self.dots and self.pb is None:
             self.stream.write('E')
         elif self.dots:
-            self.pb.update(None, self.testsRun, None)
+            self.pb.update(self._ellipsise_unimportant_words('ERROR', 13), self.testsRun, None)
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -155,7 +177,7 @@ class _MyResult(unittest._TextTestResult):
         elif self.dots and self.pb is None:
             self.stream.write('F')
         elif self.dots:
-            self.pb.update(None, self.testsRun, None)
+            self.pb.update(self._ellipsise_unimportant_words('FAIL', 13), self.testsRun, None)
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -166,7 +188,7 @@ class _MyResult(unittest._TextTestResult):
         elif self.dots and self.pb is None:
             self.stream.write('~')
         elif self.dots:
-            self.pb.update(None, self.testsRun, None)
+            self.pb.update(self._ellipsise_unimportant_words('OK', 13), self.testsRun, None)
         self.stream.flush()
         unittest.TestResult.addSuccess(self, test)
 
@@ -177,7 +199,7 @@ class _MyResult(unittest._TextTestResult):
         elif self.dots and self.pb is None:
             self.stream.write('S')
         elif self.dots:
-            self.pb.update(None, self.testsRun, None)
+            self.pb.update(self._ellipsise_unimportant_words('SKIP', 13), self.testsRun, None)
         self.stream.flush()
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)

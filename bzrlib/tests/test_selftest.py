@@ -414,28 +414,35 @@ class TestResult(TestCase):
 
         # an error 
         result.startTest(dummy_test)
-        # starting a test changes nothing (the runner does the priming update)
-        self.assertEqual(last_calls, mypb.calls)
+        # starting a test prints the test name
+        self.assertEqual(last_calls + [('update', '...tyle_quiet', 0, None)], mypb.calls)
+        last_calls = mypb.calls[:]
         result.addError(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', None, 1, None)], mypb.calls)
+        self.assertEqual(last_calls + [('update', 'ERROR        ', 1, None)], mypb.calls)
         last_calls = mypb.calls[:]
 
         # a failure
         result.startTest(dummy_test)
+        self.assertEqual(last_calls + [('update', '...tyle_quiet', 1, None)], mypb.calls)
+        last_calls = mypb.calls[:]
         result.addFailure(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', None, 2, None)], mypb.calls)
+        self.assertEqual(last_calls + [('update', 'FAIL         ', 2, None)], mypb.calls)
         last_calls = mypb.calls[:]
 
         # a success
         result.startTest(dummy_test)
+        self.assertEqual(last_calls + [('update', '...tyle_quiet', 2, None)], mypb.calls)
+        last_calls = mypb.calls[:]
         result.addSuccess(dummy_test)
-        self.assertEqual(last_calls + [('update', None, 3, None)], mypb.calls)
+        self.assertEqual(last_calls + [('update', 'OK           ', 3, None)], mypb.calls)
         last_calls = mypb.calls[:]
 
         # a skip
         result.startTest(dummy_test)
+        self.assertEqual(last_calls + [('update', '...tyle_quiet', 3, None)], mypb.calls)
+        last_calls = mypb.calls[:]
         result.addSkipped(dummy_test, dummy_error)
-        self.assertEqual(last_calls + [('update', None, 4, None)], mypb.calls)
+        self.assertEqual(last_calls + [('update', 'SKIP         ', 4, None)], mypb.calls)
         last_calls = mypb.calls[:]
 
 
@@ -452,7 +459,8 @@ class TestRunner(TestCase):
         result = runner.run(test)
         self.assertEqual(1, result.testsRun)
         self.assertEqual(('update', 'Running tests', 0, 1), mypb.calls[0])
-        self.assertEqual(('update', None, 1, None), mypb.calls[1])
-        self.assertEqual(('update', 'Cleaning up', 0, 1), mypb.calls[2])
-        self.assertEqual(('clear',), mypb.calls[3])
-        self.assertEqual(4, len(mypb.calls))
+        self.assertEqual(('update', '...dummy_test', 0, None), mypb.calls[1])
+        self.assertEqual(('update', 'OK           ', 1, None), mypb.calls[2])
+        self.assertEqual(('update', 'Cleaning up', 0, 1), mypb.calls[3])
+        self.assertEqual(('clear',), mypb.calls[4])
+        self.assertEqual(5, len(mypb.calls))
