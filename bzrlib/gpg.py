@@ -19,10 +19,8 @@
 
 import errno
 import subprocess
-import tempfile
 
 import bzrlib.errors as errors
-
 
 class DisabledGPGStrategy(object):
     """A GPG Strategy that makes everything fail."""
@@ -48,30 +46,26 @@ class GPGStrategy(object):
     """GPG Signing and checking facilities."""
         
     def _command_line(self):
-        return [self._config.gpg_signing_command(),
-                '--output', '-', '--clearsign']
+        return [self._config.gpg_signing_command(), '--clearsign']
 
     def __init__(self, config):
         self._config = config
 
     def sign(self, content):
-        f = tempfile.NamedTemporaryFile()
-        cmd = self._command_line() + [f.name]
-        f.write(content)
-        f.flush()
         try:
-            process = subprocess.Popen(cmd,
+            process = subprocess.Popen(self._command_line(),
+                                       stdin=subprocess.PIPE,
                                        stdout=subprocess.PIPE)
             try:
-                result = process.communicate()[0]
+                result = process.communicate(content)[0]
                 if process.returncode is None:
                     process.wait()
                 if process.returncode != 0:
-                    raise errors.SigningFailed(cmd)
+                    raise errors.SigningFailed(self._command_line())
                 return result
             except OSError, e:
                 if e.errno == errno.EPIPE:
-                    raise errors.SigningFailed(cmd)
+                    raise errors.SigningFailed(self._command_line())
                 else:
                     raise
         except ValueError:
@@ -80,7 +74,6 @@ class GPGStrategy(object):
         except OSError, e:
             if e.errno == errno.ENOENT:
                 # gpg is not installed
-                raise errors.SigningFailed(cmd)
+                raise errors.SigningFailed(self._command_line())
             else:
                 raise
-        f.close()
