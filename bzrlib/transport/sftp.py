@@ -936,11 +936,16 @@ class SFTPServer(Server):
         _ssh_vendor = self._original_vendor
 
 
+class SFTPFullAbsoluteServer(SFTPServer):
+    """A test server for sftp transports, using absolute urls and ssh."""
+
+    def get_url(self):
+        """See bzrlib.transport.Server.get_url."""
+        return self._get_sftp_url(urlescape(self._homedir[1:]))
+
+
 class SFTPServerWithoutSSH(SFTPServer):
-    """
-    Common code for an SFTP server over a clear TCP loopback socket,
-    instead of over an SSH secured socket.
-    """
+    """An SFTP server that uses a simple TCP socket pair rather than SSH."""
 
     def __init__(self):
         super(SFTPServerWithoutSSH, self).__init__()

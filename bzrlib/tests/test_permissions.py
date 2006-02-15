@@ -36,6 +36,7 @@ import stat
 from StringIO import StringIO
 
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
@@ -78,32 +79,30 @@ def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
             test.assertTransportMode(t, p, file_mode)
 
 
-def assertEqualMode(test, mode, mode_test):
-    test.assertEqual(mode, mode_test,
-                     'mode mismatch %o != %o' % (mode, mode_test))
-
-
 class TestPermissions(TestCaseWithTransport):
 
     def test_new_files(self):
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
 
-        t = WorkingTree.create_standalone('.')
+        t = self.make_branch_and_tree('.')
         b = t.branch
         open('a', 'wb').write('foo\n')
         t.add('a')
         t.commit('foo')
 
-        # Delete them because we are modifying the filesystem underneath them
-        del b, t 
         chmod_r('.bzr', 0644, 0755)
         check_mode_r(self, '.bzr', 0644, 0755)
 
-        b = Branch.open('.')
-        t = b.working_tree()
-        assertEqualMode(self, 0755, b.control_files._dir_mode)
-        assertEqualMode(self, 0644, b.control_files._file_mode)
+        # although we are modifying the filesystem
+        # underneath the objects, they are not locked, and thus it must
+        # be safe for most operations. But here we want to observe a 
+        # mode change in the control bits, which current do not refresh
+        # when a new lock is taken out.
+        t = WorkingTree.open('.')
+        b = t.branch
+        self.assertEqualMode(0755, b.control_files._dir_mode)
+        self.assertEqualMode(0644, b.control_files._file_mode)
 
         # Modifying a file shouldn't break the permissions
         open('a', 'wb').write('foo2\n')
@@ -117,14 +116,13 @@ class TestPermissions(TestCaseWithTransport):
         t.commit('new b')
         check_mode_r(self, '.bzr', 0644, 0755)
 
-        del b, t
         # Recursively update the modes of all files
         chmod_r('.bzr', 0664, 0775)
         check_mode_r(self, '.bzr', 0664, 0775)
-        b = Branch.open('.')
-        t = b.working_tree()
-        assertEqualMode(self, 0775, b.control_files._dir_mode)
-        assertEqualMode(self, 0664, b.control_files._file_mode)
+        t = WorkingTree.open('.')
+        b = t.branch
+        self.assertEqualMode(0775, b.control_files._dir_mode)
+        self.assertEqualMode(0664, b.control_files._file_mode)
 
         open('a', 'wb').write('foo3\n')
         t.commit('foo3')
@@ -136,14 +134,13 @@ class TestPermissions(TestCaseWithTransport):
         check_mode_r(self, '.bzr', 0664, 0775)
 
         # Test the group sticky bit
-        del b, t
         # Recursively update the modes of all files
         chmod_r('.bzr', 0664, 02775)
         check_mode_r(self, '.bzr', 0664, 02775)
-        b = Branch.open('.')
-        t = b.working_tree()
-        assertEqualMode(self, 02775, b.control_files._dir_mode)
-        assertEqualMode(self, 0664, b.control_files._file_mode)
+        t = WorkingTree.open('.')
+        b = t.branch
+        self.assertEqualMode(02775, b.control_files._dir_mode)
+        self.assertEqualMode(0664, b.control_files._file_mode)
 
         open('a', 'wb').write('foo4\n')
         t.commit('foo4')
@@ -191,40 +188,6 @@ class TestPermissions(TestCaseWithTransport):
             LockableFiles._set_dir_mode = True
             LockableFiles._set_file_mode = True
 
-    def test_new_branch(self):
-        if sys.platform == 'win32':
-            raise TestSkipped('chmod has no effect on win32')
-        #FIXME RBC 20060105 should test branch and repository 
-        # permissions ? 
-        # also, these are BzrBranch format specific things..
-        os.mkdir('a')
-        mode = stat.S_IMODE(os.stat('a').st_mode)
-        t = WorkingTree.create_standalone('.')
-        b = t.branch
-        assertEqualMode(self, mode, b.control_files._dir_mode)
-        assertEqualMode(self, mode & ~07111, b.control_files._file_mode)
-
-        os.mkdir('b')
-        os.chmod('b', 02777)
-        b = Branch.create('b')
-        assertEqualMode(self, 02777, b.control_files._dir_mode)
-        assertEqualMode(self, 00666, b.control_files._file_mode)
-        check_mode_r(self, 'b/.bzr', 00666, 02777)
-
-        os.mkdir('c')
-        os.chmod('c', 02750)
-        b = Branch.create('c')
-        assertEqualMode(self, 02750, b.control_files._dir_mode)
-        assertEqualMode(self, 00640, b.control_files._file_mode)
-        check_mode_r(self, 'c/.bzr', 00640, 02750)
-
-        os.mkdir('d')
-        os.chmod('d', 0700)
-        b = Branch.create('d')
-        assertEqualMode(self, 0700, b.control_files._dir_mode)
-        assertEqualMode(self, 0600, b.control_files._file_mode)
-        check_mode_r(self, 'd/.bzr', 00600, 0700)
-
 
 class TestSftpPermissions(TestCaseWithSFTPServer):
 
@@ -234,33 +197,29 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         # Though it would be nice to test that SFTP to a server
         # which does support chmod has the right effect
 
-        from bzrlib.transport.sftp import SFTPTransport
-
-        # We don't actually use it directly, we just want to
-        # keep the connection open, since StubSFTPServer only
-        # allows 1 connection
-        _transport = SFTPTransport(self._sftp_url)
+        # bodge around for stubsftpserver not letting use connect
+        # more than once
+        _t = get_transport(self.get_url())
 
         os.mkdir('local')
-        t_local = WorkingTree.create_standalone('local')
+        t_local = self.make_branch_and_tree('local')
         b_local = t_local.branch
         open('local/a', 'wb').write('foo\n')
         t_local.add('a')
         t_local.commit('foo')
 
         # Delete them because we are modifying the filesystem underneath them
-        del b_local, t_local 
         chmod_r('local/.bzr', 0644, 0755)
         check_mode_r(self, 'local/.bzr', 0644, 0755)
 
-        b_local = Branch.open(u'local')
-        t_local = b_local.working_tree()
-        assertEqualMode(self, 0755, b_local.control_files._dir_mode)
-        assertEqualMode(self, 0644, b_local.control_files._file_mode)
+        t = WorkingTree.open('local')
+        b_local = t.branch
+        self.assertEqualMode(0755, b_local.control_files._dir_mode)
+        self.assertEqualMode(0644, b_local.control_files._file_mode)
 
         os.mkdir('sftp')
-        sftp_url = self.get_remote_url('sftp')
-        b_sftp = Branch.create(sftp_url)
+        sftp_url = self.get_url('sftp')
+        b_sftp = BzrDir.create_branch_and_repo(sftp_url)
 
         b_sftp.pull(b_local)
         del b_sftp
@@ -268,8 +227,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         check_mode_r(self, 'sftp/.bzr', 0644, 0755)
 
         b_sftp = Branch.open(sftp_url)
-        assertEqualMode(self, 0755, b_sftp.control_files._dir_mode)
-        assertEqualMode(self, 0644, b_sftp.control_files._file_mode)
+        self.assertEqualMode(0755, b_sftp.control_files._dir_mode)
+        self.assertEqualMode(0644, b_sftp.control_files._file_mode)
 
         open('local/a', 'wb').write('foo2\n')
         t_local.commit('foo2')
@@ -289,8 +248,8 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         check_mode_r(self, 'sftp/.bzr', 0664, 0775)
 
         b_sftp = Branch.open(sftp_url)
-        assertEqualMode(self, 0775, b_sftp.control_files._dir_mode)
-        assertEqualMode(self, 0664, b_sftp.control_files._file_mode)
+        self.assertEqualMode(0775, b_sftp.control_files._dir_mode)
+        self.assertEqualMode(0664, b_sftp.control_files._file_mode)
 
         open('local/a', 'wb').write('foo3\n')
         t_local.commit('foo3')
@@ -311,8 +270,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         original_umask = os.umask(umask)
 
         try:
-            from bzrlib.transport.sftp import SFTPTransport
-            t = SFTPTransport(self._sftp_url)
+            t = get_transport(self.get_url())
             # Direct access should be masked by umask
             t._sftp_open_exclusive('a', mode=0666).write('foo\n')
             self.assertTransportMode(t, 'a', 0666 &~umask)
