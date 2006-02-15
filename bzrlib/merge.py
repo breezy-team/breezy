@@ -72,23 +72,6 @@ def _get_revid_tree(branch, revision, local_branch):
     return base_tree
 
 
-def build_working_dir(to_dir):
-    """Build a working directory in an empty directory.
-
-    to_dir is a directory containing branch metadata but no working files,
-    typically constructed by cloning an existing branch. 
-
-    This is split out as a special idiomatic case of merge.  It could
-    eventually be done by just building the tree directly calling into 
-    lower-level code (e.g. constructing a changeset).
-    """
-    # RBC 20051019 is this not just 'export' ?
-    # AB Well, export doesn't take care of inventory...
-    from transform import build_tree
-    this_branch = Branch.open_containing(to_dir)[0]
-    build_tree(this_branch, this_branch.basis_tree())
-
-
 def transform_tree(from_tree, to_tree, interesting_ids=None):
     merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
                 interesting_ids=interesting_ids)
