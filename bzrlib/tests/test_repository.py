@@ -144,6 +144,9 @@ class TestFormat7(TestCaseWithTransport):
     def test_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = repository.RepositoryFormat7().initialize(control)
+        # in case of side effects of locking.
+        repo.lock_write()
+        repo.unlock()
         # we want:
         # format 'Bazaar-NG Repository format 7'
         # lock ''

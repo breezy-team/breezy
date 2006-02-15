@@ -170,7 +170,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         pause()
         sha = tree.get_file_sha1(tree.path2id('hello.txt'))
         self.assertEqual(1, tree._hashcache.miss_count)
-        tree2 = WorkingTree.open('.', tree.branch)
+        tree2 = WorkingTree.open('.')
         sha2 = tree2.get_file_sha1(tree2.path2id('hello.txt'))
         self.assertEqual(0, tree2._hashcache.miss_count)
         self.assertEqual(1, tree2._hashcache.hit_count)

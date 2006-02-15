@@ -500,6 +500,12 @@ class BzrDir(object):
 class BzrDirPreSplitOut(BzrDir):
     """A common class for the all-in-one formats."""
 
+    def __init__(self, _transport, _format):
+        """See BzrDir.__init__."""
+        super(BzrDirPreSplitOut, self).__init__(_transport, _format)
+        self._control_files = LockableFiles(self.get_branch_transport(None),
+                                            'branch-lock')
+
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         """See BzrDir.clone()."""
         from bzrlib.workingtree import WorkingTreeFormat2

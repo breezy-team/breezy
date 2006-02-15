@@ -223,7 +223,7 @@ class WorkingTree(bzrlib.tree.Tree):
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
         basedir = safe_unicode(basedir)
-        mutter("openeing working tree %r", basedir)
+        mutter("opening working tree %r", basedir)
         if deprecated_passed(branch):
             if not _internal:
                 warn("WorkingTree(..., branch=XXX) is deprecated as of bzr 0.8."
@@ -1127,9 +1127,11 @@ class WorkingTree(bzrlib.tree.Tree):
         
         # TODO: split this per format so there is no ugly if block
         if self._hashcache.needs_write and (
+            # dedicated lock files
             self._control_files._lock_count==1 or 
+            # shared lock files
             (self._control_files is self.branch.control_files and 
-             self._control_files._lock_count==2)):
+             self._control_files._lock_count==3)):
             self._hashcache.write()
         # reverse order of locking.
         result = self._control_files.unlock()

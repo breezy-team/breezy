@@ -502,29 +502,6 @@ class BranchFormat(object):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
 
-    def _find_modes(self, t):
-        """Determine the appropriate modes for files and directories.
-        
-        FIXME: When this merges into, or from storage,
-        this code becomes delgatable to a LockableFiles instance.
-
-        For now its cribbed and returns (dir_mode, file_mode)
-        """
-        try:
-            st = t.stat('.')
-        except errors.TransportNotPossible:
-            dir_mode = 0755
-            file_mode = 0644
-        else:
-            dir_mode = st.st_mode & 07777
-            # Remove the sticky and execute bits for files
-            file_mode = dir_mode & ~07111
-        if not BzrBranch._set_dir_mode:
-            dir_mode = None
-        if not BzrBranch._set_file_mode:
-            file_mode = None
-        return dir_mode, file_mode
-
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
         raise NotImplementedError(self.initialized)
@@ -597,10 +574,8 @@ class BzrBranchFormat4(BranchFormat):
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
-        transport = a_bzrdir.get_branch_transport(self)
-        control_files = LockableFiles(transport, 'branch-lock')
         return BzrBranch(_format=self,
-                         _control_files=control_files,
+                         _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
                          _repository=a_bzrdir.open_repository())
 

@@ -83,18 +83,16 @@ class Repository(object):
         """Construct the current default format repository in a_bzrdir."""
         return RepositoryFormat.get_default_format().initialize(a_bzrdir)
 
-    def __init__(self, transport, branch_format, _format=None, a_bzrdir=None):
+    def __init__(self, _format, a_bzrdir):
         object.__init__(self)
-        if transport is not None:
-            warn("Repository.__init__(..., transport=XXX): The transport parameter is "
-                 "deprecated and was never in a supported release. Please use "
-                 "bzrdir.open_repository() or bzrdir.open_branch().repository.",
-                 DeprecationWarning,
-                 stacklevel=2)
-            self.control_files = LockableFiles(transport.clone(bzrlib.BZRDIR), 'README')
-        else: 
-            # TODO: clone into repository if needed
-            self.control_files = LockableFiles(a_bzrdir.get_repository_transport(None), 'README')
+        if isinstance(_format, (RepositoryFormat4,
+                                RepositoryFormat5,
+                                RepositoryFormat6)):
+            # legacy: use a common control files.
+            self.control_files = a_bzrdir._control_files
+        else:
+            self.control_files = LockableFiles(a_bzrdir.get_repository_transport(None),
+                                               'lock')
 
         dir_mode = self.control_files._dir_mode
         file_mode = self.control_files._file_mode
@@ -115,7 +113,6 @@ class Repository(object):
                 ws.enable_cache = True
             return ws
 
-
         def get_store(name, compressed=True, prefixed=False):
             # FIXME: This approach of assuming stores are all entirely compressed
             # or entirely uncompressed is tidy, but breaks upgrade from 
@@ -135,20 +132,6 @@ class Repository(object):
             #    os.mkdir(cache_path)
             #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
-
-        if branch_format is not None:
-            # circular dependencies:
-            from bzrlib.branch import (BzrBranchFormat4,
-                                       BzrBranchFormat5,
-                                       BzrBranchFormat6,
-                                       )
-            if isinstance(branch_format, BzrBranchFormat4):
-                self._format = RepositoryFormat4()
-            elif isinstance(branch_format, BzrBranchFormat5):
-                self._format = RepositoryFormat5()
-            elif isinstance(branch_format, BzrBranchFormat6):
-                self._format = RepositoryFormat6()
-            
 
         if isinstance(self._format, RepositoryFormat4):
             self.inventory_store = get_store('inventory-store')
@@ -702,7 +685,7 @@ class RepositoryFormat(object):
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
-        return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
+        return Repository(_format=self, a_bzrdir=a_bzrdir)
 
     @classmethod
     def register_format(klass, format):
@@ -735,7 +718,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
 
         if not _internal:
             # always initialized when the bzrdir is.
-            return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
+            return Repository(_format=self, a_bzrdir=a_bzrdir)
         
         # Create an empty weave
         sio = StringIO()
@@ -759,7 +742,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
                 control_files.put(file, content)
         finally:
             control_files.unlock()
-        return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
+        return Repository(_format=self, a_bzrdir=a_bzrdir)
 
 
 class RepositoryFormat4(PreSplitOutRepositoryFormat):
@@ -873,7 +856,7 @@ class RepositoryFormat7(RepositoryFormat):
                 control_files.put_utf8('shared-storage', '')
         finally:
             control_files.unlock()
-        return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
+        return Repository(_format=self, a_bzrdir=a_bzrdir)
 
     def __init__(self):
         super(RepositoryFormat7, self).__init__()
