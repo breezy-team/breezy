@@ -193,7 +193,7 @@ class BzrDir(object):
 
         This is a convenience function - it will use an existing repository
         if possible, can be told explicitly whether to create a working tree or
-        nor.
+        not.
 
         This will use the current default BzrDirFormat, and use whatever 
         repository format that that uses via bzrdir.create_branch and
