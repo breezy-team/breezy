@@ -715,8 +715,7 @@ class cmd_info(Command):
     @display_command
     def run(self, branch=None):
         import info
-        b = WorkingTree.open_containing(branch)[0].branch
-        info.show_info(b)
+        info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0])
 
 
 class cmd_remove(Command):
@@ -819,7 +818,7 @@ class cmd_init(Command):
             # locations if the user supplies an extended path
             if not os.path.exists(location):
                 os.mkdir(location)
-        WorkingTree.create_standalone(location)
+        bzrdir.BzrDir.create_standalone_workingtree(location)
 
 
 class cmd_diff(Command):

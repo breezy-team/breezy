@@ -717,6 +717,9 @@ class BzrDirFormat(object):
     def set_default_format(klass, format):
         klass._default_format = format
 
+    def __str__(self):
+        return self.get_format_string()[:-1]
+
     @classmethod
     def unregister_format(klass, format):
         assert klass._formats[format.get_format_string()] is format

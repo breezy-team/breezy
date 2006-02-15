@@ -34,7 +34,7 @@ class TestUpdate(ExternalBase):
     def test_update_up_to_date_checkout(self):
         self.make_branch_and_tree('branch')
         self.runbzr('checkout branch checkout')
-        out, err = self.runbzr('update branch')
+        out, err = self.runbzr('update checkout')
         self.assertEqual('Tree is up to date.\n', err)
         self.assertEqual('', out)
 

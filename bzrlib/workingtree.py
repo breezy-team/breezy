@@ -1406,6 +1406,9 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                            _format=self,
                            _bzrdir=a_bzrdir)
 
+    def __str__(self):
+        return self.get_format_string()
+
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
