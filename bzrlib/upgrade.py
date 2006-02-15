@@ -14,7 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Experiment in converting existing bzr branches to weaves."""
+"""bzr upgrade logic."""
+
+# change upgrade from .bzr to create a '.bzr-new', then do a bait and switch.
+
 
 # To make this properly useful
 #
@@ -73,8 +76,9 @@ from stat import *
 
 import bzrlib
 from bzrlib.branch import Branch
-from bzrlib.branch import BZR_BRANCH_FORMAT_5, BZR_BRANCH_FORMAT_6
-from bzrlib.branch import BzrBranchFormat, BzrBranchFormat4, BzrBranchFormat5, BzrBranchFormat6
+import bzrlib.bzrdir as bzrdir
+from bzrlib.bzrdir import BzrDirFormat, BzrDirFormat4, BzrDirFormat5, BzrDirFormat6
+import bzrlib.errors as errors
 from bzrlib.errors import NoSuchFile, UpgradeReadonly
 import bzrlib.hashcache as hashcache
 from bzrlib.lockable_files import LockableFiles
@@ -122,16 +126,14 @@ class Convert(object):
         note('starting upgrade of %s', self.base)
         self._backup_control_dir()
         self.pb = ui_factory.progress_bar()
-        if isinstance(self.old_format, BzrBranchFormat4):
+        if isinstance(self.old_format, BzrDirFormat4):
             note('starting upgrade from format 4 to 5')
+            if isinstance(self.transport, LocalTransport):
+                self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
             self._convert_to_weaves()
-        if isinstance(self.old_format, BzrBranchFormat5):
+        if isinstance(self.old_format, BzrDirFormat5):
             note('starting upgrade from format 5 to 6')
             self._convert_to_prefixed()
-        if isinstance(self.transport, LocalTransport):
-            cache = hashcache.HashCache(abspath(self.base))
-            cache.clear()
-            cache.write()
         note("finished")
 
     def _convert_to_prefixed(self):
@@ -155,9 +157,10 @@ class Convert(object):
                 except NoSuchFile: # catches missing dirs strangely enough
                     store_transport.mkdir(prefix_dir)
                     store_transport.move(filename, prefix_dir + '/' + filename)
-        self._set_new_format(BZR_BRANCH_FORMAT_6)
-        self.branch = BzrBranchFormat6().open(self.transport)
-        self.old_format = self.branch._branch_format
+        self.old_format = BzrDirFormat6()
+        self._set_new_format(self.old_format.get_format_string())
+        self.bzrdir = self.old_format.open(self.transport)
+        self.branch = self.bzrdir.open_branch()
 
     def _convert_to_weaves(self):
         note('note: upgrade may be faster if all store files are ungzipped first')
@@ -198,19 +201,22 @@ class Convert(object):
         note('  %6d revisions not present' % len(self.absent_revisions))
         note('  %6d texts' % self.text_count)
         self._cleanup_spare_files_after_format4()
-        self._set_new_format(BZR_BRANCH_FORMAT_5)
-        self.branch = BzrBranchFormat5().open(self.transport)
-        self.old_format = self.branch._branch_format
+        self.old_format = BzrDirFormat5()
+        self._set_new_format(self.old_format.get_format_string())
+        self.bzrdir = self.old_format.open(self.transport)
+        self.branch = self.bzrdir.open_branch()
 
     def _open_branch(self):
-        self.old_format = BzrBranchFormat.find_format(self.transport)
-        self.branch = self.old_format.open(self.transport)
-        if isinstance(self.old_format, BzrBranchFormat6):
+        self.old_format = BzrDirFormat.find_format(self.transport)
+        self.bzrdir = self.old_format.open(self.transport)
+        self.branch = self.bzrdir.open_branch()
+        if isinstance(self.old_format, BzrDirFormat6):
             note('this branch is in the most current format (%s)', self.old_format)
             return False
-        if (not isinstance(self.old_format, BzrBranchFormat4) and
-            not isinstance(self.old_format, BzrBranchFormat5)):
-            raise BzrError("cannot upgrade from branch format %s" %
+        if (not isinstance(self.old_format, BzrDirFormat4) and
+            not isinstance(self.old_format, BzrDirFormat5) and
+            not isinstance(self.old_format, bzrdir.BzrDirMetaFormat1)):
+            raise errors.BzrError("cannot upgrade from branch format %s" %
                            self.branch._branch_format)
         return True
 

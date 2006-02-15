@@ -17,17 +17,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Branch implementation tests for bzr.
+"""BzrDir implementation tests for bzr.
 
-These test the conformance of all the branch variations to the expected API.
-Specific tests for individual formats are in the tests/test_branch file 
+These test the conformance of all the repository variations to the expected API.
+Specific tests for individual formats are in the tests/test_repository.py file 
 rather than in tests/branch_implementations/*.py.
 """
 
-from bzrlib.branch import (BranchFormat,
-                           BranchTestProviderAdapter,
-                           _legacy_formats,
-                           )
+from bzrlib.repository import (_legacy_formats,
+                               RepositoryFormat,
+                               RepositoryTestProviderAdapter,
+                               )
+                            
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
@@ -38,18 +39,17 @@ from bzrlib.tests import (
 
 def test_suite():
     result = TestSuite()
-    test_branch_implementations = [
-        'bzrlib.tests.branch_implementations.test_branch',
-        'bzrlib.tests.branch_implementations.test_parent',
-        'bzrlib.tests.branch_implementations.test_permissions',
+    test_repository_implementations = [
+        'bzrlib.tests.repository_implementations.test_fileid_involved',
+        'bzrlib.tests.repository_implementations.test_repository',
         ]
-    adapter = BranchTestProviderAdapter(
+    adapter = RepositoryTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
         [(format, format._matchingbzrdir) for format in 
-         BranchFormat._formats.values() + _legacy_formats])
+         RepositoryFormat._formats.values() + _legacy_formats])
     loader = TestLoader()
-    adapt_modules(test_branch_implementations, adapter, loader, result)
+    adapt_modules(test_repository_implementations, adapter, loader, result)
     return result

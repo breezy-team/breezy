@@ -24,6 +24,13 @@ bzr development version
           | sed 's/.*\/\/..\///' \
           | xargs bzr re-sign
 
+    * Upgrade can now upgrade over the network. (Robert Collins)
+
+    * Two new commands 'bzr checkout' and 'bzr update' allow for CVS/SVN-alike
+      behaviour. They use the existing serverless-mode and store no data
+      locally. As such they are not suitable for use except in high bandwidth
+      low latency environments like LAN's or local disk. (Robert Collins)
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now
