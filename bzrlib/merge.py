@@ -707,7 +707,7 @@ class Merge3Merger(object):
             if this_parent is not None:
                 this_parent_path = \
                     fp.get_path(self.tt.get_trans_id(this_parent))
-                this_path = os.path.join(this_parent_path, this_name)
+                this_path = pathjoin(this_parent_path, this_name)
             else:
                 this_path = "<deleted>"
             file_id = self.tt.final_file_id(trans_id)
@@ -807,7 +807,7 @@ class Diff3Merger(Merge3Merger):
         import bzrlib.patch
         temp_dir = mkdtemp(prefix="bzr-")
         try:
-            new_file = os.path.join(temp_dir, "new")
+            new_file = pathjoin(temp_dir, "new")
             this = self.dump_file(temp_dir, "this", self.this_tree, file_id)
             base = self.dump_file(temp_dir, "base", self.base_tree, file_id)
             other = self.dump_file(temp_dir, "other", self.other_tree, file_id)

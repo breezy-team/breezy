@@ -178,7 +178,7 @@ class TreeTransform(object):
         # don't follow final symlinks
         dirname, basename = os.path.split(self._tree.abspath(path))
         dirname = os.path.realpath(dirname)
-        return self._tree.relpath(os.path.join(dirname, basename))
+        return self._tree.relpath(pathjoin(dirname, basename))
 
     def get_tree_path_id(self, path):
         """Determine (and maybe set) the transaction ID for a tree path."""
@@ -639,7 +639,7 @@ class TreeTransform(object):
 
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
-        return os.path.join(self._limbodir, trans_id)
+        return pathjoin(self._limbodir, trans_id)
 
     def _apply_removals(self, inv, limbo_inv):
         """Perform tree operations that remove directory/inventory names.
@@ -784,7 +784,7 @@ def joinpath(parent, child):
     if parent is None or parent == "":
         return child
     else:
-        return os.path.join(parent, child)
+        return pathjoin(parent, child)
 
 class FinalPaths(object):
     """Make path calculation cheap by memoizing paths.
@@ -805,7 +805,7 @@ class FinalPaths(object):
         if parent_id == self.transform.root:
             return name
         else:
-            return os.path.join(self.get_path(parent_id), name)
+            return pathjoin(self.get_path(parent_id), name)
 
     def get_path(self, trans_id):
         """Find the final path associated with a trans_id"""
