@@ -175,13 +175,17 @@ class BzrDir(object):
         :param force_new_repo: If True a new repository is always created.
         """
         bzrdir = BzrDir.create(base)
-        if force_new_repo:
-            bzrdir.create_repository()
-        try:
-            repo = bzrdir.find_repository()
-        except errors.NoRepositoryPresent:
-            bzrdir.create_repository()
+        bzrdir._find_or_create_repository(force_new_repo)
         return bzrdir.create_branch()
+
+    def _find_or_create_repository(self, force_new_repo):
+        """Create a new repository if needed, returning the repository."""
+        if force_new_repo:
+            return self.create_repository()
+        try:
+            return self.find_repository()
+        except errors.NoRepositoryPresent:
+            return self.create_repository()
         
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False, force_new_tree=None):
@@ -207,12 +211,7 @@ class BzrDir(object):
                                prevent such creation respectively.
         """
         bzrdir = BzrDir.create(base)
-        if force_new_repo:
-            bzrdir.create_repository()
-        try:
-            repo = bzrdir.find_repository()
-        except errors.NoRepositoryPresent:
-            repo = bzrdir.create_repository()
+        repo = bzrdir._find_or_create_repository(force_new_repo)
         result = bzrdir.create_branch()
         if force_new_tree or (repo.make_working_trees() and 
                               force_new_tree is None):
@@ -277,7 +276,7 @@ class BzrDir(object):
         next_transport = self.root_transport.clone('..')
         while True:
             try:
-                found_bzrdir = BzrDir.open_containing_transport(
+                found_bzrdir = BzrDir.open_containing_from_transport(
                     next_transport)[0]
             except errors.NotBranchError:
                 raise errors.NoRepositoryPresent(self)
@@ -383,12 +382,12 @@ class BzrDir(object):
         """Open an existing branch which contains url.
         
         :param url: url to search from.
-        See open_containing_transport for more detail.
+        See open_containing_from_transport for more detail.
         """
-        return BzrDir.open_containing_transport(get_transport(url))
+        return BzrDir.open_containing_from_transport(get_transport(url))
     
     @staticmethod
-    def open_containing_transport(a_transport):
+    def open_containing_from_transport(a_transport):
         """Open an existing branch which contains a_transport.base
 
         This probes for a branch at a_transport, and searches upwards from there.

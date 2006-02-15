@@ -353,16 +353,16 @@ class ChrootedTests(TestCaseWithTransport):
         branch, relpath = bzrdir.BzrDir.open_containing(self.get_readonly_url('g/p/q'))
         self.assertEqual('g/p/q', relpath)
 
-    def test_open_containing_transport(self):
-        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_containing_transport,
+    def test_open_containing_from_transport(self):
+        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_containing_from_transport,
                           get_transport(self.get_readonly_url('')))
-        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_containing_transport,
+        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_containing_from_transport,
                           get_transport(self.get_readonly_url('g/p/q')))
         control = bzrdir.BzrDir.create(self.get_url())
-        branch, relpath = bzrdir.BzrDir.open_containing_transport(
+        branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
             get_transport(self.get_readonly_url('')))
         self.assertEqual('', relpath)
-        branch, relpath = bzrdir.BzrDir.open_containing_transport(
+        branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
             get_transport(self.get_readonly_url('g/p/q')))
         self.assertEqual('g/p/q', relpath)
 
