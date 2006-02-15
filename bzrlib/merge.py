@@ -17,8 +17,8 @@
 
 import os
 import errno
-from tempfile import mkdtemp
 from shutil import rmtree
+from tempfile import mkdtemp
 
 import bzrlib
 from bzrlib.branch import Branch
@@ -35,20 +35,15 @@ from bzrlib.errors import (BzrCommandError,
                            WorkingTreeNotRevision,
                            )
 from bzrlib.fetch import greedy_fetch, fetch
-import bzrlib.osutils
 from bzrlib.merge3 import Merge3
+import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
-from bzrlib.transform import TreeTransform, resolve_conflicts, FinalPaths, create_by_entry, unique_add
+from bzrlib.transform import (TreeTransform, resolve_conflicts, FinalPaths, 
+                              create_by_entry, unique_add)
 from bzrlib.trace import mutter, warning, note
 
 # TODO: Report back as changes are merged in
-
-# comments from abentley on irc: merge happens in two stages, each
-# of which generates a changeset object
-
-# stage 1: generate OLD->OTHER,
-# stage 2: use MINE and OLD->OTHER to generate MINE -> RESULT
 
 def _get_tree(treespec, local_branch=None):
     location, revno = treespec
@@ -329,10 +324,12 @@ class Merger(object):
 
 
 class Merge3Merger(object):
+    """Three-way merger that uses the merge3 text merger"""
     requires_base = True
     supports_reprocess = True
     supports_show_base = True
     history_based = False
+
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  reprocess=False, show_base=False):
         """Initialize the merger object and perform the merge."""
@@ -466,7 +463,6 @@ class Merge3Merger(object):
         parent_trans_id = self.tt.get_trans_id(parent_id)
         self.tt.adjust_path(winner_entry[name_winner].name, parent_trans_id,
                             trans_id)
-
 
     def merge_contents(self, file_id):
         """Performa a merge on file_id contents."""
@@ -728,7 +724,7 @@ def conflicts_strings(conflicts):
 
 
 class WeaveMerger(Merge3Merger):
-    """Merger that does weave merges."""
+    """Three-way tree merger, text weave merger."""
     supports_reprocess = False
     supports_show_base = False
 
@@ -790,7 +786,7 @@ class WeaveMerger(Merge3Merger):
 
 
 class Diff3Merger(Merge3Merger):
-    """Use good ol' diff3 to do text merges"""
+    """Three-way merger using external diff3 for text merging"""
     def dump_file(self, temp_dir, name, tree, file_id):
         out_path = pathjoin(temp_dir, name)
         out_file = file(out_path, "wb")

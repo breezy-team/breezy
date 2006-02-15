@@ -26,12 +26,15 @@ from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import file_kind, supports_executable, pathjoin
 from bzrlib.trace import mutter
 
+
 ROOT_PARENT = "root-parent"
+
 
 def unique_add(map, key, value):
     if key in map:
         raise DuplicateKey(key=key)
     map[key] = value
+
 
 class TreeTransform(object):
     """Represent a tree transformation."""
@@ -287,7 +290,9 @@ class TreeTransform(object):
         self.unversion_file(trans_id)
 
     def set_executability(self, executability, trans_id):
-        """Schedule setting of the 'execute' bit"""
+        """Schedule setting of the 'execute' bit
+        To unschedule, set to None
+        """
         if executability is None:
             del self._new_executability[trans_id]
         else:
@@ -372,7 +377,6 @@ class TreeTransform(object):
             if trans_id in self._removed_id:
                 return None
         return self.get_tree_file_id(trans_id)
-
 
     def inactive_file_id(self, trans_id):
         """Return the inactive file_id associated with a transaction id.
@@ -785,6 +789,7 @@ def joinpath(parent, child):
         return child
     else:
         return pathjoin(parent, child)
+
 
 class FinalPaths(object):
     """Make path calculation cheap by memoizing paths.
