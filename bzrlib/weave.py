@@ -799,7 +799,7 @@ class Weave(object):
                        state
 
 
-    def join(self, other):
+    def join(self, other, pb=None, msg=None):
         import sys, time
         """Integrate versions from other into this weave.
 
@@ -809,43 +809,55 @@ class Weave(object):
 
         It is illegal for the two weaves to contain different values 
         or different parents for any version.  See also reweave().
+
+        :param other: The other weave to pull into this one
+        :param pb: An optional progress bar
+        :param msg: An optional message to display for progress
         """
         if other.numversions() == 0:
             return          # nothing to update, easy
         # two loops so that we do not change ourselves before verifying it
         # will be ok
         # work through in index order to make sure we get all dependencies
+        names_to_join = []
+        processed = 0
         for other_idx, name in enumerate(other._names):
             self._check_version_consistent(other, other_idx, name)
+            sha1 = other._sha1s[other_idx]
+
+            processed += 1
+
+            if name in self._name_map:
+                idx = self.lookup(name)
+                n1 = set(map(other.idx_to_name, other._parents[other_idx]))
+                n2 = set(map(self.idx_to_name, self._parents[idx]))
+                if sha1 ==  self._sha1s[idx] and n1 == n2:
+                        continue
+
+            names_to_join.append((other_idx, name))
+
+        if pb and not msg:
+            msg = 'weave join'
 
         merged = 0
-        processed = 0
         time0 = time.time( )
-        for other_idx, name in enumerate(other._names):
+        for other_idx, name in names_to_join:
             # TODO: If all the parents of the other version are already
             # present then we can avoid some work by just taking the delta
             # and adjusting the offsets.
             new_parents = self._imported_parents(other, other_idx)
             sha1 = other._sha1s[other_idx]
 
-            processed += 1
-           
-            if name in self._names:
-                idx = self.lookup(name)
-                n1 = map(other.idx_to_name, other._parents[other_idx] )
-                n2 = map(self.idx_to_name, self._parents[other_idx] )
-                if sha1 ==  self._sha1s[idx] and n1 == n2:
-                        continue
-
             merged += 1
+
+            if pb:
+                pb.update(msg, merged, len(names_to_join))
+           
             lines = other.get_lines(other_idx)
             self.add(name, new_parents, lines, sha1)
 
         mutter("merged = %d, processed = %d, file_id=%s; deltat=%d"%(
-                merged,processed,self._weave_name, time.time( )-time0))
-
-
-
+                merged, processed, self._weave_name, time.time( )-time0))
  
     def _imported_parents(self, other, other_idx):
         """Return list of parents in self corresponding to indexes in other."""
@@ -879,10 +891,8 @@ class Weave(object):
                                  % (name))
             self_parents = self._parents[this_idx]
             other_parents = other._parents[other_idx]
-            n1 = [self._names[i] for i in self_parents]
-            n2 = [other._names[i] for i in other_parents]
-            n1.sort()
-            n2.sort()
+            n1 = set([self._names[i] for i in self_parents])
+            n2 = set([other._names[i] for i in other_parents])
             if n1 != n2:
                 raise WeaveParentMismatch("inconsistent parents "
                     "for version {%s}: %s vs %s" % (name, n1, n2))
@@ -891,14 +901,19 @@ class Weave(object):
         else:
             return False
 
-    def reweave(self, other):
-        """Reweave self with other."""
-        new_weave = reweave(self, other)
+    def reweave(self, other, pb=None, msg=None):
+        """Reweave self with other.
+
+        :param other: The other weave to merge
+        :param pb: An optional progress bar, indicating how far done we are
+        :param msg: An optional message for the progress
+        """
+        new_weave = reweave(self, other, pb=pb, msg=msg)
         for attr in self.__slots__:
             setattr(self, attr, getattr(new_weave, attr))
 
 
-def reweave(wa, wb):
+def reweave(wa, wb, pb=None, msg=None):
     """Combine two weaves and return the result.
 
     This works even if a revision R has different parents in 
@@ -909,6 +924,9 @@ def reweave(wa, wb):
     might be possible but it should only be necessary to do 
     this operation rarely, when a new previously ghost version is 
     inserted.
+
+    :param pb: An optional progress bar, indicating how far done we are
+    :param msg: An optional message for the progress
     """
     wr = Weave()
     ia = ib = 0
@@ -920,11 +938,25 @@ def reweave(wa, wb):
     mutter("combined parents: %r", combined_parents)
     order = topo_sort(combined_parents.iteritems())
     mutter("order to reweave: %r", order)
-    for name in order:
+
+    if pb and not msg:
+        msg = 'reweave'
+
+    for idx, name in enumerate(order):
+        if pb:
+            pb.update(msg, idx, len(order))
         if name in wa._name_map:
             lines = wa.get_lines(name)
             if name in wb._name_map:
-                assert lines == wb.get_lines(name)
+                lines_b = wb.get_lines(name)
+                if lines != lines_b:
+                    mutter('Weaves differ on content. rev_id {%s}', name)
+                    mutter('weaves: %s, %s', wa._weave_name, wb._weave_name)
+                    import difflib
+                    lines = list(difflib.unified_diff(lines, lines_b,
+                            wa._weave_name, wb._weave_name))
+                    mutter('lines:\n%s', ''.join(lines))
+                    raise errors.WeaveTextDiffers(name, wa, wb)
         else:
             lines = wb.get_lines(name)
         wr.add(name, combined_parents[name], lines)
