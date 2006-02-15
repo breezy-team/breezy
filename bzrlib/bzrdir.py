@@ -184,6 +184,42 @@ class BzrDir(object):
         return bzrdir.create_branch()
         
     @staticmethod
+    def create_branch_convenience(base, force_new_repo=False, force_new_tree=None):
+        """Create a new BzrDir, Branch and Repository at the url 'base'.
+
+        This is a convenience function - it will use an existing repository
+        if possible, can be told explicitly whether to create a working tree or
+        nor.
+
+        This will use the current default BzrDirFormat, and use whatever 
+        repository format that that uses via bzrdir.create_branch and
+        create_repository. If a shared repository is available that is used
+        preferentially. Whatever repository is used, its tree creation policy
+        is followed.
+
+        The created Branch object is returned.
+        If a working tree cannot be made due to base not being a file:// url,
+        no error is raised.
+
+        :param base: The URL to create the branch at.
+        :param force_new_repo: If True a new repository is always created.
+        :param force_new_tree: If True or False force creation of a tree or 
+                               prevent such creation respectively.
+        """
+        bzrdir = BzrDir.create(base)
+        if force_new_repo:
+            bzrdir.create_repository()
+        try:
+            repo = bzrdir.find_repository()
+        except errors.NoRepositoryPresent:
+            repo = bzrdir.create_repository()
+        result = bzrdir.create_branch()
+        if force_new_tree or (repo.make_working_trees() and 
+                              force_new_tree is None):
+            bzrdir.create_workingtree()
+        return result
+        
+    @staticmethod
     def create_repository(base, shared=False):
         """Create a new BzrDir and Repository at the url 'base'.
 
@@ -216,7 +252,8 @@ class BzrDir(object):
         t = get_transport(safe_unicode(base))
         if not isinstance(t, LocalTransport):
             raise errors.NotLocalUrl(base)
-        bzrdir = BzrDir.create_branch_and_repo(safe_unicode(base)).bzrdir
+        bzrdir = BzrDir.create_branch_and_repo(safe_unicode(base),
+                                               force_new_repo=True).bzrdir
         return bzrdir.create_workingtree()
 
     def create_workingtree(self, revision_id=None):

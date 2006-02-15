@@ -15,5 +15,4 @@ When merging:
  * document WorkingTree.create, branch.create, workingtree.create_standalone, branch.init deprecation.
 
 Before considering it finished.:
- * cleanup remnans of check_format in the BzrBranch constructor.
  * check to use BzrDir 
