@@ -61,7 +61,7 @@ from bzrlib.errors import (BzrCheckError,
                            NotBranchError,
                            NoSuchFile,
                            NotVersionedError)
-from bzrlib.inventory import InventoryEntry
+from bzrlib.inventory import InventoryEntry, Inventory
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.merge import merge_inner, transform_tree
 from bzrlib.osutils import (appendpath,
@@ -86,6 +86,7 @@ from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.trace import mutter
+from bzrlib.transform import build_tree
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
 import bzrlib.xml5
@@ -1309,8 +1310,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             finally:
                 branch.unlock()
         revision = branch.last_revision()
-        basis_tree = branch.repository.revision_tree(revision)
-        inv = basis_tree.inventory
+        inv = Inventory() 
         wt = WorkingTree(a_bzrdir.root_transport.base,
                          branch,
                          inv,
@@ -1321,7 +1321,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         wt.set_root_id(inv.root.file_id)
         wt.set_last_revision(revision)
         wt.set_pending_merges([])
-        wt.revert([])
+        build_tree(wt.basis_tree(), wt)
         return wt
 
     def __init__(self):
@@ -1369,8 +1369,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
-        new_basis_tree = branch.repository.revision_tree(revision_id)
-        inv = new_basis_tree.inventory
+        inv = Inventory() 
         wt = WorkingTree3(a_bzrdir.root_transport.base,
                          branch,
                          inv,
@@ -1381,7 +1380,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         wt.set_root_id(inv.root.file_id)
         wt.set_last_revision(revision_id)
         wt.set_pending_merges([])
-        wt.revert([])
+        build_tree(wt.basis_tree(), wt)
         return wt
 
     def __init__(self):

@@ -819,10 +819,9 @@ def topology_sorted_ids(tree):
     file_ids.sort(key=tree.id2path)
     return file_ids
 
-def build_tree(branch, tree):
+def build_tree(tree, wt):
     """Create working tree for a branch, using a Transaction."""
     file_trans_id = {}
-    wt = branch.working_tree()
     tt = TreeTransform(wt)
     try:
         file_trans_id[wt.get_root_id()] = tt.get_id_tree(wt.get_root_id())
