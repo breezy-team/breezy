@@ -978,7 +978,10 @@ class TestBzrDir(TestCaseWithBzrDir):
     def test_can_and_needs_upgrade_format(self):
         # check that we can ask an instance if its upgradable
         dir = self.make_bzrdir('.')
-        dir.can_update_format()
+        if dir.can_update_format():
+            # if its updatable there must be an updater
+            self.assertTrue(isinstance(dir._format.get_updater(),
+                                       bzrdir.Converter))
         dir.needs_format_update()
 
 

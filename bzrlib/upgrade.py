@@ -41,19 +41,22 @@ class Convert(object):
             self.pb.note("This is a checkout. The branch (%s) needs to be "
                          "upgraded separately.",
                          branch.bzrdir.root_transport.base)
+        if not self.bzrdir.needs_format_update():
+            raise errors.UpToDateFormat(self.bzrdir._format)
         if not self.bzrdir.can_update_format():
             raise errors.BzrError("cannot upgrade from branch format %s" %
                            self.bzrdir._format)
-        if not self.bzrdir.needs_format_update():
-            raise errors.UpToDateFormat(self.bzrdir._format)
         self.pb.note('starting upgrade of %s', self.transport.base)
         self._backup_control_dir()
+        while self.bzrdir.needs_format_update():
+            converter = self.bzrdir._format.get_updater()
+            self.bzrdir = converter.convert(self.bzrdir, self.pb)
         if isinstance(self.bzrdir._format, BzrDirFormat4):
-            converter = ConvertBzrDir4To5(self.bzrdir, self.pb)
-            self.bzrdir = converter.convert()
+            converter = ConvertBzrDir4To5()
+            self.bzrdir = converter.convert(self.bzrdir, self.pb)
         if isinstance(self.bzrdir._format, BzrDirFormat5):
-            converter = ConvertBzrDir5To6(self.bzrdir, self.pb)
-            self.bzrdir = converter.convert()
+            converter = ConvertBzrDir5To6()
+            self.bzrdir = converter.convert(self.bzrdir, self.pb)
         self.pb.note("finished")
 
     def _backup_control_dir(self):

@@ -693,6 +693,10 @@ class BzrDirMeta1(BzrDir):
     individual formats are really split out.
     """
 
+    def can_update_format(self):
+        """See BzrDir.can_update_format()."""
+        return False
+
     def create_branch(self):
         """See BzrDir.create_branch."""
         from bzrlib.branch import BranchFormat
@@ -749,6 +753,10 @@ class BzrDirMeta1(BzrDir):
         except errors.FileExists:
             pass
         return self.transport.clone('checkout')
+
+    def needs_format_update(self):
+        """See BzrDir.needs_format_update()."""
+        return False
 
     def open_branch(self, unsupported=False):
         """See BzrDir.open_branch."""
@@ -814,6 +822,17 @@ class BzrDirFormat(object):
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
+
+    def get_updater(self):
+        """Return the updater to use to convert bzrdirs needing updates.
+
+        This returns a bzrlib.bzrdir.Converter object.
+
+        This should return the best upgrader to step this format towards the
+        current default format. In the case of plugins we can/shouold provide
+        some means for them to extend the range of returnable converters.
+        """
+        raise NotImplementedError(self.get_updater)
 
     def initialize(self, url):
         """Create a bzr control dir at this url and return an opened copy."""
@@ -907,6 +926,10 @@ class BzrDirFormat4(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 0.0.4\n"
 
+    def get_updater(self):
+        """See BzrDirFormat.get_updater()."""
+        return ConvertBzrDir4To5()
+        
     def initialize(self, url):
         """Format 4 branches cannot be created."""
         raise errors.UninitializableFormat(self)
@@ -940,6 +963,10 @@ class BzrDirFormat5(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
 
+    def get_updater(self):
+        """See BzrDirFormat.get_updater()."""
+        return ConvertBzrDir5To6()
+        
     def initialize(self, url, _cloning=False):
         """Format 5 dirs always have working tree, branch and repository.
         
@@ -974,6 +1001,10 @@ class BzrDirFormat6(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 6\n"
 
+    def get_updater(self):
+        """See BzrDirFormat.get_updater()."""
+        return ConvertBzrDir6ToMeta()
+        
     def initialize(self, url, _cloning=False):
         """Format 6 dirs always have working tree, branch and repository.
         
@@ -1125,32 +1156,28 @@ class ScratchDir(BzrDir6):
 class Converter(object):
     """Converts a disk format object from one format to another."""
 
-    def __init__(self, pb):
-        """Create a converter.
+    def convert(self, to_convert, pb):
+        """Perform the conversion of to_convert, giving feedback via pb.
 
+        :param to_convert: The disk object to convert.
         :param pb: a progress bar to use for progress information.
         """
-        self.pb = pb
 
 
 class ConvertBzrDir4To5(Converter):
     """Converts format 4 bzr dirs to format 5."""
 
-    def __init__(self, to_convert, pb):
-        """Create a converter.
-
-        :param to_convert: The disk object to convert.
-        :param pb: a progress bar to use for progress information.
-        """
-        super(ConvertBzrDir4To5, self).__init__(pb)
-        self.bzrdir = to_convert
+    def __init__(self):
+        super(ConvertBzrDir4To5, self).__init__()
         self.converted_revs = set()
         self.absent_revisions = set()
         self.text_count = 0
         self.revisions = {}
         
-    def convert(self):
+    def convert(self, to_convert, pb):
         """See Converter.convert()."""
+        self.bzrdir = to_convert
+        self.pb = pb
         self.pb.note('starting upgrade from format 4 to 5')
         if isinstance(self.bzrdir.transport, LocalTransport):
             self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
@@ -1409,17 +1436,10 @@ class ConvertBzrDir4To5(Converter):
 class ConvertBzrDir5To6(Converter):
     """Converts format 5 bzr dirs to format 6."""
 
-    def __init__(self, to_convert, pb):
-        """Create a converter.
-
-        :param to_convert: The disk object to convert.
-        :param pb: a progress bar to use for progress information.
-        """
-        super(ConvertBzrDir5To6, self).__init__(pb)
-        self.bzrdir = to_convert
-        
-    def convert(self):
+    def convert(self, to_convert, pb):
         """See Converter.convert()."""
+        self.bzrdir = to_convert
+        self.pb = pb
         self.pb.note('starting upgrade from format 5 to 6')
         self._convert_to_prefixed()
         return BzrDir.open(self.bzrdir.root_transport.base)
@@ -1446,4 +1466,14 @@ class ConvertBzrDir5To6(Converter):
                     store_transport.move(filename, prefix_dir + '/' + filename)
         self.bzrdir._control_files.put_utf8('branch-format', BzrDirFormat6().get_format_string())
 
+
+class ConvertBzrDir6ToMeta(Converter):
+    """Converts format 6 bzr dirs to metadirs."""
+
+    def convert(self, to_convert, pb):
+        """See Converter.convert()."""
+        self.bzrdir = to_convert
+        self.pb = pb
+        self.pb.note('starting upgrade from format 5 to 6')
+        return BzrDir.open(self.bzrdir.root_transport.base)
 
