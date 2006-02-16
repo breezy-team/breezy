@@ -993,7 +993,7 @@ def revert(working_tree, target_tree, filenames, backups=False):
                 continue
             if file_id not in target_tree:
                 tt.unversion_file(tt.get_id_tree(file_id))
-        resolve_conflicts(tt)
+        conflicts = resolve_conflicts(tt)
         tt.apply()
     finally:
         tt.finalize()
@@ -1016,27 +1016,27 @@ def conflict_pass(tt, conflicts):
     for c_type, conflict in ((c[0], c) for c in conflicts):
         if c_type == 'duplicate id':
             tt.unversion_file(conflict[1])
-            new_conflicts.add((c_type, conflict[1], conflict[2], 
-                               'Unversioned existing file'))
+            new_conflicts.add((c_type, 'Unversioned existing file',
+                               conflict[1], conflict[2], ))
         elif c_type == 'duplicate':
             # files that were renamed take precedence
             new_name = tt.final_name(conflict[1])+'.moved'
             final_parent = tt.final_parent(conflict[1])
             if tt.path_changed(conflict[1]):
                 tt.adjust_path(new_name, final_parent, conflict[2])
-                new_conflicts.add((c_type, conflict[2], conflict[1], 
-                                   'Moved existing file'))
+                new_conflicts.add((c_type, 'Moved existing file', conflict[2],
+                                   conflict[1]))
             else:
                 tt.adjust_path(new_name, final_parent, conflict[1])
-                new_conflicts.add((c_type, conflict[1], conflict[2], 
-                                   'Moved existing file', ))
+                new_conflicts.add((c_type, 'Moved existing file', conflict[1],
+                                   conflict[2]))
         elif c_type == 'parent loop':
             # break the loop by undoing one of the ops that caused the loop
             cur = conflict[1]
             while not tt.path_changed(cur):
                 cur = tt.final_parent(cur)
-            new_conflicts.add((c_type, cur, tt.final_parent(cur), 
-                               'Cancelled move'))
+            new_conflicts.add((c_type, 'Cancelled move', cur,
+                               tt.final_parent(cur),))
             tt.adjust_path(tt.final_name(cur), tt.get_tree_parent(cur), cur)
             
         elif c_type == 'missing parent':
@@ -1049,21 +1049,34 @@ def conflict_pass(tt, conflicts):
                 new_conflicts.add((c_type, 'Created directory.', trans_id))
         elif c_type == 'unversioned parent':
             tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
-            new_conflicts.add((c_type, 'Versioned parent directory.', 
+            new_conflicts.add((c_type, 'Versioned parent directory', 
                                conflict[1]))
     return new_conflicts
 
 def cook_conflicts(raw_conflicts, tt):
-    conflicts = sorted(list(iter_cook_conflicts()))
+    """Generate a list of cooked conflicts, sorted by file path"""
+    def key(conflict):
+        if conflict[2] is not None:
+            return conflict[2], conflict[0]
+        elif len(conflict) == 6:
+            return conflict[4], conflict[0]
+        else:
+            return None, conflict[0]
+
+    return sorted(list(iter_cook_conflicts(raw_conflicts, tt)), key=key)
 
 def iter_cook_conflicts(raw_conflicts, tt):
     cooked_conflicts = []
-    fp = FinalPaths(self.tt)
+    fp = FinalPaths(tt)
     for conflict in raw_conflicts:
         c_type = conflict[0]
-        modified_path = pf.get_path(conflict[1])
-        conflicting_path = pf.get_path(conflict[2])
-        action = conflict[3]
-        if c_type == 'duplicate_id':
-            yield modified_path, "Conflict versioning %s.  %s %s" % \
-                (conflicting_path, modified_path)
+        action = conflict[1]
+        modified_path = fp.get_path(conflict[2])
+        modified_id = tt.final_file_id(conflict[2])
+        if len(conflict) == 3:
+            yield c_type, action, modified_path, modified_id
+        else:
+            conflicting_path = fp.get_path(conflict[3])
+            conflicting_id = tt.final_file_id(conflict[3])
+            yield (c_type, action, modified_path, modified_id, 
+                   conflicting_path, conflicting_id)
