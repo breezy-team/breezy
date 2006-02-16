@@ -31,6 +31,7 @@ from bzrlib.store import TransportStore
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.errors import NoSuchFile, FileExists
 from bzrlib.trace import mutter
+import bzrlib.ui
 
 
 class WeaveStore(TransportStore):
@@ -167,6 +168,9 @@ class WeaveStore(TransportStore):
      
     def copy_multi(self, from_store, file_ids):
         assert isinstance(from_store, WeaveStore)
-        for f in file_ids:
+        pb = bzrlib.ui.ui_factory.progress_bar()
+        for count, f in enumerate(file_ids):
             mutter("copy weave {%s} into %s", f, self)
+            pb.update('copy', count, len(file_ids))
             self._put(f, from_store._get(f))
+        pb.clear()

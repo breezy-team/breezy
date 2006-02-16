@@ -329,7 +329,11 @@ def copy_all(store_from, store_to):
     # TODO: Optional progress indicator
     if not store_from.listable():
         raise UnlistableStore(store_from)
-    ids = [f for f in store_from]
+    pb = bzrlib.ui.ui_factory.progress_bar()
+    ids = []
+    for count, file_id in enumerate(store_from):
+        pb.update('listing files', count, count)
+        ids.append(file_id)
     mutter('copy_all ids: %r', ids)
     store_to.copy_multi(store_from, ids)
 

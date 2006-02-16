@@ -82,7 +82,7 @@ from bzrlib.osutils import (appendpath,
 from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, note
 from bzrlib.transport import get_transport
 import bzrlib.xml5
 
@@ -316,6 +316,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if branch.last_revision() is not None:
             wt.set_last_revision(branch.last_revision())
         wt.set_pending_merges([])
+        note('Building working directory')
         wt.revert([])
         return wt
  
