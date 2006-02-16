@@ -25,18 +25,51 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transport import get_transport
 
 
-class TestUpgrade(TestCaseWithTransport):
+class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestUpgrade, self).setUp()
+        super(TestWithUpgradableBranches, self).setUp()
+        self.old_format = bzrdir.BzrDirFormat.get_default_format()
+        self.addCleanup(self.restoreDefaultFormat)
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
         # FIXME RBC 20060120 we should be able to do this via ui calls only.
         # setup a format 5 branch we can upgrade from.
         t = get_transport(self.get_url())
-        t.mkdir('old_branch')
-        bzrdir.BzrDirFormat5().initialize(self.get_url('old_branch'))
+        t.mkdir('format_5_branch')
+        bzrdir.BzrDirFormat5().initialize(self.get_url('format_5_branch'))
+        bzrdir.BzrDir.create_standalone_workingtree('current_format_branch')
+
+    def restoreDefaultFormat(self):
+        bzrdir.BzrDirFormat.set_default_format(self.old_format)
 
     def test_readonly_url_error(self):
         (out, err) = self.run_bzr_captured(
-            ['upgrade', self.get_readonly_url('old_branch')], 3)
+            ['upgrade', self.get_readonly_url('format_5_branch')], 3)
         self.assertEqual(out, "")
         self.assertEqual(err, "bzr: ERROR: Upgrade URL cannot work with readonly URL's.\n")
+
+    def test_upgrade_up_to_date(self):
+        # when up to date we should get a message to that effect
+        (out, err) = self.run_bzr_captured(
+            ['upgrade', 'current_format_branch'], 3)
+        self.assertEqual("", out)
+        self.assertEqualDiff("Tree %s is already up to date.\n", err)
+
+    def test_upgrade_up_to_date_checkout_warns_branch_left_alone(self):
+        # when upgrading a checkout, the branch location and a suggestion
+        # to upgrade it should be emitted even if the checkout is up to 
+        # date
+        pass
+
+    def test_upgrade_checkout(self):
+        # upgrading a checkout should work
+        pass
+
+    def test_upgrade_repository_scans_branches(self):
+        # we should get individual upgrade notes for each branch even the 
+        # anonymous branch
+        pass
+
+    def test_ugrade_branch_in_repo(self):
+        # upgrading a branch in a repo should warn about not upgrading the repo
+        pass
