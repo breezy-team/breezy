@@ -386,6 +386,42 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         self.assertEqual(checkout_base,
                          dir.get_workingtree_transport(workingtree.WorkingTreeFormat3()).base)
 
+        
+class TestFormat5(TestCaseWithTransport):
+    """Tests specific to the version 5 bzrdir format."""
+
+    def test_same_lockfiles_between_tree_repo_branch(self):
+        # this checks that only a single lockfiles instance is created 
+        # for format 5 objects
+        dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
+        def check_dir_components_use_same_lock(dir):
+            ctrl_1 = dir.open_repository().control_files
+            ctrl_2 = dir.open_branch().control_files
+            ctrl_3 = dir.open_workingtree()._control_files
+            self.assertTrue(ctrl_1 is ctrl_2)
+            self.assertTrue(ctrl_2 is ctrl_3)
+        check_dir_components_use_same_lock(dir)
+        # and if we open it normally.
+        dir = bzrdir.BzrDir.open(self.get_url())
+        check_dir_components_use_same_lock(dir)
+    
+    def test_can_update(self):
+        # format 5 dirs are updatable
+        dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
+        self.assertTrue(dir.can_update_format())
+    
+    def test_needs_update(self):
+        # format 5 dirs need an update if they are not the default.
+        # and they start of not the default.
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
+        try:
+            dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
+            self.assertFalse(dir.needs_format_update())
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+        self.assertTrue(dir.needs_format_update())
+
 
 class TestFormat6(TestCaseWithTransport):
     """Tests specific to the version 6 bzrdir format."""
@@ -404,3 +440,19 @@ class TestFormat6(TestCaseWithTransport):
         # and if we open it normally.
         dir = bzrdir.BzrDir.open(self.get_url())
         check_dir_components_use_same_lock(dir)
+    
+    def test_can_update(self):
+        # format 6 dirs are updatable
+        dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        self.assertTrue(dir.can_update_format())
+    
+    def test_needs_update(self):
+        # format 6 dirs need an update if they are not the default.
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
+            self.assertTrue(dir.needs_format_update())
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+        self.assertFalse(dir.needs_format_update())

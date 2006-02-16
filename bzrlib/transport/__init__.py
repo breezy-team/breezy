@@ -422,6 +422,9 @@ class Transport(object):
             subtree.rmdir(dir)
         self.rmdir(relpath)
 
+    def __repr__(self):
+        return "<%s.%s url=%s>" % (self.__module__, self.__class__.__name__, self.base)
+
     def stat(self, relpath):
         """Return the stat information for a file.
         WARNING: This may not be implementable for all protocols, so use

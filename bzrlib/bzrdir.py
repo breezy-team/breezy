@@ -21,18 +21,32 @@ directories.
 """
 
 from copy import deepcopy
+import os
 from cStringIO import StringIO
 from unittest import TestSuite
-
 
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.osutils import safe_unicode
-from bzrlib.trace import mutter
+from bzrlib.osutils import (
+                            abspath,
+                            pathjoin,
+                            safe_unicode,
+                            sha_strings,
+                            sha_string,
+                            )
+from bzrlib.store.text import TextStore
+from bzrlib.store.weave import WeaveStore
 from bzrlib.symbol_versioning import *
+from bzrlib.trace import mutter
+from bzrlib.transactions import PassThroughTransaction
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
+from bzrlib.weave import Weave
+from bzrlib.weavefile import read_weave, write_weave
+from bzrlib.xml4 import serializer_v4
+from bzrlib.xml5 import serializer_v5
 
 
 class BzrDir(object):
@@ -46,6 +60,10 @@ class BzrDir(object):
     root_transport
         a transport connected to the directory this bzr was opened from.
     """
+
+    def can_update_format(self):
+        """Return true if this bzrdir is one whose format we can update."""
+        return True
 
     def _check_supported(self, format, allow_unsupported):
         """Check whether format is a supported format.
@@ -344,6 +362,16 @@ class BzrDir(object):
         self.transport = _transport.clone('.bzr')
         self.root_transport = _transport
 
+    def needs_format_update(self):
+        """Return true if this bzrdir needs update_format run on it.
+        
+        For instance, if the repository format is out of date but the 
+        branch and working tree are not, this should return True.
+        """
+        # for now, if the format is not the same as the system default,
+        # an upgrade is needed.
+        return not isinstance(self._format, BzrDirFormat.get_default_format().__class__)
+
     @staticmethod
     def open_unsupported(base):
         """Open a branch which is not supported."""
@@ -613,6 +641,10 @@ class BzrDir4(BzrDirPreSplitOut):
         """See BzrDir.create_repository."""
         from bzrlib.repository import RepositoryFormat4
         return RepositoryFormat4().initialize(self, shared)
+
+    def needs_format_update(self):
+        """Format 4 dirs are always in need of updating."""
+        return True
 
     def open_repository(self):
         """See BzrDir.open_repository."""
@@ -1088,3 +1120,330 @@ class ScratchDir(BzrDir6):
         copytree(self.base, base, symlinks=True)
         return ScratchDir(
             transport=bzrlib.transport.local.ScratchTransport(base))
+
+
+class Converter(object):
+    """Converts a disk format object from one format to another."""
+
+    def __init__(self, pb):
+        """Create a converter.
+
+        :param pb: a progress bar to use for progress information.
+        """
+        self.pb = pb
+
+
+class ConvertBzrDir4To5(Converter):
+    """Converts format 4 bzr dirs to format 5."""
+
+    def __init__(self, to_convert, pb):
+        """Create a converter.
+
+        :param to_convert: The disk object to convert.
+        :param pb: a progress bar to use for progress information.
+        """
+        super(ConvertBzrDir4To5, self).__init__(pb)
+        self.bzrdir = to_convert
+        self.converted_revs = set()
+        self.absent_revisions = set()
+        self.text_count = 0
+        self.revisions = {}
+        
+    def convert(self):
+        """See Converter.convert()."""
+        self.pb.note('starting upgrade from format 4 to 5')
+        if isinstance(self.bzrdir.transport, LocalTransport):
+            self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
+        self._convert_to_weaves()
+        return BzrDir.open(self.bzrdir.root_transport.base)
+
+    def _convert_to_weaves(self):
+        self.pb.note('note: upgrade may be faster if all store files are ungzipped first')
+        try:
+            # TODO permissions
+            stat = self.bzrdir.transport.stat('weaves')
+            if not S_ISDIR(stat.st_mode):
+                self.bzrdir.transport.delete('weaves')
+                self.bzrdir.transport.mkdir('weaves')
+        except errors.NoSuchFile:
+            self.bzrdir.transport.mkdir('weaves')
+        self.inv_weave = Weave('inventory')
+        # holds in-memory weaves for all files
+        self.text_weaves = {}
+        self.bzrdir.transport.delete('branch-format')
+        self.branch = self.bzrdir.open_branch()
+        self._convert_working_inv()
+        rev_history = self.branch.revision_history()
+        # to_read is a stack holding the revisions we still need to process;
+        # appending to it adds new highest-priority revisions
+        self.known_revisions = set(rev_history)
+        self.to_read = rev_history[-1:]
+        while self.to_read:
+            rev_id = self.to_read.pop()
+            if (rev_id not in self.revisions
+                and rev_id not in self.absent_revisions):
+                self._load_one_rev(rev_id)
+        self.pb.clear()
+        to_import = self._make_order()
+        for i, rev_id in enumerate(to_import):
+            self.pb.update('converting revision', i, len(to_import))
+            self._convert_one_rev(rev_id)
+        self.pb.clear()
+        self._write_all_weaves()
+        self._write_all_revs()
+        self.pb.note('upgraded to weaves:')
+        self.pb.note('  %6d revisions and inventories', len(self.revisions))
+        self.pb.note('  %6d revisions not present', len(self.absent_revisions))
+        self.pb.note('  %6d texts', self.text_count)
+        self._cleanup_spare_files_after_format4()
+        self.branch.control_files.put_utf8('branch-format', BzrDirFormat5().get_format_string())
+
+    def _cleanup_spare_files_after_format4(self):
+        # FIXME working tree upgrade foo.
+        for n in 'merged-patches', 'pending-merged-patches':
+            try:
+                ## assert os.path.getsize(p) == 0
+                self.bzrdir.transport.delete(n)
+            except errors.NoSuchFile:
+                pass
+        self.bzrdir.transport.delete_tree('inventory-store')
+        self.bzrdir.transport.delete_tree('text-store')
+
+    def _convert_working_inv(self):
+        inv = serializer_v4.read_inventory(self.branch.control_files.get('inventory'))
+        new_inv_xml = serializer_v5.write_inventory_to_string(inv)
+        # FIXME inventory is a working tree change.
+        self.branch.control_files.put('inventory', new_inv_xml)
+
+    def _write_all_weaves(self):
+        controlweaves = WeaveStore(self.bzrdir.transport, prefixed=False)
+        weave_transport = self.bzrdir.transport.clone('weaves')
+        weaves = WeaveStore(weave_transport, prefixed=False)
+        transaction = PassThroughTransaction()
+
+        controlweaves.put_weave('inventory', self.inv_weave, transaction)
+        i = 0
+        try:
+            for file_id, file_weave in self.text_weaves.items():
+                self.pb.update('writing weave', i, len(self.text_weaves))
+                weaves.put_weave(file_id, file_weave, transaction)
+                i += 1
+        finally:
+            self.pb.clear()
+
+    def _write_all_revs(self):
+        """Write all revisions out in new form."""
+        self.bzrdir.transport.delete_tree('revision-store')
+        self.bzrdir.transport.mkdir('revision-store')
+        revision_transport = self.bzrdir.transport.clone('revision-store')
+        # TODO permissions
+        revision_store = TextStore(revision_transport,
+                                   prefixed=False,
+                                   compressed=True)
+        try:
+            for i, rev_id in enumerate(self.converted_revs):
+                self.pb.update('write revision', i, len(self.converted_revs))
+                rev_tmp = StringIO()
+                serializer_v5.write_revision(self.revisions[rev_id], rev_tmp)
+                rev_tmp.seek(0)
+                revision_store.add(rev_tmp, rev_id)
+        finally:
+            self.pb.clear()
+
+            
+    def _load_one_rev(self, rev_id):
+        """Load a revision object into memory.
+
+        Any parents not either loaded or abandoned get queued to be
+        loaded."""
+        self.pb.update('loading revision',
+                       len(self.revisions),
+                       len(self.known_revisions))
+        if not self.branch.repository.revision_store.has_id(rev_id):
+            self.pb.clear()
+            self.pb.note('revision {%s} not present in branch; '
+                         'will be converted as a ghost',
+                         rev_id)
+            self.absent_revisions.add(rev_id)
+        else:
+            rev_xml = self.branch.repository.revision_store.get(rev_id).read()
+            rev = serializer_v4.read_revision_from_string(rev_xml)
+            for parent_id in rev.parent_ids:
+                self.known_revisions.add(parent_id)
+                self.to_read.append(parent_id)
+            self.revisions[rev_id] = rev
+
+
+    def _load_old_inventory(self, rev_id):
+        assert rev_id not in self.converted_revs
+        old_inv_xml = self.branch.repository.inventory_store.get(rev_id).read()
+        inv = serializer_v4.read_inventory_from_string(old_inv_xml)
+        rev = self.revisions[rev_id]
+        if rev.inventory_sha1:
+            assert rev.inventory_sha1 == sha_string(old_inv_xml), \
+                'inventory sha mismatch for {%s}' % rev_id
+        return inv
+        
+
+    def _load_updated_inventory(self, rev_id):
+        assert rev_id in self.converted_revs
+        inv_xml = self.inv_weave.get_text(rev_id)
+        inv = serializer_v5.read_inventory_from_string(inv_xml)
+        return inv
+
+
+    def _convert_one_rev(self, rev_id):
+        """Convert revision and all referenced objects to new format."""
+        rev = self.revisions[rev_id]
+        inv = self._load_old_inventory(rev_id)
+        present_parents = [p for p in rev.parent_ids
+                           if p not in self.absent_revisions]
+        self._convert_revision_contents(rev, inv, present_parents)
+        self._store_new_weave(rev, inv, present_parents)
+        self.converted_revs.add(rev_id)
+
+
+    def _store_new_weave(self, rev, inv, present_parents):
+        # the XML is now updated with text versions
+        if __debug__:
+            for file_id in inv:
+                ie = inv[file_id]
+                if ie.kind == 'root_directory':
+                    continue
+                assert hasattr(ie, 'revision'), \
+                    'no revision on {%s} in {%s}' % \
+                    (file_id, rev.revision_id)
+        new_inv_xml = serializer_v5.write_inventory_to_string(inv)
+        new_inv_sha1 = sha_string(new_inv_xml)
+        self.inv_weave.add(rev.revision_id, 
+                           present_parents,
+                           new_inv_xml.splitlines(True),
+                           new_inv_sha1)
+        rev.inventory_sha1 = new_inv_sha1
+
+    def _convert_revision_contents(self, rev, inv, present_parents):
+        """Convert all the files within a revision.
+
+        Also upgrade the inventory to refer to the text revision ids."""
+        rev_id = rev.revision_id
+        mutter('converting texts of revision {%s}',
+               rev_id)
+        parent_invs = map(self._load_updated_inventory, present_parents)
+        for file_id in inv:
+            ie = inv[file_id]
+            self._convert_file_version(rev, ie, parent_invs)
+
+    def _convert_file_version(self, rev, ie, parent_invs):
+        """Convert one version of one file.
+
+        The file needs to be added into the weave if it is a merge
+        of >=2 parents or if it's changed from its parent.
+        """
+        if ie.kind == 'root_directory':
+            return
+        file_id = ie.file_id
+        rev_id = rev.revision_id
+        w = self.text_weaves.get(file_id)
+        if w is None:
+            w = Weave(file_id)
+            self.text_weaves[file_id] = w
+        text_changed = False
+        previous_entries = ie.find_previous_heads(parent_invs, w)
+        for old_revision in previous_entries:
+                # if this fails, its a ghost ?
+                assert old_revision in self.converted_revs 
+        self.snapshot_ie(previous_entries, ie, w, rev_id)
+        del ie.text_id
+        assert getattr(ie, 'revision', None) is not None
+
+    def snapshot_ie(self, previous_revisions, ie, w, rev_id):
+        # TODO: convert this logic, which is ~= snapshot to
+        # a call to:. This needs the path figured out. rather than a work_tree
+        # a v4 revision_tree can be given, or something that looks enough like
+        # one to give the file content to the entry if it needs it.
+        # and we need something that looks like a weave store for snapshot to 
+        # save against.
+        #ie.snapshot(rev, PATH, previous_revisions, REVISION_TREE, InMemoryWeaveStore(self.text_weaves))
+        if len(previous_revisions) == 1:
+            previous_ie = previous_revisions.values()[0]
+            if ie._unchanged(previous_ie):
+                ie.revision = previous_ie.revision
+                return
+        parent_indexes = map(w.lookup, previous_revisions)
+        if ie.has_text():
+            text = self.branch.repository.text_store.get(ie.text_id)
+            file_lines = text.readlines()
+            assert sha_strings(file_lines) == ie.text_sha1
+            assert sum(map(len, file_lines)) == ie.text_size
+            w.add(rev_id, parent_indexes, file_lines, ie.text_sha1)
+            self.text_count += 1
+        else:
+            w.add(rev_id, parent_indexes, [], None)
+        ie.revision = rev_id
+        ##mutter('import text {%s} of {%s}',
+        ##       ie.text_id, file_id)
+
+    def _make_order(self):
+        """Return a suitable order for importing revisions.
+
+        The order must be such that an revision is imported after all
+        its (present) parents.
+        """
+        todo = set(self.revisions.keys())
+        done = self.absent_revisions.copy()
+        o = []
+        while todo:
+            # scan through looking for a revision whose parents
+            # are all done
+            for rev_id in sorted(list(todo)):
+                rev = self.revisions[rev_id]
+                parent_ids = set(rev.parent_ids)
+                if parent_ids.issubset(done):
+                    # can take this one now
+                    o.append(rev_id)
+                    todo.remove(rev_id)
+                    done.add(rev_id)
+        return o
+
+
+class ConvertBzrDir5To6(Converter):
+    """Converts format 5 bzr dirs to format 6."""
+
+    def __init__(self, to_convert, pb):
+        """Create a converter.
+
+        :param to_convert: The disk object to convert.
+        :param pb: a progress bar to use for progress information.
+        """
+        super(ConvertBzrDir5To6, self).__init__(pb)
+        self.bzrdir = to_convert
+        
+    def convert(self):
+        """See Converter.convert()."""
+        self.pb.note('starting upgrade from format 5 to 6')
+        self._convert_to_prefixed()
+        return BzrDir.open(self.bzrdir.root_transport.base)
+
+    def _convert_to_prefixed(self):
+        from bzrlib.store import hash_prefix
+        self.bzrdir.transport.delete('branch-format')
+        for store_name in ["weaves", "revision-store"]:
+            self.pb.note("adding prefixes to %s" % store_name) 
+            store_transport = self.bzrdir.transport.clone(store_name)
+            for filename in store_transport.list_dir('.'):
+                if (filename.endswith(".weave") or
+                    filename.endswith(".gz") or
+                    filename.endswith(".sig")):
+                    file_id = os.path.splitext(filename)[0]
+                else:
+                    file_id = filename
+                prefix_dir = hash_prefix(file_id)
+                # FIXME keep track of the dirs made RBC 20060121
+                try:
+                    store_transport.move(filename, prefix_dir + '/' + filename)
+                except errors.NoSuchFile: # catches missing dirs strangely enough
+                    store_transport.mkdir(prefix_dir)
+                    store_transport.move(filename, prefix_dir + '/' + filename)
+        self.bzrdir._control_files.put_utf8('branch-format', BzrDirFormat6().get_format_string())
+
+

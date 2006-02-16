@@ -29,3 +29,7 @@ class TestErrors(TestCaseWithTransport):
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1, str(error).find(repr(dir.transport.clone('..').base)))
         self.assertEqual(-1, str(error).find(repr(dir.transport.base)))
+
+    def test_up_to_date(self):
+        error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
+        self.assertEqualDiff("", str(error))

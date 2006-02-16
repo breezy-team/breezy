@@ -41,6 +41,7 @@ from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
 
+
 # TODO: Make a branch using basis branch, and check that it 
 # doesn't request any files that could have been avoided, by 
 # hooking into the Transport.
@@ -271,14 +272,17 @@ class TestBranch(TestCaseWithBranch):
                             'sig').read())
 
     def test_upgrade_preserves_signatures(self):
-        # this is in the current test format
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
         wt.branch.repository.sign_revision('A',
             bzrlib.gpg.LoopbackGPGStrategy(None))
         old_signature = wt.branch.repository.revision_store.get('A',
             'sig').read()
-        upgrade(wt.basedir)
+        try:
+            upgrade(wt.basedir)
+        except errors.UpToDateFormat:
+            # this is in the most current format already.
+            return
         wt = WorkingTree.open(wt.basedir)
         new_signature = wt.branch.repository.revision_store.get('A',
             'sig').read()

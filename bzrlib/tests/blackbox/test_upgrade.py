@@ -53,7 +53,9 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         (out, err) = self.run_bzr_captured(
             ['upgrade', 'current_format_branch'], 3)
         self.assertEqual("", out)
-        self.assertEqualDiff("Tree %s is already up to date.\n", err)
+        self.assertEqualDiff("bzr: ERROR: The branch format Bazaar-NG meta "
+                             "directory, format 1 is already at the most "
+                             "recent format.\n", err)
 
     def test_upgrade_up_to_date_checkout_warns_branch_left_alone(self):
         # when upgrading a checkout, the branch location and a suggestion
