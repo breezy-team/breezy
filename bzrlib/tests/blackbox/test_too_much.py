@@ -51,13 +51,6 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCommands(ExternalBase):
 
-    def test_help_commands(self):
-        self.runbzr('--help')
-        self.runbzr('help')
-        self.runbzr('help commands')
-        self.runbzr('help help')
-        self.runbzr('commit -h')
-
     def test_init_branch(self):
         self.runbzr(['init'])
 

@@ -1775,7 +1775,7 @@ class cmd_help(Command):
     """Show help on a command or other topic.
 
     For a list of all available commands, say 'bzr help commands'."""
-    takes_options = ['long']
+    takes_options = [Option('long', 'show help on all commands')]
     takes_args = ['topic?']
     aliases = ['?']
     
