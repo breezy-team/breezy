@@ -278,7 +278,7 @@ class TransportStore(Store):
             suffixes = []
 
         if self._escaped:
-            fileid = transport.urlescape(fileid)
+            fileid = escape_file_id(fileid)
         if self._prefixed:
             # hash_prefix adds the '/' separator
             path = hash_prefix(fileid) + fileid
@@ -334,6 +334,23 @@ def copy_all(store_from, store_to):
     mutter('copy_all ids: %r', ids)
     store_to.copy_multi(store_from, ids)
 
+
 def hash_prefix(fileid):
     return "%02x/" % (adler32(fileid) & 0xff)
+
+
+def escape_file_id(file_id):
+    """Turn a file id into a filesystem safe string.
+
+    This is similar to a plain urllib.quote, except
+    it uses specific safe characters, so that it doesn't
+    have to translate a lot of valid file ids.
+    """
+    # @ does not get escaped. This is because it is a valid
+    # filesystem character we use all the time, and it looks
+    # a lot better than seeing %40 all the time.
+    if isinstance(file_id, unicode):
+        file_id = file_id.encode('utf-8')
+    return urllib.quote(file_id, safe='@')
+
 

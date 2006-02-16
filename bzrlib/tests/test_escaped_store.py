@@ -40,7 +40,7 @@ class TestEscaped(TestCaseWithTransport):
         self.assertEqual('a', text_store._relpath('a'))
         self.assertEqual('a', text_store._relpath(u'a'))
         self.assertEqual('%2520', text_store._relpath(' '))
-        self.assertEqual('%2540%253A%253C%253E', text_store._relpath('@:<>'))
+        self.assertEqual('%40%253A%253C%253E', text_store._relpath('@:<>'))
         self.assertEqual('%25C3%25A5', text_store._relpath(u'\xe5'))
 
     def test_prefixed(self):
@@ -56,7 +56,7 @@ class TestEscaped(TestCaseWithTransport):
 
         self.assertEqual('62/a', text_store._relpath('a'))
         self.assertEqual('88/%2520', text_store._relpath(' '))
-        self.assertEqual('5b/%2540%253A%253C%253E',
+        self.assertEqual('12/%40%253A%253C%253E',
                 text_store._relpath('@:<>'))
         self.assertEqual('37/%25C3%25A5', text_store._relpath(u'\xe5'))
 
@@ -71,7 +71,7 @@ class TestEscaped(TestCaseWithTransport):
         self.assertEquals('space', text_store.get(' ').read())
 
         text_store.add(StringIO('surprise'), '@:<>')
-        self.failUnlessExists('5b/%40%3A%3C%3E')
+        self.failUnlessExists('12/@%3A%3C%3E')
         self.assertEquals('surprise', text_store.get('@:<>').read())
 
         text_store.add(StringIO('unicode'), u'\xe5')
@@ -96,7 +96,7 @@ class TestEscaped(TestCaseWithTransport):
         self.assertEquals(['space'], weave_store.get_lines(' ', 'r', trans))
 
         weave_store.add_text('@:<>', 'r', ['surprise'], [], trans)
-        self.failUnlessExists('5b/%40%3A%3C%3E.weave')
+        self.failUnlessExists('12/@%3A%3C%3E.weave')
         self.assertEquals(['surprise'], weave_store.get_lines('@:<>', 'r', trans))
 
         weave_store.add_text(u'\xe5', 'r', ['unicode'], [], trans)
