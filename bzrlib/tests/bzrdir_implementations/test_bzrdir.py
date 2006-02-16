@@ -23,6 +23,7 @@ import sys
 import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
+from bzrlib.check import check
 from bzrlib.commit import commit
 import bzrlib.errors as errors
 from bzrlib.errors import (FileExists,
@@ -42,6 +43,7 @@ from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
 import bzrlib.transport as transport
 from bzrlib.transport import get_transport
+import bzrlib.ui as ui
 from bzrlib.upgrade import upgrade
 import bzrlib.workingtree as workingtree
 
@@ -983,6 +985,14 @@ class TestBzrDir(TestCaseWithBzrDir):
             self.assertTrue(isinstance(dir._format.get_updater(),
                                        bzrdir.Converter))
         dir.needs_format_update()
+
+    def test_upgrade_new_instance(self):
+        """Does an available updater work ?."""
+        dir = self.make_bzrdir('.')
+        if dir.can_update_format():
+            dir._format.get_updater().convert(dir, ui.ui_factory.progress_bar())
+            # and it should pass 'check' now.
+            check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)
 
 
 class ChrootedBzrDirTests(ChrootedTestCase):

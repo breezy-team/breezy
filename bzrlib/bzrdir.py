@@ -1276,7 +1276,6 @@ class ConvertBzrDir4To5(Converter):
                 revision_store.add(rev_tmp, rev_id)
         finally:
             self.pb.clear()
-
             
     def _load_one_rev(self, rev_id):
         """Load a revision object into memory.
@@ -1300,7 +1299,6 @@ class ConvertBzrDir4To5(Converter):
                 self.to_read.append(parent_id)
             self.revisions[rev_id] = rev
 
-
     def _load_old_inventory(self, rev_id):
         assert rev_id not in self.converted_revs
         old_inv_xml = self.branch.repository.inventory_store.get(rev_id).read()
@@ -1310,14 +1308,12 @@ class ConvertBzrDir4To5(Converter):
             assert rev.inventory_sha1 == sha_string(old_inv_xml), \
                 'inventory sha mismatch for {%s}' % rev_id
         return inv
-        
 
     def _load_updated_inventory(self, rev_id):
         assert rev_id in self.converted_revs
         inv_xml = self.inv_weave.get_text(rev_id)
         inv = serializer_v5.read_inventory_from_string(inv_xml)
         return inv
-
 
     def _convert_one_rev(self, rev_id):
         """Convert revision and all referenced objects to new format."""
@@ -1328,7 +1324,6 @@ class ConvertBzrDir4To5(Converter):
         self._convert_revision_contents(rev, inv, present_parents)
         self._store_new_weave(rev, inv, present_parents)
         self.converted_revs.add(rev_id)
-
 
     def _store_new_weave(self, rev, inv, present_parents):
         # the XML is now updated with text versions
@@ -1407,8 +1402,6 @@ class ConvertBzrDir4To5(Converter):
         else:
             w.add(rev_id, parent_indexes, [], None)
         ie.revision = rev_id
-        ##mutter('import text {%s} of {%s}',
-        ##       ie.text_id, file_id)
 
     def _make_order(self):
         """Return a suitable order for importing revisions.
@@ -1418,7 +1411,7 @@ class ConvertBzrDir4To5(Converter):
         """
         todo = set(self.revisions.keys())
         done = self.absent_revisions.copy()
-        o = []
+        order = []
         while todo:
             # scan through looking for a revision whose parents
             # are all done
@@ -1427,10 +1420,10 @@ class ConvertBzrDir4To5(Converter):
                 parent_ids = set(rev.parent_ids)
                 if parent_ids.issubset(done):
                     # can take this one now
-                    o.append(rev_id)
+                    order.append(rev_id)
                     todo.remove(rev_id)
                     done.add(rev_id)
-        return o
+        return order
 
 
 class ConvertBzrDir5To6(Converter):
@@ -1474,6 +1467,85 @@ class ConvertBzrDir6ToMeta(Converter):
         """See Converter.convert()."""
         self.bzrdir = to_convert
         self.pb = pb
+        self.count = 0
+        self.total = 20 # the steps we know about
+        self.garbage_inventories = []
+
         self.pb.note('starting upgrade from format 5 to 6')
+        self.bzrdir._control_files.put_utf8('branch-format', "Converting to format 6")
+        # its faster to move specific files around than to open and use the apis...
+        # first off, nuke ancestry.weave, it was never used.
+        try:
+            self.step('Removing ancestry.weave')
+            self.bzrdir.transport.delete('ancestry.weave')
+        except errors.NoSuchFile:
+            pass
+        # find out whats there
+        self.step('Finding branch files')
+        bzrcontents = self.bzrdir.transport.list_dir('.')
+        for name in bzrcontents:
+            if name.startswith('basis-inventory.'):
+                self.garbage_inventories.append(name)
+        # create new directories for repository, working tree and branch
+        dir_mode = self.bzrdir._control_files._dir_mode
+        self.file_mode = self.bzrdir._control_files._file_mode
+        repository_names = [('inventory.weave', True),
+                            ('revision-store', True),
+                            ('weaves', True)]
+        self.step('Upgrading repository  ')
+        self.bzrdir.transport.mkdir('repository', mode=dir_mode)
+        self.make_lock('repository')
+        # we hard code the formats here because we are converting into
+        # the meta format. The meta format upgrader can take this to a 
+        # future format within each component.
+        self.put_format('repository', bzrlib.repository.RepositoryFormat7())
+        for entry in repository_names:
+            self.move_entry('repository', entry)
+
+        self.step('Upgrading branch      ')
+        self.bzrdir.transport.mkdir('branch', mode=dir_mode)
+        self.make_lock('branch')
+        self.put_format('branch', bzrlib.branch.BzrBranchFormat5())
+        branch_files = [('revision-history', True),
+                        ('branch-name', True),
+                        ('parent', False)]
+        for entry in branch_files:
+            self.move_entry('branch', entry)
+
+        self.step('Upgrading working tree')
+        self.bzrdir.transport.mkdir('checkout', mode=dir_mode)
+        self.make_lock('checkout')
+        self.put_format('checkout', bzrlib.workingtree.WorkingTreeFormat3())
+        self.bzrdir.transport.delete_multi(self.garbage_inventories, self.pb)
+        checkout_files = [('pending-merges', True),
+                          ('inventory', True),
+                          ('stat-cache', False)]
+        for entry in checkout_files:
+            self.move_entry('checkout', entry)
+        self.bzrdir._control_files.put_utf8('branch-format', BzrDirMetaFormat1().get_format_string())
         return BzrDir.open(self.bzrdir.root_transport.base)
+
+    def make_lock(self, name):
+        """Make a lock for the new control dir name."""
+        self.step('Make %s lock' % name)
+        self.bzrdir.transport.put('%s/lock' % name, StringIO(), mode=self.file_mode)
+
+    def move_entry(self, new_dir, entry):
+        """Move then entry name into new_dir."""
+        name = entry[0]
+        mandatory = entry[1]
+        self.step('Moving %s' % name)
+        try:
+            self.bzrdir.transport.move(name, '%s/%s' % (new_dir, name))
+        except errors.NoSuchFile:
+            if mandatory:
+                raise
+
+    def put_format(self, dirname, format):
+        self.bzrdir._control_files.put_utf8('%s/format' % dirname, format.get_format_string())
+
+    def step(self, message):
+        """Update the pb by a step."""
+        self.count +=1
+        self.pb.update('Upgrading repository  ', self.count, self.total)
 
