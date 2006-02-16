@@ -26,37 +26,12 @@ from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import TestSkipped
+from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
 import bzrlib.workingtree as workingtree
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
-
-
-class TestCaseWithWorkingTree(TestCaseWithTransport):
-
-    def make_bzrdir(self, relpath):
-        # todo factor out into bzrdir-using-implementations-tests-base-class
-        try:
-            url = self.get_url(relpath)
-            segments = url.split('/')
-            if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
-                try:
-                    t.mkdir(segments[-1])
-                except errors.FileExists:
-                    pass
-            return self.bzrdir_format.initialize(url)
-        except errors.UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
-
-    def make_branch_and_tree(self, relpath):
-        made_control = self.make_bzrdir(relpath)
-        made_control.create_repository()
-        made_control.create_branch()
-        return self.workingtree_format.initialize(made_control)
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):

@@ -276,6 +276,14 @@ class WorkingTree(bzrlib.tree.Tree):
         self._inventory = inv
         self.path2id = self._inventory.path2id
 
+    def is_control_filename(self, filename):
+        """True if filename is the name of a control file in this tree."""
+        try:
+            self.bzrdir.transport.relpath(self.abspath(filename))
+            return True
+        except errors.PathNotChild:
+            return False
+
     @staticmethod
     def open(path=None, _unsupported=False):
         """Open an existing working tree at path.
@@ -516,7 +524,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
         inv = self.read_working_inventory()
         for f,file_id in zip(files, ids):
-            if is_control_file(f):
+            if self.is_control_filename(f):
                 raise BzrError("cannot add control file %s" % quotefn(f))
 
             fp = splitpath(f)
@@ -611,7 +619,9 @@ class WorkingTree(bzrlib.tree.Tree):
                 ## TODO: If we find a subdirectory with its own .bzr
                 ## directory, then that is a separate tree and we
                 ## should exclude it.
-                if bzrlib.BZRDIR == f:
+
+                # the bzrdir for this tree
+                if self.bzrdir.transport.base.endswith(f + '/'):
                     continue
 
                 # path within tree
@@ -1207,13 +1217,15 @@ def get_conflicted_stem(path):
         if path.endswith(suffix):
             return path[:-len(suffix)]
 
+@deprecated_function(zero_eight)
 def is_control_file(filename):
+    """See WorkingTree.is_control_filename(filename)."""
     ## FIXME: better check
     filename = normpath(filename)
     while filename != '':
         head, tail = os.path.split(filename)
         ## mutter('check %r for control file' % ((head, tail),))
-        if tail == bzrlib.BZRDIR:
+        if tail == '.bzr':
             return True
         if filename == head:
             break
