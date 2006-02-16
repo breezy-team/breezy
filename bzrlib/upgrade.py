@@ -22,7 +22,7 @@
 from bzrlib.bzrdir import ConvertBzrDir4To5, ConvertBzrDir5To6, BzrDir, BzrDirFormat4, BzrDirFormat5
 import bzrlib.errors as errors
 from bzrlib.transport import get_transport
-from bzrlib.ui import ui_factory
+import bzrlib.ui as ui
 
 
 class Convert(object):
@@ -35,7 +35,12 @@ class Convert(object):
         self.convert()
 
     def convert(self):
-        self.pb = ui_factory.progress_bar()
+        self.pb = ui.ui_factory.progress_bar()
+        branch = self.bzrdir.open_branch()
+        if branch.bzrdir.root_transport.base != self.bzrdir.root_transport.base:
+            self.pb.note("This is a checkout. The branch (%s) needs to be "
+                         "upgraded separately.",
+                         branch.bzrdir.root_transport.base)
         if not self.bzrdir.can_update_format():
             raise errors.BzrError("cannot upgrade from branch format %s" %
                            self.bzrdir._format)

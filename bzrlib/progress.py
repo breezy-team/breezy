@@ -106,7 +106,8 @@ class DummyProgress(_BaseProgressBar):
         
     def note(self, fmt_string, *args, **kwargs):
         """See _BaseProgressBar.note()."""
-    
+
+
 class DotsProgressBar(_BaseProgressBar):
     def __init__(self, **kwargs):
         _BaseProgressBar.__init__(self, **kwargs)

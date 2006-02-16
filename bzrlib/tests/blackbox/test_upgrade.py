@@ -23,6 +23,19 @@ import os
 import bzrlib.bzrdir as bzrdir
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transport import get_transport
+import bzrlib.ui as ui
+
+
+class TestUIFactory(ui.UIFactory):
+    """A UI Factory which never captures its output.
+    """
+
+    def note(self, fmt_string, *args, **kwargs):
+        """See progress.ProgressBae.note()."""
+        print fmt_string % args
+
+    def progress_bar(self):
+        return self
 
 
 class TestWithUpgradableBranches(TestCaseWithTransport):
@@ -30,7 +43,10 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
     def setUp(self):
         super(TestWithUpgradableBranches, self).setUp()
         self.old_format = bzrdir.BzrDirFormat.get_default_format()
-        self.addCleanup(self.restoreDefaultFormat)
+        self.old_ui_factory = ui.ui_factory
+        self.addCleanup(self.restoreDefaults)
+
+        ui.ui_factory = TestUIFactory()
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
         # FIXME RBC 20060120 we should be able to do this via ui calls only.
         # setup a format 5 branch we can upgrade from.
@@ -38,9 +54,13 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         t.mkdir('format_5_branch')
         bzrdir.BzrDirFormat5().initialize(self.get_url('format_5_branch'))
         bzrdir.BzrDir.create_standalone_workingtree('current_format_branch')
+        self.run_bzr('checkout',
+                     self.get_url('current_format_branch'),
+                     'current_format_checkout')
 
-    def restoreDefaultFormat(self):
+    def restoreDefaults(self):
         bzrdir.BzrDirFormat.set_default_format(self.old_format)
+        ui.ui_factory = self.old_ui_factory
 
     def test_readonly_url_error(self):
         (out, err) = self.run_bzr_captured(
@@ -61,7 +81,15 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         # when upgrading a checkout, the branch location and a suggestion
         # to upgrade it should be emitted even if the checkout is up to 
         # date
-        pass
+        (out, err) = self.run_bzr_captured(
+            ['upgrade', 'current_format_checkout'], 3)
+        self.assertEqual("This is a checkout. The branch (%s) needs to be "
+                         "upgraded separately.\n" 
+                         % get_transport(self.get_url('current_format_branch')).base,
+                         out)
+        self.assertEqualDiff("bzr: ERROR: The branch format Bazaar-NG meta "
+                             "directory, format 1 is already at the most "
+                             "recent format.\n", err)
 
     def test_upgrade_checkout(self):
         # upgrading a checkout should work

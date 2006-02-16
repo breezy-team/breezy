@@ -32,4 +32,7 @@ class TestErrors(TestCaseWithTransport):
 
     def test_up_to_date(self):
         error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
-        self.assertEqualDiff("", str(error))
+        self.assertEqualDiff("The branch format Bazaar-NG branch, "
+                             "format 0.0.4 is already at the most "
+                             "recent format.",
+                             str(error))
