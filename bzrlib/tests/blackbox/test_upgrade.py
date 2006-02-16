@@ -31,11 +31,14 @@ class TestUIFactory(ui.UIFactory):
     """
 
     def note(self, fmt_string, *args, **kwargs):
-        """See progress.ProgressBae.note()."""
+        """See progress.ProgressBar.note()."""
         print fmt_string % args
 
     def progress_bar(self):
         return self
+        
+    def update(self, message, count, total):
+        """See progress.ProgressBar.update()."""
 
 
 class TestWithUpgradableBranches(TestCaseWithTransport):
@@ -103,3 +106,26 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
     def test_ugrade_branch_in_repo(self):
         # upgrading a branch in a repo should warn about not upgrading the repo
         pass
+
+    def test_upgrade_explicit_metaformat(self):
+        # users can force an upgrade to metadir format.
+        url = get_transport(self.get_url('format_5_branch')).base
+        # check --format takes effect
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
+        (out, err) = self.run_bzr_captured(
+            ['upgrade', '--format=metadir', url])
+        self.assertEqualDiff("""starting upgrade of %s
+making backup of tree history
+%s.bzr has been backed up to %s.bzr.backup
+if conversion fails, you can move this directory back to .bzr
+if it succeeds, you can remove this directory if you wish
+starting upgrade from format 5 to 6
+adding prefixes to weaves
+adding prefixes to revision-store
+starting upgrade from format 6 to metadir
+finished
+""" % (url, url, url), out)
+        self.assertEqualDiff("", err)
+        self.assertTrue(isinstance(
+            bzrdir.BzrDir.open(self.get_url('format_5_branch'))._format,
+            bzrdir.BzrDirMetaFormat1))

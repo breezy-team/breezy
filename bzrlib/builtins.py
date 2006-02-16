@@ -1450,11 +1450,29 @@ class cmd_upgrade(Command):
     this command. When the default format has changed you may also be warned
     during other operations to upgrade.
     """
-    takes_args = ['url?']
+    # NB: this is used from the class without creating an instance, which is
+    # why it does not have a self parameter.
+    def get_format_type(typestring):
+        """Parse and return a format specifier."""
+        if typestring == "metadir":
+            return bzrdir.BzrDirMetaFormat1
+        msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
+            (typestring)
+        raise BzrCommandError(msg)
 
-    def run(self, url='.'):
+    takes_args = ['url?']
+    takes_options = [
+                     Option('format', 
+                            help='Upgrade to a specific format rather than the'
+                                 ' current default format. Currently this '
+                                 ' option only accepts =metadir',
+                            type=get_format_type),
+                    ]
+
+
+    def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
-        upgrade(url)
+        upgrade(url, format)
 
 
 class cmd_whoami(Command):

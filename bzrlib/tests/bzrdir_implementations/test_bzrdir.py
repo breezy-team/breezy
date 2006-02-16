@@ -984,13 +984,13 @@ class TestBzrDir(TestCaseWithBzrDir):
             # if its updatable there must be an updater
             self.assertTrue(isinstance(dir._format.get_updater(),
                                        bzrdir.Converter))
-        dir.needs_format_update()
+        dir.needs_format_update(None)
 
     def test_upgrade_new_instance(self):
         """Does an available updater work ?."""
         dir = self.make_bzrdir('.')
         if dir.can_update_format():
-            dir._format.get_updater().convert(dir, ui.ui_factory.progress_bar())
+            dir._format.get_updater(None).convert(dir, ui.ui_factory.progress_bar())
             # and it should pass 'check' now.
             check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)
 

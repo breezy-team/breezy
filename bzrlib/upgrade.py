@@ -27,7 +27,8 @@ import bzrlib.ui as ui
 
 class Convert(object):
 
-    def __init__(self, url):
+    def __init__(self, url, format):
+        self.format = format
         self.bzrdir = BzrDir.open_unsupported(url)
         if self.bzrdir.root_transport.is_readonly():
             raise errors.UpgradeReadonly
@@ -41,21 +42,15 @@ class Convert(object):
             self.pb.note("This is a checkout. The branch (%s) needs to be "
                          "upgraded separately.",
                          branch.bzrdir.root_transport.base)
-        if not self.bzrdir.needs_format_update():
+        if not self.bzrdir.needs_format_update(self.format):
             raise errors.UpToDateFormat(self.bzrdir._format)
         if not self.bzrdir.can_update_format():
             raise errors.BzrError("cannot upgrade from branch format %s" %
                            self.bzrdir._format)
         self.pb.note('starting upgrade of %s', self.transport.base)
         self._backup_control_dir()
-        while self.bzrdir.needs_format_update():
-            converter = self.bzrdir._format.get_updater()
-            self.bzrdir = converter.convert(self.bzrdir, self.pb)
-        if isinstance(self.bzrdir._format, BzrDirFormat4):
-            converter = ConvertBzrDir4To5()
-            self.bzrdir = converter.convert(self.bzrdir, self.pb)
-        if isinstance(self.bzrdir._format, BzrDirFormat5):
-            converter = ConvertBzrDir5To6()
+        while self.bzrdir.needs_format_update(self.format):
+            converter = self.bzrdir._format.get_updater(self.format)
             self.bzrdir = converter.convert(self.bzrdir, self.pb)
         self.pb.note("finished")
 
@@ -68,5 +63,6 @@ class Convert(object):
         self.pb.note('if conversion fails, you can move this directory back to .bzr')
         self.pb.note('if it succeeds, you can remove this directory if you wish')
 
-def upgrade(url):
-    Convert(url)
+def upgrade(url, format=None):
+    """Upgrade to format, or the default bzrdir format if not supplied."""
+    Convert(url, format)

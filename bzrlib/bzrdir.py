@@ -362,15 +362,21 @@ class BzrDir(object):
         self.transport = _transport.clone('.bzr')
         self.root_transport = _transport
 
-    def needs_format_update(self):
+    def needs_format_update(self, format=None):
         """Return true if this bzrdir needs update_format run on it.
         
         For instance, if the repository format is out of date but the 
         branch and working tree are not, this should return True.
+
+        :param format: Optional parameter indicating a specific desired
+                       format we want to end up at.
         """
         # for now, if the format is not the same as the system default,
-        # an upgrade is needed.
-        return not isinstance(self._format, BzrDirFormat.get_default_format().__class__)
+        # an upgrade is needed. In the future we will want to scan
+        # the individual repository/branch/checkout formats too
+        if format is None:
+            format = BzrDirFormat.get_default_format().__class__
+        return not isinstance(self._format, format)
 
     @staticmethod
     def open_unsupported(base):
@@ -642,7 +648,7 @@ class BzrDir4(BzrDirPreSplitOut):
         from bzrlib.repository import RepositoryFormat4
         return RepositoryFormat4().initialize(self, shared)
 
-    def needs_format_update(self):
+    def needs_format_update(self, format=None):
         """Format 4 dirs are always in need of updating."""
         return True
 
@@ -754,8 +760,9 @@ class BzrDirMeta1(BzrDir):
             pass
         return self.transport.clone('checkout')
 
-    def needs_format_update(self):
+    def needs_format_update(self, format=None):
         """See BzrDir.needs_format_update()."""
+        # currently there are no possible updates to meta1 formats.
         return False
 
     def open_branch(self, unsupported=False):
@@ -823,7 +830,7 @@ class BzrDirFormat(object):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
 
-    def get_updater(self):
+    def get_updater(self, format=None):
         """Return the updater to use to convert bzrdirs needing updates.
 
         This returns a bzrlib.bzrdir.Converter object.
@@ -831,6 +838,9 @@ class BzrDirFormat(object):
         This should return the best upgrader to step this format towards the
         current default format. In the case of plugins we can/shouold provide
         some means for them to extend the range of returnable converters.
+
+        :param format: Optional format to override the default foramt of the 
+                       library.
         """
         raise NotImplementedError(self.get_updater)
 
@@ -926,8 +936,9 @@ class BzrDirFormat4(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 0.0.4\n"
 
-    def get_updater(self):
+    def get_updater(self, format=None):
         """See BzrDirFormat.get_updater()."""
+        # there is one and only one upgrade path here.
         return ConvertBzrDir4To5()
         
     def initialize(self, url):
@@ -963,8 +974,9 @@ class BzrDirFormat5(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
 
-    def get_updater(self):
+    def get_updater(self, format=None):
         """See BzrDirFormat.get_updater()."""
+        # there is one and only one upgrade path here.
         return ConvertBzrDir5To6()
         
     def initialize(self, url, _cloning=False):
@@ -1001,8 +1013,9 @@ class BzrDirFormat6(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 6\n"
 
-    def get_updater(self):
+    def get_updater(self, format=None):
         """See BzrDirFormat.get_updater()."""
+        # there is one and only one upgrade path here.
         return ConvertBzrDir6ToMeta()
         
     def initialize(self, url, _cloning=False):
@@ -1471,7 +1484,7 @@ class ConvertBzrDir6ToMeta(Converter):
         self.total = 20 # the steps we know about
         self.garbage_inventories = []
 
-        self.pb.note('starting upgrade from format 5 to 6')
+        self.pb.note('starting upgrade from format 6 to metadir')
         self.bzrdir._control_files.put_utf8('branch-format', "Converting to format 6")
         # its faster to move specific files around than to open and use the apis...
         # first off, nuke ancestry.weave, it was never used.
