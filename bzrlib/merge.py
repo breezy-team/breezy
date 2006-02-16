@@ -38,11 +38,13 @@ from bzrlib.fetch import greedy_fetch, fetch
 from bzrlib.merge3 import Merge3
 import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
+from progress import DummyProgress
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               conflicts_strings, FinalPaths, create_by_entry,
                               unique_add)
 from bzrlib.trace import mutter, warning, note
+from bzrlib.ui import ui_factory
 
 # TODO: Report back as changes are merged in
 
@@ -95,6 +97,7 @@ class Merger(object):
         self.interesting_ids = None
         self.show_base = False
         self.reprocess = False
+        self._pb = ui_factory.progress_bar()
 
     def revision_tree(self, revision_id):
         return self.this_branch.repository.revision_tree(revision_id)
@@ -203,7 +206,8 @@ class Merger(object):
             try:
                 self.base_rev_id = common_ancestor(self.this_basis, 
                                                    self.other_basis, 
-                                                   self.this_branch.repository)
+                                                   self.this_branch.repository,
+                                                   self._pb)
             except NoCommonAncestor:
                 raise UnrelatedBranches()
             self.base_tree = _get_revid_tree(self.this_branch, self.base_rev_id,
@@ -237,7 +241,7 @@ class Merger(object):
         elif self.show_base:
             raise BzrError("Showing base is not supported for this"
                                   " merge type. %s" % self.merge_type)
-        merge = self.merge_type(**kwargs)
+        merge = self.merge_type(pb=self._pb, **kwargs)
         if len(merge.cooked_conflicts) == 0:
             if not self.ignore_zero:
                 note("All changes applied successfully.")
@@ -315,7 +319,7 @@ class Merge3Merger(object):
     history_based = False
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
-                 reprocess=False, show_base=False):
+                 reprocess=False, show_base=False, pb=DummyProgress()):
         """Initialize the merger object and perform the merge."""
         object.__init__(self)
         self.this_tree = working_tree
@@ -325,17 +329,20 @@ class Merge3Merger(object):
         self.cooked_conflicts = []
         self.reprocess = reprocess
         self.show_base = show_base
+        self.pb = pb
 
         all_ids = set(base_tree)
         all_ids.update(other_tree)
-        self.tt = TreeTransform(working_tree)
+        self.tt = TreeTransform(working_tree, self.pb)
         try:
-            for file_id in all_ids:
+            for num, file_id in enumerate(all_ids):
+                self.pb.update('Preparing file merge', num+1, len(all_ids))
                 self.merge_names(file_id)
                 file_status = self.merge_contents(file_id)
                 self.merge_executable(file_id, file_status)
+            self.pb.clear()
                 
-            fs_conflicts = resolve_conflicts(self.tt)
+            fs_conflicts = resolve_conflicts(self.tt, self.pb)
             self.cook_conflicts(fs_conflicts)
             for line in conflicts_strings(self.cooked_conflicts):
                 warning(line)
@@ -701,11 +708,12 @@ class WeaveMerger(Merge3Merger):
     supports_reprocess = False
     supports_show_base = False
 
-    def __init__(self, working_tree, this_tree, base_tree, other_tree):
+    def __init__(self, working_tree, this_tree, base_tree, other_tree, 
+                 pb=DummyProgress()):
         self.this_revision_tree = self._get_revision_tree(this_tree)
         self.other_revision_tree = self._get_revision_tree(other_tree)
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
-                                          base_tree, other_tree)
+                                          base_tree, other_tree, pb=pb)
 
     def _get_revision_tree(self, tree):
         """Return a revision tree releated to this tree.

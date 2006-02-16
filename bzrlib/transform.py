@@ -24,6 +24,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ExistingLimbo, ImmortalLimbo)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import file_kind, supports_executable, pathjoin
+from bzrlib.progress import DummyProgress
 from bzrlib.trace import mutter
 
 
@@ -38,7 +39,7 @@ def unique_add(map, key, value):
 
 class TreeTransform(object):
     """Represent a tree transformation."""
-    def __init__(self, tree):
+    def __init__(self, tree, pb=DummyProgress()):
         """Note: a write lock is taken on the tree.
         
         Use TreeTransform.finalize() to release the lock
@@ -72,6 +73,7 @@ class TreeTransform(object):
         self._tree_id_paths = {}
         self._new_root = self.get_id_tree(tree.get_root_id())
         self.__done = False
+        self._pb = pb
 
     def __get_root(self):
         return self._new_root
@@ -654,7 +656,9 @@ class TreeTransform(object):
         """
         tree_paths = list(self._tree_path_ids.iteritems())
         tree_paths.sort(reverse=True)
-        for path, trans_id in tree_paths:
+        for num, data in enumerate(tree_paths):
+            path, trans_id = data
+            self._pb.update('removing file', num+1, len(tree_paths))
             full_path = self._tree.abspath(path)
             if trans_id in self._removed_contents:
                 self.delete_any(full_path)
@@ -675,6 +679,7 @@ class TreeTransform(object):
                 if file_id is not None:
                     limbo_inv[trans_id] = inv[file_id]
                     del inv[file_id]
+        self._pb.clear()
 
     def _apply_insertions(self, inv, limbo_inv):
         """Perform tree operations that insert directory/inventory names.
@@ -683,7 +688,9 @@ class TreeTransform(object):
         limbo any files that needed renaming.  This must be done in strict
         parent-to-child order.
         """
-        for path, trans_id in self.new_paths():
+        new_paths = self.new_paths()
+        for num, (path, trans_id) in enumerate(new_paths):
+            self._pb.update('adding file', num+1, len(new_paths))
             try:
                 kind = self._new_contents[trans_id]
             except KeyError:
@@ -714,6 +721,7 @@ class TreeTransform(object):
             # requires files and inventory entries to be in place
             if trans_id in self._new_executability:
                 self._set_executability(path, inv, trans_id)
+        self._pb.clear()
 
     def _set_executability(self, path, inv, trans_id):
         """Set the executability of versioned files """
@@ -999,15 +1007,19 @@ def revert(working_tree, target_tree, filenames, backups=False):
         tt.finalize()
 
 
-def resolve_conflicts(tt):
+def resolve_conflicts(tt, pb=DummyProgress()):
     """Make many conflict-resolution attempts, but die if they fail"""
     new_conflicts = set()
-    for n in range(10):
-        conflicts = tt.find_conflicts()
-        if len(conflicts) == 0:
-            return new_conflicts
-        new_conflicts.update(conflict_pass(tt, conflicts))
-    raise MalformedTransform(conflicts=conflicts)
+    try:
+        for n in range(10):
+            pb.update('Resolution pass', n+1, 10)
+            conflicts = tt.find_conflicts()
+            if len(conflicts) == 0:
+                return new_conflicts
+            new_conflicts.update(conflict_pass(tt, conflicts))
+        raise MalformedTransform(conflicts=conflicts)
+    finally:
+        pb.clear()
 
 
 def conflict_pass(tt, conflicts):
