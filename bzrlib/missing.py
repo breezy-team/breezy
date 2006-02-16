@@ -1,7 +1,8 @@
-"""\
-A plugin for displaying what revisions are in 'other' but not in local.
-"""
+"""Display what revisions are missing in 'other' from 'this' and vice verca."""
+
 import bzrlib.ui as ui
+
+
 def iter_log_data(revisions, revision_source, verbose):
     from bzrlib.diff import compare_trees
     from bzrlib.tree import EmptyTree

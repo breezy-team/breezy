@@ -714,8 +714,8 @@ class cmd_info(Command):
     
     @display_command
     def run(self, branch=None):
-        import info
-        info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0])
+        import bzrlib.info
+        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0])
 
 
 class cmd_remove(Command):
