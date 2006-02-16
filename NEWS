@@ -18,6 +18,12 @@ bzr development version
       reflect user config now being stored in .bazaar (Hans Ulrich
       Niedermann)
 
+    * Default log format can be set in configuration and plugins can register
+      their own formatters. (Erik Bågfors)
+
+    * pull now accepts a --revision argument (Erik Bågfors)
+
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now
@@ -29,16 +35,6 @@ bzr development version
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
       for testing SFTP protocol support. (Robey Pointer)
-
-  IMPROVEMENTS:
-
-    * Default log format can be set in configuration and plugins can register
-      their own formatters. (Erik Bågfors)
-
-  IMPROVEMENTS:
-
-    * pull now accepts a --revision argument (Erik Bågfors)
-
 
 bzr 0.7rc1 2006-01-09
 
