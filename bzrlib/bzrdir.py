@@ -1495,6 +1495,7 @@ class ConvertBzrDir6ToMeta(Converter):
             pass
         # find out whats there
         self.step('Finding branch files')
+        last_revision = self.bzrdir.open_workingtree().last_revision()
         bzrcontents = self.bzrdir.transport.list_dir('.')
         for name in bzrcontents:
             if name.startswith('basis-inventory.'):
@@ -1535,6 +1536,9 @@ class ConvertBzrDir6ToMeta(Converter):
                           ('stat-cache', False)]
         for entry in checkout_files:
             self.move_entry('checkout', entry)
+        if last_revision is not None:
+            self.bzrdir._control_files.put_utf8('checkout/last-revision',
+                                                last_revision)
         self.bzrdir._control_files.put_utf8('branch-format', BzrDirMetaFormat1().get_format_string())
         return BzrDir.open(self.bzrdir.root_transport.base)
 
