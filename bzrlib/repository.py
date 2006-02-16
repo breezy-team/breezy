@@ -873,10 +873,6 @@ _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat6()]
 
 
-# TODO: jam 20060108 Create a new branch format, and as part of upgrade
-#       make sure that ancestry.weave is deleted (it is never used, but
-#       used to be created)
-
 class RepositoryTestProviderAdapter(object):
     """A tool to generate a suite testing multiple repository formats at once.
 
