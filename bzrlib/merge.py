@@ -39,7 +39,7 @@ from bzrlib.merge3 import Merge3
 import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
-from bzrlib.transform import (TreeTransform, resolve_conflicts, 
+from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               conflicts_strings, FinalPaths, create_by_entry,
                               unique_add)
 from bzrlib.trace import mutter, warning, note
@@ -335,8 +335,8 @@ class Merge3Merger(object):
                 file_status = self.merge_contents(file_id)
                 self.merge_executable(file_id, file_status)
                 
-            resolve_conflicts(self.tt)
-            self.cook_conflicts()
+            fs_conflicts = resolve_conflicts(self.tt)
+            self.cook_conflicts(fs_conflicts)
             for line in conflicts_strings(self.cooked_conflicts):
                 warning(line)
             self.tt.apply()
@@ -641,9 +641,10 @@ class Merge3Merger(object):
                 trans_id = self.tt.get_trans_id(file_id)
                 self.tt.set_executability(executability, trans_id)
 
-    def cook_conflicts(self):
+    def cook_conflicts(self, fs_conflicts):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
         name_conflicts = {}
+        self.cooked_conflicts.extend(cook_conflicts(fs_conflicts, self.tt))
         fp = FinalPaths(self.tt)
         for conflict in self._raw_conflicts:
             conflict_type = conflict[0]
