@@ -127,7 +127,7 @@ class TestamentTests(TestCaseWithTransport):
             committer='test@user')
         t = Testament.from_revision(self.b.repository, 'test@user-3')
         self.assertEqualDiff(
-            t.as_text(), SAMPLE_UNICODE_TESTAMENT.encode('utf-8'))
+            SAMPLE_UNICODE_TESTAMENT.encode('utf-8'), t.as_text())
 
     def test___init__(self):
         revision = self.b.repository.get_revision('test@user-2')
