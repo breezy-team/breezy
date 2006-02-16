@@ -519,9 +519,15 @@ class Merger(object):
         for file_id in old_entries:
             entry = old_entries[file_id]
             path = id2path(file_id)
+            if file_id in self.base_tree.inventory:
+                executable = getattr(self.base_tree.inventory[file_id], 'executable', False)
+            else:
+                executable = getattr(entry, 'executable', False)
+            if executable:
+                note('setting %s to executable', file_id)
             new_inventory[file_id] = (path, file_id, entry.parent_id, 
-                                      entry.kind,
-                                      getattr(entry, 'executable', False))
+                                      entry.kind, executable)
+                                      
             by_path[path] = file_id
         
         deletions = 0
@@ -545,9 +551,11 @@ class Merger(object):
             abspath = pathjoin(self.this_tree.basedir, path)
             kind = bzrlib.osutils.file_kind(abspath)
             if file_id in self.base_tree.inventory:
-                executable = self.base_tree.inventory[file_id].executable
+                executable = getattr(self.base_tree.inventory[file_id], 'executable', False)
             else:
                 executable = False
+            if executable:
+                note('setting new %s to executable', file_id)
             new_inventory[file_id] = (path, file_id, parent, kind, executable)
             by_path[path] = file_id 
 

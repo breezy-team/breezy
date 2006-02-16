@@ -819,6 +819,7 @@ def test_suite():
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
+                   'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_fileid_involved',
                    'bzrlib.tests.test_gpg',

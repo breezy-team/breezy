@@ -190,7 +190,11 @@ class TransportStore(Store):
 
     def has_id(self, fileid, suffix=None):
         """See Store.has_id."""
-        return self._transport.has_any(self._id_to_names(fileid, suffix))
+        paths = self._id_to_names(fileid, suffix)
+        if not self._transport.has_any(paths):
+            print 'could not find: %s' % (paths,)
+            return False
+        return True
 
     def _get_name(self, fileid, suffix=None):
         """A special check, which returns the name of an existing file.
@@ -272,16 +276,17 @@ class TransportStore(Store):
                 self._check_fileid(suffix)
         else:
             suffixes = []
-        prefix = ''
-        if self._prefixed:
-            prefix = hash_prefix(fileid)
+
         if self._escaped:
-            # We quote file ids before having them urlescaped
-            path = [prefix + urllib.quote(fileid)]
+            fileid = transport.urlescape(fileid)
+        if self._prefixed:
+            # hash_prefix adds the '/' separator
+            path = hash_prefix(fileid) + fileid
         else:
-            path = [prefix + fileid]
-        path.extend(suffixes)
-        return transport.urlescape(u'.'.join(path))
+            path = fileid
+
+        full_path = u'.'.join([path] + suffixes)
+        return transport.urlescape(full_path)
 
     def __repr__(self):
         if self._transport is None:
