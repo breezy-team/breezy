@@ -60,3 +60,46 @@ class TestEscaped(TestCaseWithTransport):
                 text_store._relpath('@:<>'))
         self.assertEqual('37/%25C3%25A5', text_store._relpath(u'\xe5'))
 
+    def test_files(self):
+        text_store = self.get_store(prefixed=True)
+
+        text_store.add(StringIO('a'), 'a')
+        self.failUnlessExists('62/a')
+
+        text_store.add(StringIO('space'), ' ')
+        self.failUnlessExists('88/%20')
+        self.assertEquals('space', text_store.get(' ').read())
+
+        text_store.add(StringIO('surprise'), '@:<>')
+        self.failUnlessExists('5b/%40%3A%3C%3E')
+        self.assertEquals('surprise', text_store.get('@:<>').read())
+
+        text_store.add(StringIO('unicode'), u'\xe5')
+        self.failUnlessExists('37/%C3%A5')
+        self.assertEquals('unicode', text_store.get(u'\xe5').read())
+
+    def test_weave(self):
+        from bzrlib.store.weave import WeaveStore
+        from bzrlib.transactions import PassThroughTransaction
+
+        trans = PassThroughTransaction()
+
+        t = bzrlib.transport.get_transport(self.get_url())
+        weave_store = WeaveStore(t, prefixed=True, escaped=True)
+
+        weave_store.add_text('a', 'r', ['a'], [], trans)
+        self.failUnlessExists('62/a.weave')
+        self.assertEqual(['a'], weave_store.get_lines('a', 'r', trans))
+
+        weave_store.add_text(' ', 'r', ['space'], [], trans)
+        self.failUnlessExists('88/%20.weave')
+        self.assertEquals(['space'], weave_store.get_lines(' ', 'r', trans))
+
+        weave_store.add_text('@:<>', 'r', ['surprise'], [], trans)
+        self.failUnlessExists('5b/%40%3A%3C%3E.weave')
+        self.assertEquals(['surprise'], weave_store.get_lines('@:<>', 'r', trans))
+
+        weave_store.add_text(u'\xe5', 'r', ['unicode'], [], trans)
+        self.failUnlessExists('37/%C3%A5.weave')
+        self.assertEquals(['unicode'], weave_store.get_lines(u'\xe5', 'r', trans))
+

@@ -27,7 +27,7 @@ import urllib
 
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.weave import Weave
-from bzrlib.store import TransportStore, hash_prefix
+from bzrlib.store import TransportStore
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.errors import NoSuchFile, FileExists
 from bzrlib.trace import mutter
@@ -68,12 +68,14 @@ class WeaveStore(TransportStore):
         return self._transport.get(self.filename(file_id))
 
     def _put(self, file_id, f):
-        if self._prefixed:
-            try:
-                self._transport.mkdir(hash_prefix(file_id), mode=self._dir_mode)
-            except FileExists:
-                pass
-        return self._transport.put(self.filename(file_id), f, mode=self._file_mode)
+        fn = self.filename(file_id)
+        try:
+            return self._transport.put(fn, f, mode=self._file_mode)
+        except NoSuchFile:
+            if not self._prefixed:
+                raise
+            self._transport.mkdir(os.path.dirname(fn), mode=self._dir_mode)
+            return self._transport.put(fn, f, mode=self._file_mode)
 
     def get_weave(self, file_id, transaction):
         weave = transaction.map.find_weave(file_id)
