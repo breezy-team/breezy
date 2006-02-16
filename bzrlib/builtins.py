@@ -1848,7 +1848,7 @@ class cmd_missing(Command):
         remote_branch = bzrlib.branch.Branch.open(other_branch)
         local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
         if (log_format == None):
-            default = bzrlib.config.BranchConfig(local_branch).log_formatter()
+            default = bzrlib.config.BranchConfig(local_branch).log_format()
             log_format = get_log_format(long=long, short=short, line=line, default=default)
         lf = log_formatter(log_format, sys.stdout,
                            show_ids=show_ids,
