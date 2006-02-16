@@ -523,8 +523,6 @@ class Merger(object):
                 executable = getattr(self.base_tree.inventory[file_id], 'executable', False)
             else:
                 executable = getattr(entry, 'executable', False)
-            if executable:
-                note('setting %s to executable', file_id)
             new_inventory[file_id] = (path, file_id, entry.parent_id, 
                                       entry.kind, executable)
                                       
@@ -554,8 +552,6 @@ class Merger(object):
                 executable = getattr(self.base_tree.inventory[file_id], 'executable', False)
             else:
                 executable = False
-            if executable:
-                note('setting new %s to executable', file_id)
             new_inventory[file_id] = (path, file_id, parent, kind, executable)
             by_path[path] = file_id 
 
