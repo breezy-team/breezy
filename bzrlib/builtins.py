@@ -971,6 +971,7 @@ class cmd_log(Command):
                             help='show from oldest to newest'),
                      'timezone', 'verbose', 
                      'show-ids', 'revision',
+                     'log-format',
                      'line', 'long', 
                      Option('message',
                             help='show revisions whose message matches this regexp',
@@ -983,6 +984,7 @@ class cmd_log(Command):
             show_ids=False,
             forward=False,
             revision=None,
+            log_format=None,
             message=None,
             long=False,
             short=False,
@@ -1041,7 +1043,10 @@ class cmd_log(Command):
         # in e.g. the default C locale.
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
-        log_format = get_log_format(long=long, short=short, line=line)
+        if (log_format == None):
+            default = bzrlib.config.BranchConfig(b).log_format()
+            log_format = get_log_format(long=long, short=short, line=line, default=default)
+
         lf = log_formatter(log_format,
                            show_ids=show_ids,
                            to_file=outf,
@@ -1893,6 +1898,7 @@ class cmd_missing(Command):
                             'Display changes in the local branch only'),
                      Option('theirs-only', 
                             'Display changes in the remote branch only'), 
+                     'log-format',
                      'line',
                      'long', 
                      'short',
@@ -1901,7 +1907,7 @@ class cmd_missing(Command):
                      ]
 
     def run(self, other_branch=None, reverse=False, mine_only=False,
-            theirs_only=False, long=True, short=False, line=False, 
+            theirs_only=False, log_format=None, long=False, short=False, line=False, 
             show_ids=False, verbose=False):
         from bzrlib.missing import find_unmerged, iter_log_data
         from bzrlib.log import log_formatter
@@ -1914,7 +1920,9 @@ class cmd_missing(Command):
             print "Using last location: " + local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
         local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
-        log_format = get_log_format(long=long, short=short, line=line)
+        if (log_format == None):
+            default = bzrlib.config.BranchConfig(local_branch).log_format()
+            log_format = get_log_format(long=long, short=short, line=line, default=default)
         lf = log_formatter(log_format, sys.stdout,
                            show_ids=show_ids,
                            show_timezone='original')

@@ -31,6 +31,11 @@ bzr development version
       locally. As such they are not suitable for use except in high bandwidth
       low latency environments like LAN's or local disk. (Robert Collins)
 
+    * Default log format can be set in configuration and plugins can register
+      their own formatters. (Erik Bågfors)
+
+    * pull now accepts a --revision argument (Erik Bågfors)
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now
@@ -42,11 +47,6 @@ bzr development version
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
       for testing SFTP protocol support. (Robey Pointer)
-
-  IMPROVEMENTS:
-
-    * pull now accepts a --revision argument (Erik Bågfors)
-
 
 bzr 0.7rc1 2006-01-09
 
