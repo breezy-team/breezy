@@ -1024,12 +1024,12 @@ def conflict_pass(tt, conflicts):
             final_parent = tt.final_parent(conflict[1])
             if tt.path_changed(conflict[1]):
                 tt.adjust_path(new_name, final_parent, conflict[2])
-                new_conflicts.add((c_type, 'Moved existing file', conflict[2],
-                                   conflict[1]))
+                new_conflicts.add((c_type, 'Moved existing file to', 
+                                   conflict[2], conflict[1]))
             else:
                 tt.adjust_path(new_name, final_parent, conflict[1])
-                new_conflicts.add((c_type, 'Moved existing file', conflict[1],
-                                   conflict[2]))
+                new_conflicts.add((c_type, 'Moved existing file to', 
+                                  conflict[1], conflict[2]))
         elif c_type == 'parent loop':
             # break the loop by undoing one of the ops that caused the loop
             cur = conflict[1]
@@ -1049,8 +1049,7 @@ def conflict_pass(tt, conflicts):
                 new_conflicts.add((c_type, 'Created directory.', trans_id))
         elif c_type == 'unversioned parent':
             tt.version_file(tt.inactive_file_id(conflict[1]), conflict[1])
-            new_conflicts.add((c_type, 'Versioned parent directory', 
-                               conflict[1]))
+            new_conflicts.add((c_type, 'Versioned directory', conflict[1]))
     return new_conflicts
 
 def cook_conflicts(raw_conflicts, tt):
@@ -1080,3 +1079,30 @@ def iter_cook_conflicts(raw_conflicts, tt):
             conflicting_id = tt.final_file_id(conflict[3])
             yield (c_type, action, modified_path, modified_id, 
                    conflicting_path, conflicting_id)
+
+
+def conflicts_strings(conflicts):
+    """Generate strings for the provided conflicts"""
+    for conflict in conflicts:
+        conflict_type = conflict[0]
+        if conflict_type == 'text conflict':
+            yield 'Text conflict in %s' % conflict[2]
+        elif conflict_type == 'contents conflict':
+            yield 'Contents conflict in %s' % conflict[2]
+        elif conflict_type == 'path conflict':
+            yield 'Path conflict: %s / %s' % conflict[2:]
+        elif conflict_type == 'duplicate id':
+            vals = (conflict[4], conflict[1], conflict[2])
+            yield 'Conflict adding id to %s.  %s %s.' % vals
+        elif conflict_type == 'duplicate':
+            vals = (conflict[4], conflict[1], conflict[2])
+            yield 'Conflict adding file %s.  %s %s.' % vals
+        elif conflict_type == 'parent loop':
+            vals = (conflict[4], conflict[2], conflict[1])
+            yield 'Conflict moving %s into %s.  %s.' % vals
+        elif conflict_type == 'unversioned parent':
+            vals = (conflict[2], conflict[1])
+            yield 'Conflict adding versioned files to %s.  %s.' % vals
+        elif conflict_type == 'missing parent':
+            vals = (conflict[2], conflict[1])
+            yield 'Conflict adding files to %s.  %s.' % vals

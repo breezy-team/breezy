@@ -24,7 +24,7 @@ from bzrlib.merge import Merge3Merger
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
-                              find_interesting)
+                              conflicts_strings, find_interesting)
 
 class TestTreeTransform(TestCaseInTempDir):
     def setUp(self):
@@ -388,8 +388,8 @@ class TestTreeTransform(TestCaseInTempDir):
         tt, emerald, oz, old_dorothy, new_dorothy = self.get_conflicted()
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
-        duplicate = ('duplicate', 'Moved existing file', 'dorothy.moved', None,
-                     'dorothy', 'dorothy-id')
+        duplicate = ('duplicate', 'Moved existing file to', 'dorothy.moved', 
+                     None, 'dorothy', 'dorothy-id')
         self.assertEqual(cooked_conflicts[0], duplicate)
         duplicate_id = ('duplicate id', 'Unversioned existing file', 
                         'dorothy.moved', None, 'dorothy', 'dorothy-id')
@@ -397,7 +397,7 @@ class TestTreeTransform(TestCaseInTempDir):
         missing_parent = ('missing parent', 'Not deleting', 'oz', 'oz-id')
         self.assertEqual(cooked_conflicts[2], missing_parent)
         unversioned_parent = ('unversioned parent', 
-                              'Versioned parent directory', 'oz', 'oz-id')
+                              'Versioned directory', 'oz', 'oz-id')
         self.assertEqual(cooked_conflicts[3], unversioned_parent)
         parent_loop = ('parent loop', 'Cancelled move', 'oz/emeraldcity', 
                        'emerald-id', 'oz/emeraldcity', 'emerald-id')
@@ -410,6 +410,20 @@ class TestTreeTransform(TestCaseInTempDir):
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
         tt.finalize()
+        conflicts_s = list(conflicts_strings(cooked_conflicts))
+        self.assertEqual(len(cooked_conflicts), len(conflicts_s))
+        self.assertEqual(conflicts_s[0], 'Conflict adding file dorothy.  '
+                                         'Moved existing file to '
+                                         'dorothy.moved.')
+        self.assertEqual(conflicts_s[1], 'Conflict adding id to dorothy.  '
+                                         'Unversioned existing file '
+                                         'dorothy.moved.')
+        self.assertEqual(conflicts_s[2], 'Conflict adding files to oz.  '
+                                         'Not deleting.')
+        self.assertEqual(conflicts_s[3], 'Conflict adding versioned files to '
+                                         'oz.  Versioned directory.')
+        self.assertEqual(conflicts_s[4], 'Conflict moving oz/emeraldcity into'
+                                         ' oz/emeraldcity.  Cancelled move.')
 
     def test_moving_versioned_directories(self):
         create, root = self.get_transform()

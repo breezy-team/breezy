@@ -39,8 +39,9 @@ from bzrlib.merge3 import Merge3
 import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
-from bzrlib.transform import (TreeTransform, resolve_conflicts, FinalPaths, 
-                              create_by_entry, unique_add)
+from bzrlib.transform import (TreeTransform, resolve_conflicts, 
+                              conflicts_strings, FinalPaths, create_by_entry,
+                              unique_add)
 from bzrlib.trace import mutter, warning, note
 
 # TODO: Report back as changes are merged in
@@ -692,18 +693,6 @@ class Merge3Merger(object):
             file_id = self.tt.final_file_id(trans_id)
             self.cooked_conflicts.append(('path conflict', file_id, this_path, 
                                          other_path))
-
-
-def conflicts_strings(conflicts):
-    """Generate strings for the provided conflicts"""
-    for conflict in conflicts:
-        conflict_type = conflict[0]
-        if conflict_type == 'text conflict':
-            yield 'Text conflict in %s' % conflict[2]
-        elif conflict_type == 'contents conflict':
-            yield 'Contents conflict in %s' % conflict[2]
-        elif conflict_type == 'path conflict':
-            yield 'Path conflict: %s / %s' % conflict[2:]
 
 
 class WeaveMerger(Merge3Merger):
