@@ -192,7 +192,6 @@ class TransportStore(Store):
         """See Store.has_id."""
         paths = self._id_to_names(fileid, suffix)
         if not self._transport.has_any(paths):
-            print 'could not find: %s' % (paths,)
             return False
         return True
 
