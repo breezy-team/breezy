@@ -19,7 +19,7 @@ from bzrlib.branch import Branch
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot, NotVersionedError,
                            ExistingLimbo, ImmortalLimbo, LockError)
-from bzrlib.osutils import file_kind, has_symlinks
+from bzrlib.osutils import file_kind, has_symlinks, pathjoin
 from bzrlib.merge import Merge3Merger
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
@@ -41,12 +41,12 @@ class TestTreeTransform(TestCaseInTempDir):
     def test_existing_limbo(self):
         limbo_name = self.wt._control_files.controlfilename('limbo')
         transform, root = self.get_transform()
-        os.mkdir(os.path.join(limbo_name, 'hehe'))
+        os.mkdir(pathjoin(limbo_name, 'hehe'))
         self.assertRaises(ImmortalLimbo, transform.apply)
         self.assertRaises(LockError, self.wt.unlock)
         self.assertRaises(ExistingLimbo, self.get_transform)
         self.assertRaises(LockError, self.wt.unlock)
-        os.rmdir(os.path.join(limbo_name, 'hehe'))
+        os.rmdir(pathjoin(limbo_name, 'hehe'))
         os.rmdir(limbo_name)
         transform, root = self.get_transform()
         transform.apply()
@@ -166,7 +166,7 @@ class TestTreeTransform(TestCaseInTempDir):
         result = transform2.find_conflicts()
         fp = FinalPaths(transform2)
         self.assert_('oz/tip' in transform2._tree_path_ids)
-        self.assertEqual(fp.get_path(newtip), os.path.join('oz', 'tip'))
+        self.assertEqual(fp.get_path(newtip), pathjoin('oz', 'tip'))
         self.assertEqual(len(result), 2)
         self.assertEqual((result[0][0], result[0][1]), 
                          ('duplicate', newtip))
@@ -239,16 +239,16 @@ class TestTreeTransform(TestCaseInTempDir):
         mangle_tree.apply()
         self.assertEqual(file(self.wt.abspath('name1')).read(), 'hello2')
         self.assertEqual(file(self.wt.abspath('name2')).read(), 'hello1')
-        mfile2_path = self.wt.abspath(os.path.join('new_directory','mfile2'))
+        mfile2_path = self.wt.abspath(pathjoin('new_directory','mfile2'))
         self.assertEqual(mangle_tree.final_parent(mfile2), newdir)
         self.assertEqual(file(mfile2_path).read(), 'later2')
         self.assertEqual(self.wt.id2path('mfile2'), 'new_directory/mfile2')
         self.assertEqual(self.wt.path2id('new_directory/mfile2'), 'mfile2')
-        newfile_path = self.wt.abspath(os.path.join('new_directory','newfile'))
+        newfile_path = self.wt.abspath(pathjoin('new_directory','newfile'))
         self.assertEqual(file(newfile_path).read(), 'hello3')
         self.assertEqual(self.wt.path2id('dying_directory'), 'ddir')
         self.assertIs(self.wt.path2id('dying_directory/dying_file'), None)
-        mfile2_path = self.wt.abspath(os.path.join('new_directory','mfile2'))
+        mfile2_path = self.wt.abspath(pathjoin('new_directory','mfile2'))
 
     def test_both_rename(self):
         create_tree,root = self.get_transform()
@@ -624,10 +624,10 @@ class TestTransformMerge(TestCaseInTempDir):
         for tg in [this, base, other]:
             tg.tt.apply()
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
-        self.assertEqual(this.wt.id2path('c'), os.path.join('b/c1'))
-        self.assertEqual(this.wt.id2path('d'), os.path.join('b/d1'))
-        self.assertEqual(this.wt.id2path('e'), os.path.join('b/e1'))
-        self.assertEqual(this.wt.id2path('f'), os.path.join('b/f1'))
+        self.assertEqual(this.wt.id2path('c'), pathjoin('b/c1'))
+        self.assertEqual(this.wt.id2path('d'), pathjoin('b/d1'))
+        self.assertEqual(this.wt.id2path('e'), pathjoin('b/e1'))
+        self.assertEqual(this.wt.id2path('f'), pathjoin('b/f1'))
 
     def test_filename_merge_conflicts(self):
         base = TransformGroup("BASE")
@@ -651,10 +651,10 @@ class TestTransformMerge(TestCaseInTempDir):
             tg.tt.apply()
         Merge3Merger(this.wt, this.wt, base.wt, other.wt)
 
-        self.assertEqual(this.wt.id2path('g'), os.path.join('b/g1.OTHER'))
+        self.assertEqual(this.wt.id2path('g'), pathjoin('b/g1.OTHER'))
         self.assertIs(os.path.lexists(this.wt.abspath('b/g1.BASE')), True)
         self.assertIs(os.path.lexists(this.wt.abspath('b/g1.THIS')), False)
-        self.assertEqual(this.wt.id2path('h'), os.path.join('b/h1.THIS'))
+        self.assertEqual(this.wt.id2path('h'), pathjoin('b/h1.THIS'))
         self.assertIs(os.path.lexists(this.wt.abspath('b/h1.BASE')), True)
         self.assertIs(os.path.lexists(this.wt.abspath('b/h1.OTHER')), False)
-        self.assertEqual(this.wt.id2path('i'), os.path.join('b/i1.OTHER'))
+        self.assertEqual(this.wt.id2path('i'), pathjoin('b/i1.OTHER'))

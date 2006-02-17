@@ -217,8 +217,8 @@ class MergeTest(TestCase):
         builder.add_file("4", "1", "file1", "hello1", False)
         builder.change_parent("4", other="2", this="3")
         conflicts = builder.merge()
-        path2 = os.path.join('dir2', 'file1')
-        path3 = os.path.join('dir3', 'file1')
+        path2 = pathjoin('dir2', 'file1')
+        path3 = pathjoin('dir3', 'file1')
         self.assertEqual(conflicts, [('path conflict', '4', path3, path2)])
         builder.cleanup()
 
