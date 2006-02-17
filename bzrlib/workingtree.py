@@ -277,7 +277,12 @@ class WorkingTree(bzrlib.tree.Tree):
         self.path2id = self._inventory.path2id
 
     def is_control_filename(self, filename):
-        """True if filename is the name of a control file in this tree."""
+        """True if filename is the name of a control file in this tree.
+        
+        This is true IF and ONLY IF the filename is part of the meta data
+        that bzr controls in this tree. I.E. a random .bzr directory placed
+        on disk will not be a control file for this tree.
+        """
         try:
             self.bzrdir.transport.relpath(self.abspath(filename))
             return True

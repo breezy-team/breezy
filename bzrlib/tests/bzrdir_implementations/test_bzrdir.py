@@ -977,20 +977,20 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEqual(repo.bzrdir.root_transport.base,
                          found_repo.bzrdir.root_transport.base)
         
-    def test_can_and_needs_upgrade_format(self):
+    def test_can_and_needs_format_conversion(self):
         # check that we can ask an instance if its upgradable
         dir = self.make_bzrdir('.')
-        if dir.can_update_format():
+        if dir.can_convert_format():
             # if its updatable there must be an updater
-            self.assertTrue(isinstance(dir._format.get_updater(),
+            self.assertTrue(isinstance(dir._format.get_converter(),
                                        bzrdir.Converter))
-        dir.needs_format_update(None)
+        dir.needs_format_conversion(None)
 
     def test_upgrade_new_instance(self):
         """Does an available updater work ?."""
         dir = self.make_bzrdir('.')
-        if dir.can_update_format():
-            dir._format.get_updater(None).convert(dir, ui.ui_factory.progress_bar())
+        if dir.can_convert_format():
+            dir._format.get_converter(None).convert(dir, ui.ui_factory.progress_bar())
             # and it should pass 'check' now.
             check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)
 

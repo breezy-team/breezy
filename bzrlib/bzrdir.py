@@ -61,8 +61,8 @@ class BzrDir(object):
         a transport connected to the directory this bzr was opened from.
     """
 
-    def can_update_format(self):
-        """Return true if this bzrdir is one whose format we can update."""
+    def can_convert_format(self):
+        """Return true if this bzrdir is one whose format we can convert from."""
         return True
 
     def _check_supported(self, format, allow_unsupported):
@@ -362,14 +362,14 @@ class BzrDir(object):
         self.transport = _transport.clone('.bzr')
         self.root_transport = _transport
 
-    def needs_format_update(self, format=None):
-        """Return true if this bzrdir needs update_format run on it.
+    def needs_format_conversion(self, format=None):
+        """Return true if this bzrdir needs convert_format run on it.
         
         For instance, if the repository format is out of date but the 
         branch and working tree are not, this should return True.
 
         :param format: Optional parameter indicating a specific desired
-                       format we want to end up at.
+                       format we plan to arrive at.
         """
         # for now, if the format is not the same as the system default,
         # an upgrade is needed. In the future we will want to scan
@@ -648,8 +648,8 @@ class BzrDir4(BzrDirPreSplitOut):
         from bzrlib.repository import RepositoryFormat4
         return RepositoryFormat4().initialize(self, shared)
 
-    def needs_format_update(self, format=None):
-        """Format 4 dirs are always in need of updating."""
+    def needs_format_conversion(self, format=None):
+        """Format 4 dirs are always in need of conversion."""
         return True
 
     def open_repository(self):
@@ -699,8 +699,8 @@ class BzrDirMeta1(BzrDir):
     individual formats are really split out.
     """
 
-    def can_update_format(self):
-        """See BzrDir.can_update_format()."""
+    def can_convert_format(self):
+        """See BzrDir.can_convert_format()."""
         return False
 
     def create_branch(self):
@@ -760,9 +760,9 @@ class BzrDirMeta1(BzrDir):
             pass
         return self.transport.clone('checkout')
 
-    def needs_format_update(self, format=None):
-        """See BzrDir.needs_format_update()."""
-        # currently there are no possible updates to meta1 formats.
+    def needs_format_conversion(self, format=None):
+        """See BzrDir.needs_format_conversion()."""
+        # currently there are no possible conversions for meta1 formats.
         return False
 
     def open_branch(self, unsupported=False):
@@ -830,8 +830,8 @@ class BzrDirFormat(object):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
 
-    def get_updater(self, format=None):
-        """Return the updater to use to convert bzrdirs needing updates.
+    def get_converter(self, format=None):
+        """Return the converter to use to convert bzrdirs needing converts.
 
         This returns a bzrlib.bzrdir.Converter object.
 
@@ -842,7 +842,7 @@ class BzrDirFormat(object):
         :param format: Optional format to override the default foramt of the 
                        library.
         """
-        raise NotImplementedError(self.get_updater)
+        raise NotImplementedError(self.get_converter)
 
     def initialize(self, url):
         """Create a bzr control dir at this url and return an opened copy."""
@@ -936,8 +936,8 @@ class BzrDirFormat4(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 0.0.4\n"
 
-    def get_updater(self, format=None):
-        """See BzrDirFormat.get_updater()."""
+    def get_converter(self, format=None):
+        """See BzrDirFormat.get_converter()."""
         # there is one and only one upgrade path here.
         return ConvertBzrDir4To5()
         
@@ -974,8 +974,8 @@ class BzrDirFormat5(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
 
-    def get_updater(self, format=None):
-        """See BzrDirFormat.get_updater()."""
+    def get_converter(self, format=None):
+        """See BzrDirFormat.get_converter()."""
         # there is one and only one upgrade path here.
         return ConvertBzrDir5To6()
         
@@ -1013,8 +1013,8 @@ class BzrDirFormat6(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 6\n"
 
-    def get_updater(self, format=None):
-        """See BzrDirFormat.get_updater()."""
+    def get_converter(self, format=None):
+        """See BzrDirFormat.get_converter()."""
         # there is one and only one upgrade path here.
         return ConvertBzrDir6ToMeta()
         

@@ -405,22 +405,22 @@ class TestFormat5(TestCaseWithTransport):
         dir = bzrdir.BzrDir.open(self.get_url())
         check_dir_components_use_same_lock(dir)
     
-    def test_can_update(self):
-        # format 5 dirs are updatable
+    def test_can_convert(self):
+        # format 5 dirs are convertable
         dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
-        self.assertTrue(dir.can_update_format())
+        self.assertTrue(dir.can_convert_format())
     
-    def test_needs_update(self):
-        # format 5 dirs need an update if they are not the default.
+    def test_needs_conversion(self):
+        # format 5 dirs need a conversion if they are not the default.
         # and they start of not the default.
         old_format = bzrdir.BzrDirFormat.get_default_format()
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
         try:
             dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
-            self.assertFalse(dir.needs_format_update())
+            self.assertFalse(dir.needs_format_conversion())
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
-        self.assertTrue(dir.needs_format_update())
+        self.assertTrue(dir.needs_format_conversion())
 
 
 class TestFormat6(TestCaseWithTransport):
@@ -441,18 +441,18 @@ class TestFormat6(TestCaseWithTransport):
         dir = bzrdir.BzrDir.open(self.get_url())
         check_dir_components_use_same_lock(dir)
     
-    def test_can_update(self):
-        # format 6 dirs are updatable
+    def test_can_convert(self):
+        # format 6 dirs are convertable
         dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        self.assertTrue(dir.can_update_format())
+        self.assertTrue(dir.can_convert_format())
     
-    def test_needs_update(self):
-        # format 6 dirs need an update if they are not the default.
+    def test_needs_conversion(self):
+        # format 6 dirs need an conversion if they are not the default.
         old_format = bzrdir.BzrDirFormat.get_default_format()
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
         try:
             dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
-            self.assertTrue(dir.needs_format_update())
+            self.assertTrue(dir.needs_format_conversion())
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
-        self.assertFalse(dir.needs_format_update())
+        self.assertFalse(dir.needs_format_conversion())

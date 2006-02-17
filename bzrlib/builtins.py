@@ -1440,7 +1440,15 @@ class cmd_scan_cache(Command):
 
         if c.needs_write:
             c.write()
-            
+
+
+def get_format_type(typestring):
+    """Parse and return a format specifier."""
+    if typestring == "metadir":
+        return bzrdir.BzrDirMetaFormat1
+    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
+        (typestring)
+    raise BzrCommandError(msg)
 
 
 class cmd_upgrade(Command):
@@ -1450,16 +1458,6 @@ class cmd_upgrade(Command):
     this command. When the default format has changed you may also be warned
     during other operations to upgrade.
     """
-    # NB: this is used from the class without creating an instance, which is
-    # why it does not have a self parameter.
-    def get_format_type(typestring):
-        """Parse and return a format specifier."""
-        if typestring == "metadir":
-            return bzrdir.BzrDirMetaFormat1
-        msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
-            (typestring)
-        raise BzrCommandError(msg)
-
     takes_args = ['url?']
     takes_options = [
                      Option('format', 

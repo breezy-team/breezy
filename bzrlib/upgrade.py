@@ -42,15 +42,15 @@ class Convert(object):
             self.pb.note("This is a checkout. The branch (%s) needs to be "
                          "upgraded separately.",
                          branch.bzrdir.root_transport.base)
-        if not self.bzrdir.needs_format_update(self.format):
+        if not self.bzrdir.needs_format_conversion(self.format):
             raise errors.UpToDateFormat(self.bzrdir._format)
-        if not self.bzrdir.can_update_format():
+        if not self.bzrdir.can_convert_format():
             raise errors.BzrError("cannot upgrade from branch format %s" %
                            self.bzrdir._format)
         self.pb.note('starting upgrade of %s', self.transport.base)
         self._backup_control_dir()
-        while self.bzrdir.needs_format_update(self.format):
-            converter = self.bzrdir._format.get_updater(self.format)
+        while self.bzrdir.needs_format_conversion(self.format):
+            converter = self.bzrdir._format.get_converter(self.format)
             self.bzrdir = converter.convert(self.bzrdir, self.pb)
         self.pb.note("finished")
 
