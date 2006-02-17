@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -280,3 +280,13 @@ s: both\\\"
         """Write empty stanza"""
         l = list(Stanza().to_lines())
         self.assertEquals(l, [])
+
+    def test_rio_raises_type_error(self):
+        """TypeError on adding invalid type to Stanza"""
+        s = Stanza()
+        self.assertRaises(TypeError, s.add, 'foo', {})
+
+    def test_rio_raises_type_error_key(self):
+        """TypeError on adding invalid type to Stanza"""
+        s = Stanza()
+        self.assertRaises(TypeError, s.add, 10, {})

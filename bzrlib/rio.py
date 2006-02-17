@@ -93,7 +93,8 @@ class Stanza(object):
         ## elif isinstance(value, (int, long)):
         ##    value = str(value)           # XXX: python2.4 without L-suffix
         else:
-            raise ValueError("invalid value %r" % value)
+            raise TypeError("invalid type for rio value: %r of type %s"
+                            % (value, type(value)))
         self.items.append((tag, value))
         
     def __contains__(self, find_tag):
