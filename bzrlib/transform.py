@@ -37,7 +37,30 @@ def unique_add(map, key, value):
 
 
 class TreeTransform(object):
-    """Represent a tree transformation."""
+    """Represent a tree transformation.
+    
+    This object is designed to support incremental generation of the transform,
+    in any order.  
+    
+    It is easy to produce malformed transforms, but they are generally
+    harmless.  Attempting to apply a malformed transform will cause an
+    exception to be raised before any modifications are made to the tree.  
+
+    Many kinds of malformed transforms can be corrected with the 
+    resolve_conflicts function.  The remaining ones indicate programming error,
+    such as trying to create a file with no path.
+
+    Two sets of file creation methods are supplied.  Convenience methods are:
+     * new_file
+     * new_directory
+     * new_symlink
+
+    These are composed of the low-level methods:
+     * create_path
+     * create_file or create_directory or create_symlink
+     * version_file
+     * set_executability
+    """
     def __init__(self, tree):
         """Note: a write lock is taken on the tree.
         
