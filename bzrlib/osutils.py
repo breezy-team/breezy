@@ -441,6 +441,7 @@ def filesize(f):
     """Return size of given open file."""
     return os.fstat(f.fileno())[ST_SIZE]
 
+
 # Define rand_bytes based on platform.
 try:
     # Python 2.4 and later have os.urandom,
@@ -462,6 +463,20 @@ except (NotImplementedError, AttributeError):
                 s += chr(random.randint(0, 255))
                 n -= 1
             return s
+
+
+ALNUM = '0123456789abcdefghijklmnopqrstuvwxyz'
+def rand_chars(num):
+    """Return a random string of num alphanumeric characters
+    
+    The result only contains lowercase chars because it may be used on 
+    case-insensitive filesystems.
+    """
+    s = ''
+    for raw_byte in rand_bytes(num):
+        s += ALNUM[ord(raw_byte) % 36]
+    return s
+
 
 ## TODO: We could later have path objects that remember their list
 ## decomposition (might be too tricksy though.)
