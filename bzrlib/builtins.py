@@ -35,10 +35,12 @@ from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError,
 from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
+from bzrlib.progress import DummyProgress
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
 from bzrlib.transport.local import LocalTransport
+from bzrlib.ui import ui_factory
 from bzrlib.workingtree import WorkingTree
 
 
@@ -1734,7 +1736,8 @@ class cmd_merge(Command):
         try:
             conflict_count = merge(other, base, check_clean=(not force),
                                    merge_type=merge_type, reprocess=reprocess,
-                                   show_base=show_base)
+                                   show_base=show_base, 
+                                   pb=ui_factory.progress_bar())
             if conflict_count != 0:
                 return 1
             else:
@@ -1821,7 +1824,6 @@ class cmd_revert(Command):
     aliases = ['merge-revert']
 
     def run(self, revision=None, no_backup=False, file_list=None):
-        from bzrlib.ui import ui_factory
         from bzrlib.commands import parse_spec
         if file_list is not None:
             if len(file_list) == 0:
@@ -2145,7 +2147,8 @@ class cmd_uncommit(bzrlib.commands.Command):
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
           this_dir=None, backup_files=False, merge_type=Merge3Merger,
-          file_list=None, show_base=False, reprocess=False):
+          file_list=None, show_base=False, reprocess=False, 
+          pb=DummyProgress()):
     """Merge changes into a tree.
 
     base_revision
@@ -2185,7 +2188,7 @@ def merge(other_revision, base_revision,
                               " type. %s" % merge_type)
     if reprocess and show_base:
         raise BzrCommandError("Cannot reprocess and show base.")
-    merger = Merger(this_tree.branch, this_tree=this_tree)
+    merger = Merger(this_tree.branch, this_tree=this_tree, pb=pb)
     merger.check_basis(check_clean)
     merger.set_other(other_revision)
     merger.set_base(base_revision)

@@ -81,7 +81,8 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
 
 
 class Merger(object):
-    def __init__(self, this_branch, other_tree=None, base_tree=None, this_tree=None):
+    def __init__(self, this_branch, other_tree=None, base_tree=None, 
+                 this_tree=None, pb=DummyProgress()):
         object.__init__(self)
         assert this_tree is not None, "this_tree is required"
         self.this_branch = this_branch
@@ -97,7 +98,7 @@ class Merger(object):
         self.interesting_ids = None
         self.show_base = False
         self.reprocess = False
-        self._pb = ui_factory.progress_bar()
+        self._pb = pb 
 
     def revision_tree(self, revision_id):
         return self.this_branch.repository.revision_tree(revision_id)
