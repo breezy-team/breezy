@@ -1022,7 +1022,12 @@ class cmd_log(Command):
         elif len(revision) == 1:
             rev1 = rev2 = revision[0].in_history(b).revno
         elif len(revision) == 2:
-            rev1 = revision[0].in_history(b).revno
+            if revision[0].spec is None:
+                # missing begin-range means first revision
+                rev1 = 1
+            else:
+                rev1 = revision[0].in_history(b).revno
+
             if revision[1].spec is None:
                 # missing end-range means last known revision
                 rev2 = b.revno()
@@ -1848,7 +1853,7 @@ class cmd_help(Command):
     """Show help on a command or other topic.
 
     For a list of all available commands, say 'bzr help commands'."""
-    takes_options = ['long']
+    takes_options = [Option('long', 'show help on all commands')]
     takes_args = ['topic?']
     aliases = ['?']
     
