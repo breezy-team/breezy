@@ -268,11 +268,13 @@ class Repository(object):
                     # FIXME do not peek!
                     if self.control_files._transport.listable():
                         pb = bzrlib.ui.ui_factory.progress_bar()
-                        copy_all(self.weave_store, destination.weave_store, pb=pb)
+                        copy_all(self.weave_store,
+                            destination.weave_store, pb=pb)
                         pb.update('copying inventory', 0, 1)
-                        destination.control_weaves.copy_multi(self.control_weaves,
-                                                              ['inventory'])
-                        copy_all(self.revision_store, destination.revision_store, pb=pb)
+                        destination.control_weaves.copy_multi(
+                            self.control_weaves, ['inventory'])
+                        copy_all(self.revision_store,
+                            destination.revision_store, pb=pb)
                     else:
                         destination.fetch(self, revision_id=revision_id)
             # compatible v4 stores

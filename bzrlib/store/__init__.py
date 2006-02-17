@@ -35,7 +35,6 @@ from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.trace import mutter
 import bzrlib.transport as transport
 from bzrlib.transport.local import LocalTransport
-import bzrlib.ui
 
 ######################################################################
 # stores

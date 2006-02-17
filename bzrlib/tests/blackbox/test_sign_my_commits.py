@@ -15,19 +15,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
-"""Black-box tests for bzr sign-my-commits.
-"""
+"""Black-box tests for bzr sign-my-commits."""
 
 import os
 
 import bzrlib.gpg
 from bzrlib.testament import Testament
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class SignMyCommits(TestCaseInTempDir):
+class SignMyCommits(TestCaseWithTransport):
 
     def monkey_patch_gpg(self):
         """Monkey patch the gpg signing strategy to be a loopback.
@@ -45,8 +43,8 @@ class SignMyCommits(TestCaseInTempDir):
     def _fix_gpg_strategy(self):
         bzrlib.gpg.GPGStrategy = self._oldstrategy
 
-    def setup_tree(self):
-        wt = WorkingTree.create_standalone('.')
+    def setup_tree(self, location='.'):
+        wt = self.make_branch_and_tree(location)
         wt.commit("base A", allow_pointless=True, rev_id='A')
         wt.commit("base B", allow_pointless=True, rev_id='B')
         wt.commit("base C", allow_pointless=True, rev_id='C')
@@ -75,11 +73,8 @@ class SignMyCommits(TestCaseInTempDir):
         self.assertFalse(repo.revision_store.has_id('D', 'sig'))
             
     def test_sign_my_commits_location(self):
-        os.mkdir('other')
-        os.chdir('other')
-        wt = self.setup_tree()
+        wt = self.setup_tree('other')
         repo = wt.branch.repository
-        os.chdir('..')
 
         self.monkey_patch_gpg()
 
