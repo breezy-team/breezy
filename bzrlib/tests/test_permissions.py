@@ -213,7 +213,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         check_mode_r(self, 'local/.bzr', 0644, 0755)
 
         t = WorkingTree.open('local')
-        b = t.branch
+        b_local = t.branch
         self.assertEqualMode(0755, b_local.control_files._dir_mode)
         self.assertEqualMode(0644, b_local.control_files._file_mode)
 

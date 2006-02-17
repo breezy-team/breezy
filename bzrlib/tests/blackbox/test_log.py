@@ -19,22 +19,70 @@
 """Black-box tests for bzr log.
 """
 
-import os
 
-import bzrlib
 from bzrlib.tests.blackbox import ExternalBase
 
 
 class TestLog(ExternalBase):
 
-    def test_log(self):
+    def _prepare(self):
         self.runbzr("init")
-        self.build_tree(['hello.txt'])
+        self.build_tree(['hello.txt', 'goodbye.txt', 'meep.txt'])
         self.runbzr("add hello.txt")
-        self.runbzr("commit -m message hello.txt")
-        result = self.runbzr("log")[0]
-        self.assertTrue('revno: 1\n' in result)
-        self.assertTrue('message:\n  message\n' in result)
-        
-        result2 = self.runbzr("log -r 1..")[0]
-        self.assertEquals(result2, result)
+        self.runbzr("commit -m message1 hello.txt")
+        self.runbzr("add goodbye.txt")
+        self.runbzr("commit -m message2 goodbye.txt")
+        self.runbzr("add meep.txt")
+        self.runbzr("commit -m message3 meep.txt")
+        self.full_log = self.runbzr("log")[0]
+
+    def test_log_null_end_revspec(self):
+        self._prepare()
+        self.assertTrue('revno: 1\n' in self.full_log)
+        self.assertTrue('revno: 2\n' in self.full_log)
+        self.assertTrue('revno: 3\n' in self.full_log)
+        self.assertTrue('message:\n  message1\n' in self.full_log)
+        self.assertTrue('message:\n  message2\n' in self.full_log)
+        self.assertTrue('message:\n  message3\n' in self.full_log)
+
+        log = self.runbzr("log -r 1..")[0]
+        self.assertEquals(log, self.full_log)
+
+    def test_log_null_begin_revspec(self):
+        self._prepare()
+        log = self.runbzr("log -r ..3")[0]
+        self.assertEquals(self.full_log, log)
+
+    def test_log_null_both_revspecs(self):
+        self._prepare()
+        log = self.runbzr("log -r ..")[0]
+        self.assertEquals(self.full_log, log)
+
+    def test_log_negative_begin_revspec_full_log(self):
+        self._prepare()
+        log = self.runbzr("log -r -3..")[0]
+        self.assertEquals(self.full_log, log)
+
+    def test_log_negative_both_revspec_full_log(self):
+        self._prepare()
+        log = self.runbzr("log -r -3..-1")[0]
+        self.assertEquals(self.full_log, log)
+
+    def test_log_negative_both_revspec_partial(self):
+        self._prepare()
+        log = self.runbzr("log -r -3..-2")[0]
+        self.assertTrue('revno: 1\n' in log)
+        self.assertTrue('revno: 2\n' in log)
+        self.assertTrue('revno: 3\n' not in log)
+
+    def test_log_negative_begin_revspec(self):
+        self._prepare()
+        log = self.runbzr("log -r -2..")[0]
+        self.assertTrue('revno: 1\n' not in log)
+        self.assertTrue('revno: 2\n' in log)
+        self.assertTrue('revno: 3\n' in log)
+
+    def test_log_postive_revspecs(self):
+        self._prepare()
+        log = self.runbzr("log -r 1..3")[0]
+        self.assertEquals(self.full_log, log)

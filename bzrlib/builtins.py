@@ -971,6 +971,7 @@ class cmd_log(Command):
                             help='show from oldest to newest'),
                      'timezone', 'verbose', 
                      'show-ids', 'revision',
+                     'log-format',
                      'line', 'long', 
                      Option('message',
                             help='show revisions whose message matches this regexp',
@@ -983,6 +984,7 @@ class cmd_log(Command):
             show_ids=False,
             forward=False,
             revision=None,
+            log_format=None,
             message=None,
             long=False,
             short=False,
@@ -1020,7 +1022,12 @@ class cmd_log(Command):
         elif len(revision) == 1:
             rev1 = rev2 = revision[0].in_history(b).revno
         elif len(revision) == 2:
-            rev1 = revision[0].in_history(b).revno
+            if revision[0].spec is None:
+                # missing begin-range means first revision
+                rev1 = 1
+            else:
+                rev1 = revision[0].in_history(b).revno
+
             if revision[1].spec is None:
                 # missing end-range means last known revision
                 rev2 = b.revno()
@@ -1041,7 +1048,10 @@ class cmd_log(Command):
         # in e.g. the default C locale.
         outf = codecs.getwriter(bzrlib.user_encoding)(sys.stdout, errors='replace')
 
-        log_format = get_log_format(long=long, short=short, line=line)
+        if (log_format == None):
+            default = bzrlib.config.BranchConfig(b).log_format()
+            log_format = get_log_format(long=long, short=short, line=line, default=default)
+
         lf = log_formatter(log_format,
                            show_ids=show_ids,
                            to_file=outf,
@@ -1841,7 +1851,7 @@ class cmd_help(Command):
     """Show help on a command or other topic.
 
     For a list of all available commands, say 'bzr help commands'."""
-    takes_options = ['long']
+    takes_options = [Option('long', 'show help on all commands')]
     takes_args = ['topic?']
     aliases = ['?']
     
@@ -1891,6 +1901,7 @@ class cmd_missing(Command):
                             'Display changes in the local branch only'),
                      Option('theirs-only', 
                             'Display changes in the remote branch only'), 
+                     'log-format',
                      'line',
                      'long', 
                      'short',
@@ -1899,7 +1910,7 @@ class cmd_missing(Command):
                      ]
 
     def run(self, other_branch=None, reverse=False, mine_only=False,
-            theirs_only=False, long=True, short=False, line=False, 
+            theirs_only=False, log_format=None, long=False, short=False, line=False, 
             show_ids=False, verbose=False):
         from bzrlib.missing import find_unmerged, iter_log_data
         from bzrlib.log import log_formatter
@@ -1912,7 +1923,9 @@ class cmd_missing(Command):
             print "Using last location: " + local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
         local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
-        log_format = get_log_format(long=long, short=short, line=line)
+        if (log_format == None):
+            default = bzrlib.config.BranchConfig(local_branch).log_format()
+            log_format = get_log_format(long=long, short=short, line=line, default=default)
         lf = log_formatter(log_format, sys.stdout,
                            show_ids=show_ids,
                            show_timezone='original')
@@ -2026,20 +2039,21 @@ class cmd_re_sign(Command):
     # TODO be able to replace existing ones.
 
     hidden = True # is this right ?
-    takes_args = ['revision_id?']
+    takes_args = ['revision_id*']
     takes_options = ['revision']
     
-    def run(self, revision_id=None, revision=None):
+    def run(self, revision_id_list=None, revision=None):
         import bzrlib.config as config
         import bzrlib.gpg as gpg
-        if revision_id is not None and revision is not None:
+        if revision_id_list is not None and revision is not None:
             raise BzrCommandError('You can only supply one of revision_id or --revision')
-        if revision_id is None and revision is None:
+        if revision_id_list is None and revision is None:
             raise BzrCommandError('You must supply either --revision or a revision_id')
         b = WorkingTree.open_containing(u'.')[0].branch
         gpg_strategy = gpg.GPGStrategy(config.BranchConfig(b))
-        if revision_id is not None:
-            b.repository.sign_revision(revision_id, gpg_strategy)
+        if revision_id_list is not None:
+            for revision_id in revision_id_list:
+                b.repository.sign_revision(revision_id, gpg_strategy)
         elif revision is not None:
             if len(revision) == 1:
                 revno, rev_id = revision[0].in_history(b)
@@ -2192,3 +2206,4 @@ def merge(other_revision, base_revision,
 # we do need to load at least some information about them to know of 
 # aliases.
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
+from bzrlib.sign_my_commits import cmd_sign_my_commits
