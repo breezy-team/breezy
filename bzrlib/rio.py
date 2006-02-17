@@ -171,6 +171,15 @@ class Stanza(object):
             if t == tag:
                 r.append(v)
         return r
+
+    def as_dict(self):
+        """Return a dict containing the unique values of the stanza.
+        """
+        d = {}
+        for tag, value in self.items:
+            assert tag not in d
+            d[tag] = value
+        return d
          
 _tag_re = re.compile(r'^[-a-zA-Z0-9_]+$')
 def valid_tag(tag):

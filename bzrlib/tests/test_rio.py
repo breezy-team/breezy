@@ -64,6 +64,12 @@ class TestRio(TestCase):
                 ['name: fred\n',
                  'number: 42\n'])
 
+    def test_as_dict(self):
+        """Convert rio Stanza to dictionary"""
+        s = Stanza(number='42', name='fred')
+        sd = s.as_dict()
+        self.assertEquals(sd, dict(number='42', name='fred'))
+
     def test_to_file(self):
         """Write rio to file"""
         tmpf = TemporaryFile()
