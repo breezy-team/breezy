@@ -450,11 +450,14 @@ def line_log(rev, max_chars):
     lf = LineLogFormatter(None)
     return lf.log_string(rev, max_chars)
 
-FORMATTERS = {'long': LongLogFormatter,
+FORMATTERS = {
+              'long': LongLogFormatter,
               'short': ShortLogFormatter,
               'line': LineLogFormatter,
               }
 
+def register_formatter(name, formatter):
+    FORMATTERS[name] = formatter
 
 def log_formatter(name, *args, **kwargs):
     """Construct a formatter from arguments.
@@ -465,7 +468,7 @@ def log_formatter(name, *args, **kwargs):
     from bzrlib.errors import BzrCommandError
     try:
         return FORMATTERS[name](*args, **kwargs)
-    except IndexError:
+    except KeyError:
         raise BzrCommandError("unknown log formatter: %r" % name)
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
