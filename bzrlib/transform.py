@@ -971,7 +971,8 @@ def _entry_changes(file_id, entry, working_tree):
     return has_contents, contents_mod, meta_mod
 
 
-def revert(working_tree, target_tree, filenames, backups=False):
+def revert(working_tree, target_tree, filenames, backups=False, 
+           pb=DummyProgress()):
     """Revert a working tree's contents to those of a target tree."""
     interesting_ids = find_interesting(working_tree, target_tree, filenames)
     def interesting(file_id):
@@ -986,9 +987,10 @@ def revert(working_tree, target_tree, filenames, backups=False):
             except KeyError:
                 return tt.get_id_tree(file_id)
 
-        for file_id in topology_sorted_ids(target_tree):
-            if not interesting(file_id):
-                continue
+        sorted_interesting = [i for i in topology_sorted_ids(target_tree) if
+                              interesting(i)]
+        for id_num, file_id in enumerate(sorted_interesting):
+            pb.update("Reverting file", id_num+1, len(sorted_interesting))
             if file_id not in working_tree.inventory:
                 entry = target_tree.inventory[file_id]
                 parent_id = get_trans_id(entry.parent_id)
@@ -997,9 +999,9 @@ def revert(working_tree, target_tree, filenames, backups=False):
             else:
                 change_entry(tt, file_id, working_tree, target_tree, 
                              get_trans_id, backups, trans_id)
-        for file_id in working_tree:
-            if not interesting(file_id):
-                continue
+        wt_interesting = [i for i in working_tree if interesting(i)]
+        for id_num, file_id in enumerate(wt_interesting):
+            pb.update("New file check", id_num+1, len(sorted_interesting))
             if file_id not in target_tree:
                 tt.unversion_file(tt.get_id_tree(file_id))
         raw_conflicts = resolve_conflicts(tt)
@@ -1008,6 +1010,7 @@ def revert(working_tree, target_tree, filenames, backups=False):
         tt.apply()
     finally:
         tt.finalize()
+        pb.clear()
 
 
 def resolve_conflicts(tt, pb=DummyProgress()):

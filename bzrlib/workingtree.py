@@ -81,6 +81,7 @@ from bzrlib.osutils import (appendpath,
                             rename,
                             supports_executable,
                             )
+from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
@@ -1062,11 +1063,12 @@ class WorkingTree(bzrlib.tree.Tree):
         self._write_inventory(inv)
 
     @needs_write_lock
-    def revert(self, filenames, old_tree=None, backups=True):
+    def revert(self, filenames, old_tree=None, backups=True, 
+               pb=DummyProgress()):
         from transform import revert
         if old_tree is None:
             old_tree = self.basis_tree()
-        revert(self, old_tree, filenames, backups)
+        revert(self, old_tree, filenames, backups, pb)
         if not len(filenames):
             self.set_pending_merges([])
 

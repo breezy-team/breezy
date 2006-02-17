@@ -1821,6 +1821,7 @@ class cmd_revert(Command):
     aliases = ['merge-revert']
 
     def run(self, revision=None, no_backup=False, file_list=None):
+        from bzrlib.ui import ui_factory
         from bzrlib.commands import parse_spec
         if file_list is not None:
             if len(file_list) == 0:
@@ -1837,7 +1838,7 @@ class cmd_revert(Command):
         else:
             rev_id = revision[0].in_history(tree.branch).rev_id
         tree.revert(file_list, tree.branch.repository.revision_tree(rev_id),
-                    not no_backup)
+                    not no_backup, ui_factory.progress_bar())
 
 
 class cmd_assert_fail(Command):
