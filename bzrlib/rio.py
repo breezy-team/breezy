@@ -1,7 +1,7 @@
 # Copyright (C) 2005 by Canonical Ltd
 #
 # Distributed under the GNU General Public Licence v2
-#
+
 # \subsection{\emph{rio} - simple text metaformat}
 # 
 # \emph{r} stands for `restricted', `reproducible', or `rfc822-like'.
@@ -18,10 +18,6 @@
 # stream representation of an object and vice versa, and that this relation
 # will continue to hold for future versions of bzr.
 
-# In comments, $\min(1,10)$
-
-min(1,10)
- 
 import re
 
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
