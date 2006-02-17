@@ -2212,3 +2212,4 @@ def merge(other_revision, base_revision,
 # we do need to load at least some information about them to know of 
 # aliases.
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
+from bzrlib.sign_my_commits import cmd_sign_my_commits

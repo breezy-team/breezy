@@ -35,6 +35,7 @@ from bzrlib.trace import mutter
 from bzrlib.tree import RevisionTree
 from bzrlib.testament import Testament
 from bzrlib.tree import EmptyTree
+import bzrlib.ui
 import bzrlib.xml5
 
 
@@ -266,10 +267,14 @@ class Repository(object):
                 else:
                     # FIXME do not peek!
                     if self.control_files._transport.listable():
-                        destination.control_weaves.copy_multi(self.control_weaves,
-                                                              ['inventory'])
-                        copy_all(self.weave_store, destination.weave_store)
-                        copy_all(self.revision_store, destination.revision_store)
+                        pb = bzrlib.ui.ui_factory.progress_bar()
+                        copy_all(self.weave_store,
+                            destination.weave_store, pb=pb)
+                        pb.update('copying inventory', 0, 1)
+                        destination.control_weaves.copy_multi(
+                            self.control_weaves, ['inventory'])
+                        copy_all(self.revision_store,
+                            destination.revision_store, pb=pb)
                     else:
                         destination.fetch(self, revision_id=revision_id)
             # compatible v4 stores

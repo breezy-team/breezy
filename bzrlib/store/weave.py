@@ -164,8 +164,12 @@ class WeaveStore(TransportStore):
         w.add_identical(old_rev_id, new_rev_id, parent_idxs)
         self.put_weave(file_id, w, transaction)
      
-    def copy_multi(self, from_store, file_ids):
+    def copy_multi(self, from_store, file_ids, pb=None):
         assert isinstance(from_store, WeaveStore)
-        for f in file_ids:
+        for count, f in enumerate(file_ids):
             mutter("copy weave {%s} into %s", f, self)
+            if pb:
+                pb.update('copy', count, len(file_ids))
             self._put(f, from_store._get(f))
+        if pb:
+            pb.clear()
