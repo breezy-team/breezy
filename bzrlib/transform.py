@@ -989,7 +989,7 @@ def revert(working_tree, target_tree, filenames, backups=False):
             else:
                 change_entry(tt, file_id, working_tree, target_tree, 
                              get_trans_id, backups, trans_id)
-        for file_id in working_tree:
+        for file_id in working_tree.inventory:
             if not interesting(file_id):
                 continue
             if file_id not in target_tree:
