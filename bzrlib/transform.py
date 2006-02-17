@@ -24,7 +24,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ExistingLimbo, ImmortalLimbo)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import file_kind, supports_executable, pathjoin
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 
 
 ROOT_PARENT = "root-parent"
@@ -993,7 +993,9 @@ def revert(working_tree, target_tree, filenames, backups=False):
                 continue
             if file_id not in target_tree:
                 tt.unversion_file(tt.get_id_tree(file_id))
-        conflicts = resolve_conflicts(tt)
+        raw_conflicts = resolve_conflicts(tt)
+        for line in conflicts_strings(cook_conflicts(raw_conflicts, tt)):
+            warning(line)
         tt.apply()
     finally:
         tt.finalize()
