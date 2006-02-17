@@ -25,12 +25,21 @@ bzr development version
       locally. As such they are not suitable for use except in high bandwidth
       low latency environments like LAN's or local disk. (Robert Collins)
 
+    * 'revert' unversions newly-versioned files, instead of deleting them.
+
+    * 'merge' is more robust.  Conflict messages have changed.
+
+    * 'merge' and 'revert' no longer clobber existing files that end in '~' or
+      '.moved'.
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now
       been split into Branch, and Repository. The common locking and file 
       management routines are now in bzrlib.lockablefiles. 
       (Aaron Bentley, Robert Collins, Martin Pool)
+
+    * Using Tree Transform for merge, revert, tree-building
 
   TESTING:
 

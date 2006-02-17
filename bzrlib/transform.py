@@ -25,7 +25,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import file_kind, supports_executable, pathjoin
 from bzrlib.progress import DummyProgress
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 
 
 ROOT_PARENT = "root-parent"
@@ -967,6 +967,7 @@ def _entry_changes(file_id, entry, working_tree):
             cur_entry._read_tree_state(working_tree.id2path(file_id), 
                                        working_tree)
             contents_mod, meta_mod = entry.detect_changes(cur_entry)
+            cur_entry._forget_tree_state()
     return has_contents, contents_mod, meta_mod
 
 
@@ -1001,7 +1002,9 @@ def revert(working_tree, target_tree, filenames, backups=False):
                 continue
             if file_id not in target_tree:
                 tt.unversion_file(tt.get_id_tree(file_id))
-        conflicts = resolve_conflicts(tt)
+        raw_conflicts = resolve_conflicts(tt)
+        for line in conflicts_strings(cook_conflicts(raw_conflicts, tt)):
+            warning(line)
         tt.apply()
     finally:
         tt.finalize()
