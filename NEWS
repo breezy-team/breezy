@@ -18,12 +18,23 @@ bzr development version
       reflect user config now being stored in .bazaar (Hans Ulrich
       Niedermann)
 
+    * 'bzr re-sign' now allows multiple revisions to be supplied on the command
+      line. You can now use the following command to sign all of your old commits.
+        find .bzr/revision-store// -name my@email-* \
+          | sed 's/.*\/\/..\///' \
+          | xargs bzr re-sign
+
     * Upgrade can now upgrade over the network. (Robert Collins)
 
     * Two new commands 'bzr checkout' and 'bzr update' allow for CVS/SVN-alike
       behaviour. They use the existing serverless-mode and store no data
       locally. As such they are not suitable for use except in high bandwidth
       low latency environments like LAN's or local disk. (Robert Collins)
+
+    * Default log format can be set in configuration and plugins can register
+      their own formatters. (Erik Bågfors)
+
+    * pull now accepts a --revision argument (Erik Bågfors)
 
   INTERNALS:
   
@@ -36,11 +47,6 @@ bzr development version
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
       for testing SFTP protocol support. (Robey Pointer)
-
-  IMPROVEMENTS:
-
-    * pull now accepts a --revision argument (Erik Bågfors)
-
 
 bzr 0.7rc1 2006-01-09
 

@@ -52,13 +52,6 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCommands(ExternalBase):
 
-    def test_help_commands(self):
-        self.runbzr('--help')
-        self.runbzr('help')
-        self.runbzr('help commands')
-        self.runbzr('help help')
-        self.runbzr('commit -h')
-
     def test_init_branch(self):
         self.runbzr(['init'])
 
@@ -794,51 +787,6 @@ class TestCommands(ExternalBase):
         result = self.runbzr('conflicts', backtick=1)
         self.runbzr('commit -m conflicts')
         self.assertEquals(result, "")
-
-    def test_resign(self):
-        """Test re signing of data."""
-        import bzrlib.gpg
-        oldstrategy = bzrlib.gpg.GPGStrategy
-        wt = self.make_branch_and_tree('.')
-        branch = wt.branch
-        wt.commit("base", allow_pointless=True, rev_id='A')
-        try:
-            # monkey patch gpg signing mechanism
-            from bzrlib.testament import Testament
-            bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            self.runbzr('re-sign -r revid:A')
-            self.assertEqual(Testament.from_revision(branch.repository,
-                             'A').as_short_text(),
-                             branch.repository.revision_store.get('A', 
-                             'sig').read())
-        finally:
-            bzrlib.gpg.GPGStrategy = oldstrategy
-            
-    def test_resign_range(self):
-        import bzrlib.gpg
-        oldstrategy = bzrlib.gpg.GPGStrategy
-        wt = self.make_branch_and_tree('.')
-        branch = wt.branch
-        wt.commit("base", allow_pointless=True, rev_id='A')
-        wt.commit("base", allow_pointless=True, rev_id='B')
-        wt.commit("base", allow_pointless=True, rev_id='C')
-        try:
-            # monkey patch gpg signing mechanism
-            from bzrlib.testament import Testament
-            bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            self.runbzr('re-sign -r 1..')
-            self.assertEqual(
-                Testament.from_revision(branch.repository,'A').as_short_text(),
-                branch.repository.revision_store.get('A', 'sig').read())
-            self.assertEqual(
-                Testament.from_revision(branch.repository,'B').as_short_text(),
-                branch.repository.revision_store.get('B', 'sig').read())
-            self.assertEqual(Testament.from_revision(branch.repository,
-                             'C').as_short_text(),
-                             branch.repository.revision_store.get('C', 
-                             'sig').read())
-        finally:
-            bzrlib.gpg.GPGStrategy = oldstrategy
 
     def test_push(self):
         # create a source branch
