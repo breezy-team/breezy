@@ -49,7 +49,7 @@ import bzrlib.osutils as osutils
 import bzrlib.plugin
 import bzrlib.store
 import bzrlib.trace
-from bzrlib.transport import urlescape
+from bzrlib.transport import urlescape, get_transport
 import bzrlib.transport
 from bzrlib.transport.local import LocalRelpathServer
 from bzrlib.transport.readonly import ReadonlyServer
@@ -602,7 +602,7 @@ class TestCaseInTempDir(TestCase):
         """
         # XXX: It's OK to just create them using forward slashes on windows?
         if transport is None or transport.is_readonly():
-            transport = bzrlib.transport.get_transport(".")
+            transport = get_transport(".")
         for name in shape:
             self.assert_(isinstance(name, basestring))
             if name[-1] == '/':
@@ -700,6 +700,22 @@ class TestCaseWithTransport(TestCaseInTempDir):
             base = base + relpath
         return base
 
+    def get_transport(self):
+        """Return a writeable transport for the test scratch space"""
+        t = get_transport(self.get_url())
+        self.assertFalse(t.is_readonly())
+        return t
+
+    def get_readonly_transport(self):
+        """Return a readonly transport for the test scratch space
+        
+        This can be used to test that operations which should only need
+        readonly access in fact do not try to write.
+        """
+        t = get_transport(self.get_readonly_url())
+        self.assertTrue(t.is_readonly())
+        return t
+
     def make_branch(self, relpath):
         """Create a branch on the transport at relpath."""
         try:
@@ -707,7 +723,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             segments = relpath.split('/')
             if segments and segments[-1] not in ('', '.'):
                 parent = self.get_url('/'.join(segments[:-1]))
-                t = bzrlib.transport.get_transport(parent)
+                t = get_transport(parent)
                 try:
                     t.mkdir(segments[-1])
                 except FileExists:
