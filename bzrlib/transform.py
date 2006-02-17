@@ -999,7 +999,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
             else:
                 change_entry(tt, file_id, working_tree, target_tree, 
                              get_trans_id, backups, trans_id)
-        wt_interesting = [i for i in working_tree if interesting(i)]
+        wt_interesting = [i for i in working_tree.inventory if interesting(i)]
         for id_num, file_id in enumerate(wt_interesting):
             pb.update("New file check", id_num+1, len(sorted_interesting))
             if file_id not in target_tree:
