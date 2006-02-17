@@ -407,6 +407,9 @@ class InventoryEntry(object):
         # first requested, or preload them if they're already known
         pass            # nothing to do by default
 
+    def _forget_tree_state(self):
+        pass
+
 
 class RootEntry(InventoryEntry):
 
@@ -570,6 +573,10 @@ class InventoryFile(InventoryEntry):
         self.text_sha1 = work_tree.get_file_sha1(self.file_id)
         self.executable = work_tree.is_executable(self.file_id)
 
+    def _forget_tree_state(self):
+        self.text_sha1 = None
+        self.executable = None
+
     def _snapshot_text(self, file_parents, work_tree, weave_store, transaction):
         """See InventoryEntry._snapshot_text."""
         mutter('storing file {%s} in revision {%s}',
@@ -678,6 +685,9 @@ class InventoryLink(InventoryEntry):
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
         self.symlink_target = work_tree.get_symlink_target(self.file_id)
+
+    def _forget_tree_state(self):
+        self.symlink_target = None
 
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""

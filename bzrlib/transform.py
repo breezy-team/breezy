@@ -959,6 +959,7 @@ def _entry_changes(file_id, entry, working_tree):
             cur_entry._read_tree_state(working_tree.id2path(file_id), 
                                        working_tree)
             contents_mod, meta_mod = entry.detect_changes(cur_entry)
+            cur_entry._forget_tree_state()
     return has_contents, contents_mod, meta_mod
 
 
