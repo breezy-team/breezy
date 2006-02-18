@@ -23,31 +23,52 @@ command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
-from bzrlib.tests import TestLoader
-from bzrlib.tests import TestCaseInTempDir, BzrTestBase
+from bzrlib.tests import (
+                          _load_module_by_name,
+                          TestCaseWithTransport,
+                          TestSuite,
+                          TestLoader,
+                          )
 
 def test_suite():
     testmod_names = [
                      'bzrlib.tests.blackbox.test_added',
+                     'bzrlib.tests.blackbox.test_ancestry',
                      'bzrlib.tests.blackbox.test_cat',
+                     'bzrlib.tests.blackbox.test_checkout',
+                     'bzrlib.tests.blackbox.test_commit',
                      'bzrlib.tests.blackbox.test_diff',
                      'bzrlib.tests.blackbox.test_export',
+                     'bzrlib.tests.blackbox.test_find_merge_base',
+                     'bzrlib.tests.blackbox.test_help',
+                     'bzrlib.tests.blackbox.test_info',
+                     'bzrlib.tests.blackbox.test_log',
+                     'bzrlib.tests.blackbox.test_logformats',
                      'bzrlib.tests.blackbox.test_missing',
                      'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pull',
+                     'bzrlib.tests.blackbox.test_re_sign',
                      'bzrlib.tests.blackbox.test_revert',
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_info',
                      'bzrlib.tests.blackbox.test_selftest',
+                     'bzrlib.tests.blackbox.test_sign_my_commits',
                      'bzrlib.tests.blackbox.test_status',
                      'bzrlib.tests.blackbox.test_too_much',
+                     'bzrlib.tests.blackbox.test_update',
                      'bzrlib.tests.blackbox.test_upgrade',
                      'bzrlib.tests.blackbox.test_versioning',
                      ]
-    return TestLoader().loadTestsFromNames(testmod_names)
+
+    suite = TestSuite()
+    loader = TestLoader()
+    for mod_name in testmod_names:
+        mod = _load_module_by_name(mod_name)
+        suite.addTest(loader.loadTestsFromModule(mod))
+    return suite
 
 
-class ExternalBase(TestCaseInTempDir):
+class ExternalBase(TestCaseWithTransport):
 
     def runbzr(self, args, retcode=0, backtick=False):
         if isinstance(args, basestring):
