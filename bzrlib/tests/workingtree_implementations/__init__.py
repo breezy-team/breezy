@@ -24,21 +24,50 @@ Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/workingtree_implementations/*.py.
 """
 
+import bzrlib.errors as errors
+from bzrlib.transport import get_transport
+from bzrlib.tests import (
+                          adapt_modules,
+                          default_transport,
+                          TestCaseWithTransport,
+                          TestLoader,
+                          TestSuite,
+                          )
 from bzrlib.workingtree import (WorkingTreeFormat,
                                 WorkingTreeTestProviderAdapter,
                                 _legacy_formats,
                                 )
-from bzrlib.tests import (
-                          adapt_modules,
-                          default_transport,
-                          TestLoader,
-                          TestSuite,
-                          )
+
+
+class TestCaseWithWorkingTree(TestCaseWithTransport):
+
+    def make_bzrdir(self, relpath):
+        # todo factor out into bzrdir-using-implementations-tests-base-class
+        try:
+            url = self.get_url(relpath)
+            segments = url.split('/')
+            if segments and segments[-1] not in ('', '.'):
+                parent = '/'.join(segments[:-1])
+                t = get_transport(parent)
+                try:
+                    t.mkdir(segments[-1])
+                except errors.FileExists:
+                    pass
+            return self.bzrdir_format.initialize(url)
+        except errors.UninitializableFormat:
+            raise TestSkipped("Format %s is not initializable.")
+
+    def make_branch_and_tree(self, relpath):
+        made_control = self.make_bzrdir(relpath)
+        made_control.create_repository()
+        made_control.create_branch()
+        return self.workingtree_format.initialize(made_control)
 
 
 def test_suite():
     result = TestSuite()
     test_workingtree_implementations = [
+        'bzrlib.tests.workingtree_implementations.test_is_control_filename',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]
     adapter = WorkingTreeTestProviderAdapter(

@@ -294,6 +294,14 @@ class UpgradeReadonly(BzrNewError):
     """Upgrade URL cannot work with readonly URL's."""
 
 
+class UpToDateFormat(BzrNewError):
+    """The branch format %(format)s is already at the most recent format."""
+
+    def __init__(self, format):
+        BzrNewError.__init__(self)
+        self.format = format
+
+
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 

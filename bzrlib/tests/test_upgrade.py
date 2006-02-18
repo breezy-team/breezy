@@ -119,6 +119,13 @@ class TestUpgrade(TestCaseInTempDir):
         self.failUnlessExists(
             '.bzr/weaves/de/dir-20051005095101-da1441ea3fa6917a.weave')
 
+    def test_upgrade_to_meta_sets_workingtree_last_revision(self):
+        self.build_tree_contents(_upgrade_dir_template)
+        upgrade('.', bzrdir.BzrDirMetaFormat1)
+        tree = workingtree.WorkingTree.open('.')
+        self.assertEqual(tree.last_revision(),
+                         tree.branch.revision_history()[-1])
+
 
 _upgrade1_template = \
      [

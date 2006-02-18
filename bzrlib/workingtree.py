@@ -223,7 +223,7 @@ class WorkingTree(bzrlib.tree.Tree):
         assert isinstance(basedir, basestring), \
             "base directory %r is not a string" % basedir
         basedir = safe_unicode(basedir)
-        mutter("openeing working tree %r", basedir)
+        mutter("opening working tree %r", basedir)
         if deprecated_passed(branch):
             if not _internal:
                 warn("WorkingTree(..., branch=XXX) is deprecated as of bzr 0.8."
@@ -275,6 +275,19 @@ class WorkingTree(bzrlib.tree.Tree):
     def _set_inventory(self, inv):
         self._inventory = inv
         self.path2id = self._inventory.path2id
+
+    def is_control_filename(self, filename):
+        """True if filename is the name of a control file in this tree.
+        
+        This is true IF and ONLY IF the filename is part of the meta data
+        that bzr controls in this tree. I.E. a random .bzr directory placed
+        on disk will not be a control file for this tree.
+        """
+        try:
+            self.bzrdir.transport.relpath(self.abspath(filename))
+            return True
+        except errors.PathNotChild:
+            return False
 
     @staticmethod
     def open(path=None, _unsupported=False):
@@ -516,7 +529,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
         inv = self.read_working_inventory()
         for f,file_id in zip(files, ids):
-            if is_control_file(f):
+            if self.is_control_filename(f):
                 raise BzrError("cannot add control file %s" % quotefn(f))
 
             fp = splitpath(f)
@@ -611,7 +624,9 @@ class WorkingTree(bzrlib.tree.Tree):
                 ## TODO: If we find a subdirectory with its own .bzr
                 ## directory, then that is a separate tree and we
                 ## should exclude it.
-                if bzrlib.BZRDIR == f:
+
+                # the bzrdir for this tree
+                if self.bzrdir.transport.base.endswith(f + '/'):
                     continue
 
                 # path within tree
@@ -1127,9 +1142,11 @@ class WorkingTree(bzrlib.tree.Tree):
         
         # TODO: split this per format so there is no ugly if block
         if self._hashcache.needs_write and (
+            # dedicated lock files
             self._control_files._lock_count==1 or 
+            # shared lock files
             (self._control_files is self.branch.control_files and 
-             self._control_files._lock_count==2)):
+             self._control_files._lock_count==3)):
             self._hashcache.write()
         # reverse order of locking.
         result = self._control_files.unlock()
@@ -1205,13 +1222,15 @@ def get_conflicted_stem(path):
         if path.endswith(suffix):
             return path[:-len(suffix)]
 
+@deprecated_function(zero_eight)
 def is_control_file(filename):
+    """See WorkingTree.is_control_filename(filename)."""
     ## FIXME: better check
     filename = normpath(filename)
     while filename != '':
         head, tail = os.path.split(filename)
         ## mutter('check %r for control file' % ((head, tail),))
-        if tail == bzrlib.BZRDIR:
+        if tail == '.bzr':
             return True
         if filename == head:
             break
@@ -1405,6 +1424,9 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                            _internal=True,
                            _format=self,
                            _bzrdir=a_bzrdir)
+
+    def __str__(self):
+        return self.get_format_string()
 
 
 # formats which have no format string are not discoverable

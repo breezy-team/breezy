@@ -67,3 +67,5 @@ class SilentUIFactory(UIFactory):
 
 
 ui_factory = SilentUIFactory()
+"""IMPORTANT: never import this symbol directly. ONLY ever access it as 
+ui.ui_factory."""
