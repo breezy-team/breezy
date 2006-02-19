@@ -32,6 +32,7 @@ sample_config_text = ("[DEFAULT]\n"
                       "email=Robert Collins <robertc@example.com>\n"
                       "editor=vim\n"
                       "gpg_signing_command=gnome-gpg\n"
+                      "log_format=short\n"
                       "user_global_option=something\n")
 
 
@@ -182,6 +183,10 @@ class TestConfig(TestCase):
     def test_post_commit_default(self):
         my_config = config.Config()
         self.assertEqual(None, my_config.post_commit())
+
+    def test_log_format_default(self):
+        my_config = config.Config()
+        self.assertEqual('long', my_config.log_format())
 
 
 class TestConfigPath(TestCase):
@@ -358,6 +363,10 @@ class TestGlobalConfigItems(TestCase):
     def test_post_commit_default(self):
         my_config = self._get_sample_config()
         self.assertEqual(None, my_config.post_commit())
+
+    def test_configured_logformat(self):
+        my_config = self._get_sample_config()
+        self.assertEqual("short", my_config.log_format())
 
 
 class TestLocationConfig(TestCase):

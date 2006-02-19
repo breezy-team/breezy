@@ -23,7 +23,6 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.errors import NoCommonAncestor, NoCommits
 from bzrlib.errors import NoSuchRevision
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib.workingtree import WorkingTree
 
 
 class TestRevisionNamespaces(TestCaseWithTransport):
@@ -70,9 +69,9 @@ class TestRevisionNamespaces(TestCaseWithTransport):
         b2 = wt2.branch
         self.assertRaises(NoCommits, RevisionSpec('ancestor:.').in_history, b2)
 
-        os.mkdir('copy')
-        b3 = b.clone('copy')
-        wt3 = WorkingTree('copy', b3)
+        d3 = b.bzrdir.sprout('copy')
+        b3 = d3.open_branch()
+        wt3 = d3.open_workingtree()
         wt3.commit('Commit four', rev_id='b@r-0-4')
         self.assertEquals(RevisionSpec('ancestor:.').in_history(b3).rev_id,
                           'a@r-0-3')
@@ -94,10 +93,10 @@ class TestRevisionNamespaces(TestCaseWithTransport):
         branch = wt.branch
         wt.add(['file'])
         wt.commit('add file')
-        branch.clone('branch2')
+        d2 = branch.bzrdir.sprout('branch2')
         print >> open('branch2/file', 'w'), 'new content'
-        branch2 = Branch.open('branch2')
-        WorkingTree('branch2', branch2).commit('update file', rev_id='A')
+        branch2 = d2.open_branch()
+        d2.open_workingtree().commit('update file', rev_id='A')
         spec = RevisionSpec('branch:./branch2/.bzr/../')
         rev_info = spec.in_history(branch)
         self.assertEqual(rev_info, (None, 'A'))
