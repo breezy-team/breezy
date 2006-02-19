@@ -286,7 +286,7 @@ def parse_spec(spec):
         parsed = [spec, None]
     return parsed
 
-def parse_args(command, argv, alias_argv):
+def parse_args(command, argv, alias_argv=None):
     """Parse command line.
     
     Arguments and options are parsed at this level before being passed
