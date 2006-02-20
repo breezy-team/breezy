@@ -842,7 +842,7 @@ def test_suite():
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_inv',
-                   ## 'bzrlib.tests.test_lockdir',
+                   'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
                    'bzrlib.tests.test_merge',
