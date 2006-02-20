@@ -889,6 +889,10 @@ class InterRepository(object):
     operations with another repository - they will always forward to
     InterRepository.get(other).method_name(parameters).
     """
+    # XXX: FIXME: FUTURE: robertc
+    # testing of these probably requires a factory in optimiser type, and 
+    # then a test adapter to test each type thoroughly.
+    #
 
     _optimisers = set()
     """The available optimised InterRepository types."""
@@ -957,4 +961,52 @@ class RepositoryTestProviderAdapter(object):
                 return lambda: new_id
             new_test.id = make_new_test_id()
             result.addTest(new_test)
+        return result
+
+
+class InterRepositoryTestProviderAdapter(object):
+    """A tool to generate a suite testing multiple inter repository formats.
+
+    This is done by copying the test once for each interrepo provider and injecting
+    the transport_server, transport_readonly_server, repository_format and 
+    repository_to_format classes into each copy.
+    Each copy is also given a new id() to make it easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, formats):
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self._formats = formats
+    
+    def adapt(self, test):
+        result = TestSuite()
+        for interrepo_class, repository_format, repository_format_to in self._formats:
+            new_test = deepcopy(test)
+            new_test.transport_server = self._transport_server
+            new_test.transport_readonly_server = self._transport_readonly_server
+            new_test.interrepo_class = interrepo_class
+            new_test.repository_format = repository_format
+            new_test.repository_format_to = repository_format_to
+            def make_new_test_id():
+                new_id = "%s(%s)" % (new_test.id(), interrepo_class.__name__)
+                return lambda: new_id
+            new_test.id = make_new_test_id()
+            result.addTest(new_test)
+        return result
+
+    @staticmethod
+    def default_test_list():
+        """Generate the default list of interrepo permutations to test."""
+        result = []
+        # test the default InterRepository between format 6 and the current 
+        # default format.
+        result.append((InterRepository, RepositoryFormat6(),
+                      RepositoryFormat.get_default_format()))
+        for optimiser in InterRepository._optimisers:
+            result.append((optimiser,
+                           optimiser._matching_repo_format,
+                           optimiser._matching_repo_format
+                           ))
+        # if there are specific combinations we want to use, we can add them 
+        # here.
         return result

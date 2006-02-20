@@ -272,4 +272,3 @@ class TestInterRepository(TestCaseWithTransport):
             repository.InterRepository.unregister_optimiser(InterString)
         # now we should get the default InterRepository object again.
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
-
