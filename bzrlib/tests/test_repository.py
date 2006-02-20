@@ -211,3 +211,21 @@ class TestFormat7(TestCaseWithTransport):
                              'w\n'
                              'W\n',
                              t.get('inventory.weave').read())
+
+
+class TestInterRepository(TestCaseWithTransport):
+
+    def test_get_default_inter_repository(self):
+        # test that the InterRepository.get(repo_a, repo_b) probes
+        # for a inter_repo class where is_compatible(repo_a, repo_b) returns
+        # true and returns a default inter_repo otherwise.
+        # This also tests that the default registered optimised interrepository
+        # classes do not barf inappropriately when a surprising repository type
+        # is handed to them.
+        dummy_a = "Repository 1."
+        dummy_b = "Repository 2."
+        inter_repo = repository.InterRepository.get(dummy_a, dummy_b)
+        self.assertEqual(repository.InterRepository,
+                         inter_repo.__class__)
+        self.assertEqual(dummy_a, inter_repo.source)
+        self.assertEqual(dummy_b, inter_repo.target)

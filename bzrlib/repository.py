@@ -878,6 +878,42 @@ _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat6()]
 
 
+class InterRepository(object):
+    """This class represents operations taking place between two repositories.
+
+    Its instances have methods like copy_content_into and fetch, and contain
+    references to the source and target repositories these operations can be 
+    carried out on.
+
+    Often we will provide convenience methods on 'repository' which carry out
+    operations with another repository - they will always forward to
+    InterRepository.get(other).method_name(parameters).
+    """
+
+    def __init__(self, source, target):
+        """Construct a default InterRepository instance. Please use 'get'.
+        
+        Only subclasses of InterRepository should call 
+        InterRepository.__init__ - clients should call InterRepository.get
+        instead which will create an optimised InterRepository if possible.
+        """
+        self.source = source
+        self.target = target
+
+    @classmethod
+    def get(klass, repository_source, repository_target):
+        """Retrieve a InterRepository worker object for these repositories.
+
+        :param repository_source: the repository to be the 'source' member of
+                                  the InterRepository instance.
+        :param repository_target: the repository to be the 'target' member of
+                                the InterRepository instance.
+        If an optimised InterRepository worker exists it will be used otherwise
+        a default InterRepository instance will be created.
+        """
+        return InterRepository(repository_source, repository_target)
+
+
 class RepositoryTestProviderAdapter(object):
     """A tool to generate a suite testing multiple repository formats at once.
 
