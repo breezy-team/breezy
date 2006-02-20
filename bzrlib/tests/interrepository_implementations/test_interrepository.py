@@ -68,10 +68,19 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
     def make_to_repository(self, relpath):
         made_control = self.make_bzrdir(relpath,
             self.repository_format_to._matchingbzrdir)
-        return self.repository_format.initialize(made_control)
+        return self.repository_format_to.initialize(made_control)
 
 
 class TestInterRepository(TestCaseWithInterRepository):
+
+    def test_interrepository_get_returns_correct_optimiser(self):
+        # we assume the optimising code paths are triggered
+        # by the type of the repo not the transport - at this point.
+        # we may need to update this test if this changes.
+        source_repo = self.make_repository("source")
+        target_repo = self.make_to_repository("target")
+        interrepo = repository.InterRepository.get(source_repo, target_repo)
+        self.assertEqual(self.interrepo_class, interrepo.__class__)
 
     def test_fetch(self):
         tree_a = self.make_branch_and_tree('a')
