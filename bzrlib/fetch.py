@@ -60,9 +60,11 @@ from bzrlib.symbol_versioning import *
 
 @deprecated_function(zero_eight)
 def greedy_fetch(to_branch, from_branch, revision=None, pb=None):
-    """Legacy operation, see branch.fetch(from_branch, last_revision, pb)."""
+    """Legacy API, please see branch.fetch(from_branch, last_revision, pb)."""
     f = Fetcher(to_branch, from_branch, revision, pb)
     return f.count_copied, f.failed_revisions
+
+fetch = greedy_fetch
 
 
 class RepoFetcher(object):
@@ -198,69 +200,9 @@ class RepoFetcher(object):
 
 
 class Fetcher(object):
-    """Pull revisions and texts from one branch to another.
+    """Backwards compatability glue for branch.fetch()."""
 
-    This doesn't update the destination's history; that can be done
-    separately if desired.  
-
-    revision_limit
-        If set, pull only up to this revision_id.
-
-    After running:
-
-    last_revision -- if last_revision
-        is given it will be that, otherwise the last revision of
-        from_branch
-
-    count_copied -- number of revisions copied
-    """
+    @deprecated_method(zero_eight)
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
-        if to_branch.base == from_branch.base:
-            raise Exception("can't fetch from a branch to itself %s, %s" % 
-                            (from_branch.base, to_branch.base))
-        
-        self.to_branch = to_branch
-        self.from_branch = from_branch
-        self._last_revision = last_revision
-        if pb is None:
-            self.pb = bzrlib.ui.ui_factory.progress_bar()
-        else:
-            self.pb = pb
-        self.from_branch.lock_read()
-        try:
-            self.to_branch.lock_write()
-            try:
-                self.__fetch()
-            finally:
-                self.to_branch.unlock()
-        finally:
-            self.from_branch.unlock()
-
-    def __fetch(self):
-        self._find_last_revision()
-        repo_fetcher = RepoFetcher(to_repository=self.to_branch.repository,
-                                   from_repository=self.from_branch.repository,
-                                   pb=self.pb,
-                                   last_revision=self._last_revision)
-        self.failed_revisions = repo_fetcher.failed_revisions
-        self.count_copied = repo_fetcher.count_copied
-        self.count_total = repo_fetcher.count_total
-
-    def _find_last_revision(self):
-        """Find the limiting source revision.
-
-        Every ancestor of that revision will be merged across.
-
-        Returns the revision_id, or returns None if there's no history
-        in the source branch."""
-        if self._last_revision:
-            return
-        self.pb.update('get source history')
-        from_history = self.from_branch.revision_history()
-        if from_history:
-            self._last_revision = from_history[-1]
-        else:
-            # no history in the source branch
-            self._last_revision = NULL_REVISION
-
-fetch = greedy_fetch
+        """Please see branch.fetch()."""
+        to_branch.fetch(from_branch, last_revision, pb)
