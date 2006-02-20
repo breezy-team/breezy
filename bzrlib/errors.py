@@ -293,10 +293,8 @@ class PointlessCommit(BzrNewError):
 class UpgradeReadonly(BzrNewError):
     """Upgrade URL cannot work with readonly URL's."""
 
-
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
-
 
 class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):
@@ -430,6 +428,16 @@ class WeaveTextDiffers(WeaveError):
         self.weave_b = weave_b
 
 
+class WeaveTextDiffers(WeaveError):
+    """Weaves differ on text content. Revision: {%(revision_id)s}, %(weave_a)s, %(weave_b)s"""
+
+    def __init__(self, revision_id, weave_a, weave_b):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave_a = weave_a
+        self.weave_b = weave_b
+
+
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""
     def __init__(self, format):
@@ -535,6 +543,12 @@ class MissingText(BzrNewError):
         self.text_revision = text_revision
         self.file_id = file_id
 
+class DuplicateKey(BzrNewError):
+    """Key %(key)s is already present in map"""
+
+class MalformedTransform(BzrNewError):
+    """Tree transform is malformed %(conflicts)r"""
+
 
 class BzrBadParameter(BzrNewError):
     """A bad parameter : %(param)s is not usable.
@@ -549,6 +563,14 @@ class BzrBadParameter(BzrNewError):
 
 class BzrBadParameterNotUnicode(BzrBadParameter):
     """Parameter %(param)s is neither unicode nor utf8."""
+
+
+class ReusingTransform(BzrNewError):
+    """Attempt to reuse a transform that has already been applied."""
+
+
+class CantMoveRoot(BzrNewError):
+    """Moving the root directory is not supported at this time"""
 
 
 class BzrBadParameterNotString(BzrBadParameter):
@@ -579,6 +601,30 @@ class UninitializableFormat(BzrNewError):
     def __init__(self, format):
         BzrNewError.__init__(self)
         self.format = format
+
+
+class NoDiff3(BzrNewError):
+    """Diff3 is not installed on this machine."""
+
+
+class ExistingLimbo(BzrNewError):
+    """This tree contains left-over files from a failed operation.
+    Please examine %(limbo_dir)s to see if it contains any files you wish to
+    keep, and delete it when you are done.
+    """
+    def __init__(self, limbo_dir):
+       BzrNewError.__init__(self)
+       self.limbo_dir = limbo_dir
+
+
+class ImmortalLimbo(BzrNewError):
+    """Unable to delete transform temporary directory $(limbo_dir)s.
+    Please examine %(limbo_dir)s to see if it contains any files you wish to
+    keep, and delete it when you are done.
+    """
+    def __init__(self, limbo_dir):
+       BzrNewError.__init__(self)
+       self.limbo_dir = limbo_dir
 
 
 class OutOfDateTree(BzrNewError):
