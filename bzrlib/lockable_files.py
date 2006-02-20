@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 6 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -167,8 +167,7 @@ class LockableFiles(object):
         # and potentially a remote locking protocol
         if self._lock_mode:
             if self._lock_mode != 'w':
-                raise ReadOnlyError("can't upgrade to a write lock from %r" %
-                                self._lock_mode)
+                raise ReadOnlyError()
             self._lock_count += 1
         else:
             self._lock = self._transport.lock_write(
@@ -195,7 +194,7 @@ class LockableFiles(object):
     def unlock(self):
         mutter("unlock: %s (%s)", self, self._lock_count)
         if not self._lock_mode:
-            raise LockError('branch %r is not locked' % (self))
+            raise BranchNotLocked(self)
 
         if self._lock_count > 1:
             self._lock_count -= 1

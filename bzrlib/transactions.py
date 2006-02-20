@@ -51,7 +51,7 @@ class ReadOnlyTransaction(object):
 
     def commit(self):
         """ReadOnlyTransactions cannot commit."""
-        raise errors.CommitNotPossible('In a read only transaction')
+        raise errors.CommitNotPossible()
 
     def finish(self):
         """Clean up this transaction
@@ -82,8 +82,7 @@ class ReadOnlyTransaction(object):
 
     def register_dirty(self, an_object):
         """Register an_object as being dirty."""
-        raise errors.ReadOnlyError(
-            "Cannot dirty objects in a read only transaction")
+        raise errors.ReadOnlyError()
 
     def rollback(self):
         """Let people call this even though nothing has to happen."""

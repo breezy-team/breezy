@@ -245,23 +245,71 @@ class ForbiddenFileError(BzrError):
     """Cannot operate on a file because it is a control file."""
 
 
-class LockError(Exception):
-    """Lock error"""
+class LockError(BzrNewError):
+    """Lock error: %(message)s"""
     # All exceptions from the lock/unlock functions should be from
     # this exception class.  They will be translated as necessary. The
     # original exception is available as e.original_error
+    #
+    # New code should prefer to raise specific subclasses
+    def __init__(self, message):
+        self.message = message
 
 
 class CommitNotPossible(LockError):
     """A commit was attempted but we do not have a write lock open."""
+    def __init__(self):
+        pass
 
 
 class AlreadyCommitted(LockError):
     """A rollback was requested, but is not able to be accomplished."""
+    def __init__(self):
+        pass
 
 
 class ReadOnlyError(LockError):
     """A write attempt was made in a read only transaction."""
+    def __init__(self):
+        pass
+
+
+class BranchNotLocked(LockError):
+    """Branch %(branch)r is not locked"""
+    def __init__(self, branch):
+        # XXX: sometimes called with a LockableFiles instance not a Branch
+        self.branch = branch
+
+
+class ReadOnlyObjectDirtiedError(ReadOnlyError):
+    """Cannot change object %(obj)r in read only transaction"""
+    def __init__(self, obj):
+        self.obj = obj
+
+
+class UnlockableTransport(LockError):
+    """Cannot lock: transport is read only: %(transport)s"""
+    def __init__(self, transport):
+        self.transport = transport
+
+
+class LockContention(LockError):
+    """Could not acquire lock %(lock)s"""
+    # TODO: show full url for lock, combining the transport and relative bits?
+    def __init__(self, lock):
+        self.lock = lock
+
+
+class LockNotHeld(LockError):
+    """Lock not held: %(lock)s"""
+    def __init__(self, lock):
+        self.lock = lock
+
+
+class BranchNotLocked(LockError):
+    """Branch %(branch)r not locked"""
+    def __init__(self, branch):
+        self.branch = branch
 
 
 class PointlessCommit(BzrNewError):
