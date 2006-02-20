@@ -235,56 +235,13 @@ class Repository(object):
                                            RepositoryFormat6,
                                            RepositoryFormat7)))
 
-    @needs_read_lock
     def copy_content_into(self, destination, revision_id=None, basis=None):
         """Make a complete copy of the content in self into destination.
         
         This is a destructive operation! Do not use it on existing 
         repositories.
         """
-        destination.lock_write()
-        try:
-            try:
-                destination.set_make_working_trees(self.make_working_trees())
-            except NotImplementedError:
-                pass
-            # optimised paths:
-            # compatible stores
-            if self._compatible_formats(destination):
-                if basis is not None:
-                    # copy the basis in, then fetch remaining data.
-                    basis.copy_content_into(destination, revision_id)
-                    destination.fetch(self, revision_id=revision_id)
-                else:
-                    # FIXME do not peek!
-                    if self.control_files._transport.listable():
-                        pb = bzrlib.ui.ui_factory.progress_bar()
-                        copy_all(self.weave_store,
-                            destination.weave_store, pb=pb)
-                        pb.update('copying inventory', 0, 1)
-                        destination.control_weaves.copy_multi(
-                            self.control_weaves, ['inventory'])
-                        copy_all(self.revision_store,
-                            destination.revision_store, pb=pb)
-                    else:
-                        destination.fetch(self, revision_id=revision_id)
-            # compatible v4 stores
-            elif isinstance(self._format, RepositoryFormat4):
-                if not isinstance(destination._format, RepositoryFormat4):
-                    raise BzrError('cannot copy v4 branches to anything other than v4 branches.')
-                store_pairs = ((self.text_store,      destination.text_store),
-                               (self.inventory_store, destination.inventory_store),
-                               (self.revision_store,  destination.revision_store))
-                try:
-                    for from_store, to_store in store_pairs: 
-                        copy_all(from_store, to_store)
-                except UnlistableStore:
-                    raise UnlistableBranch(from_store)
-            # fallback - 'fetch'
-            else:
-                destination.fetch(self, revision_id=revision_id)
-        finally:
-            destination.unlock()
+        return InterRepository.get(self, destination).copy_content(revision_id, basis)
 
     def fetch(self, source, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id from source.
@@ -867,9 +824,9 @@ class RepositoryFormat7(RepositoryFormat):
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-__default_format = RepositoryFormat7()
-RepositoryFormat.register_format(__default_format)
-RepositoryFormat.set_default_format(__default_format)
+_default_format = RepositoryFormat7()
+RepositoryFormat.register_format(_default_format)
+RepositoryFormat.set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
                    RepositoryFormat6()]
@@ -878,7 +835,7 @@ _legacy_formats = [RepositoryFormat4(),
 class InterRepository(object):
     """This class represents operations taking place between two repositories.
 
-    Its instances have methods like copy_content_into and fetch, and contain
+    Its instances have methods like copy_content and fetch, and contain
     references to the source and target repositories these operations can be 
     carried out on.
 
@@ -904,6 +861,31 @@ class InterRepository(object):
         self.source = source
         self.target = target
 
+    @needs_write_lock
+    def copy_content(self, revision_id=None, basis=None):
+        """Make a complete copy of the content in self into destination.
+        
+        This is a destructive operation! Do not use it on existing 
+        repositories.
+
+        :param revision_id: Only copy the content needed to construct
+                            revision_id and its parents.
+        :param basis: Copy the needed data preferentially from basis.
+        """
+        try:
+            self.target.set_make_working_trees(self.source.make_working_trees())
+        except NotImplementedError:
+            pass
+        # grab the basis available data
+        if basis is not None:
+            self.target.fetch(basis, revision_id=revision_id)
+        # but dont both fetching if we have the needed data now.
+        if (revision_id not in (None, NULL_REVISION) and 
+            self.target.has_revision(revision_id)):
+            return
+        self.target.fetch(self.source, revision_id=revision_id)
+
+    @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id.
 
@@ -920,15 +902,11 @@ class InterRepository(object):
         from bzrlib.fetch import RepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
-        self.target.lock_write()
-        try:
-            f = RepoFetcher(to_repository=self.target,
-                            from_repository=self.source,
-                            last_revision=revision_id,
-                            pb=pb)
-            return f.count_copied, f.failed_revisions
-        finally:
-            self.target.unlock()
+        f = RepoFetcher(to_repository=self.target,
+                        from_repository=self.source,
+                        last_revision=revision_id,
+                        pb=pb)
+        return f.count_copied, f.failed_revisions
 
     @classmethod
     def get(klass, repository_source, repository_target):
@@ -946,10 +924,32 @@ class InterRepository(object):
                 return provider(repository_source, repository_target)
         return InterRepository(repository_source, repository_target)
 
+    def lock_write(self):
+        """Take out a logical write lock.
+
+        This will lock the source branch and the target branch. The source gets
+        a read lock and the target a write lock.
+        """
+        self.source.lock_read()
+        try:
+            self.target.lock_write()
+        except Exception:
+            # we want to ensure that we don't leave source locked by mistake.
+            # and any error on target should not confuse source.
+            self.source.unlock()
+            raise
+
     @classmethod
     def register_optimiser(klass, optimiser):
         """Register an InterRepository optimiser."""
         klass._optimisers.add(optimiser)
+
+    def unlock(self):
+        """Release the locks on source and target."""
+        try:
+            self.target.unlock()
+        finally:
+            self.source.unlock()
 
     @classmethod
     def unregister_optimiser(klass, optimiser):
@@ -960,6 +960,9 @@ class InterRepository(object):
 class InterWeaveRepo(InterRepository):
     """Optimised code paths between Weave based repositories."""
 
+    _matching_repo_format = _default_format
+    """Repository format for testing with."""
+
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with known Weave formats.
@@ -968,21 +971,61 @@ class InterWeaveRepo(InterRepository):
         could lead to confusing results, and there is no need to be 
         overly general.
         """
+        try:
+            return (isinstance(source._format, (RepositoryFormat5,
+                                                RepositoryFormat6,
+                                                RepositoryFormat7)) and
+                    isinstance(target._format, (RepositoryFormat5,
+                                                RepositoryFormat6,
+                                                RepositoryFormat7)))
+        except AttributeError:
+            return False
+    
+    @needs_write_lock
+    def copy_content(self, revision_id=None, basis=None):
+        """See InterRepository.copy_content()."""
+        # weave specific optimised path:
+        if basis is not None:
+            # copy the basis in, then fetch remaining data.
+            basis.copy_content_into(self.target, revision_id)
+            # the basis copy_content_into could misset this.
+            try:
+                self.target.set_make_working_trees(self.source.make_working_trees())
+            except NotImplementedError:
+                pass
+            self.target.fetch(self.source, revision_id=revision_id)
+        else:
+            try:
+                self.target.set_make_working_trees(self.source.make_working_trees())
+            except NotImplementedError:
+                pass
+            # FIXME do not peek!
+            if self.source.control_files._transport.listable():
+                pb = bzrlib.ui.ui_factory.progress_bar()
+                copy_all(self.source.weave_store,
+                    self.target.weave_store, pb=pb)
+                pb.update('copying inventory', 0, 1)
+                self.target.control_weaves.copy_multi(
+                    self.source.control_weaves, ['inventory'])
+                copy_all(self.source.revision_store,
+                    self.target.revision_store, pb=pb)
+            else:
+                self.target.fetch(self.source, revision_id=revision_id)
 
+    @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
         """See InterRepository.fetch()."""
         from bzrlib.fetch import RepoFetcher
         mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
                self.source, self.source._format, self.target, self.target._format)
-        self.target.lock_write()
-        try:
-            f = RepoFetcher(to_repository=self.target,
-                            from_repository=self.source,
-                            last_revision=revision_id,
-                            pb=pb)
-            return f.count_copied, f.failed_revisions
-        finally:
-            self.target.unlock()
+        f = RepoFetcher(to_repository=self.target,
+                        from_repository=self.source,
+                        last_revision=revision_id,
+                        pb=pb)
+        return f.count_copied, f.failed_revisions
+
+
+InterRepository.register_optimiser(InterWeaveRepo)
 
 
 class RepositoryTestProviderAdapter(object):
@@ -1051,8 +1094,10 @@ class InterRepositoryTestProviderAdapter(object):
         result = []
         # test the default InterRepository between format 6 and the current 
         # default format.
-        result.append((InterRepository, RepositoryFormat6(),
-                      RepositoryFormat.get_default_format()))
+        # XXX: robertc 20060220 reinstate this when there are two supported
+        # formats which do not have an optimal code path between them.
+        #result.append((InterRepository, RepositoryFormat6(),
+        #              RepositoryFormat.get_default_format()))
         for optimiser in InterRepository._optimisers:
             result.append((optimiser,
                            optimiser._matching_repo_format,

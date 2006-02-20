@@ -121,27 +121,27 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
     
     def test_clone_bzrdir_repository(self):
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
         dir = self.make_bzrdir('source')
         repo = dir.create_repository()
-        # add some content to differentiate from an empty repository.
-        repo.control_weaves.add_text('inventory',
-                                     "A",
-                                     [],
-                                     [],
-                                     repo.get_transaction())
+        repo.fetch(tree.branch.repository)
+        self.assertTrue(repo.has_revision('1'))
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
 
     def test_clone_bzrdir_repository_under_shared(self):
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
         dir = self.make_bzrdir('source')
         repo = dir.create_repository()
-        # add some content to differentiate from an empty repository.
-        repo.control_weaves.add_text('inventory',
-                                     "A",
-                                     [],
-                                     [],
-                                     repo.get_transaction())
+        repo.fetch(tree.branch.repository)
+        self.assertTrue(repo.has_revision('1'))
         try:
             self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
@@ -171,14 +171,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertTrue(shared_repo.has_revision('1'))
         
     def test_clone_bzrdir_repository_under_shared_force_new_repo(self):
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
         dir = self.make_bzrdir('source')
         repo = dir.create_repository()
-        # add some content to differentiate from an empty repository.
-        repo.control_weaves.add_text('inventory',
-                                     "A",
-                                     [],
-                                     [],
-                                     repo.get_transaction())
+        repo.fetch(tree.branch.repository)
+        self.assertTrue(repo.has_revision('1'))
         try:
             self.make_repository('target', shared=True)
         except errors.IncompatibleFormat:
@@ -386,14 +386,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         target.open_workingtree()
     
     def test_sprout_bzrdir_repository(self):
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
         dir = self.make_bzrdir('source')
         repo = dir.create_repository()
-        # add some content to differentiate from an empty repository.
-        repo.control_weaves.add_text('inventory',
-                                     "A",
-                                     [],
-                                     [],
-                                     repo.get_transaction())
+        repo.fetch(tree.branch.repository)
+        self.assertTrue(repo.has_revision('1'))
         target = dir.sprout(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport)

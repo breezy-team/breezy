@@ -75,6 +75,9 @@ class RepoFetcher(object):
 
     after running:
     count_copied -- number of revisions copied
+
+    This should not be used directory, its essential a object to encapsulate
+    the logic in InterRepository.fetch().
     """
     def __init__(self, to_repository, from_repository, last_revision=None, pb=None):
         # result variables.

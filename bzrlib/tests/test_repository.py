@@ -272,3 +272,29 @@ class TestInterRepository(TestCaseWithTransport):
             repository.InterRepository.unregister_optimiser(InterString)
         # now we should get the default InterRepository object again.
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
+
+
+class TestInterWeaveRepo(TestCaseWithTransport):
+
+    def test_is_compatible_and_registered(self):
+        # InterWeaveRepo is compatible when either side
+        # is a format 5/6/7 branch
+        formats = [repository.RepositoryFormat5(),
+                   repository.RepositoryFormat6(),
+                   repository.RepositoryFormat7()]
+        repo_a = self.make_repository('a')
+        repo_b = self.make_repository('b')
+        # force incompatible left then right
+        repo_a._format = repository.RepositoryFormat4()
+        repo_b._format = formats[0]
+        is_compatible = repository.InterWeaveRepo.is_compatible
+        self.assertFalse(is_compatible(repo_a, repo_b))
+        self.assertFalse(is_compatible(repo_b, repo_a))
+        for source in formats:
+            repo_a._format = source
+            for target in formats:
+                repo_b._format = target
+                self.assertTrue(is_compatible(repo_a, repo_b))
+        self.assertEqual(repository.InterWeaveRepo,
+                         repository.InterRepository.get(repo_a,
+                                                        repo_b).__class__)
