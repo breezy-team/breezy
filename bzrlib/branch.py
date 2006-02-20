@@ -57,7 +57,12 @@ from bzrlib.textui import show_status
 from bzrlib.trace import mutter, note
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.repository import Repository
-from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions)
+from bzrlib.revision import (
+                             get_intervening_revisions,
+                             is_ancestor,
+                             NULL_REVISION,
+                             Revision,
+                             )
 from bzrlib.store import copy_all
 from bzrlib.symbol_versioning import *
 import bzrlib.transactions as transactions
@@ -189,6 +194,40 @@ class Branch(object):
         method and not a tree method.
         """
         raise NotImplementedError('abspath is abstract')
+
+    @needs_write_lock
+    def fetch(self, from_branch, last_revision=None, pb=None):
+        """Copy revisions from from_branch into this branch.
+
+        :param from_branch: Where to copy from.
+        :param last_revision: What revision to stop at (None for at the end
+                              of the branch.
+        :param pb: An optional progress bar to use.
+
+        Returns the copied revision count and the failed revisions in a tuple:
+        (copied, failures).
+        """
+        if self.base == from_branch.base:
+            raise Exception("can't fetch from a branch to itself %s, %s" % 
+                            (self.base, to_branch.base))
+        if pb is None:
+            pb = bzrlib.ui.ui_factory.progress_bar()
+
+        from_branch.lock_read()
+        try:
+            if last_revision is None:
+                pb.update('get source history')
+                from_history = from_branch.revision_history()
+                if from_history:
+                    last_revision = from_history[-1]
+                else:
+                    # no history in the source branch
+                    last_revision = NULL_REVISION
+            return self.repository.fetch(from_branch.repository,
+                                         revision_id=last_revision,
+                                         pb=pb)
+        finally:
+            from_branch.unlock()
 
     def get_root_id(self):
         """Return the id of this branches root"""
@@ -940,16 +979,13 @@ class BzrBranch(Branch):
 
     def update_revisions(self, other, stop_revision=None):
         """See Branch.update_revisions."""
-        from bzrlib.fetch import greedy_fetch
-
         if stop_revision is None:
             stop_revision = other.last_revision()
         ### Should this be checking is_ancestor instead of revision_history?
         if (stop_revision is not None and 
             stop_revision in self.revision_history()):
             return
-        greedy_fetch(to_branch=self, from_branch=other,
-                     revision=stop_revision)
+        self.fetch(other, stop_revision)
         pullable_revs = self.pullable_revisions(other, stop_revision)
         if len(pullable_revs) > 0:
             self.append_revision(*pullable_revs)

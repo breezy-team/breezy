@@ -286,16 +286,13 @@ class Repository(object):
         finally:
             destination.unlock()
 
-    @needs_write_lock
-    def fetch(self, source, revision_id=None):
+    def fetch(self, source, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id from source.
 
         If revision_id is None all content is copied.
         """
-        from bzrlib.fetch import RepoFetcher
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               source, source._format, self, self._format)
-        RepoFetcher(to_repository=self, from_repository=source, last_revision=revision_id)
+        return InterRepository.get(source, self).fetch(revision_id=revision_id,
+                                                       pb=pb)
 
     def unlock(self):
         self.control_files.unlock()
@@ -907,6 +904,32 @@ class InterRepository(object):
         self.source = source
         self.target = target
 
+    def fetch(self, revision_id=None, pb=None):
+        """Fetch the content required to construct revision_id.
+
+        The content is copied from source to target.
+
+        :param revision_id: if None all content is copied, if NULL_REVISION no
+                            content is copied.
+        :param pb: optional progress bar to use for progress reports. If not
+                   provided a default one will be created.
+
+        Returns the copied revision count and the failed revisions in a tuple:
+        (copied, failures).
+        """
+        from bzrlib.fetch import RepoFetcher
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.source, self.source._format, self.target, self.target._format)
+        self.target.lock_write()
+        try:
+            f = RepoFetcher(to_repository=self.target,
+                            from_repository=self.source,
+                            last_revision=revision_id,
+                            pb=pb)
+            return f.count_copied, f.failed_revisions
+        finally:
+            self.target.unlock()
+
     @classmethod
     def get(klass, repository_source, repository_target):
         """Retrieve a InterRepository worker object for these repositories.
@@ -932,6 +955,34 @@ class InterRepository(object):
     def unregister_optimiser(klass, optimiser):
         """Unregister an InterRepository optimiser."""
         klass._optimisers.remove(optimiser)
+
+
+class InterWeaveRepo(InterRepository):
+    """Optimised code paths between Weave based repositories."""
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with known Weave formats.
+        
+        We dont test for the stores being of specific types becase that
+        could lead to confusing results, and there is no need to be 
+        overly general.
+        """
+
+    def fetch(self, revision_id=None, pb=None):
+        """See InterRepository.fetch()."""
+        from bzrlib.fetch import RepoFetcher
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.source, self.source._format, self.target, self.target._format)
+        self.target.lock_write()
+        try:
+            f = RepoFetcher(to_repository=self.target,
+                            from_repository=self.source,
+                            last_revision=revision_id,
+                            pb=pb)
+            return f.count_copied, f.failed_revisions
+        finally:
+            self.target.unlock()
 
 
 class RepositoryTestProviderAdapter(object):

@@ -16,9 +16,8 @@
 
 """Tests for InterRepository implementastions."""
 
-import os
-import sys
 
+import bzrlib
 import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
@@ -90,8 +89,10 @@ class TestInterRepository(TestCaseWithInterRepository):
         def check_push_rev1(repo):
             # ensure the revision is missing.
             self.assertRaises(NoSuchRevision, repo.get_revision, 'rev1')
-            # fetch with a limit of NULL_REVISION
-            repo.fetch(tree_a.branch.repository, NULL_REVISION)
+            # fetch with a limit of NULL_REVISION and an explicit progress bar.
+            repo.fetch(tree_a.branch.repository,
+                       revision_id=NULL_REVISION,
+                       pb=bzrlib.progress.DummyProgress())
             # nothing should have been pushed
             self.assertFalse(repo.has_revision('rev1'))
             # fetch with a default limit (grab everything)
@@ -104,13 +105,9 @@ class TestInterRepository(TestCaseWithInterRepository):
                 if tree.inventory[file_id].kind == "file":
                     tree.get_file(file_id).read()
 
-        # makes a latest-version repo 
-        repo_b = bzrdir.BzrDir.create_repository(self.get_url('b'))
+        # makes a target version repo 
+        repo_b = self.make_to_repository('b')
         check_push_rev1(repo_b)
-
-        # makes a this-version repo:
-        repo_c = self.make_repository('c')
-        check_push_rev1(repo_c)
         
     def test_fetch_missing_revision_same_location_fails(self):
         repo_a = self.make_repository('.')

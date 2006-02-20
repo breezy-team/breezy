@@ -14,20 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from copy import copy
-import os
-from cStringIO import StringIO
-
-import bzrlib
-import bzrlib.errors as errors
-from bzrlib.errors import (InstallFailed, NoSuchRevision, WeaveError,
-                           MissingText)
-from bzrlib.trace import mutter, note, warning
-from bzrlib.branch import Branch
-from bzrlib.progress import ProgressBar
-from bzrlib.revision import NULL_REVISION
-from bzrlib.xml5 import serializer_v5
-from bzrlib.osutils import sha_string, split_lines
 
 """Copying of history from one branch to another.
 
@@ -43,6 +29,16 @@ However, we can't know what files are included in a revision until we
 read its inventory.  Therefore, we first pull the XML and hold it in
 memory until we've updated all of the files referenced.
 """
+
+import bzrlib
+import bzrlib.errors as errors
+from bzrlib.errors import (InstallFailed, NoSuchRevision, WeaveError,
+                           MissingText)
+from bzrlib.trace import mutter
+from bzrlib.progress import ProgressBar
+from bzrlib.revision import NULL_REVISION
+from bzrlib.symbol_versioning import *
+
 
 # TODO: Avoid repeatedly opening weaves so many times.
 
@@ -62,8 +58,9 @@ memory until we've updated all of the files referenced.
 #   and add in all file versions
 
 
-
+@deprecated_function(zero_eight)
 def greedy_fetch(to_branch, from_branch, revision=None, pb=None):
+    """Legacy operation, see branch.fetch(from_branch, last_revision, pb)."""
     f = Fetcher(to_branch, from_branch, revision, pb)
     return f.count_copied, f.failed_revisions
 
@@ -76,9 +73,11 @@ class RepoFetcher(object):
 
     after running:
     count_copied -- number of revisions copied
-    count_weaves -- number of file weaves copied
     """
     def __init__(self, to_repository, from_repository, last_revision=None, pb=None):
+        # result variables.
+        self.failed_revisions = []
+        self.count_copied = 0
         if to_repository.bzrdir.transport.base == from_repository.bzrdir.transport.base:
             # check that last_revision is in 'from' and then return a no-operation.
             if last_revision not in (None, NULL_REVISION):
@@ -112,11 +111,7 @@ class RepoFetcher(object):
         self.to_control = self.to_repository.control_weaves
         self.from_weaves = self.from_repository.weave_store
         self.from_control = self.from_repository.control_weaves
-        self.failed_revisions = []
-        self.count_copied = 0
         self.count_total = 0
-        self.count_weaves = 0
-        self.copied_file_ids = set()
         self.file_ids_names = {}
         try:
             revs = self._revids_to_fetch()
@@ -130,6 +125,7 @@ class RepoFetcher(object):
             self.pb.clear()
 
     def _revids_to_fetch(self):
+        self.pb.update('get destination history')
         mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
@@ -217,8 +213,6 @@ class Fetcher(object):
         from_branch
 
     count_copied -- number of revisions copied
-
-    count_weaves -- number of file weaves copied
     """
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
         if to_branch.base == from_branch.base:
@@ -251,8 +245,6 @@ class Fetcher(object):
         self.failed_revisions = repo_fetcher.failed_revisions
         self.count_copied = repo_fetcher.count_copied
         self.count_total = repo_fetcher.count_total
-        self.count_weaves = repo_fetcher.count_weaves
-        self.copied_file_ids = repo_fetcher.copied_file_ids
 
     def _find_last_revision(self):
         """Find the limiting source revision.
@@ -265,11 +257,10 @@ class Fetcher(object):
             return
         self.pb.update('get source history')
         from_history = self.from_branch.revision_history()
-        self.pb.update('get destination history')
         if from_history:
             self._last_revision = from_history[-1]
         else:
             # no history in the source branch
             self._last_revision = NULL_REVISION
 
-fetch = Fetcher
+fetch = greedy_fetch

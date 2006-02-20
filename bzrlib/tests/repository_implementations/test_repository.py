@@ -19,6 +19,7 @@
 import os
 import sys
 
+import bzrlib
 import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.commit import commit
@@ -176,7 +177,9 @@ class TestRepository(TestCaseWithRepository):
         tree_a.commit('rev1', rev_id='rev1')
         # fetch with a default limit (grab everything)
         repo = bzrdir.BzrDir.create_repository(self.get_url('b'))
-        repo.fetch(tree_a.branch.repository, None)
+        repo.fetch(tree_a.branch.repository,
+                   revision_id=None,
+                   pb=bzrlib.progress.DummyProgress())
 
     def test_clone_bzrdir_repository_revision(self):
         # make a repository with some revisions,
