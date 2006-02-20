@@ -195,6 +195,16 @@ class TestRepository(TestCaseWithRepository):
         # makes a this-version repo:
         repo_c = self.make_repository('c')
         check_push_rev1(repo_c)
+        
+    def test_fetch_missing_revision_same_location_fails(self):
+        repo_a = self.make_repository('.')
+        repo_b = repository.Repository.open('.')
+        self.assertRaises(errors.NoSuchRevision, repo_b.fetch, repo_a, revision_id='XXX')
+
+    def test_fetch_same_location_trivial_works(self):
+        repo_a = self.make_repository('.')
+        repo_b = repository.Repository.open('.')
+        repo_a.fetch(repo_b)
 
     def test_clone_bzrdir_repository_revision(self):
         # make a repository with some revisions,
