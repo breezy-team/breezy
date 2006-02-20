@@ -213,6 +213,20 @@ class TestFormat7(TestCaseWithTransport):
                              t.get('inventory.weave').read())
 
 
+class InterString(repository.InterRepository):
+    """An inter-repository optimised code path for strings.
+
+    This is for use during testing where we use strings as repositories
+    so that none of the default regsitered inter-repository classes will
+    match.
+    """
+
+    @staticmethod
+    def is_compatible(repo_source, repo_target):
+        """InterString is compatible with strings-as-repos."""
+        return isinstance(repo_source, str) and isinstance(repo_target, str)
+
+
 class TestInterRepository(TestCaseWithTransport):
 
     def test_get_default_inter_repository(self):
@@ -224,8 +238,38 @@ class TestInterRepository(TestCaseWithTransport):
         # is handed to them.
         dummy_a = "Repository 1."
         dummy_b = "Repository 2."
-        inter_repo = repository.InterRepository.get(dummy_a, dummy_b)
+        self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
+
+    def assertGetsDefaultInterRepository(self, repo_a, repo_b):
+        """Asserts that InterRepository.get(repo_a, repo_b) -> the default."""
+        inter_repo = repository.InterRepository.get(repo_a, repo_b)
         self.assertEqual(repository.InterRepository,
                          inter_repo.__class__)
-        self.assertEqual(dummy_a, inter_repo.source)
-        self.assertEqual(dummy_b, inter_repo.target)
+        self.assertEqual(repo_a, inter_repo.source)
+        self.assertEqual(repo_b, inter_repo.target)
+
+    def test_register_inter_repository_class(self):
+        # test that a optimised code path provider - a
+        # InterRepository subclass can be registered and unregistered
+        # and that it is correctly selected when given a repository
+        # pair that it returns true on for the is_compatible static method
+        # check
+        dummy_a = "Repository 1."
+        dummy_b = "Repository 2."
+        repository.InterRepository.register_optimiser(InterString)
+        try:
+            # we should get the default for something InterString returns False
+            # to
+            self.assertFalse(InterString.is_compatible(dummy_a, None))
+            self.assertGetsDefaultInterRepository(dummy_a, None)
+            # and we should get an InterString for a pair it 'likes'
+            self.assertTrue(InterString.is_compatible(dummy_a, dummy_b))
+            inter_repo = repository.InterRepository.get(dummy_a, dummy_b)
+            self.assertEqual(InterString, inter_repo.__class__)
+            self.assertEqual(dummy_a, inter_repo.source)
+            self.assertEqual(dummy_b, inter_repo.target)
+        finally:
+            repository.InterRepository.unregister_optimiser(InterString)
+        # now we should get the default InterRepository object again.
+        self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
+

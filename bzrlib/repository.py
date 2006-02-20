@@ -890,6 +890,9 @@ class InterRepository(object):
     InterRepository.get(other).method_name(parameters).
     """
 
+    _optimisers = set()
+    """The available optimised InterRepository types."""
+
     def __init__(self, source, target):
         """Construct a default InterRepository instance. Please use 'get'.
         
@@ -911,7 +914,20 @@ class InterRepository(object):
         If an optimised InterRepository worker exists it will be used otherwise
         a default InterRepository instance will be created.
         """
+        for provider in klass._optimisers:
+            if provider.is_compatible(repository_source, repository_target):
+                return provider(repository_source, repository_target)
         return InterRepository(repository_source, repository_target)
+
+    @classmethod
+    def register_optimiser(klass, optimiser):
+        """Register an InterRepository optimiser."""
+        klass._optimisers.add(optimiser)
+
+    @classmethod
+    def unregister_optimiser(klass, optimiser):
+        """Unregister an InterRepository optimiser."""
+        klass._optimisers.remove(optimiser)
 
 
 class RepositoryTestProviderAdapter(object):
