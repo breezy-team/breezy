@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -107,6 +107,8 @@ class Transport(object):
                 raise errors.FileExists(path, extra=e)
             if e.errno == errno.EACCES:
                 raise errors.PermissionDenied(path, extra=e)
+            if e.errno == errno.ENOTEMPTY:
+                raise errors.DirectoryNotEmpty(path, extra=e)
         if raise_generic:
             raise errors.TransportError(orig_error=e)
 

@@ -180,6 +180,10 @@ class FileExists(PathError):
     """File exists: %(path)r%(extra)s"""
 
 
+class DirectoryNotEmpty(PathError):
+    """Directory not empty: %(path)r%(extra)s"""
+
+
 class PermissionDenied(PathError):
     """Permission denied: %(path)r%(extra)s"""
 

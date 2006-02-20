@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,8 +25,9 @@ from cStringIO import StringIO
 import stat
 import sys
 
-from bzrlib.errors import (NoSuchFile, FileExists,
+from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
                            LockError,
+                           PathError,
                            TransportNotPossible, ConnectionError)
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.transport import memory, urlescape
@@ -551,6 +552,19 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertRaises(NoSuchFile, t.stat, 'adir/bdir')
         t.rmdir('adir')
         self.assertRaises(NoSuchFile, t.stat, 'adir')
+
+    def test_rmdir_not_empty(self):
+        """Deleting a non-empty directory raises an exception
+        
+        sftp (and possibly others) don't give us a specific "directory not
+        empty" exception -- we can just see that the operation failed.
+        """
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        t.mkdir('adir')
+        t.mkdir('adir/bdir')
+        self.assertRaises(PathError, t.rmdir, 'adir')
 
     def test_delete_tree(self):
         t = self.get_transport()
