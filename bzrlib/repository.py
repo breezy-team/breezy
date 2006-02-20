@@ -168,49 +168,7 @@ class Repository(object):
 
         revision_id: only return revision ids included by revision_id.
         """
-        if self._compatible_formats(other):
-            # fast path for weave-inventory based stores.
-            # we want all revisions to satisft revision_id in other.
-            # but we dont want to stat every file here and there.
-            # we want then, all revisions other needs to satisfy revision_id 
-            # checked, but not those that we have locally.
-            # so the first thing is to get a subset of the revisions to 
-            # satisfy revision_id in other, and then eliminate those that
-            # we do already have. 
-            # this is slow on high latency connection to self, but as as this
-            # disk format scales terribly for push anyway due to rewriting 
-            # inventory.weave, this is considered acceptable.
-            # - RBC 20060209
-            if revision_id is not None:
-                other_ids = other.get_ancestry(revision_id)
-                assert other_ids.pop(0) == None
-            else:
-                other_ids = other._all_possible_ids()
-            other_ids_set = set(other_ids)
-            # other ids is the worst case to pull now.
-            # now we want to filter other_ids against what we actually
-            # have, but dont try to stat what we know we dont.
-            my_ids = set(self._all_possible_ids())
-            possibly_present_revisions = my_ids.intersection(other_ids_set)
-            actually_present_revisions = set(self._eliminate_revisions_not_present(possibly_present_revisions))
-            required_revisions = other_ids_set.difference(actually_present_revisions)
-            required_topo_revisions = [rev_id for rev_id in other_ids if rev_id in required_revisions]
-            if revision_id is not None:
-                # we used get_ancestry to determine other_ids then we are assured all
-                # revisions referenced are present as they are installed in topological order.
-                return required_topo_revisions
-            else:
-                # we only have an estimate of whats available
-                return other._eliminate_revisions_not_present(required_topo_revisions)
-        # slow code path.
-        my_ids = set(self.all_revision_ids())
-        if revision_id is not None:
-            other_ids = other.get_ancestry(revision_id)
-            assert other_ids.pop(0) == None
-        else:
-            other_ids = other.all_revision_ids()
-        result_set = set(other_ids).difference(my_ids)
-        return [rev_id for rev_id in other_ids if rev_id in result_set]
+        return InterRepository.get(other, self).missing_revision_ids(revision_id)
 
     @staticmethod
     def open(base):
@@ -221,19 +179,6 @@ class Repository(object):
         """
         control = bzrdir.BzrDir.open(base)
         return control.open_repository()
-
-    def _compatible_formats(self, other):
-        """Return True if the stores in self and other are 'compatible'
-        
-        'compatible' means that they are both the same underlying type
-        i.e. both weave stores, or both knits and thus support fast-path
-        operations."""
-        return (isinstance(self._format, (RepositoryFormat5,
-                                          RepositoryFormat6,
-                                          RepositoryFormat7)) and
-                isinstance(other._format, (RepositoryFormat5,
-                                           RepositoryFormat6,
-                                           RepositoryFormat7)))
 
     def copy_content_into(self, destination, revision_id=None, basis=None):
         """Make a complete copy of the content in self into destination.
@@ -885,6 +830,17 @@ class InterRepository(object):
             return
         self.target.fetch(self.source, revision_id=revision_id)
 
+    def _double_lock(self, lock_source, lock_target):
+        """Take out too locks, rolling back the first if the second throws."""
+        lock_source()
+        try:
+            lock_target()
+        except Exception:
+            # we want to ensure that we don't leave source locked by mistake.
+            # and any error on target should not confuse source.
+            self.source.unlock()
+            raise
+
     @needs_write_lock
     def fetch(self, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id.
@@ -924,20 +880,43 @@ class InterRepository(object):
                 return provider(repository_source, repository_target)
         return InterRepository(repository_source, repository_target)
 
+    def lock_read(self):
+        """Take out a logical read lock.
+
+        This will lock the source branch and the target branch. The source gets
+        a read lock and the target a read lock.
+        """
+        self._double_lock(self.source.lock_read, self.target.lock_read)
+
     def lock_write(self):
         """Take out a logical write lock.
 
         This will lock the source branch and the target branch. The source gets
         a read lock and the target a write lock.
         """
-        self.source.lock_read()
-        try:
-            self.target.lock_write()
-        except Exception:
-            # we want to ensure that we don't leave source locked by mistake.
-            # and any error on target should not confuse source.
-            self.source.unlock()
-            raise
+        self._double_lock(self.source.lock_read, self.target.lock_write)
+
+    @needs_read_lock
+    def missing_revision_ids(self, revision_id=None):
+        """Return the revision ids that source has that target does not.
+        
+        These are returned in topological order.
+
+        :param revision_id: only return revision ids included by this
+                            revision_id.
+        """
+        # generic, possibly worst case, slow code path.
+        target_ids = set(self.source.all_revision_ids())
+        if revision_id is not None:
+            source_ids = self.target.get_ancestry(revision_id)
+            assert source_ids.pop(0) == None
+        else:
+            source_ids = self.target.all_revision_ids()
+        result_set = set(source_ids).difference(target_ids)
+        # this may look like a no-op: its not. It preserves the ordering
+        # other_ids had while only returning the members from other_ids
+        # that we've decided we need.
+        return [rev_id for rev_id in other_ids if rev_id in result_set]
 
     @classmethod
     def register_optimiser(klass, optimiser):
@@ -1023,6 +1002,46 @@ class InterWeaveRepo(InterRepository):
                         last_revision=revision_id,
                         pb=pb)
         return f.count_copied, f.failed_revisions
+
+    @needs_read_lock
+    def missing_revision_ids(self, revision_id=None):
+        """See InterRepository.missing_revision_ids()."""
+        # we want all revisions to satisfy revision_id in source.
+        # but we dont want to stat every file here and there.
+        # we want then, all revisions other needs to satisfy revision_id 
+        # checked, but not those that we have locally.
+        # so the first thing is to get a subset of the revisions to 
+        # satisfy revision_id in source, and then eliminate those that
+        # we do already have. 
+        # this is slow on high latency connection to self, but as as this
+        # disk format scales terribly for push anyway due to rewriting 
+        # inventory.weave, this is considered acceptable.
+        # - RBC 20060209
+        if revision_id is not None:
+            source_ids = self.source.get_ancestry(revision_id)
+            assert source_ids.pop(0) == None
+        else:
+            source_ids = self.source._all_possible_ids()
+        source_ids_set = set(source_ids)
+        # source_ids is the worst possible case we may need to pull.
+        # now we want to filter source_ids against what we actually
+        # have in target, but dont try to check for existence where we know
+        # we do not have a revision as that would be pointless.
+        target_ids = set(self.target._all_possible_ids())
+        possibly_present_revisions = target_ids.intersection(source_ids_set)
+        actually_present_revisions = set(self.target._eliminate_revisions_not_present(possibly_present_revisions))
+        required_revisions = source_ids_set.difference(actually_present_revisions)
+        required_topo_revisions = [rev_id for rev_id in source_ids if rev_id in required_revisions]
+        if revision_id is not None:
+            # we used get_ancestry to determine source_ids then we are assured all
+            # revisions referenced are present as they are installed in topological order.
+            # and the tip revision was validated by get_ancestry.
+            return required_topo_revisions
+        else:
+            # if we just grabbed the possibly available ids, then 
+            # we only have an estimate of whats available and need to validate
+            # that against the revision records.
+            return self.source._eliminate_revisions_not_present(required_topo_revisions)
 
 
 InterRepository.register_optimiser(InterWeaveRepo)

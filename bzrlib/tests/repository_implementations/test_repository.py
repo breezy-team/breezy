@@ -229,6 +229,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         tree_a = self.make_branch_and_tree('a')
         self.bzrdir = tree_a.branch.bzrdir
         # add a corrupt inventory 'orphan'
+        # this may need some generalising for knits.
         tree_a.branch.repository.control_weaves.add_text(
             'inventory', 'orphan', [], [],
             tree_a.branch.repository.get_transaction())
@@ -242,43 +243,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.assertEqual(['rev1', 'rev2'],
                          self.bzrdir.open_repository().all_revision_ids())
 
-    def test_missing_revision_ids(self):
-        # revision ids in repository A but not B are returned, fake ones
-        # are stripped. (fake meaning no revision object, but an inventory 
-        # as some formats keyed off inventory data in the past.
-        # make a repository to compare against that claims to have rev1
-        tree_b = self.make_branch_and_tree('rev1_only')
-        # add a real revision 'rev1'
-        tree_b.commit('rev1', rev_id='rev1', allow_pointless=True)
-        repo_a = self.bzrdir.open_repository()
-        repo_b = tree_b.branch.repository
-        self.assertEqual(['rev2'],
-                         repo_b.missing_revision_ids(repo_a))
-
-    def test_missing_revision_ids_default_format(self):
-        # revision ids in repository A but not B are returned, fake ones
-        # are stripped. (fake meaning no revision object, but an inventory 
-        # as some formats keyed off inventory data in the past.
-        # make a repository to compare against that claims to have rev1
-        tree_b = bzrdir.BzrDir.create_standalone_workingtree('rev1_only')
-        # add a real revision 'rev1'
-        tree_b.commit('rev1', rev_id='rev1', allow_pointless=True)
-        repo_a = self.bzrdir.open_repository()
-        repo_b = tree_b.branch.repository
-        self.assertEqual(['rev2'],
-                         repo_b.missing_revision_ids(repo_a))
-
-    def test_missing_revision_ids_revision_limited(self):
-        # revision ids in repository A that are not referenced by the
-        # requested revision are not returned.
-        # make a repository to compare against that is empty
-        tree_b = self.make_branch_and_tree('empty')
-        repo_a = self.bzrdir.open_repository()
-        repo_b = tree_b.branch.repository
-        self.assertEqual(['rev1'],
-                         repo_b.missing_revision_ids(repo_a, revision_id='rev1'))
-
     def test_get_ancestry_missing_revision(self):
-        # get_ancestry(missing revision)-> NoSuchRevision
+        # get_ancestry(revision that is in some data but not fully installed
+        # -> NoSuchRevision
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_ancestry, 'orphan')

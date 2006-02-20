@@ -118,3 +118,41 @@ class TestInterRepository(TestCaseWithInterRepository):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
         repo_a.fetch(repo_b)
+
+
+class TestCaseWithComplexRepository(TestCaseWithInterRepository):
+
+    def setUp(self):
+        super(TestCaseWithComplexRepository, self).setUp()
+        tree_a = self.make_branch_and_tree('a')
+        self.bzrdir = tree_a.branch.bzrdir
+        # add a corrupt inventory 'orphan'
+        tree_a.branch.repository.control_weaves.add_text(
+            'inventory', 'orphan', [], [],
+            tree_a.branch.repository.get_transaction())
+        # add a real revision 'rev1'
+        tree_a.commit('rev1', rev_id='rev1', allow_pointless=True)
+        # add a real revision 'rev2' based on rev1
+        tree_a.commit('rev2', rev_id='rev2', allow_pointless=True)
+
+    def test_missing_revision_ids(self):
+        # revision ids in repository A but not B are returned, fake ones
+        # are stripped. (fake meaning no revision object, but an inventory 
+        # as some formats keyed off inventory data in the past.
+        # make a repository to compare against that claims to have rev1
+        repo_b = self.make_to_repository('rev1_only')
+        repo_a = self.bzrdir.open_repository()
+        repo_b.fetch(repo_a, 'rev1')
+        # check the test will be valid
+        self.assertFalse(repo_b.has_revision('rev2'))
+        self.assertEqual(['rev2'],
+                         repo_b.missing_revision_ids(repo_a))
+
+    def test_missing_revision_ids_revision_limited(self):
+        # revision ids in repository A that are not referenced by the
+        # requested revision are not returned.
+        # make a repository to compare against that is empty
+        repo_b = self.make_to_repository('empty')
+        repo_a = self.bzrdir.open_repository()
+        self.assertEqual(['rev1'],
+                         repo_b.missing_revision_ids(repo_a, revision_id='rev1'))
