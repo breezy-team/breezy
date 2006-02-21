@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ from bzrlib.errors import (BzrError,
                            )
 import bzrlib.inventory
 import bzrlib.iterablefile
+import bzrlib.lockdir
 import bzrlib.merge3
 import bzrlib.osutils
 import bzrlib.osutils as osutils
@@ -67,6 +68,7 @@ MODULES_TO_DOCTEST = [
                       bzrlib.errors,
                       bzrlib.inventory,
                       bzrlib.iterablefile,
+                      bzrlib.lockdir,
                       bzrlib.merge3,
                       bzrlib.option,
                       bzrlib.osutils,
