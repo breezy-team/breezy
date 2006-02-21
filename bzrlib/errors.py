@@ -1,4 +1,4 @@
-# (C) 2005 Canonical
+# Copyright (C) 2005 Canonical
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -296,6 +296,12 @@ class UnlockableTransport(LockError):
 class LockContention(LockError):
     """Could not acquire lock %(lock)s"""
     # TODO: show full url for lock, combining the transport and relative bits?
+    def __init__(self, lock):
+        self.lock = lock
+
+
+class LockBroken(LockError):
+    """Lock broken: %(lock)s"""
     def __init__(self, lock):
         self.lock = lock
 

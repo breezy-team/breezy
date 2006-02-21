@@ -20,7 +20,7 @@ from threading import Thread
 import time
 
 from bzrlib.errors import LockContention, LockError, UnlockableTransport, \
-        LockNotHeld
+        LockNotHeld, LockBroken
 from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
 
@@ -207,3 +207,11 @@ class TestLockDir(TestCaseWithTransport):
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
         self.assertRaises(LockNotHeld, lf1.confirm)
+
+    def test_42_confirm_broken_manually(self):
+        """Confirm a lock broken by hand"""
+        t = self.get_transport()
+        lf1 = LockDir(t, 'test_lock')
+        lf1.attempt_lock()
+        t.move('test_lock', 'lock_gone_now')
+        self.assertRaises(LockBroken, lf1.confirm)

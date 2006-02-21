@@ -101,6 +101,7 @@ import bzrlib.config
 from bzrlib.errors import (
         DirectoryNotEmpty,
         FileExists,
+        LockBroken,
         LockContention,
         LockError,
         LockNotHeld,
@@ -214,9 +215,13 @@ class LockDir(object):
         """
         if not self._lock_held:
             raise LockNotHeld(self)
-        # info = self.peek()
-        # if info['nonce'] != self._nonce:
-        #     raise LockBroken(self)
+        info = self.peek()
+        if info is None:
+            # no lock there anymore!
+            raise LockBroken(self)
+        if info.get('nonce') != self.nonce:
+            # there is a lock, but not ours
+            raise LockBroken(self)
 
     def peek(self):
         """Check if the lock is held by anyone.
