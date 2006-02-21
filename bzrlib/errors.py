@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical
+# Copyright (C) 2005, 2006 Canonical
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -301,7 +301,7 @@ class LockContention(LockError):
 
 
 class LockBroken(LockError):
-    """Lock broken: %(lock)s"""
+    """Lock was broken while still open: %(lock)s - check storage consistency!"""
     def __init__(self, lock):
         self.lock = lock
 
