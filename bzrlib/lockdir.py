@@ -101,6 +101,7 @@ import bzrlib.config
 from bzrlib.errors import (
         DirectoryNotEmpty,
         FileExists,
+        LockBreakMismatch,
         LockBroken,
         LockContention,
         LockError,
@@ -203,26 +204,42 @@ class LockDir(object):
         self.transport.delete(tmpname + self.INFO_NAME)
         self.transport.rmdir(tmpname)
 
-    def force_break(self):
+    def force_break(self, dead_holder_info):
         """Release a lock held by another process.
 
         WARNING: This should only be used when the other process is dead; if
         it still thinks it has the lock there will be two concurrent writers.
         In general the user's approval should be sought for lock breaks.
 
+        dead_holder_info must be the result of a previous LockDir.peek() call;
+        this is used to check that it's still held by the same process that
+        the user decided was dead.  If this is not the current holder,
+        LockBreakMismatch is raised.
+
         After the lock is broken it will not be held by any process.
         It is possible that another process may sneak in and take the 
         lock before the breaking process acquires it.
         """
+        if not isinstance(dead_holder_info, dict):
+            raise ValueError("dead_holder_info: %r" % dead_holder_info)
         if self._lock_held:
             raise AssertionError("can't break own lock: %r" % self)
-        lock_info = self.peek()
-        if lock_info is None:
+        current_info = self.peek()
+        if current_info is None:
             # must have been recently released
             return
+        if current_info != dead_holder_info:
+            raise LockBreakMismatch(self, current_info, dead_holder_info)
         tmpname = '%s.broken.%s.tmp' % (self.path, rand_chars(20))
         self.transport.rename(self.path, tmpname)
-        self.transport.delete(tmpname + self.INFO_NAME)
+        # check that we actually broke the right lock, not someone else;
+        # there's a small race window between checking it and doing the 
+        # rename.
+        broken_info_path = tmpname + self.INFO_NAME
+        broken_info = self._parse_info(self.transport.get(broken_info_path))
+        if broken_info != dead_holder_info:
+            raise LockBreakMismatch(self, broken_info, dead_holder_info)
+        self.transport.delete(broken_info_path)
         self.transport.rmdir(tmpname)
 
     def confirm(self):
@@ -254,9 +271,9 @@ class LockDir(object):
         """
         try:
             info = self._parse_info(self.transport.get(self._info_path))
-            assert isinstance(info, Stanza), \
+            assert isinstance(info, dict), \
                     "bad parse result %r" % info
-            return info.as_dict()
+            return info
         except NoSuchFile, e:
             return None
 
@@ -275,7 +292,7 @@ class LockDir(object):
         RioWriter(outf).write_stanza(s)
 
     def _parse_info(self, info_file):
-        return read_stanza(info_file.readlines())
+        return read_stanza(info_file.readlines()).as_dict()
 
     def wait_lock(self, timeout=_DEFAULT_TIMEOUT_SECONDS,
                   poll=_DEFAULT_POLL_SECONDS):

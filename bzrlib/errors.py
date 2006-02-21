@@ -306,6 +306,14 @@ class LockBroken(LockError):
         self.lock = lock
 
 
+class LockBreakMismatch(LockError):
+    """Lock was released and re-acquired before being broken: %(lock)s: held by %(holder)r, wanted to break %(target)r"""
+    def __init__(self, lock, holder, target):
+        self.lock = lock
+        self.holder = holder
+        self.target = target
+
+
 class LockNotHeld(LockError):
     """Lock not held: %(lock)s"""
     def __init__(self, lock):

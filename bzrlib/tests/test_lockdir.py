@@ -19,8 +19,11 @@
 from threading import Thread
 import time
 
-from bzrlib.errors import LockContention, LockError, UnlockableTransport, \
+from bzrlib.errors import (
+        LockBreakMismatch,
+        LockContention, LockError, UnlockableTransport,
         LockNotHeld, LockBroken
+        )
 from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
 
@@ -225,8 +228,9 @@ class TestLockDir(TestCaseWithTransport):
         del lf1
         # someone else sees it's still locked
         lf2 = LockDir(t, 'test_lock')
-        self.assertTrue(lf2.peek())
-        lf2.force_break()
+        holder_info = lf2.peek()
+        self.assertTrue(holder_info)
+        lf2.force_break(holder_info)
         # now we should be able to take it
         lf2.attempt_lock()
         lf2.confirm()
@@ -242,8 +246,24 @@ class TestLockDir(TestCaseWithTransport):
         # in the interim the lock is released
         lf1.unlock()
         # break should succeed
-        lf2.force_break()
+        lf2.force_break(holder_info)
         # now we should be able to take it
         lf2.attempt_lock()
         lf2.confirm()
 
+    def test_45_break_mismatch(self):
+        """Lock break races with someone else acquiring it"""
+        t = self.get_transport()
+        lf1 = LockDir(t, 'test_lock')
+        lf1.attempt_lock()
+        # someone else sees it's still locked
+        lf2 = LockDir(t, 'test_lock')
+        holder_info = lf2.peek()
+        # in the interim the lock is released
+        lf1.unlock()
+        lf3 = LockDir(t, 'test_lock')
+        lf3.attempt_lock()
+        # break should now *fail*
+        self.assertRaises(LockBreakMismatch, lf2.force_break,
+                          holder_info)
+        lf3.unlock()
