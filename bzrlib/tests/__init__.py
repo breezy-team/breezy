@@ -81,6 +81,7 @@ def packages_to_test():
     import bzrlib.tests.blackbox
     import bzrlib.tests.branch_implementations
     import bzrlib.tests.bzrdir_implementations
+    import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.workingtree_implementations
     return [
@@ -88,6 +89,7 @@ def packages_to_test():
             bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
             bzrlib.tests.bzrdir_implementations,
+            bzrlib.tests.interrepository_implementations,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.workingtree_implementations,
             ]
@@ -579,7 +581,7 @@ class TestCaseInTempDir(TestCase):
             break
         # make a fake bzr directory there to prevent any tests propagating
         # up onto the source directory's real branch
-        os.mkdir(osutils.pathjoin(TestCaseInTempDir.TEST_ROOT, '.bzr'))
+        bzrdir.BzrDir.create_standalone_workingtree(TestCaseInTempDir.TEST_ROOT)
 
     def setUp(self):
         super(TestCaseInTempDir, self).setUp()
@@ -747,10 +749,10 @@ class TestCaseWithTransport(TestCaseInTempDir):
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
-    def make_repository(self, relpath):
+    def make_repository(self, relpath, shared=False):
         """Create a repository on our default transport at relpath."""
         made_control = self.make_bzrdir(relpath)
-        return made_control.create_repository()
+        return made_control.create_repository(shared=shared)
 
     def make_branch_and_tree(self, relpath):
         """Create a branch on the transport and a tree locally.

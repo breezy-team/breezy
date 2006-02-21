@@ -42,7 +42,6 @@ from bzrlib.errors import (BzrError,
                            BzrOptionError,
                            NotBranchError)
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib import BZRDIR
 from bzrlib.option import Option
 
 plugin_cmds = {}

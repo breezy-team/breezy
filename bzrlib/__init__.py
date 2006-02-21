@@ -16,7 +16,6 @@
 
 """bzr library"""
 
-BZRDIR = ".bzr"
 
 # please keep these sorted (in C locale order) to aid merging
 DEFAULT_IGNORE = [

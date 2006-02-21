@@ -19,7 +19,6 @@ import os
 from bzrlib.add import smart_add
 from bzrlib.builtins import merge
 from bzrlib.delta import compare_trees
-from bzrlib.fetch import greedy_fetch
 from bzrlib.merge import merge_inner
 from bzrlib.revision import common_ancestor
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
@@ -35,8 +34,7 @@ class FileIdInvolvedBase(TestCaseWithRepository):
 
     def merge(self, branch_from, wt_to):
         # minimal ui-less merge.
-        greedy_fetch(to_branch=wt_to.branch, from_branch=branch_from,
-                     revision=branch_from.last_revision())
+        wt_to.branch.fetch(branch_from)
         base_rev = common_ancestor(branch_from.last_revision(),
                                     wt_to.branch.last_revision(),
                                     wt_to.branch.repository)
@@ -205,10 +203,11 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
                                  'c-funky<file-id> quiji%bo'])
         main_wt.commit("Commit one", rev_id="rev-A")
 
-        branch2_branch = main_branch.clone("branch2")
+        branch2_bzrdir = main_branch.bzrdir.sprout("branch2")
+        branch2_branch = branch2_bzrdir.open_branch()
+        branch2_wt = branch2_bzrdir.open_workingtree()
         os.chmod("branch2/b",0770)
-        branch2_branch.working_tree().commit("branch2, Commit one", 
-                                             rev_id="rev-J")
+        branch2_wt.commit("branch2, Commit one", rev_id="rev-J")
 
         self.merge(branch2_branch, main_wt)
         os.chmod("main/b",0660)

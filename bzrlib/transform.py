@@ -18,7 +18,6 @@ import os
 import errno
 from stat import S_ISREG
 
-from bzrlib import BZRDIR
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo)
@@ -38,7 +37,30 @@ def unique_add(map, key, value):
 
 
 class TreeTransform(object):
-    """Represent a tree transformation."""
+    """Represent a tree transformation.
+    
+    This object is designed to support incremental generation of the transform,
+    in any order.  
+    
+    It is easy to produce malformed transforms, but they are generally
+    harmless.  Attempting to apply a malformed transform will cause an
+    exception to be raised before any modifications are made to the tree.  
+
+    Many kinds of malformed transforms can be corrected with the 
+    resolve_conflicts function.  The remaining ones indicate programming error,
+    such as trying to create a file with no path.
+
+    Two sets of file creation methods are supplied.  Convenience methods are:
+     * new_file
+     * new_directory
+     * new_symlink
+
+    These are composed of the low-level methods:
+     * create_path
+     * create_file or create_directory or create_symlink
+     * version_file
+     * set_executability
+    """
     def __init__(self, tree, pb=DummyProgress()):
         """Note: a write lock is taken on the tree.
         
@@ -71,7 +93,7 @@ class TreeTransform(object):
         self._removed_id = set()
         self._tree_path_ids = {}
         self._tree_id_paths = {}
-        self._new_root = self.get_id_tree(tree.get_root_id())
+        self._new_root = self.trans_id_tree_file_id(tree.get_root_id())
         self.__done = False
         self._pb = pb
 
@@ -144,7 +166,7 @@ class TreeTransform(object):
         # the physical root needs a new transaction id
         self._tree_path_ids.pop("")
         self._tree_id_paths.pop(old_root)
-        self._new_root = self.get_id_tree(self._tree.get_root_id())
+        self._new_root = self.trans_id_tree_file_id(self._tree.get_root_id())
         if parent == old_root:
             parent = self._new_root
         self.adjust_path(name, parent, old_root)
@@ -152,16 +174,16 @@ class TreeTransform(object):
         self.version_file(old_root_file_id, old_root)
         self.unversion_file(self._new_root)
 
-    def get_id_tree(self, inventory_id):
+    def trans_id_tree_file_id(self, inventory_id):
         """Determine the transaction id of a working tree file.
         
         This reflects only files that already exist, not ones that will be
         added by transactions.
         """
         path = self._tree.inventory.id2path(inventory_id)
-        return self.get_tree_path_id(path)
+        return self.trans_id_tree_path(path)
 
-    def get_trans_id(self, file_id):
+    def trans_id_file_id(self, file_id):
         """Determine or set the transaction id associated with a file ID.
         A new id is only created for file_ids that were never present.  If
         a transaction has been unversioned, it is deliberately still returned.
@@ -170,7 +192,7 @@ class TreeTransform(object):
         if file_id in self._r_new_id and self._r_new_id[file_id] is not None:
             return self._r_new_id[file_id]
         elif file_id in self._tree.inventory:
-            return self.get_id_tree(file_id)
+            return self.trans_id_tree_file_id(file_id)
         elif file_id in self._non_present_ids:
             return self._non_present_ids[file_id]
         else:
@@ -185,7 +207,7 @@ class TreeTransform(object):
         dirname = os.path.realpath(dirname)
         return self._tree.relpath(pathjoin(dirname, basename))
 
-    def get_tree_path_id(self, path):
+    def trans_id_tree_path(self, path):
         """Determine (and maybe set) the transaction ID for a tree path."""
         path = self.canonical_path(path)
         if path not in self._tree_path_ids:
@@ -198,7 +220,7 @@ class TreeTransform(object):
         path = self._tree_id_paths[trans_id]
         if path == "":
             return ROOT_PARENT
-        return self.get_tree_path_id(os.path.dirname(path))
+        return self.trans_id_tree_path(os.path.dirname(path))
 
     def create_file(self, contents, trans_id, mode_id=None):
         """Schedule creation of a new file.
@@ -353,7 +375,7 @@ class TreeTransform(object):
         else:
             return self.tree_kind(trans_id)
 
-    def get_tree_file_id(self, trans_id):
+    def tree_file_id(self, trans_id):
         """Determine the file id associated with the trans_id in the tree"""
         try:
             path = self._tree_id_paths[trans_id]
@@ -378,14 +400,14 @@ class TreeTransform(object):
         except KeyError:
             if trans_id in self._removed_id:
                 return None
-        return self.get_tree_file_id(trans_id)
+        return self.tree_file_id(trans_id)
 
     def inactive_file_id(self, trans_id):
         """Return the inactive file_id associated with a transaction id.
         That is, the one in the tree or in non_present_ids.
         The file_id may actually be active, too.
         """
-        file_id = self.get_tree_file_id(trans_id)
+        file_id = self.tree_file_id(trans_id)
         if file_id is not None:
             return file_id
         for key, value in self._non_present_ids.iteritems():
@@ -457,7 +479,7 @@ class TreeTransform(object):
         parents.extend([t for t in self._removed_contents if 
                         self.tree_kind(t) == 'directory'])
         for trans_id in self._removed_id:
-            file_id = self.get_tree_file_id(trans_id)
+            file_id = self.tree_file_id(trans_id)
             if self._tree.inventory[file_id].kind in ('directory', 
                                                       'root_directory'):
                 parents.append(trans_id)
@@ -481,9 +503,9 @@ class TreeTransform(object):
             
         for child in children:
             childpath = joinpath(path, child)
-            if childpath == BZRDIR:
+            if self._tree.is_control_filename(childpath):
                 continue
-            yield self.get_tree_path_id(childpath)
+            yield self.trans_id_tree_path(childpath)
 
     def _parent_loops(self):
         """No entry should be its own ancestor"""
@@ -583,13 +605,13 @@ class TreeTransform(object):
     def _duplicate_ids(self):
         """Each inventory id may only be used once"""
         conflicts = []
-        removed_tree_ids = set((self.get_tree_file_id(trans_id) for trans_id in
+        removed_tree_ids = set((self.tree_file_id(trans_id) for trans_id in
                                 self._removed_id))
         active_tree_ids = set((f for f in self._tree.inventory if
                                f not in removed_tree_ids))
         for trans_id, file_id in self._new_id.iteritems():
             if file_id in active_tree_ids:
-                old_trans_id = self.get_id_tree(file_id)
+                old_trans_id = self.trans_id_tree_file_id(file_id)
                 conflicts.append(('duplicate id', old_trans_id, trans_id))
         return conflicts
 
@@ -672,10 +694,10 @@ class TreeTransform(object):
                 if trans_id == self._new_root:
                     file_id = self._tree.inventory.root.file_id
                 else:
-                    file_id = self.get_tree_file_id(trans_id)
+                    file_id = self.tree_file_id(trans_id)
                 del inv[file_id]
             elif trans_id in self._new_name or trans_id in self._new_parent:
-                file_id = self.get_tree_file_id(trans_id)
+                file_id = self.tree_file_id(trans_id)
                 if file_id is not None:
                     limbo_inv[trans_id] = inv[file_id]
                     del inv[file_id]
@@ -837,7 +859,7 @@ def build_tree(tree, wt):
     file_trans_id = {}
     tt = TreeTransform(wt)
     try:
-        file_trans_id[wt.get_root_id()] = tt.get_id_tree(wt.get_root_id())
+        file_trans_id[wt.get_root_id()] = tt.trans_id_tree_file_id(wt.get_root_id())
         file_ids = topology_sorted_ids(tree)
         for file_id in file_ids:
             entry = tree.inventory[file_id]
@@ -902,9 +924,9 @@ def find_interesting(working_tree, target_tree, filenames):
 
 
 def change_entry(tt, file_id, working_tree, target_tree, 
-                 get_trans_id, backups, trans_id):
+                 trans_id_file_id, backups, trans_id):
     """Replace a file_id's contents with those from a target tree."""
-    e_trans_id = get_trans_id(file_id)
+    e_trans_id = trans_id_file_id(file_id)
     entry = target_tree.inventory[file_id]
     has_contents, contents_mod, meta_mod, = _entry_changes(file_id, entry, 
                                                            working_tree)
@@ -914,7 +936,7 @@ def change_entry(tt, file_id, working_tree, target_tree,
             if not backups:
                 tt.delete_contents(e_trans_id)
             else:
-                parent_trans_id = get_trans_id(entry.parent_id)
+                parent_trans_id = trans_id_file_id(entry.parent_id)
                 tt.adjust_path(entry.name+"~", parent_trans_id, e_trans_id)
                 tt.unversion_file(e_trans_id)
                 e_trans_id = tt.create_path(entry.name, parent_trans_id)
@@ -935,7 +957,7 @@ def change_entry(tt, file_id, working_tree, target_tree,
         else:
             adjust_path = False
     if adjust_path:
-        parent_trans_id = get_trans_id(entry.parent_id)
+        parent_trans_id = trans_id_file_id(entry.parent_id)
         tt.adjust_path(entry.name, parent_trans_id, e_trans_id)
 
 
@@ -981,11 +1003,11 @@ def revert(working_tree, target_tree, filenames, backups=False,
     tt = TreeTransform(working_tree, pb)
     try:
         trans_id = {}
-        def get_trans_id(file_id):
+        def trans_id_file_id(file_id):
             try:
                 return trans_id[file_id]
             except KeyError:
-                return tt.get_id_tree(file_id)
+                return tt.trans_id_tree_file_id(file_id)
 
         sorted_interesting = [i for i in topology_sorted_ids(target_tree) if
                               interesting(i)]
@@ -993,17 +1015,17 @@ def revert(working_tree, target_tree, filenames, backups=False,
             pb.update("Reverting file", id_num+1, len(sorted_interesting))
             if file_id not in working_tree.inventory:
                 entry = target_tree.inventory[file_id]
-                parent_id = get_trans_id(entry.parent_id)
+                parent_id = trans_id_file_id(entry.parent_id)
                 e_trans_id = new_by_entry(tt, entry, parent_id, target_tree)
                 trans_id[file_id] = e_trans_id
             else:
                 change_entry(tt, file_id, working_tree, target_tree, 
-                             get_trans_id, backups, trans_id)
+                             trans_id_file_id, backups, trans_id)
         wt_interesting = [i for i in working_tree.inventory if interesting(i)]
         for id_num, file_id in enumerate(wt_interesting):
             pb.update("New file check", id_num+1, len(sorted_interesting))
             if file_id not in target_tree:
-                tt.unversion_file(tt.get_id_tree(file_id))
+                tt.unversion_file(tt.trans_id_tree_file_id(file_id))
         raw_conflicts = resolve_conflicts(tt, pb)
         for line in conflicts_strings(cook_conflicts(raw_conflicts, tt)):
             warning(line)

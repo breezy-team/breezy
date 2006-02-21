@@ -34,17 +34,15 @@ from bzrlib.errors import (BzrCommandError,
                            UnrelatedBranches,
                            WorkingTreeNotRevision,
                            )
-from bzrlib.fetch import greedy_fetch, fetch
 from bzrlib.merge3 import Merge3
 import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
 from progress import DummyProgress
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
+from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               conflicts_strings, FinalPaths, create_by_entry,
                               unique_add)
-from bzrlib.trace import mutter, warning, note
-from bzrlib.ui import ui_factory
 
 # TODO: Report back as changes are merged in
 
@@ -68,7 +66,7 @@ def _get_revid_tree(branch, revision, local_branch):
     else:
         if local_branch is not None:
             if local_branch.base != branch.base:
-                greedy_fetch(local_branch, branch, revision)
+                local_branch.fetch(branch, revision)
             base_tree = local_branch.repository.revision_tree(revision)
         else:
             base_tree = branch.repository.revision_tree(revision)
@@ -77,7 +75,7 @@ def _get_revid_tree(branch, revision, local_branch):
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
     merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
-                interesting_ids=interesting_ids)
+                interesting_ids=interesting_ids, this_tree=from_tree)
 
 
 class Merger(object):
@@ -198,8 +196,7 @@ class Merger(object):
             if self.other_basis is None:
                 raise NoCommits(other_branch)
         if other_branch.base != self.this_branch.base:
-            fetch(from_branch=other_branch, to_branch=self.this_branch, 
-                  last_revision=self.other_basis)
+            self.this_branch.fetch(other_branch, last_revision=self.other_basis)
 
     def set_base(self, base_revision):
         mutter("doing merge() with no base_revision specified")
@@ -222,7 +219,7 @@ class Merger(object):
                 self.base_rev_id = None
             else:
                 self.base_rev_id = base_branch.get_rev_id(base_revision[1])
-            fetch(from_branch=base_branch, to_branch=self.this_branch)
+            self.this_branch.fetch(base_branch)
             self.base_is_ancestor = is_ancestor(self.this_basis, 
                                                 self.base_rev_id,
                                                 self.this_branch)
@@ -434,12 +431,12 @@ class Merge3Merger(object):
         if name_winner == "this" and parent_id_winner == "this":
             return
         if name_winner == "conflict":
-            trans_id = self.tt.get_trans_id(file_id)
+            trans_id = self.tt.trans_id_file_id(file_id)
             self._raw_conflicts.append(('name conflict', trans_id, 
                                         self.name(this_entry, file_id), 
                                         self.name(other_entry, file_id)))
         if parent_id_winner == "conflict":
-            trans_id = self.tt.get_trans_id(file_id)
+            trans_id = self.tt.trans_id_file_id(file_id)
             self._raw_conflicts.append(('parent conflict', trans_id, 
                                         self.parent(this_entry, file_id), 
                                         self.parent(other_entry, file_id)))
@@ -450,9 +447,9 @@ class Merge3Merger(object):
         # if we get here, name_winner and parent_winner are set to safe values.
         winner_entry = {"this": this_entry, "other": other_entry, 
                         "conflict": other_entry}
-        trans_id = self.tt.get_trans_id(file_id)
+        trans_id = self.tt.trans_id_file_id(file_id)
         parent_id = winner_entry[parent_id_winner].parent_id
-        parent_trans_id = self.tt.get_trans_id(parent_id)
+        parent_trans_id = self.tt.trans_id_file_id(parent_id)
         self.tt.adjust_path(winner_entry[name_winner].name, parent_trans_id,
                             trans_id)
 
@@ -484,7 +481,7 @@ class Merge3Merger(object):
             # THIS and OTHER introduced the same changes
             return "unmodified"
         else:
-            trans_id = self.tt.get_trans_id(file_id)
+            trans_id = self.tt.trans_id_file_id(file_id)
             if this_pair == base_pair:
                 # only OTHER introduced changes
                 if file_id in self.this_tree:
@@ -518,7 +515,7 @@ class Merge3Merger(object):
                 return "modified"
             else:
                 # Scalar conflict, can't text merge.  Dump conflicts
-                trans_id = self.tt.get_trans_id(file_id)
+                trans_id = self.tt.trans_id_file_id(file_id)
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
                 if file_id in self.this_tree.inventory:
@@ -615,7 +612,7 @@ class Merge3Merger(object):
         """Perform a merge on the execute bit."""
         if file_status == "deleted":
             return
-        trans_id = self.tt.get_trans_id(file_id)
+        trans_id = self.tt.trans_id_file_id(file_id)
         try:
             if self.tt.final_kind(trans_id) != "file":
                 return
@@ -635,7 +632,7 @@ class Merge3Merger(object):
             if file_status == "modified":
                 executability = self.this_tree.is_executable(file_id)
                 if executability is not None:
-                    trans_id = self.tt.get_trans_id(file_id)
+                    trans_id = self.tt.trans_id_file_id(file_id)
                     self.tt.set_executability(executability, trans_id)
         else:
             assert winner == "other"
@@ -646,7 +643,7 @@ class Merge3Merger(object):
             elif file_id in self.base_tree:
                 executability = self.base_tree.is_executable(file_id)
             if executability is not None:
-                trans_id = self.tt.get_trans_id(file_id)
+                trans_id = self.tt.trans_id_file_id(file_id)
                 self.tt.set_executability(executability, trans_id)
 
     def cook_conflicts(self, fs_conflicts):
@@ -695,7 +692,7 @@ class Merge3Merger(object):
             other_path = fp.get_path(trans_id)
             if this_parent is not None:
                 this_parent_path = \
-                    fp.get_path(self.tt.get_trans_id(this_parent))
+                    fp.get_path(self.tt.trans_id_file_id(this_parent))
                 this_path = pathjoin(this_parent_path, this_name)
             else:
                 this_path = "<deleted>"

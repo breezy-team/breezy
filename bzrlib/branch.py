@@ -57,7 +57,12 @@ from bzrlib.textui import show_status
 from bzrlib.trace import mutter, note
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.repository import Repository
-from bzrlib.revision import (Revision, is_ancestor, get_intervening_revisions)
+from bzrlib.revision import (
+                             get_intervening_revisions,
+                             is_ancestor,
+                             NULL_REVISION,
+                             Revision,
+                             )
 from bzrlib.store import copy_all
 from bzrlib.symbol_versioning import *
 import bzrlib.transactions as transactions
@@ -189,6 +194,40 @@ class Branch(object):
         method and not a tree method.
         """
         raise NotImplementedError('abspath is abstract')
+
+    @needs_write_lock
+    def fetch(self, from_branch, last_revision=None, pb=None):
+        """Copy revisions from from_branch into this branch.
+
+        :param from_branch: Where to copy from.
+        :param last_revision: What revision to stop at (None for at the end
+                              of the branch.
+        :param pb: An optional progress bar to use.
+
+        Returns the copied revision count and the failed revisions in a tuple:
+        (copied, failures).
+        """
+        if self.base == from_branch.base:
+            raise Exception("can't fetch from a branch to itself %s, %s" % 
+                            (self.base, to_branch.base))
+        if pb is None:
+            pb = bzrlib.ui.ui_factory.progress_bar()
+
+        from_branch.lock_read()
+        try:
+            if last_revision is None:
+                pb.update('get source history')
+                from_history = from_branch.revision_history()
+                if from_history:
+                    last_revision = from_history[-1]
+                else:
+                    # no history in the source branch
+                    last_revision = NULL_REVISION
+            return self.repository.fetch(from_branch.repository,
+                                         revision_id=last_revision,
+                                         pb=pb)
+        finally:
+            from_branch.unlock()
 
     def get_root_id(self):
         """Return the id of this branches root"""
@@ -502,29 +541,6 @@ class BranchFormat(object):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
 
-    def _find_modes(self, t):
-        """Determine the appropriate modes for files and directories.
-        
-        FIXME: When this merges into, or from storage,
-        this code becomes delgatable to a LockableFiles instance.
-
-        For now its cribbed and returns (dir_mode, file_mode)
-        """
-        try:
-            st = t.stat('.')
-        except errors.TransportNotPossible:
-            dir_mode = 0755
-            file_mode = 0644
-        else:
-            dir_mode = st.st_mode & 07777
-            # Remove the sticky and execute bits for files
-            file_mode = dir_mode & ~07111
-        if not BzrBranch._set_dir_mode:
-            dir_mode = None
-        if not BzrBranch._set_file_mode:
-            file_mode = None
-        return dir_mode, file_mode
-
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
         raise NotImplementedError(self.initialized)
@@ -597,11 +613,10 @@ class BzrBranchFormat4(BranchFormat):
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
-        transport = a_bzrdir.get_branch_transport(self)
-        control_files = LockableFiles(transport, 'branch-lock')
         return BzrBranch(_format=self,
-                         _control_files=control_files,
-                         a_bzrdir=a_bzrdir)
+                         _control_files=a_bzrdir._control_files,
+                         a_bzrdir=a_bzrdir,
+                         _repository=a_bzrdir.open_repository())
 
 
 class BzrBranchFormat5(BranchFormat):
@@ -610,7 +625,8 @@ class BzrBranchFormat5(BranchFormat):
     This format has:
      - a revision-history file.
      - a format string
-     - a lock lock file.
+     - a lock file.
+     - works with shared repositories.
     """
 
     def get_format_string(self):
@@ -654,7 +670,8 @@ class BzrBranchFormat5(BranchFormat):
         control_files = LockableFiles(transport, 'lock')
         return BzrBranch(_format=self,
                          _control_files=control_files,
-                         a_bzrdir=a_bzrdir)
+                         a_bzrdir=a_bzrdir,
+                         _repository=a_bzrdir.find_repository())
 
 
 class BranchReferenceFormat(BranchFormat):
@@ -752,7 +769,7 @@ class BzrBranch(Branch):
 
     def __init__(self, transport=DEPRECATED_PARAMETER, init=DEPRECATED_PARAMETER,
                  relax_version_check=DEPRECATED_PARAMETER, _format=None,
-                 _control_files=None, a_bzrdir=None):
+                 _control_files=None, a_bzrdir=None, _repository=None):
         """Create new branch object at a particular location.
 
         transport -- A Transport object, defining how to access files.
@@ -806,8 +823,7 @@ class BzrBranch(Branch):
                  "Please use Branch.open, or bzrdir.open_branch().",
                  DeprecationWarning,
                  stacklevel=2)
-        # TODO change this to search upwards if needed.
-        self.repository = self.bzrdir.open_repository()
+        self.repository = _repository
 
     def __str__(self):
         return '%s(%r)' % (self.__class__.__name__, self.base)
@@ -963,16 +979,13 @@ class BzrBranch(Branch):
 
     def update_revisions(self, other, stop_revision=None):
         """See Branch.update_revisions."""
-        from bzrlib.fetch import greedy_fetch
-
         if stop_revision is None:
             stop_revision = other.last_revision()
         ### Should this be checking is_ancestor instead of revision_history?
         if (stop_revision is not None and 
             stop_revision in self.revision_history()):
             return
-        greedy_fetch(to_branch=self, from_branch=other,
-                     revision=stop_revision)
+        self.fetch(other, stop_revision)
         pullable_revs = self.pullable_revisions(other, stop_revision)
         if len(pullable_revs) > 0:
             self.append_revision(*pullable_revs)

@@ -3,12 +3,11 @@ import shutil
 import stat
 import sys
 
+import bzrlib
 from bzrlib.add import smart_add_tree
-from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.builtins import merge
 from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError, NoDiff3)
-from bzrlib.fetch import Fetcher
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.merge import Merge3Merger, Diff3Merger, WeaveMerger
@@ -24,8 +23,7 @@ class MergeBuilder(object):
         def wt(name):
            path = pathjoin(self.dir, name)
            os.mkdir(path)
-           b = Branch.initialize(path)
-           wt = b.working_tree()
+           wt = bzrlib.bzrdir.BzrDir.create_standalone_workingtree(path)
            tt = TreeTransform(wt)
            return wt, tt
         self.base, self.base_tt = wt('base') 
@@ -40,7 +38,7 @@ class MergeBuilder(object):
 
     def add_file(self, id, parent, name, contents, executable):
         def new_file(tt):
-            parent_id = tt.get_trans_id(parent)
+            parent_id = tt.trans_id_file_id(parent)
             tt.new_file(name, parent_id, contents, id, executable)
         for tt in (self.this_tt, self.base_tt, self.other_tt):
             new_file(tt)
@@ -53,8 +51,7 @@ class MergeBuilder(object):
             tt.apply()
             wt.commit('branch commit')
             assert len(wt.branch.revision_history()) == 2
-        Fetcher(self.this.branch, self.other.branch, 
-                self.other.branch.last_revision())
+        self.this.branch.fetch(self.other.branch)
         other_basis = self.other.branch.basis_tree()
         merger = merge_type(self.this, self.this, self.base, other_basis)
         return merger.cooked_conflicts
@@ -69,20 +66,20 @@ class MergeBuilder(object):
 
     def add_symlink(self, id, parent, name, contents):
         for tt in self.list_transforms():
-            parent_id = tt.get_trans_id(parent)
+            parent_id = tt.trans_id_file_id(parent)
             tt.new_symlink(name, parent_id, contents, id)
 
     def remove_file(self, file_id, base=False, this=False, other=False):
         for option, tt in self.selected_transforms(this, base, other):
             if option is True:
-                trans_id = tt.get_trans_id(file_id)
+                trans_id = tt.trans_id_file_id(file_id)
                 tt.cancel_creation(trans_id)
                 tt.cancel_versioning(trans_id)
                 tt.set_executability(None, trans_id)
 
     def add_dir(self, file_id, parent, name):
         for tt in self.list_transforms():
-            parent_id = tt.get_trans_id(parent)
+            parent_id = tt.trans_id_file_id(parent)
             tt.new_directory(name, parent_id, file_id)
 
     def change_name(self, id, base=None, this=None, other=None):
@@ -90,31 +87,31 @@ class MergeBuilder(object):
                         (other, self.other_tt)):
             if val is None:
                 continue
-            trans_id = tt.get_trans_id(id)
+            trans_id = tt.trans_id_file_id(id)
             parent_id = tt.final_parent(trans_id)
             tt.adjust_path(val, parent_id, trans_id)
 
     def change_parent(self, file_id, base=None, this=None, other=None):
         for parent, tt in self.selected_transforms(this, base, other):
-            trans_id  = tt.get_trans_id(file_id)
-            parent_id = tt.get_trans_id(parent)
+            trans_id  = tt.trans_id_file_id(file_id)
+            parent_id = tt.trans_id_file_id(parent)
             tt.adjust_path(tt.final_name(trans_id), parent_id, trans_id)
 
     def change_contents(self, file_id, base=None, this=None, other=None):
         for contents, tt in self.selected_transforms(this, base, other):
-            trans_id = tt.get_trans_id(file_id)
+            trans_id = tt.trans_id_file_id(file_id)
             tt.cancel_creation(trans_id)
             tt.create_file(contents, trans_id)
 
     def change_target(self, id, base=None, this=None, other=None):
         for target, tt in self.selected_transforms(this, base, other):
-            trans_id = tt.get_trans_id(id)
+            trans_id = tt.trans_id_file_id(id)
             tt.cancel_creation(trans_id)
             tt.create_symlink(target, trans_id)
 
     def change_perms(self, id, base=None, this=None, other=None):
         for executability, tt in self.selected_transforms(this, base, other):
-            trans_id = tt.get_trans_id(id)
+            trans_id = tt.trans_id_file_id(id)
             tt.set_executability(None, trans_id)
             tt.set_executability(executability, trans_id)
 

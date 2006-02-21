@@ -716,9 +716,8 @@ class cmd_info(Command):
     
     @display_command
     def run(self, branch=None):
-        import info
-        b = WorkingTree.open_containing(branch)[0].branch
-        info.show_info(b)
+        import bzrlib.info
+        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0])
 
 
 class cmd_remove(Command):
@@ -821,7 +820,7 @@ class cmd_init(Command):
             # locations if the user supplies an extended path
             if not os.path.exists(location):
                 os.mkdir(location)
-        WorkingTree.create_standalone(location)
+        bzrdir.BzrDir.create_standalone_workingtree(location)
 
 
 class cmd_diff(Command):
@@ -1453,7 +1452,15 @@ class cmd_scan_cache(Command):
 
         if c.needs_write:
             c.write()
-            
+
+
+def get_format_type(typestring):
+    """Parse and return a format specifier."""
+    if typestring == "metadir":
+        return bzrdir.BzrDirMetaFormat1
+    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
+        (typestring)
+    raise BzrCommandError(msg)
 
 
 class cmd_upgrade(Command):
@@ -1464,10 +1471,18 @@ class cmd_upgrade(Command):
     during other operations to upgrade.
     """
     takes_args = ['url?']
+    takes_options = [
+                     Option('format', 
+                            help='Upgrade to a specific format rather than the'
+                                 ' current default format. Currently this '
+                                 ' option only accepts =metadir',
+                            type=get_format_type),
+                    ]
 
-    def run(self, url='.'):
+
+    def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
-        upgrade(url)
+        upgrade(url, format)
 
 
 class cmd_whoami(Command):
