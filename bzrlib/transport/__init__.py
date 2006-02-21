@@ -379,7 +379,7 @@ class Transport(object):
         This is intended mainly for use in implementing LockDir.
         """
         # transports may need to override this
-        self.move(rel_from, rel_to)
+        raise NotImplementedError(self.rename)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to.
