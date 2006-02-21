@@ -203,6 +203,24 @@ class LockDir(object):
         self.transport.delete(tmpname + self.INFO_NAME)
         self.transport.rmdir(tmpname)
 
+    def force_break(self):
+        """Release a lock held by another process.
+
+        WARNING: This should only be used when the other process is dead; if
+        it still thinks it has the lock there will be two concurrent writers.
+        In general the user's approval should be sought for lock breaks.
+
+        After the lock is broken it will not be held by any process.
+        It is possible that another process may sneak in and take the 
+        lock before the breaking process acquires it.
+        """
+        if self._lock_held:
+            raise AssertionError("can't break own lock: %r" % self)
+        tmpname = '%s.broken.%s.tmp' % (self.path, rand_chars(20))
+        self.transport.rename(self.path, tmpname)
+        self.transport.delete(tmpname + self.INFO_NAME)
+        self.transport.rmdir(tmpname)
+
     def confirm(self):
         """Make sure that the lock is still held by this locker.
 
@@ -292,3 +310,4 @@ class LockDir(object):
                 time.sleep(poll)
             else:
                 raise LockContention(self)
+

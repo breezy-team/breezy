@@ -215,3 +215,18 @@ class TestLockDir(TestCaseWithTransport):
         lf1.attempt_lock()
         t.move('test_lock', 'lock_gone_now')
         self.assertRaises(LockBroken, lf1.confirm)
+
+    def test_43_break(self):
+        """Break a lock whose caller has forgotten it"""
+        t = self.get_transport()
+        lf1 = LockDir(t, 'test_lock')
+        lf1.attempt_lock()
+        # we incorrectly discard the lock object without unlocking it
+        del lf1
+        # someone else sees it's still locked
+        lf2 = LockDir(t, 'test_lock')
+        self.assertTrue(lf2.peek())
+        lf2.force_break()
+        # now we should be able to take it
+        lf2.attempt_lock()
+        lf2.confirm()
