@@ -76,7 +76,7 @@ CHECK_NEVER=2
 class ConfigObj(configobj.ConfigObj):
 
     def get_bool(self, section, key):
-        val = self[section].as_bool(key)
+        return self[section].as_bool(key)
 
     def get_value(self, section, name):
         # Try [] for the old DEFAULT section.

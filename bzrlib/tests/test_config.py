@@ -129,6 +129,23 @@ class InstrumentedConfig(config.Config):
         return self._signatures
 
 
+bool_config = """[DEFAULT]
+active = true
+inactive = false
+[UPPERCASE]
+active = True
+nonactive = False
+"""
+class TestConfigObj(TestCase):
+    def test_get_bool(self):
+        from bzrlib.config import ConfigObj
+        co = ConfigObj(StringIO(bool_config))
+        self.assertIs(co.get_bool('DEFAULT', 'active'), True)
+        self.assertIs(co.get_bool('DEFAULT', 'inactive'), False)
+        self.assertIs(co.get_bool('UPPERCASE', 'active'), True)
+        self.assertIs(co.get_bool('UPPERCASE', 'nonactive'), False)
+
+
 class TestConfig(TestCase):
 
     def test_constructs(self):
