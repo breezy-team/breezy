@@ -68,6 +68,14 @@ bzr development version
     * New BzrDir class represents the .bzr control directory and manages
       formatting issues. (Robert Collins)
 
+    * New repository.InterRepository class encapsulates Repository to 
+      Repository actions and allows for clean selection of optimised code
+      paths. (Robert Collins)
+
+    * bzrlib.fetch.fetch and bzrlib.fetch.greedy_fetch are now deprecated,
+      please use 'branch.fetch' or 'repository.fetch' depending on your
+      needs. (Robert Collins)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead

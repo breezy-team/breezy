@@ -242,7 +242,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
     def test_create_branch_convenience(self):
-        # outside a repo the default conveniencec output is a repo+branch_tree
+        # outside a repo the default convenience output is a repo+branch_tree
         old_format = bzrdir.BzrDirFormat.get_default_format()
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
         try:
