@@ -5,7 +5,6 @@ import sys
 
 import bzrlib
 from bzrlib.add import smart_add_tree
-from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.builtins import merge
 from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError, NoDiff3)

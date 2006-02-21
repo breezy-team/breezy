@@ -74,7 +74,7 @@ def _get_revid_tree(branch, revision, local_branch):
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
     merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
-                interesting_ids=interesting_ids)
+                interesting_ids=interesting_ids, this_tree=from_tree)
 
 
 class Merger(object):
