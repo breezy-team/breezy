@@ -130,7 +130,8 @@ from bzrlib.rio import RioWriter, read_stanza, Stanza
 # TODO: Some kind of callback run while polling a lock to show progress
 # indicators.
 
-_DEFAULT_TIMEOUT = 20
+_DEFAULT_TIMEOUT_SECONDS = 300
+_DEFAULT_POLL_SECONDS = 0.5
 
 class LockDir(object):
     """Write-lock guarding access to data.
@@ -249,7 +250,8 @@ class LockDir(object):
     def _parse_info(self, info_file):
         return read_stanza(info_file.readlines())
 
-    def wait_lock(self, timeout=20, poll=0.5):
+    def wait_lock(self, timeout=_DEFAULT_TIMEOUT_SECONDS,
+                  poll=_DEFAULT_POLL_SECONDS):
         """Wait a certain period for a lock.
 
         If the lock can be acquired within the bounded time, it
