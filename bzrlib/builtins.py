@@ -26,7 +26,6 @@ import bzrlib
 import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
-from bzrlib._merge_core import ApplyMerge3
 from bzrlib.commands import Command, display_command
 from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
@@ -34,6 +33,7 @@ from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError,
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch)
 from bzrlib.log import show_one_log
+from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
@@ -1719,9 +1719,8 @@ class cmd_merge(Command):
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False):
-        from bzrlib._merge_core import ApplyMerge3
         if merge_type is None:
-            merge_type = ApplyMerge3
+            merge_type = Merge3Merger
         if branch is None:
             branch = WorkingTree.open_containing(u'.')[0].branch.get_parent()
             if branch is None:
@@ -1776,9 +1775,8 @@ class cmd_remerge(Command):
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
         from bzrlib.merge import merge_inner, transform_tree
-        from bzrlib._merge_core import ApplyMerge3
         if merge_type is None:
-            merge_type = ApplyMerge3
+            merge_type = Merge3Merger
         tree, file_list = tree_files(file_list)
         tree.lock_write()
         try:
@@ -2160,7 +2158,7 @@ class cmd_uncommit(bzrlib.commands.Command):
 
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
-          this_dir=None, backup_files=False, merge_type=ApplyMerge3,
+          this_dir=None, backup_files=False, merge_type=Merge3Merger,
           file_list=None, show_base=False, reprocess=False):
     """Merge changes into a tree.
 
@@ -2189,14 +2187,14 @@ def merge(other_revision, base_revision,
     clients might prefer to call merge.merge_inner(), which has less magic 
     behavior.
     """
-    from bzrlib.merge import Merger, _MergeConflictHandler
+    from bzrlib.merge import Merger
     if this_dir is None:
         this_dir = u'.'
     this_tree = WorkingTree.open_containing(this_dir)[0]
-    if show_base and not merge_type is ApplyMerge3:
+    if show_base and not merge_type is Merge3Merger:
         raise BzrCommandError("Show-base is not supported for this merge"
                               " type. %s" % merge_type)
-    if reprocess and not merge_type is ApplyMerge3:
+    if reprocess and not merge_type is Merge3Merger:
         raise BzrCommandError("Reprocess is not supported for this merge"
                               " type. %s" % merge_type)
     if reprocess and show_base:
@@ -2213,10 +2211,6 @@ def merge(other_revision, base_revision,
     merger.set_interesting_files(file_list)
     merger.show_base = show_base 
     merger.reprocess = reprocess
-    merger.conflict_handler = _MergeConflictHandler(merger.this_tree, 
-                                                    merger.base_tree, 
-                                                    merger.other_tree,
-                                                    ignore_zero=ignore_zero)
     conflicts = merger.do_merge()
     merger.set_pending()
     return conflicts

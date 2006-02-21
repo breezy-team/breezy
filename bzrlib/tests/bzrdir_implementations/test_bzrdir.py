@@ -299,6 +299,20 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
                                     ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
+        target.open_workingtree().revert([])
+
+    def test_revert_inventory(self):
+        tree = self.make_branch_and_tree('sourcce')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1')
+        dir = tree.bzrdir
+        target = dir.clone(self.get_url('target'))
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
+                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
+        target.open_workingtree().revert([])
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
+                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
 
     def test_clone_bzrdir_tree_branch_reference(self):
         # a tree with a branch reference (aka a checkout) 

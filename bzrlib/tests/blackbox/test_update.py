@@ -91,5 +91,5 @@ class TestUpdate(ExternalBase):
         self.assertEqual(['1 conflicts encountered.',
                           'Updated to revision 2.'],
                          err.split('\n')[1:3])
-        self.assertContainsRe(err, 'Diff3 conflict encountered in.*file\n')
+        self.assertContainsRe(err, 'Text conflict in file\n')
         self.assertEqual('', out)

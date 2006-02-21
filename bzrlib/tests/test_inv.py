@@ -479,3 +479,14 @@ class TestExecutable(TestCaseWithTransport):
 
         self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
         self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
+
+class TestRevert(TestCaseWithTransport):
+    def test_dangling_id(self):
+        wt = self.make_branch_and_tree('b1')
+        self.assertEqual(len(wt.inventory), 1)
+        open('b1/a', 'wb').write('a test\n')
+        wt.add('a')
+        self.assertEqual(len(wt.inventory), 2)
+        os.unlink('b1/a')
+        wt.revert([])
+        self.assertEqual(len(wt.inventory), 1)
