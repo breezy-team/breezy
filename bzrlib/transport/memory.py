@@ -164,7 +164,8 @@ class MemoryTransport(Transport):
             self._translate_error(IOError(errno.ENOTDIR, relpath), relpath)
         for path in self._files:
             if path.startswith(_abspath):
-                self._translate_error(IOError(errno.EBUSY, relpath), relpath)
+                self._translate_error(IOError(errno.ENOTEMPTY, relpath),
+                                      relpath)
         for path in self._dirs:
             if path.startswith(_abspath) and path != _abspath:
                 self._translate_error(IOError(errno.ENOTEMPTY, relpath), relpath)
