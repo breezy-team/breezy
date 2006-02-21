@@ -36,7 +36,7 @@ class TestTreeTransform(TestCaseInTempDir):
     def get_transform(self):
         transform = TreeTransform(self.wt)
         #self.addCleanup(transform.finalize)
-        return transform, transform.get_id_tree(self.wt.get_root_id())
+        return transform, transform.trans_id_tree_file_id(self.wt.get_root_id())
 
     def test_existing_limbo(self):
         limbo_name = self.wt._control_files.controlfilename('limbo')
@@ -54,7 +54,7 @@ class TestTreeTransform(TestCaseInTempDir):
     def test_build(self):
         transform, root = self.get_transform() 
         self.assertIs(transform.get_tree_parent(root), ROOT_PARENT)
-        imaginary_id = transform.get_tree_path_id('imaginary')
+        imaginary_id = transform.trans_id_tree_path('imaginary')
         self.assertEqual(transform.get_tree_parent(imaginary_id), root)
         self.assertEqual(transform.final_kind(root), 'directory')
         self.assertEqual(transform.final_file_id(root), self.wt.get_root_id())
@@ -122,7 +122,7 @@ class TestTreeTransform(TestCaseInTempDir):
         transform.adjust_path('name', trans_id, trans_id2)
         self.assertEqual(transform.find_conflicts(), 
                          [('non-directory parent', trans_id)])
-        tinman_id = transform.get_tree_path_id('tinman')
+        tinman_id = transform.trans_id_tree_path('tinman')
         transform.adjust_path('name', tinman_id, trans_id2)
         self.assertEqual(transform.find_conflicts(), 
                          [('unversioned parent', tinman_id), 
@@ -161,7 +161,7 @@ class TestTreeTransform(TestCaseInTempDir):
         self.assertEqual(self.wt.path2id('name'), 'my_pretties')
         self.assertEqual('contents', file(self.wt.abspath('name')).read())
         transform2, root = self.get_transform()
-        oz_id = transform2.get_id_tree('oz-id')
+        oz_id = transform2.trans_id_tree_file_id('oz-id')
         newtip = transform2.new_file('tip', oz_id, 'other', 'tip-id')
         result = transform2.find_conflicts()
         fp = FinalPaths(transform2)
@@ -175,12 +175,12 @@ class TestTreeTransform(TestCaseInTempDir):
         transform2.finalize()
         transform3 = TreeTransform(self.wt)
         self.addCleanup(transform3.finalize)
-        oz_id = transform3.get_id_tree('oz-id')
+        oz_id = transform3.trans_id_tree_file_id('oz-id')
         transform3.delete_contents(oz_id)
         self.assertEqual(transform3.find_conflicts(), 
                          [('missing parent', oz_id)])
-        root_id = transform3.get_id_tree('TREE_ROOT')
-        tip_id = transform3.get_id_tree('tip-id')
+        root_id = transform3.trans_id_tree_file_id('TREE_ROOT')
+        tip_id = transform3.trans_id_tree_file_id('tip-id')
         transform3.adjust_path('tip', root_id, tip_id)
         transform3.apply()
 
@@ -191,18 +191,18 @@ class TestTreeTransform(TestCaseInTempDir):
         create_tree.apply()
         unversion = TreeTransform(self.wt)
         self.addCleanup(unversion.finalize)
-        parent = unversion.get_tree_path_id('parent')
+        parent = unversion.trans_id_tree_path('parent')
         unversion.unversion_file(parent)
         self.assertEqual(unversion.find_conflicts(), 
                          [('unversioned parent', parent_id)])
-        file_id = unversion.get_id_tree('child-id')
+        file_id = unversion.trans_id_tree_file_id('child-id')
         unversion.unversion_file(file_id)
         unversion.apply()
 
     def test_name_invariants(self):
         create_tree, root = self.get_transform()
         # prepare tree
-        root = create_tree.get_id_tree('TREE_ROOT')
+        root = create_tree.trans_id_tree_file_id('TREE_ROOT')
         create_tree.new_file('name1', root, 'hello1', 'name1')
         create_tree.new_file('name2', root, 'hello2', 'name2')
         ddir = create_tree.new_directory('dying_directory', root, 'ddir')
@@ -212,25 +212,25 @@ class TestTreeTransform(TestCaseInTempDir):
         create_tree.apply()
 
         mangle_tree,root = self.get_transform()
-        root = mangle_tree.get_id_tree('TREE_ROOT')
+        root = mangle_tree.trans_id_tree_file_id('TREE_ROOT')
         #swap names
-        name1 = mangle_tree.get_id_tree('name1')
-        name2 = mangle_tree.get_id_tree('name2')
+        name1 = mangle_tree.trans_id_tree_file_id('name1')
+        name2 = mangle_tree.trans_id_tree_file_id('name2')
         mangle_tree.adjust_path('name2', root, name1)
         mangle_tree.adjust_path('name1', root, name2)
 
         #tests for deleting parent directories 
-        ddir = mangle_tree.get_id_tree('ddir')
+        ddir = mangle_tree.trans_id_tree_file_id('ddir')
         mangle_tree.delete_contents(ddir)
-        dfile = mangle_tree.get_id_tree('dfile')
+        dfile = mangle_tree.trans_id_tree_file_id('dfile')
         mangle_tree.delete_versioned(dfile)
         mangle_tree.unversion_file(dfile)
-        mfile = mangle_tree.get_id_tree('mfile')
+        mfile = mangle_tree.trans_id_tree_file_id('mfile')
         mangle_tree.adjust_path('mfile', root, mfile)
 
         #tests for adding parent directories
         newdir = mangle_tree.new_directory('new_directory', root, 'newdir')
-        mfile2 = mangle_tree.get_id_tree('mfile2')
+        mfile2 = mangle_tree.trans_id_tree_file_id('mfile2')
         mangle_tree.adjust_path('mfile2', newdir, mfile2)
         mangle_tree.new_file('newfile', newdir, 'hello3', 'dfile')
         self.assertEqual(mangle_tree.final_file_id(mfile2), 'mfile2')
@@ -256,8 +256,8 @@ class TestTreeTransform(TestCaseInTempDir):
         create_tree.new_file('blackbox.py', newdir, 'hello1', 'blackbox-id')
         create_tree.apply()        
         mangle_tree,root = self.get_transform()
-        selftest = mangle_tree.get_id_tree('selftest-id')
-        blackbox = mangle_tree.get_id_tree('blackbox-id')
+        selftest = mangle_tree.trans_id_tree_file_id('selftest-id')
+        blackbox = mangle_tree.trans_id_tree_file_id('blackbox-id')
         mangle_tree.adjust_path('test', root, selftest)
         mangle_tree.adjust_path('test_too_much', root, selftest)
         mangle_tree.set_executability(True, blackbox)
@@ -272,9 +272,9 @@ class TestTreeTransform(TestCaseInTempDir):
                              'test_too_much-id')
         create_tree.apply()        
         mangle_tree,root = self.get_transform()
-        bzrlib = mangle_tree.get_id_tree('bzrlib-id')
-        tests = mangle_tree.get_id_tree('tests-id')
-        test_too_much = mangle_tree.get_id_tree('test_too_much-id')
+        bzrlib = mangle_tree.trans_id_tree_file_id('bzrlib-id')
+        tests = mangle_tree.trans_id_tree_file_id('tests-id')
+        test_too_much = mangle_tree.trans_id_tree_file_id('test_too_much-id')
         mangle_tree.adjust_path('selftest', bzrlib, tests)
         mangle_tree.adjust_path('blackbox.py', tests, test_too_much) 
         mangle_tree.set_executability(True, test_too_much)
@@ -287,8 +287,8 @@ class TestTreeTransform(TestCaseInTempDir):
                              'test_too_much-id')
         create_tree.apply()        
         mangle_tree,root = self.get_transform()
-        tests = mangle_tree.get_id_tree('tests-id')
-        test_too_much = mangle_tree.get_id_tree('test_too_much-id')
+        tests = mangle_tree.trans_id_tree_file_id('tests-id')
+        test_too_much = mangle_tree.trans_id_tree_file_id('test_too_much-id')
         mangle_tree.adjust_path('selftest', root, tests)
         mangle_tree.adjust_path('blackbox.py', tests, test_too_much) 
         mangle_tree.set_executability(True, test_too_much)
@@ -297,15 +297,15 @@ class TestTreeTransform(TestCaseInTempDir):
     def test_move_dangling_ie(self):
         create_tree, root = self.get_transform()
         # prepare tree
-        root = create_tree.get_id_tree('TREE_ROOT')
+        root = create_tree.trans_id_tree_file_id('TREE_ROOT')
         create_tree.new_file('name1', root, 'hello1', 'name1')
         create_tree.apply()
         delete_contents, root = self.get_transform()
-        file = delete_contents.get_id_tree('name1')
+        file = delete_contents.trans_id_tree_file_id('name1')
         delete_contents.delete_contents(file)
         delete_contents.apply()
         move_id, root = self.get_transform()
-        name1 = move_id.get_id_tree('name1')
+        name1 = move_id.trans_id_tree_file_id('name1')
         newdir = move_id.new_directory('dir', root, 'newdir')
         move_id.adjust_path('name2', newdir, name1)
         move_id.apply()
@@ -313,12 +313,12 @@ class TestTreeTransform(TestCaseInTempDir):
     def test_replace_dangling_ie(self):
         create_tree, root = self.get_transform()
         # prepare tree
-        root = create_tree.get_id_tree('TREE_ROOT')
+        root = create_tree.trans_id_tree_file_id('TREE_ROOT')
         create_tree.new_file('name1', root, 'hello1', 'name1')
         create_tree.apply()
         delete_contents = TreeTransform(self.wt)
         self.addCleanup(delete_contents.finalize)
-        file = delete_contents.get_id_tree('name1')
+        file = delete_contents.trans_id_tree_file_id('name1')
         delete_contents.delete_contents(file)
         delete_contents.apply()
         delete_contents.finalize()
@@ -326,7 +326,7 @@ class TestTreeTransform(TestCaseInTempDir):
         self.addCleanup(replace.finalize)
         name2 = replace.new_file('name2', root, 'hello2', 'name1')
         conflicts = replace.find_conflicts()
-        name1 = replace.get_id_tree('name1')
+        name1 = replace.trans_id_tree_file_id('name1')
         self.assertEqual(conflicts, [('duplicate id', name1, name2)])
         resolve_conflicts(replace)
         replace.apply()
@@ -364,11 +364,11 @@ class TestTreeTransform(TestCaseInTempDir):
         # set up duplicate entry, duplicate id
         new_dorothy = conflicts.new_file('dorothy', root, 'dorothy', 
                                          'dorothy-id')
-        old_dorothy = conflicts.get_id_tree('dorothy-id')
-        oz = conflicts.get_id_tree('oz-id')
+        old_dorothy = conflicts.trans_id_tree_file_id('dorothy-id')
+        oz = conflicts.trans_id_tree_file_id('oz-id')
         # set up missing, unversioned parent
         conflicts.delete_versioned(oz)
-        emerald = conflicts.get_id_tree('emerald-id')
+        emerald = conflicts.trans_id_tree_file_id('emerald-id')
         # set up parent loop
         conflicts.adjust_path('emeraldcity', emerald, emerald)
         return conflicts, emerald, oz, old_dorothy, new_dorothy
@@ -432,8 +432,8 @@ class TestTreeTransform(TestCaseInTempDir):
         create.new_directory('oz', root, 'oz-id')
         create.apply()
         cyclone, root = self.get_transform()
-        oz = cyclone.get_id_tree('oz-id')
-        house = cyclone.get_id_tree('house-id')
+        oz = cyclone.trans_id_tree_file_id('oz-id')
+        house = cyclone.trans_id_tree_file_id('house-id')
         cyclone.adjust_path('house', oz, house)
         cyclone.apply()
 
@@ -445,7 +445,7 @@ class TestTreeTransform(TestCaseInTempDir):
         create.apply()
         transform, root = self.get_transform()
         transform.adjust_root_path('oldroot', fun)
-        new_root=transform.get_tree_path_id('')
+        new_root=transform.trans_id_tree_path('')
         transform.version_file('new-root', new_root)
         transform.apply()
 
@@ -457,9 +457,9 @@ class TestTreeTransform(TestCaseInTempDir):
                                  'myfile-id')
         create.apply()
         rename, root = self.get_transform()
-        old = rename.get_trans_id('old-id')
+        old = rename.trans_id_file_id('old-id')
         rename.adjust_path('new', root, old)
-        myfile = rename.get_trans_id('myfile-id')
+        myfile = rename.trans_id_file_id('myfile-id')
         rename.set_executability(True, myfile)
         rename.apply()
 
@@ -482,7 +482,7 @@ class TransformGroup(object):
         self.b = Branch.initialize(dirname)
         self.wt = self.b.working_tree()
         self.tt = TreeTransform(self.wt)
-        self.root = self.tt.get_id_tree(self.wt.get_root_id())
+        self.root = self.tt.trans_id_tree_file_id(self.wt.get_root_id())
 
 def conflict_text(tree, merge):
     template = '%s TREE\n%s%s\n%s%s MERGE-SOURCE\n'

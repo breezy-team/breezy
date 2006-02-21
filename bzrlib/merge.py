@@ -426,12 +426,12 @@ class Merge3Merger(object):
         if name_winner == "this" and parent_id_winner == "this":
             return
         if name_winner == "conflict":
-            trans_id = self.tt.get_trans_id(file_id)
+            trans_id = self.tt.trans_id_file_id(file_id)
             self._raw_conflicts.append(('name conflict', trans_id, 
                                         self.name(this_entry, file_id), 
                                         self.name(other_entry, file_id)))
         if parent_id_winner == "conflict":
-            trans_id = self.tt.get_trans_id(file_id)
+            trans_id = self.tt.trans_id_file_id(file_id)
             self._raw_conflicts.append(('parent conflict', trans_id, 
                                         self.parent(this_entry, file_id), 
                                         self.parent(other_entry, file_id)))
@@ -442,9 +442,9 @@ class Merge3Merger(object):
         # if we get here, name_winner and parent_winner are set to safe values.
         winner_entry = {"this": this_entry, "other": other_entry, 
                         "conflict": other_entry}
-        trans_id = self.tt.get_trans_id(file_id)
+        trans_id = self.tt.trans_id_file_id(file_id)
         parent_id = winner_entry[parent_id_winner].parent_id
-        parent_trans_id = self.tt.get_trans_id(parent_id)
+        parent_trans_id = self.tt.trans_id_file_id(parent_id)
         self.tt.adjust_path(winner_entry[name_winner].name, parent_trans_id,
                             trans_id)
 
@@ -476,7 +476,7 @@ class Merge3Merger(object):
             # THIS and OTHER introduced the same changes
             return "unmodified"
         else:
-            trans_id = self.tt.get_trans_id(file_id)
+            trans_id = self.tt.trans_id_file_id(file_id)
             if this_pair == base_pair:
                 # only OTHER introduced changes
                 if file_id in self.this_tree:
@@ -510,7 +510,7 @@ class Merge3Merger(object):
                 return "modified"
             else:
                 # Scalar conflict, can't text merge.  Dump conflicts
-                trans_id = self.tt.get_trans_id(file_id)
+                trans_id = self.tt.trans_id_file_id(file_id)
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)
                 if file_id in self.this_tree.inventory:
@@ -607,7 +607,7 @@ class Merge3Merger(object):
         """Perform a merge on the execute bit."""
         if file_status == "deleted":
             return
-        trans_id = self.tt.get_trans_id(file_id)
+        trans_id = self.tt.trans_id_file_id(file_id)
         try:
             if self.tt.final_kind(trans_id) != "file":
                 return
@@ -627,7 +627,7 @@ class Merge3Merger(object):
             if file_status == "modified":
                 executability = self.this_tree.is_executable(file_id)
                 if executability is not None:
-                    trans_id = self.tt.get_trans_id(file_id)
+                    trans_id = self.tt.trans_id_file_id(file_id)
                     self.tt.set_executability(executability, trans_id)
         else:
             assert winner == "other"
@@ -638,7 +638,7 @@ class Merge3Merger(object):
             elif file_id in self.base_tree:
                 executability = self.base_tree.is_executable(file_id)
             if executability is not None:
-                trans_id = self.tt.get_trans_id(file_id)
+                trans_id = self.tt.trans_id_file_id(file_id)
                 self.tt.set_executability(executability, trans_id)
 
     def cook_conflicts(self, fs_conflicts):
@@ -687,7 +687,7 @@ class Merge3Merger(object):
             other_path = fp.get_path(trans_id)
             if this_parent is not None:
                 this_parent_path = \
-                    fp.get_path(self.tt.get_trans_id(this_parent))
+                    fp.get_path(self.tt.trans_id_file_id(this_parent))
                 this_path = pathjoin(this_parent_path, this_name)
             else:
                 this_path = "<deleted>"
