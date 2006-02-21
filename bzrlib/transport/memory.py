@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 6 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,7 +13,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-"""Implementation of Transport that uses memory for its storage."""
+
+"""Implementation of Transport that uses memory for its storage.
+
+The contents of the transport will be lost when the object is discarded,
+so this is primarily useful for testing.
+"""
 
 from copy import copy
 import os
