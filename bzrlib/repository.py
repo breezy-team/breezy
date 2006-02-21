@@ -20,7 +20,6 @@ from unittest import TestSuite
 import xml.sax.saxutils
 
 
-import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 from bzrlib.errors import InvalidRevisionId
@@ -124,7 +123,7 @@ class Repository(object):
         For instance, if the repository is at URL/.bzr/repository,
         Repository.open(URL) -> a Repository instance.
         """
-        control = bzrdir.BzrDir.open(base)
+        control = bzrlib.bzrdir.BzrDir.open(base)
         return control.open_repository()
 
     def copy_content_into(self, destination, revision_id=None, basis=None):
@@ -158,9 +157,9 @@ class Repository(object):
             result = a_bzrdir.create_repository()
         # FIXME RBC 20060209 split out the repository type to avoid this check ?
         elif isinstance(a_bzrdir._format,
-                      (bzrdir.BzrDirFormat4,
-                       bzrdir.BzrDirFormat5,
-                       bzrdir.BzrDirFormat6)):
+                      (bzrlib.bzrdir.BzrDirFormat4,
+                       bzrlib.bzrdir.BzrDirFormat5,
+                       bzrlib.bzrdir.BzrDirFormat6)):
             result = a_bzrdir.open_repository()
         else:
             result = self._format.initialize(a_bzrdir, shared=self.is_shared())
@@ -743,7 +742,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
 
     def __init__(self):
         super(RepositoryFormat4, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirFormat4()
+        self._matchingbzrdir = bzrlib.bzrdir.BzrDirFormat4()
 
     def initialize(self, url, shared=False, _internal=False):
         """Format 4 branches cannot be created."""
@@ -776,7 +775,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     def __init__(self):
         super(RepositoryFormat5, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirFormat5()
+        self._matchingbzrdir = bzrlib.bzrdir.BzrDirFormat5()
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
@@ -798,7 +797,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     def __init__(self):
         super(RepositoryFormat6, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirFormat6()
+        self._matchingbzrdir = bzrlib.bzrdir.BzrDirFormat6()
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
@@ -811,6 +810,10 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
 class MetaDirRepositoryFormat(RepositoryFormat):
     """Common base class for the new repositories using the metadir layour."""
+
+    def __init__(self):
+        super(MetaDirRepositoryFormat, self).__init__()
+        self._matchingbzrdir = bzrlib.bzrdir.BzrDirMetaFormat1()
 
     def _create_control_files(self, a_bzrdir):
         """Create the required files and the initial control_files object."""
@@ -831,14 +834,21 @@ class MetaDirRepositoryFormat(RepositoryFormat):
                                    prefixed=True,
                                    )
 
-    def open(self, a_bzrdir, _found=False):
-        """See RepositoryFormat.open()."""
+    def open(self, a_bzrdir, _found=False, _override_transport=None):
+        """See RepositoryFormat.open().
+        
+        :param _override_transport: INTERNAL USE ONLY. Allows opening the
+                                    repository at a slightly different url
+                                    than normal. I.e. during 'upgrade'.
+        """
         if not _found:
-            # we are being called directly and must probe.
-            raise NotImplementedError
-        repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = LockableFiles(a_bzrdir.get_repository_transport(None),
-                                      'lock')
+            format = RepositoryFormat.find_format(a_bzrdir)
+            assert format.__class__ ==  self.__class__
+        if _override_transport is not None:
+            repo_transport = _override_transport
+        else:
+            repo_transport = a_bzrdir.get_repository_transport(None)
+        control_files = LockableFiles(repo_transport, 'lock')
         revision_store = self._get_revision_store(repo_transport, control_files)
         return MetaDirRepository(_format=self,
                                  a_bzrdir=a_bzrdir,
@@ -901,10 +911,6 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
         return self.open(a_bzrdir=a_bzrdir, _found=True)
 
-    def __init__(self):
-        super(RepositoryFormat7, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
-
 
 class RepositoryFormatKnit1(MetaDirRepositoryFormat):
     """Bzr repository knit format 1.
@@ -945,10 +951,6 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
         
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
         return self.open(a_bzrdir=a_bzrdir, _found=True)
-
-    def __init__(self):
-        super(RepositoryFormatKnit1, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
 
 
 # formats which have no format string are not discoverable
@@ -1311,3 +1313,54 @@ class InterRepositoryTestProviderAdapter(object):
         # if there are specific combinations we want to use, we can add them 
         # here.
         return result
+
+
+class CopyConverter(object):
+    """A repository conversion tool which just performs a copy of the content.
+    
+    This is slow but quite reliable.
+    """
+
+    def __init__(self, target_format):
+        """Create a CopyConverter.
+
+        :param target_format: The format the resulting repository should be.
+        """
+        self.target_format = target_format
+        
+    def convert(self, repo, pb):
+        """Perform the conversion of to_convert, giving feedback via pb.
+
+        :param to_convert: The disk object to convert.
+        :param pb: a progress bar to use for progress information.
+        """
+        self.pb = pb
+        self.count = 0
+        self.total = 3
+        # this is only useful with metadir layouts - separated repo content.
+        # trigger an assertion if not such
+        repo._format.get_format_string()
+        self.repo_dir = repo.bzrdir
+        self.step('Moving repository to repository.backup')
+        self.repo_dir.transport.move('repository', 'repository.backup')
+        backup_transport =  self.repo_dir.transport.clone('repository.backup')
+        self.source_repo = repo._format.open(self.repo_dir,
+            _found=True,
+            _override_transport=backup_transport)
+        self.step('Creating new repository')
+        converted = self.target_format.initialize(self.repo_dir,
+                                                  self.source_repo.is_shared())
+        converted.lock_write()
+        try:
+            self.step('Copying content into repository.')
+            self.source_repo.copy_content_into(converted)
+        finally:
+            converted.unlock()
+        self.step('Deleting old repository content.')
+        self.repo_dir.transport.delete_tree('repository.backup')
+        self.pb.note('repository converted')
+
+    def step(self, message):
+        """Update the pb by a step."""
+        self.count +=1
+        self.pb.update(message, self.count, self.total)

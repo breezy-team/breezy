@@ -25,6 +25,7 @@ also see this file.
 from stat import *
 from StringIO import StringIO
 
+import bzrlib
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
 from bzrlib.errors import (NotBranchError,
@@ -379,3 +380,20 @@ class TestInterWeaveRepo(TestCaseWithTransport):
         self.assertEqual(repository.InterWeaveRepo,
                          repository.InterRepository.get(repo_a,
                                                         repo_b).__class__)
+
+
+class TestRepositoryConverter(TestCaseWithTransport):
+
+    def test_convert_empty(self):
+        t = get_transport(self.get_url('.'))
+        t.mkdir('repository')
+        repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
+        repo = repository.RepositoryFormat7().initialize(repo_dir)
+        target_format = repository.RepositoryFormatKnit1()
+        pb = bzrlib.ui.ui_factory.progress_bar()
+
+        converter = repository.CopyConverter(target_format)
+        converter.convert(repo, pb)
+        repo = repo_dir.open_repository()
+        self.assertTrue(isinstance(target_format, repo._format.__class__))
+

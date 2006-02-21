@@ -1021,16 +1021,36 @@ class TestBzrDir(TestCaseWithBzrDir):
         # check that we can ask an instance if its upgradable
         dir = self.make_bzrdir('.')
         if dir.can_convert_format():
-            # if its updatable there must be an updater
-            self.assertTrue(isinstance(dir._format.get_converter(),
-                                       bzrdir.Converter))
+            # if its default updatable there must be an updater 
+            # (we change the default to match the lastest known format
+            # as downgrades may not be available
+            old_format = bzrdir.BzrDirFormat.get_default_format()
+            bzrdir.BzrDirFormat.set_default_format(dir._format)
+            try:
+                self.assertTrue(isinstance(dir._format.get_converter(),
+                                           bzrdir.Converter))
+            finally:
+                bzrdir.BzrDirFormat.set_default_format(old_format)
         dir.needs_format_conversion(None)
 
     def test_upgrade_new_instance(self):
         """Does an available updater work ?."""
         dir = self.make_bzrdir('.')
+        # for now, check is not ready for partial bzrdirs.
+        dir.create_repository()
+        dir.create_branch()
+        dir.create_workingtree()
         if dir.can_convert_format():
-            dir._format.get_converter(None).convert(dir, ui.ui_factory.progress_bar())
+            # if its default updatable there must be an updater 
+            # (we change the default to match the lastest known format
+            # as downgrades may not be available
+            old_format = bzrdir.BzrDirFormat.get_default_format()
+            bzrdir.BzrDirFormat.set_default_format(dir._format)
+            try:
+                dir._format.get_converter(None).convert(dir,
+                    ui.ui_factory.progress_bar())
+            finally:
+                bzrdir.BzrDirFormat.set_default_format(old_format)
             # and it should pass 'check' now.
             check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)
 
