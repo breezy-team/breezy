@@ -77,11 +77,19 @@ Calling code will typically want to make sure there is exactly one LockDir
 object per actual lock on disk.  This module does nothing to prevent aliasing
 and deadlocks will likely occur if the locks are aliased.
 
-
-
 In the future we may add a "freshen" method which can be called
 by a lock holder to check that their lock has not been broken, and to 
 update the timestamp within it.
+
+Example usage:
+
+>>> from bzrlib.transport.memory import MemoryTransport
+>>> # typically will be obtained from a BzrDir, Branch, etc
+>>> t = MemoryTransport()
+>>> l = LockDir(t, 'sample-lock')
+>>> l.wait_lock()
+>>> # do something here
+>>> l.unlock()
 
 """
 
@@ -188,7 +196,7 @@ class LockDir(object):
         # rename before deleting, because we can't atomically remove the whole
         # tree
         tmpname = '%s.releasing.%s.tmp' % (self.path, rand_chars(20))
-        self.transport.move(self.path, tmpname)
+        self.transport.rename(self.path, tmpname)
         self._lock_held = False
         self.transport.delete(tmpname + self.INFO_NAME)
         self.transport.rmdir(tmpname)
