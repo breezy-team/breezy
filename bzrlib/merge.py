@@ -34,15 +34,14 @@ from bzrlib.errors import (BzrCommandError,
                            UnrelatedBranches,
                            WorkingTreeNotRevision,
                            )
-from bzrlib.fetch import greedy_fetch, fetch
 from bzrlib.merge3 import Merge3
 import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
+from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               conflicts_strings, FinalPaths, create_by_entry,
                               unique_add)
-from bzrlib.trace import mutter, warning, note
 
 # TODO: Report back as changes are merged in
 
@@ -66,7 +65,7 @@ def _get_revid_tree(branch, revision, local_branch):
     else:
         if local_branch is not None:
             if local_branch.base != branch.base:
-                greedy_fetch(local_branch, branch, revision)
+                local_branch.fetch(branch, revision)
             base_tree = local_branch.repository.revision_tree(revision)
         else:
             base_tree = branch.repository.revision_tree(revision)
@@ -194,8 +193,7 @@ class Merger(object):
             if self.other_basis is None:
                 raise NoCommits(other_branch)
         if other_branch.base != self.this_branch.base:
-            fetch(from_branch=other_branch, to_branch=self.this_branch, 
-                  last_revision=self.other_basis)
+            self.this_branch.fetch(other_branch, last_revision=self.other_basis)
 
     def set_base(self, base_revision):
         mutter("doing merge() with no base_revision specified")
@@ -217,7 +215,7 @@ class Merger(object):
                 self.base_rev_id = None
             else:
                 self.base_rev_id = base_branch.get_rev_id(base_revision[1])
-            fetch(from_branch=base_branch, to_branch=self.this_branch)
+            self.this_branch.fetch(base_branch)
             self.base_is_ancestor = is_ancestor(self.this_basis, 
                                                 self.base_rev_id,
                                                 self.this_branch)

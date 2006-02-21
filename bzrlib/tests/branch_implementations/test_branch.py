@@ -96,7 +96,6 @@ class TestBranch(TestCaseWithBranch):
 
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
-        from bzrlib.fetch import Fetcher
         get_transport(self.get_url()).mkdir('b1')
         get_transport(self.get_url()).mkdir('b2')
         wt = self.make_branch_and_tree('b1')
@@ -107,14 +106,11 @@ class TestBranch(TestCaseWithBranch):
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
         mutter('start fetch')
-        f = Fetcher(from_branch=b1, to_branch=b2)
-        eq = self.assertEquals
-        eq(f.count_copied, 1)
-        eq(f._last_revision, 'revision-1')
+        self.assertEqual((1, []), b2.fetch(b1))
 
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')
-        eq(tree.get_file_text('foo-id'), 'hello')
+        self.assertEqual(tree.get_file_text('foo-id'), 'hello')
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
