@@ -84,75 +84,22 @@ class Repository(object):
         """Construct the current default format repository in a_bzrdir."""
         return RepositoryFormat.get_default_format().initialize(a_bzrdir)
 
-    def __init__(self, _format, a_bzrdir):
+    def __init__(self, _format, a_bzrdir, control_files, revision_store):
+        """instantiate a Repository.
+
+        :param _format: The format of the repository on disk.
+        :param a_bzrdir: The BzrDir of the repository.
+
+        In the future we will have a single api for all stores for
+        getting file texts, inventories and revisions, then
+        this construct will accept instances of those things.
+        """
         object.__init__(self)
-        if isinstance(_format, (RepositoryFormat4,
-                                RepositoryFormat5,
-                                RepositoryFormat6)):
-            # legacy: use a common control files.
-            self.control_files = a_bzrdir._control_files
-        else:
-            self.control_files = LockableFiles(a_bzrdir.get_repository_transport(None),
-                                               'lock')
-
-        dir_mode = self.control_files._dir_mode
-        file_mode = self.control_files._file_mode
         self._format = _format
+        # the following are part of the public API for Repository:
         self.bzrdir = a_bzrdir
-
-        def get_weave(name, prefixed=False):
-            if name:
-                name = safe_unicode(name)
-            else:
-                name = ''
-            relpath = self.control_files._escape(name)
-            weave_transport = self.control_files._transport.clone(relpath)
-            ws = WeaveStore(weave_transport, prefixed=prefixed,
-                            dir_mode=dir_mode,
-                            file_mode=file_mode)
-            if self.control_files._transport.should_cache():
-                ws.enable_cache = True
-            return ws
-
-        def get_store(name, compressed=True, prefixed=False):
-            # FIXME: This approach of assuming stores are all entirely compressed
-            # or entirely uncompressed is tidy, but breaks upgrade from 
-            # some existing branches where there's a mixture; we probably 
-            # still want the option to look for both.
-            if name:
-                name = safe_unicode(name)
-            else:
-                name = ''
-            relpath = self.control_files._escape(name)
-            store = TextStore(self.control_files._transport.clone(relpath),
-                              prefixed=prefixed, compressed=compressed,
-                              dir_mode=dir_mode,
-                              file_mode=file_mode)
-            #if self._transport.should_cache():
-            #    cache_path = os.path.join(self.cache_root, name)
-            #    os.mkdir(cache_path)
-            #    store = bzrlib.store.CachedStore(store, cache_path)
-            return store
-
-        if isinstance(self._format, RepositoryFormat4):
-            self.inventory_store = get_store('inventory-store')
-            self.text_store = get_store('text-store')
-            self.revision_store = get_store('revision-store')
-        elif isinstance(self._format, RepositoryFormat5):
-            self.control_weaves = get_weave('')
-            self.weave_store = get_weave('weaves')
-            self.revision_store = get_store('revision-store', compressed=False)
-        elif isinstance(self._format, RepositoryFormat6):
-            self.control_weaves = get_weave('')
-            self.weave_store = get_weave('weaves', prefixed=True)
-            self.revision_store = get_store('revision-store', compressed=False,
-                                            prefixed=True)
-        elif isinstance(self._format, RepositoryFormat7):
-            self.control_weaves = get_weave('')
-            self.weave_store = get_weave('weaves', prefixed=True)
-            self.revision_store = get_store('revision-store', compressed=False,
-                                            prefixed=True)
-        self.revision_store.register_suffix('sig')
+        self.control_files = control_files
+        self.revision_store = revision_store
 
     def lock_write(self):
         self.control_files.lock_write()
@@ -335,7 +282,8 @@ class Repository(object):
         """
         assert isinstance(self._format, (RepositoryFormat5,
                                          RepositoryFormat6,
-                                         RepositoryFormat7)), \
+                                         RepositoryFormat7,
+                                         RepositoryFormatKnit1)), \
             "fileid_involved only supported for branches which store inventory as unnested xml"
 
         w = self.get_inventory_weave()
@@ -507,6 +455,99 @@ class Repository(object):
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
 
+class AllInOneRepository(Repository):
+    """Legacy support - the repository behaviour for all-in-one branches."""
+
+    def __init__(self, _format, a_bzrdir, revision_store):
+        # we reuse one control files instance.
+        dir_mode = a_bzrdir._control_files._dir_mode
+        file_mode = a_bzrdir._control_files._file_mode
+
+        def get_weave(name, prefixed=False):
+            if name:
+                name = safe_unicode(name)
+            else:
+                name = ''
+            relpath = a_bzrdir._control_files._escape(name)
+            weave_transport = a_bzrdir._control_files._transport.clone(relpath)
+            ws = WeaveStore(weave_transport, prefixed=prefixed,
+                            dir_mode=dir_mode,
+                            file_mode=file_mode)
+            if a_bzrdir._control_files._transport.should_cache():
+                ws.enable_cache = True
+            return ws
+
+        def get_store(name, compressed=True, prefixed=False):
+            # FIXME: This approach of assuming stores are all entirely compressed
+            # or entirely uncompressed is tidy, but breaks upgrade from 
+            # some existing branches where there's a mixture; we probably 
+            # still want the option to look for both.
+            relpath = a_bzrdir._control_files._escape(name)
+            store = TextStore(a_bzrdir._control_files._transport.clone(relpath),
+                              prefixed=prefixed, compressed=compressed,
+                              dir_mode=dir_mode,
+                              file_mode=file_mode)
+            #if self._transport.should_cache():
+            #    cache_path = os.path.join(self.cache_root, name)
+            #    os.mkdir(cache_path)
+            #    store = bzrlib.store.CachedStore(store, cache_path)
+            return store
+
+        # not broken out yet because the controlweaves|inventory_store
+        # and text_store | weave_store bits are still different.
+        if isinstance(_format, RepositoryFormat4):
+            self.inventory_store = get_store('inventory-store')
+            self.text_store = get_store('text-store')
+        elif isinstance(_format, RepositoryFormat5):
+            self.control_weaves = get_weave('')
+            self.weave_store = get_weave('weaves')
+        elif isinstance(_format, RepositoryFormat6):
+            self.control_weaves = get_weave('')
+            self.weave_store = get_weave('weaves', prefixed=True)
+        else:
+            raise errors.BzrError('unreachable code: unexpected repository'
+                                  ' format.')
+        revision_store.register_suffix('sig')
+        super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, revision_store)
+
+
+class MetaDirRepository(Repository):
+    """Repositories in the new meta-dir layout."""
+
+    def __init__(self, _format, a_bzrdir, control_files, revision_store):
+        super(MetaDirRepository, self).__init__(_format,
+                                                a_bzrdir,
+                                                control_files,
+                                                revision_store)
+
+        dir_mode = self.control_files._dir_mode
+        file_mode = self.control_files._file_mode
+
+        def get_weave(name, prefixed=False):
+            if name:
+                name = safe_unicode(name)
+            else:
+                name = ''
+            relpath = self.control_files._escape(name)
+            weave_transport = self.control_files._transport.clone(relpath)
+            ws = WeaveStore(weave_transport, prefixed=prefixed,
+                            dir_mode=dir_mode,
+                            file_mode=file_mode)
+            if self.control_files._transport.should_cache():
+                ws.enable_cache = True
+            return ws
+
+        if isinstance(self._format, RepositoryFormat7):
+            self.control_weaves = get_weave('')
+            self.weave_store = get_weave('weaves', prefixed=True)
+        elif isinstance(self._format, RepositoryFormatKnit1):
+            self.control_weaves = get_weave('')
+            self.weave_store = get_weave('knits', prefixed=True)
+        else:
+            raise errors.BzrError('unreachable code: unexpected repository'
+                                  ' format.')
+
+
 class RepositoryFormat(object):
     """A repository format.
 
@@ -562,6 +603,35 @@ class RepositoryFormat(object):
         """
         raise NotImplementedError(self.get_format_string)
 
+    def _get_revision_store(self, repo_transport, control_files):
+        """Return the revision store object for this a_bzrdir."""
+        raise NotImplementedError(self._get_rev_store)
+
+    def _get_rev_store(self,
+                   transport,
+                   control_files,
+                   name,
+                   compressed=True,
+                   prefixed=False):
+        """Common logic for getting a revision store for a repository.
+        
+        see self._get_revision_store for the method to 
+        get the store for a repository.
+        """
+        if name:
+            name = safe_unicode(name)
+        else:
+            name = ''
+        dir_mode = control_files._dir_mode
+        file_mode = control_files._file_mode
+        revision_store =TextStore(transport.clone(name),
+                                  prefixed=prefixed,
+                                  compressed=compressed,
+                                  dir_mode=dir_mode,
+                                  file_mode=file_mode)
+        revision_store.register_suffix('sig')
+        return revision_store
+
     def initialize(self, a_bzrdir, shared=False):
         """Initialize a repository of this format in a_bzrdir.
 
@@ -586,10 +656,7 @@ class RepositoryFormat(object):
         
         _found is a private parameter, do not use it.
         """
-        if not _found:
-            # we are being called directly and must probe.
-            raise NotImplementedError
-        return Repository(_format=self, a_bzrdir=a_bzrdir)
+        raise NotImplementedError(self.open)
 
     @classmethod
     def register_format(klass, format):
@@ -622,7 +689,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
 
         if not _internal:
             # always initialized when the bzrdir is.
-            return Repository(_format=self, a_bzrdir=a_bzrdir)
+            return self.open(a_bzrdir, _found=True)
         
         # Create an empty weave
         sio = StringIO()
@@ -646,7 +713,20 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
                 control_files.put(file, content)
         finally:
             control_files.unlock()
-        return Repository(_format=self, a_bzrdir=a_bzrdir)
+        return self.open(a_bzrdir, _found=True)
+
+    def open(self, a_bzrdir, _found=False):
+        """See RepositoryFormat.open()."""
+        if not _found:
+            # we are being called directly and must probe.
+            raise NotImplementedError
+
+        repo_transport = a_bzrdir.get_repository_transport(None)
+        control_files = a_bzrdir._control_files
+        revision_store = self._get_revision_store(repo_transport, control_files)
+        return AllInOneRepository(_format=self,
+                                  a_bzrdir=a_bzrdir,
+                                  revision_store=revision_store)
 
 
 class RepositoryFormat4(PreSplitOutRepositoryFormat):
@@ -678,6 +758,12 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         """
         return False
 
+    def _get_revision_store(self, repo_transport, control_files):
+        """See RepositoryFormat._get_revision_store()."""
+        return self._get_rev_store(repo_transport,
+                                   control_files,
+                                   'revision-store')
+
 
 class RepositoryFormat5(PreSplitOutRepositoryFormat):
     """Bzr control format 5.
@@ -691,6 +777,14 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     def __init__(self):
         super(RepositoryFormat5, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirFormat5()
+
+    def _get_revision_store(self, repo_transport, control_files):
+        """See RepositoryFormat._get_revision_store()."""
+        """Return the revision store object for this a_bzrdir."""
+        return self._get_rev_store(repo_transport,
+                                   control_files,
+                                   'revision-store',
+                                   compressed=False)
 
 
 class RepositoryFormat6(PreSplitOutRepositoryFormat):
@@ -706,8 +800,69 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
         super(RepositoryFormat6, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirFormat6()
 
+    def _get_revision_store(self, repo_transport, control_files):
+        """See RepositoryFormat._get_revision_store()."""
+        return self._get_rev_store(repo_transport,
+                                   control_files,
+                                   'revision-store',
+                                   compressed=False,
+                                   prefixed=True)
 
-class RepositoryFormat7(RepositoryFormat):
+
+class MetaDirRepositoryFormat(RepositoryFormat):
+    """Common base class for the new repositories using the metadir layour."""
+
+    def _create_control_files(self, a_bzrdir):
+        """Create the required files and the initial control_files object."""
+        # FIXME: RBC 20060125 dont peek under the covers
+        # NB: no need to escape relative paths that are url safe.
+        lock_file = 'lock'
+        repository_transport = a_bzrdir.get_repository_transport(self)
+        repository_transport.put(lock_file, StringIO()) # TODO get the file mode from the bzrdir lock files., mode=file_mode)
+        control_files = LockableFiles(repository_transport, 'lock')
+        return control_files
+
+    def _get_revision_store(self, repo_transport, control_files):
+        """See RepositoryFormat._get_revision_store()."""
+        return self._get_rev_store(repo_transport,
+                                   control_files,
+                                   'revision-store',
+                                   compressed=False,
+                                   prefixed=True,
+                                   )
+
+    def open(self, a_bzrdir, _found=False):
+        """See RepositoryFormat.open()."""
+        if not _found:
+            # we are being called directly and must probe.
+            raise NotImplementedError
+        repo_transport = a_bzrdir.get_repository_transport(None)
+        control_files = LockableFiles(a_bzrdir.get_repository_transport(None),
+                                      'lock')
+        revision_store = self._get_revision_store(repo_transport, control_files)
+        return MetaDirRepository(_format=self,
+                                 a_bzrdir=a_bzrdir,
+                                 control_files=control_files,
+                                 revision_store=revision_store)
+
+    def _upload_blank_content(self, a_bzrdir, dirs, files, utf8_files, shared):
+        """Upload the initial blank content."""
+        control_files = self._create_control_files(a_bzrdir)
+        control_files.lock_write()
+        control_files._transport.mkdir_multi(dirs,
+                mode=control_files._dir_mode)
+        try:
+            for file, content in files:
+                control_files.put(file, content)
+            for file, content in utf8_files:
+                control_files.put_utf8(file, content)
+            if shared == True:
+                control_files.put_utf8('shared-storage', '')
+        finally:
+            control_files.unlock()
+
+
+class RepositoryFormat7(MetaDirRepositoryFormat):
     """Bzr repository 7.
 
     This repository format has:
@@ -716,6 +871,7 @@ class RepositoryFormat7(RepositoryFormat):
      - TextStores for revisions and signatures.
      - a format marker of its own
      - an optional 'shared-storage' flag
+     - an optional 'no-working-trees' flag
     """
 
     def get_format_string(self):
@@ -741,29 +897,57 @@ class RepositoryFormat7(RepositoryFormat):
         files = [('inventory.weave', StringIO(empty_weave)), 
                  ]
         utf8_files = [('format', self.get_format_string())]
-        
-        # FIXME: RBC 20060125 dont peek under the covers
-        # NB: no need to escape relative paths that are url safe.
-        lock_file = 'lock'
-        repository_transport = a_bzrdir.get_repository_transport(self)
-        repository_transport.put(lock_file, StringIO()) # TODO get the file mode from the bzrdir lock files., mode=file_mode)
-        control_files = LockableFiles(repository_transport, 'lock')
-        control_files.lock_write()
-        control_files._transport.mkdir_multi(dirs,
-                mode=control_files._dir_mode)
-        try:
-            for file, content in files:
-                control_files.put(file, content)
-            for file, content in utf8_files:
-                control_files.put_utf8(file, content)
-            if shared == True:
-                control_files.put_utf8('shared-storage', '')
-        finally:
-            control_files.unlock()
-        return Repository(_format=self, a_bzrdir=a_bzrdir)
+ 
+        self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
+        return self.open(a_bzrdir=a_bzrdir, _found=True)
 
     def __init__(self):
         super(RepositoryFormat7, self).__init__()
+        self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
+
+
+class RepositoryFormatKnit1(MetaDirRepositoryFormat):
+    """Bzr repository knit format 1.
+
+    This repository format has:
+     - knits for file texts and inventory
+     - hash subdirectory based stores.
+     - knits for revisions and signatures
+     - TextStores for revisions and signatures.
+     - a format marker of its own
+     - an optional 'shared-storage' flag
+     - an optional 'no-working-trees' flag
+    """
+
+    def get_format_string(self):
+        """See RepositoryFormat.get_format_string()."""
+        return "Bazaar-NG Knit Repository Format 1"
+
+    def initialize(self, a_bzrdir, shared=False):
+        """Create a knit format 1 repository.
+
+        :param shared: If true the repository will be initialized as a shared
+                       repository.
+        """
+        from bzrlib.weavefile import write_weave_v5
+        from bzrlib.weave import Weave
+
+        # Create an empty weave
+        sio = StringIO()
+        bzrlib.weavefile.write_weave_v5(Weave(), sio)
+        empty_weave = sio.getvalue()
+
+        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        dirs = ['revision-store', 'knits']
+        files = [('inventory.weave', StringIO(empty_weave)), 
+                 ]
+        utf8_files = [('format', self.get_format_string())]
+        
+        self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
+        return self.open(a_bzrdir=a_bzrdir, _found=True)
+
+    def __init__(self):
+        super(RepositoryFormatKnit1, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirMetaFormat1()
 
 
@@ -771,6 +955,7 @@ class RepositoryFormat7(RepositoryFormat):
 # and not independently creatable, so are not registered.
 _default_format = RepositoryFormat7()
 RepositoryFormat.register_format(_default_format)
+RepositoryFormat.register_format(RepositoryFormatKnit1())
 RepositoryFormat.set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
@@ -906,17 +1091,17 @@ class InterRepository(object):
                             revision_id.
         """
         # generic, possibly worst case, slow code path.
-        target_ids = set(self.source.all_revision_ids())
+        target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
-            source_ids = self.target.get_ancestry(revision_id)
+            source_ids = self.source.get_ancestry(revision_id)
             assert source_ids.pop(0) == None
         else:
-            source_ids = self.target.all_revision_ids()
+            source_ids = self.source.all_revision_ids()
         result_set = set(source_ids).difference(target_ids)
         # this may look like a no-op: its not. It preserves the ordering
         # other_ids had while only returning the members from other_ids
         # that we've decided we need.
-        return [rev_id for rev_id in other_ids if rev_id in result_set]
+        return [rev_id for rev_id in source_ids if rev_id in result_set]
 
     @classmethod
     def register_optimiser(klass, optimiser):
@@ -1115,8 +1300,9 @@ class InterRepositoryTestProviderAdapter(object):
         # default format.
         # XXX: robertc 20060220 reinstate this when there are two supported
         # formats which do not have an optimal code path between them.
-        #result.append((InterRepository, RepositoryFormat6(),
-        #              RepositoryFormat.get_default_format()))
+        result.append((InterRepository,
+                       RepositoryFormat6(),
+                       RepositoryFormatKnit1()))
         for optimiser in InterRepository._optimisers:
             result.append((optimiser,
                            optimiser._matching_repo_format,
