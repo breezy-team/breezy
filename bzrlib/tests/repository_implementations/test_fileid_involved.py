@@ -205,10 +205,11 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
                                  'c-funky<file-id> quiji%bo'])
         main_wt.commit("Commit one", rev_id="rev-A")
 
-        branch2_branch = main_branch.clone("branch2")
+        branch2_bzrdir = main_branch.bzrdir.sprout("branch2")
+        branch2_branch = branch2_bzrdir.open_branch()
+        branch2_wt = branch2_bzrdir.open_workingtree()
         os.chmod("branch2/b",0770)
-        branch2_branch.working_tree().commit("branch2, Commit one", 
-                                             rev_id="rev-J")
+        branch2_wt.commit("branch2, Commit one", rev_id="rev-J")
 
         self.merge(branch2_branch, main_wt)
         os.chmod("main/b",0660)

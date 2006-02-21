@@ -18,7 +18,6 @@ import os
 import errno
 from stat import S_ISREG
 
-from bzrlib import BZRDIR
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo)
@@ -502,7 +501,7 @@ class TreeTransform(object):
             
         for child in children:
             childpath = joinpath(path, child)
-            if childpath == BZRDIR:
+            if self._tree.is_control_filename(childpath):
                 continue
             yield self.get_tree_path_id(childpath)
 

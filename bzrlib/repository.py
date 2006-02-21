@@ -84,18 +84,16 @@ class Repository(object):
         """Construct the current default format repository in a_bzrdir."""
         return RepositoryFormat.get_default_format().initialize(a_bzrdir)
 
-    def __init__(self, transport, branch_format, _format=None, a_bzrdir=None):
+    def __init__(self, _format, a_bzrdir):
         object.__init__(self)
-        if transport is not None:
-            warn("Repository.__init__(..., transport=XXX): The transport parameter is "
-                 "deprecated and was never in a supported release. Please use "
-                 "bzrdir.open_repository() or bzrdir.open_branch().repository.",
-                 DeprecationWarning,
-                 stacklevel=2)
-            self.control_files = LockableFiles(transport.clone(bzrlib.BZRDIR), 'README')
-        else: 
-            # TODO: clone into repository if needed
-            self.control_files = LockableFiles(a_bzrdir.get_repository_transport(None), 'README')
+        if isinstance(_format, (RepositoryFormat4,
+                                RepositoryFormat5,
+                                RepositoryFormat6)):
+            # legacy: use a common control files.
+            self.control_files = a_bzrdir._control_files
+        else:
+            self.control_files = LockableFiles(a_bzrdir.get_repository_transport(None),
+                                               'lock')
 
         dir_mode = self.control_files._dir_mode
         file_mode = self.control_files._file_mode
@@ -116,7 +114,6 @@ class Repository(object):
                 ws.enable_cache = True
             return ws
 
-
         def get_store(name, compressed=True, prefixed=False):
             # FIXME: This approach of assuming stores are all entirely compressed
             # or entirely uncompressed is tidy, but breaks upgrade from 
@@ -136,20 +133,6 @@ class Repository(object):
             #    os.mkdir(cache_path)
             #    store = bzrlib.store.CachedStore(store, cache_path)
             return store
-
-        if branch_format is not None:
-            # circular dependencies:
-            from bzrlib.branch import (BzrBranchFormat4,
-                                       BzrBranchFormat5,
-                                       BzrBranchFormat6,
-                                       )
-            if isinstance(branch_format, BzrBranchFormat4):
-                self._format = RepositoryFormat4()
-            elif isinstance(branch_format, BzrBranchFormat5):
-                self._format = RepositoryFormat5()
-            elif isinstance(branch_format, BzrBranchFormat6):
-                self._format = RepositoryFormat6()
-            
 
         if isinstance(self._format, RepositoryFormat4):
             self.inventory_store = get_store('inventory-store')
@@ -254,9 +237,17 @@ class Repository(object):
 
     @needs_read_lock
     def copy_content_into(self, destination, revision_id=None, basis=None):
-        """Make a complete copy of the content in self into destination."""
+        """Make a complete copy of the content in self into destination.
+        
+        This is a destructive operation! Do not use it on existing 
+        repositories.
+        """
         destination.lock_write()
         try:
+            try:
+                destination.set_make_working_trees(self.make_working_trees())
+            except NotImplementedError:
+                pass
             # optimised paths:
             # compatible stores
             if self._compatible_formats(destination):
@@ -326,7 +317,7 @@ class Repository(object):
                        bzrdir.BzrDirFormat6)):
             result = a_bzrdir.open_repository()
         else:
-            result = self._format.initialize(a_bzrdir)
+            result = self._format.initialize(a_bzrdir, shared=self.is_shared())
         self.copy_content_into(result, revision_id, basis)
         return result
 
@@ -518,6 +509,12 @@ class Repository(object):
             return self.get_inventory(revision_id)
 
     @needs_read_lock
+    def is_shared(self):
+        """Return True if this repository is flagged as a shared repository."""
+        # FIXME format 4-6 cannot be shared, this is technically faulty.
+        return self.control_files._transport.has('shared-storage')
+
+    @needs_read_lock
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
 
@@ -572,6 +569,38 @@ class Repository(object):
 
     def get_transaction(self):
         return self.control_files.get_transaction()
+
+    @needs_write_lock
+    def set_make_working_trees(self, new_value):
+        """Set the policy flag for making working trees when creating branches.
+
+        This only applies to branches that use this repository.
+
+        The default is 'True'.
+        :param new_value: True to restore the default, False to disable making
+                          working trees.
+        """
+        # FIXME: split out into a new class/strategy ?
+        if isinstance(self._format, (RepositoryFormat4,
+                                     RepositoryFormat5,
+                                     RepositoryFormat6)):
+            raise NotImplementedError(self.set_make_working_trees)
+        if new_value:
+            try:
+                self.control_files._transport.delete('no-working-trees')
+            except errors.NoSuchFile:
+                pass
+        else:
+            self.control_files.put_utf8('no-working-trees', '')
+    
+    def make_working_trees(self):
+        """Returns the policy for making working trees on new branches."""
+        # FIXME: split out into a new class/strategy ?
+        if isinstance(self._format, (RepositoryFormat4,
+                                     RepositoryFormat5,
+                                     RepositoryFormat6)):
+            return True
+        return not self.control_files._transport.has('no-working-trees')
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
@@ -634,7 +663,53 @@ class RepositoryFormat(object):
         """
         raise NotImplementedError(self.get_format_string)
 
-    def initialize(self, a_bzrdir, _internal=False):
+    def initialize(self, a_bzrdir, shared=False):
+        """Initialize a repository of this format in a_bzrdir.
+
+        :param a_bzrdir: The bzrdir to put the new repository in it.
+        :param shared: The repository should be initialized as a sharable one.
+
+        This may raise UninitializableFormat if shared repository are not
+        compatible the a_bzrdir.
+        """
+
+    def is_supported(self):
+        """Is this format supported?
+
+        Supported formats must be initializable and openable.
+        Unsupported formats may not support initialization or committing or 
+        some other features depending on the reason for not being supported.
+        """
+        return True
+
+    def open(self, a_bzrdir, _found=False):
+        """Return an instance of this format for the bzrdir a_bzrdir.
+        
+        _found is a private parameter, do not use it.
+        """
+        if not _found:
+            # we are being called directly and must probe.
+            raise NotImplementedError
+        return Repository(_format=self, a_bzrdir=a_bzrdir)
+
+    @classmethod
+    def register_format(klass, format):
+        klass._formats[format.get_format_string()] = format
+
+    @classmethod
+    def set_default_format(klass, format):
+        klass._default_format = format
+
+    @classmethod
+    def unregister_format(klass, format):
+        assert klass._formats[format.get_format_string()] is format
+        del klass._formats[format.get_format_string()]
+
+
+class PreSplitOutRepositoryFormat(RepositoryFormat):
+    """Base class for the pre split out repository formats."""
+
+    def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository.
         
         TODO: when creating split out bzr branch formats, move this to a common
@@ -643,9 +718,12 @@ class RepositoryFormat(object):
         from bzrlib.weavefile import write_weave_v5
         from bzrlib.weave import Weave
 
+        if shared:
+            raise errors.IncompatibleFormat(self, a_bzrdir._format)
+
         if not _internal:
             # always initialized when the bzrdir is.
-            return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
+            return Repository(_format=self, a_bzrdir=a_bzrdir)
         
         # Create an empty weave
         sio = StringIO()
@@ -669,42 +747,10 @@ class RepositoryFormat(object):
                 control_files.put(file, content)
         finally:
             control_files.unlock()
-        return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
-
-    def is_supported(self):
-        """Is this format supported?
-
-        Supported formats must be initializable and openable.
-        Unsupported formats may not support initialization or committing or 
-        some other features depending on the reason for not being supported.
-        """
-        return True
-
-    def open(self, a_bzrdir, _found=False):
-        """Return an instance of this format for the bzrdir a_bzrdir.
-        
-        _found is a private parameter, do not use it.
-        """
-        if not _found:
-            # we are being called directly and must probe.
-            raise NotImplementedError
-        return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
-
-    @classmethod
-    def register_format(klass, format):
-        klass._formats[format.get_format_string()] = format
-
-    @classmethod
-    def set_default_format(klass, format):
-        klass._default_format = format
-
-    @classmethod
-    def unregister_format(klass, format):
-        assert klass._formats[format.get_format_string()] is format
-        del klass._formats[format.get_format_string()]
+        return Repository(_format=self, a_bzrdir=a_bzrdir)
 
 
-class RepositoryFormat4(RepositoryFormat):
+class RepositoryFormat4(PreSplitOutRepositoryFormat):
     """Bzr repository format 4.
 
     This repository format has:
@@ -720,7 +766,7 @@ class RepositoryFormat4(RepositoryFormat):
         super(RepositoryFormat4, self).__init__()
         self._matchingbzrdir = bzrdir.BzrDirFormat4()
 
-    def initialize(self, url, _internal=False):
+    def initialize(self, url, shared=False, _internal=False):
         """Format 4 branches cannot be created."""
         raise errors.UninitializableFormat(self)
 
@@ -734,7 +780,7 @@ class RepositoryFormat4(RepositoryFormat):
         return False
 
 
-class RepositoryFormat5(RepositoryFormat):
+class RepositoryFormat5(PreSplitOutRepositoryFormat):
     """Bzr control format 5.
 
     This repository format has:
@@ -748,7 +794,7 @@ class RepositoryFormat5(RepositoryFormat):
         self._matchingbzrdir = bzrdir.BzrDirFormat5()
 
 
-class RepositoryFormat6(RepositoryFormat):
+class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """Bzr control format 6.
 
     This repository format has:
@@ -770,14 +816,18 @@ class RepositoryFormat7(RepositoryFormat):
      - hash subdirectory based stores.
      - TextStores for revisions and signatures.
      - a format marker of its own
+     - an optional 'shared-storage' flag
     """
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Repository format 7"
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, shared=False):
         """Create a weave repository.
+
+        :param shared: If true the repository will be initialized as a shared
+                       repository.
         """
         from bzrlib.weavefile import write_weave_v5
         from bzrlib.weave import Weave
@@ -807,9 +857,11 @@ class RepositoryFormat7(RepositoryFormat):
                 control_files.put(file, content)
             for file, content in utf8_files:
                 control_files.put_utf8(file, content)
+            if shared == True:
+                control_files.put_utf8('shared-storage', '')
         finally:
             control_files.unlock()
-        return Repository(None, branch_format=None, _format=self, a_bzrdir=a_bzrdir)
+        return Repository(_format=self, a_bzrdir=a_bzrdir)
 
     def __init__(self):
         super(RepositoryFormat7, self).__init__()
@@ -825,10 +877,6 @@ _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
                    RepositoryFormat6()]
 
-
-# TODO: jam 20060108 Create a new branch format, and as part of upgrade
-#       make sure that ancestry.weave is deleted (it is never used, but
-#       used to be created)
 
 class RepositoryTestProviderAdapter(object):
     """A tool to generate a suite testing multiple repository formats at once.

@@ -41,6 +41,7 @@ from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
 
+
 # TODO: Make a branch using basis branch, and check that it 
 # doesn't request any files that could have been avoided, by 
 # hooking into the Transport.
@@ -66,7 +67,7 @@ class TestCaseWithBranch(TestCaseWithTransport):
         except errors.UninitializableFormat:
             raise TestSkipped('Uninitializable branch format')
 
-    def make_repository(self, relpath):
+    def make_repository(self, relpath, shared=False):
         try:
             url = self.get_url(relpath)
             segments = url.split('/')
@@ -78,7 +79,7 @@ class TestCaseWithBranch(TestCaseWithTransport):
                 except FileExists:
                     pass
             made_control = self.bzrdir_format.initialize(url)
-            return made_control.create_repository()
+            return made_control.create_repository(shared=shared)
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
@@ -271,14 +272,17 @@ class TestBranch(TestCaseWithBranch):
                             'sig').read())
 
     def test_upgrade_preserves_signatures(self):
-        # this is in the current test format
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
         wt.branch.repository.sign_revision('A',
             bzrlib.gpg.LoopbackGPGStrategy(None))
         old_signature = wt.branch.repository.revision_store.get('A',
             'sig').read()
-        upgrade(wt.basedir)
+        try:
+            upgrade(wt.basedir)
+        except errors.UpToDateFormat:
+            # this is in the most current format already.
+            return
         wt = WorkingTree.open(wt.basedir)
         new_signature = wt.branch.repository.revision_store.get('A',
             'sig').read()
@@ -319,6 +323,24 @@ class TestBranch(TestCaseWithBranch):
         committed = branch.repository.get_revision(branch.last_revision())
         self.assertEqual(committed.properties["branch-nick"], 
                          "My happy branch")
+
+    def test_create_open_branch_uses_repository(self):
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        repo.bzrdir.root_transport.mkdir('child')
+        child_dir = self.bzrdir_format.initialize('child')
+        try:
+            child_branch = self.branch_format.initialize(child_dir)
+        except errors.UninitializableFormat:
+            # branch references are not default init'able.
+            return
+        self.assertEqual(repo.bzrdir.root_transport.base,
+                         child_branch.repository.bzrdir.root_transport.base)
+        child_branch = bzrlib.branch.Branch.open(self.get_url('child'))
+        self.assertEqual(repo.bzrdir.root_transport.base,
+                         child_branch.repository.bzrdir.root_transport.base)
 
 
 class ChrootedTests(TestCaseWithBranch):

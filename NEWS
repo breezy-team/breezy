@@ -1,4 +1,5 @@
 bzr development version
+ 
 
   IMPROVEMENTS:
 
@@ -17,6 +18,8 @@ bzr development version
     * Man Page now gives full help (James Blackwell). Help also updated to 
       reflect user config now being stored in .bazaar (Hans Ulrich
       Niedermann)
+
+    * pull now accepts a --revision argument (Erik Bågfors)
 
     * 'bzr re-sign' now allows multiple revisions to be supplied on the command
       line. You can now use the following command to sign all of your old commits.
@@ -52,10 +55,29 @@ bzr development version
 
     * Using Tree Transform for merge, revert, tree-building
 
+    * WorkingTree.create, Branch.create, WorkingTree.create_standalone,
+      Branch.initialize are now deprecated. Please see BzrDir.create_* for
+      replacement API's. (Robert Collins)
+
+    * New BzrDir class represents the .bzr control directory and manages
+      formatting issues. (Robert Collins)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
       for testing SFTP protocol support. (Robey Pointer)
+
+    * Branch formats are now tested once per implementation (see bzrlib.
+      tests.branch_implementations. This is analagous to the transport
+      interface tests, and has been followed up with working tree,
+      repository and BzrDir tests. (Robert Collins)
+
+    * New test base class TestCaseWithTransport provides a transport aware
+      test environment, useful for testing any transport-interface using
+      code. The test suite option --transport controls the transport used
+      by this class (when its not being used as part of implementation
+      contract testing). (Robert Collins)
+
 
 bzr 0.7rc1 2006-01-09
 

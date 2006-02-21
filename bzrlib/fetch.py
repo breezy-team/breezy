@@ -80,9 +80,10 @@ class RepoFetcher(object):
     """
     def __init__(self, to_repository, from_repository, last_revision=None, pb=None):
         if to_repository.bzrdir.transport.base == from_repository.bzrdir.transport.base:
-            raise Exception("can't fetch from a repository to itself %s, %s" % 
-                            (from_repository.bzrdir.transport.base,
-                             to_repository.bzrdir.transport.base))
+            # check that last_revision is in 'from' and then return a no-operation.
+            if last_revision not in (None, NULL_REVISION):
+                from_repository.get_revision(last_revision)
+            return
         self.to_repository = to_repository
         self.from_repository = from_repository
         # must not mutate self._last_revision as its potentially a shared instance

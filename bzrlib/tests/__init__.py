@@ -747,10 +747,10 @@ class TestCaseWithTransport(TestCaseInTempDir):
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
-    def make_repository(self, relpath):
+    def make_repository(self, relpath, shared=False):
         """Create a repository on our default transport at relpath."""
         made_control = self.make_bzrdir(relpath)
-        return made_control.create_repository()
+        return made_control.create_repository(shared=shared)
 
     def make_branch_and_tree(self, relpath):
         """Create a branch on the transport and a tree locally.
