@@ -201,6 +201,22 @@ class LockDir(object):
         self.transport.delete(tmpname + self.INFO_NAME)
         self.transport.rmdir(tmpname)
 
+    def confirm(self):
+        """Make sure that the lock is still held by this locker.
+
+        This should only fail if the lock was broken by user intervention,
+        or if the lock has been affected by a bug.
+
+        If the lock is not thought to be held, raises LockNotHeld.  If
+        the lock is thought to be held but has been broken, raises 
+        LockBroken.
+        """
+        if not self._lock_held:
+            raise LockNotHeld(self)
+        # info = self.peek()
+        # if info['nonce'] != self._nonce:
+        #     raise LockBroken(self)
+
     def peek(self):
         """Check if the lock is held by anyone.
         

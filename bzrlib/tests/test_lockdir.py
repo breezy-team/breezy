@@ -19,7 +19,8 @@
 from threading import Thread
 import time
 
-from bzrlib.errors import LockContention, LockError, UnlockableTransport
+from bzrlib.errors import LockContention, LockError, UnlockableTransport, \
+        LockNotHeld
 from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
 
@@ -193,3 +194,16 @@ class TestLockDir(TestCaseWithTransport):
             self.assertTrue(after - before <= 1.0)
         finally:
             unlocker.join()
+
+    def test_40_confirm_easy(self):
+        """Confirm a lock that's already held"""
+        t = self.get_transport()
+        lf1 = LockDir(t, 'test_lock')
+        lf1.attempt_lock()
+        lf1.confirm()
+
+    def test_41_confirm_not_held(self):
+        """Confirm a lock that's already held"""
+        t = self.get_transport()
+        lf1 = LockDir(t, 'test_lock')
+        self.assertRaises(LockNotHeld, lf1.confirm)
