@@ -504,10 +504,7 @@ class cmd_push(Command):
                         if new_transport.base == transport.base:
                             raise BzrCommandError("Could not creeate "
                                                   "path prefix.")
-            if isinstance(transport, LocalTransport):
-                br_to = WorkingTree.create_standalone(location).branch
-            else:
-                br_to = Branch.create(location)
+            br_to = bzrlib.bzrdir.BzrDir.create_branch_convenience(location)
         old_rh = br_to.revision_history()
         try:
             try:
