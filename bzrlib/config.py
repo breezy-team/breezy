@@ -76,13 +76,7 @@ CHECK_NEVER=2
 class ConfigObj(configobj.ConfigObj):
 
     def get_bool(self, section, key):
-        val = self[section][key].lower()
-        if val in ('1', 'yes', 'true', 'on'):
-            return True
-        elif val in ('0', 'no', 'false', 'off'):
-            return False
-        else:
-            raise ValueError("Value %r is not boolean" % val)
+        return self[section].as_bool(key)
 
     def get_value(self, section, name):
         # Try [] for the old DEFAULT section.
@@ -548,11 +542,10 @@ class TreeConfig(object):
 
     def _get_config(self):
         try:
-            obj = ConfigObj(self.branch.control_files.get('branch.conf'
-                        ).readlines())
-            obj.decode('UTF-8')
+            obj = ConfigObj(self.branch.control_files.get('branch.conf'), 
+                            encoding='utf-8')
         except errors.NoSuchFile:
-            obj = ConfigObj()
+            obj = ConfigObj(encoding='utf=8')
         return obj
 
     def get_option(self, name, section=None, default=None):
@@ -583,8 +576,8 @@ class TreeConfig(object):
                     cfg_obj[section] = {}
                     obj = cfg_obj[section]
             obj[name] = value
-            cfg_obj.encode('UTF-8')
-            out_file = StringIO(''.join([l+'\n' for l in cfg_obj.write()]))
+            out_file = StringIO()
+            cfg_obj.write(out_file)
             out_file.seek(0)
             self.branch.control_files.put('branch.conf', out_file)
         finally:

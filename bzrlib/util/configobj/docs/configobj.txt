@@ -7,8 +7,8 @@
 ----------------------------------------
 
 :Authors: Michael Foord, Nicola Larosa
-:Version: ConfigObj 4.0.0
-:Date: 2005/10/17
+:Version: ConfigObj 4.2.0
+:Date: 2006/02/16
 :Homepage: `ConfigObj Homepage`_
 :Sourceforge: Sourceforge_
 :License: `BSD License`_
@@ -33,44 +33,68 @@ file round tripper*. Its main feature is that it is very easy to use, with a
 straightforward programmer's interface and a simple syntax for config files.
 It has lots of other features though :
 
+.. sidebar:: ConfigObj in Bazaar
+
+    **ConfigObj** is now used as the config file parser for `Bazaar <http://bazaar-ng.org>`_.
+    
+    Bazaar is *the* Python  distributed {acro;VCS;Version Control System}. 
+    ConfigObj is used to read ``bazaar.conf`` and ``branches.conf``.
+    
+    Other projects that use **ConfigObj** include :
+    
+    * `Planet Plus <http://planetplus.python-hosting.com/>`_
+    
+        A new web application version of `Planet <http://www.planetplanet.org/>`_, 
+        the web aggregator.
+        
+    * `NeuroImaging in Python <http://projects.scipy.org/neuroimaging/ni/wiki>`_
+    
+        BrainSTAT is a project with the ultimate goal to produce a
+        platform-independent python environment for the analysis of brain
+        imaging data.
+        
+    * `Gruik <http://www.tracos.org/gruik/wiki>`_
+    
+        Gruik is a free software network packet sniffer.
+
 * Nested sections (subsections), to any level
 * List values
 * Multiple line values
 * String interpolation (substitution)
 * Integrated with a powerful validation system
 
-    * including automatic type checking/conversion
-    * repeated sections
-    * and allowing default values
+    - including automatic type checking/conversion
+    - repeated sections
+    - and allowing default values
 
 * All comments in the file are preserved
 * The order of keys/sections is preserved
 * No external dependencies
+* Full unicode support.
 
-ConfigObj 4 is a complete rewrite of ConfigObj. A great deal has been
-simplified and improved [#]_ since ConfigObj 3. If you have used ConfigObj
-before then you need to read the section on `backwards compatibility`_.
-
-ConfigObj now has a barrage [#]_ of doctests built into it, testing almost every
-feature. Run ``python configobj.py -v`` to see them in action. Despite the tests,
-ConfigObj 4 is actually smaller than version 3 and has no external dependencies.
+ConfigObj 4 is a complete rewrite of ConfigObj. ConfigObj now has a barrage [#]_
+of doctests built into it, testing almost every feature. Run ``python configobj.py -v``
+to see them in action. Despite the tests, ConfigObj 4 is smaller than version 3
+and has no external dependencies.
 
 For support and bug reports please use the ConfigObj `Mailing List`_.
 
 .. hint::
 
-    There is an article on using `ConfigObj for Data Persistence`_.
+    ConfigObj provides a convenient API for storing all sorts of data, not just
+    config files. There is an article on using `ConfigObj for Data Persistence`_.
     
     The code from that article is available as ConfigPersist.py_.
 
 .. _ConfigObj for Data Persistence: http://www.voidspace.org.uk/python/articles/configobj_for_data_persistence.shtml
 .. _ConfigPersist.py: http://www.voidspace.org.uk/python/configpersist.html
 
+
 Downloading
 ===========
 
-The current version is **4.0.0**, dated 17th October 2005. ConfigObj 4 is
-now stable. We may still expect to pick up a few bugs along the way though [#]_.
+The current version is **4.2.0**, dated 16th February 2006. ConfigObj 4 is
+now stable. We still expect to pick up a few bugs along the way though [#]_.
 {sm;:-)}
 
 You can get ConfigObj in the following ways :
@@ -112,7 +136,7 @@ various other useful modules, and is required by many of the `Voidspace Python
 Projects`_.
 
 .. _configobj.py: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj.py
-.. _configobj.zip: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj-4.0.0.zip
+.. _configobj.zip: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj-4.2.0.zip
 .. _validate.py: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=validate.py
 .. _API Docs: http://www.voidspace.org.uk/python/configobj-api/
 .. _this document:
@@ -122,6 +146,7 @@ Projects`_.
 .. _EpyDoc: http://epydoc.sourceforge.net
 .. _pythonutils: http://www.voidspace.org.uk/python/pythonutils.html
 .. _Voidspace Python Projects: http://www.voidspace.org.uk/python
+
 
 Getting Started
 ===============
@@ -267,6 +292,7 @@ to illustrate : ::
     # The 'final_comment'
     # Which also may be several lines
 
+
 ConfigObj specifications
 ========================
 
@@ -291,14 +317,11 @@ created. ``infile`` *can* be :
   the options_ ``file_error`` and ``create_empty``. The filename will be
   preserved as the ``filename`` attribute. This can be changed at any time.
 
-* A list of lines. Any trailing ``\n`` will be removed from the lines. The
+* A list of lines. Any trailing newlines will be removed from the lines. The
   ``filename`` attribute of your ConfigObj will be ``None``.
 
-* A ``StringIO`` instance or file object, or any object with ``seek`` and
-  ``read`` methods. The object you pass in will be preserved as the
-  ``filename`` attribute of your ConfigObj. If it has a ``write`` method [#]_
-  then you can use the ConfigObj ``write`` method. Note that a file object
-  passed in won't have its ``close`` method called by ConfigObj.
+* A ``StringIO`` instance or file object, or any object with a ``read`` method.
+  The ``filename`` attribute of your ConfigObj will be ``None`` [#]_.
 
 * A dictionary. You can initialise a ConfigObj from a dictionary [#]_. The
   ``filename`` attribute of your ConfigObj will be ``None``. All keys must be
@@ -329,8 +352,12 @@ ConfigObj has the following options (with the default values shown) :
 
     If ``True`` (the default) then list values are possible. If ``False``, the
     values are not parsed for lists.
+	
+	If ``list_values = False`` then single line values are not quoted or
+	unqouted when reading and writing.
 
-    Altering this value after initial parsing has no effect.
+    Changing this value affects whether single line values will be quoted or 
+    not when writing.
 
 * 'create_empty': ``False``
 
@@ -402,6 +429,46 @@ ConfigObj has the following options (with the default values shown) :
     If this option *is* specified, the option value is used in the output
     config, overriding the type of indentation in the input config (if any).
 
+* 'encoding': ``None``
+
+    By default **ConfigObj** does not decode the file/strings you pass it into
+    Unicode [#]_. If you want your config file as Unicode (keys and members)
+    you need to provide an encoding to decode the file with. This encoding will
+    also be used to encode the config file when writing.
+    
+    You can change the encoding attribute at any time.
+    
+    Any characters in your strings that can't be encoded with the specified
+    encoding will raise a ``UnicodeEncodeError``.
+    
+    .. note::
+    
+        ``UTF16`` encoded files will automatically be detected and decoded,
+        even if ``encoding`` is ``None``.
+        
+        This is because it is a 16-bit encoding, and ConfigObj will mangle it
+        (split characters on byte boundaries) if it parses it without decoding.
+
+* 'default_encoding': ``None``
+
+    When using the ``write`` method, **ConfigObj** uses the ``encoding``
+    attribute to encode the Unicode strings. If any members (or keys) have
+    been set as byte strings instead of Unicode, these must first be decoded
+    to Unicode before outputting in the specified encoding.
+
+    ``default_encoding``, if specified, is the encoding used to decode byte
+    strings in the **ConfigObj** before writing. If this is ``None``, then
+    the Python default encoding (``sys.defaultencoding`` - usually ascii) is
+    used.
+    
+    For most Western European users, a value of ``latin-1`` is sensible.
+    
+    ``default_encoding`` is *only* used if an ``encoding`` is specified.
+    
+    Any characters in byte-strings that can't be decoded using the
+    ``default_encoding`` will raise a ``UnicodeDecodeError``.
+
+
 Methods
 -------
 
@@ -409,9 +476,30 @@ The ConfigObj is a subclass of an object called ``Section``, which is itself a
 subclass of ``dict``, the builtin dictionary type. This means it also has
 **all** the normal dictionary methods.
 
-In addition, the *encode*, *decode*, *walk*, and *dict* methods of section may
-be useful. The sections and subsections are also instances of ``Section``. Read
-about Sections_ for details of all the methods.
+In addition, the following `Section Methods`_ may be useful :
+
+* *encode*
+* *decode*
+* *walk*
+* *merge*
+* *dict* 
+* *as_bool*
+* *as_float*
+* *as_int*
+
+Read about Sections_ for details of all the methods.
+
+.. hint::
+
+    The *merge* method of sections is a recursive update.
+    
+    You can use this to merge sections, or even whole ConfigObjs, into each
+    other.
+    
+    You would typically use this to create a default ConfigObj and then merge
+    in user settings. This way users only need to specify values that are
+    different from the default.
+    
 
 The public methods available on ConfigObj are :
 
@@ -421,18 +509,26 @@ The public methods available on ConfigObj are :
 write
 ~~~~~
 
-This method takes no arguments [#]_. It writes the current ConfigObj. What that
-means depends on the ``filename`` attribute of the ConfigObj.
+::
 
-filename
-    ConfigObj will write the configuration to file.
+    write(file_object=None)
+
+This method writes the current ConfigObj and takes a single, optional argument
+[#]_.
+
+If you pass in a file like object to the ``write`` method, the config file will
+be written to this. (The only method of this object that is used is its
+``write`` method, so a ``StringIO`` instance, or any other file like object
+will work.)
+
+Otherwise, the behaviour of this method depends on the ``filename`` attribute
+of the ConfigObj.
+
+``filename``
+    ConfigObj will write the configuration to the file specified.
 
 ``None``
     ``write`` returns a list of lines. (Not ``'\n'`` terminated)
-
-``StringIO``
-    If ``filename`` is an object with a seek attribute, then the config file is
-    written to that object.
 
 First the 'initial_comment' is written, then the config file, followed by the
 'final_comment'. Comment lines and inline comments are written with each
@@ -440,6 +536,10 @@ key/value.
 
 validate
 ~~~~~~~~
+
+::
+
+    validate(validator, preserve_errors=False)
 
 .. raw:: html
 
@@ -458,6 +558,10 @@ validate
 
     {-coloring}
 
+The validate method uses the `validate 
+<http://www.voidspace.org.uk/python/validate.html>`__ module to do the
+validation.
+    
 This method validates the ConfigObj against the configspec. By doing type
 conversion as well, it can abstract away the config file altogether and present
 the config *data* to your application (in the types it expects it to be).
@@ -483,18 +587,31 @@ details.
     
     See `ConfigObj for Data Persistence`_.
 
+
 Return Value
 ############
 
-The validate method either returns ``True`` (everything passed) or a dictionary 
-of ``True``/``False`` representing pass/fail. The dictionary follows the 
-structure of the ConfigObj
+By default, the validate method either returns ``True`` (everything passed) 
+or a dictionary of ``True``/``False`` representing pass/fail. The dictionary 
+follows the structure of the ConfigObj.
 
 If a whole section passes then it is replaced with the value ``True``. If a 
 whole section fails, then it is replaced with the value ``False``.
 
 If a value is missing, and there is no default in the check, then the check 
 automatically fails.
+
+The ``validate`` method takes an optional keyword argument ``preserve_errors``.
+If you set this to ``True``, instead of getting ``False`` for failed checks you
+get the actual error object from the **validate** module. This usually contains
+useful information about why the check failed.
+
+See the `flatten_errors`_ function for how to turn your results dictionary into
+a useful list of error messages.
+
+Even if ``preserve_errors`` is ``True``, missing keys or sections will still be
+represented by a ``False`` in the results dictionary.
+
 
 Mentioning Default Values
 #########################
@@ -536,6 +653,11 @@ to ``None``.
     ``None``. This is because setting a value to a non-string raises an error
     if stringify is unset.
 
+The default value can be a list. See `List Values`_ for the way to do this.
+
+Writing invalid default values is a *guaranteed* way of confusing your users.
+Default values **must** pass the check.
+
 Mentioning Repeated Sections
 ############################
 
@@ -553,6 +675,7 @@ Your ``__many__`` section can have nested subsections, which can also include
 ``__many__`` type sections.
 
 See `Repeated Sections`_ for examples.
+
 
 Mentioning SimpleVal
 ####################
@@ -575,6 +698,7 @@ every section to ``''``.
 
     {-coloring}
 
+    
 Attributes
 ----------
 
@@ -586,6 +710,9 @@ A ConfigObj has the following attributes :
 * BOM
 * initial_comment
 * final_comment
+* list_values
+* encoding
+* default_encoding
 
 .. note::
 
@@ -598,7 +725,6 @@ options_ when the ConfigObj was created, but changing them has no effect.
 * raise_errors
 * create_empty
 * file_error
-* list_values
 
 interpolate
 ~~~~~~~~~~~
@@ -623,10 +749,13 @@ BOM
 ~~~
 
 If the initial config file *started* with the UTF8 Unicode signature (known
-slightly incorrectly as the {acro;BOM;Byte Order Mark}), then this value will
-be set to the UTF8 BOM. Otherwise it is ``None``.
+slightly incorrectly as the {acro;BOM;Byte Order Mark}), or the UTF16 BOM, then
+this attribute is set to ``True``. Otherwise it is ``False``.
 
-If it is set, then it is  written out by the ``write`` method.
+If it is set to ``True`` when ``write`` is called then, if ``encoding`` is set
+to ``None`` *or* to ``utf_8`` (and variants) a UTF BOM will be written.
+
+For UTF16 encodings, a BOM is *always* written.
 
 initial_comment
 ~~~~~~~~~~~~~~~
@@ -648,6 +777,52 @@ If you create a new ConfigObj, this will be an empty list.
 
 The ``write`` method puts these lines after it finishes writing out the
 members.
+
+list_values
+~~~~~~~~~~~
+
+This attribute is ``True`` or ``False``. If set to ``False`` then values are
+not parsed for list values. In addition single line values are not unquoted.
+
+This allows you to do your own parsing of values. It exists primarily to
+support the reading of the configspec_ - but has other use cases.
+
+For example you could use the ``LineParser`` from the
+`listquote module <http://www.voidspace.org.uk/python/listquote.html#lineparser>`_ 
+to read values for nested lists.
+
+Single line values aren't quoted when writing - but multiline values are
+handled as normal.
+
+.. caution::
+
+    Because values aren't quoted, leading or trailing whitespace can be
+	lost.
+
+    This behaviour was changed in version 4.0.1.
+	
+	Prior to this, single line values might have been quoted; even with
+	``list_values=False``. This means that files written by **ConfigObj**
+	*could* now be incompatible - and need the quotes removing by hand.
+
+encoding
+~~~~~~~~
+
+This is the encoding used to encode the output, when you call ``write``. It
+must be a valid encoding `recognised by Python <http://docs.python.org/lib/standard-encodings.html>`_.
+
+If this value is ``None`` then no encoding is done when ``write`` is called.
+
+
+default_encoding
+~~~~~~~~~~~~~~~~
+
+If encoding is set, any byte-strings in your ConfigObj instance (keys or
+members) will first be decoded to unicode using the encoding specified by the
+``default_encoding`` attribute. This ensures that the output is in the encoding
+specified.
+
+If this value is ``None`` then ``sys.defaultencoding`` is used instead.
 
 The Config File Format
 ======================
@@ -943,13 +1118,13 @@ Section Attributes
 Section Methods
 ---------------
 
-* 'dict'
+* **dict**
 
     This method takes no arguments. It returns a deep copy of the section as a
     dictionary. All subsections will also be dictionaries, and list values will
     be copies, rather than references to the original [#]_.
 
-* rename
+* **rename**
 
     ``rename(oldkey, newkey)``
 
@@ -958,22 +1133,52 @@ Section Methods
     It is mainly implemented for the ``encode`` and ``decode`` methods, which
     provide some Unicode support.
 
-* walk
+* **merge**
+
+    ``merge(indict)``
+    
+    This method is a *recursive update* method. It allows you to merge two
+    config files together.
+    
+    You would typically use this to create a default ConfigObj and then merge
+    in user settings. This way users only need to specify values that are
+    different from the default.
+    
+    For example :
+    
+    .. raw:: html
+    
+        {+coloring}
+        
+        # def_cfg contains your default config settings
+        # user_cfg contains the user settings
+        cfg = ConfigObj(def_cfg)
+        usr = ConfigObj(user_cfg)
+        #
+        cfg.merge(usr)
+        
+        """
+        cfg now contains a combination of the default settings and the user
+        settings.
+        
+        The user settings will have overwritten any of the default ones.
+        """
+    
+        {-coloring}
+    
+* **walk**
 
     This method can be used to transform values and names. See `walking a
     section`_ for examples and explanation.
 
-* decode
+* **decode**
 
     ``decode(encoding)``
 
     This method decodes names and values into Unicode objects, using the
     supplied encoding.
 
-    Because of the way ConfigObj reads files, config files should be in an
-    ASCII compatible encoding. See encodings_ for more details.
-
-* encode
+* **encode**
 
     ``encode(encoding)``
 
@@ -981,10 +1186,51 @@ Section Methods
 
     It encodes names and values using the supplied encoding. If any of your
     names/values are strings rather than Unicode, Python will have to do an
-    implicit decode first.
+    implicit decode first. (This method uses ``sys.defaultencoding`` for
+    implicit decodes.)
 
-    See encodings_ for more details.
+* **as_bool**
 
+    ``as_bool(key)``
+    
+    Returns ``True`` if the key contains a string that represents ``True``, or
+    is the ``True`` object.
+    
+    Returns ``False`` if the key contains a string that represents ``False``, 
+    or is the ``False`` object. 
+
+    Raises a ``ValueError`` if the key contains anything else.
+    
+    Strings that represent ``True`` are (not case sensitive) : ::
+    
+        true, yes, on, 1
+        
+    Strings that represent ``False`` are : ::
+    
+        false, no, off, 0
+    
+    .. note::
+    
+        In ConfigObj 4.1.0, this method was called ``istrue``. That method is
+        now deprecated and will issue a warning when used. It will go away
+        in the next release.
+        
+* **as_int**
+
+    ``as_int(key)``
+    
+    This returns the value contained in the specified key as an integer.
+    
+    It raises a ``ValueError`` if the conversion can't be done.
+
+* **as_float**
+
+    ``as_float(key)``
+    
+    This returns the value contained in the specified key as a float.
+    
+    It raises a ``ValueError`` if the conversion can't be done.
+    
 Walking a Section
 -----------------
 
@@ -1028,6 +1274,12 @@ must be able to handle receiving dictionaries as well as strings and lists.
 If you are using the return value from ``walk`` *and* ``call_on_sections``,
 note that walk discards the return value when it calls your function.
 
+.. caution::
+
+    You can use ``walk`` to transform the names of members of a section
+    but you mustn't add or delete members.
+
+
 Examples
 --------
 
@@ -1040,7 +1292,7 @@ To see how they do it, *read the source Luke* {sm;:cool:}.
 
 You can use this for transforming all values in your ConfigObj. For example
 you might like the nested lists from ConfigObj 3. This was provided by the
-listquote_ module [#]_. You could switch off the parsing for list values
+listquote_ module. You could switch off the parsing for list values
 (``list_values=False``) and use listquote to parse every value.
 
 Another thing you might want to do is use the Python escape codes in your
@@ -1116,6 +1368,59 @@ change the values if appropriate.
 
     {-coloring}
 
+Here's a simple example of using ``walk`` to transform names and values. One
+usecase of this would be to create a *standard* config file with placeholders
+for section and keynames. You can then use walk to create new config files
+and change values and member names :
+
+.. raw:: html
+
+    {+coloring}
+
+    # We use 'XXXX' as a placeholder
+    config = '''
+    XXXXkey1 = XXXXvalue1
+    XXXXkey2 = XXXXvalue2
+    XXXXkey3 = XXXXvalue3
+    [XXXXsection1]
+    XXXXkey1 = XXXXvalue1
+    XXXXkey2 = XXXXvalue2
+    XXXXkey3 = XXXXvalue3
+    [XXXXsection2]
+    XXXXkey1 = XXXXvalue1
+    XXXXkey2 = XXXXvalue2
+    XXXXkey3 = XXXXvalue3
+        [[XXXXsection1]]
+        XXXXkey1 = XXXXvalue1
+        XXXXkey2 = XXXXvalue2
+        XXXXkey3 = XXXXvalue3
+    '''.splitlines()
+    cfg = ConfigObj(config)
+    #
+    def transform(section, key):
+        val = section[key]
+        newkey = key.replace('XXXX', 'CLIENT1')
+        section.rename(key, newkey)
+        if isinstance(val, (tuple, list, dict)):
+            pass
+        else:
+            val = val.replace('XXXX', 'CLIENT1')
+            section[newkey] = val
+    #
+    cfg.walk(transform, call_on_sections=True)
+    print cfg
+    {'CLIENT1key1': 'CLIENT1value1', 'CLIENT1key2': 'CLIENT1value2', 
+    'CLIENT1key3': 'CLIENT1value3', 
+    'CLIENT1section1': {'CLIENT1key1': 'CLIENT1value1', 
+        'CLIENT1key2': 'CLIENT1value2', 'CLIENT1key3': 'CLIENT1value3'}, 
+    'CLIENT1section2': {'CLIENT1key1': 'CLIENT1value1', 
+        'CLIENT1key2': 'CLIENT1value2', 'CLIENT1key3': 'CLIENT1value3', 
+        'CLIENT1section1': {'CLIENT1key1': 'CLIENT1value1', 
+            'CLIENT1key2': 'CLIENT1value2', 'CLIENT1key3': 'CLIENT1value3'}}}
+            
+    {-coloring}
+
+
 Exceptions
 ==========
 
@@ -1127,7 +1432,7 @@ because of bugs).
     raised.
 
 2) If you try to set a non-string key, or a non string value when
-    ``stringify=False`, a ``TypeError`` will be raised.
+    ``stringify=False``, a ``TypeError`` will be raised.
 
 3) A badly built config file will cause parsing errors.
 
@@ -1204,6 +1509,7 @@ delivering a sensible error message to your user) :
     list of all the lines that caused errors may not be as useful as it sounds.
     {sm;:-(}.
 
+
 Validation
 ==========
 
@@ -1262,6 +1568,15 @@ several sections. This is called `repeated sections`_.
 For full details on writing configspecs, please refer to the `validate.py
 documentation`_.
 
+.. important::
+
+    Your configspec is read by ConfigObj in the same way as a config file.
+    
+    That means you can do interpolation *within* your configspec.
+    
+    In order to allow this, checks in the 'DEFAULT' section (of the root level
+    of your configspec) are *not* used.
+
 .. _validate.py documentation: http://www.voidspace.org.uk/python/validate.html
 
 Type Conversion
@@ -1304,6 +1619,20 @@ to easily implement optional values in your config files. ::
     check.
 
     Note that ``default=None`` is case sensitive.
+
+
+List Values
+~~~~~~~~~~~
+
+It's possible that you will want to specify a list as a default value. To avoid
+confusing syntax with commas and quotes you use a list constructor to specify 
+that keyword arguments are lists. This includes the ``default`` value. This 
+makes checks look something like : ::
+
+    checkname(default=list('val1', 'val2', 'val3'))
+
+This works with all keyword arguments, but is most useful for default values.
+
 
 Repeated Sections
 -----------------
@@ -1404,6 +1733,7 @@ You would write the following configspec : ::
 
     {-coloring}
 
+
 Interpolation
 =============
 
@@ -1434,6 +1764,7 @@ validation overwrites values - and so may erase the interpolation references.
 See `Validation and Interpolation`_. (This can only happen if validation
 has to *change* the value).
 
+
 Comments
 ========
 
@@ -1459,36 +1790,78 @@ See `Section Attributes`_ for more on these attributes.
 
 These comments are all written back out by the ``write`` method.
 
-Encodings
-=========
 
-ConfigObj 4 is designed to work with ASCII compatible encodings [#]_. If you
-need support for other character sets, then I suggest you use the UTF8
-encoding for your config files.
+flatten_errors
+==============
 
-By default ConfigObj leaves keys/members as encoded byte strings (ordinary
-strings). If you want to access the config file members as Unicode objects
-rather than strings, you can use the ``decode`` method. This takes an encoding
-as its argument and decodes all members and keys into Unicode. It will only
-work if *all* members are byte strings (or lists of strings) , so you should do
-it before calling ``validate``.
+::
 
-If you want to turn the Unicode strings back into byte strings, you can call
-the ``encode`` method. This also takes an encoding as its argument and assumes
-*all* keys/members are Unicode.
+    flatten_errors(cfg, res)
 
-If you start working with Unicode strings, you may find you get
-``UnicodeDecodeError`` or ``UnicodeEncodeError`` in unexpected places. This is
-because you have forced Python to do an *implicit* encode or decode.
+Validation_ is a powerful way of checking that the values supplied by the user
+make sense.
 
-Implicit decodes (and encodes) use the encoding returned by
-``sys.getdefaultencoding()``. This is *usually* ASCII. This means that if you
-have any non-ASCII characters, Python doesn't know how to treat them and will
-raise an error.
+The validate_ method returns a results dictionary that represents pass or fail
+for each value. This doesn't give you any information about *why* the check
+failed.
 
-This happens if you add a byte string to a Unicode string, compare a byte
-string to a Unicode string, print a Unicode string, or write it to a file. If
-you work with Unicode, you should do the appropriate encode or decode first.
+``flatten_errors`` is an example function that turns a results dictionary into
+a flat list, that only contains vaues that *failed*.
+
+``cfg`` is the ConfigObj instance being checked, ``res`` is the results
+dictionary returned by ``validate``.
+
+It returns a list of keys that failed. Each member of the list is a tuple : ::
+
+    ([list of sections...], key, result)
+
+If ``validate`` was called with ``preserve_errors=False`` (the default)
+then ``result`` will always be ``False``.
+
+*list of sections* is a flattened list of sections that the key was found
+in.
+
+If the section was missing then key will be ``None``.
+
+If the value (or section) was missing then ``result`` will be ``False``.
+
+If ``validate`` was called with ``preserve_errors=True`` and a value
+was present, but failed the check, then ``result`` will be the exception
+object returned. You can use this as a string that describes the failure.
+
+For example :
+
+    *The value "3" is of the wrong type*.
+
+
+Example Usage
+-------------
+
+The output from ``flatten_errors`` is a list of tuples.
+
+Here is an example of how you could present this information to the user.
+
+.. raw:: html
+
+    {+coloring}
+    
+    vtor = validate.Validator()
+    # ini is your config file - cs is the configspec
+    cfg = ConfigObj(ini, configspec=cs)
+    res = cfg.validate(vtor, preserve_errors=True)
+    for entry in flatten_errors(cfg, res):
+        # each entry is a tuple
+        section_list, key, error = entry
+        if key is not None:
+           section_list.append(key)
+        else:
+            section_list.append('[missing section]')
+        section_string = ', '.join(section_list)
+        if error == False:
+            error = 'Missing value or section.'
+        print section_string, ' = ', error
+
+    {-coloring}
 
 Backwards Compatibility
 =======================
@@ -1546,9 +1919,6 @@ quote, multiple line values.
 
 The ``newline``, ``force_return``, and ``default`` options have gone.
 
-The ``encoding`` and ``backup_encoding`` methods have gone, replaced with the
-``encode`` and ``decode`` methods.
-
 ``fileerror`` and ``createempty`` options have become ``file_error`` and
 ``create_empty``.
 
@@ -1580,6 +1950,7 @@ You can read the old docs at : `ConfigObj 3 Docs`_
 .. _ConfigObj 3.3.1: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj3.zip
 .. _ConfigObj 3 Docs: http://www.voidspace.org.uk/python/configobj3.html
 
+
 CREDITS
 =======
 
@@ -1593,6 +1964,7 @@ validation system and the doctests.
 
 Thanks to others for input and bugfixes.
 
+
 LICENSE
 =======
 
@@ -1602,7 +1974,7 @@ free software: test it, break it, just don't blame us if it eats your data !
 Of course if it does, let us know and we'll fix the problem so it doesn't
 happen to anyone else {sm;:-)}. ::
 
-    Copyright (c) 2004 & 2005, Michael Foord & Nicola Larosa
+    Copyright (c) 2004 - 2006, Michael Foord & Nicola Larosa
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -1636,7 +2008,8 @@ happen to anyone else {sm;:-)}. ::
 
 You should also be able to find a copy of this license at : `BSD License`_
 
-.. _BSD License: http://www.voidspace.org.uk/documents/BSD-LICENSE.txt
+.. _BSD License: http://www.voidspace.org.uk/python/license.shtml
+
 
 TODO
 ====
@@ -1649,14 +2022,15 @@ values.
 When initialising a section from a ConfigObj *or* an ``OrderedDictionary``
 we could preserve ordering.
 
-Add an *odict* method which returns an `OrderedDictionary``.
+Add an *odict* method which returns an ``OrderedDictionary``.
+
 
 ISSUES
 ======
 
 .. note::
 
-    Please file any bug reports to `Michael Foord`_ or the ConfigObj
+    Please file any bug reports to `Michael Foord`_ or the **ConfigObj**
     `Mailing List`_.
 
 You can't have a keyword with the same name as a section (in the same section).
@@ -1670,39 +2044,16 @@ Logically a 'DEFAULT' section should apply to all subsections of the *same
 parent*: this means that checking the 'DEFAULT' sub-section in the *current
 section* is not necessarily logical ?
 
-In order to simplify Unicode support (which is possibly of limited value
-in a config file ?) I have removed automatic support, and added thev``encode``
-and ``decode`` methods. These can be used to transform keys and entries.
-Because the regex looks for specific values on inital parsing (i.e. the quotes
-and the equals signs) it can only read ASCII compatible encodings. For Unicode
-I suggest ``UTF8``, which is ASCII compatible.
-
-.. note::
-
-    There is no reason why you shouldn't decode your config file into Unicode
-    before passing them to ConfigObj (as a list of lines). This should give you
-    Unicode keys and values.
-
 Does it matter that we don't support the ':' divider, which is supported by
 ``ConfigParser`` ?
 
-Following error with "list_values=False" : ::
-
-    >>> a = ["a='hello', 'goodbye'"]
-    >>>
-    >>> c(a, list_values=False)
-    {'a': "hello', 'goodbye"}
-
-The regular expression correctly removes the value - ``"'hello', 'goodbye'"`` -
-and then unquote just removes the front and back quotes (called by
-``_handle_value``). What should we do ?? We *ought* to raise an exception - 
-because if lists are off it's an invalid value. This is not desired if you want 
-to do your own list processing e.g. using listquote for nested lists. It would
-be *better* in this case not to unquote. Raising an exception would require a
-new regex.
-
 String interpolation and validation don't play well together. See 
 `Validation and Interpolation`_.
+
+Validation is no longer done on the 'DEFAULT' section (on the root level). This
+allows interpolation from within your configspec - but also prevents you
+validating the 'DEFAULT' section.
+
 
 CHANGELOG
 =========
@@ -1710,6 +2061,78 @@ CHANGELOG
 This is an abbreviated changelog showing the major releases up to version 4.
 From version 4 it lists all releases and changes. *More* data on individual
 changes may be found in the source code.
+
+2006/02/16 - Version 4.2.0
+--------------------------
+
+Removed ``BOM_UTF8`` from ``__all__``.
+
+The ``BOM`` attribute has become a boolean. (Defaults to ``False``.) It is
+*only* ``True`` for the ``UTF16`` encoding.
+
+File like objects no longer need a ``seek`` attribute.
+
+Full unicode support added. New options/attributes ``encoding``,
+``default_encoding``.
+
+ConfigObj no longer keeps a reference to file like objects. Instead the
+``write`` method takes a file like object as an optional argument. (Which
+will be used in preference of the ``filename`` attribute if that exists as
+well.)
+
+utf16 files decoded to unicode.
+
+If ``BOM`` is ``True``, but no encoding specified, then the utf8 BOM is
+written out at the start of the file. (It will normally only be ``True`` if
+the utf8 BOM was found when the file was read.)
+
+File paths are *not* converted to absolute paths, relative paths will
+remain relative as the ``filename`` attribute.
+
+Fixed bug where ``final_comment`` wasn't returned if ``write`` is returning
+a list of lines.
+
+Deprecated ``istrue``, replaced it with ``as_bool``.
+
+Added ``as_int`` and ``as_float``.
+
+2005/12/14 - Version 4.1.0
+--------------------------
+
+Added ``merge``, a recursive update.
+
+Added ``preserve_errors`` to ``validate`` and the ``flatten_errors``
+example function.
+
+Thanks to Matthew Brett for suggestions and helping me iron out bugs.
+    
+Fixed bug where a config file is *all* comment, the comment will now be
+``initial_comment`` rather than ``final_comment``.
+
+Validation no longer done on the 'DEFAULT' section (only in the root level).
+This allows interpolation in configspecs.
+
+Also use the new list syntax in validate_ 0.2.1. (For configspecs).
+
+2005/12/02 - Version 4.0.2
+--------------------------
+
+Fixed bug in ``create_empty``. Thanks to Paul Jimenez for the report.
+
+
+2005/11/05 - Version 4.0.1
+--------------------------
+
+Fixed bug in ``Section.walk`` when transforming names as well as values.
+
+Added the ``istrue`` method. (Fetches the boolean equivalent of a string
+value).
+
+Fixed ``list_values=False`` - they are now only quoted/unquoted if they
+are multiline values.
+
+List values are written as ``item, item`` rather than ``item,item``.
+
 
 2005/10/17 - Version 4.0.0
 --------------------------
@@ -1878,19 +2301,18 @@ atlantibots_ project. The original functions were written by Rob McNeur...
 Footnotes
 =========
 
-.. [#] The core parser is now based on regular expressions, so it's a lot
-    faster.
-
-.. [#] 134 of them, at the time of writing.
+.. [#] 253 of them, at the time of writing.
 
 .. [#] And if you discover any bugs, let us know. We'll fix them quickly.
 
 .. [#] If you specify a filename that doesn't exist, ConfigObj will assume you
     are creating a new one. See the *create_empty* and *file_error* options_.
 
-.. [#] They can be byte strings ('ordinary' strings) or Unicode. If they are
-    Unicode then ConfigObj will have to do an implicit encode before writing.
-    See the encodings_ section for more details.
+.. [#] They can be byte strings ('ordinary' strings) or Unicode.
+
+.. [#] This is a change in ConfigObj 4.2.0. Note that ConfigObj doesn't call
+    the seek method of any file like object you pass in. You may want to call
+    ``file_object.seek(0)`` yourself, first.
 
 .. [#] Except we don't support the RFC822 style line continuations, nor ':' as
     a divider.
@@ -1901,26 +2323,26 @@ Footnotes
 
 .. [#] A side effect of this is that it enables you to copy a ConfigObj :
 
-.. raw:: html
-
-    {+coloring}
-
-    # only copies members
-    # not attributes/comments
-    config2 = ConfigObj(config1)
-
-    {-coloring}
-
-..
+    .. raw:: html
+    
+        {+coloring}
+    
+        # only copies members
+        # not attributes/comments
+        config2 = ConfigObj(config1)
+    
+        {-coloring}
 
     The order of values and sections will not be preserved, though.
 
+.. [#] The exception is if it detects a ``UTF16`` encoded file which it
+    must decode before parsing.
+     
 .. [#] Other than lists of strings.
 
-.. [#] The method signature in the API docs will show that it does in fact
-    take one argument: the section to be written. This is because the
-    ``write`` method is called recursively. Using this argument *forces* write
-    to return a list of lines, so it's probably not very useful to you.
+.. [#] The method signature in the API docs will show that this method takes
+    two arguments. The second is the section to be written. This is because the
+    ``write`` method is called recursively.
 
 .. [#] The dict method doesn't actually use the deepcopy mechanism. This means
     if you add nested lists (etc) to your ConfigObj, then the dictionary
@@ -1930,9 +2352,6 @@ Footnotes
 .. [#] Passing ``(section, key)`` rather than ``(value, key)`` allows you to
     change the value by setting ``section[key] = newval``. It also gives you
     access to the *rename* method of the section.
-
-.. [#] A current bug in unquoting when ``list_values=False`` currently makes
-    this impossible. We are considering the best way to fix this.
 
 .. [#] Minimum required version of *validate.py* 0.2.0 .
 
@@ -1959,7 +2378,7 @@ Footnotes
         <br />
         <a href="http://www.python.org">
             <img src="images/powered_by_python.jpg" width="602" height="186" border="0" />
-        </a>
+        </a><br /><br />
         <a href="http://www.opensource.org">
             <img src="images/osi-certified-120x100.gif" width="120" height="100" border="0" />
             <br /><strong>Certified Open Source</strong>
@@ -1972,10 +2391,9 @@ Footnotes
                 <img src="http://s16.sitemeter.com/meter.asp?site=s16atlantibots" alt="Site Meter" border=0 />
             </a>
         </noscript>
-        <br />
     </div>
 
 .. _listquote: http://www.voidspace.org.uk/python/modules.shtml#listquote
-.. _Michael Foord: http://www.voidspace.org.uk
+.. _Michael Foord: http://www.voidspace.org.uk/index2.shtml
 .. _Nicola Larosa: http://www.teknico.net
 .. _Mark Andrews: http://www.la-la.com
