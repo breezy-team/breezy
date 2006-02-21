@@ -807,7 +807,8 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 reprocess=False, 
                 other_rev_id=None,
                 interesting_files=None,
-                this_tree=None):
+                this_tree=None,
+                pb=DummyProgress()):
     """Primary interface for merging. 
 
         typical use is probably 
@@ -816,7 +817,8 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
         """
     if this_tree is None:
         this_tree = this_branch.working_tree()
-    merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree)
+    merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree, 
+                    pb=pb)
     merger.backup_files = backup_files
     merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids
