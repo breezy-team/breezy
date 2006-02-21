@@ -129,7 +129,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     import random
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
-    tmp_name = u'tmp.%s.%.9f.%d.%d' % (base, time.time(), os.getpid(), random.randint(0, 0x7FFFFFFF))
+    tmp_name = u'tmp.%s.%.9f.%d.%s' % (base, time.time(), os.getpid(), rand_chars(10))
     tmp_name = pathjoin(dirname, tmp_name)
 
     # Rename the file out of the way, but keep track if it didn't exist
