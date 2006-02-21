@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 6 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ so this is primarily useful for testing.
 from copy import copy
 import os
 import errno
+import re
 from stat import *
 from cStringIO import StringIO
 
@@ -53,6 +54,7 @@ class MemoryTransport(Transport):
             url = url + '/'
         super(MemoryTransport, self).__init__(url)
         self._cwd = url[url.find(':') + 1:]
+        # dictionaries from absolute path to file mode
         self._dirs = {}
         self._files = {}
         self._locks = {}
@@ -156,6 +158,27 @@ class MemoryTransport(Transport):
                 path[len(_abspath)] == '/'):
                 result.append(path[len(_abspath) + 1:])
         return result
+
+    def rename(self, rel_from, rel_to):
+        """Rename a file or directory; fail if the destination exists"""
+        abs_from = self._abspath(rel_from)
+        abs_to = self._abspath(rel_to)
+        def replace(x):
+            if x == abs_from:
+                x = abs_to
+            elif x.startswith(abs_from + '/'):
+                x = abs_to + x[len(abs_from):]
+            return x
+        def do_renames(container):
+            for path in container:
+                new_path = replace(path)
+                if new_path != path:
+                    if new_path in container:
+                        raise FileExists(new_path)
+                    container[new_path] = container[path]
+                    del container[path]
+        do_renames(self._files)
+        do_renames(self._dirs)
     
     def rmdir(self, relpath):
         """See Transport.rmdir."""
