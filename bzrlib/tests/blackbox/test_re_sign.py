@@ -22,9 +22,9 @@
 import os
 
 import bzrlib.gpg
+from bzrlib.bzrdir import BzrDir
 from bzrlib.testament import Testament
 from bzrlib.tests import TestCaseInTempDir
-from bzrlib.workingtree import WorkingTree
 
 
 class ReSign(TestCaseInTempDir):
@@ -46,7 +46,7 @@ class ReSign(TestCaseInTempDir):
         bzrlib.gpg.GPGStrategy = self._oldstrategy
 
     def setup_tree(self):
-        wt = WorkingTree.create_standalone('.')
+        wt = BzrDir.create_standalone_workingtree('.')
         wt.commit("base A", allow_pointless=True, rev_id='A')
         wt.commit("base B", allow_pointless=True, rev_id='B')
         wt.commit("base C", allow_pointless=True, rev_id='C')
