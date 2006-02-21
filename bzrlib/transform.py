@@ -978,7 +978,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
     def interesting(file_id):
         return interesting_ids is None or file_id in interesting_ids
 
-    tt = TreeTransform(working_tree)
+    tt = TreeTransform(working_tree, pb)
     try:
         trans_id = {}
         def get_trans_id(file_id):
@@ -1004,7 +1004,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
             pb.update("New file check", id_num+1, len(sorted_interesting))
             if file_id not in target_tree:
                 tt.unversion_file(tt.get_id_tree(file_id))
-        raw_conflicts = resolve_conflicts(tt)
+        raw_conflicts = resolve_conflicts(tt, pb)
         for line in conflicts_strings(cook_conflicts(raw_conflicts, tt)):
             warning(line)
         tt.apply()
