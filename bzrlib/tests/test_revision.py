@@ -20,7 +20,6 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
 from bzrlib.commit import commit
-from bzrlib.fetch import fetch
 from bzrlib.revision import (find_present_ancestors, combined_graph,
                              is_ancestor, MultipleRevisionSources)
 from bzrlib.tests import TestCaseWithTransport
@@ -63,18 +62,18 @@ def make_branches(self):
     tree2.commit("Commit five", rev_id="b@u-0-4")
     revisions_2 = br2.revision_history()
     
-    fetch(from_branch=br2, to_branch=br1)
+    br1.fetch(br2)
     tree1.add_pending_merge(revisions_2[4])
     self.assertEquals(revisions_2[4], 'b@u-0-4')
     tree1.commit("Commit six", rev_id="a@u-0-3")
     tree1.commit("Commit seven", rev_id="a@u-0-4")
     tree2.commit("Commit eight", rev_id="b@u-0-5")
     
-    fetch(from_branch=br2, to_branch=br1)
+    br1.fetch(br2)
     tree1.add_pending_merge(br2.revision_history()[5])
     tree1.commit("Commit nine", rev_id="a@u-0-5")
     # DO NOT FETCH HERE - we WANT a GHOST.
-    #fetch(from_branch=br1, to_branch=br2)
+    # br2.fetch(br1)
     tree2.add_pending_merge(br1.revision_history()[4])
     tree2.commit("Commit ten - ghost merge", rev_id="b@u-0-6")
     
@@ -151,11 +150,11 @@ class TestIntermediateRevisions(TestCaseWithTransport):
         wt2.commit("Commit twelve", rev_id="b@u-0-8")
         wt2.commit("Commit thirtteen", rev_id="b@u-0-9")
 
-        fetch(from_branch=self.br2, to_branch=self.br1)
+        self.br1.fetch(self.br2)
         wt1.add_pending_merge(self.br2.revision_history()[6])
         wt1.commit("Commit fourtten", rev_id="a@u-0-6")
 
-        fetch(from_branch=self.br1, to_branch=self.br2)
+        self.br2.fetch(self.br1)
         wt2.add_pending_merge(self.br1.revision_history()[6])
         wt2.commit("Commit fifteen", rev_id="b@u-0-10")
 
@@ -245,7 +244,7 @@ class TestCommonAncestor(TestCaseWithTransport):
                           revisions_2[4])
         self.assertEqual(common_ancestor(revisions[4], revisions_2[5], sources),
                           revisions_2[4])
-        fetch(from_branch=br2, to_branch=br1)
+        br1.fetch(br2)
         self.assertEqual(common_ancestor(revisions[5], revisions_2[6], sources),
                           revisions[4]) # revisions_2[5] is equally valid
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),

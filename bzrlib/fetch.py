@@ -14,20 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from copy import copy
-import os
-from cStringIO import StringIO
-
-import bzrlib
-import bzrlib.errors as errors
-from bzrlib.errors import (InstallFailed, NoSuchRevision, WeaveError,
-                           MissingText)
-from bzrlib.trace import mutter, note, warning
-from bzrlib.branch import Branch
-from bzrlib.progress import ProgressBar
-from bzrlib.revision import NULL_REVISION
-from bzrlib.xml5 import serializer_v5
-from bzrlib.osutils import sha_string, split_lines
 
 """Copying of history from one branch to another.
 
@@ -43,6 +29,16 @@ However, we can't know what files are included in a revision until we
 read its inventory.  Therefore, we first pull the XML and hold it in
 memory until we've updated all of the files referenced.
 """
+
+import bzrlib
+import bzrlib.errors as errors
+from bzrlib.errors import (InstallFailed, NoSuchRevision, WeaveError,
+                           MissingText)
+from bzrlib.trace import mutter
+from bzrlib.progress import ProgressBar
+from bzrlib.revision import NULL_REVISION
+from bzrlib.symbol_versioning import *
+
 
 # TODO: Avoid repeatedly opening weaves so many times.
 
@@ -62,10 +58,13 @@ memory until we've updated all of the files referenced.
 #   and add in all file versions
 
 
-
+@deprecated_function(zero_eight)
 def greedy_fetch(to_branch, from_branch, revision=None, pb=None):
+    """Legacy API, please see branch.fetch(from_branch, last_revision, pb)."""
     f = Fetcher(to_branch, from_branch, revision, pb)
     return f.count_copied, f.failed_revisions
+
+fetch = greedy_fetch
 
 
 class RepoFetcher(object):
@@ -76,9 +75,14 @@ class RepoFetcher(object):
 
     after running:
     count_copied -- number of revisions copied
-    count_weaves -- number of file weaves copied
+
+    This should not be used directory, its essential a object to encapsulate
+    the logic in InterRepository.fetch().
     """
     def __init__(self, to_repository, from_repository, last_revision=None, pb=None):
+        # result variables.
+        self.failed_revisions = []
+        self.count_copied = 0
         if to_repository.bzrdir.transport.base == from_repository.bzrdir.transport.base:
             # check that last_revision is in 'from' and then return a no-operation.
             if last_revision not in (None, NULL_REVISION):
@@ -112,11 +116,7 @@ class RepoFetcher(object):
         self.to_control = self.to_repository.control_weaves
         self.from_weaves = self.from_repository.weave_store
         self.from_control = self.from_repository.control_weaves
-        self.failed_revisions = []
-        self.count_copied = 0
         self.count_total = 0
-        self.count_weaves = 0
-        self.copied_file_ids = set()
         self.file_ids_names = {}
         try:
             revs = self._revids_to_fetch()
@@ -130,6 +130,7 @@ class RepoFetcher(object):
             self.pb.clear()
 
     def _revids_to_fetch(self):
+        self.pb.update('get destination history')
         mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
@@ -202,74 +203,9 @@ class RepoFetcher(object):
 
 
 class Fetcher(object):
-    """Pull revisions and texts from one branch to another.
+    """Backwards compatability glue for branch.fetch()."""
 
-    This doesn't update the destination's history; that can be done
-    separately if desired.  
-
-    revision_limit
-        If set, pull only up to this revision_id.
-
-    After running:
-
-    last_revision -- if last_revision
-        is given it will be that, otherwise the last revision of
-        from_branch
-
-    count_copied -- number of revisions copied
-
-    count_weaves -- number of file weaves copied
-    """
+    @deprecated_method(zero_eight)
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
-        if to_branch.base == from_branch.base:
-            raise Exception("can't fetch from a branch to itself %s, %s" % 
-                            (from_branch.base, to_branch.base))
-        
-        self.to_branch = to_branch
-        self.from_branch = from_branch
-        self._last_revision = last_revision
-        if pb is None:
-            self.pb = bzrlib.ui.ui_factory.progress_bar()
-        else:
-            self.pb = pb
-        self.from_branch.lock_read()
-        try:
-            self.to_branch.lock_write()
-            try:
-                self.__fetch()
-            finally:
-                self.to_branch.unlock()
-        finally:
-            self.from_branch.unlock()
-
-    def __fetch(self):
-        self._find_last_revision()
-        repo_fetcher = RepoFetcher(to_repository=self.to_branch.repository,
-                                   from_repository=self.from_branch.repository,
-                                   pb=self.pb,
-                                   last_revision=self._last_revision)
-        self.failed_revisions = repo_fetcher.failed_revisions
-        self.count_copied = repo_fetcher.count_copied
-        self.count_total = repo_fetcher.count_total
-        self.count_weaves = repo_fetcher.count_weaves
-        self.copied_file_ids = repo_fetcher.copied_file_ids
-
-    def _find_last_revision(self):
-        """Find the limiting source revision.
-
-        Every ancestor of that revision will be merged across.
-
-        Returns the revision_id, or returns None if there's no history
-        in the source branch."""
-        if self._last_revision:
-            return
-        self.pb.update('get source history')
-        from_history = self.from_branch.revision_history()
-        self.pb.update('get destination history')
-        if from_history:
-            self._last_revision = from_history[-1]
-        else:
-            # no history in the source branch
-            self._last_revision = NULL_REVISION
-
-fetch = Fetcher
+        """Please see branch.fetch()."""
+        to_branch.fetch(from_branch, last_revision, pb)

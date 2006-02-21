@@ -19,7 +19,6 @@ import os
 from bzrlib.add import smart_add
 from bzrlib.builtins import merge
 from bzrlib.delta import compare_trees
-from bzrlib.fetch import greedy_fetch
 from bzrlib.merge import merge_inner
 from bzrlib.revision import common_ancestor
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
@@ -35,8 +34,7 @@ class FileIdInvolvedBase(TestCaseWithRepository):
 
     def merge(self, branch_from, wt_to):
         # minimal ui-less merge.
-        greedy_fetch(to_branch=wt_to.branch, from_branch=branch_from,
-                     revision=branch_from.last_revision())
+        wt_to.branch.fetch(branch_from)
         base_rev = common_ancestor(branch_from.last_revision(),
                                     wt_to.branch.last_revision(),
                                     wt_to.branch.repository)
