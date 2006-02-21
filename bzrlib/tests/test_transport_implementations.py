@@ -566,6 +566,31 @@ class TestTransportImplementation(TestCaseInTempDir):
         t.mkdir('adir/bdir')
         self.assertRaises(PathError, t.rmdir, 'adir')
 
+    def test_rename_dir_succeeds(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            raise TestSkipped("transport is readonly")
+        t.mkdir('adir')
+        t.mkdir('adir/asubdir')
+        t.rename('adir', 'bdir')
+        self.assertTrue(t.has('bdir/asubdir'))
+        self.assertFalse(t.has('adir'))
+
+    def test_rename_dir_nonempty(self):
+        """Attempting to replace a nonemtpy directory should fail"""
+        t = self.get_transport()
+        if t.is_readonly():
+            raise TestSkipped("transport is readonly")
+        t.mkdir('adir')
+        t.mkdir('adir/asubdir')
+        t.mkdir('bdir')
+        t.mkdir('bdir/bsubdir')
+        self.assertRaises(PathError, t.rename, 'bdir', 'adir')
+        # nothing was changed so it should still be as before
+        self.assertTrue(t.has('bdir/bsubdir'))
+        self.assertFalse(t.has('adir/bdir'))
+        self.assertFalse(t.has('adir/bsubdir'))
+
     def test_delete_tree(self):
         t = self.get_transport()
 
@@ -804,17 +829,23 @@ class TestTransportImplementation(TestCaseInTempDir):
     def test_iter_files_recursive(self):
         transport = self.get_transport()
         if not transport.listable():
-            self.assertRaises(TransportNotPossible, 
+            self.assertRaises(TransportNotPossible,
                               transport.iter_files_recursive)
             return
-        self.build_tree(['isolated/', 
+        self.build_tree(['isolated/',
                          'isolated/dir/',
                          'isolated/dir/foo',
                          'isolated/dir/bar',
                          'isolated/bar'],
                         transport=transport)
-        transport = transport.clone('isolated')
         paths = set(transport.iter_files_recursive())
+        # nb the directories are not converted
+        self.assertEqual(paths,
+                    set(['isolated/dir/foo',
+                         'isolated/dir/bar',
+                         'isolated/bar']))
+        sub_transport = transport.clone('isolated')
+        paths = set(sub_transport.iter_files_recursive())
         self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
 
     def test_connect_twice_is_same_content(self):

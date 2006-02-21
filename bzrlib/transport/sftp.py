@@ -405,7 +405,7 @@ class SFTPTransport (Transport):
                 self._sftp.chmod(tmp_abspath, mode)
             fout.close()
             closed = True
-            self._rename(tmp_abspath, abspath)
+            self._rename_and_overwrite(tmp_abspath, abspath)
         except Exception, e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception
@@ -493,7 +493,16 @@ class SFTPTransport (Transport):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, relpath, ': unable to append')
 
-    def _rename(self, abs_from, abs_to):
+    def rename(self, rel_from, rel_to):
+        """Rename without special overwriting"""
+        try:
+            self._sftp.rename(self._remote_path(rel_from),
+                              self._remote_path(rel_to))
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, rel_from,
+                    ': unable to rename to %r' % (rel_to))
+
+    def _rename_and_overwrite(self, abs_from, abs_to):
         """Do a fancy rename on the remote server.
         
         Using the implementation provided by osutils.
@@ -509,7 +518,7 @@ class SFTPTransport (Transport):
         """Move the item at rel_from to the location at rel_to"""
         path_from = self._remote_path(rel_from)
         path_to = self._remote_path(rel_to)
-        self._rename(path_from, path_to)
+        self._rename_and_overwrite(path_from, path_to)
 
     def delete(self, relpath):
         """Delete the item at relpath"""

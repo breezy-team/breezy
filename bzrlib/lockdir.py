@@ -153,9 +153,7 @@ class LockDir(object):
                              self.transport.base,
                              self.path)
 
-    def is_held(self):
-        """Return true if the lock is currently held by this process."""
-        return self._lock_held
+    is_held = property(lambda self: self._lock_held)
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held

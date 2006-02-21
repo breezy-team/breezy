@@ -34,7 +34,7 @@ class TestLockDir(TestCaseWithTransport):
         """Creation of lock file on a transport"""
         t = self.get_transport()
         lf = LockDir(t, 'test_lock')
-        self.assertFalse(lf.is_held())
+        self.assertFalse(lf.is_held)
 
     def test_01_lock_repr(self):
         """Lock string representation"""
@@ -56,10 +56,10 @@ class TestLockDir(TestCaseWithTransport):
         lf = LockDir(t, 'test_lock')
         lf.attempt_lock()
         try:
-            self.assertTrue(lf.is_held())
+            self.assertTrue(lf.is_held)
         finally:
             lf.unlock()
-            self.assertFalse(lf.is_held())
+            self.assertFalse(lf.is_held)
 
     def test_11_lock_readonly_transport(self):
         """Fail to lock on readonly transport"""
