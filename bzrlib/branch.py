@@ -99,18 +99,6 @@ class Branch(object):
     # - RBC 20060112
     base = None
 
-    @staticmethod
-    def create(base):
-        """Construct the current default format branch in a_bzrdir.
-
-        This creates the current default BzrDir format, and if that 
-        supports multiple Branch formats, then the default Branch format
-        will take effect.
-        """
-        print "not usable until we have repositories"
-        raise NotImplementedError("not usable right now")
-        return bzrdir.BzrDir.create(base)
-
     def __init__(self, *ignored, **ignored_too):
         raise NotImplementedError('The Branch class is abstract')
 
