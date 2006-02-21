@@ -230,3 +230,20 @@ class TestLockDir(TestCaseWithTransport):
         # now we should be able to take it
         lf2.attempt_lock()
         lf2.confirm()
+
+    def test_44_break_already_released(self):
+        """Lock break races with regular release"""
+        t = self.get_transport()
+        lf1 = LockDir(t, 'test_lock')
+        lf1.attempt_lock()
+        # someone else sees it's still locked
+        lf2 = LockDir(t, 'test_lock')
+        holder_info = lf2.peek()
+        # in the interim the lock is released
+        lf1.unlock()
+        # break should succeed
+        lf2.force_break()
+        # now we should be able to take it
+        lf2.attempt_lock()
+        lf2.confirm()
+

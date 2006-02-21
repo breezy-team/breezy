@@ -216,6 +216,10 @@ class LockDir(object):
         """
         if self._lock_held:
             raise AssertionError("can't break own lock: %r" % self)
+        lock_info = self.peek()
+        if lock_info is None:
+            # must have been recently released
+            return
         tmpname = '%s.broken.%s.tmp' % (self.path, rand_chars(20))
         self.transport.rename(self.path, tmpname)
         self.transport.delete(tmpname + self.INFO_NAME)
