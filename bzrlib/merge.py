@@ -38,6 +38,7 @@ from bzrlib.merge3 import Merge3
 import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
+from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               conflicts_strings, FinalPaths, create_by_entry,
@@ -807,7 +808,11 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                      branch.get_revision_tree(base_revision))'
         """
     if this_tree is None:
-        this_tree = this_branch.working_tree()
+        warn("bzrlib.merge.merge_inner requires a this_tree parameter as of "
+             "bzrlib version 0.8.",
+             DeprecationWarning,
+             stacklevel=2)
+        this_tree = this_branch.bzrdir.open_workingtree()
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree)
     merger.backup_files = backup_files
     merger.merge_type = merge_type
