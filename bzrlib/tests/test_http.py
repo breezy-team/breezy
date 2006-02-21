@@ -62,24 +62,26 @@ class TestHttpConnections(TestCaseWithWebserver):
         self.build_tree(['xxx', 'foo/', 'foo/bar'], line_endings='binary')
 
     def test_http_has(self):
-        t = HttpTransport(self.server.get_url())
+        server = self.get_readonly_server()
+        t = HttpTransport(server.get_url())
         self.assertEqual(t.has('foo/bar'), True)
-        self.assertEqual(len(self.server.logs), 1)
-        self.assertTrue(self.server.logs[0].endswith(
+        self.assertEqual(len(server.logs), 1)
+        self.assertTrue(server.logs[0].endswith(
             '"HEAD /foo/bar HTTP/1.1" 200 - "-" "bzr/%s"'
             % bzrlib.__version__))
 
         self.assertEqual(t.has('not-found'), False)
-        self.assertTrue(self.server.logs[-1].endswith(
+        self.assertTrue(server.logs[-1].endswith(
             '"HEAD /not-found HTTP/1.1" 404 - "-" "bzr/%s"'
             % bzrlib.__version__))
 
     def test_http_get(self):
-        t = HttpTransport(self.server.get_url())
+        server = self.get_readonly_server()
+        t = HttpTransport(server.get_url())
         fp = t.get('foo/bar')
         self.assertEqualDiff(
             fp.read(),
             'contents of foo/bar\n')
-        self.assertEqual(len(self.server.logs), 1)
-        self.assertTrue(self.server.logs[0].endswith(
+        self.assertEqual(len(server.logs), 1)
+        self.assertTrue(server.logs[0].endswith(
             '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s"' % bzrlib.__version__))

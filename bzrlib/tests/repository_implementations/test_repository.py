@@ -19,6 +19,7 @@
 import os
 import sys
 
+import bzrlib
 import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.commit import commit
@@ -125,7 +126,7 @@ class TestRepository(TestCaseWithRepository):
                          repository.RepositoryFormat.find_format(opened_control))
 
     def test_create_repository(self):
-        # a repository can be constructedzrdir can construct a repository for itself.
+        # bzrdir can construct a repository for itself.
         if not self.bzrdir_format.is_supported():
             # unsupported formats are not loopback testable
             # because the default open will not open them and
@@ -136,6 +137,25 @@ class TestRepository(TestCaseWithRepository):
         made_repo = made_control.create_repository()
         self.failUnless(isinstance(made_repo, repository.Repository))
         self.assertEqual(made_control, made_repo.bzrdir)
+        
+    def test_create_repository_shared(self):
+        # bzrdir can construct a shared repository.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = get_transport(self.get_url())
+        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_repo = made_control.create_repository(shared=True)
+        except errors.IncompatibleFormat:
+            # not all repository formats understand being shared, or
+            # may only be shared in some circumstances.
+            return
+        self.failUnless(isinstance(made_repo, repository.Repository))
+        self.assertEqual(made_control, made_repo.bzrdir)
+        self.assertTrue(made_repo.is_shared())
 
     def test_revision_tree(self):
         wt = self.make_branch_and_tree('.')
@@ -148,34 +168,18 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual(len(tree.list_files()), 0)
 
     def test_fetch(self):
+        # smoke test fetch to ensure that the convenience function works.
+        # it is defined as a convenience function with the underlying 
+        # functionality provided by an InterRepository
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
         tree_a.add('foo', 'file1')
         tree_a.commit('rev1', rev_id='rev1')
-        def check_push_rev1(repo):
-            # ensure the revision is missing.
-            self.assertRaises(NoSuchRevision, repo.get_revision, 'rev1')
-            # fetch with a limit of NULL_REVISION
-            repo.fetch(tree_a.branch.repository, NULL_REVISION)
-            # nothing should have been pushed
-            self.assertFalse(repo.has_revision('rev1'))
-            # fetch with a default limit (grab everything)
-            repo.fetch(tree_a.branch.repository)
-            # check that b now has all the data from a's first commit.
-            rev = repo.get_revision('rev1')
-            tree = repo.revision_tree('rev1')
-            tree.get_file_text('file1')
-            for file_id in tree:
-                if tree.inventory[file_id].kind == "file":
-                    tree.get_file(file_id).read()
-
-        # makes a latest-version repo 
-        repo_b = bzrdir.BzrDir.create_repository(self.get_url('b'))
-        check_push_rev1(repo_b)
-
-        # makes a this-version repo:
-        repo_c = self.make_repository('c')
-        check_push_rev1(repo_c)
+        # fetch with a default limit (grab everything)
+        repo = bzrdir.BzrDir.create_repository(self.get_url('b'))
+        repo.fetch(tree_a.branch.repository,
+                   revision_id=None,
+                   pb=bzrlib.progress.DummyProgress())
 
     def test_clone_bzrdir_repository_revision(self):
         # make a repository with some revisions,
@@ -200,6 +204,23 @@ class TestRepository(TestCaseWithRepository):
         target = source.bzrdir.clone(self.get_url('target'), basis=tree.bzrdir)
         self.assertTrue(target.open_repository().has_revision('2'))
 
+    def test_clone_shared_no_tree(self):
+        # cloning a shared repository keeps it shared
+        # and preserves the make_working_tree setting.
+        made_control = self.make_bzrdir('source')
+        try:
+            made_repo = made_control.create_repository(shared=True)
+        except errors.IncompatibleFormat:
+            # not all repository formats understand being shared, or
+            # may only be shared in some circumstances.
+            return
+        made_repo.set_make_working_trees(False)
+        result = made_control.clone(self.get_url('target'))
+        self.failUnless(isinstance(made_repo, repository.Repository))
+        self.assertEqual(made_control, made_repo.bzrdir)
+        self.assertTrue(result.open_repository().is_shared())
+        self.assertFalse(result.open_repository().make_working_trees())
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
@@ -208,6 +229,7 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         tree_a = self.make_branch_and_tree('a')
         self.bzrdir = tree_a.branch.bzrdir
         # add a corrupt inventory 'orphan'
+        # this may need some generalising for knits.
         tree_a.branch.repository.control_weaves.add_text(
             'inventory', 'orphan', [], [],
             tree_a.branch.repository.get_transaction())
@@ -221,44 +243,8 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.assertEqual(['rev1', 'rev2'],
                          self.bzrdir.open_repository().all_revision_ids())
 
-    def test_missing_revision_ids(self):
-        # revision ids in repository A but not B are returned, fake ones
-        # are stripped. (fake meaning no revision object, but an inventory 
-        # as some formats keyed off inventory data in the past.
-        # make a repository to compare against that claims to have rev1
-        tree_b = self.make_branch_and_tree('rev1_only')
-        # add a real revision 'rev1'
-        tree_b.commit('rev1', rev_id='rev1', allow_pointless=True)
-        repo_a = self.bzrdir.open_repository()
-        repo_b = tree_b.branch.repository
-        self.assertEqual(['rev2'],
-                         repo_b.missing_revision_ids(repo_a))
-
-    def test_missing_revision_ids_default_format(self):
-        # revision ids in repository A but not B are returned, fake ones
-        # are stripped. (fake meaning no revision object, but an inventory 
-        # as some formats keyed off inventory data in the past.
-        # make a repository to compare against that claims to have rev1
-        tree_b = bzrdir.BzrDir.create_standalone_workingtree('rev1_only')
-        # add a real revision 'rev1'
-        tree_b.commit('rev1', rev_id='rev1', allow_pointless=True)
-        repo_a = self.bzrdir.open_repository()
-        repo_b = tree_b.branch.repository
-        self.assertEqual(['rev2'],
-                         repo_b.missing_revision_ids(repo_a))
-
-    def test_missing_revision_ids_revision_limited(self):
-        # revision ids in repository A that are not referenced by the
-        # requested revision are not returned.
-        # make a repository to compare against that is empty
-        tree_b = self.make_branch_and_tree('empty')
-        repo_a = self.bzrdir.open_repository()
-        repo_b = tree_b.branch.repository
-        self.assertEqual(['rev1'],
-                         repo_b.missing_revision_ids(repo_a, revision_id='rev1'))
-
     def test_get_ancestry_missing_revision(self):
-        # get_ancestry(missing revision)-> NoSuchRevision
+        # get_ancestry(revision that is in some data but not fully installed
+        # -> NoSuchRevision
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_ancestry, 'orphan')
-        
