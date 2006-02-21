@@ -90,7 +90,7 @@ from bzrlib.trace import mutter
 from bzrlib.transform import build_tree
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
-from bzrlib.ui import ui_factory
+import bzrlib.ui
 import bzrlib.xml5
 
 
@@ -851,7 +851,8 @@ class WorkingTree(bzrlib.tree.Tree):
                 merge_inner(self.branch,
                             self.basis_tree(), 
                             repository.revision_tree(other_revision),
-                            this_tree=self, pb=ui_factory.progress_bar())
+                            this_tree=self, 
+                            pb=bzrlib.ui.ui_factory.progress_bar())
                 self.set_last_revision(self.branch.last_revision())
             return count
         finally:

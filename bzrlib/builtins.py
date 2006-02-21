@@ -40,7 +40,7 @@ from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
 from bzrlib.transport.local import LocalTransport
-from bzrlib.ui import ui_factory
+import bzrlib.ui
 from bzrlib.workingtree import WorkingTree
 
 
@@ -1752,7 +1752,7 @@ class cmd_merge(Command):
             conflict_count = merge(other, base, check_clean=(not force),
                                    merge_type=merge_type, reprocess=reprocess,
                                    show_base=show_base, 
-                                   pb=ui_factory.progress_bar())
+                                   pb=bzrlib.ui.ui_factory.progress_bar())
             if conflict_count != 0:
                 return 1
             else:
@@ -1855,7 +1855,7 @@ class cmd_revert(Command):
         else:
             rev_id = revision[0].in_history(tree.branch).rev_id
         tree.revert(file_list, tree.branch.repository.revision_tree(rev_id),
-                    not no_backup, ui_factory.progress_bar())
+                    not no_backup, bzrlib.ui.ui_factory.progress_bar())
 
 
 class cmd_assert_fail(Command):
