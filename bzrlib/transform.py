@@ -286,7 +286,7 @@ class TreeTransform(object):
             os.unlink(full_path)
         except OSError, e:
         # We may be renaming a dangling inventory id
-            if e.errno != errno.EISDIR and e.errno != errno.EACCES:
+            if e.errno not in (errno.EISDIR, errno.EACCES, errno.EPERM):
                 raise
             os.rmdir(full_path)
 
