@@ -25,7 +25,7 @@ from bzrlib.merge import Merge3Merger
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
-                              conflicts_strings, find_interesting)
+                              conflicts_strings, find_interesting, build_tree)
 
 class TestTreeTransform(TestCaseInTempDir):
     def setUp(self):
@@ -658,3 +658,20 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertIs(os.path.lexists(this.wt.abspath('b/h1.BASE')), True)
         self.assertIs(os.path.lexists(this.wt.abspath('b/h1.OTHER')), False)
         self.assertEqual(this.wt.id2path('i'), pathjoin('b/i1.OTHER'))
+
+class TestBuildTree(TestCaseInTempDir):
+    def test_build_tree(self):
+        if not has_symlinks():
+            raise TestSkipped('Test requires symlink support')
+        os.mkdir('a')
+        a = BzrDir.create_standalone_workingtree('a')
+        os.mkdir('a/foo')
+        file('a/foo/bar', 'wb').write('contents')
+        os.symlink('a/foo/bar', 'a/foo/baz')
+        a.add(['foo', 'foo/bar', 'foo/baz'])
+        a.commit('initial commit')
+        b = BzrDir.create_standalone_workingtree('b')
+        build_tree(a.basis_tree(), b)
+        self.assertIs(os.path.isdir('b/foo'), True)
+        self.assertEqual(file('b/foo/bar', 'rb').read(), "contents")
+        self.assertEqual(os.readlink('b/foo/baz'), 'a/foo/bar')
