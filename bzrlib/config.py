@@ -205,6 +205,12 @@ class Config(object):
             return True
         return False
 
+    def get_alias(self, value):
+        return self._get_alias(value)
+
+    def _get_alias(self, value):
+        pass
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -272,6 +278,13 @@ class IniBasedConfig(Config):
         raise errors.BzrError("Invalid signatures policy '%s'"
                               % signature_string)
 
+    def _get_alias(self, value):
+        try:
+            return self._get_parser().get_value("ALIASES", 
+                                                value)
+        except KeyError:
+            pass
+
 
 class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
@@ -282,15 +295,6 @@ class GlobalConfig(IniBasedConfig):
     def __init__(self):
         super(GlobalConfig, self).__init__(config_filename)
 
-class AliasConfig(IniBasedConfig):
-    def get_alias(self, value):
-        return self._get_user_option(value)
-
-    def _get_section(self):
-        return "ALIASES"
-
-    def __init__(self):
-        super(AliasConfig, self).__init__(config_filename)
 
 class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""
@@ -454,6 +458,7 @@ class BranchConfig(Config):
     def _log_format(self):
         """See Config.log_format."""
         return self._get_location_config()._log_format()
+
 
 def ensure_config_dir_exists(path=None):
     """Make sure a configuration directory exists.

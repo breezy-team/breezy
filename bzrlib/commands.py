@@ -482,7 +482,7 @@ def get_alias(cmd):
     """if an alias for cmd exists, returns the expanded command
        else returns None"""
     import bzrlib.config
-    alias = bzrlib.config.AliasConfig().get_alias(cmd)
+    alias = bzrlib.config.GlobalConfig().get_alias(cmd)
     if (alias):
         return alias.split(' ')
     return None
