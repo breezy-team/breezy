@@ -20,6 +20,7 @@
 import bzrlib.errors
 from bzrlib.graph import node_distances, select_farthest, all_descendants
 from bzrlib.osutils import contains_whitespace
+from bzrlib.progress import DummyProgress
 
 NULL_REVISION="null:"
 
@@ -77,6 +78,25 @@ class Revision(object):
             if not isinstance(value, basestring):
                 raise ValueError("invalid property value %r for %r" % 
                                  (name, value))
+
+    def get_history(self, repository):
+        """Return the canonical line-of-history for this revision.
+
+        If ghosts are present this may differ in result from a ghost-free
+        repository.
+        """
+        current_revision = self
+        reversed_result = []
+        while current_revision is not None:
+            reversed_result.append(current_revision.revision_id)
+            if not len (current_revision.parent_ids):
+                reversed_result.append(None)
+                current_revision = None
+            else:
+                next_revision_id = current_revision.parent_ids[0]
+                current_revision = repository.get_revision(next_revision_id)
+        reversed_result.reverse()
+        return reversed_result
 
 
 def is_ancestor(revision_id, candidate_id, branch):
@@ -260,17 +280,24 @@ def combined_graph(revision_a, revision_b, revision_source):
     return root, ancestors, descendants, common
 
 
-def common_ancestor(revision_a, revision_b, revision_source):
+def common_ancestor(revision_a, revision_b, revision_source, 
+                    pb=DummyProgress()):
     try:
-        root, ancestors, descendants, common = \
-            combined_graph(revision_a, revision_b, revision_source)
-    except bzrlib.errors.NoCommonRoot:
-        raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
-        
-    distances = node_distances (descendants, ancestors, root)
-    farthest = select_farthest(distances, common)
-    if farthest is None or farthest == NULL_REVISION:
-        raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+        try:
+            pb.update('Picking ancestor', 1, 3)
+            root, ancestors, descendants, common = \
+                combined_graph(revision_a, revision_b, revision_source)
+        except bzrlib.errors.NoCommonRoot:
+            raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+            
+        pb.update('Picking ancestor', 2, 3)
+        distances = node_distances (descendants, ancestors, root)
+        pb.update('Picking ancestor', 3, 2)
+        farthest = select_farthest(distances, common)
+        if farthest is None or farthest == NULL_REVISION:
+            raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+    finally:
+        pb.clear()
     return farthest
 
 

@@ -14,19 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from copy import copy
-import os
-from cStringIO import StringIO
-
-import bzrlib
-import bzrlib.errors as errors
-from bzrlib.errors import (InstallFailed, NoSuchRevision, WeaveError,
-                           MissingText)
-from bzrlib.trace import mutter, note, warning
-from bzrlib.branch import Branch
-from bzrlib.progress import ProgressBar
-from bzrlib.xml5 import serializer_v5
-from bzrlib.osutils import sha_string, split_lines
 
 """Copying of history from one branch to another.
 
@@ -42,6 +29,16 @@ However, we can't know what files are included in a revision until we
 read its inventory.  Therefore, we first pull the XML and hold it in
 memory until we've updated all of the files referenced.
 """
+
+import bzrlib
+import bzrlib.errors as errors
+from bzrlib.errors import (InstallFailed, NoSuchRevision, WeaveError,
+                           MissingText)
+from bzrlib.trace import mutter
+from bzrlib.progress import ProgressBar
+from bzrlib.revision import NULL_REVISION
+from bzrlib.symbol_versioning import *
+
 
 # TODO: Avoid repeatedly opening weaves so many times.
 
@@ -61,53 +58,53 @@ memory until we've updated all of the files referenced.
 #   and add in all file versions
 
 
-
+@deprecated_function(zero_eight)
 def greedy_fetch(to_branch, from_branch, revision=None, pb=None):
+    """Legacy API, please see branch.fetch(from_branch, last_revision, pb)."""
     f = Fetcher(to_branch, from_branch, revision, pb)
     return f.count_copied, f.failed_revisions
 
+fetch = greedy_fetch
 
 
-class Fetcher(object):
-    """Pull revisions and texts from one branch to another.
+class RepoFetcher(object):
+    """Pull revisions and texts from one repository to another.
 
-    This doesn't update the destination's history; that can be done
-    separately if desired.  
+    last_revision
+        if set, try to limit to the data this revision references.
 
-    revision_limit
-        If set, pull only up to this revision_id.
-
-    After running:
-
-    last_revision -- if last_revision
-        is given it will be that, otherwise the last revision of
-        from_branch
-
+    after running:
     count_copied -- number of revisions copied
 
-    count_weaves -- number of file weaves copied
+    This should not be used directory, its essential a object to encapsulate
+    the logic in InterRepository.fetch().
     """
-    def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
-        if to_branch.base == from_branch.base:
-            raise Exception("can't fetch from a branch to itself %s, %s" % 
-                            (from_branch.base, to_branch.base))
-        
-        self.to_branch = to_branch
-        self.from_branch = from_branch
+    def __init__(self, to_repository, from_repository, last_revision=None, pb=None):
+        # result variables.
+        self.failed_revisions = []
+        self.count_copied = 0
+        if to_repository.bzrdir.transport.base == from_repository.bzrdir.transport.base:
+            # check that last_revision is in 'from' and then return a no-operation.
+            if last_revision not in (None, NULL_REVISION):
+                from_repository.get_revision(last_revision)
+            return
+        self.to_repository = to_repository
+        self.from_repository = from_repository
+        # must not mutate self._last_revision as its potentially a shared instance
         self._last_revision = last_revision
         if pb is None:
             self.pb = bzrlib.ui.ui_factory.progress_bar()
         else:
             self.pb = pb
-        self.from_branch.lock_read()
+        self.from_repository.lock_read()
         try:
-            self.to_branch.lock_write()
+            self.to_repository.lock_write()
             try:
                 self.__fetch()
             finally:
-                self.to_branch.unlock()
+                self.to_repository.unlock()
         finally:
-            self.from_branch.unlock()
+            self.from_repository.unlock()
 
     def __fetch(self):
         """Primary worker function.
@@ -115,17 +112,11 @@ class Fetcher(object):
         This initialises all the needed variables, and then fetches the 
         requested revisions, finally clearing the progress bar.
         """
-        self.to_repository = self.to_branch.repository
         self.to_weaves = self.to_repository.weave_store
         self.to_control = self.to_repository.control_weaves
-        self.from_repository = self.from_branch.repository
         self.from_weaves = self.from_repository.weave_store
         self.from_control = self.from_repository.control_weaves
-        self.failed_revisions = []
-        self.count_copied = 0
         self.count_total = 0
-        self.count_weaves = 0
-        self.copied_file_ids = set()
         self.file_ids_names = {}
         try:
             revs = self._revids_to_fetch()
@@ -139,36 +130,38 @@ class Fetcher(object):
             self.pb.clear()
 
     def _revids_to_fetch(self):
-        self._find_last_revision()
+        self.pb.update('get destination history')
         mutter('fetch up to rev {%s}', self._last_revision)
-        if (self._last_revision is not None and 
+        if self._last_revision is NULL_REVISION:
+            # explicit limit of no revisions needed
+            return None
+        if (self._last_revision != None and
             self.to_repository.has_revision(self._last_revision)):
-            return
+            return None
+            
         try:
-            branch_from_revs = set(self.from_repository.get_ancestry(self._last_revision))
-        except WeaveError:
+            return self.to_repository.missing_revision_ids(self.from_repository,
+                                                           self._last_revision)
+        except errors.NoSuchRevision:
             raise InstallFailed([self._last_revision])
-
-        self.dest_last_rev = self.to_branch.last_revision()
-        branch_to_revs = set(self.to_repository.get_ancestry(self.dest_last_rev))
-
-        return branch_from_revs.difference(branch_to_revs)
 
     def _fetch_revision_texts(self, revs):
         self.to_repository.revision_store.copy_multi(
-            self.from_repository.revision_store, revs)
+            self.from_repository.revision_store,
+            revs,
+            pb=self.pb)
 
     def _fetch_weave_texts(self, revs):
-        file_ids = self.from_branch.fileid_involved_by_set(revs)
+        file_ids = self.from_repository.fileid_involved_by_set(revs)
         count = 0
         num_file_ids = len(file_ids)
         for file_id in file_ids:
-            self.pb.update("merge weave merge", count, num_file_ids)
+            self.pb.update("merge weaves", count, num_file_ids)
             count +=1
             to_weave = self.to_weaves.get_weave_or_empty(file_id,
-                self.to_branch.get_transaction())
+                self.to_repository.get_transaction())
             from_weave = self.from_weaves.get_weave(file_id,
-                self.from_branch.get_transaction())
+                self.from_repository.get_transaction())
 
             if to_weave.numversions() > 0:
                 # destination has contents, must merge
@@ -181,8 +174,7 @@ class Fetcher(object):
                 to_weave = from_weave.copy()
 
             self.to_weaves.put_weave(file_id, to_weave,
-                self.to_branch.get_transaction())
-
+                self.to_repository.get_transaction())
         self.pb.clear()
 
     def _fetch_inventory_weave(self, revs):
@@ -191,7 +183,7 @@ class Fetcher(object):
         to_weave = self.to_repository.get_inventory_weave()
         self.pb.update("inventory fetch", 1, 2)
         to_weave = self.to_control.get_weave('inventory',
-                self.to_branch.get_transaction())
+                self.to_repository.get_transaction())
         self.pb.update("inventory fetch", 2, 2)
 
         if to_weave.numversions() > 0:
@@ -205,26 +197,15 @@ class Fetcher(object):
             to_weave = from_weave.copy()
 
         self.to_control.put_weave('inventory', to_weave,
-            self.to_branch.get_transaction())
+            self.to_repository.get_transaction())
 
         self.pb.clear()
 
-    def _find_last_revision(self):
-        """Find the limiting source revision.
 
-        Every ancestor of that revision will be merged across.
+class Fetcher(object):
+    """Backwards compatability glue for branch.fetch()."""
 
-        Returns the revision_id, or returns None if there's no history
-        in the source branch."""
-        if self._last_revision:
-            return
-        self.pb.update('get source history')
-        from_history = self.from_branch.revision_history()
-        self.pb.update('get destination history')
-        if from_history:
-            self._last_revision = from_history[-1]
-        else:
-            # no history in the source branch
-            self._last_revision = None
-
-fetch = Fetcher
+    @deprecated_method(zero_eight)
+    def __init__(self, to_branch, from_branch, last_revision=None, pb=None):
+        """Please see branch.fetch()."""
+        to_branch.fetch(from_branch, last_revision, pb)

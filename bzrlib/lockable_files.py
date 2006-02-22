@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 6 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -162,7 +162,7 @@ class LockableFiles(object):
         self.put(path, StringIO(a_string.encode('utf-8')))
 
     def lock_write(self):
-        mutter("lock write: %s (%s)", self, self._lock_count)
+        # mutter("lock write: %s (%s)", self, self._lock_count)
         # TODO: Upgrade locking to support using a Transport,
         # and potentially a remote locking protocol
         if self._lock_mode:
@@ -177,7 +177,7 @@ class LockableFiles(object):
             self._set_transaction(transactions.PassThroughTransaction())
 
     def lock_read(self):
-        mutter("lock read: %s (%s)", self, self._lock_count)
+        # mutter("lock read: %s (%s)", self, self._lock_count)
         if self._lock_mode:
             assert self._lock_mode in ('r', 'w'), \
                    "invalid lock mode %r" % self._lock_mode
@@ -192,10 +192,9 @@ class LockableFiles(object):
             self.get_transaction().set_cache_size(5000)
                         
     def unlock(self):
-        mutter("unlock: %s (%s)", self, self._lock_count)
+        # mutter("unlock: %s (%s)", self, self._lock_count)
         if not self._lock_mode:
-            raise BranchNotLocked(self)
-
+            raise errors.BranchNotLocked(self)
         if self._lock_count > 1:
             self._lock_count -= 1
         else:

@@ -19,14 +19,14 @@
 import errno
 import getpass
 import os
+import random
 import re
 import stat
+import subprocess
 import sys
+import time
 import urllib
 import urlparse
-import time
-import random
-import subprocess
 import weakref
 
 from bzrlib.config import config_dir, ensure_config_dir_exists
@@ -53,7 +53,13 @@ else:
     from paramiko.sftp_file import SFTPFile
     from paramiko.sftp_client import SFTPClient
 
-if 'sftp' not in urlparse.uses_netloc: urlparse.uses_netloc.append('sftp')
+if 'sftp' not in urlparse.uses_netloc:
+    urlparse.uses_netloc.append('sftp')
+
+# don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
+_default_do_prefetch = False
+if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 2):
+    _default_do_prefetch = True
 
 
 _close_fds = True
@@ -62,6 +68,7 @@ if sys.platform == 'win32':
     _close_fds = False
 
 _ssh_vendor = None
+
 def _get_ssh_vendor():
     """Find out what version of SSH is on the system."""
     global _ssh_vendor
@@ -69,6 +76,12 @@ def _get_ssh_vendor():
         return _ssh_vendor
 
     _ssh_vendor = 'none'
+
+    if 'BZR_SSH' in os.environ:
+        _ssh_vendor = os.environ['BZR_SSH']
+        if _ssh_vendor == 'paramiko':
+            _ssh_vendor = 'none'
+        return _ssh_vendor
 
     try:
         p = subprocess.Popen(['ssh', '-V'],
@@ -243,12 +256,11 @@ class SFTPLock(object):
             # What specific errors should we catch here?
             pass
 
-
 class SFTPTransport (Transport):
     """
     Transport implementation for SFTP access.
     """
-    _do_prefetch = False # Right now Paramiko's prefetch support causes things to hang
+    _do_prefetch = _default_do_prefetch
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
@@ -353,7 +365,7 @@ class SFTPTransport (Transport):
         try:
             path = self._remote_path(relpath)
             f = self._sftp.file(path, mode='rb')
-            if self._do_prefetch and hasattr(f, 'prefetch'):
+            if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
                 f.prefetch()
             return f
         except (IOError, paramiko.SSHException), e:
@@ -933,11 +945,16 @@ class SFTPServer(Server):
         _ssh_vendor = self._original_vendor
 
 
+class SFTPFullAbsoluteServer(SFTPServer):
+    """A test server for sftp transports, using absolute urls and ssh."""
+
+    def get_url(self):
+        """See bzrlib.transport.Server.get_url."""
+        return self._get_sftp_url(urlescape(self._homedir[1:]))
+
+
 class SFTPServerWithoutSSH(SFTPServer):
-    """
-    Common code for an SFTP server over a clear TCP loopback socket,
-    instead of over an SSH secured socket.
-    """
+    """An SFTP server that uses a simple TCP socket pair rather than SSH."""
 
     def __init__(self):
         super(SFTPServerWithoutSSH, self).__init__()

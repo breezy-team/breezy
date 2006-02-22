@@ -16,29 +16,18 @@
 
 import os
 
-
-from bzrlib.tests import TestCaseInTempDir
-from bzrlib.transport.http import HttpServer
-from bzrlib.osutils import relpath
+import bzrlib
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestCaseWithWebserver(TestCaseInTempDir):
-    """Derived class that starts a localhost-only webserver.
-    (in addition to what TestCaseInTempDir does).
+class TestCaseWithWebserver(TestCaseWithTransport):
+    """A support class that provides readonly urls that are http://.
 
-    This is useful for testing things with a web server.
+    This is done by forcing the readonly server to be an http one. This 
+    will current fail if the primary transport is not backed by regular disk
+    files.
     """
-
-    def get_remote_url(self, path):
-
-        if os.path.isabs(path):
-            remote_path = relpath(self.test_dir, path)
-        else:
-            remote_path = path
-        return self.server.get_url() + remote_path
 
     def setUp(self):
         super(TestCaseWithWebserver, self).setUp()
-        self.server = HttpServer()
-        self.server.setUp()
-        self.addCleanup(self.server.tearDown)
+        self.transport_readonly_server = bzrlib.transport.http.HttpServer

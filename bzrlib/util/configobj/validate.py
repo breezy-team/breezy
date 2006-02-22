@@ -6,7 +6,7 @@
 #         nico AT tekNico DOT net
 
 # This software is licensed under the terms of the BSD license.
-# http://www.voidspace.org.uk/documents/BSD-LICENSE.txt
+# http://www.voidspace.org.uk/python/license.shtml
 # Basically you're free to copy, modify, distribute and relicense it,
 # So long as you keep a copy of the license with it.
 
@@ -112,11 +112,21 @@
                 You specify this check with : ::
     
                   option('option 1', 'option 2', 'option 3')
+    
+    You can supply a default value (returned if no value is supplied)
+    using the default keyword argument.
+    
+    You specify a list argument for default using a list constructor syntax in
+    the check : ::
+    
+        checkname(arg1, arg2, default=list('val 1', 'val 2', 'val 3'))
+    
+    A badly formatted set of arguments will raise a ``VdtParamError``.
 """
 
 __docformat__ = "restructuredtext en"
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 __revision__ = '$Id: validate.py 123 2005-09-08 08:54:28Z fuzzyman $'
 
@@ -158,6 +168,84 @@ if INTP_VER < (2, 2):
 
 import re
 StringTypes = (str, unicode)
+
+
+_list_arg = re.compile(r'''
+    (?:
+        ([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*list\(
+            (
+                (?:
+                    \s*
+                    (?:
+                        (?:".*?")|              # double quotes
+                        (?:'.*?')|              # single quotes
+                        (?:[^'",\s\)][^,\)]*?)  # unquoted
+                    )
+                    \s*,\s*
+                )*
+                (?:
+                    (?:".*?")|              # double quotes
+                    (?:'.*?')|              # single quotes
+                    (?:[^'",\s\)][^,\)]*?)  # unquoted
+                )?                          # last one
+            )
+        \)
+    )
+''', re.VERBOSE)    # two groups
+
+_list_members = re.compile(r'''
+    (
+        (?:".*?")|              # double quotes
+        (?:'.*?')|              # single quotes
+        (?:[^'",\s=][^,=]*?)       # unquoted
+    )
+    (?:
+    (?:\s*,\s*)|(?:\s*$)            # comma
+    )
+''', re.VERBOSE)    # one group
+
+_paramstring = r'''
+    (?:
+        (
+            (?:
+                [a-zA-Z_][a-zA-Z0-9_]*\s*=\s*list\(
+                    (?:
+                        \s*
+                        (?:
+                            (?:".*?")|              # double quotes
+                            (?:'.*?')|              # single quotes
+                            (?:[^'",\s\)][^,\)]*?)       # unquoted
+                        )
+                        \s*,\s*
+                    )*
+                    (?:
+                        (?:".*?")|              # double quotes
+                        (?:'.*?')|              # single quotes
+                        (?:[^'",\s\)][^,\)]*?)       # unquoted
+                    )?                              # last one
+                \)
+            )|
+            (?:
+                (?:".*?")|              # double quotes
+                (?:'.*?')|              # single quotes
+                (?:[^'",\s=][^,=]*?)|       # unquoted
+                (?:                         # keyword argument
+                    [a-zA-Z_][a-zA-Z0-9_]*\s*=\s*
+                    (?:
+                        (?:".*?")|              # double quotes
+                        (?:'.*?')|              # single quotes
+                        (?:[^'",\s=][^,=]*?)       # unquoted
+                    )
+                )
+            )
+        )
+        (?:
+            (?:\s*,\s*)|(?:\s*$)            # comma
+        )
+    )
+    '''
+
+_matchstring = '^%s*' % _paramstring
 
 # Python pre 2.2.1 doesn't have bool
 try:
@@ -433,12 +521,24 @@ class Validator(object):
         http://www.voidspace.org.uk/python/configobj.html
     """
 
-    # this regex pulls values out of a comma separated line
-    _paramfinder = re.compile(r'''(?:'.*?')|(?:".*?")|(?:[^'",\s][^,]*)''')
-    # this regex is used for finding keyword arguments
-    _key_arg = re.compile(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$')
     # this regex does the initial parsing of the checks
     _func_re = re.compile(r'(.+?)\((.*)\)')
+
+    # this regex takes apart keyword arguments
+    _key_arg = re.compile(r'^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$')
+
+
+    # this regex finds keyword=list(....) type values
+    _list_arg = _list_arg
+
+    # this regex takes individual values out of lists - in one pass
+    _list_members = _list_members
+
+    # These regexes check a set of arguments for validity
+    # and then pull the members out
+    _paramfinder = re.compile(_paramstring, re.VERBOSE)
+    _matchfinder = re.compile(_matchstring, re.VERBOSE)
+
 
     def __init__(self, functions=None):
         """
@@ -487,23 +587,29 @@ class Validator(object):
         fun_match = self._func_re.match(check)
         if fun_match:
             fun_name = fun_match.group(1)
+            arg_string = fun_match.group(2)
+            arg_match = self._matchfinder.match(arg_string)
+            if arg_match is None:
+                # Bad syntax
+                raise VdtParamError
             fun_args = []
             fun_kwargs = {}
             # pull out args of group 2
-            for arg in self._paramfinder.findall(fun_match.group(2)):
+            for arg in self._paramfinder.findall(arg_string):
                 # args may need whitespace removing (before removing quotes)
                 arg = arg.strip()
+                listmatch = self._list_arg.match(arg)
+                if listmatch:
+                    key, val = self._list_handle(listmatch)
+                    fun_kwargs[key] = val
+                    continue
                 keymatch = self._key_arg.match(arg)
                 if keymatch:
-                    val = keymatch.group(2)
-                    if (val[0] in ("'", '"')) and (val[0] == val[-1]):
-                        val = val[1:-1]
+                    val = self._unquote(keymatch.group(2))
                     fun_kwargs[keymatch.group(1)] = val
                     continue
                 #
-                if (arg[0] in ("'", '"')) and (arg[0] == arg[-1]):
-                    arg = arg[1:-1]
-                fun_args.append(arg)
+                fun_args.append(self._unquote(arg))
         else:
             # allows for function names without (args)
             (fun_name, fun_args, fun_kwargs) = (check, (), {})
@@ -524,9 +630,28 @@ class Validator(object):
         except KeyError:
             pass
         try:
-            return self.functions[fun_name](value, *fun_args, **fun_kwargs)
+            fun = self.functions[fun_name]
         except KeyError:
             raise VdtUnknownCheckError(fun_name)
+        else:
+##            print fun_args
+##            print fun_kwargs
+            return fun(value, *fun_args, **fun_kwargs)
+
+    def _unquote(self, val):
+        """Unquote a value if necessary."""
+        if (len(val) > 2) and (val[0] in ("'", '"')) and (val[0] == val[-1]):
+            val = val[1:-1]
+        return val
+
+    def _list_handle(self, listmatch):
+        """Take apart a ``keyword=list('val, 'val')`` type string."""
+        out = []
+        name = listmatch.group(1)
+        args = listmatch.group(2)
+        for arg in self._list_members.findall(args):
+            out.append(self._unquote(arg))
+        return name, out
 
     def _pass(self, value):
         """
@@ -1059,6 +1184,47 @@ def is_option(value, *options):
         raise VdtValueError(value)
     return value
 
+def _test(value, *args, **keywargs):
+    """
+    A function that exists for test purposes.
+    
+    >>> checks = [
+    ...     '3, 6, min=1, max=3, test=list(a, b, c)',
+    ...     '3',
+    ...     '3, 6',
+    ...     '3,',
+    ...     'min=1, test="a b c"',
+    ...     'min=5, test="a, b, c"',
+    ...     'min=1, max=3, test="a, b, c"',
+    ...     'min=-100, test=-99',
+    ...     'min=1, max=3',
+    ...     '3, 6, test="36"',
+    ...     '3, 6, test="a, b, c"',
+    ...     '3, max=3, test=list("a", "b", "c")',
+    ...     '''3, max=3, test=list("'a'", 'b', "x=(c)")''',
+    ...     "test='x=fish(3)'",
+    ...    ]
+    >>> v = Validator({'test': _test})
+    >>> for entry in checks:
+    ...     print v.check(('test(%s)' % entry), 3)
+    (3, ('3', '6'), {'test': ['a', 'b', 'c'], 'max': '3', 'min': '1'})
+    (3, ('3',), {})
+    (3, ('3', '6'), {})
+    (3, ('3',), {})
+    (3, (), {'test': 'a b c', 'min': '1'})
+    (3, (), {'test': 'a, b, c', 'min': '5'})
+    (3, (), {'test': 'a, b, c', 'max': '3', 'min': '1'})
+    (3, (), {'test': '-99', 'min': '-100'})
+    (3, (), {'max': '3', 'min': '1'})
+    (3, ('3', '6'), {'test': '36'})
+    (3, ('3', '6'), {'test': 'a, b, c'})
+    (3, ('3',), {'test': ['a', 'b', 'c'], 'max': '3'})
+    (3, ('3',), {'test': ["'a'", 'b', 'x=(c)'], 'max': '3'})
+    (3, (), {'test': 'x=fish(3)'})
+    """
+    return (value, args, keywargs)
+
+
 if __name__ == '__main__':
     # run the code tests in doctest format
     import doctest
@@ -1081,14 +1247,30 @@ if __name__ == '__main__':
     ISSUES
     ======
     
-    Lists passed as function arguments need additional quotes. Ugly, could do
-    with fixing this.
-    
     If we could pull tuples out of arguments, it would be easier
     to specify arguments for 'mixed_lists'.
     
     CHANGELOG
     =========
+    
+    2005/12/16
+    ----------
+    
+    Fixed bug so we can handle keyword argument values with commas.
+    
+    We now use a list constructor for passing list values to keyword arguments
+    (including ``default``) : ::
+    
+        default=list("val", "val", "val")
+    
+    Added the ``_test`` test. {sm;:-)}
+    
+    0.2.1
+    
+    2005/12/12
+    ----------
+    
+    Moved a function call outside a try...except block.
     
     2005/08/25
     ----------
