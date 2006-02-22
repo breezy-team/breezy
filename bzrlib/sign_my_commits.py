@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,7 +61,8 @@ class cmd_sign_my_commits(Command):
             raise errors.BzrCommandError('cannot sign revisions on non-listable transports')
 
         count = 0
-        for rev_id in repo.revision_store:
+        # return in partial topological order for the sake of reproducibility
+        for rev_id in repo.all_revision_ids():
             if repo.revision_store.has_id(rev_id, suffix='sig'):
                 continue
             
