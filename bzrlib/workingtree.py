@@ -840,6 +840,7 @@ class WorkingTree(bzrlib.tree.Tree):
         source.lock_read()
         try:
             old_revision_history = self.branch.revision_history()
+            basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision)
             new_revision_history = self.branch.revision_history()
             if new_revision_history != old_revision_history:
@@ -849,8 +850,8 @@ class WorkingTree(bzrlib.tree.Tree):
                     other_revision = None
                 repository = self.branch.repository
                 merge_inner(self.branch,
-                            self.basis_tree(), 
-                            repository.revision_tree(other_revision),
+                            self.branch.basis_tree(),
+                            basis_tree, 
                             this_tree=self, 
                             pb=bzrlib.ui.ui_factory.progress_bar())
                 self.set_last_revision(self.branch.last_revision())

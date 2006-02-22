@@ -68,6 +68,7 @@ def test_suite():
     result = TestSuite()
     test_workingtree_implementations = [
         'bzrlib.tests.workingtree_implementations.test_is_control_filename',
+        'bzrlib.tests.workingtree_implementations.test_pull',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]
     adapter = WorkingTreeTestProviderAdapter(
