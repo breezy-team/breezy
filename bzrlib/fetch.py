@@ -83,7 +83,7 @@ class RepoFetcher(object):
         # result variables.
         self.failed_revisions = []
         self.count_copied = 0
-        if to_repository.bzrdir.transport.base == from_repository.bzrdir.transport.base:
+        if to_repository.control_files._transport.base == from_repository.control_files._transport.base:
             # check that last_revision is in 'from' and then return a no-operation.
             if last_revision not in (None, NULL_REVISION):
                 from_repository.get_revision(last_revision)
