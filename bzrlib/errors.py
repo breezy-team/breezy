@@ -1,4 +1,4 @@
-# (C) 2005 Canonical
+# Copyright (C) 2005, 2006 Canonical
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -105,6 +105,7 @@ class BzrNewError(BzrError):
 
 class BzrCheckError(BzrNewError):
     """Internal check failed: %(message)s"""
+
     def __init__(self, message):
         BzrNewError.__init__(self)
         self.message = message
@@ -138,6 +139,14 @@ class NoWorkingTree(BzrNewError):
     def __init__(self, base):
         BzrNewError.__init__(self)
         self.base = base
+
+
+class NotLocalUrl(BzrNewError):
+    """%s(url) is not a local path."""
+    
+    def __init__(self, url):
+        BzrNewError.__init__(self)
+        self.url = url
 
 
 class BzrCommandError(BzrError):
@@ -180,6 +189,10 @@ class FileExists(PathError):
     """File exists: %(path)r%(extra)s"""
 
 
+class DirectoryNotEmpty(PathError):
+    """Directory not empty: %(path)r%(extra)s"""
+
+
 class PermissionDenied(PathError):
     """Permission denied: %(path)r%(extra)s"""
 
@@ -203,8 +216,16 @@ class NotBranchError(BzrNewError):
         self.path = path
 
 
+class NoRepositoryPresent(BzrNewError):
+    """Not repository present: %(path)r"""
+    def __init__(self, bzrdir):
+        BzrNewError.__init__(self)
+        self.path = bzrdir.transport.clone('..').base
+
+
 class FileInWrongBranch(BzrNewError):
     """File %(path)s in not in branch %(branch_base)s."""
+
     def __init__(self, branch, path):
         BzrNewError.__init__(self)
         self.branch = branch
@@ -224,6 +245,15 @@ class UnknownFormatError(BzrError):
         return 'unknown branch format: %s' % self.args[0]
 
 
+class IncompatibleFormat(BzrNewError):
+    """Format %(format)s is not compatible with .bzr version %(bzrdir)s."""
+
+    def __init__(self, format, bzrdir_format):
+        BzrNewError.__init__(self)
+        self.format = format
+        self.bzrdir = bzrdir_format
+
+
 class NotVersionedError(BzrNewError):
     """%(path)s is not versioned"""
     def __init__(self, path):
@@ -241,23 +271,85 @@ class ForbiddenFileError(BzrError):
     """Cannot operate on a file because it is a control file."""
 
 
-class LockError(Exception):
-    """Lock error"""
+class LockError(BzrNewError):
+    """Lock error: %(message)s"""
     # All exceptions from the lock/unlock functions should be from
     # this exception class.  They will be translated as necessary. The
     # original exception is available as e.original_error
+    #
+    # New code should prefer to raise specific subclasses
+    def __init__(self, message):
+        self.message = message
 
 
 class CommitNotPossible(LockError):
     """A commit was attempted but we do not have a write lock open."""
+    def __init__(self):
+        pass
 
 
 class AlreadyCommitted(LockError):
     """A rollback was requested, but is not able to be accomplished."""
+    def __init__(self):
+        pass
 
 
 class ReadOnlyError(LockError):
-    """A write attempt was made in a read only transaction."""
+    """A write attempt was made in a read only transaction on %(obj)s"""
+    def __init__(self, obj):
+        self.obj = obj
+
+
+class BranchNotLocked(LockError):
+    """Branch %(branch)r is not locked"""
+    def __init__(self, branch):
+        # XXX: sometimes called with a LockableFiles instance not a Branch
+        self.branch = branch
+
+
+class ReadOnlyObjectDirtiedError(ReadOnlyError):
+    """Cannot change object %(obj)r in read only transaction"""
+    def __init__(self, obj):
+        self.obj = obj
+
+
+class UnlockableTransport(LockError):
+    """Cannot lock: transport is read only: %(transport)s"""
+    def __init__(self, transport):
+        self.transport = transport
+
+
+class LockContention(LockError):
+    """Could not acquire lock %(lock)s"""
+    # TODO: show full url for lock, combining the transport and relative bits?
+    def __init__(self, lock):
+        self.lock = lock
+
+
+class LockBroken(LockError):
+    """Lock was broken while still open: %(lock)s - check storage consistency!"""
+    def __init__(self, lock):
+        self.lock = lock
+
+
+class LockBreakMismatch(LockError):
+    """Lock was released and re-acquired before being broken: %(lock)s: held by %(holder)r, wanted to break %(target)r"""
+    def __init__(self, lock, holder, target):
+        self.lock = lock
+        self.holder = holder
+        self.target = target
+
+
+class LockNotHeld(LockError):
+    """Lock not held: %(lock)s"""
+    def __init__(self, lock):
+        self.lock = lock
+
+
+class BranchNotLocked(LockError):
+    """Branch %(branch)r not locked"""
+    def __init__(self, branch):
+        self.branch = branch
 
 
 class PointlessCommit(BzrNewError):
@@ -268,9 +360,16 @@ class UpgradeReadonly(BzrNewError):
     """Upgrade URL cannot work with readonly URL's."""
 
 
+class UpToDateFormat(BzrNewError):
+    """The branch format %(format)s is already at the most recent format."""
+
+    def __init__(self, format):
+        BzrNewError.__init__(self)
+        self.format = format
+
+
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
-
 
 class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):
@@ -394,6 +493,26 @@ class WeaveInvalidChecksum(WeaveError):
     """Text did not match it's checksum: %(message)s"""
 
 
+class WeaveTextDiffers(WeaveError):
+    """Weaves differ on text content. Revision: {%(revision_id)s}, %(weave_a)s, %(weave_b)s"""
+
+    def __init__(self, revision_id, weave_a, weave_b):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave_a = weave_a
+        self.weave_b = weave_b
+
+
+class WeaveTextDiffers(WeaveError):
+    """Weaves differ on text content. Revision: {%(revision_id)s}, %(weave_a)s, %(weave_b)s"""
+
+    def __init__(self, revision_id, weave_a, weave_b):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave_a = weave_a
+        self.weave_b = weave_b
+
+
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""
     def __init__(self, format):
@@ -499,6 +618,12 @@ class MissingText(BzrNewError):
         self.text_revision = text_revision
         self.file_id = file_id
 
+class DuplicateKey(BzrNewError):
+    """Key %(key)s is already present in map"""
+
+class MalformedTransform(BzrNewError):
+    """Tree transform is malformed %(conflicts)r"""
+
 
 class BzrBadParameter(BzrNewError):
     """A bad parameter : %(param)s is not usable.
@@ -515,8 +640,20 @@ class BzrBadParameterNotUnicode(BzrBadParameter):
     """Parameter %(param)s is neither unicode nor utf8."""
 
 
+class ReusingTransform(BzrNewError):
+    """Attempt to reuse a transform that has already been applied."""
+
+
+class CantMoveRoot(BzrNewError):
+    """Moving the root directory is not supported at this time"""
+
+
 class BzrBadParameterNotString(BzrBadParameter):
     """Parameter %(param)s is not a string or unicode string."""
+
+
+class BzrBadParameterMissing(BzrBadParameter):
+    """Parameter $(param)s is required but not present."""
 
 
 class DependencyNotPresent(BzrNewError):
@@ -539,3 +676,35 @@ class UninitializableFormat(BzrNewError):
     def __init__(self, format):
         BzrNewError.__init__(self)
         self.format = format
+
+
+class NoDiff3(BzrNewError):
+    """Diff3 is not installed on this machine."""
+
+
+class ExistingLimbo(BzrNewError):
+    """This tree contains left-over files from a failed operation.
+    Please examine %(limbo_dir)s to see if it contains any files you wish to
+    keep, and delete it when you are done.
+    """
+    def __init__(self, limbo_dir):
+       BzrNewError.__init__(self)
+       self.limbo_dir = limbo_dir
+
+
+class ImmortalLimbo(BzrNewError):
+    """Unable to delete transform temporary directory $(limbo_dir)s.
+    Please examine %(limbo_dir)s to see if it contains any files you wish to
+    keep, and delete it when you are done.
+    """
+    def __init__(self, limbo_dir):
+       BzrNewError.__init__(self)
+       self.limbo_dir = limbo_dir
+
+
+class OutOfDateTree(BzrNewError):
+    """Working tree is out of date, please run 'bzr update'."""
+
+    def __init__(self, tree):
+        BzrNewError.__init__(self)
+        self.tree = tree
