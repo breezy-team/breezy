@@ -22,6 +22,7 @@ rio itself works in Unicode strings.  It is typically encoded to UTF-8,
 but this depends on the transport.
 """
 
+import cStringIO
 import os
 import sys
 from tempfile import TemporaryFile
@@ -296,3 +297,16 @@ s: both\\\"
         """TypeError on adding invalid type to Stanza"""
         s = Stanza()
         self.assertRaises(TypeError, s.add, 10, {})
+
+    def test_rio_unicode(self):
+        # intentionally use cStringIO which doesn't accomodate unencoded unicode objects
+        sio = cStringIO.StringIO()
+        uni_data = u'\N{KATAKANA LETTER O}'
+        s = Stanza(foo=uni_data)
+        self.assertEquals(s.get('foo'), uni_data)
+        raw_lines = s.to_lines()
+        self.assertEquals(raw_lines,
+                ['foo: ' + uni_data.encode('utf-8') + '\n'])
+        new_s = read_stanza(raw_lines)
+        self.assertEquals(new_s.get('foo'), uni_data)
+
