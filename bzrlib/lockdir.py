@@ -14,12 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""lock file protecting a resource
+"""On-disk mutex protecting a resource
 
-bzr objects are locked by the existence of a file with a particular name
-within the control directory.  We use this rather than OS internal locks
-(such as flock etc) because they can be seen across all transports,
-including http.
+bzr objects are locked by the existence of a directory with a particular name
+within the control directory.  We use this rather than OS internal locks (such
+as flock etc) because they can be seen across all transports, including http.
 
 Objects can be read if there is only physical read access; therefore 
 readers can never be required to create a lock, though they will
