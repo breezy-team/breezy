@@ -194,6 +194,8 @@ class LockDir(object):
         raise LockContention(self)
 
     def unlock(self):
+        """Release a held lock
+        """
         if not self._lock_held:
             raise LockNotHeld(self)
         # rename before deleting, because we can't atomically remove the whole
