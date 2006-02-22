@@ -991,3 +991,81 @@ class Corruption(TestCase):
         self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
 
+class InstrumentedWeave(Weave):
+    """Keep track of how many times functions are called."""
+    
+    def __init__(self, weave_name=None):
+        self._extract_count = 0
+        Weave.__init__(self, weave_name=weave_name)
+
+    def _extract(self, versions):
+        self._extract_count += 1
+        return Weave._extract(self, versions)
+
+
+class JoinOptimization(TestCase):
+    """Test that Weave.join() doesn't extract all texts, only what must be done."""
+
+    def test_join(self):
+        w1 = InstrumentedWeave()
+        w2 = InstrumentedWeave()
+
+        txt0 = ['a\n']
+        txt1 = ['a\n', 'b\n']
+        txt2 = ['a\n', 'c\n']
+        txt3 = ['a\n', 'b\n', 'c\n']
+
+        w1.add('txt0', [], txt0) # extract 1a
+        w2.add('txt0', [], txt0) # extract 1b
+        w1.add('txt1', [0], txt1)# extract 2a
+        w2.add('txt2', [0], txt2)# extract 2b
+        w1.join(w2) # extract 3a to add txt2 
+        w2.join(w1) # extract 3b to add txt1 
+
+        w1.add('txt3', [1, 2], txt3) # extract 4a 
+        w2.add('txt3', [1, 2], txt3) # extract 4b
+        # These secretly have inverted parents
+
+        # This should not have to do any extractions
+        w1.join(w2) # NO extract, texts already present with same parents
+        w2.join(w1) # NO extract, texts already present with same parents
+
+        self.assertEqual(4, w1._extract_count)
+        self.assertEqual(4, w2._extract_count)
+
+    def test_double_parent(self):
+        # It should not be considered illegal to add
+        # a revision with the same parent twice
+        w1 = InstrumentedWeave()
+        w2 = InstrumentedWeave()
+
+        txt0 = ['a\n']
+        txt1 = ['a\n', 'b\n']
+        txt2 = ['a\n', 'c\n']
+        txt3 = ['a\n', 'b\n', 'c\n']
+
+        w1.add('txt0', [], txt0)
+        w2.add('txt0', [], txt0)
+        w1.add('txt1', [0], txt1)
+        w2.add('txt1', [0,0], txt1)
+        # Same text, effectively the same, because the
+        # parent is only repeated
+        w1.join(w2) # extract 3a to add txt2 
+        w2.join(w1) # extract 3b to add txt1 
+
+
+class MismatchedTexts(TestCase):
+    """Test that merging two weaves with different texts fails."""
+
+    def test_reweave(self):
+        w1 = Weave('a')
+        w2 = Weave('b')
+
+        w1.add('txt0', [], ['a\n'])
+        w2.add('txt0', [], ['a\n'])
+        w1.add('txt1', [0], ['a\n', 'b\n'])
+        w2.add('txt1', [0], ['a\n', 'c\n'])
+
+        self.assertRaises(errors.WeaveTextDiffers, w1.reweave, w2)
+
+

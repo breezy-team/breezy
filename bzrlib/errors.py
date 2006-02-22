@@ -105,6 +105,7 @@ class BzrNewError(BzrError):
 
 class BzrCheckError(BzrNewError):
     """Internal check failed: %(message)s"""
+
     def __init__(self, message):
         BzrNewError.__init__(self)
         self.message = message
@@ -138,6 +139,14 @@ class NoWorkingTree(BzrNewError):
     def __init__(self, base):
         BzrNewError.__init__(self)
         self.base = base
+
+
+class NotLocalUrl(BzrNewError):
+    """%s(url) is not a local path."""
+    
+    def __init__(self, url):
+        BzrNewError.__init__(self)
+        self.url = url
 
 
 class BzrCommandError(BzrError):
@@ -203,8 +212,16 @@ class NotBranchError(BzrNewError):
         self.path = path
 
 
+class NoRepositoryPresent(BzrNewError):
+    """Not repository present: %(path)r"""
+    def __init__(self, bzrdir):
+        BzrNewError.__init__(self)
+        self.path = bzrdir.transport.clone('..').base
+
+
 class FileInWrongBranch(BzrNewError):
     """File %(path)s in not in branch %(branch_base)s."""
+
     def __init__(self, branch, path):
         BzrNewError.__init__(self)
         self.branch = branch
@@ -222,6 +239,15 @@ class UnknownFormatError(BzrError):
     """Specified path is a bzr branch whose format we do not recognize."""
     def __str__(self):
         return 'unknown branch format: %s' % self.args[0]
+
+
+class IncompatibleFormat(BzrNewError):
+    """Format %(format)s is not compatible with .bzr version %(bzrdir)s."""
+
+    def __init__(self, format, bzrdir_format):
+        BzrNewError.__init__(self)
+        self.format = format
+        self.bzrdir = bzrdir_format
 
 
 class NotVersionedError(BzrNewError):
@@ -268,9 +294,16 @@ class UpgradeReadonly(BzrNewError):
     """Upgrade URL cannot work with readonly URL's."""
 
 
+class UpToDateFormat(BzrNewError):
+    """The branch format %(format)s is already at the most recent format."""
+
+    def __init__(self, format):
+        BzrNewError.__init__(self)
+        self.format = format
+
+
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
-
 
 class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):
@@ -301,17 +334,20 @@ class UnrelatedBranches(BzrCommandError):
             " specified."
         BzrCommandError.__init__(self, msg)
 
+
 class NoCommonAncestor(BzrError):
     def __init__(self, revision_a, revision_b):
         msg = "Revisions have no common ancestor: %s %s." \
             % (revision_a, revision_b) 
         BzrError.__init__(self, msg)
 
+
 class NoCommonRoot(BzrError):
     def __init__(self, revision_a, revision_b):
         msg = "Revisions are not derived from the same root: %s %s." \
             % (revision_a, revision_b) 
         BzrError.__init__(self, msg)
+
 
 class NotAncestor(BzrError):
     def __init__(self, rev_id, not_ancestor_id):
@@ -336,14 +372,17 @@ class AmbiguousBase(BzrError):
         BzrError.__init__(self, msg)
         self.bases = bases
 
+
 class NoCommits(BzrError):
     def __init__(self, branch):
         msg = "Branch %s has no commits." % branch
         BzrError.__init__(self, msg)
 
+
 class UnlistableStore(BzrError):
     def __init__(self, store):
         BzrError.__init__(self, "Store %s is not listable" % store)
+
 
 class UnlistableBranch(BzrError):
     def __init__(self, br):
@@ -388,6 +427,26 @@ class WeaveInvalidChecksum(WeaveError):
     """Text did not match it's checksum: %(message)s"""
 
 
+class WeaveTextDiffers(WeaveError):
+    """Weaves differ on text content. Revision: {%(revision_id)s}, %(weave_a)s, %(weave_b)s"""
+
+    def __init__(self, revision_id, weave_a, weave_b):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave_a = weave_a
+        self.weave_b = weave_b
+
+
+class WeaveTextDiffers(WeaveError):
+    """Weaves differ on text content. Revision: {%(revision_id)s}, %(weave_a)s, %(weave_b)s"""
+
+    def __init__(self, revision_id, weave_a, weave_b):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave_a = weave_a
+        self.weave_b = weave_b
+
+
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""
     def __init__(self, format):
@@ -405,6 +464,7 @@ class TransportError(BzrError):
         BzrError.__init__(self, msg)
         self.msg = msg
         self.orig_error = orig_error
+
 
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
@@ -427,9 +487,11 @@ class ConnectionReset(TransportError):
     """The connection has been closed."""
     pass
 
+
 class ConflictsInTree(BzrError):
     def __init__(self):
         BzrError.__init__(self, "Working tree has conflicts.")
+
 
 class ParseConfigError(BzrError):
     def __init__(self, errors, filename):
@@ -439,10 +501,12 @@ class ParseConfigError(BzrError):
             (filename, ('\n'.join(e.message for e in errors)))
         BzrError.__init__(self, message)
 
+
 class SigningFailed(BzrError):
     def __init__(self, command_line):
         BzrError.__init__(self, "Failed to gpg sign data with command '%s'"
                                % command_line)
+
 
 class WorkingTreeNotRevision(BzrError):
     def __init__(self, tree):
@@ -450,9 +514,11 @@ class WorkingTreeNotRevision(BzrError):
                           " last commit, but weave merge requires that it be"
                           " unchanged." % tree.basedir)
 
+
 class CantReprocessAndShowBase(BzrNewError):
     """Can't reprocess and show base.
 Reprocessing obscures relationship of conflicting lines to base."""
+
 
 class GraphCycleError(BzrNewError):
     """Cycle in graph %(graph)r"""
@@ -486,6 +552,12 @@ class MissingText(BzrNewError):
         self.text_revision = text_revision
         self.file_id = file_id
 
+class DuplicateKey(BzrNewError):
+    """Key %(key)s is already present in map"""
+
+class MalformedTransform(BzrNewError):
+    """Tree transform is malformed %(conflicts)r"""
+
 
 class BzrBadParameter(BzrNewError):
     """A bad parameter : %(param)s is not usable.
@@ -502,8 +574,20 @@ class BzrBadParameterNotUnicode(BzrBadParameter):
     """Parameter %(param)s is neither unicode nor utf8."""
 
 
+class ReusingTransform(BzrNewError):
+    """Attempt to reuse a transform that has already been applied."""
+
+
+class CantMoveRoot(BzrNewError):
+    """Moving the root directory is not supported at this time"""
+
+
 class BzrBadParameterNotString(BzrBadParameter):
     """Parameter %(param)s is not a string or unicode string."""
+
+
+class BzrBadParameterMissing(BzrBadParameter):
+    """Parameter $(param)s is required but not present."""
 
 
 class DependencyNotPresent(BzrNewError):
@@ -526,3 +610,35 @@ class UninitializableFormat(BzrNewError):
     def __init__(self, format):
         BzrNewError.__init__(self)
         self.format = format
+
+
+class NoDiff3(BzrNewError):
+    """Diff3 is not installed on this machine."""
+
+
+class ExistingLimbo(BzrNewError):
+    """This tree contains left-over files from a failed operation.
+    Please examine %(limbo_dir)s to see if it contains any files you wish to
+    keep, and delete it when you are done.
+    """
+    def __init__(self, limbo_dir):
+       BzrNewError.__init__(self)
+       self.limbo_dir = limbo_dir
+
+
+class ImmortalLimbo(BzrNewError):
+    """Unable to delete transform temporary directory $(limbo_dir)s.
+    Please examine %(limbo_dir)s to see if it contains any files you wish to
+    keep, and delete it when you are done.
+    """
+    def __init__(self, limbo_dir):
+       BzrNewError.__init__(self)
+       self.limbo_dir = limbo_dir
+
+
+class OutOfDateTree(BzrNewError):
+    """Working tree is out of date, please run 'bzr update'."""
+
+    def __init__(self, tree):
+        BzrNewError.__init__(self)
+        self.tree = tree

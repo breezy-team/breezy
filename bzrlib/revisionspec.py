@@ -339,13 +339,12 @@ class RevisionSpec_branch(RevisionSpec):
 
     def _match_on(self, branch, revs):
         from branch import Branch
-        from fetch import greedy_fetch
         other_branch = Branch.open_containing(self.spec)[0]
         revision_b = other_branch.last_revision()
         if revision_b is None:
             raise NoCommits(other_branch)
         # pull in the remote revisions so we can diff
-        greedy_fetch(branch, other_branch, revision=revision_b)
+        branch.fetch(other_branch, revision_b)
         try:
             revno = branch.revision_id_to_revno(revision_b)
         except NoSuchRevision:

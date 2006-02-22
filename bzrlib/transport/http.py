@@ -22,12 +22,14 @@ import urllib, urllib2
 import urlparse
 from warnings import warn
 
+import bzrlib
 from bzrlib.transport import Transport, Server
 from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
                            TransportError, ConnectionError)
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
+from bzrlib.ui import ui_factory
 
 
 def extract_auth(url, password_manager):
@@ -36,40 +38,56 @@ def extract_auth(url, password_manager):
     password manager.  Return the url, minus those auth parameters (which
     confuse urllib2).
     """
-    assert url.startswith('http://') or url.startswith('https://')
-    scheme, host = url.split('//', 1)
-    if '/' in host:
-        host, path = host.split('/', 1)
-        path = '/' + path
-    else:
-        path = ''
-    port = ''
-    if '@' in host:
-        auth, host = host.split('@', 1)
+    scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
+    assert (scheme == 'http') or (scheme == 'https')
+    
+    if '@' in netloc:
+        auth, netloc = netloc.split('@', 1)
         if ':' in auth:
             username, password = auth.split(':', 1)
         else:
             username, password = auth, None
-        if ':' in host:
-            host, port = host.split(':', 1)
-            port = ':' + port
-        # FIXME: if password isn't given, should we ask for it?
+        if ':' in netloc:
+            host = netloc.split(':', 1)[0]
+        else:
+            host = netloc
+        username = urllib.unquote(username)
         if password is not None:
-            username = urllib.unquote(username)
             password = urllib.unquote(password)
-            password_manager.add_password(None, host, username, password)
-    url = scheme + '//' + host + port + path
+        else:
+            password = ui_factory.get_password(prompt='HTTP %(user)@%(host) password',
+                                               user=username, host=host)
+        password_manager.add_password(None, host, username, password)
+    url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
     return url
-    
-def get_url(url):
+
+
+class Request(urllib2.Request):
+    """Request object for urllib2 that allows the method to be overridden."""
+
+    method = None
+
+    def get_method(self):
+        if self.method is not None:
+            return self.method
+        else:
+            return urllib2.Request.get_method(self)
+
+
+def get_url(url, method=None):
     import urllib2
-    mutter("get_url %s" % url)
+    mutter("get_url %s", url)
     manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
     url = extract_auth(url, manager)
     auth_handler = urllib2.HTTPBasicAuthHandler(manager)
     opener = urllib2.build_opener(auth_handler)
-    url_f = opener.open(url)
-    return url_f
+
+    request = Request(url)
+    request.method = method
+    request.add_header('User-Agent', 'bzr/%s' % bzrlib.__version__)
+    response = opener.open(request)
+    return response
+
 
 class HttpTransport(Transport):
     """This is the transport agent for http:// access.
@@ -146,9 +164,6 @@ class HttpTransport(Transport):
     def has(self, relpath):
         """Does the target location exist?
 
-        TODO: HttpTransport.has() should use a HEAD request,
-        not a full GET request.
-
         TODO: This should be changed so that we don't use
         urllib2 and get an exception, the code path would be
         cleaner if we just do an http HEAD request, and parse
@@ -157,7 +172,7 @@ class HttpTransport(Transport):
         path = relpath
         try:
             path = self.abspath(relpath)
-            f = get_url(path)
+            f = get_url(path, method='HEAD')
             # Without the read and then close()
             # we tend to have busy sockets.
             f.read()
@@ -301,10 +316,12 @@ class BadWebserverPath(ValueError):
 class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
-        self.server.test_case.log("webserver - %s - - [%s] %s",
+        self.server.test_case.log('webserver - %s - - [%s] %s "%s" "%s"',
                                   self.address_string(),
                                   self.log_date_time_string(),
-                                  format%args)
+                                  format % args,
+                                  self.headers.get('referer', '-'),
+                                  self.headers.get('user-agent', '-'))
 
     def handle_one_request(self):
         """Handle a single HTTP request.
@@ -340,6 +357,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         method = getattr(self, mname)
         method()
 
+
 class TestingHTTPServer(BaseHTTPServer.HTTPServer):
     def __init__(self, server_address, RequestHandlerClass, test_case):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
@@ -350,28 +368,12 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
 class HttpServer(Server):
     """A test server for http transports."""
 
-    _HTTP_PORTS = range(13000, 0x8000)
-
     def _http_start(self):
         httpd = None
-        for port in self._HTTP_PORTS:
-            try:
-                httpd = TestingHTTPServer(('localhost', port),
-                                          TestingHTTPRequestHandler,
-                                          self)
-            except socket.error, e:
-                if e.args[0] == errno.EADDRINUSE:
-                    continue
-                print >>sys.stderr, "Cannot run webserver :-("
-                raise
-            else:
-                break
-
-        if httpd is None:
-            raise WebserverNotAvailable("Cannot run webserver :-( "
-                                        "no free ports in range %s..%s" %
-                                        (_HTTP_PORTS[0], _HTTP_PORTS[-1]))
-
+        httpd = TestingHTTPServer(('localhost', 0),
+                                  TestingHTTPRequestHandler,
+                                  self)
+        host, port = httpd.socket.getsockname()
         self._http_base_url = 'http://localhost:%s/' % port
         self._http_starting.release()
         httpd.socket.settimeout(0.1)
@@ -396,9 +398,9 @@ class HttpServer(Server):
         self._http_starting.release()
         return self._http_base_url + remote_path
 
-    def log(self, *args, **kwargs):
+    def log(self, format, *args):
         """Capture Server log output."""
-        self.logs.append(args[3])
+        self.logs.append(format % args)
 
     def setUp(self):
         """See bzrlib.transport.Server.setUp."""

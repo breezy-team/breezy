@@ -42,7 +42,6 @@ from bzrlib.errors import (BzrError,
                            BzrOptionError,
                            NotBranchError)
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib import BZRDIR
 from bzrlib.option import Option
 
 plugin_cmds = {}
@@ -534,6 +533,9 @@ def run_bzr(argv):
     if not opt_no_plugins:
         from bzrlib.plugin import load_plugins
         load_plugins()
+    else:
+        from bzrlib.plugin import disable_plugins
+        disable_plugins()
 
     cmd = str(argv.pop(0))
 
