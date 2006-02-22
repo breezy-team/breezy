@@ -80,29 +80,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.unlock()
         self.assertEqual(None, tree.branch.peek_lock_mode())
  
-    def get_pullable_trees(self):
-        self.build_tree(['from/', 'from/file', 'to/'])
-        tree = self.make_branch_and_tree('from')
-        tree.add('file')
-        tree.commit('foo', rev_id='A')
-        tree_b = self.make_branch_and_tree('to')
-        return tree, tree_b
- 
-    def test_pull(self):
-        tree_a, tree_b = self.get_pullable_trees()
-        tree_b.pull(tree_a.branch)
-        self.failUnless(tree_b.branch.repository.has_revision('A'))
-        self.assertEqual('A', tree_b.last_revision())
-
-    def test_pull_overwrites(self):
-        tree_a, tree_b = self.get_pullable_trees()
-        tree_b.commit('foo', rev_id='B')
-        self.assertEqual(['B'], tree_b.branch.revision_history())
-        tree_b.pull(tree_a.branch, overwrite=True)
-        self.failUnless(tree_b.branch.repository.has_revision('A'))
-        self.failUnless(tree_b.branch.repository.has_revision('B'))
-        self.assertEqual('A', tree_b.last_revision())
-
     def test_revert(self):
         """Test selected-file revert"""
         tree = self.make_branch_and_tree('.')
