@@ -61,4 +61,7 @@ class UITests(TestCase):
         result = pb.note('t')
         self.assertEqual(None, result)
         self.assertEqual("t\n", stdout.getvalue())
-        self.assertEqual("\r                                                                               \r", stderr.getvalue())
+        # the exact contents will depend on the terminal width and we don't
+        # care about that right now - but you're probably running it on at
+        # least a 10-character wide terminal :)
+        self.assertContainsRe(r'^\r {10,}\r$', stderr.getvalue())
