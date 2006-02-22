@@ -604,7 +604,7 @@ class RepositoryFormat(object):
 
     def _get_revision_store(self, repo_transport, control_files):
         """Return the revision store object for this a_bzrdir."""
-        raise NotImplementedError(self._get_rev_store)
+        raise NotImplementedError(self._get_revision_store)
 
     def _get_rev_store(self,
                    transport,
@@ -934,6 +934,8 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
 
         :param shared: If true the repository will be initialized as a shared
                        repository.
+        XXX NOTE that this current uses a Weave for testing and will become 
+            A Knit in due course.
         """
         from bzrlib.weavefile import write_weave_v5
         from bzrlib.weave import Weave
