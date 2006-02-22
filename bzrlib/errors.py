@@ -447,6 +447,49 @@ class WeaveTextDiffers(WeaveError):
         self.weave_b = weave_b
 
 
+class VersionedFileError(BzrNewError):
+    """Versioned file error."""
+
+
+class RevisionNotPresent(VersionedFileError):
+    """Revision {%(revision_id)s} not present in %(file_id)s."""
+
+    def __init__(self, revision_id, file_id):
+        VersionedFileError.__init__(self)
+        self.revision_id = revision_id
+        self.file_id = file_id
+
+
+class RevisionAlreadyPresent(VersionedFileError):
+    """Revision {%(revision_id)s} already present in %(file_id)s."""
+
+    def __init__(self, revision_id, file_id):
+        VersionedFileError.__init__(self)
+        self.revision_id = revision_id
+        self.file_id = file_id
+
+
+class KnitError(BzrNewError):
+    """Knit error"""
+
+
+class KnitHeaderError(KnitError):
+    """Knit header error: %(badline)r unexpected"""
+
+    def __init__(self, badline):
+        KnitError.__init__(self)
+        self.badline = badline
+
+
+class KnitCorrupt(KnitError):
+    """Knit %(filename)s corrupt: %(how)s"""
+
+    def __init__(self, filename, how):
+        KnitError.__init__(self)
+        self.filename = filename
+        self.how = how
+
+
 class NoSuchExportFormat(BzrNewError):
     """Export format %(format)r not supported"""
     def __init__(self, format):

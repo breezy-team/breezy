@@ -121,9 +121,9 @@ class GetSha1(TestBase):
         k.add('text0', [], 'text0')
         self.assertEqual('34dc0e430c642a26c3dd1c2beb7a8b4f4445eb79',
                          k.get_sha1('text0'))
-        self.assertRaises(errors.WeaveRevisionNotPresent,
+        self.assertRaises(errors.RevisionNotPresent,
                           k.get_sha1, 0)
-        self.assertRaises(errors.WeaveRevisionNotPresent,
+        self.assertRaises(errors.RevisionNotPresent,
                           k.get_sha1, 'text1')
                         
 
@@ -152,12 +152,12 @@ class InvalidRepeatedAdd(TestBase):
     def runTest(self):
         k = Weave()
         idx = k.add('text0', [], TEXT_0)
-        self.assertRaises(WeaveError,
+        self.assertRaises(errors.RevisionAlreadyPresent,
                           k.add,
                           'text0',
                           [],
                           ['not the same text'])
-        self.assertRaises(WeaveError,
+        self.assertRaises(errors.RevisionAlreadyPresent,
                           k.add,
                           'text0',
                           [12],         # not the right parents
@@ -517,8 +517,10 @@ class DivergedIncludes(TestBase):
     """Weave with two diverged texts based on version 0.
     """
     def runTest(self):
+        # FIXME make the weave, dont poke at it.
         k = Weave()
 
+        k._names = ['0', '1', '2']
         k._parents = [frozenset(),
                 frozenset([0]),
                 frozenset([0]),
@@ -550,7 +552,7 @@ class DivergedIncludes(TestBase):
                           "alternative second line"])
 
         self.assertEqual(list(k.inclusions([2])),
-                         [0, 2])
+                         ['0', '2'])
 
 
 class ReplaceLine(TestBase):
@@ -597,7 +599,7 @@ class Merge(TestBase):
                           ])
 
         self.assertEqual(list(k.inclusions([3])),
-                         [0, 1, 2, 3])
+                         ['text0', 'text1', 'text2', 'merge'])
 
         self.log('k._weave=' + pformat(k._weave))
 
@@ -638,33 +640,10 @@ class NonConflict(TestBase):
         k.add([1], ['aaa', 'ccc', 'bbb', '222'])
 
 
-class AutoMerge(TestBase):
-    def runTest(self):
-        k = Weave()
-
-        texts = [['header', 'aaa', 'bbb'],
-                 ['header', 'aaa', 'line from 1', 'bbb'],
-                 ['header', 'aaa', 'bbb', 'line from 2', 'more from 2'],
-                 ]
-
-        k.add('text0', [], texts[0])
-        k.add('text1', [0], texts[1])
-        k.add('text2', [0], texts[2])
-
-        self.log('k._weave=' + pformat(k._weave))
-
-        m = list(k.mash_iter([0, 1, 2]))
-
-        self.assertEqual(m,
-                         ['header', 'aaa',
-                          'line from 1',
-                          'bbb',
-                          'line from 2', 'more from 2'])
-
-
 class Khayyam(TestBase):
     """Test changes to multi-line texts, and read/write"""
-    def runTest(self):
+
+    def test_multi_line_merge(self):
         rawtexts = [
             """A Book of Verses underneath the Bough,
             A Jug of Wine, a Loaf of Bread, -- and Thou

@@ -276,7 +276,7 @@ class TestSnapshot(TestCaseWithTransport):
                                   self.branch.get_transaction())
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '1')
-        self.assertRaises(errors.WeaveError,
+        self.assertRaises(errors.RevisionNotPresent,
                           self.branch.repository.weave_store.get_lines, 
                           'fileid', '2', self.branch.get_transaction())
 

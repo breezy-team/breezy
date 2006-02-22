@@ -116,7 +116,7 @@ class WeaveStore(TransportStore):
 
         Returned as a list of lines."""
         w = self.get_weave(file_id, transaction)
-        return w.get(w.lookup(rev_id))
+        return w.get(rev_id)
     
     def get_weave_prelude_or_empty(self, file_id, transaction):
         """cheap version that reads the prelude but not the lines
@@ -153,8 +153,7 @@ class WeaveStore(TransportStore):
 
     def add_text(self, file_id, rev_id, new_lines, parents, transaction):
         w = self.get_weave_or_empty(file_id, transaction)
-        parent_idxs = map(w.lookup, parents)
-        w.add(rev_id, parent_idxs, new_lines)
+        w.add_lines(rev_id, parents, new_lines)
         self.put_weave(file_id, w, transaction)
         
     def add_identical_text(self, file_id, old_rev_id, new_rev_id, parents,

@@ -2,3 +2,5 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 
+ * test weave.walk with a version_ids list that is a subset.
+
