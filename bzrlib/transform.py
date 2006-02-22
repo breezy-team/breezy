@@ -877,8 +877,8 @@ def new_by_entry(tt, entry, parent_id, tree):
     elif kind == 'directory':
         return tt.new_directory(name, parent_id, entry.file_id)
     elif kind == 'symlink':
-        target = entry.get_symlink_target(file_id)
-        return tt.new_symlink(name, parent_id, target, file_id)
+        target = tree.get_symlink_target(entry.file_id)
+        return tt.new_symlink(name, parent_id, target, entry.file_id)
 
 def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
     """Create new file contents according to an inventory entry."""
