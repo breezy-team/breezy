@@ -295,9 +295,9 @@ class AlreadyCommitted(LockError):
 
 
 class ReadOnlyError(LockError):
-    """A write attempt was made in a read only transaction."""
-    def __init__(self):
-        pass
+    """A write attempt was made in a read only transaction on %(obj)s"""
+    def __init__(self, obj):
+        self.obj = obj
 
 
 class BranchNotLocked(LockError):

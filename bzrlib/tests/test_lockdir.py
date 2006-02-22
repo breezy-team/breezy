@@ -25,7 +25,7 @@ from bzrlib.errors import (
         LockNotHeld, LockBroken
         )
 from bzrlib.lockdir import LockDir
-from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport
 
 # These tests sometimes use threads to test the behaviour of lock files with
 # concurrent actors.  This is not a typical (or necessarily supported) use;

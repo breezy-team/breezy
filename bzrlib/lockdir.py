@@ -16,9 +16,10 @@
 
 """On-disk mutex protecting a resource
 
-bzr objects are locked by the existence of a directory with a particular name
-within the control directory.  We use this rather than OS internal locks (such
-as flock etc) because they can be seen across all transports, including http.
+bzr on-disk objects are locked by the existence of a directory with a
+particular name within the control directory.  We use this rather than OS
+internal locks (such as flock etc) because they can be seen across all
+transports, including http.
 
 Objects can be read if there is only physical read access; therefore 
 readers can never be required to create a lock, though they will
@@ -117,10 +118,6 @@ from bzrlib.rio import RioWriter, read_stanza, Stanza
 # lock at the same time they should *both* get it.  But then that's unlikely
 # to be a good idea.
 
-# TODO: After renaming the directory, check the contents are what we
-# expected.  It's possible that the rename failed but the transport lost
-# the failure indication.
-
 # TODO: Transport could offer a simpler put() method that avoids the
 # rename-into-place for cases like creating the lock template, where there is
 # no chance that the file already exists.
@@ -135,10 +132,9 @@ _DEFAULT_TIMEOUT_SECONDS = 300
 _DEFAULT_POLL_SECONDS = 0.5
 
 class LockDir(object):
-    """Write-lock guarding access to data.
-    """
+    """Write-lock guarding access to data."""
 
-    INFO_NAME = '/info'
+    __INFO_NAME = '/info'
 
     def __init__(self, transport, path):
         """Create a new LockDir object.
@@ -155,7 +151,7 @@ class LockDir(object):
         self.transport = transport
         self.path = path
         self._lock_held = False
-        self._info_path = path + self.INFO_NAME
+        self._info_path = path + self.__INFO_NAME
         self.nonce = rand_chars(20)
 
     def __repr__(self):
@@ -166,7 +162,7 @@ class LockDir(object):
     is_held = property(lambda self: self._lock_held)
 
     def attempt_lock(self):
-        """Take the lock; fail if it's already held
+        """Take the lock; fail if it's already held.
         
         If you wish to block until the lock can be obtained, call wait_lock()
         instead.
@@ -179,13 +175,14 @@ class LockDir(object):
             sio = StringIO()
             self._prepare_info(sio)
             sio.seek(0)
-            self.transport.put(tmpname + self.INFO_NAME, sio)
+            self.transport.put(tmpname + self.__INFO_NAME, sio)
             # FIXME: this turns into os.rename on posix, but into a fancy rename 
             # on Windows that may overwrite existing directory trees.  
             # NB: posix rename will overwrite empty directories, but not 
             # non-empty directories.
             self.transport.move(tmpname, self.path)
             self._lock_held = True
+            self.confirm()
             return
         except (DirectoryNotEmpty, FileExists), e:
             pass
@@ -202,7 +199,7 @@ class LockDir(object):
         tmpname = '%s.releasing.%s.tmp' % (self.path, rand_chars(20))
         self.transport.rename(self.path, tmpname)
         self._lock_held = False
-        self.transport.delete(tmpname + self.INFO_NAME)
+        self.transport.delete(tmpname + self.__INFO_NAME)
         self.transport.rmdir(tmpname)
 
     def force_break(self, dead_holder_info):
@@ -236,8 +233,8 @@ class LockDir(object):
         # check that we actually broke the right lock, not someone else;
         # there's a small race window between checking it and doing the 
         # rename.
-        broken_info_path = tmpname + self.INFO_NAME
-        broken_info = self._parse_info(self.transport.get(broken_info_path))
+        broken_info_path = tmpname + self.__INFO_NAME
+        broken_info = self._read_info_file(broken_info_path)
         if broken_info != dead_holder_info:
             raise LockBreakMismatch(self, broken_info, dead_holder_info)
         self.transport.delete(broken_info_path)
@@ -262,6 +259,9 @@ class LockDir(object):
         if info.get('nonce') != self.nonce:
             # there is a lock, but not ours
             raise LockBroken(self)
+        
+    def _read_info_file(self, path):
+        return self._parse_info(self.transport.get(path))
 
     def peek(self):
         """Check if the lock is held by anyone.
@@ -271,7 +271,7 @@ class LockDir(object):
         Otherwise returns None.
         """
         try:
-            info = self._parse_info(self.transport.get(self._info_path))
+            info = self._read_info_file(self._info_path)
             assert isinstance(info, dict), \
                     "bad parse result %r" % info
             return info
@@ -320,8 +320,7 @@ class LockDir(object):
                 raise LockContention(self)
 
     def wait(self, timeout=20, poll=0.5):
-        """Wait a certain period for a lock to be released.
-        """
+        """Wait a certain period for a lock to be released."""
         # XXX: the transport interface doesn't let us guard 
         # against operations there taking a long time.
         deadline = time.time() + timeout

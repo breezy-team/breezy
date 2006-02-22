@@ -167,7 +167,7 @@ class LockableFiles(object):
         # and potentially a remote locking protocol
         if self._lock_mode:
             if self._lock_mode != 'w':
-                raise ReadOnlyError()
+                raise ReadOnlyError(self)
             self._lock_count += 1
         else:
             self._lock = self._transport.lock_write(

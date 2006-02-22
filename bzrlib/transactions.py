@@ -82,7 +82,7 @@ class ReadOnlyTransaction(object):
 
     def register_dirty(self, an_object):
         """Register an_object as being dirty."""
-        raise errors.ReadOnlyError()
+        raise errors.ReadOnlyObjectDirtiedError(an_object)
 
     def rollback(self):
         """Let people call this even though nothing has to happen."""
