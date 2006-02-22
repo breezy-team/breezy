@@ -3,6 +3,12 @@ bzr development version
 
   IMPROVEMENTS:
 
+    * Sftp paths can now be relative, or local, according to the lftp
+      convention. Paths now take the form:
+      sftp://user:pass@host:port/~/relative/path
+      or
+      sftp://user:pass@host:port/absolute/path
+
     * The FTP transport now tries to reconnect after a temporary
       failure. ftp put is made atomic. (Matthieu Moy)
 
@@ -62,6 +68,14 @@ bzr development version
     * New BzrDir class represents the .bzr control directory and manages
       formatting issues. (Robert Collins)
 
+    * New repository.InterRepository class encapsulates Repository to 
+      Repository actions and allows for clean selection of optimised code
+      paths. (Robert Collins)
+
+    * bzrlib.fetch.fetch and bzrlib.fetch.greedy_fetch are now deprecated,
+      please use 'branch.fetch' or 'repository.fetch' depending on your
+      needs. (Robert Collins)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
@@ -107,12 +121,6 @@ bzr 0.7rc1 2006-01-09
     * Use systems' external ssh command to open connections if possible.  
       This gives better integration with user settings such as ProxyCommand.
       (James Henstridge)
-
-    * Sftp paths can now be relative, or local, according to the lftp
-      convention. Paths now take the form:
-      sftp://user:pass@host:port/~/relative/path
-      or
-      sftp://user:pass@host:port/absolute/path
 
     * Permissions on files underneath .bzr/ are inherited from the .bzr 
       directory. So for a shared repository, simply doing 'chmod -R g+w .bzr/'

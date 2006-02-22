@@ -3,12 +3,11 @@ import shutil
 import stat
 import sys
 
+import bzrlib
 from bzrlib.add import smart_add_tree
-from bzrlib.branch import ScratchBranch, Branch
 from bzrlib.builtins import merge
 from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError, NoDiff3)
-from bzrlib.fetch import Fetcher
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.merge import Merge3Merger, Diff3Merger, WeaveMerger
@@ -24,8 +23,7 @@ class MergeBuilder(object):
         def wt(name):
            path = pathjoin(self.dir, name)
            os.mkdir(path)
-           b = Branch.initialize(path)
-           wt = b.working_tree()
+           wt = bzrlib.bzrdir.BzrDir.create_standalone_workingtree(path)
            tt = TreeTransform(wt)
            return wt, tt
         self.base, self.base_tt = wt('base') 
@@ -53,8 +51,7 @@ class MergeBuilder(object):
             tt.apply()
             wt.commit('branch commit')
             assert len(wt.branch.revision_history()) == 2
-        Fetcher(self.this.branch, self.other.branch, 
-                self.other.branch.last_revision())
+        self.this.branch.fetch(self.other.branch)
         other_basis = self.other.branch.basis_tree()
         merger = merge_type(self.this, self.this, self.base, other_basis)
         return merger.cooked_conflicts

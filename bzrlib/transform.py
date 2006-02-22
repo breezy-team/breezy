@@ -23,6 +23,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ExistingLimbo, ImmortalLimbo)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import file_kind, supports_executable, pathjoin
+from bzrlib.progress import DummyProgress
 from bzrlib.trace import mutter, warning
 
 
@@ -60,7 +61,7 @@ class TreeTransform(object):
      * version_file
      * set_executability
     """
-    def __init__(self, tree):
+    def __init__(self, tree, pb=DummyProgress()):
         """Note: a write lock is taken on the tree.
         
         Use TreeTransform.finalize() to release the lock
@@ -94,6 +95,7 @@ class TreeTransform(object):
         self._tree_id_paths = {}
         self._new_root = self.trans_id_tree_file_id(tree.get_root_id())
         self.__done = False
+        self._pb = pb
 
     def __get_root(self):
         return self._new_root
@@ -284,7 +286,7 @@ class TreeTransform(object):
             os.unlink(full_path)
         except OSError, e:
         # We may be renaming a dangling inventory id
-            if e.errno != errno.EISDIR and e.errno != errno.EACCES:
+            if e.errno not in (errno.EISDIR, errno.EACCES, errno.EPERM):
                 raise
             os.rmdir(full_path)
 
@@ -676,7 +678,9 @@ class TreeTransform(object):
         """
         tree_paths = list(self._tree_path_ids.iteritems())
         tree_paths.sort(reverse=True)
-        for path, trans_id in tree_paths:
+        for num, data in enumerate(tree_paths):
+            path, trans_id = data
+            self._pb.update('removing file', num+1, len(tree_paths))
             full_path = self._tree.abspath(path)
             if trans_id in self._removed_contents:
                 self.delete_any(full_path)
@@ -697,6 +701,7 @@ class TreeTransform(object):
                 if file_id is not None:
                     limbo_inv[trans_id] = inv[file_id]
                     del inv[file_id]
+        self._pb.clear()
 
     def _apply_insertions(self, inv, limbo_inv):
         """Perform tree operations that insert directory/inventory names.
@@ -705,7 +710,9 @@ class TreeTransform(object):
         limbo any files that needed renaming.  This must be done in strict
         parent-to-child order.
         """
-        for path, trans_id in self.new_paths():
+        new_paths = self.new_paths()
+        for num, (path, trans_id) in enumerate(new_paths):
+            self._pb.update('adding file', num+1, len(new_paths))
             try:
                 kind = self._new_contents[trans_id]
             except KeyError:
@@ -736,6 +743,7 @@ class TreeTransform(object):
             # requires files and inventory entries to be in place
             if trans_id in self._new_executability:
                 self._set_executability(path, inv, trans_id)
+        self._pb.clear()
 
     def _set_executability(self, path, inv, trans_id):
         """Set the executability of versioned files """
@@ -985,13 +993,14 @@ def _entry_changes(file_id, entry, working_tree):
     return has_contents, contents_mod, meta_mod
 
 
-def revert(working_tree, target_tree, filenames, backups=False):
+def revert(working_tree, target_tree, filenames, backups=False, 
+           pb=DummyProgress()):
     """Revert a working tree's contents to those of a target tree."""
     interesting_ids = find_interesting(working_tree, target_tree, filenames)
     def interesting(file_id):
         return interesting_ids is None or file_id in interesting_ids
 
-    tt = TreeTransform(working_tree)
+    tt = TreeTransform(working_tree, pb)
     try:
         trans_id = {}
         def trans_id_file_id(file_id):
@@ -1000,9 +1009,10 @@ def revert(working_tree, target_tree, filenames, backups=False):
             except KeyError:
                 return tt.trans_id_tree_file_id(file_id)
 
-        for file_id in topology_sorted_ids(target_tree):
-            if not interesting(file_id):
-                continue
+        sorted_interesting = [i for i in topology_sorted_ids(target_tree) if
+                              interesting(i)]
+        for id_num, file_id in enumerate(sorted_interesting):
+            pb.update("Reverting file", id_num+1, len(sorted_interesting))
             if file_id not in working_tree.inventory:
                 entry = target_tree.inventory[file_id]
                 parent_id = trans_id_file_id(entry.parent_id)
@@ -1011,28 +1021,33 @@ def revert(working_tree, target_tree, filenames, backups=False):
             else:
                 change_entry(tt, file_id, working_tree, target_tree, 
                              trans_id_file_id, backups, trans_id)
-        for file_id in working_tree.inventory:
-            if not interesting(file_id):
-                continue
+        wt_interesting = [i for i in working_tree.inventory if interesting(i)]
+        for id_num, file_id in enumerate(wt_interesting):
+            pb.update("New file check", id_num+1, len(sorted_interesting))
             if file_id not in target_tree:
                 tt.unversion_file(tt.trans_id_tree_file_id(file_id))
-        raw_conflicts = resolve_conflicts(tt)
+        raw_conflicts = resolve_conflicts(tt, pb)
         for line in conflicts_strings(cook_conflicts(raw_conflicts, tt)):
             warning(line)
         tt.apply()
     finally:
         tt.finalize()
+        pb.clear()
 
 
-def resolve_conflicts(tt):
+def resolve_conflicts(tt, pb=DummyProgress()):
     """Make many conflict-resolution attempts, but die if they fail"""
     new_conflicts = set()
-    for n in range(10):
-        conflicts = tt.find_conflicts()
-        if len(conflicts) == 0:
-            return new_conflicts
-        new_conflicts.update(conflict_pass(tt, conflicts))
-    raise MalformedTransform(conflicts=conflicts)
+    try:
+        for n in range(10):
+            pb.update('Resolution pass', n+1, 10)
+            conflicts = tt.find_conflicts()
+            if len(conflicts) == 0:
+                return new_conflicts
+            new_conflicts.update(conflict_pass(tt, conflicts))
+        raise MalformedTransform(conflicts=conflicts)
+    finally:
+        pb.clear()
 
 
 def conflict_pass(tt, conflicts):

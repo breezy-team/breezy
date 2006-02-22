@@ -81,6 +81,7 @@ from bzrlib.osutils import (appendpath,
                             rename,
                             supports_executable,
                             )
+from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
@@ -89,6 +90,7 @@ from bzrlib.trace import mutter
 from bzrlib.transform import build_tree
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
+import bzrlib.ui
 import bzrlib.xml5
 
 
@@ -849,7 +851,8 @@ class WorkingTree(bzrlib.tree.Tree):
                 merge_inner(self.branch,
                             self.basis_tree(), 
                             repository.revision_tree(other_revision),
-                            this_tree=self)
+                            this_tree=self, 
+                            pb=bzrlib.ui.ui_factory.progress_bar())
                 self.set_last_revision(self.branch.last_revision())
             return count
         finally:
@@ -1077,11 +1080,12 @@ class WorkingTree(bzrlib.tree.Tree):
         self._write_inventory(inv)
 
     @needs_write_lock
-    def revert(self, filenames, old_tree=None, backups=True):
+    def revert(self, filenames, old_tree=None, backups=True, 
+               pb=DummyProgress()):
         from transform import revert
         if old_tree is None:
             old_tree = self.basis_tree()
-        revert(self, old_tree, filenames, backups)
+        revert(self, old_tree, filenames, backups, pb)
         if not len(filenames):
             self.set_pending_merges([])
 

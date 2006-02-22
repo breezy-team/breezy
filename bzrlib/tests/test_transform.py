@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-from bzrlib.branch import Branch
+
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot, NotVersionedError,
@@ -30,8 +30,7 @@ from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
 class TestTreeTransform(TestCaseInTempDir):
     def setUp(self):
         super(TestTreeTransform, self).setUp()
-        self.branch = Branch.initialize('.')
-        self.wt = self.branch.working_tree()
+        self.wt = BzrDir.create_standalone_workingtree('.')
         os.chdir('..')
 
     def get_transform(self):
@@ -480,8 +479,8 @@ class TransformGroup(object):
     def __init__(self, dirname):
         self.name = dirname
         os.mkdir(dirname)
-        self.b = Branch.initialize(dirname)
-        self.wt = self.b.working_tree()
+        self.wt = BzrDir.create_standalone_workingtree(dirname)
+        self.b = self.wt.branch
         self.tt = TreeTransform(self.wt)
         self.root = self.tt.trans_id_tree_file_id(self.wt.get_root_id())
 

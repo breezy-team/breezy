@@ -168,49 +168,7 @@ class Repository(object):
 
         revision_id: only return revision ids included by revision_id.
         """
-        if self._compatible_formats(other):
-            # fast path for weave-inventory based stores.
-            # we want all revisions to satisft revision_id in other.
-            # but we dont want to stat every file here and there.
-            # we want then, all revisions other needs to satisfy revision_id 
-            # checked, but not those that we have locally.
-            # so the first thing is to get a subset of the revisions to 
-            # satisfy revision_id in other, and then eliminate those that
-            # we do already have. 
-            # this is slow on high latency connection to self, but as as this
-            # disk format scales terribly for push anyway due to rewriting 
-            # inventory.weave, this is considered acceptable.
-            # - RBC 20060209
-            if revision_id is not None:
-                other_ids = other.get_ancestry(revision_id)
-                assert other_ids.pop(0) == None
-            else:
-                other_ids = other._all_possible_ids()
-            other_ids_set = set(other_ids)
-            # other ids is the worst case to pull now.
-            # now we want to filter other_ids against what we actually
-            # have, but dont try to stat what we know we dont.
-            my_ids = set(self._all_possible_ids())
-            possibly_present_revisions = my_ids.intersection(other_ids_set)
-            actually_present_revisions = set(self._eliminate_revisions_not_present(possibly_present_revisions))
-            required_revisions = other_ids_set.difference(actually_present_revisions)
-            required_topo_revisions = [rev_id for rev_id in other_ids if rev_id in required_revisions]
-            if revision_id is not None:
-                # we used get_ancestry to determine other_ids then we are assured all
-                # revisions referenced are present as they are installed in topological order.
-                return required_topo_revisions
-            else:
-                # we only have an estimate of whats available
-                return other._eliminate_revisions_not_present(required_topo_revisions)
-        # slow code path.
-        my_ids = set(self.all_revision_ids())
-        if revision_id is not None:
-            other_ids = other.get_ancestry(revision_id)
-            assert other_ids.pop(0) == None
-        else:
-            other_ids = other.all_revision_ids()
-        result_set = set(other_ids).difference(my_ids)
-        return [rev_id for rev_id in other_ids if rev_id in result_set]
+        return InterRepository.get(other, self).missing_revision_ids(revision_id)
 
     @staticmethod
     def open(base):
@@ -222,80 +180,21 @@ class Repository(object):
         control = bzrdir.BzrDir.open(base)
         return control.open_repository()
 
-    def _compatible_formats(self, other):
-        """Return True if the stores in self and other are 'compatible'
-        
-        'compatible' means that they are both the same underlying type
-        i.e. both weave stores, or both knits and thus support fast-path
-        operations."""
-        return (isinstance(self._format, (RepositoryFormat5,
-                                          RepositoryFormat6,
-                                          RepositoryFormat7)) and
-                isinstance(other._format, (RepositoryFormat5,
-                                           RepositoryFormat6,
-                                           RepositoryFormat7)))
-
-    @needs_read_lock
     def copy_content_into(self, destination, revision_id=None, basis=None):
         """Make a complete copy of the content in self into destination.
         
         This is a destructive operation! Do not use it on existing 
         repositories.
         """
-        destination.lock_write()
-        try:
-            try:
-                destination.set_make_working_trees(self.make_working_trees())
-            except NotImplementedError:
-                pass
-            # optimised paths:
-            # compatible stores
-            if self._compatible_formats(destination):
-                if basis is not None:
-                    # copy the basis in, then fetch remaining data.
-                    basis.copy_content_into(destination, revision_id)
-                    destination.fetch(self, revision_id=revision_id)
-                else:
-                    # FIXME do not peek!
-                    if self.control_files._transport.listable():
-                        pb = bzrlib.ui.ui_factory.progress_bar()
-                        copy_all(self.weave_store,
-                            destination.weave_store, pb=pb)
-                        pb.update('copying inventory', 0, 1)
-                        destination.control_weaves.copy_multi(
-                            self.control_weaves, ['inventory'])
-                        copy_all(self.revision_store,
-                            destination.revision_store, pb=pb)
-                    else:
-                        destination.fetch(self, revision_id=revision_id)
-            # compatible v4 stores
-            elif isinstance(self._format, RepositoryFormat4):
-                if not isinstance(destination._format, RepositoryFormat4):
-                    raise BzrError('cannot copy v4 branches to anything other than v4 branches.')
-                store_pairs = ((self.text_store,      destination.text_store),
-                               (self.inventory_store, destination.inventory_store),
-                               (self.revision_store,  destination.revision_store))
-                try:
-                    for from_store, to_store in store_pairs: 
-                        copy_all(from_store, to_store)
-                except UnlistableStore:
-                    raise UnlistableBranch(from_store)
-            # fallback - 'fetch'
-            else:
-                destination.fetch(self, revision_id=revision_id)
-        finally:
-            destination.unlock()
+        return InterRepository.get(self, destination).copy_content(revision_id, basis)
 
-    @needs_write_lock
-    def fetch(self, source, revision_id=None):
+    def fetch(self, source, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id from source.
 
         If revision_id is None all content is copied.
         """
-        from bzrlib.fetch import RepoFetcher
-        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
-               source, source._format, self, self._format)
-        RepoFetcher(to_repository=self, from_repository=source, last_revision=revision_id)
+        return InterRepository.get(source, self).fetch(revision_id=revision_id,
+                                                       pb=pb)
 
     def unlock(self):
         self.control_files.unlock()
@@ -870,12 +769,282 @@ class RepositoryFormat7(RepositoryFormat):
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-__default_format = RepositoryFormat7()
-RepositoryFormat.register_format(__default_format)
-RepositoryFormat.set_default_format(__default_format)
+_default_format = RepositoryFormat7()
+RepositoryFormat.register_format(_default_format)
+RepositoryFormat.set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
                    RepositoryFormat6()]
+
+
+class InterRepository(object):
+    """This class represents operations taking place between two repositories.
+
+    Its instances have methods like copy_content and fetch, and contain
+    references to the source and target repositories these operations can be 
+    carried out on.
+
+    Often we will provide convenience methods on 'repository' which carry out
+    operations with another repository - they will always forward to
+    InterRepository.get(other).method_name(parameters).
+    """
+    # XXX: FIXME: FUTURE: robertc
+    # testing of these probably requires a factory in optimiser type, and 
+    # then a test adapter to test each type thoroughly.
+    #
+
+    _optimisers = set()
+    """The available optimised InterRepository types."""
+
+    def __init__(self, source, target):
+        """Construct a default InterRepository instance. Please use 'get'.
+        
+        Only subclasses of InterRepository should call 
+        InterRepository.__init__ - clients should call InterRepository.get
+        instead which will create an optimised InterRepository if possible.
+        """
+        self.source = source
+        self.target = target
+
+    @needs_write_lock
+    def copy_content(self, revision_id=None, basis=None):
+        """Make a complete copy of the content in self into destination.
+        
+        This is a destructive operation! Do not use it on existing 
+        repositories.
+
+        :param revision_id: Only copy the content needed to construct
+                            revision_id and its parents.
+        :param basis: Copy the needed data preferentially from basis.
+        """
+        try:
+            self.target.set_make_working_trees(self.source.make_working_trees())
+        except NotImplementedError:
+            pass
+        # grab the basis available data
+        if basis is not None:
+            self.target.fetch(basis, revision_id=revision_id)
+        # but dont both fetching if we have the needed data now.
+        if (revision_id not in (None, NULL_REVISION) and 
+            self.target.has_revision(revision_id)):
+            return
+        self.target.fetch(self.source, revision_id=revision_id)
+
+    def _double_lock(self, lock_source, lock_target):
+        """Take out too locks, rolling back the first if the second throws."""
+        lock_source()
+        try:
+            lock_target()
+        except Exception:
+            # we want to ensure that we don't leave source locked by mistake.
+            # and any error on target should not confuse source.
+            self.source.unlock()
+            raise
+
+    @needs_write_lock
+    def fetch(self, revision_id=None, pb=None):
+        """Fetch the content required to construct revision_id.
+
+        The content is copied from source to target.
+
+        :param revision_id: if None all content is copied, if NULL_REVISION no
+                            content is copied.
+        :param pb: optional progress bar to use for progress reports. If not
+                   provided a default one will be created.
+
+        Returns the copied revision count and the failed revisions in a tuple:
+        (copied, failures).
+        """
+        from bzrlib.fetch import RepoFetcher
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.source, self.source._format, self.target, self.target._format)
+        f = RepoFetcher(to_repository=self.target,
+                        from_repository=self.source,
+                        last_revision=revision_id,
+                        pb=pb)
+        return f.count_copied, f.failed_revisions
+
+    @classmethod
+    def get(klass, repository_source, repository_target):
+        """Retrieve a InterRepository worker object for these repositories.
+
+        :param repository_source: the repository to be the 'source' member of
+                                  the InterRepository instance.
+        :param repository_target: the repository to be the 'target' member of
+                                the InterRepository instance.
+        If an optimised InterRepository worker exists it will be used otherwise
+        a default InterRepository instance will be created.
+        """
+        for provider in klass._optimisers:
+            if provider.is_compatible(repository_source, repository_target):
+                return provider(repository_source, repository_target)
+        return InterRepository(repository_source, repository_target)
+
+    def lock_read(self):
+        """Take out a logical read lock.
+
+        This will lock the source branch and the target branch. The source gets
+        a read lock and the target a read lock.
+        """
+        self._double_lock(self.source.lock_read, self.target.lock_read)
+
+    def lock_write(self):
+        """Take out a logical write lock.
+
+        This will lock the source branch and the target branch. The source gets
+        a read lock and the target a write lock.
+        """
+        self._double_lock(self.source.lock_read, self.target.lock_write)
+
+    @needs_read_lock
+    def missing_revision_ids(self, revision_id=None):
+        """Return the revision ids that source has that target does not.
+        
+        These are returned in topological order.
+
+        :param revision_id: only return revision ids included by this
+                            revision_id.
+        """
+        # generic, possibly worst case, slow code path.
+        target_ids = set(self.source.all_revision_ids())
+        if revision_id is not None:
+            source_ids = self.target.get_ancestry(revision_id)
+            assert source_ids.pop(0) == None
+        else:
+            source_ids = self.target.all_revision_ids()
+        result_set = set(source_ids).difference(target_ids)
+        # this may look like a no-op: its not. It preserves the ordering
+        # other_ids had while only returning the members from other_ids
+        # that we've decided we need.
+        return [rev_id for rev_id in other_ids if rev_id in result_set]
+
+    @classmethod
+    def register_optimiser(klass, optimiser):
+        """Register an InterRepository optimiser."""
+        klass._optimisers.add(optimiser)
+
+    def unlock(self):
+        """Release the locks on source and target."""
+        try:
+            self.target.unlock()
+        finally:
+            self.source.unlock()
+
+    @classmethod
+    def unregister_optimiser(klass, optimiser):
+        """Unregister an InterRepository optimiser."""
+        klass._optimisers.remove(optimiser)
+
+
+class InterWeaveRepo(InterRepository):
+    """Optimised code paths between Weave based repositories."""
+
+    _matching_repo_format = _default_format
+    """Repository format for testing with."""
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with known Weave formats.
+        
+        We dont test for the stores being of specific types becase that
+        could lead to confusing results, and there is no need to be 
+        overly general.
+        """
+        try:
+            return (isinstance(source._format, (RepositoryFormat5,
+                                                RepositoryFormat6,
+                                                RepositoryFormat7)) and
+                    isinstance(target._format, (RepositoryFormat5,
+                                                RepositoryFormat6,
+                                                RepositoryFormat7)))
+        except AttributeError:
+            return False
+    
+    @needs_write_lock
+    def copy_content(self, revision_id=None, basis=None):
+        """See InterRepository.copy_content()."""
+        # weave specific optimised path:
+        if basis is not None:
+            # copy the basis in, then fetch remaining data.
+            basis.copy_content_into(self.target, revision_id)
+            # the basis copy_content_into could misset this.
+            try:
+                self.target.set_make_working_trees(self.source.make_working_trees())
+            except NotImplementedError:
+                pass
+            self.target.fetch(self.source, revision_id=revision_id)
+        else:
+            try:
+                self.target.set_make_working_trees(self.source.make_working_trees())
+            except NotImplementedError:
+                pass
+            # FIXME do not peek!
+            if self.source.control_files._transport.listable():
+                pb = bzrlib.ui.ui_factory.progress_bar()
+                copy_all(self.source.weave_store,
+                    self.target.weave_store, pb=pb)
+                pb.update('copying inventory', 0, 1)
+                self.target.control_weaves.copy_multi(
+                    self.source.control_weaves, ['inventory'])
+                copy_all(self.source.revision_store,
+                    self.target.revision_store, pb=pb)
+            else:
+                self.target.fetch(self.source, revision_id=revision_id)
+
+    @needs_write_lock
+    def fetch(self, revision_id=None, pb=None):
+        """See InterRepository.fetch()."""
+        from bzrlib.fetch import RepoFetcher
+        mutter("Using fetch logic to copy between %s(%s) and %s(%s)",
+               self.source, self.source._format, self.target, self.target._format)
+        f = RepoFetcher(to_repository=self.target,
+                        from_repository=self.source,
+                        last_revision=revision_id,
+                        pb=pb)
+        return f.count_copied, f.failed_revisions
+
+    @needs_read_lock
+    def missing_revision_ids(self, revision_id=None):
+        """See InterRepository.missing_revision_ids()."""
+        # we want all revisions to satisfy revision_id in source.
+        # but we dont want to stat every file here and there.
+        # we want then, all revisions other needs to satisfy revision_id 
+        # checked, but not those that we have locally.
+        # so the first thing is to get a subset of the revisions to 
+        # satisfy revision_id in source, and then eliminate those that
+        # we do already have. 
+        # this is slow on high latency connection to self, but as as this
+        # disk format scales terribly for push anyway due to rewriting 
+        # inventory.weave, this is considered acceptable.
+        # - RBC 20060209
+        if revision_id is not None:
+            source_ids = self.source.get_ancestry(revision_id)
+            assert source_ids.pop(0) == None
+        else:
+            source_ids = self.source._all_possible_ids()
+        source_ids_set = set(source_ids)
+        # source_ids is the worst possible case we may need to pull.
+        # now we want to filter source_ids against what we actually
+        # have in target, but dont try to check for existence where we know
+        # we do not have a revision as that would be pointless.
+        target_ids = set(self.target._all_possible_ids())
+        possibly_present_revisions = target_ids.intersection(source_ids_set)
+        actually_present_revisions = set(self.target._eliminate_revisions_not_present(possibly_present_revisions))
+        required_revisions = source_ids_set.difference(actually_present_revisions)
+        required_topo_revisions = [rev_id for rev_id in source_ids if rev_id in required_revisions]
+        if revision_id is not None:
+            # we used get_ancestry to determine source_ids then we are assured all
+            # revisions referenced are present as they are installed in topological order.
+            # and the tip revision was validated by get_ancestry.
+            return required_topo_revisions
+        else:
+            # if we just grabbed the possibly available ids, then 
+            # we only have an estimate of whats available and need to validate
+            # that against the revision records.
+            return self.source._eliminate_revisions_not_present(required_topo_revisions)
+
+
+InterRepository.register_optimiser(InterWeaveRepo)
 
 
 class RepositoryTestProviderAdapter(object):
@@ -905,4 +1074,54 @@ class RepositoryTestProviderAdapter(object):
                 return lambda: new_id
             new_test.id = make_new_test_id()
             result.addTest(new_test)
+        return result
+
+
+class InterRepositoryTestProviderAdapter(object):
+    """A tool to generate a suite testing multiple inter repository formats.
+
+    This is done by copying the test once for each interrepo provider and injecting
+    the transport_server, transport_readonly_server, repository_format and 
+    repository_to_format classes into each copy.
+    Each copy is also given a new id() to make it easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, formats):
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self._formats = formats
+    
+    def adapt(self, test):
+        result = TestSuite()
+        for interrepo_class, repository_format, repository_format_to in self._formats:
+            new_test = deepcopy(test)
+            new_test.transport_server = self._transport_server
+            new_test.transport_readonly_server = self._transport_readonly_server
+            new_test.interrepo_class = interrepo_class
+            new_test.repository_format = repository_format
+            new_test.repository_format_to = repository_format_to
+            def make_new_test_id():
+                new_id = "%s(%s)" % (new_test.id(), interrepo_class.__name__)
+                return lambda: new_id
+            new_test.id = make_new_test_id()
+            result.addTest(new_test)
+        return result
+
+    @staticmethod
+    def default_test_list():
+        """Generate the default list of interrepo permutations to test."""
+        result = []
+        # test the default InterRepository between format 6 and the current 
+        # default format.
+        # XXX: robertc 20060220 reinstate this when there are two supported
+        # formats which do not have an optimal code path between them.
+        #result.append((InterRepository, RepositoryFormat6(),
+        #              RepositoryFormat.get_default_format()))
+        for optimiser in InterRepository._optimisers:
+            result.append((optimiser,
+                           optimiser._matching_repo_format,
+                           optimiser._matching_repo_format
+                           ))
+        # if there are specific combinations we want to use, we can add them 
+        # here.
         return result
