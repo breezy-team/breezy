@@ -225,4 +225,4 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
 
         l2 = self.compare_tree_fileids(self.branch, old_rev, new_rev)
         self.assertNotEqual(l2, l1)
-        self.AssertSubset(l2, l1)
+        self.assertSubset(l2, l1)

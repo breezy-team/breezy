@@ -221,6 +221,30 @@ class TestRepository(TestCaseWithRepository):
         self.assertTrue(result.open_repository().is_shared())
         self.assertFalse(result.open_repository().make_working_trees())
 
+    def test_upgrade_preserves_signatures(self):
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        wt.branch.repository.sign_revision('A',
+            bzrlib.gpg.LoopbackGPGStrategy(None))
+        old_signature = wt.branch.repository.revision_store.get('A',
+            'sig').read()
+        try:
+            old_format = bzrdir.BzrDirFormat.get_default_format()
+            # This gives metadir branches something they can convert to.
+            # it would be nice to have a 'latest' vs 'default' concept.
+            bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+            try:
+                upgrade(wt.basedir)
+            finally:
+                bzrdir.BzrDirFormat.set_default_format(old_format)
+        except errors.UpToDateFormat:
+            # this is in the most current format already.
+            return
+        wt = WorkingTree.open(wt.basedir)
+        new_signature = wt.branch.repository.revision_store.get('A',
+            'sig').read()
+        self.assertEqual(old_signature, new_signature)
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
