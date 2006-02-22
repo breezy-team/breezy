@@ -25,6 +25,7 @@ also see this file.
 from stat import *
 from StringIO import StringIO
 
+import bzrlib
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
 from bzrlib.errors import (NotBranchError,
@@ -213,6 +214,83 @@ class TestFormat7(TestCaseWithTransport):
                              t.get('inventory.weave').read())
 
 
+class TestFormatKnit1(TestCaseWithTransport):
+    
+    def test_disk_layout(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = repository.RepositoryFormatKnit1().initialize(control)
+        # in case of side effects of locking.
+        repo.lock_write()
+        repo.unlock()
+        # we want:
+        # format 'Bazaar-NG Knit Repository Format 1'
+        # lock ''
+        # inventory.weave == empty_weave
+        # empty revision-store directory
+        # empty weaves directory
+        t = control.get_repository_transport(None)
+        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
+                             t.get('format').read())
+        self.assertEqualDiff('', t.get('lock').read())
+        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        # cheating and using a weave for now.
+        self.assertEqualDiff('# bzr weave file v5\n'
+                             'w\n'
+                             'W\n',
+                             t.get('inventory.weave').read())
+
+    def test_shared_disk_layout(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = repository.RepositoryFormatKnit1().initialize(control, shared=True)
+        # we want:
+        # format 'Bazaar-NG Knit Repository Format 1'
+        # lock ''
+        # inventory.weave == empty_weave
+        # empty revision-store directory
+        # empty weaves directory
+        # a 'shared-storage' marker file.
+        t = control.get_repository_transport(None)
+        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
+                             t.get('format').read())
+        self.assertEqualDiff('', t.get('lock').read())
+        self.assertEqualDiff('', t.get('shared-storage').read())
+        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        # cheating and using a weave for now.
+        self.assertEqualDiff('# bzr weave file v5\n'
+                             'w\n'
+                             'W\n',
+                             t.get('inventory.weave').read())
+
+    def test_shared_no_tree_disk_layout(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = repository.RepositoryFormatKnit1().initialize(control, shared=True)
+        repo.set_make_working_trees(False)
+        # we want:
+        # format 'Bazaar-NG Knit Repository Format 1'
+        # lock ''
+        # inventory.weave == empty_weave
+        # empty revision-store directory
+        # empty weaves directory
+        # a 'shared-storage' marker file.
+        t = control.get_repository_transport(None)
+        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
+                             t.get('format').read())
+        self.assertEqualDiff('', t.get('lock').read())
+        self.assertEqualDiff('', t.get('shared-storage').read())
+        self.assertEqualDiff('', t.get('no-working-trees').read())
+        repo.set_make_working_trees(True)
+        self.assertFalse(t.has('no-working-trees'))
+        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        # cheating and using a weave for now.
+        self.assertEqualDiff('# bzr weave file v5\n'
+                             'w\n'
+                             'W\n',
+                             t.get('inventory.weave').read())
+
+
 class InterString(repository.InterRepository):
     """An inter-repository optimised code path for strings.
 
@@ -282,14 +360,18 @@ class TestInterWeaveRepo(TestCaseWithTransport):
         formats = [repository.RepositoryFormat5(),
                    repository.RepositoryFormat6(),
                    repository.RepositoryFormat7()]
+        incompatible_formats = [repository.RepositoryFormat4(),
+                                repository.RepositoryFormatKnit1(),
+                                ]
         repo_a = self.make_repository('a')
         repo_b = self.make_repository('b')
-        # force incompatible left then right
-        repo_a._format = repository.RepositoryFormat4()
-        repo_b._format = formats[0]
         is_compatible = repository.InterWeaveRepo.is_compatible
-        self.assertFalse(is_compatible(repo_a, repo_b))
-        self.assertFalse(is_compatible(repo_b, repo_a))
+        for source in incompatible_formats:
+            # force incompatible left then right
+            repo_a._format = source
+            repo_b._format = formats[0]
+            self.assertFalse(is_compatible(repo_a, repo_b))
+            self.assertFalse(is_compatible(repo_b, repo_a))
         for source in formats:
             repo_a._format = source
             for target in formats:
@@ -298,3 +380,20 @@ class TestInterWeaveRepo(TestCaseWithTransport):
         self.assertEqual(repository.InterWeaveRepo,
                          repository.InterRepository.get(repo_a,
                                                         repo_b).__class__)
+
+
+class TestRepositoryConverter(TestCaseWithTransport):
+
+    def test_convert_empty(self):
+        t = get_transport(self.get_url('.'))
+        t.mkdir('repository')
+        repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
+        repo = repository.RepositoryFormat7().initialize(repo_dir)
+        target_format = repository.RepositoryFormatKnit1()
+        pb = bzrlib.ui.ui_factory.progress_bar()
+
+        converter = repository.CopyConverter(target_format)
+        converter.convert(repo, pb)
+        repo = repo_dir.open_repository()
+        self.assertTrue(isinstance(target_format, repo._format.__class__))
+

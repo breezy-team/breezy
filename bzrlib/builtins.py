@@ -1454,7 +1454,11 @@ class cmd_scan_cache(Command):
 def get_format_type(typestring):
     """Parse and return a format specifier."""
     if typestring == "metadir":
-        return bzrdir.BzrDirMetaFormat1
+        return bzrdir.BzrDirMetaFormat1()
+    if typestring == "knit":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
+        return format
     msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
         (typestring)
     raise BzrCommandError(msg)
