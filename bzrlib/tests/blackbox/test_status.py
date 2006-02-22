@@ -158,7 +158,8 @@ class BranchStatus(TestCaseWithTransport):
                            ])
 
         tof = StringIO()
-        show_tree_status(wt, specific_files=['bye.c','test.c','absent.c'], to_file=tof)
+        show_tree_status(wt, specific_files=['bye.c','test.c','absent.c'], 
+                         to_file=tof)
         tof.seek(0)
         self.assertEquals(tof.readlines(),
                           ['unknown:\n',
