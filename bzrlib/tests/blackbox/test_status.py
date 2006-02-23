@@ -93,10 +93,7 @@ class BranchStatus(TestCaseWithTransport):
         
         tof = StringIO()
         revs.append(RevisionSpec(1))
-      
-
-
-
+        
         show_tree_status(wt, to_file=tof, revision=revs)
         
         tof.seek(0)
@@ -182,6 +179,7 @@ class BranchStatus(TestCaseWithTransport):
                            ])
 
 class CheckoutStatus(BranchStatus):
+
     def setUp(self):
         super(CheckoutStatus, self).setUp()
         mkdir('codir')
