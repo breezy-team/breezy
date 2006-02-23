@@ -30,6 +30,7 @@ from bzrlib.errors import (NotBranchError,
                            )
 import bzrlib.repository as repository
 from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
@@ -456,3 +457,38 @@ class TestFormat6(TestCaseWithTransport):
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
         self.assertFalse(dir.needs_format_conversion())
+
+
+class NonLocalTests(TestCaseWithTransport):
+    """Tests for bzrdir static behaviour on non local paths."""
+
+    def setUp(self):
+        super(NonLocalTests, self).setUp()
+        self.transport_server = MemoryServer
+    
+    def test_create_branch_convenience(self):
+        # outside a repo the default convenience output is a repo+branch_tree
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            branch = bzrdir.BzrDir.create_branch_convenience(self.get_url('foo'))
+            self.assertRaises(errors.NoWorkingTree,
+                              branch.bzrdir.open_workingtree)
+            branch.bzrdir.open_repository()
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_convenience_force_tree_not_local_fails(self):
+        # outside a repo the default convenience output is a repo+branch_tree
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            self.assertRaises(errors.NotLocalUrl,
+                bzrdir.BzrDir.create_branch_convenience,
+                self.get_url('foo'),
+                force_new_tree=True)
+            t = get_transport(self.get_url('.'))
+            self.assertFalse(t.has('foo'))
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+

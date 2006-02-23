@@ -221,19 +221,28 @@ class BzrDir(object):
 
         The created Branch object is returned.
         If a working tree cannot be made due to base not being a file:// url,
-        no error is raised.
+        no error is raised unless force_new_tree is True, in which case no 
+        data is created on disk and NotLocalUrl is raised.
 
         :param base: The URL to create the branch at.
         :param force_new_repo: If True a new repository is always created.
         :param force_new_tree: If True or False force creation of a tree or 
                                prevent such creation respectively.
         """
+        if force_new_tree:
+            # check for non local urls
+            t = get_transport(safe_unicode(base))
+            if not isinstance(t, LocalTransport):
+                raise errors.NotLocalUrl(base)
         bzrdir = BzrDir.create(base)
         repo = bzrdir._find_or_create_repository(force_new_repo)
         result = bzrdir.create_branch()
         if force_new_tree or (repo.make_working_trees() and 
                               force_new_tree is None):
-            bzrdir.create_workingtree()
+            try:
+                bzrdir.create_workingtree()
+            except errors.NotLocalUrl:
+                pass
         return result
         
     @staticmethod
