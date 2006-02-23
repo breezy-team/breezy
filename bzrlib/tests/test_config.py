@@ -28,12 +28,16 @@ import bzrlib.errors as errors
 from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
+sample_long_alias="log -r-15..-1 --line"
 sample_config_text = ("[DEFAULT]\n"
                       "email=Robert Collins <robertc@example.com>\n"
                       "editor=vim\n"
                       "gpg_signing_command=gnome-gpg\n"
                       "log_format=short\n"
-                      "user_global_option=something\n")
+                      "user_global_option=something\n"
+                      "[ALIASES]\n"
+                      "h=help\n"
+                      "ll=" + sample_long_alias + "\n")
 
 
 sample_always_signatures = ("[DEFAULT]\n"
@@ -69,6 +73,7 @@ sample_branches_text = ("[http://www.example.com]\n"
                         "check_signatures=ignore\n"
                         "post_commit=bzrlib.tests.test_config.post_commit\n"
                         "#testing explicit beats globs\n")
+
 
 
 class InstrumentedConfigObj(object):
@@ -378,6 +383,17 @@ class TestGlobalConfigItems(TestCase):
         my_config = self._get_sample_config()
         self.assertEqual("short", my_config.log_format())
 
+    def test_get_alias(self):
+        my_config = self._get_sample_config()
+        self.assertEqual('help', my_config.get_alias('h'))
+
+    def test_get_no_alias(self):
+        my_config = self._get_sample_config()
+        self.assertEqual(None, my_config.get_alias('foo'))
+
+    def test_get_long_alias(self):
+        my_config = self._get_sample_config()
+        self.assertEqual(sample_long_alias, my_config.get_alias('ll'))
 
 class TestLocationConfig(TestCase):
 
