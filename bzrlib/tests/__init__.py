@@ -897,6 +897,7 @@ def test_suite():
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
+                   'bzrlib.tests.test_mapfile',
                    'bzrlib.tests.test_merge',
                    'bzrlib.tests.test_merge3',
                    'bzrlib.tests.test_merge_core',

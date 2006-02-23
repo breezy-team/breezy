@@ -254,6 +254,16 @@ class IncompatibleFormat(BzrNewError):
         self.bzrdir = bzrdir_format
 
 
+class UnknownMapFormat(BzrNewError):
+    """The map format %(format)s is unknown"""
+    def __init__(self, format):
+        self.format = format
+
+class MalformedMap(BzrNewError):
+    """The line %(line)r is malformed."""
+    def __init__(self, line):
+        self.format = line 
+
 class NotVersionedError(BzrNewError):
     """%(path)s is not versioned"""
     def __init__(self, path):
