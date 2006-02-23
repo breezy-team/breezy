@@ -35,6 +35,8 @@ def show_status(branch, show_unchanged=False,
                 revision=None):
     """Display summary of changes.
 
+    Please use show_tree_status instead.
+
     By default this compares the working tree to a previous revision. 
     If the revision argument is given, summarizes changes between the 
     working tree and another, or between two revisions.
@@ -64,6 +66,7 @@ def show_status(branch, show_unchanged=False,
     """
     show_tree_status(branch.bzrdir.open_workingtree(), show_unchanged, 
                      specific_files, show_ids, to_file, show_pending, revision)
+
 
 def show_tree_status(wt, show_unchanged=False,
                      specific_files=None,
