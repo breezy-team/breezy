@@ -23,6 +23,7 @@ import xml.sax.saxutils
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 from bzrlib.errors import InvalidRevisionId
+import bzrlib.gpg as gpg
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.osutils import safe_unicode
 from bzrlib.revision import NULL_REVISION
@@ -49,6 +50,54 @@ class Repository(object):
     describe the disk data format and the way of accessing the (possibly 
     remote) disk.
     """
+
+    @needs_write_lock
+    def add_inventory(self, revid, inv, parents):
+        """Add the inventory inv to the repository as revid.
+        
+        :param parents: The revision ids of the parents that revid
+                        is known to have and are in the repository already.
+
+        returns the sha1 of the serialized inventory.
+        """
+        inv_text = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
+        inv_sha1 = bzrlib.osutils.sha_string(inv_text)
+        self.control_weaves.add_text('inventory', revid,
+                   bzrlib.osutils.split_lines(inv_text), parents,
+                   self.get_transaction())
+        return inv_sha1
+
+    @needs_write_lock
+    def add_revision(self, rev_id, rev, inv=None, config=None):
+        """Add rev to the revision store as rev_id.
+
+        :param rev_id: the revision id to use.
+        :param rev: The revision object.
+        :param inv: The inventory for the revision. if None, it will be looked
+                    up in the inventory storer
+        :param config: If None no digital signature will be created.
+                       If supplied its signature_needed method will be used
+                       to determine if a signature should be made.
+        """
+        if config is not None and config.signature_needed():
+            if inv is None:
+                inv = self.get_inventory(rev_id)
+            plaintext = Testament(rev, inv).as_short_text()
+            self.store_revision_signature(
+                gpg.GPGStrategy(config), plaintext, rev_id)
+        if not rev_id in self.get_inventory_weave():
+            if inv is None:
+                raise errors.WeaveRevisionNotPresent(rev_id,
+                                                     self.get_inventory_weave())
+            else:
+                # yes, this is not suitable for adding with ghosts.
+                self.add_inventory(rev_id, inv, rev.parent_ids)
+            
+        rev_tmp = StringIO()
+        bzrlib.xml5.serializer_v5.write_revision(rev, rev_tmp)
+        rev_tmp.seek(0)
+        self.revision_store.add(rev_tmp, rev_id)
+        mutter('added revision_id {%s}', rev_id)
 
     @needs_read_lock
     def _all_possible_ids(self):
