@@ -75,45 +75,69 @@ class Reconciler(object):
     def _reweave_inventory(self):
         """Regenerate the inventory weave for the repository from scratch."""
         self.pb.update('Reading inventory data.')
-        inventory = self.repo.get_inventory_weave()
+        self.inventory = self.repo.get_inventory_weave()
         self.repo.control_weaves.put_weave('inventory.backup',
-                                           inventory,
+                                           self.inventory,
                                            self.repo.get_transaction())
         self.pb.note('Backup Inventory created.')
         # asking for '' should never return a non-empty weave
         new_inventory = self.repo.control_weaves.get_weave_or_empty('',
             self.repo.get_transaction())
 
-        pending = [file_id for file_id in self.repo.revision_store]
-        self.total = len(pending)
+        # the total set of revisions to process
+        self.pending = set([file_id for file_id in self.repo.revision_store])
+        # the current line of history being processed.
+        # once we add in per inventory root ids this will involve a single
+        # pass within the revision knit at that point.
+        # this contains (revision_id, not_ghost_parents) tuples.
+        self._rev_stack = []
+        # total steps = 1 read per revision + one insert into the inventory
+        self.total = len(self.pending) * 2
         self.count = 0
 
-        # FIXME this loop is potentially N + N-1 + N-2 etc loops,
-        # which is rather terrible. Better to make a stack of the
-        # current desired-for-availability revisions and do those 
-        # preferentially. RBC 20060223
-        while pending:
-            rev_id = pending.pop(0)
-
-            self.pb.update('regenerating', self.count, self.total)
-
-            rev = self.repo.get_revision(rev_id)
-            parents = []
-            for parent in rev.parent_ids:
-                if parent in inventory:
-                    parents.append(parent)
+        # outer loop to ensure we hit every revision
+        while self.pending:
+            self._stack_revision()
+            # now we have one revision on the todo stack.
+            # try to process the tip of the stack and if we cant
+            # insert it yet queue the revision ids we need to be
+            # able to add it. Rinse and repeat until the stack is
+            # empty and then we grab another pending revision if
+            # there are any
+            while len(self._rev_stack):
+                rev_id, parents = self._rev_stack[-1]
+                unavailable = [p for p in parents if p not in new_inventory]
+                if len(unavailable) == 0:
+                    # this entry can be popped off.
+                    self.pb.update('regenerating', self.count, self.total)
+                    self.count += 1
+                    new_inventory.add(rev_id, parents, self.inventory.get(rev_id))
+                    self._rev_stack.pop()
                 else:
-                    mutter('found ghost %s', parent)
-            unavailable = [p for p in parents if p not in new_inventory]
-            if len(unavailable) == 0:
-                new_inventory.add(rev_id, parents, inventory.get(rev_id))
-                self.count += 1
-            else:
-                pending.append(rev_id)
-
-                
+                    # push the needed parents onto the stack
+                    for parent in unavailable:
+                        self._stack_revision(parent)
         self.pb.update('Writing weave')
         self.repo.control_weaves.put_weave('inventory',
                                            new_inventory,
                                            self.repo.get_transaction())
+        self.inventory = None
         self.pb.note('Inventory regenerated.')
+
+    def _stack_revision(self, rev_id=None):
+        """Add rev_id to the pending revision stack."""
+        if rev_id is None:
+            # pick a random revision
+            rev_id = self.pending.pop()
+        self.pb.update('regenerating', self.count, self.total)
+        self.count += 1
+        rev = self.repo.get_revision(rev_id)
+        assert rev.revision_id == rev_id
+        parents = []
+        for parent in rev.parent_ids:
+            if parent in self.inventory:
+                parents.append(parent)
+            else:
+                mutter('found ghost %s', parent)
+        self._rev_stack.append((rev_id, parents))
+
