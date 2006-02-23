@@ -851,40 +851,40 @@ class cmd_diff(Command):
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None):
-        from bzrlib.diff import show_diff
+        from bzrlib.diff import cmd_show_diff, show_diff_trees
         try:
-            tree, file_list = internal_tree_files(file_list)
+            tree1, file_list = internal_tree_files(file_list)
+            tree2 = None
             b = None
             b2 = None
         except FileInWrongBranch:
             if len(file_list) != 2:
                 raise BzrCommandError("Files are in different branches")
 
-            b, file1 = Branch.open_containing(file_list[0])
-            b2, file2 = Branch.open_containing(file_list[1])
+            tree1, file1 = WorkingTree.open_containing(file_list[0])
+            tree2, file2 = WorkingTree.open_containing(file_list[1])
             if file1 != "" or file2 != "":
                 # FIXME diff those two files. rbc 20051123
                 raise BzrCommandError("Files are in different branches")
             file_list = None
         if revision is not None:
-            if b2 is not None:
+            if tree2 is not None:
                 raise BzrCommandError("Can't specify -r with two branches")
             if (len(revision) == 1) or (revision[1].spec is None):
-                return show_diff(tree.branch, revision[0], specific_files=file_list,
-                                 external_diff_options=diff_options)
+                return cmd_show_diff(tree1, file_list, diff_options,
+                                     revision[0])
             elif len(revision) == 2:
-                return show_diff(tree.branch, revision[0], specific_files=file_list,
-                                 external_diff_options=diff_options,
-                                 revision2=revision[1])
+                return cmd_show_diff(tree1, file_list, diff_options,
+                                     revision[0], revision[1])
             else:
                 raise BzrCommandError('bzr diff --revision takes exactly one or two revision identifiers')
         else:
-            if b is not None:
-                return show_diff(b, None, specific_files=file_list,
-                                 external_diff_options=diff_options, b2=b2)
+            if tree2 is not None:
+                return show_diff_trees(tree1, tree2, sys.stdout, 
+                                       specific_files=file_list,
+                                       external_diff_options=diff_options)
             else:
-                return show_diff(tree.branch, None, specific_files=file_list,
-                                 external_diff_options=diff_options)
+                return cmd_show_diff(tree1, file_list, diff_options)
 
 
 class cmd_deleted(Command):
