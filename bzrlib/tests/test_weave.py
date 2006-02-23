@@ -765,8 +765,8 @@ class MergeCases(TestBase):
         self.doMerge(['aaa', 'bbb'],
                      ['aaa', 'xxx', 'yyy', 'bbb'],
                      ['aaa', 'xxx', 'bbb'],
-                     ['aaa', '<<<<<<<', 'xxx', 'yyy', '=======', 'xxx', 
-                      '>>>>>>>', 'bbb'])
+                     ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======', 'xxx', 
+                      '>>>>>>> ', 'bbb'])
 
         # really it ought to reduce this to 
         # ['aaa', 'xxx', 'yyy', 'bbb']
@@ -776,15 +776,15 @@ class MergeCases(TestBase):
         self.doMerge(['aaa'],
                      ['xxx'],
                      ['yyy', 'zzz'],
-                     ['<<<<<<<', 'xxx', '=======', 'yyy', 'zzz', 
-                      '>>>>>>>'])
+                     ['<<<<<<< ', 'xxx', '=======', 'yyy', 'zzz', 
+                      '>>>>>>> '])
 
     def testNonClashInsert(self):
         self.doMerge(['aaa'],
                      ['xxx', 'aaa'],
                      ['yyy', 'zzz'],
-                     ['<<<<<<<', 'xxx', 'aaa', '=======', 'yyy', 'zzz', 
-                      '>>>>>>>'])
+                     ['<<<<<<< ', 'xxx', 'aaa', '=======', 'yyy', 'zzz', 
+                      '>>>>>>> '])
 
         self.doMerge(['aaa'],
                      ['aaa'],
@@ -806,7 +806,7 @@ class MergeCases(TestBase):
         self.doMerge(['aaa', 'bbb', 'ccc'],
                      ['aaa', 'ddd', 'ccc'],
                      ['aaa', 'ccc'],
-                     ['<<<<<<<<', 'aaa', '=======', '>>>>>>>', 'ccc'])
+                     ['<<<<<<<< ', 'aaa', '=======', '>>>>>>> ', 'ccc'])
 
 
 class JoinWeavesTests(TestBase):
