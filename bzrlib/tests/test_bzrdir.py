@@ -30,6 +30,7 @@ from bzrlib.errors import (NotBranchError,
                            )
 import bzrlib.repository as repository
 from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
@@ -64,6 +65,10 @@ class SampleBzrDir(bzrdir.BzrDir):
 
     def create_repository(self):
         """See BzrDir.create_repository."""
+        return "A repository"
+
+    def open_repository(self):
+        """See BzrDir.open_repository."""
         return "A repository"
 
     def create_branch(self):
@@ -157,13 +162,52 @@ class TestBzrDirFormat(TestCaseWithTransport):
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
-    def test_create_branch_and_repo(self):
+    def test_create_repository_under_shared(self):
+        # an explicit create_repository always does so.
+        # we trust the format is right from the 'create_repository test'
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            self.make_repository('.', shared=True)
+            repo = bzrdir.BzrDir.create_repository(self.get_url('child'))
+            self.assertTrue(isinstance(repo, repository.Repository))
+            self.assertTrue(repo.bzrdir.root_transport.base.endswith('child/'))
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_and_repo_uses_default(self):
         format = SampleBzrDirFormat()
         old_format = bzrdir.BzrDirFormat.get_default_format()
         bzrdir.BzrDirFormat.set_default_format(format)
         try:
             branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url())
             self.assertTrue(isinstance(branch, SampleBranch))
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_and_repo_under_shared(self):
+        # creating a branch and repo in a shared repo uses the
+        # shared repository
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            self.make_repository('.', shared=True)
+            branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url('child'))
+            self.assertRaises(errors.NoRepositoryPresent,
+                              branch.bzrdir.open_repository)
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_and_repo_under_shared_force_new(self):
+        # creating a branch and repo in a shared repo can be forced to 
+        # make a new repo
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            self.make_repository('.', shared=True)
+            branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url('child'),
+                                                          force_new_repo=True)
+            branch.bzrdir.open_repository()
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
@@ -179,6 +223,109 @@ class TestBzrDirFormat(TestCaseWithTransport):
                               self.get_readonly_url())
             tree = bzrdir.BzrDir.create_standalone_workingtree('.')
             self.assertEqual('A tree', tree)
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_standalone_working_tree_under_shared_repo(self):
+        # create standalone working tree always makes a repo.
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            self.make_repository('.', shared=True)
+            # note this is deliberately readonly, as this failure should 
+            # occur before any writes.
+            self.assertRaises(errors.NotLocalUrl,
+                              bzrdir.BzrDir.create_standalone_workingtree,
+                              self.get_readonly_url('child'))
+            tree = bzrdir.BzrDir.create_standalone_workingtree('child')
+            tree.bzrdir.open_repository()
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_convenience(self):
+        # outside a repo the default convenience output is a repo+branch_tree
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            branch = bzrdir.BzrDir.create_branch_convenience('.')
+            branch.bzrdir.open_workingtree()
+            branch.bzrdir.open_repository()
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_convenience_under_shared_repo(self):
+        # inside a repo the default convenience output is a branch+ follow the
+        # repo tree policy
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            self.make_repository('.', shared=True)
+            branch = bzrdir.BzrDir.create_branch_convenience('child')
+            branch.bzrdir.open_workingtree()
+            self.assertRaises(errors.NoRepositoryPresent,
+                              branch.bzrdir.open_repository)
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+            
+    def test_create_branch_convenience_under_shared_repo_force_no_tree(self):
+        # inside a repo the default convenience output is a branch+ follow the
+        # repo tree policy but we can override that
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            self.make_repository('.', shared=True)
+            branch = bzrdir.BzrDir.create_branch_convenience('child',
+                force_new_tree=False)
+            self.assertRaises(errors.NoWorkingTree,
+                              branch.bzrdir.open_workingtree)
+            self.assertRaises(errors.NoRepositoryPresent,
+                              branch.bzrdir.open_repository)
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+            
+    def test_create_branch_convenience_under_shared_repo_no_tree_policy(self):
+        # inside a repo the default convenience output is a branch+ follow the
+        # repo tree policy
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            repo = self.make_repository('.', shared=True)
+            repo.set_make_working_trees(False)
+            branch = bzrdir.BzrDir.create_branch_convenience('child')
+            self.assertRaises(errors.NoWorkingTree,
+                              branch.bzrdir.open_workingtree)
+            self.assertRaises(errors.NoRepositoryPresent,
+                              branch.bzrdir.open_repository)
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_convenience_under_shared_repo_no_tree_policy_force_tree(self):
+        # inside a repo the default convenience output is a branch+ follow the
+        # repo tree policy but we can override that
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            repo = self.make_repository('.', shared=True)
+            repo.set_make_working_trees(False)
+            branch = bzrdir.BzrDir.create_branch_convenience('child',
+                force_new_tree=True)
+            branch.bzrdir.open_workingtree()
+            self.assertRaises(errors.NoRepositoryPresent,
+                              branch.bzrdir.open_repository)
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_convenience_under_shared_repo_force_new_repo(self):
+        # inside a repo the default convenience output is overridable to give
+        # repo+branch+tree
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            self.make_repository('.', shared=True)
+            branch = bzrdir.BzrDir.create_branch_convenience('child',
+                force_new_repo=True)
+            branch.bzrdir.open_repository()
+            branch.bzrdir.open_workingtree()
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
@@ -207,6 +354,19 @@ class ChrootedTests(TestCaseWithTransport):
         branch, relpath = bzrdir.BzrDir.open_containing(self.get_readonly_url('g/p/q'))
         self.assertEqual('g/p/q', relpath)
 
+    def test_open_containing_from_transport(self):
+        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_containing_from_transport,
+                          get_transport(self.get_readonly_url('')))
+        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_containing_from_transport,
+                          get_transport(self.get_readonly_url('g/p/q')))
+        control = bzrdir.BzrDir.create(self.get_url())
+        branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
+            get_transport(self.get_readonly_url('')))
+        self.assertEqual('', relpath)
+        branch, relpath = bzrdir.BzrDir.open_containing_from_transport(
+            get_transport(self.get_readonly_url('g/p/q')))
+        self.assertEqual('g/p/q', relpath)
+
 
 class TestMeta1DirFormat(TestCaseWithTransport):
     """Tests specific to the meta1 dir format."""
@@ -226,3 +386,109 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         self.assertEqual(checkout_base, dir.get_workingtree_transport(None).base)
         self.assertEqual(checkout_base,
                          dir.get_workingtree_transport(workingtree.WorkingTreeFormat3()).base)
+
+        
+class TestFormat5(TestCaseWithTransport):
+    """Tests specific to the version 5 bzrdir format."""
+
+    def test_same_lockfiles_between_tree_repo_branch(self):
+        # this checks that only a single lockfiles instance is created 
+        # for format 5 objects
+        dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
+        def check_dir_components_use_same_lock(dir):
+            ctrl_1 = dir.open_repository().control_files
+            ctrl_2 = dir.open_branch().control_files
+            ctrl_3 = dir.open_workingtree()._control_files
+            self.assertTrue(ctrl_1 is ctrl_2)
+            self.assertTrue(ctrl_2 is ctrl_3)
+        check_dir_components_use_same_lock(dir)
+        # and if we open it normally.
+        dir = bzrdir.BzrDir.open(self.get_url())
+        check_dir_components_use_same_lock(dir)
+    
+    def test_can_convert(self):
+        # format 5 dirs are convertable
+        dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
+        self.assertTrue(dir.can_convert_format())
+    
+    def test_needs_conversion(self):
+        # format 5 dirs need a conversion if they are not the default.
+        # and they start of not the default.
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
+        try:
+            dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
+            self.assertFalse(dir.needs_format_conversion())
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+        self.assertTrue(dir.needs_format_conversion())
+
+
+class TestFormat6(TestCaseWithTransport):
+    """Tests specific to the version 6 bzrdir format."""
+
+    def test_same_lockfiles_between_tree_repo_branch(self):
+        # this checks that only a single lockfiles instance is created 
+        # for format 6 objects
+        dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        def check_dir_components_use_same_lock(dir):
+            ctrl_1 = dir.open_repository().control_files
+            ctrl_2 = dir.open_branch().control_files
+            ctrl_3 = dir.open_workingtree()._control_files
+            self.assertTrue(ctrl_1 is ctrl_2)
+            self.assertTrue(ctrl_2 is ctrl_3)
+        check_dir_components_use_same_lock(dir)
+        # and if we open it normally.
+        dir = bzrdir.BzrDir.open(self.get_url())
+        check_dir_components_use_same_lock(dir)
+    
+    def test_can_convert(self):
+        # format 6 dirs are convertable
+        dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        self.assertTrue(dir.can_convert_format())
+    
+    def test_needs_conversion(self):
+        # format 6 dirs need an conversion if they are not the default.
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
+            self.assertTrue(dir.needs_format_conversion())
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+        self.assertFalse(dir.needs_format_conversion())
+
+
+class NonLocalTests(TestCaseWithTransport):
+    """Tests for bzrdir static behaviour on non local paths."""
+
+    def setUp(self):
+        super(NonLocalTests, self).setUp()
+        self.transport_server = MemoryServer
+    
+    def test_create_branch_convenience(self):
+        # outside a repo the default convenience output is a repo+branch_tree
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            branch = bzrdir.BzrDir.create_branch_convenience(self.get_url('foo'))
+            self.assertRaises(errors.NoWorkingTree,
+                              branch.bzrdir.open_workingtree)
+            branch.bzrdir.open_repository()
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_convenience_force_tree_not_local_fails(self):
+        # outside a repo the default convenience output is a repo+branch_tree
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            self.assertRaises(errors.NotLocalUrl,
+                bzrdir.BzrDir.create_branch_convenience,
+                self.get_url('foo'),
+                force_new_tree=True)
+            t = get_transport(self.get_url('.'))
+            self.assertFalse(t.has('foo'))
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+

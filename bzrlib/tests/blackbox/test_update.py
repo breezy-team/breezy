@@ -34,7 +34,7 @@ class TestUpdate(ExternalBase):
     def test_update_up_to_date_checkout(self):
         self.make_branch_and_tree('branch')
         self.runbzr('checkout branch checkout')
-        out, err = self.runbzr('update branch')
+        out, err = self.runbzr('update checkout')
         self.assertEqual('Tree is up to date.\n', err)
         self.assertEqual('', out)
 
@@ -91,5 +91,5 @@ class TestUpdate(ExternalBase):
         self.assertEqual(['1 conflicts encountered.',
                           'Updated to revision 2.'],
                          err.split('\n')[1:3])
-        self.assertContainsRe(err, 'Diff3 conflict encountered in.*file\n')
+        self.assertContainsRe(err, 'Text conflict in file\n')
         self.assertEqual('', out)

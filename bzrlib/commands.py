@@ -42,7 +42,6 @@ from bzrlib.errors import (BzrError,
                            BzrOptionError,
                            NotBranchError)
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib import BZRDIR
 from bzrlib.option import Option
 
 plugin_cmds = {}
@@ -219,8 +218,8 @@ class Command(object):
         allowed_names = self.options().keys()
         for oname in opts:
             if oname not in allowed_names:
-                raise BzrCommandError("option '--%s' is not allowed for command %r"
-                                      % (oname, self.name()))
+                raise BzrCommandError("option '--%s' is not allowed for"
+                                      " command %r" % (oname, self.name()))
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
         cmdopts = {}
@@ -323,8 +322,9 @@ def parse_args(command, argv, alias_argv=None):
                     else:
                         optname = a[2:]
                     if optname not in cmd_options:
-                        raise BzrOptionError('unknown long option %r for command %s'
-                            % (a, command.name()))
+                        raise BzrOptionError('unknown long option %r for'
+                                             ' command %s' % 
+                                             (a, command.name()))
                 else:
                     shortopt = a[1:]
                     if shortopt in Option.SHORT_OPTIONS:
@@ -349,8 +349,8 @@ def parse_args(command, argv, alias_argv=None):
                             optargfn = Option.OPTIONS[optname].type
                             if optargfn is None:
                                 # This option does not take an argument, so the
-                                # next entry is another short option, pack it back
-                                # into the list
+                                # next entry is another short option, pack it
+                                # back into the list
                                 proc_argv.insert(0, '-' + a[2:])
                             else:
                                 # This option takes an argument, so pack it
@@ -358,14 +358,16 @@ def parse_args(command, argv, alias_argv=None):
                                 optarg = a[2:]
                 
                     if optname not in cmd_options:
-                        raise BzrOptionError('unknown short option %r for command'
-                            ' %s' % (shortopt, command.name()))
+                        raise BzrOptionError('unknown short option %r for'
+                                             ' command %s' % 
+                                             (shortopt, command.name()))
                 if optname in opts:
                     # XXX: Do we ever want to support this, e.g. for -r?
                     if proc_aliasarg:
                         raise BzrError('repeated option %r' % a)
                     elif optname in alias_opts:
-                        # Replace what's in the alias with what's in the real argument
+                        # Replace what's in the alias with what's in the real
+                        # argument
                         del alias_opts[optname]
                         del opts[optname]
                         proc_argv.insert(0, a)
@@ -584,7 +586,8 @@ def run_bzr(argv):
 
     try:
         if opt_lsprof:
-            ret = apply_lsprofiled(opt_lsprof_file, cmd_obj.run_argv, argv, alias_argv)
+            ret = apply_lsprofiled(opt_lsprof_file, cmd_obj.run_argv, argv, 
+                                   alias_argv)
         elif opt_profile:
             ret = apply_profiled(cmd_obj.run_argv, argv, alias_argv)
         else:

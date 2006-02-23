@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,13 +42,14 @@ import bzrlib.commands
 import bzrlib.errors as errors
 import bzrlib.inventory
 import bzrlib.iterablefile
+import bzrlib.lockdir
 import bzrlib.merge3
 import bzrlib.osutils
 import bzrlib.osutils as osutils
 import bzrlib.plugin
 import bzrlib.store
 import bzrlib.trace
-from bzrlib.transport import urlescape
+from bzrlib.transport import urlescape, get_transport
 import bzrlib.transport
 from bzrlib.transport.local import LocalRelpathServer
 from bzrlib.transport.readonly import ReadonlyServer
@@ -66,6 +67,7 @@ MODULES_TO_DOCTEST = [
                       bzrlib.errors,
                       bzrlib.inventory,
                       bzrlib.iterablefile,
+                      bzrlib.lockdir,
                       bzrlib.merge3,
                       bzrlib.option,
                       bzrlib.osutils,
@@ -81,6 +83,7 @@ def packages_to_test():
     import bzrlib.tests.blackbox
     import bzrlib.tests.branch_implementations
     import bzrlib.tests.bzrdir_implementations
+    import bzrlib.tests.interrepository_implementations
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.workingtree_implementations
     return [
@@ -88,6 +91,7 @@ def packages_to_test():
             bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
             bzrlib.tests.bzrdir_implementations,
+            bzrlib.tests.interrepository_implementations,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.workingtree_implementations,
             ]
@@ -297,7 +301,7 @@ class TestCase(unittest.TestCase):
             raise AssertionError('pattern "%s" not found in "%s"'
                     % (needle_re, haystack))
 
-    def AssertSubset(self, sublist, superlist):
+    def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
         missing = []
         for entry in sublist:
@@ -579,7 +583,7 @@ class TestCaseInTempDir(TestCase):
             break
         # make a fake bzr directory there to prevent any tests propagating
         # up onto the source directory's real branch
-        os.mkdir(osutils.pathjoin(TestCaseInTempDir.TEST_ROOT, '.bzr'))
+        bzrdir.BzrDir.create_standalone_workingtree(TestCaseInTempDir.TEST_ROOT)
 
     def setUp(self):
         super(TestCaseInTempDir, self).setUp()
@@ -614,7 +618,7 @@ class TestCaseInTempDir(TestCase):
         """
         # XXX: It's OK to just create them using forward slashes on windows?
         if transport is None or transport.is_readonly():
-            transport = bzrlib.transport.get_transport(".")
+            transport = get_transport(".")
         for name in shape:
             self.assert_(isinstance(name, basestring))
             if name[-1] == '/':
@@ -727,6 +731,22 @@ class TestCaseWithTransport(TestCaseInTempDir):
             base = base + relpath
         return base
 
+    def get_transport(self):
+        """Return a writeable transport for the test scratch space"""
+        t = get_transport(self.get_url())
+        self.assertFalse(t.is_readonly())
+        return t
+
+    def get_readonly_transport(self):
+        """Return a readonly transport for the test scratch space
+        
+        This can be used to test that operations which should only need
+        readonly access in fact do not try to write.
+        """
+        t = get_transport(self.get_readonly_url())
+        self.assertTrue(t.is_readonly())
+        return t
+
     def make_branch(self, relpath):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath)
@@ -735,10 +755,10 @@ class TestCaseWithTransport(TestCaseInTempDir):
     def make_bzrdir(self, relpath):
         try:
             url = self.get_url(relpath)
-            segments = url.split('/')
+            segments = relpath.split('/')
             if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = bzrlib.transport.get_transport(parent)
+                parent = self.get_url('/'.join(segments[:-1]))
+                t = get_transport(parent)
                 try:
                     t.mkdir(segments[-1])
                 except errors.FileExists:
@@ -747,10 +767,10 @@ class TestCaseWithTransport(TestCaseInTempDir):
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
-    def make_repository(self, relpath):
+    def make_repository(self, relpath, shared=False):
         """Create a repository on our default transport at relpath."""
         made_control = self.make_bzrdir(relpath)
-        return made_control.create_repository()
+        return made_control.create_repository(shared=shared)
 
     def make_branch_and_tree(self, relpath):
         """Create a branch on the transport and a tree locally.
@@ -874,6 +894,7 @@ def test_suite():
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_inv',
+                   'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
                    'bzrlib.tests.test_merge',
@@ -903,6 +924,7 @@ def test_suite():
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
+                   'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_ui',

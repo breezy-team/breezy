@@ -8,8 +8,8 @@
 
 
 :Authors: `Michael Foord`_, `Nicola Larosa`_, `Mark Andrews`_
-:Version: Validate 0.2.0
-:Date: 2005/08/25
+:Version: Validate 0.2.1
+:Date: 2005/12/16
 :Homepage: `Validate Homepage`_
 :License: `BSD License`_
 :Support: `Mailing List`_
@@ -20,7 +20,7 @@
 .. _Mark Andrews: mark@la-la.com
 .. _This Document:
 .. _Validate Homepage: http://www.voidspace.org.uk/python/validate.html
-.. _BSD License: http://www.voidspace.org.uk/documents/BSD-LICENSE.txt
+.. _BSD License: http://www.voidspace.org.uk/python/license.shtml
 
 
 .. contents:: Validate Manual
@@ -56,7 +56,7 @@ Some standard functions are provided, for basic data types; these come built
 into every validator. Additional checks are easy to write: they can be provided
 when the ``Validator`` is instantiated, or added afterwards.
 
-Validate was primarily written to support ConfigObj_, but was designed to be 
+Validate was primarily written to support ConfigObj_, but is designed to be 
 applicable to many other situations.
 
 For support and bug reports please use the ConfigObj `Mailing List`_.
@@ -66,7 +66,7 @@ For support and bug reports please use the ConfigObj `Mailing List`_.
 Downloading
 ===========
 
-The current version is **0.2.0**, dated 25th August 2005. 
+The current version is **0.2.1**, dated 16th December 2005. 
 
 You can get obtain validate in the following ways :
 
@@ -76,7 +76,7 @@ Files
 * validate.py_ from Voidspace
 
 * configobj.zip from Voidspace - See the homepage of ConfigObj_ for the latest 
-  version and downlaod links.
+  version and download links.
 
     This contains validate.py and `this document`_. (As well as ConfigObj_ and 
     the ConfigObj documentation).
@@ -101,7 +101,7 @@ various other useful helper modules, and is required by many of the `Voidspace
 Python Projects`_.
 
 .. _configobj.py: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj.py
-.. _configobj.zip: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj-4.0.0b4.zip
+.. _configobj.zip: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=configobj-4.1.0.zip
 .. _validate.py: http://www.voidspace.org.uk/cgi-bin/voidspace/downman.py?file=validate.py
 .. _API Docs: http://www.voidspace.org.uk/python/configobj-api/
 .. _Subversion Repository: http://svn.rest2web.python-hosting.com/branches/configobj4/
@@ -203,8 +203,8 @@ functions yourself.
     from validate import Validator
     #
     vtor = Validator()
-    newval1 = vtor.check(value1, 'integer')
-    newval2 = vtor.check(value2, 'bool')
+    newval1 = vtor.check('integer', value1)
+    newval2 = vtor.check('bool', value2)
     # etc ...
 
     {-coloring}
@@ -214,6 +214,7 @@ functions yourself.
     Of course, if these checks fail they raise exceptions. So you should wrap
     them in ``try...except`` blocks. Better still,  use ConfigObj for a higher
     level interface.
+
 
 Using Validator
 ===============
@@ -332,6 +333,7 @@ that. Here's the basic example :
     Although the value can be a string, if it represents a list it should
     already have been turned into a list of strings.
 
+
 Default Values
 ~~~~~~~~~~~~~~
 
@@ -364,6 +366,20 @@ If the check has ``default=None`` (case sensitive) then ``vtor.check`` will
 *always* return ``None`` (the object). This makes it easy to tell your program
 that this check contains no useful value when missing, i.e. the value is
 optional, and may be omitted without harm.
+
+
+List Values
+~~~~~~~~~~~
+
+It's possible that you would like your default value to be a list. It's even
+possible that you will write your own check functions - and would like to pass
+them keyword arguments as lists from within the check.
+
+To avoid confusing syntax with commas and quotes you use a list constructor to
+specify that keyword arguments are lists. This includes the ``default`` value.
+This makes checks look something like : ::
+
+    checkname(default=list('val1', 'val2', 'val3'))
 
 Validator Exceptions
 ====================
@@ -539,7 +555,7 @@ TODO
 
 * A regex check function ?
 * A timestamp check function ? (Using the ``parse`` function from ``DateUtil``).
-* Allow triple quotes ? (getting a bit heavy for a single regex)
+* Allow triple quotes ? (getting a bit heavy for a regex)
 
 ISSUES
 ======
@@ -549,15 +565,25 @@ ISSUES
     Please file any bug reports to `Michael Foord`_ or the ConfigObj
     `Mailing List`_.
 
-Lists passed as function arguments need additional quotes. Ugly, could do
-with fixing this.
-
 If we could pull tuples out of arguments, it would be easier
 to specify arguments for 'mixed_lists'.
 
 CHANGELOG
 =========
 
+2005/12/16      Version 0.2.1
+-----------------------------
+
+Fixed bug so we can handle keyword argument values with commas.
+
+We now use a list constructor for passing list values to keyword arguments
+(including ``default``) : ::
+
+    default=list("val", "val", "val")
+
+Added the ``_test`` test. {sm;:-)}
+
+Moved a function call outside a try...except block.
 
 2005/08/18      Version 0.2.0
 -----------------------------

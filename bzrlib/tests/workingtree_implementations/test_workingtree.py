@@ -26,37 +26,12 @@ from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import TestSkipped
+from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
 import bzrlib.workingtree as workingtree
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
-
-
-class TestCaseWithWorkingTree(TestCaseWithTransport):
-
-    def make_bzrdir(self, relpath):
-        # todo factor out into bzrdir-using-implementations-tests-base-class
-        try:
-            url = self.get_url(relpath)
-            segments = url.split('/')
-            if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
-                try:
-                    t.mkdir(segments[-1])
-                except errors.FileExists:
-                    pass
-            return self.bzrdir_format.initialize(url)
-        except errors.UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
-
-    def make_branch_and_tree(self, relpath):
-        made_control = self.make_bzrdir(relpath)
-        made_control.create_repository()
-        made_control.create_branch()
-        return self.workingtree_format.initialize(made_control)
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):
@@ -105,29 +80,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.unlock()
         self.assertEqual(None, tree.branch.peek_lock_mode())
  
-    def get_pullable_trees(self):
-        self.build_tree(['from/', 'from/file', 'to/'])
-        tree = self.make_branch_and_tree('from')
-        tree.add('file')
-        tree.commit('foo', rev_id='A')
-        tree_b = self.make_branch_and_tree('to')
-        return tree, tree_b
- 
-    def test_pull(self):
-        tree_a, tree_b = self.get_pullable_trees()
-        tree_b.pull(tree_a.branch)
-        self.failUnless(tree_b.branch.repository.has_revision('A'))
-        self.assertEqual('A', tree_b.last_revision())
-
-    def test_pull_overwrites(self):
-        tree_a, tree_b = self.get_pullable_trees()
-        tree_b.commit('foo', rev_id='B')
-        self.assertEqual(['B'], tree_b.branch.revision_history())
-        tree_b.pull(tree_a.branch, overwrite=True)
-        self.failUnless(tree_b.branch.repository.has_revision('A'))
-        self.failUnless(tree_b.branch.repository.has_revision('B'))
-        self.assertEqual('A', tree_b.last_revision())
-
     def test_revert(self):
         """Test selected-file revert"""
         tree = self.make_branch_and_tree('.')
@@ -170,7 +122,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         pause()
         sha = tree.get_file_sha1(tree.path2id('hello.txt'))
         self.assertEqual(1, tree._hashcache.miss_count)
-        tree2 = WorkingTree.open('.', tree.branch)
+        tree2 = WorkingTree.open('.')
         sha2 = tree2.get_file_sha1(tree2.path2id('hello.txt'))
         self.assertEqual(0, tree2._hashcache.miss_count)
         self.assertEqual(1, tree2._hashcache.hit_count)

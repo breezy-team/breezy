@@ -26,7 +26,6 @@ import bzrlib
 import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
-from bzrlib._merge_core import ApplyMerge3
 from bzrlib.commands import Command, display_command
 from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
@@ -34,11 +33,14 @@ from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError,
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch)
 from bzrlib.log import show_one_log
+from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
+from bzrlib.progress import DummyProgress
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
 from bzrlib.transport.local import LocalTransport
+import bzrlib.ui
 from bzrlib.workingtree import WorkingTree
 
 
@@ -123,9 +125,9 @@ class cmd_status(Command):
     def run(self, all=False, show_ids=False, file_list=None, revision=None):
         tree, file_list = tree_files(file_list)
             
-        from bzrlib.status import show_status
-        show_status(tree.branch, show_unchanged=all, show_ids=show_ids,
-                    specific_files=file_list, revision=revision)
+        from bzrlib.status import show_tree_status
+        show_tree_status(tree, show_unchanged=all, show_ids=show_ids,
+                         specific_files=file_list, revision=revision)
 
 
 class cmd_cat_revision(Command):
@@ -504,10 +506,7 @@ class cmd_push(Command):
                         if new_transport.base == transport.base:
                             raise BzrCommandError("Could not creeate "
                                                   "path prefix.")
-            if isinstance(transport, LocalTransport):
-                br_to = WorkingTree.create_standalone(location).branch
-            else:
-                br_to = Branch.create(location)
+            br_to = bzrlib.bzrdir.BzrDir.create_branch_convenience(location)
         old_rh = br_to.revision_history()
         try:
             try:
@@ -714,9 +713,8 @@ class cmd_info(Command):
     
     @display_command
     def run(self, branch=None):
-        import info
-        b = WorkingTree.open_containing(branch)[0].branch
-        info.show_info(b)
+        import bzrlib.info
+        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0])
 
 
 class cmd_remove(Command):
@@ -819,7 +817,7 @@ class cmd_init(Command):
             # locations if the user supplies an extended path
             if not os.path.exists(location):
                 os.mkdir(location)
-        WorkingTree.create_standalone(location)
+        bzrdir.BzrDir.create_standalone_workingtree(location)
 
 
 class cmd_diff(Command):
@@ -1369,7 +1367,6 @@ class cmd_commit(Command):
                 StrictCommitFailed)
         from bzrlib.msgeditor import edit_commit_message, \
                 make_commit_message_template
-        from bzrlib.status import show_status
         from tempfile import TemporaryFile
         import codecs
 
@@ -1451,7 +1448,19 @@ class cmd_scan_cache(Command):
 
         if c.needs_write:
             c.write()
-            
+
+
+def get_format_type(typestring):
+    """Parse and return a format specifier."""
+    if typestring == "metadir":
+        return bzrdir.BzrDirMetaFormat1()
+    if typestring == "knit":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
+        return format
+    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
+        (typestring)
+    raise BzrCommandError(msg)
 
 
 class cmd_upgrade(Command):
@@ -1462,10 +1471,18 @@ class cmd_upgrade(Command):
     during other operations to upgrade.
     """
     takes_args = ['url?']
+    takes_options = [
+                     Option('format', 
+                            help='Upgrade to a specific format rather than the'
+                                 ' current default format. Currently this '
+                                 ' option only accepts =metadir',
+                            type=get_format_type),
+                    ]
 
-    def run(self, url='.'):
+
+    def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
-        upgrade(url)
+        upgrade(url, format)
 
 
 class cmd_whoami(Command):
@@ -1704,9 +1721,8 @@ class cmd_merge(Command):
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False):
-        from bzrlib._merge_core import ApplyMerge3
         if merge_type is None:
-            merge_type = ApplyMerge3
+            merge_type = Merge3Merger
         if branch is None:
             branch = WorkingTree.open_containing(u'.')[0].branch.get_parent()
             if branch is None:
@@ -1735,7 +1751,8 @@ class cmd_merge(Command):
         try:
             conflict_count = merge(other, base, check_clean=(not force),
                                    merge_type=merge_type, reprocess=reprocess,
-                                   show_base=show_base)
+                                   show_base=show_base, 
+                                   pb=bzrlib.ui.ui_factory.progress_bar())
             if conflict_count != 0:
                 return 1
             else:
@@ -1761,9 +1778,8 @@ class cmd_remerge(Command):
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
         from bzrlib.merge import merge_inner, transform_tree
-        from bzrlib._merge_core import ApplyMerge3
         if merge_type is None:
-            merge_type = ApplyMerge3
+            merge_type = Merge3Merger
         tree, file_list = tree_files(file_list)
         tree.lock_write()
         try:
@@ -1839,7 +1855,7 @@ class cmd_revert(Command):
         else:
             rev_id = revision[0].in_history(tree.branch).rev_id
         tree.revert(file_list, tree.branch.repository.revision_tree(rev_id),
-                    not no_backup)
+                    not no_backup, bzrlib.ui.ui_factory.progress_bar())
 
 
 class cmd_assert_fail(Command):
@@ -2145,8 +2161,9 @@ class cmd_uncommit(bzrlib.commands.Command):
 
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
-          this_dir=None, backup_files=False, merge_type=ApplyMerge3,
-          file_list=None, show_base=False, reprocess=False):
+          this_dir=None, backup_files=False, merge_type=Merge3Merger,
+          file_list=None, show_base=False, reprocess=False, 
+          pb=DummyProgress()):
     """Merge changes into a tree.
 
     base_revision
@@ -2174,19 +2191,19 @@ def merge(other_revision, base_revision,
     clients might prefer to call merge.merge_inner(), which has less magic 
     behavior.
     """
-    from bzrlib.merge import Merger, _MergeConflictHandler
+    from bzrlib.merge import Merger
     if this_dir is None:
         this_dir = u'.'
     this_tree = WorkingTree.open_containing(this_dir)[0]
-    if show_base and not merge_type is ApplyMerge3:
+    if show_base and not merge_type is Merge3Merger:
         raise BzrCommandError("Show-base is not supported for this merge"
                               " type. %s" % merge_type)
-    if reprocess and not merge_type is ApplyMerge3:
+    if reprocess and not merge_type is Merge3Merger:
         raise BzrCommandError("Reprocess is not supported for this merge"
                               " type. %s" % merge_type)
     if reprocess and show_base:
         raise BzrCommandError("Cannot reprocess and show base.")
-    merger = Merger(this_tree.branch, this_tree=this_tree)
+    merger = Merger(this_tree.branch, this_tree=this_tree, pb=pb)
     merger.check_basis(check_clean)
     merger.set_other(other_revision)
     merger.set_base(base_revision)
@@ -2198,10 +2215,6 @@ def merge(other_revision, base_revision,
     merger.set_interesting_files(file_list)
     merger.show_base = show_base 
     merger.reprocess = reprocess
-    merger.conflict_handler = _MergeConflictHandler(merger.this_tree, 
-                                                    merger.base_tree, 
-                                                    merger.other_tree,
-                                                    ignore_zero=ignore_zero)
     conflicts = merger.do_merge()
     merger.set_pending()
     return conflicts
