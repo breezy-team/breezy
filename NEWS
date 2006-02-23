@@ -25,7 +25,9 @@ bzr development version
       reflect user config now being stored in .bazaar (Hans Ulrich
       Niedermann)
 
-    * pull now accepts a --revision argument (Erik Bågfors)
+    * It's now possible to set aliases in bazaar.conf (Erik Bågfors)
+
+    * Pull now accepts a --revision argument (Erik Bågfors)
 
     * 'bzr re-sign' now allows multiple revisions to be supplied on the command
       line. You can now use the following command to sign all of your old commits.
@@ -49,8 +51,6 @@ bzr development version
 
     * Default log format can be set in configuration and plugins can register
       their own formatters. (Erik Bågfors)
-
-    * pull now accepts a --revision argument (Erik Bågfors)
 
   INTERNALS:
   
