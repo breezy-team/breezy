@@ -178,7 +178,7 @@ class HttpTransport(Transport):
             f.read()
             f.close()
             return True
-        except urllib2.URLError, e:
+        except urllib2.HTTPError, e:
             mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
                 return False
