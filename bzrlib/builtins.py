@@ -125,9 +125,9 @@ class cmd_status(Command):
     def run(self, all=False, show_ids=False, file_list=None, revision=None):
         tree, file_list = tree_files(file_list)
             
-        from bzrlib.status import show_status
-        show_status(tree.branch, show_unchanged=all, show_ids=show_ids,
-                    specific_files=file_list, revision=revision)
+        from bzrlib.status import show_tree_status
+        show_tree_status(tree, show_unchanged=all, show_ids=show_ids,
+                         specific_files=file_list, revision=revision)
 
 
 class cmd_cat_revision(Command):
@@ -1367,7 +1367,6 @@ class cmd_commit(Command):
                 StrictCommitFailed)
         from bzrlib.msgeditor import edit_commit_message, \
                 make_commit_message_template
-        from bzrlib.status import show_status
         from tempfile import TemporaryFile
         import codecs
 
@@ -2129,7 +2128,12 @@ class cmd_uncommit(bzrlib.commands.Command):
 
         if location is None:
             location = u'.'
-        b, relpath = Branch.open_containing(location)
+        control, relpath = bzrdir.BzrDir.open_containing(location)
+        b = control.open_branch()
+        try:
+            tree = control.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            tree = None
 
         if revision is None:
             revno = b.revno()
@@ -2156,7 +2160,7 @@ class cmd_uncommit(bzrlib.commands.Command):
                     print 'Canceled'
                     return 0
 
-        uncommit(b, dry_run=dry_run, verbose=verbose,
+        uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                 revno=revno)
 
 
