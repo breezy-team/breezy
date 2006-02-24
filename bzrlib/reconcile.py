@@ -26,10 +26,8 @@ when either exporting over http or when merging from other translated branches.
 """
 
 
-import os
-
-
 import bzrlib.branch
+import bzrlib.errors as errors
 import bzrlib.progress
 from bzrlib.trace import mutter
 import bzrlib.ui as ui
@@ -49,51 +47,39 @@ def reconcile(dir):
     reconciler.reconcile()
 
 
-class Reconciler(object):
-    """Reconcilers are used to reconcile existing data.
+def topological_sort(graph):
+    """Topological sort a graph.
 
-    Currently this is limited to a single repository, and consists
-    of an inventory reweave with revision cross-checks.
+    graph -- sequence of pairs of node->parents_list.
+
+    The result is a list of node names, such that all parents come before
+    their children.
+
+    Nodes at the same depth are returned in sorted order.
+
+    node identifiers can be any hashable object, and are typically strings.
     """
+    sorter = TopoSorter()
+    sorter.sort(graph)
+    return sorter._work_queue
 
-    def __init__(self, dir):
-        self.bzrdir = dir
 
-    def reconcile(self):
-        """Actually perform the reconciliation."""
-        self.pb = ui.ui_factory.progress_bar()
-        self.repo = self.bzrdir.open_repository()
-        self.repo.lock_write()
-        try:
-            self.pb.note('Reconciling repository %s',
-                         self.repo.bzrdir.root_transport.base)
-            self._reweave_inventory()
-        finally:
-            self.repo.unlock()
-        self.pb.note('Reconciliation complete.')
+class TopoSorter(object):
 
-    def _reweave_inventory(self):
-        """Regenerate the inventory weave for the repository from scratch."""
-        self.pb.update('Reading inventory data.')
-        self.inventory = self.repo.get_inventory_weave()
-        self.repo.control_weaves.put_weave('inventory.backup',
-                                           self.inventory,
-                                           self.repo.get_transaction())
-        self.pb.note('Backup Inventory created.')
-        # asking for '' should never return a non-empty weave
-        new_inventory = self.repo.control_weaves.get_weave_or_empty('',
-            self.repo.get_transaction())
-
+    def sort(self, graph):
         # the total set of revisions to process
-        self.pending = set([file_id for file_id in self.repo.revision_store])
-
+        self._rev_graph = dict(graph)
+        ### if debugging:
+        # self._original_graph = dict(graph)
         
         # the current line of history being processed.
         # once we add in per inventory root ids this will involve a single
         # pass within the revision knit at that point.
-        # these contain respectively the revision id and the not_ghost_parents.
+        # these contain respectively the revision id in the call stack
         self._rev_stack = []
-        self._parent_stack = []
+        # a set of the revisions on the stack, for cycle detection
+        self._rev_set = set()
+        # and the not_ghost_parents.
         self._pending_stack = []
         # actual queue to reinsert. This is a single pass queue we can use to 
         # regenerate the inventory versioned file, and holds
@@ -102,16 +88,6 @@ class Reconciler(object):
         # this is a set for fast lookups of queued revisions
         self._work_set = set()
         # total steps = 1 read per revision + one insert into the inventory
-        self.total = len(self.pending) * 2
-        self.count = 0
-
-        # mapping from revision_id to parents
-        self._rev_graph = {}
-        # we need the revision id of each revision and its available parents list
-        # we could do this on demand, but its easy to just build a graph.
-        for rev_id in self.pending:
-            # put a revision into the to-process queue
-            self._graph_revision(rev_id)
 
         # now we do a depth first search of the revision graph until its empty.
         # this gives us a topological order across all revisions in 
@@ -120,8 +96,6 @@ class Reconciler(object):
         # At each step in the call graph we need to know which parent we are on.
         # we do this by having three variables for each stack frame:
         # revision_id being descended into (self._rev_stack)
-        # parents list for using when regenerating that revision_id's inventory
-        #   (self._parent_stack)
         # current queue of parents to descend into 
         #   (self._pending_stack)
         # putting all the parents into a pending list, left to 
@@ -173,14 +147,95 @@ class Reconciler(object):
                 # we are now recursing down a call stack.
                 # its a width first search which 
 
-###         Useful if fiddling with this code.
+###        Useful if fiddling with this code.
 ###        # cross check
 ###        for index in range(len(self._work_queue)):
-###            rev = self._work_queue[index][0]
+###            rev = self._work_queue[index]
 ###            for left_index in range(index):
-###                if rev in self._work_queue[left_index][1]:
+###                if rev in self.original_graph[self._work_queue[left_index]]:
 ###                    print "revision in parent list of earlier revision"
 ###                    import pdb;pdb.set_trace()
+
+    def _stack_revision(self, rev_id, parents):
+        """Add rev_id to the pending revision stack."""
+        # detect cycles:
+        if rev_id in self._rev_set:
+            # we only supply the revisions that led to the cycle. This isn't
+            # minimal though... but it is usually a subset of the entire graph
+            # and easier to debug.
+            raise errors.GraphCycleError(self._rev_set)
+
+        self._rev_stack.append(rev_id)
+        self._rev_set.add(rev_id)
+        self._pending_stack.append(list(parents))
+
+    def _unstack_revision(self):
+        """A revision has been completed.
+
+        The revision is added to the work queue, and the data for
+        it popped from the call stack.
+        """
+        rev_id = self._rev_stack.pop()
+        self._rev_set.remove(rev_id)
+        self._pending_stack.pop()
+        self._work_queue.append(rev_id)
+        self._work_set.add(rev_id)
+        # and remove it from the rev graph as its now complete
+        self._rev_graph.pop(rev_id)
+
+
+class Reconciler(object):
+    """Reconcilers are used to reconcile existing data.
+
+    Currently this is limited to a single repository, and consists
+    of an inventory reweave with revision cross-checks.
+    """
+
+    def __init__(self, dir):
+        self.bzrdir = dir
+
+    def reconcile(self):
+        """Actually perform the reconciliation."""
+        self.pb = ui.ui_factory.progress_bar()
+        self.repo = self.bzrdir.open_repository()
+        self.repo.lock_write()
+        try:
+            self.pb.note('Reconciling repository %s',
+                         self.repo.bzrdir.root_transport.base)
+            self._reweave_inventory()
+        finally:
+            self.repo.unlock()
+        self.pb.note('Reconciliation complete.')
+
+    def _reweave_inventory(self):
+        """Regenerate the inventory weave for the repository from scratch."""
+        self.pb.update('Reading inventory data.')
+        self.inventory = self.repo.get_inventory_weave()
+        self.repo.control_weaves.put_weave('inventory.backup',
+                                           self.inventory,
+                                           self.repo.get_transaction())
+        self.pb.note('Backup Inventory created.')
+        # asking for '' should never return a non-empty weave
+        new_inventory = self.repo.control_weaves.get_weave_or_empty('',
+            self.repo.get_transaction())
+
+        # the total set of revisions to process
+        self.pending = set([file_id for file_id in self.repo.revision_store])
+
+        # total steps = 1 read per revision + one insert into the inventory
+        self.total = len(self.pending) * 2
+        self.count = 0
+
+        # mapping from revision_id to parents
+        self._rev_graph = {}
+        # we need the revision id of each revision and its available parents list
+        for rev_id in self.pending:
+            # put a revision into the graph.
+            self._graph_revision(rev_id)
+
+        ordered_rev_ids = topological_sort(self._rev_graph.items())
+        self._work_queue = [(rev_id, self._rev_graph[rev_id]) for 
+                            rev_id in ordered_rev_ids]
 
         # we have topological order of revisions and non ghost parents ready.
         while self._work_queue:
@@ -217,26 +272,6 @@ class Reconciler(object):
             else:
                 mutter('found ghost %s', parent)
         self._rev_graph[rev_id] = parents   
-
-    def _stack_revision(self, rev_id, parents):
-        """Add rev_id to the pending revision stack."""
-        self._rev_stack.append(rev_id)
-        self._parent_stack.append(parents)
-        self._pending_stack.append(list(parents))
-
-    def _unstack_revision(self):
-        """A revision has been completed.
-
-        The revision is added to the work queue, and the data for
-        it popped from the call stack.
-        """
-        rev_id = self._rev_stack.pop()
-        parents = self._parent_stack.pop()
-        self._pending_stack.pop()
-        self._work_queue.append((rev_id, parents))
-        self._work_set.add(rev_id)
-        # and remove it from the rev graph as its now complete
-        self._rev_graph.pop(rev_id)
 
     def _reweave_step(self, message):
         """Mark a single step of regeneration complete."""
