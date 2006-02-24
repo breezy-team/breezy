@@ -746,7 +746,7 @@ class Weave(object):
 
 
 
-    def weave_merge(self, plan):
+    def weave_merge(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
         lines_a = []
         lines_b = []
         ch_a = ch_b = False
@@ -768,11 +768,11 @@ class Weave(object):
                 elif lines_a == lines_b:
                     for l in lines_a: yield l
                 else:
-                    yield '<<<<<<<\n'
+                    yield a_marker
                     for l in lines_a: yield l
                     yield '=======\n'
                     for l in lines_b: yield l
-                    yield '>>>>>>>\n'
+                    yield b_marker
 
                 del lines_a[:]
                 del lines_b[:]
