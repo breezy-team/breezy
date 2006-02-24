@@ -2128,7 +2128,12 @@ class cmd_uncommit(bzrlib.commands.Command):
 
         if location is None:
             location = u'.'
-        b, relpath = Branch.open_containing(location)
+        control, relpath = bzrdir.BzrDir.open_containing(location)
+        b = control.open_branch()
+        try:
+            tree = control.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            tree = None
 
         if revision is None:
             revno = b.revno()
@@ -2155,7 +2160,7 @@ class cmd_uncommit(bzrlib.commands.Command):
                     print 'Canceled'
                     return 0
 
-        uncommit(b, dry_run=dry_run, verbose=verbose,
+        uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                 revno=revno)
 
 

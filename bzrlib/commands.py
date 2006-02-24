@@ -481,8 +481,7 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
 
 
 def get_alias(cmd):
-    """if an alias for cmd exists, returns the expanded command
-       else returns None"""
+    """Return an expanded alias, or None if no alias exists"""
     import bzrlib.config
     alias = bzrlib.config.GlobalConfig().get_alias(cmd)
     if (alias):
