@@ -14,49 +14,59 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
 """Tests for topological sort."""
 
 
-from bzrlib.reconcile import topological_sort
 from bzrlib.tests import TestCase
-from bzrlib.tsort import topo_sort
+from bzrlib.tsort import topo_sort, TopoSorter
 from bzrlib.errors import GraphCycleError
 
 
 class TopoSortTests(TestCase):
 
+    def assertSortAndIterate(self, graph, result_list):
+        """Check that sorting and iter_topo_order on graph works."""
+        self.assertEquals(result_list, topo_sort(graph))
+        self.assertEqual(result_list,
+                         list(TopoSorter(graph).iter_topo_order()))
+
+    def assertSortAndIterateRaise(self, exception_type, graph):
+        """Try both iterating and topo_sorting graph and expect an exception."""
+        self.assertRaises(exception_type, topo_sort, graph)
+        self.assertRaises(exception_type,
+                          list,
+                          TopoSorter(graph).iter_topo_order())
+
     def test_tsort_empty(self):
         """TopoSort empty list"""
-        self.assertEquals(topo_sort([]), [])
+        self.assertSortAndIterate([], [])
 
     def test_tsort_easy(self):
         """TopoSort list with one node"""
-        self.assertEquals(topo_sort({0: []}.items()),
-                          [0])
+        self.assertSortAndIterate({0: []}.items(), [0])
 
     def test_tsort_cycle(self):
         """TopoSort traps graph with cycles"""
-        self.assertRaises(GraphCycleError,
-                          topo_sort,
-                          {0: [1], 
-                           1: [0]}.iteritems())
+        self.assertSortAndIterateRaise(GraphCycleError,
+                                       {0: [1], 
+                                        1: [0]}.items())
 
     def test_tsort_cycle_2(self):
         """TopoSort traps graph with longer cycle"""
-        self.assertRaises(GraphCycleError,
-                          topo_sort,
-                          {0: [1], 
-                           1: [2], 
-                           2: [0]}.iteritems())
+        self.assertSortAndIterateRaise(GraphCycleError,
+                                       {0: [1], 
+                                        1: [2], 
+                                        2: [0]}.items())
                  
     def test_tsort_1(self):
         """TopoSort simple nontrivial graph"""
-        self.assertEquals(topo_sort({0: [3], 
-                                     1: [4],
-                                     2: [1, 4],
-                                     3: [], 
-                                     4: [0, 3]}.iteritems()),
-                          [3, 0, 4, 1, 2])
+        self.assertSortAndIterate({0: [3], 
+                                   1: [4],
+                                   2: [1, 4],
+                                   3: [], 
+                                   4: [0, 3]}.items(),
+                                  [3, 0, 4, 1, 2])
 
     def test_tsort_partial(self):
         """Topological sort with partial ordering.
@@ -64,63 +74,13 @@ class TopoSortTests(TestCase):
         If the graph does not give an order between two nodes, they are 
         returned in lexicographical order.
         """
-        self.assertEquals(topo_sort([(0, []),
-                                    (1, [0]),
-                                    (2, [0]),
-                                    (3, [0]),
-                                    (4, [1, 2, 3]),
-                                    (5, [1, 2]),
-                                    (6, [1, 2]),
-                                    (7, [2, 3]),
-                                    (8, [0, 1, 4, 5, 6])]),
-                          [0, 1, 2, 3, 4, 5, 6, 7, 8, ])
-
-    def test_new_tsort_empty(self):
-        """TopoSort empty list"""
-        self.assertEquals(topological_sort([]), [])
-
-    def test_new_tsort_easy(self):
-        """TopoSort list with one node"""
-        self.assertEquals(topological_sort({0: []}.items()),
-                          [0])
-
-    def test_new_tsort_cycle(self):
-        """TopoSort traps graph with cycles"""
-        self.assertRaises(GraphCycleError,
-                          topological_sort,
-                          {0: [1], 
-                           1: [0]}.iteritems())
-
-    def test_new_tsort_cycle_2(self):
-        """TopoSort traps graph with longer cycle"""
-        self.assertRaises(GraphCycleError,
-                          topological_sort,
-                          {0: [1], 
-                           1: [2], 
-                           2: [0]}.iteritems())
-                 
-    def test_new_tsort_1(self):
-        """TopoSort simple nontrivial graph"""
-        self.assertEquals(topological_sort({0: [3], 
-                                     1: [4],
-                                     2: [1, 4],
-                                     3: [], 
-                                     4: [0, 3]}.iteritems()),
-                          [3, 0, 4, 1, 2])
-
-    def test_new_tsort_partial(self):
-        """Topological sort with partial ordering.
-
-        If the graph does not give an order between two nodes, they are 
-        returned in lexicographical order.
-        """
-        self.assertEquals(topological_sort([(0, []),
-                                    (1, [0]),
-                                    (2, [0]),
-                                    (3, [0]),
-                                    (4, [1, 2, 3]),
-                                    (5, [1, 2]),
-                                    (6, [1, 2]),
-                                    (7, [2, 3]),
-                                    (8, [0, 1, 4, 5, 6])]),
-                          [0, 1, 2, 3, 4, 5, 6, 7, 8, ])
+        self.assertSortAndIterate(([(0, []),
+                                   (1, [0]),
+                                   (2, [0]),
+                                   (3, [0]),
+                                   (4, [1, 2, 3]),
+                                   (5, [1, 2]),
+                                   (6, [1, 2]),
+                                   (7, [2, 3]),
+                                   (8, [0, 1, 4, 5, 6])]),
+                                  [0, 1, 2, 3, 4, 5, 6, 7, 8])
