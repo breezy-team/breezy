@@ -573,6 +573,8 @@ def run_bzr(argv):
         from bzrlib.plugin import disable_plugins
         disable_plugins()
 
+    alias_argv = None
+
     if not opt_no_aliases:
         alias_argv = get_alias(argv[0])
         if alias_argv:
