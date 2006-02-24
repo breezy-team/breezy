@@ -507,6 +507,7 @@ class TestRevert(TestCaseWithTransport):
         other.add('c')
 
         open('b1/b', 'wb').write('q test\n')
+        open('b1/d', 'wb').write('d test\n')
         merge_inner(this.branch, other, base, this_tree=this)
         self.assertNotEqual(open('b1/a', 'rb').read(), 'a test\n')
         this.revert([])
@@ -514,3 +515,4 @@ class TestRevert(TestCaseWithTransport):
         self.assertIs(os.path.exists('b1/b~'), True)
         self.assertIs(os.path.exists('b1/c'), False)
         self.assertIs(os.path.exists('b1/a~'), False)
+        self.assertIs(os.path.exists('b1/d'), True)
