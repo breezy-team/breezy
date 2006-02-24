@@ -16,7 +16,7 @@
 
 from StringIO import StringIO
 
-from bzrlib.errors import UnknownSplatFormat, MalformedSplat
+from bzrlib.errors import UnknownSplatFormat, MalformedSplatDict
 from bzrlib.splatfile import *
 from bzrlib.tests import TestCaseInTempDir
 
@@ -38,16 +38,22 @@ class TestSplatfile(TestCaseInTempDir):
             '\na b%0a\nc%09 d%25\n\u1234 \u0000'.encode('UTF-8')
         result = read_dict(StringIO(no_eof_nl))
         self.assertEqual(result, test_dict)
+        s = StringIO()
+        splat_list = ['a', 'b', 'c']
+        write_splat(s, [splat_list])
+        s.seek(0)
+        [new_list] = read_splat(s)
+        self.assertEqual(new_list, splat_list)
 
 
     def raises(self, err, splatstring):
-        self.assertRaises(err, list, read_splat(StringIO(splatstring)))
+        self.assertRaises(err, read_dict, StringIO(splatstring))
 
-    def test_broken_splatfile(self):
+    def test_broken_splatfile_dict(self):
         self.raises(UnknownSplatFormat, 'f\n')
         missing_space = SPLATFILE_1_HEADER + \
             '\na b%0a\nc%09d%25\n\u1234 \u0000\n'.encode('UTF-8')
-        self.raises(MalformedSplat, missing_space)
+        self.raises(MalformedSplatDict, missing_space)
         extra_space = SPLATFILE_1_HEADER + \
             '\na b %0a\nc%09 d%25\n\u1234 \u0000\n'.encode('UTF-8')
-        self.raises(MalformedSplat, extra_space)
+        self.raises(MalformedSplatDict, extra_space)

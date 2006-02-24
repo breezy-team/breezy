@@ -259,10 +259,11 @@ class UnknownSplatFormat(BzrNewError):
     def __init__(self, format):
         self.format = format
 
-class MalformedSplat(BzrNewError):
-    """The line %(line)r is malformed."""
-    def __init__(self, line):
-        self.format = line 
+class MalformedSplatDict(BzrNewError):
+    """Splat dict has %(val_len)d values, instead of 2.  (%(values)r)"""
+    def __init__(self, values):
+        self.values = values
+        self.val_len = len(values)
 
 class NotVersionedError(BzrNewError):
     """%(path)s is not versioned"""

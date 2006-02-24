@@ -14,17 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""A simple format for saving lists of lists of unicode strings"""
+
 from urllib import unquote
 
-from bzrlib.errors import UnknownSplatFormat, MalformedSplat
+from bzrlib.errors import UnknownSplatFormat, MalformedSplatDict
 
 SPLATFILE_1_HEADER = "BZR Splatfile Format 1"
 FORBIDDEN = ' \t\r\n%'
 
 def write_splat(fileobj, pairs):
     fileobj.write(SPLATFILE_1_HEADER+'\n')
-    for key, value in pairs:
-        fileobj.write("%s %s\n" % (escape(key), escape(value)))
+    for values in pairs:
+        fileobj.write(" ".join([escape(v) for v in values])+"\n")
 
 
 def escape(value):
@@ -42,11 +44,7 @@ def read_splat(fileobj):
     if header != SPLATFILE_1_HEADER:
         raise UnknownSplatFormat(header)
     for line in fileobj:
-        try:
-            key, value = line.rstrip('\n').split(' ')
-        except ValueError:
-            raise MalformedSplat(line)
-        yield unescape(key), unescape(value)
+        yield [unescape(v) for v in line.rstrip('\n').split(' ')]
 
 
 def unescape(input):
@@ -59,6 +57,8 @@ def dump_dict(my_file, dict):
 
 def read_dict(my_file):
     result = {}
-    for key, value in read_splat(my_file):
-        result[key] = value
+    for values in read_splat(my_file):
+        if len(values) != 2:
+            raise MalformedSplatDict(values)
+        result[values[0]] = values[1]
     return result
