@@ -1011,6 +1011,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
         return interesting_ids is None or file_id in interesting_ids
 
     tt = TreeTransform(working_tree, pb)
+    merge_modified = working_tree.merge_modified()
     try:
         trans_id = {}
         def trans_id_file_id(file_id):
@@ -1029,17 +1030,26 @@ def revert(working_tree, target_tree, filenames, backups=False,
                 e_trans_id = new_by_entry(tt, entry, parent_id, target_tree)
                 trans_id[file_id] = e_trans_id
             else:
+                backup_this = backups
+                if file_id in merge_modified:
+                    backup_this = False
+                    del merge_modified[file_id]
                 change_entry(tt, file_id, working_tree, target_tree, 
-                             trans_id_file_id, backups, trans_id)
+                             trans_id_file_id, backup_this, trans_id)
         wt_interesting = [i for i in working_tree.inventory if interesting(i)]
         for id_num, file_id in enumerate(wt_interesting):
             pb.update("New file check", id_num+1, len(sorted_interesting))
             if file_id not in target_tree:
-                tt.unversion_file(tt.trans_id_tree_file_id(file_id))
+                trans_id = tt.trans_id_tree_file_id(file_id)
+                tt.unversion_file(trans_id)
+                if file_id in merge_modified:
+                    tt.delete_contents(trans_id)
+                    del merge_modified[file_id]
         raw_conflicts = resolve_conflicts(tt, pb)
         for line in conflicts_strings(cook_conflicts(raw_conflicts, tt)):
             warning(line)
         tt.apply()
+        working_tree.set_merge_modified({})
     finally:
         tt.finalize()
         pb.clear()
