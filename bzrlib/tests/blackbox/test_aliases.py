@@ -16,6 +16,10 @@ class TestAliases(TestCaseInTempDir):
         def bzr(*args, **kwargs):
             return self.run_bzr(*args, **kwargs)[0]
 
+        def bzr_catch_error(*args, **kwargs):
+            return self.run_bzr(*args, **kwargs)[1]
+
+
         if os.path.isfile(config_filename()):
             # Something is wrong in environment, 
             # we risk overwriting users config 
@@ -48,8 +52,13 @@ class TestAliases(TestCaseInTempDir):
         self.assertEquals(bzr('c1', 'a'), str1)
         self.assertEquals(bzr('c1', '--revision', '2', 'a'), str2)
 
-        # If --no-alias isn't working, we will not get retcode=3
+        # If --no-aliases isn't working, we will not get retcode=3
         bzr('--no-aliases', 'c', 'a', retcode=3)
+
+        # If --no-aliases breaks all of bzr, we also get retcode=3
+        # So we need to catch the output as well
+        self.assertEquals(bzr_catch_error('--no-aliases', 'c', 'a', retcode=None), 
+                "bzr: ERROR: unknown command 'c'\n")
 
         bzr('c', '-r1', '-r2', retcode=3)
         bzr('c1', '-r1', '-r2', retcode=3)
