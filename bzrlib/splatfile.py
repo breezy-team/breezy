@@ -16,13 +16,13 @@
 
 from urllib import unquote
 
-from bzrlib.errors import UnknownMapFormat, MalformedMap
+from bzrlib.errors import UnknownSplatFormat, MalformedSplat
 
-MAPFILE_1_HEADER = "BZR Mapfile Format 1"
+SPLATFILE_1_HEADER = "BZR Splatfile Format 1"
 FORBIDDEN = ' \t\r\n%'
 
-def write_map(fileobj, pairs):
-    fileobj.write(MAPFILE_1_HEADER+'\n')
+def write_splat(fileobj, pairs):
+    fileobj.write(SPLATFILE_1_HEADER+'\n')
     for key, value in pairs:
         fileobj.write("%s %s\n" % (escape(key), escape(value)))
 
@@ -36,15 +36,16 @@ def escape(value):
             result.append(c)
     return ''.join(result)
 
-def read_map(fileobj):
+
+def read_splat(fileobj):
     header = fileobj.next().rstrip('\n')
-    if header != MAPFILE_1_HEADER:
-        raise UnknownMapFormat(header)
+    if header != SPLATFILE_1_HEADER:
+        raise UnknownSplatFormat(header)
     for line in fileobj:
         try:
             key, value = line.rstrip('\n').split(' ')
         except ValueError:
-            raise MalformedMap(line)
+            raise MalformedSplat(line)
         yield unescape(key), unescape(value)
 
 
@@ -53,11 +54,11 @@ def unescape(input):
 
 
 def dump_dict(my_file, dict):
-    write_map(my_file, dict.iteritems())
+    write_splat(my_file, dict.iteritems())
 
 
 def read_dict(my_file):
     result = {}
-    for key, value in read_map(my_file):
+    for key, value in read_splat(my_file):
         result[key] = value
     return result

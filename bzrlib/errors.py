@@ -254,12 +254,12 @@ class IncompatibleFormat(BzrNewError):
         self.bzrdir = bzrdir_format
 
 
-class UnknownMapFormat(BzrNewError):
-    """The map format %(format)s is unknown"""
+class UnknownSplatFormat(BzrNewError):
+    """The splat format %(format)s is unknown"""
     def __init__(self, format):
         self.format = format
 
-class MalformedMap(BzrNewError):
+class MalformedSplat(BzrNewError):
     """The line %(line)r is malformed."""
     def __init__(self, line):
         self.format = line 

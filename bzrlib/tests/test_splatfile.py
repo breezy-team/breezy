@@ -16,38 +16,38 @@
 
 from StringIO import StringIO
 
-from bzrlib.errors import UnknownMapFormat, MalformedMap
-from bzrlib.mapfile import *
+from bzrlib.errors import UnknownSplatFormat, MalformedSplat
+from bzrlib.splatfile import *
 from bzrlib.tests import TestCaseInTempDir
 
-class TestMapfile(TestCaseInTempDir):
+class TestSplatfile(TestCaseInTempDir):
     def test_dump_read(self):
         test_dict = {u'a ': u'b\n', u'c\t': u'd%', '\u1234': '\u0000'}
         dump_dict(file('dumpfile', 'wb'), test_dict)
         new_dict = read_dict(file('dumpfile', 'rb'))
         self.assertEqual(test_dict, new_dict)
 
-    def test_mapfile_format(self):
-        test_dict = {u'a ': u'b\n', u'c\t': u'd%', '\u1234': '\u0000'}
+    def test_splatfile_format(self):
+        test_dict = {u'a': u'b\n', u'c\t': u'd%', '\u1234': '\u0000'}
         pairs = [(u'a', u'b\n'), (u'c\t', u'd%'), ('\u1234', '\u0000')]
-        expected = MAPFILE_1_HEADER + \
+        expected = SPLATFILE_1_HEADER + \
             '\na b%0a\nc%09 d%25\n\u1234 \u0000\n'.encode('UTF-8')
-        write_map(file('mapfile', 'wb'), pairs)
-        self.assertEqual(file('mapfile', 'rb').read(), expected)
-        no_eof_nl = MAPFILE_1_HEADER + \
+        write_splat(file('splatfile', 'wb'), pairs)
+        self.assertEqual(file('splatfile', 'rb').read(), expected)
+        no_eof_nl = SPLATFILE_1_HEADER + \
             '\na b%0a\nc%09 d%25\n\u1234 \u0000'.encode('UTF-8')
-        result = read_map(StringIO(no_eof_nl))
+        result = read_dict(StringIO(no_eof_nl))
         self.assertEqual(result, test_dict)
 
 
-    def raises(self, err, mapstring):
-        self.assertRaises(err, list, read_map(StringIO(mapstring)))
+    def raises(self, err, splatstring):
+        self.assertRaises(err, list, read_splat(StringIO(splatstring)))
 
-    def test_broken_mapfile(self):
-        self.raises(UnknownMapFormat, 'f\n')
-        missing_space = MAPFILE_1_HEADER + \
+    def test_broken_splatfile(self):
+        self.raises(UnknownSplatFormat, 'f\n')
+        missing_space = SPLATFILE_1_HEADER + \
             '\na b%0a\nc%09d%25\n\u1234 \u0000\n'.encode('UTF-8')
-        self.raises(MalformedMap, missing_space)
-        extra_space = MAPFILE_1_HEADER + \
+        self.raises(MalformedSplat, missing_space)
+        extra_space = SPLATFILE_1_HEADER + \
             '\na b %0a\nc%09 d%25\n\u1234 \u0000\n'.encode('UTF-8')
-        self.raises(MalformedMap, extra_space)
+        self.raises(MalformedSplat, extra_space)
