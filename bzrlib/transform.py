@@ -36,6 +36,12 @@ def unique_add(map, key, value):
     map[key] = value
 
 
+class _TransformResults(object):
+    def __init__(self, modified_paths):
+        object.__init__(self)
+        self.modified_paths = modified_paths
+
+
 class TreeTransform(object):
     """Represent a tree transformation.
     
@@ -660,10 +666,11 @@ class TreeTransform(object):
         limbo_inv = {}
         inv = self._tree.inventory
         self._apply_removals(inv, limbo_inv)
-        self._apply_insertions(inv, limbo_inv)
+        modified_paths = self._apply_insertions(inv, limbo_inv)
         self._tree._write_inventory(inv)
         self.__done = True
         self.finalize()
+        return _TransformResults(modified_paths)
 
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
@@ -711,6 +718,7 @@ class TreeTransform(object):
         parent-to-child order.
         """
         new_paths = self.new_paths()
+        modified_paths = []
         for num, (path, trans_id) in enumerate(new_paths):
             self._pb.update('adding file', num+1, len(new_paths))
             try:
@@ -726,6 +734,7 @@ class TreeTransform(object):
                     if e.errno != errno.ENOENT:
                         raise
                 if trans_id in self._new_contents:
+                    modified_paths.append(full_path)
                     del self._new_contents[trans_id]
 
             if trans_id in self._new_id:
@@ -744,6 +753,7 @@ class TreeTransform(object):
             if trans_id in self._new_executability:
                 self._set_executability(path, inv, trans_id)
         self._pb.clear()
+        return modified_paths
 
     def _set_executability(self, path, inv, trans_id):
         """Set the executability of versioned files """
