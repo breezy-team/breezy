@@ -20,16 +20,20 @@ from urllib import unquote
 
 from bzrlib.errors import UnknownSplatFormat, MalformedSplatDict
 
+
 SPLATFILE_1_HEADER = "BZR Splatfile Format 1"
 FORBIDDEN = ' \t\r\n%'
 
-def write_splat(fileobj, pairs):
+
+def write_splat(fileobj, stanzas):
+    """Write an iterable of iterables of unicode strings as a splatfile"""
     fileobj.write(SPLATFILE_1_HEADER+'\n')
-    for values in pairs:
+    for values in stanzas:
         fileobj.write(" ".join([escape(v) for v in values])+"\n")
 
 
 def escape(value):
+    """Convert a unicode values to safe bytes"""
     result = []
     for c in value.encode('UTF-8'):
         if c in FORBIDDEN:
@@ -40,6 +44,7 @@ def escape(value):
 
 
 def read_splat(fileobj):
+    """Generate an iterator of lists of unicode strings"""
     header = fileobj.next().rstrip('\n')
     if header != SPLATFILE_1_HEADER:
         raise UnknownSplatFormat(header)
@@ -48,14 +53,17 @@ def read_splat(fileobj):
 
 
 def unescape(input):
+    """Convert a splatfile value to a unicode string"""
     return unquote(input).decode('UTF-8')
 
 
 def dump_dict(my_file, dict):
+    """Write a dictionary to a splatfile"""
     write_splat(my_file, dict.iteritems())
 
 
 def read_dict(my_file):
+    """Produce a dictionary from a splatfile"""
     result = {}
     for values in read_splat(my_file):
         if len(values) != 2:
