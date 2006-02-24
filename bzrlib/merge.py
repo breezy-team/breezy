@@ -345,13 +345,26 @@ class Merge3Merger(object):
             self.cook_conflicts(fs_conflicts)
             for line in conflicts_strings(self.cooked_conflicts):
                 warning(line)
-            self.tt.apply()
+            results = self.tt.apply()
         finally:
             try:
                 self.tt.finalize()
             except:
                 pass
-       
+        self.write_modified(results)
+
+    def write_modified(self, results):
+        modified_hashes = {}
+        for path in results.modified_paths:
+            file_id = self.this_tree.path2id(self.this_tree.relpath(path))
+            if file_id is None:
+                continue
+            hash = self.this_tree.get_file_sha1(file_id)
+            if hash is None:
+                continue
+            modified_hashes[file_id] = hash
+        self.this_tree.set_merge_modified(modified_hashes)
+
     @staticmethod
     def parent(entry, file_id):
         """Determine the parent for a file_id (used as a key method)"""

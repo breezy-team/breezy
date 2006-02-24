@@ -558,6 +558,15 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(this.wt.get_file_byname('i.OTHER').read(),
                          'h\ni\nj\nk\n')
         self.assertEqual(os.path.exists(this.wt.abspath('i.BASE')), False)
+        modified = ['a', 'b', 'c', 'h', 'i']
+        merge_modified = this.wt.merge_modified()
+        self.assertSubset(merge_modified, modified)
+        self.assertEqual(len(merge_modified), len(modified))
+        file(this.wt.id2abspath('a'), 'wb').write('booga')
+        modified.pop(0)
+        merge_modified = this.wt.merge_modified()
+        self.assertSubset(merge_modified, modified)
+        self.assertEqual(len(merge_modified), len(modified))
 
     def test_file_merge(self):
         if not has_symlinks():

@@ -83,6 +83,7 @@ from bzrlib.osutils import (appendpath,
                             )
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
+import bzrlib.splatfile as splatfile
 from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
@@ -598,6 +599,23 @@ class WorkingTree(bzrlib.tree.Tree):
     @needs_write_lock
     def set_pending_merges(self, rev_list):
         self._control_files.put_utf8('pending-merges', '\n'.join(rev_list))
+
+    @needs_write_lock
+    def set_merge_modified(self, modified_hashes):
+        my_file = StringIO()
+        splatfile.dump_dict(my_file, modified_hashes)
+        my_file.seek(0)
+        self._control_files.put('merge-hashes', my_file)
+
+    @needs_read_lock
+    def merge_modified(self):
+        try:
+            hashfile = self._control_files.get('merge-hashes')
+        except NoSuchFile:
+            return {}
+        merge_hashes = splatfile.read_dict(hashfile)
+        return dict([(f,h) for f,h in merge_hashes.items() if 
+                      h == self.get_file_sha1(f)])
 
     def get_symlink_target(self, file_id):
         return os.readlink(self.id2abspath(file_id))
