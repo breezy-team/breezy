@@ -1,8 +1,0 @@
-****************************
-Merging unrelated changesets
-****************************
-
-It ought to be possible to merge in even totally unrelated changesets,
-by just treating them as patches.  It is possible that the file ids
-will mismatch, in which case we could perhaps assume the filenames are
-compatible. 
