@@ -59,7 +59,7 @@ class Reconciler(object):
                              that were garbage collected.
         """
         self.pb = ui.ui_factory.progress_bar()
-        self.repo = self.bzrdir.open_repository()
+        self.repo = self.bzrdir.find_repository()
         self.repo.lock_write()
         try:
             self.pb.note('Reconciling repository %s',
