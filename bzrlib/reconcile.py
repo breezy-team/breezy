@@ -76,15 +76,12 @@ class Reconciler(object):
         # the total set of revisions to process
         self.pending = set([file_id for file_id in self.repo.revision_store])
 
-        # total steps = 1 read per revision + one insert into the inventory
-        self.total = len(self.pending) * 2
-        self.count = 0
-
         # mapping from revision_id to parents
         self._rev_graph = {}
         # errors that we detect
         self.inconsistent_parents = 0
         # we need the revision id of each revision and its available parents list
+        self._setup_steps(len(self.pending))
         for rev_id in self.pending:
             # put a revision into the graph.
             self._graph_revision(rev_id)
@@ -95,6 +92,7 @@ class Reconciler(object):
         if not self.inconsistent_parents and not self.garbage_inventories:
             self.pb.note('Inventory ok.')
             return
+        self.pb.update('Backing up inventory...', 0, 0)
         self.repo.control_weaves.put_weave('inventory.backup',
                                            self.inventory,
                                            self.repo.get_transaction())
@@ -104,6 +102,7 @@ class Reconciler(object):
             self.repo.get_transaction())
 
         # we have topological order of revisions and non ghost parents ready.
+        self._setup_steps(len(self._rev_graph))
         for rev_id in TopoSorter(self._rev_graph.items()).iter_topo_order():
             parents = self._rev_graph[rev_id]
             # double check this really is in topological order.
@@ -123,6 +122,11 @@ class Reconciler(object):
                                            self.repo.get_transaction())
         self.inventory = None
         self.pb.note('Inventory regenerated.')
+
+    def _setup_steps(self, new_total):
+        """Setup the markers we need to control the progress bar."""
+        self.total = new_total
+        self.count = 0
 
     def _graph_revision(self, rev_id):
         """Load a revision into the revision graph."""
