@@ -17,6 +17,7 @@
 """Black box tests for the reconcile command."""
 
 
+import bzrlib
 import bzrlib.bzrdir as bzrdir
 import bzrlib.repository as repository
 from bzrlib.tests import TestCaseWithTransport
@@ -39,6 +40,19 @@ class TrivialTest(TestCaseWithTransport):
 
     def test_trivial_reconcile(self):
         t = bzrdir.BzrDir.create_standalone_workingtree('.')
+        (out, err) = self.run_bzr_captured(['reconcile'])
+        self.assertEqualDiff(out, "Reconciling repository %s\n"
+                                  "Inventory ok.\n"
+                                  "Reconciliation complete.\n" %
+                                  t.bzrdir.root_transport.base)
+        self.assertEqualDiff(err, "")
+
+    def test_does_something_reconcile(self):
+        t = bzrdir.BzrDir.create_standalone_workingtree('.')
+        # an empty inventory with no revision will trigger reconciliation.
+        repo = t.branch.repository
+        inv = bzrlib.tree.EmptyTree().inventory
+        repo.add_inventory('missing', inv, [])
         (out, err) = self.run_bzr_captured(['reconcile'])
         self.assertEqualDiff(out, "Reconciling repository %s\n"
                                   "Backup Inventory created.\n"

@@ -30,8 +30,10 @@ def reconcile(dir):
 
     Currently this is limited to a inventory 'reweave'.
 
-    This is a convenience method, and the public api, for using a 
-    Reconciler object.
+    This is a convenience method, for using a Reconciler object.
+
+    Directly using Reconciler is recommended for library users that
+    desire fine grained control or analysis of the found issues.
     """
     reconciler = Reconciler(dir)
     reconciler.reconcile()
@@ -48,7 +50,14 @@ class Reconciler(object):
         self.bzrdir = dir
 
     def reconcile(self):
-        """Actually perform the reconciliation."""
+        """Perform reconciliation.
+        
+        After reconciliation the following attributes document found issues:
+        inconsistent_parents: The number of revisions in the repository whose
+                              ancestry was being reported incorrectly.
+        garbage_inventories: The number of inventory objects without revisions
+                             that were garbage collected.
+        """
         self.pb = ui.ui_factory.progress_bar()
         self.repo = self.bzrdir.open_repository()
         self.repo.lock_write()
@@ -64,14 +73,6 @@ class Reconciler(object):
         """Regenerate the inventory weave for the repository from scratch."""
         self.pb.update('Reading inventory data.')
         self.inventory = self.repo.get_inventory_weave()
-        self.repo.control_weaves.put_weave('inventory.backup',
-                                           self.inventory,
-                                           self.repo.get_transaction())
-        self.pb.note('Backup Inventory created.')
-        # asking for '' should never return a non-empty weave
-        new_inventory = self.repo.control_weaves.get_weave_or_empty('',
-            self.repo.get_transaction())
-
         # the total set of revisions to process
         self.pending = set([file_id for file_id in self.repo.revision_store])
 
@@ -81,10 +82,26 @@ class Reconciler(object):
 
         # mapping from revision_id to parents
         self._rev_graph = {}
+        # errors that we detect
+        self.inconsistent_parents = 0
         # we need the revision id of each revision and its available parents list
         for rev_id in self.pending:
             # put a revision into the graph.
             self._graph_revision(rev_id)
+        # we gc unreferenced inventories too
+        self.garbage_inventories = len(self.inventory.names()) \
+                                   - len(self._rev_graph)
+
+        if not self.inconsistent_parents and not self.garbage_inventories:
+            self.pb.note('Inventory ok.')
+            return
+        self.repo.control_weaves.put_weave('inventory.backup',
+                                           self.inventory,
+                                           self.repo.get_transaction())
+        self.pb.note('Backup Inventory created.')
+        # asking for '' should never return a non-empty weave
+        new_inventory = self.repo.control_weaves.get_weave_or_empty('',
+            self.repo.get_transaction())
 
         # we have topological order of revisions and non ghost parents ready.
         for rev_id in TopoSorter(self._rev_graph.items()).iter_topo_order():
@@ -121,6 +138,8 @@ class Reconciler(object):
             else:
                 mutter('found ghost %s', parent)
         self._rev_graph[rev_id] = parents   
+        if set(self.inventory.parent_names(rev_id)) != set(parents):
+            self.inconsistent_parents += 1
 
     def _reweave_step(self, message):
         """Mark a single step of regeneration complete."""
