@@ -238,8 +238,14 @@ class Repository(object):
         return self.get_revision_xml_file(revision_id).read()
 
     @needs_read_lock
-    def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
+    def get_revision_reconcile(self, revision_id):
+        """'reconcile' helper routine that allows access to a revision always.
+        
+        This variant of get_revision does not cross check the weave graph
+        against the revision one as get_revision does: but it should only
+        be used by reconcile, or reconcile-alike commands that are correcting
+        or testing the revision graph.
+        """
         xml_file = self.get_revision_xml_file(revision_id)
 
         try:
@@ -250,6 +256,28 @@ class Repository(object):
                                           str(e)])
             
         assert r.revision_id == revision_id
+        return r
+
+    @needs_read_lock
+    def get_revision(self, revision_id):
+        """Return the Revision object for a named revision"""
+        r = self.get_revision_reconcile(revision_id)
+        # weave corruption can lead to absent revision markers that should be
+        # present.
+        # the following test is reasonably cheap (it needs a single weave read)
+        # and the weave is cached in read transactions. In write transactions
+        # it is not cached but typically we only read a small number of
+        # revisions. For knits when they are introduced we will probably want
+        # to ensure that caching write transactions are in use.
+        inv = self.get_inventory_weave()
+        weave_parents = inv.parent_names(revision_id)
+        weave_names = inv.names()
+        for parent_id in r.parent_ids:
+            if parent_id in weave_names:
+                # this parent must not be a ghost.
+                if not parent_id in weave_parents:
+                    # but it is a ghost
+                    raise errors.CorruptRepository(self)
         return r
 
     @needs_read_lock

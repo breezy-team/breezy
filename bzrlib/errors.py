@@ -708,3 +708,11 @@ class OutOfDateTree(BzrNewError):
     def __init__(self, tree):
         BzrNewError.__init__(self)
         self.tree = tree
+
+class CorruptRepository(BzrNewError):
+    """An error has been detected in the repository %(repo_path)s.
+Please run bzr reconcile on this repository."""
+
+    def __init__(self, repo):
+        BzrNewError.__init__(self)
+        self.repo_path = repo.bzrdir.root_transport.base

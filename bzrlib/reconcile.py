@@ -133,7 +133,7 @@ class Reconciler(object):
         # pick a random revision
         # analyse revision id rev_id and put it in the stack.
         self._reweave_step('loading revisions')
-        rev = self.repo.get_revision(rev_id)
+        rev = self.repo.get_revision_reconcile(rev_id)
         assert rev.revision_id == rev_id
         parents = []
         for parent in rev.parent_ids:
