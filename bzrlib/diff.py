@@ -183,7 +183,7 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
 
 
 def cmd_show_diff(tree, specific_files, external_diff_options, 
-                  old_revision=None, new_revision=None):
+                  old_revision_spec=None, new_revision_spec=None):
     """Helper for cmd_diff.
 
    tree 
@@ -195,11 +195,11 @@ def cmd_show_diff(tree, specific_files, external_diff_options,
     external_diff_options
         If non-None, run an external diff, and pass it these options
 
-    old_revision
+    old_revision_spec
         If None, use basis tree as old revision, otherwise use the tree for
         the specified revision. 
 
-    new_revision
+    new_revision_spec
         If None, use working tree as new revision, otherwise use the tree for
         the specified revision.
     
@@ -208,20 +208,20 @@ def cmd_show_diff(tree, specific_files, external_diff_options,
     """
     import sys
     output = sys.stdout
-
-    if old_revision is None:
+    def spec_tree(spec):
+        revision_id = spec.in_store(tree.branch).rev_id
+        return tree.branch.repository.revision_tree(revision_id)
+    if old_revision_spec is None:
         old_tree = tree.basis_tree()
     else:
-        revision_id = old_revision.in_history(tree.branch).rev_id
-        old_tree = tree.branch.repository.revision_tree(revision_id)
+        old_tree = spec_tree(old_revision_spec)
 
-    if new_revision is None:
+    if new_revision_spec is None:
         new_tree = tree
     else:
-        revision_id = new_revision.in_history(tree.branch).rev_id
-        new_tree = tree.branch.repository.revision_tree(revision_id)
+        new_tree = spec_tree(new_revision_spec)
 
-    return show_diff_trees(old_tree, new_tree, output, specific_files,
+    return show_diff_trees(old_tree, new_tree, sys.stdout, specific_files,
                            external_diff_options)
 
 
