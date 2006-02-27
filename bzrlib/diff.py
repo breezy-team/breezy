@@ -182,8 +182,8 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
                            external_diff_options)
 
 
-def cmd_show_diff(tree, specific_files, external_diff_options, 
-                  old_revision_spec=None, new_revision_spec=None):
+def diff_cmd_helper(tree, specific_files, external_diff_options, 
+                    old_revision_spec=None, new_revision_spec=None):
     """Helper for cmd_diff.
 
    tree 

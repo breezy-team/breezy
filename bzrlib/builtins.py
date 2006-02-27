@@ -851,7 +851,7 @@ class cmd_diff(Command):
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None):
-        from bzrlib.diff import cmd_show_diff, show_diff_trees
+        from bzrlib.diff import diff_cmd_helper, show_diff_trees
         try:
             tree1, file_list = internal_tree_files(file_list)
             tree2 = None
@@ -871,11 +871,11 @@ class cmd_diff(Command):
             if tree2 is not None:
                 raise BzrCommandError("Can't specify -r with two branches")
             if (len(revision) == 1) or (revision[1].spec is None):
-                return cmd_show_diff(tree1, file_list, diff_options,
-                                     revision[0])
+                return diff_cmd_helper(tree1, file_list, diff_options,
+                                       revision[0])
             elif len(revision) == 2:
-                return cmd_show_diff(tree1, file_list, diff_options,
-                                     revision[0], revision[1])
+                return diff_cmd_helper(tree1, file_list, diff_options,
+                                       revision[0], revision[1])
             else:
                 raise BzrCommandError('bzr diff --revision takes exactly one or two revision identifiers')
         else:
@@ -884,7 +884,7 @@ class cmd_diff(Command):
                                        specific_files=file_list,
                                        external_diff_options=diff_options)
             else:
-                return cmd_show_diff(tree1, file_list, diff_options)
+                return diff_cmd_helper(tree1, file_list, diff_options)
 
 
 class cmd_deleted(Command):
