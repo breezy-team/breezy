@@ -31,7 +31,8 @@ from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
-                           NoSuchFile, NoWorkingTree, FileInWrongBranch)
+                           NoSuchFile, NoWorkingTree, FileInWrongBranch,
+                           NotVersionedError)
 from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
@@ -1798,6 +1799,8 @@ class cmd_remerge(Command):
                 interesting_ids = set()
                 for filename in file_list:
                     file_id = tree.path2id(filename)
+                    if file_id is None:
+                        raise NotVersionedError(filename)
                     interesting_ids.add(file_id)
                     if tree.kind(file_id) != "directory":
                         continue
