@@ -283,7 +283,7 @@ class Weave(VersionedFile):
     @deprecated_method(zero_eight)
     def add_identical(self, old_rev_id, new_rev_id, parents):
         """Please use Weave.clone_text now."""
-        return self.clone_text(new_rev_id, old_rev_id, parents, None)
+        return self.clone_text(new_rev_id, old_rev_id, parents)
 
     def add_lines(self, version_id, parents, lines):
         """See VersionedFile.add_lines."""
@@ -412,8 +412,7 @@ class Weave(VersionedFile):
                 offset += 2 + (j2 - j1)
         return new_version
 
-    def clone_text(self, new_version_id, old_version_id, parents,
-                   transaction):
+    def clone_text(self, new_version_id, old_version_id, parents):
         """See VersionedFile.clone_text."""
         old_lines = self.get_text(old_version_id)
         self.add_lines(new_version_id, parents, old_lines)

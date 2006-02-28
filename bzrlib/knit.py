@@ -172,9 +172,7 @@ class KnitPlainFactory(_KnitFactory):
 
 def make_empty_knit(transport, relpath):
     """Construct a empty knit at the specified location."""
-    from bzrlib.transactions import PassThroughTransaction
-    k = KnitVersionedFile(transport, relpath, 'w', KnitPlainFactory, \
-        PassThroughTransaction())
+    k = KnitVersionedFile(transport, relpath, 'w', KnitPlainFactory)
     k._data._open_file()
 
 
@@ -193,17 +191,13 @@ class KnitVersionedFile(VersionedFile):
     stored and retrieved.
     """
 
-    def __init__(self, transport, relpath, mode, factory, transaction,
+    def __init__(self, transport, relpath, mode, factory,
                  basis_knit=None, delta=True):
-        """Construct a knit at location specified by relpath.  The
-        given transaction will be used throughout the lifetime of the
-        knit.
-        """
+        """Construct a knit at location specified by relpath."""
         assert mode in ('r', 'w'), "invalid mode specified"
         assert not basis_knit or isinstance(basis_knit, KnitVersionedFile), \
             type(basis_knit)
 
-        self.transaction = transaction
         self.transport = transport
         self.filename = relpath
         self.basis_knit = basis_knit
@@ -212,9 +206,9 @@ class KnitVersionedFile(VersionedFile):
         self.delta = delta
 
         self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
-            mode, transaction)
+            mode)
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
-            mode, transaction)
+            mode)
 
     def versions(self):
         """See VersionedFile.versions."""
@@ -323,11 +317,6 @@ class KnitVersionedFile(VersionedFile):
 
         return content
 
-    def clone_text(self, new_version_id, old_version_id, parents,
-                   transaction):
-        """See VersionedFile.clone_text."""
-        raise NotImplementedError
-
     def _check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
         version_ids = set(version_ids)
@@ -402,7 +391,7 @@ class KnitVersionedFile(VersionedFile):
         where, size = self._data.add_record(version_id, digest, store_lines)
         self._index.add_version(version_id, options, where, size, parents)
 
-    def clone_text(self, new_version_id, old_version_id, parents, transaction):
+    def clone_text(self, new_version_id, old_version_id, parents):
         """See VersionedFile.clone_text()."""
         # FIXME RBC 20060228 make fast by only inserting an index with null delta.
         self.add_lines(new_version_id, parents, self.get_lines(old_version_id))
@@ -532,13 +521,11 @@ class KnitVersionedFile(VersionedFile):
         # and put them in a weave and let that do all the work.  Far
         # from optimal, but is much simpler.
         from bzrlib.weave import Weave
-        from bzrlib.transactions import PassThroughTransaction
 
         w = Weave(self.filename)
         ancestry = self.get_ancestry(version_ids)
         sorted_graph = topo_sort(self._index.get_graph())
         version_list = [vid for vid in sorted_graph if vid in ancestry]
-        txn = PassThroughTransaction()
         
         for version_id in version_list:
             lines = self.get_lines(version_id)
@@ -551,10 +538,9 @@ class KnitVersionedFile(VersionedFile):
 class _KnitComponentFile(object):
     """One of the files used to implement a knit database"""
 
-    def __init__(self, transport, filename, mode, transaction):
+    def __init__(self, transport, filename, mode):
         self._transport = transport
         self._filename = filename
-        self._transaction = transaction
         self._mode = mode
 
     def write_header(self):
@@ -604,8 +590,8 @@ class _KnitIndex(_KnitComponentFile):
         for l in lines.splitlines(False):
             yield l.split()
 
-    def __init__(self, transport, filename, mode, transaction):
-        _KnitComponentFile.__init__(self, transport, filename, mode, transaction)
+    def __init__(self, transport, filename, mode):
+        _KnitComponentFile.__init__(self, transport, filename, mode)
         self._cache = {}
         self._history = []
         try:
@@ -704,8 +690,8 @@ class _KnitData(_KnitComponentFile):
 
     HEADER = "# bzr knit data 7\n"
 
-    def __init__(self, transport, filename, mode, transaction):
-        _KnitComponentFile.__init__(self, transport, filename, mode, transaction)
+    def __init__(self, transport, filename, mode):
+        _KnitComponentFile.__init__(self, transport, filename, mode)
         self._file = None
         self._checked = False
 

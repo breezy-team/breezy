@@ -36,31 +36,27 @@ class KnitTests(TestCaseInTempDir):
 
     def test_knit_constructor(self):
         """Construct empty k"""
-        self.t = PassThroughTransaction()
-        knit = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory(), self.t)
+        knit = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory())
 
     def test_knit_add(self):
         """Store one text in knit and retrieve"""
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory())
         k.add_lines('text-1', [], split_lines(TEXT_1))
         self.assertTrue(k.has_version('text-1'))
         self.assertEqualDiff(''.join(k.get_lines('text-1')), TEXT_1)
 
     def test_knit_reload(self):
         """Store and reload a knit"""
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory())
         k.add_lines('text-1', [], split_lines(TEXT_1))
         del k
-        k2 = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'r', KnitPlainFactory(), self.t)
+        k2 = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'r', KnitPlainFactory())
         self.assertTrue(k2.has_version('text-1'))
         self.assertEqualDiff(''.join(k2.get_lines('text-1')), TEXT_1)
 
     def test_knit_several(self):
         """Store several texts in a knit"""
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory())
         k.add_lines('text-1', [], split_lines(TEXT_1))
         k.add_lines('text-2', [], split_lines(TEXT_2))
         self.assertEqualDiff(''.join(k.get_lines('text-1')), TEXT_1)
@@ -68,24 +64,21 @@ class KnitTests(TestCaseInTempDir):
         
     def test_repeated_add(self):
         """Knit traps attempt to replace existing version"""
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory())
         k.add_lines('text-1', [], split_lines(TEXT_1))
         self.assertRaises(RevisionAlreadyPresent, 
                 k.add_lines,
                 'text-1', [], split_lines(TEXT_1))
 
     def test_empty(self):
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory())
         k.add_lines('text-1', [], [])
         self.assertEquals(k.get_lines('text-1'), [])
 
     def test_incomplete(self):
         """Test if texts without a ending line-end can be inserted and
         extracted."""
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(), self.t,
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(),
              delta=False)
         k.add_lines('text-1', [], ['a\n',    'b'  ])
         k.add_lines('text-2', ['text-1'], ['a\rb\n', 'b\n'])
@@ -94,8 +87,7 @@ class KnitTests(TestCaseInTempDir):
 
     def test_delta(self):
         """Expression of knit delta as lines"""
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory())
         td = list(line_delta(TEXT_1.splitlines(True),
                              TEXT_1A.splitlines(True)))
         self.assertEqualDiff(''.join(td), delta_1_1a)
@@ -104,31 +96,27 @@ class KnitTests(TestCaseInTempDir):
 
     def test_add_with_parents(self):
         """Store in knit with parents"""
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory())
         self.add_stock_one_and_one_a(k)
         self.assertEquals(k.get_parents('text-1'), [])
         self.assertEquals(k.get_parents('text-1a'), ['text-1'])
 
     def test_ancestry(self):
         """Store in knit with parents"""
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory())
         self.add_stock_one_and_one_a(k)
         self.assertEquals(set(k.get_ancestry(['text-1a'])), set(['text-1a', 'text-1']))
 
     def test_add_delta(self):
         """Store in knit with parents"""
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory(), self.t,
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitPlainFactory(),
             delta=True)
         self.add_stock_one_and_one_a(k)
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
 
     def test_annotate(self):
         """Annotations"""
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(), self.t,
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(),
             delta=True)
         self.insert_and_test_small_annotate(k)
 
@@ -143,14 +131,12 @@ class KnitTests(TestCaseInTempDir):
 
     def test_annotate_fulltext(self):
         """Annotations"""
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(), self.t,
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(),
             delta=False)
         self.insert_and_test_small_annotate(k)
 
     def test_annotate_merge_1(self):
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory())
         k.add_lines('text-a1', [], ['a\n', 'b\n'])
         k.add_lines('text-a2', [], ['d\n', 'c\n'])
         k.add_lines('text-am', ['text-a1', 'text-a2'], ['d\n', 'b\n'])
@@ -159,8 +145,7 @@ class KnitTests(TestCaseInTempDir):
         self.assertEquals(origins[1], ('text-a1', 'b\n'))
 
     def test_annotate_merge_2(self):
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory())
         k.add_lines('text-a1', [], ['a\n', 'b\n', 'c\n'])
         k.add_lines('text-a2', [], ['x\n', 'y\n', 'z\n'])
         k.add_lines('text-am', ['text-a1', 'text-a2'], ['a\n', 'y\n', 'c\n'])
@@ -170,8 +155,7 @@ class KnitTests(TestCaseInTempDir):
         self.assertEquals(origins[2], ('text-a1', 'c\n'))
 
     def test_annotate_merge_9(self):
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory())
         k.add_lines('text-a1', [], ['a\n', 'b\n', 'c\n'])
         k.add_lines('text-a2', [], ['x\n', 'y\n', 'z\n'])
         k.add_lines('text-am', ['text-a1', 'text-a2'], ['k\n', 'y\n', 'c\n'])
@@ -181,8 +165,7 @@ class KnitTests(TestCaseInTempDir):
         self.assertEquals(origins[2], ('text-a1', 'c\n'))
 
     def test_annotate_merge_3(self):
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory())
         k.add_lines('text-a1', [], ['a\n', 'b\n', 'c\n'])
         k.add_lines('text-a2', [] ,['x\n', 'y\n', 'z\n'])
         k.add_lines('text-am', ['text-a1', 'text-a2'], ['k\n', 'y\n', 'z\n'])
@@ -192,8 +175,7 @@ class KnitTests(TestCaseInTempDir):
         self.assertEquals(origins[2], ('text-a2', 'z\n'))
 
     def test_annotate_merge_4(self):
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory())
         k.add_lines('text-a1', [], ['a\n', 'b\n', 'c\n'])
         k.add_lines('text-a2', [], ['x\n', 'y\n', 'z\n'])
         k.add_lines('text-a3', ['text-a1'], ['a\n', 'b\n', 'p\n'])
@@ -204,8 +186,7 @@ class KnitTests(TestCaseInTempDir):
         self.assertEquals(origins[2], ('text-a2', 'z\n'))
 
     def test_annotate_merge_5(self):
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory())
         k.add_lines('text-a1', [], ['a\n', 'b\n', 'c\n'])
         k.add_lines('text-a2', [], ['d\n', 'e\n', 'f\n'])
         k.add_lines('text-a3', [], ['x\n', 'y\n', 'z\n'])
@@ -218,8 +199,7 @@ class KnitTests(TestCaseInTempDir):
         self.assertEquals(origins[2], ('text-a3', 'z\n'))
 
     def test_annotate_file_cherry_pick(self):
-        self.t = PassThroughTransaction()
-        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory(), self.t)
+        k = KnitVersionedFile(LocalTransport('.'), 'test.knit', 'w', KnitAnnotateFactory())
         k.add_lines('text-1', [], ['a\n', 'b\n', 'c\n'])
         k.add_lines('text-2', ['text-1'], ['d\n', 'e\n', 'f\n'])
         k.add_lines('text-3', ['text-2', 'text-1'], ['a\n', 'b\n', 'c\n'])
@@ -230,8 +210,7 @@ class KnitTests(TestCaseInTempDir):
 
     def test_knit_join(self):
         """Store in knit with parents"""
-        self.t = PassThroughTransaction()
-        k1 = KnitVersionedFile(LocalTransport('.'), 'test1.knit', 'w', KnitPlainFactory(), self.t)
+        k1 = KnitVersionedFile(LocalTransport('.'), 'test1.knit', 'w', KnitPlainFactory())
         k1.add_lines('text-a', [], split_lines(TEXT_1))
         k1.add_lines('text-b', ['text-a'], split_lines(TEXT_1))
 
@@ -240,23 +219,22 @@ class KnitTests(TestCaseInTempDir):
 
         k1.add_lines('text-m', ['text-b', 'text-d'], split_lines(TEXT_1))
 
-        k2 = KnitVersionedFile(LocalTransport('.'), 'test2.knit', 'w', KnitPlainFactory(), self.t)
+        k2 = KnitVersionedFile(LocalTransport('.'), 'test2.knit', 'w', KnitPlainFactory())
         count = k2.join(k1, version_ids=['text-m'])
         self.assertEquals(count, 5)
         self.assertTrue(k2.has_version('text-a'))
         self.assertTrue(k2.has_version('text-c'))
 
     def test_reannotate(self):
-        self.t = PassThroughTransaction()
         k1 = KnitVersionedFile(LocalTransport('.'), 'test1', 'w',
-                               KnitAnnotateFactory(), self.t)
+                               KnitAnnotateFactory())
         # 0
         k1.add_lines('text-a', [], ['a\n', 'b\n'])
         # 1
         k1.add_lines('text-b', ['text-a'], ['a\n', 'c\n'])
 
         k2 = KnitVersionedFile(LocalTransport('.'), 'test2', 'w',
-                               KnitAnnotateFactory(), self.t)
+                               KnitAnnotateFactory())
         k2.join(k1, version_ids=['text-b'])
 
         # 2

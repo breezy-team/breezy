@@ -23,7 +23,6 @@
 
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.weave import Weave
-from bzrlib.transactions import PassThroughTransaction
 from bzrlib.trace import mutter
 from bzrlib.knit import KnitVersionedFile, \
      KnitAnnotateFactory
@@ -41,7 +40,6 @@ class VersionedFileTestMixIn(object):
     """
 
     def test_add(self):
-        t = PassThroughTransaction()
         f = self.get_file()
         f.add_lines('r0', [], ['a\n', 'b\n'])
         f.add_lines('r1', ['r0'], ['b\n', 'c\n'])
@@ -58,7 +56,6 @@ class VersionedFileTestMixIn(object):
             f.add_lines, 'r1', [], [])
 
     def test_ancestry(self):
-        t = PassThroughTransaction()
         f = self.get_file()
         f.add_lines('r0', [], ['a\n', 'b\n'])
         f.add_lines('r1', ['r0'], ['b\n', 'c\n'])
@@ -72,21 +69,19 @@ class VersionedFileTestMixIn(object):
             f.get_ancestry, ['rM', 'rX'])
 
     def test_clone_text(self):
-        t = PassThroughTransaction()
         f = self.get_file()
         f.add_lines('r0', [], ['a\n', 'b\n'])
-        f.clone_text('r1', 'r0', ['r0'], t)
+        f.clone_text('r1', 'r0', ['r0'])
         self.assertEquals(f.get_lines('r1'), f.get_lines('r0'))
         self.assertEquals(f.get_lines('r1'), ['a\n', 'b\n'])
         self.assertEquals(f.get_parents('r1'), ['r0'])
 
         self.assertRaises(RevisionNotPresent,
-            f.clone_text, 'r2', 'rX', [], t)
+            f.clone_text, 'r2', 'rX', [])
         self.assertRaises(RevisionAlreadyPresent,
-            f.clone_text, 'r1', 'r0', [], t)
+            f.clone_text, 'r1', 'r0', [])
 
     def test_get_parents(self):
-        t = PassThroughTransaction()
         f = self.get_file()
         f.add_lines('r0', [], ['a\n', 'b\n'])
         f.add_lines('r1', [], ['a\n', 'b\n'])
@@ -99,7 +94,6 @@ class VersionedFileTestMixIn(object):
             f.get_parents, 'y')
 
     def test_annotate(self):
-        t = PassThroughTransaction()
         f = self.get_file()
         f.add_lines('r0', [], ['a\n', 'b\n'])
         f.add_lines('r1', ['r0'], ['c\n', 'b\n'])
@@ -111,12 +105,11 @@ class VersionedFileTestMixIn(object):
             f.annotate, 'foo')
 
     def test_join(self):
-        t = PassThroughTransaction()
         f1 = self.get_file('1')
         f1.add_lines('r0', [], ['a\n', 'b\n'])
         f1.add_lines('r1', ['r0'], ['c\n', 'b\n'])
         f2 = self.get_file('2')
-        f2.join(f1, None, t)
+        f2.join(f1, None)
         self.assertTrue(f2.has_version('r0'))
         self.assertTrue(f2.has_version('r1'))
 
@@ -125,15 +118,14 @@ class VersionedFileTestMixIn(object):
 
 
         #f3 = self.get_file('1')
-        #f3.add_lines('r0', ['a\n', 'b\n'], [], t)
-        #f3.add_lines('r1', ['c\n', 'b\n'], ['r0'], t)
+        #f3.add_lines('r0', ['a\n', 'b\n'], [])
+        #f3.add_lines('r1', ['c\n', 'b\n'], ['r0'])
         #f4 = self.get_file('2')
-        #f4.join(f3, ['r0'], t)
+        #f4.join(f3, ['r0'])
         #self.assertTrue(f4.has_version('r0'))
         #self.assertFalse(f4.has_version('r1'))
 
     def test_walk(self):
-        t = PassThroughTransaction()
         f = self.get_file('1')
         f.add_lines('r0', [], ['a\n', 'b\n'])
         f.add_lines('r1', ['r0'], ['c\n', 'b\n'])
@@ -160,6 +152,5 @@ class TestWeave(TestCaseInTempDir, VersionedFileTestMixIn):
 class TestKnit(TestCaseInTempDir, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        t = PassThroughTransaction()
         return KnitVersionedFile(LocalTransport('.'),
-            name, 'w', KnitAnnotateFactory(), t, delta=True)
+            name, 'w', KnitAnnotateFactory(), delta=True)

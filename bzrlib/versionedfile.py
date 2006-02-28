@@ -56,8 +56,7 @@ class VersionedFile(object):
         not present in file history."""
         raise NotImplementedError(self.add_lines)
 
-    def clone_text(self, new_version_id, old_version_id, parents,
-                   transaction):
+    def clone_text(self, new_version_id, old_version_id, parents):
         """Add an identical text to old_version_id as new_version_id.
 
         Must raise RevisionNotPresent if the old version or any of the
