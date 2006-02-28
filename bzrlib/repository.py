@@ -53,7 +53,7 @@ class Repository(object):
     @needs_read_lock
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
-        return self.get_inventory_weave().names()
+        return self.get_inventory_weave().versions()
 
     @needs_read_lock
     def all_revision_ids(self):

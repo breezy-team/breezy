@@ -25,8 +25,8 @@ from bzrlib.tests import TestCaseInTempDir
 from bzrlib.weave import Weave
 from bzrlib.transactions import PassThroughTransaction
 from bzrlib.trace import mutter
-#from bzrlib.knit import KnitVersionedFile, \
-#     KnitAnnotateFactory
+from bzrlib.knit import KnitVersionedFile, \
+     KnitAnnotateFactory
 from bzrlib.transport.local import LocalTransport
 from bzrlib.errors import RevisionNotPresent, \
      RevisionAlreadyPresent
@@ -157,14 +157,9 @@ class TestWeave(TestCaseInTempDir, VersionedFileTestMixIn):
         return Weave(name)
 
 
-#class TestKnit(TestCaseInTempDir, VersionedFileTestMixIn):
-#    def get_file(self, name='foo'):
-#        t = PassThroughTransaction()
-#        return KnitVersionedFile(LocalTransport('.'),
-#            name, 'w', KnitAnnotateFactory(), t, delta=True)
-#
-#    def test_clone_text(self):
-#        pass
-#
-#    def test_walk(self):
-#        pass
+class TestKnit(TestCaseInTempDir, VersionedFileTestMixIn):
+
+    def get_file(self, name='foo'):
+        t = PassThroughTransaction()
+        return KnitVersionedFile(LocalTransport('.'),
+            name, 'w', KnitAnnotateFactory(), t, delta=True)

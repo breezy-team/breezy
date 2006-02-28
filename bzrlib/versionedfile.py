@@ -54,7 +54,7 @@ class VersionedFile(object):
 
         Must raise RevisionNotPresent if any of the given parents are
         not present in file history."""
-        raise NotImplementedError(self.add_text)
+        raise NotImplementedError(self.add_lines)
 
     def clone_text(self, new_version_id, old_version_id, parents,
                    transaction):
@@ -121,7 +121,7 @@ class VersionedFile(object):
     def annotate(self, version_id):
         return list(self.annotate_iter(version_id))
 
-    def join(self, other, version_ids, transaction, pb=None):
+    def join(self, other, pb=None, msg=None, version_ids=None):
         """Integrate versions from other into this versioned file.
 
         If version_ids is None all versions from other should be
