@@ -270,15 +270,24 @@ class Repository(object):
         # revisions. For knits when they are introduced we will probably want
         # to ensure that caching write transactions are in use.
         inv = self.get_inventory_weave()
-        weave_parents = inv.parent_names(revision_id)
-        weave_names = inv.names()
-        for parent_id in r.parent_ids:
+        self._check_revision_parents(r, inv)
+        return r
+
+    def _check_revision_parents(self, revision, inventory):
+        """Private to Repository and Fetch.
+        
+        This checks the parentage of revision in an inventory weave for 
+        consistency and is only applicable to inventory-weave-for-ancestry
+        using repository formats & fetchers.
+        """
+        weave_parents = inventory.parent_names(revision.revision_id)
+        weave_names = inventory.names()
+        for parent_id in revision.parent_ids:
             if parent_id in weave_names:
                 # this parent must not be a ghost.
                 if not parent_id in weave_parents:
                     # but it is a ghost
                     raise errors.CorruptRepository(self)
-        return r
 
     @needs_read_lock
     def get_revision_sha1(self, revision_id):

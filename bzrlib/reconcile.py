@@ -17,6 +17,9 @@
 """Reconcilers are able to fix some potential data errors in a branch."""
 
 
+__all__ = ['reconcile', 'Reconciler', 'RepoReconciler']
+
+
 import bzrlib.branch
 import bzrlib.errors as errors
 import bzrlib.progress
@@ -40,11 +43,7 @@ def reconcile(dir):
 
 
 class Reconciler(object):
-    """Reconcilers are used to reconcile existing data.
-
-    Currently this is limited to a single repository, and consists
-    of an inventory reweave with revision cross-checks.
-    """
+    """Reconcilers are used to reconcile existing data."""
 
     def __init__(self, dir):
         self.bzrdir = dir
@@ -60,14 +59,39 @@ class Reconciler(object):
         """
         self.pb = ui.ui_factory.progress_bar()
         self.repo = self.bzrdir.find_repository()
+        self.pb.note('Reconciling repository %s',
+                     self.repo.bzrdir.root_transport.base)
+        repo_reconciler = RepoReconciler(self.repo)
+        repo_reconciler.reconcile()
+        self.inconsistent_parents = repo_reconciler.inconsistent_parents
+        self.garbage_inventories = repo_reconciler.garbage_inventories
+        self.pb.note('Reconciliation complete.')
+
+
+class RepoReconciler(object):
+    """Reconciler that reconciles a repository.
+
+    Currently this consists of an inventory reweave with revision cross-checks.
+    """
+
+    def __init__(self, repo):
+        self.repo = repo
+
+    def reconcile(self):
+        """Perform reconciliation.
+        
+        After reconciliation the following attributes document found issues:
+        inconsistent_parents: The number of revisions in the repository whose
+                              ancestry was being reported incorrectly.
+        garbage_inventories: The number of inventory objects without revisions
+                             that were garbage collected.
+        """
+        self.pb = ui.ui_factory.progress_bar()
         self.repo.lock_write()
         try:
-            self.pb.note('Reconciling repository %s',
-                         self.repo.bzrdir.root_transport.base)
             self._reweave_inventory()
         finally:
             self.repo.unlock()
-        self.pb.note('Reconciliation complete.')
 
     def _reweave_inventory(self):
         """Regenerate the inventory weave for the repository from scratch."""
@@ -137,13 +161,22 @@ class Reconciler(object):
         assert rev.revision_id == rev_id
         parents = []
         for parent in rev.parent_ids:
-            if parent in self.inventory:
+            if self._parent_is_available(parent):
                 parents.append(parent)
             else:
                 mutter('found ghost %s', parent)
         self._rev_graph[rev_id] = parents   
         if set(self.inventory.parent_names(rev_id)) != set(parents):
             self.inconsistent_parents += 1
+
+    def _parent_is_available(self, parent):
+        """True if parent is a fully available revision
+
+        A fully available revision has a inventory and a revision object in the
+        repository.
+        """
+        return (parent in self._rev_graph or 
+                (parent in self.inventory and self.repo.has_revision(parent)))
 
     def _reweave_step(self, message):
         """Mark a single step of regeneration complete."""
