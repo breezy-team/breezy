@@ -745,7 +745,8 @@ class WeaveMerger(Merge3Merger):
         this_i = weave.lookup(this_revision_id)
         other_i = weave.lookup(other_revision_id)
         plan =  weave.plan_merge(this_i, other_i)
-        return weave.weave_merge(plan)
+        return weave.weave_merge(plan, '<<<<<<< TREE\n', 
+                                       '>>>>>>> MERGE-SOURCE\n')
 
     def text_merge(self, file_id, trans_id):
         """Perform a (weave) text merge for a given file and file-id.
@@ -754,7 +755,7 @@ class WeaveMerger(Merge3Merger):
         """
         self._check_file(file_id)
         lines = self._merged_lines(file_id)
-        conflicts = '<<<<<<<\n' in lines
+        conflicts = '<<<<<<< TREE\n' in lines
         self.tt.create_file(lines, trans_id)
         if conflicts:
             self._raw_conflicts.append(('text conflict', trans_id))

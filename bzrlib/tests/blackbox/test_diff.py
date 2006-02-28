@@ -50,7 +50,7 @@ class TestDiff(ExternalBase):
         os.unlink('moo')
         self.runbzr('diff')
 
-    def test_diff_branches(self):
+    def example_branches(self):
         self.build_tree(['branch1/', 'branch1/file'], line_endings='binary')
         self.capture('init branch1')
         self.capture('add branch1/file')
@@ -58,6 +58,9 @@ class TestDiff(ExternalBase):
         self.capture('branch branch1 branch2')
         print >> open('branch2/file', 'wb'), 'new content'
         self.run_bzr_captured(['commit', '-m', 'update file', 'branch2'])
+
+    def test_diff_branches(self):
+        self.example_branches()
         # should open branch1 and diff against branch2, 
         output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 
                                         'branch1'],
@@ -79,7 +82,7 @@ class TestDiff(ExternalBase):
                               "+contents of branch1/file\n"
                               "\n", ''), output)
 
-    def test_diff_to_working_tree(self):
+    def example_branch2(self):
         self.build_tree(['branch1/', 'branch1/file1'], line_endings='binary')
         self.capture('init branch1')
         self.capture('add branch1/file1')
@@ -88,7 +91,31 @@ class TestDiff(ExternalBase):
         
         print >> open('branch1/file1', 'wb'), 'repo line'
         self.run_bzr_captured(['commit', '-m', 'second commit', 'branch1'])
+
+    def test_diff_to_working_tree(self):
+        self.example_branch2()
         
         print >> open('branch1/file1', 'wb'), 'new line'
         output = self.run_bzr_captured(['diff', '-r', '1..', 'branch1'], retcode=1)
         self.assertTrue('\n-original line\n+new line\n' in output[0])
+
+
+class TestCheckoutDiff(TestDiff):
+
+    def example_branch(self):
+        super(TestCheckoutDiff, self).example_branch()
+        self.runbzr('checkout . checkout')
+        os.chdir('checkout')
+
+    def example_branch2(self):
+        super(TestCheckoutDiff, self).example_branch2()
+        os.mkdir('checkouts')
+        self.runbzr('checkout branch1 checkouts/branch1')
+        os.chdir('checkouts')
+
+    def example_branches(self):
+        super(TestCheckoutDiff, self).example_branches()
+        os.mkdir('checkouts')
+        self.runbzr('checkout branch1 checkouts/branch1')
+        self.runbzr('checkout branch2 checkouts/branch2')
+        os.chdir('checkouts')

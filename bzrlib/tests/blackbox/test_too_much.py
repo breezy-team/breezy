@@ -1195,6 +1195,18 @@ class RemoteTests(object):
         url = self.get_readonly_url('branch/')
         self.run_bzr('check', url)
     
+    def test_push(self):
+        # create a source branch
+        os.mkdir('my-branch')
+        os.chdir('my-branch')
+        self.run_bzr('init')
+        file('hello', 'wt').write('foo')
+        self.run_bzr('add', 'hello')
+        self.run_bzr('commit', '-m', 'setup')
+
+        # with an explicit target work
+        self.run_bzr('push', self.get_url('output-branch'))
+
     
 class HTTPTests(TestCaseWithWebserver, RemoteTests):
     """Test various commands against a HTTP server."""
