@@ -725,8 +725,11 @@ class TestCommands(ExternalBase):
         assert '|||||||' not in conflict_text
         assert 'hi world' not in conflict_text
         os.unlink('hello.OTHER')
+        os.unlink('question.OTHER')
+        self.runbzr('remerge jello --merge-type weave', retcode=3)
         self.runbzr('remerge hello --merge-type weave', retcode=1)
         assert os.path.exists('hello.OTHER')
+        self.assertIs(False, os.path.exists('question.OTHER'))
         file_id = self.runbzr('file-id hello')
         file_id = self.runbzr('file-id hello.THIS', retcode=3)
         self.runbzr('remerge --merge-type weave', retcode=1)
