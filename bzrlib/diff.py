@@ -16,6 +16,7 @@
 
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
+from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 
 # TODO: Rather than building a changeset object, we should probably
@@ -141,9 +142,13 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         oldtmpf.close()                 # and delete
         newtmpf.close()
 
+
+@deprecated_function(zero_eight)
 def show_diff(b, from_spec, specific_files, external_diff_options=None,
               revision2=None, output=None, b2=None):
     """Shortcut for showing the diff to the working tree.
+
+    Please use show_diff_trees instead.
 
     b
         Branch.
@@ -176,6 +181,48 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
     return show_diff_trees(old_tree, new_tree, output, specific_files,
                            external_diff_options)
 
+
+def diff_cmd_helper(tree, specific_files, external_diff_options, 
+                    old_revision_spec=None, new_revision_spec=None):
+    """Helper for cmd_diff.
+
+   tree 
+        A WorkingTree
+
+    specific_files
+        The specific files to compare, or None
+
+    external_diff_options
+        If non-None, run an external diff, and pass it these options
+
+    old_revision_spec
+        If None, use basis tree as old revision, otherwise use the tree for
+        the specified revision. 
+
+    new_revision_spec
+        If None, use working tree as new revision, otherwise use the tree for
+        the specified revision.
+    
+    The more general form is show_diff_trees(), where the caller
+    supplies any two trees.
+    """
+    import sys
+    output = sys.stdout
+    def spec_tree(spec):
+        revision_id = spec.in_store(tree.branch).rev_id
+        return tree.branch.repository.revision_tree(revision_id)
+    if old_revision_spec is None:
+        old_tree = tree.basis_tree()
+    else:
+        old_tree = spec_tree(old_revision_spec)
+
+    if new_revision_spec is None:
+        new_tree = tree
+    else:
+        new_tree = spec_tree(new_revision_spec)
+
+    return show_diff_trees(old_tree, new_tree, sys.stdout, specific_files,
+                           external_diff_options)
 
 
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
