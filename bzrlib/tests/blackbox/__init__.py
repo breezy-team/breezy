@@ -33,6 +33,7 @@ from bzrlib.tests import (
 def test_suite():
     testmod_names = [
                      'bzrlib.tests.blackbox.test_added',
+                     'bzrlib.tests.blackbox.test_aliases',
                      'bzrlib.tests.blackbox.test_ancestry',
                      'bzrlib.tests.blackbox.test_cat',
                      'bzrlib.tests.blackbox.test_checkout',

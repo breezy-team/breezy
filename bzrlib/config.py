@@ -52,6 +52,14 @@ create_signatures - this option controls whether bzr will always create
                     NB: This option is planned, but not implemented yet.
 log_format - This options set the default log format.  Options are long, 
              short, line, or a plugin can register new formats
+
+In bazaar.conf you can also define aliases in the ALIASES sections, example
+
+[ALIASES]
+lastlog=log --line -r-10..-1
+ll=log --line -r-10..-1
+h=help
+up=pull
 """
 
 
@@ -191,6 +199,12 @@ class Config(object):
             return True
         return False
 
+    def get_alias(self, value):
+        return self._get_alias(value)
+
+    def _get_alias(self, value):
+        pass
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -257,6 +271,13 @@ class IniBasedConfig(Config):
             return CHECK_ALWAYS
         raise errors.BzrError("Invalid signatures policy '%s'"
                               % signature_string)
+
+    def _get_alias(self, value):
+        try:
+            return self._get_parser().get_value("ALIASES", 
+                                                value)
+        except KeyError:
+            pass
 
 
 class GlobalConfig(IniBasedConfig):
@@ -431,6 +452,7 @@ class BranchConfig(Config):
     def _log_format(self):
         """See Config.log_format."""
         return self._get_location_config()._log_format()
+
 
 def ensure_config_dir_exists(path=None):
     """Make sure a configuration directory exists.
