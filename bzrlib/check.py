@@ -100,7 +100,7 @@ class Check(object):
     def report_results(self, verbose):
         note('checked branch %s format %s',
              self.branch.base, 
-             self.branch._branch_format)
+             self.branch._format)
 
         note('%6d revisions', self.checked_rev_cnt)
         note('%6d unique file texts', self.checked_text_cnt)

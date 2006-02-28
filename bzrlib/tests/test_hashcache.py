@@ -15,14 +15,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import sha
 import sys
 import time
+
+from bzrlib.errors import BzrError
+from bzrlib.hashcache import HashCache
 from bzrlib.tests import TestCaseInTempDir
 
 
-
 def sha1(t):
-    import sha
     return sha.new(t).hexdigest()
 
 
@@ -46,12 +48,10 @@ class TestHashCache(TestCaseInTempDir):
 
     def test_hashcache(self):
         """Functional tests for hashcache"""
-        from bzrlib.hashcache import HashCache
-        import os
 
         # make a dummy bzr directory just to hold the cache
         os.mkdir('.bzr')
-        hc = HashCache(u'.')
+        hc = HashCache('.', '.bzr/stat-cache')
 
         file('foo', 'wb').write('hello')
         os.mkdir('subdir')
@@ -114,7 +114,7 @@ class TestHashCache(TestCaseInTempDir):
         hc.write()
         del hc
 
-        hc = HashCache(u'.')
+        hc = HashCache('.', '.bzr/stat-cache')
         hc.read()
 
         self.assertEquals(len(hc._cache), 2)
@@ -125,11 +125,9 @@ class TestHashCache(TestCaseInTempDir):
 
     def test_hashcache_raise(self):
         """check that hashcache can raise BzrError"""
-        from bzrlib.hashcache import HashCache
-        import os
 
         os.mkdir('.bzr')
-        hc = HashCache(u'.')
+        hc = HashCache('.', '.bzr/stat-cache')
         ok = False
 
         # make a best effort to create a weird kind of file
@@ -142,7 +140,6 @@ class TestHashCache(TestCaseInTempDir):
             except FixThisError:
                 pass
 
-        from bzrlib.errors import BzrError
         if ok:
             self.assertRaises(BzrError, hc.get_sha1, 'a')
         else:

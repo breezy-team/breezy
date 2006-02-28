@@ -17,11 +17,12 @@
 import os
 
 from bzrlib.errors import BzrCommandError, NoSuchRevision
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.workingtree import WorkingTree
 
-class TestRevisionInfo(TestCaseInTempDir):
+
+class TestRevisionInfo(TestCaseWithTransport):
     
     def check_error(self, output, *args):
         """Verify that the expected error matches what bzr says.
@@ -40,11 +41,8 @@ class TestRevisionInfo(TestCaseInTempDir):
         self.assertEquals(self.run_bzr_captured(args)[0], output)
 
     def test_revision_info(self):
-        """Test that 'bzr revision-info' reports the correct thing.
-        """
-
-        wt = WorkingTree.create_standalone('.')
-        b = wt.branch
+        """Test that 'bzr revision-info' reports the correct thing."""
+        wt = self.make_branch_and_tree('.')
 
         wt.commit('Commit one', rev_id='a@r-0-1')
         wt.commit('Commit two', rev_id='a@r-0-2')
@@ -87,17 +85,17 @@ class TestRevisionInfo(TestCaseInTempDir):
     def test_cat_revision(self):
         """Test bzr cat-revision.
         """
-        wt = WorkingTree.create_standalone('.')
-        b = wt.branch
+        wt = self.make_branch_and_tree('.')
+        r = wt.branch.repository
 
         wt.commit('Commit one', rev_id='a@r-0-1')
         wt.commit('Commit two', rev_id='a@r-0-2')
         wt.commit('Commit three', rev_id='a@r-0-3')
 
         revs = {
-            1:b.repository.get_revision_xml('a@r-0-1'),
-            2:b.repository.get_revision_xml('a@r-0-2'),
-            3:b.repository.get_revision_xml('a@r-0-3'),
+            1:r.get_revision_xml('a@r-0-1'),
+            2:r.get_revision_xml('a@r-0-2'),
+            3:r.get_revision_xml('a@r-0-3'),
         }
 
         self.check_output(revs[1], 'cat-revision', 'a@r-0-1')

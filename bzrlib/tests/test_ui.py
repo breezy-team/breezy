@@ -18,8 +18,10 @@
 """
 
 import os
+from StringIO import StringIO
 import sys
 
+from bzrlib.progress import TTYProgressBar
 from bzrlib.tests import TestCase
 from bzrlib.ui import SilentUIFactory
 from bzrlib.ui.text import TextUIFactory
@@ -50,3 +52,16 @@ class UITests(TestCase):
         #                                   user=u'some\u1234')
         #                  , 'bogus')
 
+
+    def test_progress_note(self):
+        stderr = StringIO()
+        stdout = StringIO()
+        ui = TextUIFactory()
+        pb = TTYProgressBar(to_file=stderr, to_messages_file=stdout)
+        result = pb.note('t')
+        self.assertEqual(None, result)
+        self.assertEqual("t\n", stdout.getvalue())
+        # the exact contents will depend on the terminal width and we don't
+        # care about that right now - but you're probably running it on at
+        # least a 10-character wide terminal :)
+        self.assertContainsRe(stderr.getvalue(), r'^\r {10,}\r$')

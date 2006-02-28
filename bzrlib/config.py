@@ -27,6 +27,7 @@ email=Your Name <your@email.address>
 check_signatures=require|ignore|check-available(default)
 create_signatures=always|never|when-required(default)
 gpg_signing_command=name-of-program
+log_format=name-of-format
 
 in branches.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
@@ -49,6 +50,16 @@ create_signatures - this option controls whether bzr will always create
                     gpg signatures, never create them, or create them if the
                     branch is configured to require them.
                     NB: This option is planned, but not implemented yet.
+log_format - This options set the default log format.  Options are long, 
+             short, line, or a plugin can register new formats
+
+In bazaar.conf you can also define aliases in the ALIASES sections, example
+
+[ALIASES]
+lastlog=log --line -r-10..-1
+ll=log --line -r-10..-1
+h=help
+up=pull
 """
 
 
@@ -73,13 +84,7 @@ CHECK_NEVER=2
 class ConfigObj(configobj.ConfigObj):
 
     def get_bool(self, section, key):
-        val = self[section][key].lower()
-        if val in ('1', 'yes', 'true', 'on'):
-            return True
-        elif val in ('0', 'no', 'false', 'off'):
-            return False
-        else:
-            raise ValueError("Value %r is not boolean" % val)
+        return self[section].as_bool(key)
 
     def get_value(self, section, name):
         # Try [] for the old DEFAULT section.
@@ -118,6 +123,17 @@ class Config(object):
 
     def _gpg_signing_command(self):
         """See gpg_signing_command()."""
+        return None
+
+    def log_format(self):
+        """What log format should be used"""
+        result = self._log_format()
+        if result is None:
+            result = "long"
+        return result
+
+    def _log_format(self):
+        """See log_format()."""
         return None
 
     def __init__(self):
@@ -183,6 +199,12 @@ class Config(object):
             return True
         return False
 
+    def get_alias(self, value):
+        return self._get_alias(value)
+
+    def _get_alias(self, value):
+        pass
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -226,6 +248,10 @@ class IniBasedConfig(Config):
         """See Config.gpg_signing_command."""
         return self._get_user_option('gpg_signing_command')
 
+    def _log_format(self):
+        """See Config.log_format."""
+        return self._get_user_option('log_format')
+
     def __init__(self, get_filename):
         super(IniBasedConfig, self).__init__()
         self._get_filename = get_filename
@@ -245,6 +271,13 @@ class IniBasedConfig(Config):
             return CHECK_ALWAYS
         raise errors.BzrError("Invalid signatures policy '%s'"
                               % signature_string)
+
+    def _get_alias(self, value):
+        try:
+            return self._get_parser().get_value("ALIASES", 
+                                                value)
+        except KeyError:
+            pass
 
 
 class GlobalConfig(IniBasedConfig):
@@ -317,6 +350,13 @@ class LocationConfig(IniBasedConfig):
         if command is not None:
             return command
         return self._get_global_config()._gpg_signing_command()
+
+    def _log_format(self):
+        """See Config.log_format."""
+        command = super(LocationConfig, self)._log_format()
+        if command is not None:
+            return command
+        return self._get_global_config()._log_format()
 
     def _get_user_id(self):
         user_id = super(LocationConfig, self)._get_user_id()
@@ -408,6 +448,10 @@ class BranchConfig(Config):
     def _post_commit(self):
         """See Config.post_commit."""
         return self._get_location_config()._post_commit()
+
+    def _log_format(self):
+        """See Config.log_format."""
+        return self._get_location_config()._log_format()
 
 
 def ensure_config_dir_exists(path=None):
@@ -520,11 +564,10 @@ class TreeConfig(object):
 
     def _get_config(self):
         try:
-            obj = ConfigObj(self.branch.control_files.get('branch.conf'
-                        ).readlines())
-            obj.decode('UTF-8')
+            obj = ConfigObj(self.branch.control_files.get('branch.conf'), 
+                            encoding='utf-8')
         except errors.NoSuchFile:
-            obj = ConfigObj()
+            obj = ConfigObj(encoding='utf=8')
         return obj
 
     def get_option(self, name, section=None, default=None):
@@ -555,8 +598,8 @@ class TreeConfig(object):
                     cfg_obj[section] = {}
                     obj = cfg_obj[section]
             obj[name] = value
-            cfg_obj.encode('UTF-8')
-            out_file = StringIO(''.join([l+'\n' for l in cfg_obj.write()]))
+            out_file = StringIO()
+            cfg_obj.write(out_file)
             out_file.seek(0)
             self.branch.control_files.put('branch.conf', out_file)
         finally:

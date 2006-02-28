@@ -1,6 +1,8 @@
 # (C) 2005 Canonical
 
+import bzrlib
 from bzrlib.tests import TestCase
+from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.transport.http import HttpTransport, extract_auth
 
 class FakeManager (object):
@@ -10,7 +12,7 @@ class FakeManager (object):
     def add_password(self, realm, host, username, password):
         self.credentials.append([realm, host, username, password])
 
-        
+
 class TestHttpUrls(TestCase):
     def test_url_parsing(self):
         f = FakeManager()
@@ -51,3 +53,35 @@ class TestHttpUrls(TestCase):
         eq = self.assertEqualDiff
         eq(t.abspath('.bzr/tree-version'),
            'http://bzr.ozlabs.org/.bzr/tree-version')
+
+
+class TestHttpConnections(TestCaseWithWebserver):
+
+    def setUp(self):
+        super(TestHttpConnections, self).setUp()
+        self.build_tree(['xxx', 'foo/', 'foo/bar'], line_endings='binary')
+
+    def test_http_has(self):
+        server = self.get_readonly_server()
+        t = HttpTransport(server.get_url())
+        self.assertEqual(t.has('foo/bar'), True)
+        self.assertEqual(len(server.logs), 1)
+        self.assertTrue(server.logs[0].endswith(
+            '"HEAD /foo/bar HTTP/1.1" 200 - "-" "bzr/%s"'
+            % bzrlib.__version__))
+
+        self.assertEqual(t.has('not-found'), False)
+        self.assertTrue(server.logs[-1].endswith(
+            '"HEAD /not-found HTTP/1.1" 404 - "-" "bzr/%s"'
+            % bzrlib.__version__))
+
+    def test_http_get(self):
+        server = self.get_readonly_server()
+        t = HttpTransport(server.get_url())
+        fp = t.get('foo/bar')
+        self.assertEqualDiff(
+            fp.read(),
+            'contents of foo/bar\n')
+        self.assertEqual(len(server.logs), 1)
+        self.assertTrue(server.logs[0].endswith(
+            '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s"' % bzrlib.__version__))
