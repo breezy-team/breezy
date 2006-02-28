@@ -227,7 +227,8 @@ class Merger(object):
 
     def do_merge(self):
         kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree, 
-                  'other_tree': self.other_tree}
+                  'other_tree': self.other_tree, 
+                  'interesting_ids': self.interesting_ids}
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
         if self.merge_type.supports_reprocess:
@@ -318,7 +319,8 @@ class Merge3Merger(object):
     history_based = False
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
-                 reprocess=False, show_base=False, pb=DummyProgress()):
+                 interesting_ids=None, reprocess=False, show_base=False,
+                 pb=DummyProgress()):
         """Initialize the merger object and perform the merge."""
         object.__init__(self)
         self.this_tree = working_tree
@@ -330,8 +332,11 @@ class Merge3Merger(object):
         self.show_base = show_base
         self.pb = pb
 
-        all_ids = set(base_tree)
-        all_ids.update(other_tree)
+        if interesting_ids is not None:
+            all_ids = interesting_ids
+        else:
+            all_ids = set(base_tree)
+            all_ids.update(other_tree)
         self.tt = TreeTransform(working_tree, self.pb)
         try:
             for num, file_id in enumerate(all_ids):
@@ -708,11 +713,13 @@ class WeaveMerger(Merge3Merger):
     supports_show_base = False
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
-                 pb=DummyProgress()):
+                 interesting_ids=None, pb=DummyProgress()):
         self.this_revision_tree = self._get_revision_tree(this_tree)
         self.other_revision_tree = self._get_revision_tree(other_tree)
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
-                                          base_tree, other_tree, pb=pb)
+                                          base_tree, other_tree, 
+                                          interesting_ids=interesting_ids, 
+                                          pb=pb)
 
     def _get_revision_tree(self, tree):
         """Return a revision tree releated to this tree.
