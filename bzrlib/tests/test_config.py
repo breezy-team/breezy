@@ -542,8 +542,6 @@ class TestLocationConfig(TestCase):
                          self.my_config.post_commit())
 
 
-class TestLocationConfig(TestCaseInTempDir):
-
     def get_location_config(self, location, global_config=None):
         if global_config is None:
             global_file = StringIO(sample_config_text)
