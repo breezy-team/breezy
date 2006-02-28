@@ -76,6 +76,10 @@ bzr development version
       please use 'branch.fetch' or 'repository.fetch' depending on your
       needs. (Robert Collins)
 
+    * deprecated methods now have a 'is_deprecated' flag on them that can
+      be checked, if you need to determine whether a given callable is 
+      deprecated at runtime. (Robert Collins)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
