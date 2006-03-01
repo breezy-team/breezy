@@ -970,7 +970,9 @@ def parse_options():
 
 
 def main():
+
     bzrlib.user_encoding = 'utf8'
+
     opts = parse_options()
 
     if opts.scheme == "trunk":
