@@ -95,13 +95,18 @@ def write_weave_v5(weave, f):
 def read_weave(f, prelude=False):
     # FIXME: detect the weave type and dispatch
     from bzrlib.trace import mutter
-    return _read_weave_v5(f, prelude=prelude)
-
-
-def _read_weave_v5(f, prelude=False):
-    """Private helper routine to read a weave format 5 file into memory."""
-    from weave import WeaveFormatError, Weave
+    from weave import Weave
     w = Weave(getattr(f, 'name', None))
+    _read_weave_v5(f, w, prelude=prelude)
+    return w
+
+
+def _read_weave_v5(f, w, prelude=False):
+    """Private helper routine to read a weave format 5 file into memory.
+    
+    This is only to be used by read_weave and WeaveFile.__init__.
+    """
+    from weave import WeaveFormatError
 
     l = f.readline()
     if l != FORMAT_1:

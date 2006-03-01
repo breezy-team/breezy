@@ -67,10 +67,11 @@
 # the possible relationships.
 
 
+from cStringIO import StringIO
+from difflib import SequenceMatcher
 import os
 import sha
 import time
-from difflib import SequenceMatcher
 
 from bzrlib.trace import mutter
 from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
@@ -84,6 +85,7 @@ from bzrlib.osutils import sha_strings
 from bzrlib.symbol_versioning import *
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import VersionedFile
+from bzrlib.weavefile import _read_weave_v5, write_weave_v5
 
 
 class Weave(VersionedFile):
@@ -834,6 +836,36 @@ class Weave(VersionedFile):
         new_weave = reweave(self, other, pb=pb, msg=msg)
         for attr in self.__slots__:
             setattr(self, attr, getattr(new_weave, attr))
+
+
+class WeaveFile(Weave):
+    """A WeaveFile represents a Weave on disk and writes on change."""
+
+    def __init__(self, name, transport):
+        super(WeaveFile, self).__init__(name)
+        self._transport = transport
+        try:
+            _read_weave_v5(self._transport.get(name), self)
+        except errors.NoSuchFile:
+            # new file, no-op.
+            pass
+
+    def add_lines(self, version_id, parents, lines):
+        """Add a version and save the weave."""
+        super(WeaveFile, self).add_lines(version_id, parents, lines)
+        self._save()
+
+    def _save(self):
+        """Save the weave."""
+        sio = StringIO()
+        write_weave_v5(self, sio)
+        sio.seek(0)
+        self._transport.put(self._weave_name, sio)
+
+    def join(self, other, pb=None, msg=None, version_ids=None):
+        """Join other into self and save."""
+        super(WeaveFile, self).join(other, pb, msg, version_ids)
+        self._save()
 
 
 def reweave(wa, wb, pb=None, msg=None):

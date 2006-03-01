@@ -30,7 +30,8 @@ from bzrlib.knit import KnitVersionedFile, \
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
 from bzrlib.transport.local import LocalTransport
-from bzrlib.weave import Weave
+from bzrlib.weave import WeaveFile
+from bzrlib.weavefile import read_weave
 
 
 class VersionedFileTestMixIn(object):
@@ -45,17 +46,21 @@ class VersionedFileTestMixIn(object):
         f = self.get_file()
         f.add_lines('r0', [], ['a\n', 'b\n'])
         f.add_lines('r1', ['r0'], ['b\n', 'c\n'])
-        versions = f.versions()
-        self.assertTrue('r0' in versions)
-        self.assertTrue('r1' in versions)
-        self.assertEquals(f.get_lines('r0'), ['a\n', 'b\n'])
-        self.assertEquals(f.get_text('r0'), 'a\nb\n')
-        self.assertEquals(f.get_lines('r1'), ['b\n', 'c\n'])
-
-        self.assertRaises(RevisionNotPresent,
-            f.add_lines, 'r2', ['foo'], [])
-        self.assertRaises(RevisionAlreadyPresent,
-            f.add_lines, 'r1', [], [])
+        def verify_file(f):
+            versions = f.versions()
+            self.assertTrue('r0' in versions)
+            self.assertTrue('r1' in versions)
+            self.assertEquals(f.get_lines('r0'), ['a\n', 'b\n'])
+            self.assertEquals(f.get_text('r0'), 'a\nb\n')
+            self.assertEquals(f.get_lines('r1'), ['b\n', 'c\n'])
+    
+            self.assertRaises(RevisionNotPresent,
+                f.add_lines, 'r2', ['foo'], [])
+            self.assertRaises(RevisionAlreadyPresent,
+                f.add_lines, 'r1', [], [])
+        verify_file(f)
+        f = self.reopen_file()
+        verify_file(f)
 
     def test_ancestry(self):
         f = self.get_file()
@@ -83,14 +88,17 @@ class VersionedFileTestMixIn(object):
         f = self.get_file()
         f.add_lines('r0', [], ['a\n', 'b\n'])
         f.clone_text('r1', 'r0', ['r0'])
-        self.assertEquals(f.get_lines('r1'), f.get_lines('r0'))
-        self.assertEquals(f.get_lines('r1'), ['a\n', 'b\n'])
-        self.assertEquals(f.get_parents('r1'), ['r0'])
-
-        self.assertRaises(RevisionNotPresent,
-            f.clone_text, 'r2', 'rX', [])
-        self.assertRaises(RevisionAlreadyPresent,
-            f.clone_text, 'r1', 'r0', [])
+        def verify_file(f):
+            self.assertEquals(f.get_lines('r1'), f.get_lines('r0'))
+            self.assertEquals(f.get_lines('r1'), ['a\n', 'b\n'])
+            self.assertEquals(f.get_parents('r1'), ['r0'])
+    
+            self.assertRaises(RevisionNotPresent,
+                f.clone_text, 'r2', 'rX', [])
+            self.assertRaises(RevisionAlreadyPresent,
+                f.clone_text, 'r1', 'r0', [])
+        verify_file(f)
+        verify_file(self.reopen_file())
 
     def test_get_parents(self):
         f = self.get_file()
@@ -121,12 +129,14 @@ class VersionedFileTestMixIn(object):
         f1.add_lines('r1', ['r0'], ['c\n', 'b\n'])
         f2 = self.get_file('2')
         f2.join(f1, None)
-        self.assertTrue(f2.has_version('r0'))
-        self.assertTrue(f2.has_version('r1'))
+        def verify_file(f):
+            self.assertTrue(f.has_version('r0'))
+            self.assertTrue(f.has_version('r1'))
+        verify_file(f2)
+        verify_file(self.reopen_file('2'))
 
         self.assertRaises(RevisionNotPresent,
             f2.join, f1, version_ids=['r3'])
-
 
         #f3 = self.get_file('1')
         #f3.add_lines('r0', ['a\n', 'b\n'], [])
@@ -176,19 +186,22 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
         self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
-
     def get_file_corrupted_text(self):
         """Return a versioned file with corrupt text but valid metadata."""
         raise NotImplementedError(self.get_file_corrupted_text)
+
+    def reopen_file(self, name='foo'):
+        """Open the versioned file from disk again."""
+        raise NotImplementedError(self.reopen_file)
 
 
 class TestWeave(TestCaseInTempDir, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return Weave(name)
+        return WeaveFile(name, LocalTransport('.'))
 
     def get_file_corrupted_text(self):
-        w = Weave()
+        w = WeaveFile('foo', LocalTransport('.'))
         w.add('v1', [], ['hello\n'])
         w.add('v2', ['v1'], ['hello\n', 'there\n'])
         
@@ -221,6 +234,9 @@ class TestWeave(TestCaseInTempDir, VersionedFileTestMixIn):
         w._sha1s[1] =  'f0f265c6e75f1c8f9ab76dcf85528352c5f215ef'
         return w
 
+    def reopen_file(self, name='foo'):
+        return WeaveFile(name, LocalTransport('.'))
+
 
 class TestKnit(TestCaseInTempDir, VersionedFileTestMixIn):
 
@@ -233,3 +249,7 @@ class TestKnit(TestCaseInTempDir, VersionedFileTestMixIn):
         knit.add_lines('v1', [], ['hello\n'])
         knit.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
         return knit
+
+    def reopen_file(self, name='foo'):
+        return KnitVersionedFile(LocalTransport('.'),
+            name, 'w', KnitAnnotateFactory(), delta=True)
