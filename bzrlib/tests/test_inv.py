@@ -292,8 +292,9 @@ class TestSnapshot(TestCaseWithTransport):
         self.assertEqual(self.file_1, other_ie)
         other_ie.revision = 'other'
         self.assertNotEqual(self.file_1, other_ie)
-        self.branch.repository.weave_store.add_identical_text('fileid', '1', 
-            'other', ['1'], self.branch.get_transaction())
+        versionfile = self.branch.repository.weave_store.get_weave(
+            'fileid', self.branch.repository.get_transaction())
+        versionfile.clone_text('other', '1', ['1'])
         self.file_active.snapshot('2', 'subdir/file', 
                                   {'1':self.file_1, 'other':other_ie},
                                   self.wt, 

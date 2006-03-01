@@ -44,7 +44,6 @@ from bzrlib.transactions import PassThroughTransaction
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
 from bzrlib.weave import Weave
-from bzrlib.weavefile import read_weave, write_weave
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
 
@@ -1274,6 +1273,7 @@ class ConvertBzrDir4To5(Converter):
                 self.bzrdir.transport.mkdir('weaves')
         except errors.NoSuchFile:
             self.bzrdir.transport.mkdir('weaves')
+        # deliberately not a WeaveFile as we want to build it up slowly.
         self.inv_weave = Weave('inventory')
         # holds in-memory weaves for all files
         self.text_weaves = {}
@@ -1328,13 +1328,15 @@ class ConvertBzrDir4To5(Converter):
         weaves = WeaveStore(weave_transport, prefixed=False)
         transaction = PassThroughTransaction()
 
-        controlweaves.put_weave('inventory', self.inv_weave, transaction)
-        i = 0
         try:
+            i = 0
             for file_id, file_weave in self.text_weaves.items():
                 self.pb.update('writing weave', i, len(self.text_weaves))
-                weaves.put_weave(file_id, file_weave, transaction)
+                weaves._put_weave(file_id, file_weave, transaction)
                 i += 1
+            self.pb.update('inventory', 0, 1)
+            controlweaves._put_weave('inventory', self.inv_weave, transaction)
+            self.pb.update('inventory', 1, 1)
         finally:
             self.pb.clear()
 

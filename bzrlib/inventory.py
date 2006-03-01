@@ -119,8 +119,8 @@ class InventoryEntry(object):
                  'revision']
 
     def _add_text_to_weave(self, new_lines, parents, weave_store, transaction):
-        weave_store.add_text(self.file_id, self.revision, new_lines, parents,
-                             transaction)
+        versionedfile = weave_store.get_weave(self.file_id, transaction)
+        versionedfile.add_lines(self.revision, parents, new_lines)
 
     def detect_changes(self, old_entry):
         """Return a (text_modified, meta_modified) from this to old_entry.
@@ -587,9 +587,8 @@ class InventoryFile(InventoryEntry):
             and self.text_sha1 == file_parents.values()[0].text_sha1
             and self.text_size == file_parents.values()[0].text_size):
             previous_ie = file_parents.values()[0]
-            weave_store.add_identical_text(
-                self.file_id, previous_ie.revision, 
-                self.revision, file_parents, transaction)
+            versionedfile = weave_store.get_weave(self.file_id, transaction)
+            versionedfile.clone_text(self.revision, previous_ie.revision, file_parents)
         else:
             new_lines = work_tree.get_file(self.file_id).readlines()
             self._add_text_to_weave(new_lines, file_parents, weave_store,

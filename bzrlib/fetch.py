@@ -32,7 +32,7 @@ memory until we've updated all of the files referenced.
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.errors import (InstallFailed, NoSuchRevision, WeaveError,
+from bzrlib.errors import (InstallFailed, NoSuchRevision,
                            MissingText)
 from bzrlib.trace import mutter
 from bzrlib.progress import ProgressBar
@@ -160,44 +160,40 @@ class RepoFetcher(object):
             count +=1
             to_weave = self.to_weaves.get_weave_or_empty(file_id,
                 self.to_repository.get_transaction())
-            from_weave = self.from_weaves.get_weave(file_id,
-                self.from_repository.get_transaction())
 
             if to_weave.numversions() > 0:
                 # destination has contents, must merge
+                from_weave = self.from_weaves.get_weave(file_id,
+                    self.from_repository.get_transaction())
                 try:
                     to_weave.join(from_weave)
                 except errors.WeaveParentMismatch:
                     to_weave.reweave(from_weave)
             else:
                 # destination is empty, just replace it
-                to_weave = from_weave.copy()
-
-            self.to_weaves.put_weave(file_id, to_weave,
-                self.to_repository.get_transaction())
+                self.to_weaves.copy_multi(self.from_weaves, [file_id], self.pb)
         self.pb.clear()
 
     def _fetch_inventory_weave(self, revs):
         self.pb.update("inventory fetch", 0, 2)
-        from_weave = self.from_repository.get_inventory_weave()
-        to_weave = self.to_repository.get_inventory_weave()
-        self.pb.update("inventory fetch", 1, 2)
         to_weave = self.to_control.get_weave('inventory',
                 self.to_repository.get_transaction())
-        self.pb.update("inventory fetch", 2, 2)
 
         if to_weave.numversions() > 0:
             # destination has contents, must merge
+            self.pb.update("inventory fetch", 1, 2)
+            from_weave = self.from_repository.get_inventory_weave()
+            self.pb.update("inventory fetch", 2, 2)
             try:
                 to_weave.join(from_weave, pb=self.pb, msg='merge inventory')
             except errors.WeaveParentMismatch:
                 to_weave.reweave(from_weave, pb=self.pb, msg='reweave inventory')
         else:
             # destination is empty, just replace it
-            to_weave = from_weave.copy()
-
-        self.to_control.put_weave('inventory', to_weave,
-            self.to_repository.get_transaction())
+            self.to_control.copy_multi(self.from_control,
+                                       ['inventory'],
+                                       self.pb,
+                                       self.from_repository.get_transaction())
 
         self.pb.clear()
 

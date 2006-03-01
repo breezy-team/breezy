@@ -92,8 +92,6 @@ from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID
 from bzrlib.symbol_versioning import *
-from bzrlib.weave import Weave
-from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.workingtree import WorkingTree
 
 
@@ -321,9 +319,11 @@ class Commit(object):
         inv_text = serializer_v5.write_inventory_to_string(self.new_inv)
         self.inv_sha1 = sha_string(inv_text)
         s = self.branch.repository.control_weaves
-        s.add_text('inventory', self.rev_id,
-                   split_lines(inv_text), self.present_parents,
-                   self.branch.get_transaction())
+        inv_versioned_file = s.get_weave('inventory',
+                                         self.branch.repository.get_transaction())
+        inv_versioned_file.add_lines(self.rev_id,
+                                     self.present_parents,
+                                     split_lines(inv_text))
 
     def _escape_commit_message(self):
         """Replace xml-incompatible control characters."""

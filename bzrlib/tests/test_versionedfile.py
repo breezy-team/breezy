@@ -253,3 +253,6 @@ class TestKnit(TestCaseInTempDir, VersionedFileTestMixIn):
     def reopen_file(self, name='foo'):
         return KnitVersionedFile(LocalTransport('.'),
             name, 'w', KnitAnnotateFactory(), delta=True)
+
+    def test_detection(self):
+        print "TODO for merging: create a corrupted knit."

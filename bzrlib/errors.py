@@ -457,6 +457,7 @@ class UnlistableBranch(BzrError):
 
 class WeaveError(BzrNewError):
     """Error in processing weave: %(message)s"""
+
     def __init__(self, message=None):
         BzrNewError.__init__(self)
         self.message = message
@@ -465,6 +466,7 @@ class WeaveError(BzrNewError):
 class WeaveRevisionAlreadyPresent(WeaveError):
     """Revision {%(revision_id)s} already present in %(weave)s"""
     def __init__(self, revision_id, weave):
+
         WeaveError.__init__(self)
         self.revision_id = revision_id
         self.weave = weave
@@ -472,6 +474,7 @@ class WeaveRevisionAlreadyPresent(WeaveError):
 
 class WeaveRevisionNotPresent(WeaveError):
     """Revision {%(revision_id)s} not present in %(weave)s"""
+
     def __init__(self, revision_id, weave):
         WeaveError.__init__(self)
         self.revision_id = revision_id
@@ -480,6 +483,7 @@ class WeaveRevisionNotPresent(WeaveError):
 
 class WeaveFormatError(WeaveError):
     """Weave invariant violated: %(what)s"""
+
     def __init__(self, what):
         WeaveError.__init__(self)
         self.what = what

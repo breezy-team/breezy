@@ -127,9 +127,10 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         tree_a = self.make_branch_and_tree('a')
         self.bzrdir = tree_a.branch.bzrdir
         # add a corrupt inventory 'orphan'
-        tree_a.branch.repository.control_weaves.add_text(
-            'inventory', 'orphan', [], [],
+        inv_file = tree_a.branch.repository.control_weaves.get_weave(
+            'inventory', 
             tree_a.branch.repository.get_transaction())
+        inv_file.add_lines('orphan', [], [])
         # add a real revision 'rev1'
         tree_a.commit('rev1', rev_id='rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1

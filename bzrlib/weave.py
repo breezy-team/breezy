@@ -191,7 +191,6 @@ class Weave(VersionedFile):
     def __repr__(self):
         return "Weave(%r)" % self._weave_name
 
-
     def copy(self):
         """Return a deep copy of self.
         
@@ -211,7 +210,6 @@ class Weave(VersionedFile):
         return self._parents == other._parents \
                and self._weave == other._weave \
                and self._sha1s == other._sha1s 
-
     
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -841,9 +839,10 @@ class Weave(VersionedFile):
 class WeaveFile(Weave):
     """A WeaveFile represents a Weave on disk and writes on change."""
 
-    def __init__(self, name, transport):
+    def __init__(self, name, transport, mode=None):
         super(WeaveFile, self).__init__(name)
         self._transport = transport
+        self._mode = mode
         try:
             _read_weave_v5(self._transport.get(name), self)
         except errors.NoSuchFile:
@@ -860,7 +859,7 @@ class WeaveFile(Weave):
         sio = StringIO()
         write_weave_v5(self, sio)
         sio.seek(0)
-        self._transport.put(self._weave_name, sio)
+        self._transport.put(self._weave_name, sio, self._mode)
 
     def join(self, other, pb=None, msg=None, version_ids=None):
         """Join other into self and save."""
