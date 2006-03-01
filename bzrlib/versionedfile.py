@@ -56,6 +56,9 @@ class VersionedFile(object):
         not present in file history."""
         raise NotImplementedError(self.add_lines)
 
+    def clear_cache(self):
+        """Remove any data cached in the versioned file object."""
+
     def clone_text(self, new_version_id, old_version_id, parents):
         """Add an identical text to old_version_id as new_version_id.
 
