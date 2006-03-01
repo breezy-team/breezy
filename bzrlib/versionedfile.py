@@ -24,6 +24,9 @@
 """Versioned text file storage api."""
 
 
+from bzrlib.symbol_versioning import *
+
+
 class VersionedFile(object):
     """Versioned text file storage.
     
@@ -37,6 +40,14 @@ class VersionedFile(object):
 
     Texts are identified by a version-id string.
     """
+
+    @deprecated_method(zero_eight)
+    def names(self):
+        """Return a list of all the versions in this versioned file.
+
+        Please use versionedfile.versions() now.
+        """
+        return self.versions()
 
     def versions(self):
         """Return a unsorted list of versions."""
@@ -103,6 +114,14 @@ class VersionedFile(object):
         file history."""
         raise NotImplementedError(self.get_graph)
 
+    @deprecated_method(zero_eight)
+    def parent_names(self, version):
+        """Return version names for parents of a version.
+        
+        See get_parents for the current api.
+        """
+        return self.get_parents(version)
+
     def get_parents(self, version_id):
         """Return version names for parents of a version.
 
@@ -145,6 +164,11 @@ class VersionedFile(object):
                             supplied the entire weave-like structure is walked.
         """
         raise NotImplementedError(self.walk)
+
+    @deprecated_method(zero_eight)
+    def iter_names(self):
+        """Walk the names list."""
+        return iter(self.versions())
 
     def plan_merge(self, ver_a, ver_b):
         """Return pseudo-annotation indicating how the two versions merge.

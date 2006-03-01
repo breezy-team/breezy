@@ -258,14 +258,6 @@ class Weave(VersionedFile):
 
     __contains__ = has_version
 
-    @deprecated_method(zero_eight)
-    def parent_names(self, version):
-        """Return version names for parents of a version.
-        
-        See get_parents for the current api.
-        """
-        return self.get_parents(version)
-
     def get_parents(self, version_id):
         """See VersionedFile.get_parent."""
         return map(self._idx_to_name, self._parents[self._lookup(version_id)])
@@ -730,6 +722,13 @@ class Weave(VersionedFile):
         :param pb: An optional progress bar
         :param msg: An optional message to display for progress
         """
+        try:
+            self._join(other, pb, msg, version_ids)
+        except errors.WeaveParentMismatch:
+            self._reweave(other, pb, msg)
+
+    def _join(self, other, pb, msg, version_ids):
+        """Worker routine for join()."""
         if not other.versions():
             return          # nothing to update, easy
 
@@ -809,9 +808,7 @@ class Weave(VersionedFile):
         this_idx = self._name_map.get(name, -1)
         if this_idx != -1:
             if self._sha1s[this_idx] != other._sha1s[other_idx]:
-                raise WeaveError("inconsistent texts for version {%s} "
-                                 "when joining weaves"
-                                 % (name))
+                raise errors.WeaveTextDiffers(name, self, other)
             self_parents = self._parents[this_idx]
             other_parents = other._parents[other_idx]
             n1 = set([self._names[i] for i in self_parents])
@@ -824,16 +821,22 @@ class Weave(VersionedFile):
         else:
             return False
 
+    @deprecated_method(zero_eight)
     def reweave(self, other, pb=None, msg=None):
-        """Reweave self with other.
+        """reweave has been superceded by plain use of join."""
+        return self.join(other, pb, msg)
+
+    def _reweave(self, other, pb, msg):
+        """Reweave self with other - internal helper for join().
 
         :param other: The other weave to merge
         :param pb: An optional progress bar, indicating how far done we are
         :param msg: An optional message for the progress
         """
-        new_weave = reweave(self, other, pb=pb, msg=msg)
+        new_weave = _reweave(self, other, pb=pb, msg=msg)
         for attr in self.__slots__:
-            setattr(self, attr, getattr(new_weave, attr))
+            if attr != '_weave_name':
+                setattr(self, attr, getattr(new_weave, attr))
 
 
 class WeaveFile(Weave):
@@ -867,7 +870,12 @@ class WeaveFile(Weave):
         self._save()
 
 
+@deprecated_function(zero_eight)
 def reweave(wa, wb, pb=None, msg=None):
+    """reweaving is deprecation, please just use weave.join()."""
+    _reweave(wa, wb, pb, msg)
+
+def _reweave(wa, wb, pb=None, msg=None):
     """Combine two weaves and return the result.
 
     This works even if a revision R has different parents in 

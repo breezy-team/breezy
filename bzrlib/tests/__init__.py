@@ -912,7 +912,6 @@ def test_suite():
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revprops',
-                   'bzrlib.tests.test_reweave',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',

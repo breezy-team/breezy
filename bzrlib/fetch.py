@@ -165,10 +165,7 @@ class RepoFetcher(object):
                 # destination has contents, must merge
                 from_weave = self.from_weaves.get_weave(file_id,
                     self.from_repository.get_transaction())
-                try:
-                    to_weave.join(from_weave)
-                except errors.WeaveParentMismatch:
-                    to_weave.reweave(from_weave)
+                to_weave.join(from_weave)
             else:
                 # destination is empty, just replace it
                 self.to_weaves.copy_multi(self.from_weaves, [file_id], self.pb)
@@ -184,10 +181,7 @@ class RepoFetcher(object):
             self.pb.update("inventory fetch", 1, 2)
             from_weave = self.from_repository.get_inventory_weave()
             self.pb.update("inventory fetch", 2, 2)
-            try:
-                to_weave.join(from_weave, pb=self.pb, msg='merge inventory')
-            except errors.WeaveParentMismatch:
-                to_weave.reweave(from_weave, pb=self.pb, msg='reweave inventory')
+            to_weave.join(from_weave, pb=self.pb, msg='merge inventory')
         else:
             # destination is empty, just replace it
             self.to_control.copy_multi(self.from_control,

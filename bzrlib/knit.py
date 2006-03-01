@@ -59,14 +59,17 @@ in the deltas to provide line annotation
 # 10:16 < lifeless> implement 'knit.check()' like weave.check()
 # 10:17 < lifeless> record known ghosts so we can detect when they are filled in rather than the current 'reweave 
 #                    always' approach.
+# move sha1 out of the content so that join is faster at verifying parents
+# record content length ?
                   
 
+from cStringIO import StringIO
 import difflib
 from difflib import SequenceMatcher
 from gzip import GzipFile
 import os
-from StringIO import StringIO
 
+import bzrlib.errors as errors
 from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
         InvalidRevisionId, KnitCorrupt, KnitHeaderError, \
         RevisionNotPresent, RevisionAlreadyPresent
@@ -508,8 +511,32 @@ class KnitVersionedFile(VersionedFile):
             version_ids.remove(None)
 
         other_ancestry = set(other.get_ancestry(version_ids))
-        needed_versions = other_ancestry - set(self._index.get_versions())
-        if not needed_versions:
+        this_versions = set(self._index.get_versions())
+        needed_versions = other_ancestry - this_versions
+        cross_check_versions = other_ancestry.intersection(this_versions)
+        mismatched_versions = set()
+        for version in cross_check_versions:
+            # scan to include needed parents.
+            n1 = set(self.get_parents(version))
+            n2 = set(other.get_parents(version))
+            if n1 != n2:
+                # FIXME TEST this check for cycles being introduced works
+                # the logic is we have a cycle if in our graph we are an
+                # ancestor of any of the n2 revisions.
+                for parent in n2:
+                    if parent in n1:
+                        # safe
+                        continue
+                    else:
+                        parent_ancestors = other.get_ancestry(parent)
+                        if version in parent_ancestors:
+                            raise errors.GraphCycleError([parent, version])
+                # ensure this parent will be available later.
+                new_parents = n2.difference(n1)
+                needed_versions.update(new_parents.difference(this_versions))
+                mismatched_versions.add(version)
+
+        if not needed_versions and not cross_check_versions:
             return 0
         full_list = topo_sort(other._index.get_graph())
 
@@ -549,6 +576,17 @@ class KnitVersionedFile(VersionedFile):
             pos, size = self._data.add_record(version_id, digest, lines)
             self._index.add_version(version_id, options, pos, size, parents)
 
+        for version in mismatched_versions:
+            n1 = set(self.get_parents(version))
+            n2 = set(other.get_parents(version))
+            # write a combined record to our history.
+            new_parents = self.get_parents(version) + list(n2.difference(n1))
+            current_values = self._index._cache[version]
+            self._index.add_version(version,
+                                    current_values[1], 
+                                    current_values[2],
+                                    current_values[3],
+                                    new_parents)
         pb.clear()
         return count
 
@@ -614,6 +652,12 @@ class _KnitIndex(_KnitComponentFile):
     The index data format is dictionary compressed when it comes to
     parent references; a index entry may only have parents that with a
     lover index number.  As a result, the index is topological sorted.
+
+    Duplicate entries may be written to the index for a single version id
+    if this is done then the latter one completely replaces the former:
+    this allows updates to correct version and parent information. 
+    Note that the two entries may share the delta, and that successive
+    annotations and references MUST point to the first entry.
     """
 
     HEADER = "# bzr knit index 7\n"
@@ -621,7 +665,8 @@ class _KnitIndex(_KnitComponentFile):
     def _cache_version(self, version_id, options, pos, size, parents):
         val = (version_id, options, pos, size, parents)
         self._cache[version_id] = val
-        self._history.append(version_id)
+        if not version_id in self._history:
+            self._history.append(version_id)
 
     def _iter_index(self, fp):
         lines = fp.read()
@@ -631,6 +676,10 @@ class _KnitIndex(_KnitComponentFile):
     def __init__(self, transport, filename, mode):
         _KnitComponentFile.__init__(self, transport, filename, mode)
         self._cache = {}
+        # position in _history is the 'official' index for a revision
+        # but the values may have come from a newer entry.
+        # so - wc -l of a knit index is != the number of uniqe names
+        # in the weave.
         self._history = []
         try:
             fp = self._transport.get(self._filename)
