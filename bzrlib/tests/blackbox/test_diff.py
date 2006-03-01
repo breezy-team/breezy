@@ -65,18 +65,18 @@ class TestDiff(ExternalBase):
         output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 
                                         'branch1'],
                                        retcode=1)
-        self.assertEquals(("=== modified file 'file'\n"
-                           "--- file\t\n"
-                           "+++ file\t\n"
+        self.assertEquals(("=== modified file 'a/file'\n"
+                           "--- a/file\t\n"
+                           "+++ b/file\t\n"
                            "@@ -1,1 +1,1 @@\n"
                            "-new content\n"
                            "+contents of branch1/file\n"
                            "\n", ''), output)
         output = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
                                        retcode=1)
-        self.assertEqualDiff(("=== modified file 'file'\n"
-                              "--- file\t\n"
-                              "+++ file\t\n"
+        self.assertEqualDiff(("=== modified file 'a/file'\n"
+                              "--- a/file\t\n"
+                              "+++ b/file\t\n"
                               "@@ -1,1 +1,1 @@\n"
                               "-new content\n"
                               "+contents of branch1/file\n"
@@ -119,3 +119,30 @@ class TestCheckoutDiff(TestDiff):
         self.runbzr('checkout branch1 checkouts/branch1')
         self.runbzr('checkout branch2 checkouts/branch2')
         os.chdir('checkouts')
+
+class TestDiffLabels(TestDiff):
+
+    def test_diff_label_removed(self):
+        super(TestDiffLabels, self).example_branch()
+        self.runbzr('remove hello')
+        diff = self.run_bzr_captured(['diff'], retcode=1)
+        self.assertTrue("=== removed file 'a/hello'" in diff[0])
+
+    def test_diff_label_added(self):
+        super(TestDiffLabels, self).example_branch()
+        file('barbar', 'wt').write('barbar')
+        self.runbzr('add barbar')
+        diff = self.run_bzr_captured(['diff'], retcode=1)
+        self.assertTrue("=== added file 'b/barbar'" in diff[0])
+
+    def test_diff_label_modified(self):
+        super(TestDiffLabels, self).example_branch()
+        file('hello', 'wt').write('barbar')
+        diff = self.run_bzr_captured(['diff'], retcode=1)
+        self.assertTrue("=== modified file 'a/hello'" in diff[0])
+
+    def test_diff_label_renamed(self):
+        super(TestDiffLabels, self).example_branch()
+        self.runbzr('rename hello gruezi')
+        diff = self.run_bzr_captured(['diff'], retcode=1)
+        self.assertTrue("=== renamed file 'a/hello' => 'b/gruezi'" in diff[0])
