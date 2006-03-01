@@ -29,6 +29,7 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
+MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
 
 # FIXME: I don't know if writing out the cache from the destructor is really a
 # good idea, because destructors are considered poor taste in Python, and it's
@@ -83,7 +84,7 @@ from bzrlib.osutils import (appendpath,
                             )
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
-import bzrlib.splatfile as splatfile
+from bzrlib.rio import RioReader, RioWriter, Stanza
 from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
@@ -603,7 +604,11 @@ class WorkingTree(bzrlib.tree.Tree):
     @needs_write_lock
     def set_merge_modified(self, modified_hashes):
         my_file = StringIO()
-        splatfile.dump_dict(my_file, modified_hashes)
+        my_file.write(MERGE_MODIFIED_HEADER_1 + '\n')
+        writer = RioWriter(my_file)
+        for file_id, hash in modified_hashes.iteritems():
+            s = Stanza(file_id=file_id.encode("UTF-8"), hash=hash)
+            writer.write_stanza(s)
         my_file.seek(0)
         self._control_files.put('merge-hashes', my_file)
 
@@ -613,9 +618,18 @@ class WorkingTree(bzrlib.tree.Tree):
             hashfile = self._control_files.get('merge-hashes')
         except NoSuchFile:
             return {}
-        merge_hashes = splatfile.read_dict(hashfile)
-        return dict([(f,h) for f,h in merge_hashes.items() if 
-                      h == self.get_file_sha1(f)])
+        merge_hashes = {}
+        try:
+            if hashfile.next() != MERGE_MODIFIED_HEADER_1 + '\n':
+                raise MergeModifiedFormatError()
+        except StopIteration:
+            raise MergeModifiedFormatError()
+        for s in RioReader(hashfile):
+            file_id = s.get("file_id").decode("UTF-8")
+            hash = s.get("hash")
+            if hash == self.get_file_sha1(file_id):
+                merge_hashes[file_id] = hash
+        return merge_hashes
 
     def get_symlink_target(self, file_id):
         return os.readlink(self.id2abspath(file_id))

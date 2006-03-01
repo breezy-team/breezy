@@ -721,3 +721,6 @@ class OutOfDateTree(BzrNewError):
     def __init__(self, tree):
         BzrNewError.__init__(self)
         self.tree = tree
+
+class MergeModifiedFormatError(BzrNewError):
+    """Error in merge modified format"""
