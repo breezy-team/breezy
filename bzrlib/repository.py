@@ -27,7 +27,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.osutils import safe_unicode
 from bzrlib.revision import NULL_REVISION
 from bzrlib.store import copy_all
-from bzrlib.store.weave import WeaveStore
+from bzrlib.store.versioned.weave import WeaveStore
 from bzrlib.store.text import TextStore
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter

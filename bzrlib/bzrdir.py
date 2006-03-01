@@ -37,7 +37,7 @@ from bzrlib.osutils import (
                             sha_string,
                             )
 from bzrlib.store.text import TextStore
-from bzrlib.store.weave import WeaveStore
+from bzrlib.store.versioned.weave import WeaveStore
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 from bzrlib.transactions import PassThroughTransaction
