@@ -21,11 +21,51 @@
 
 A knit is a versioned file implementation that supports efficient append only
 updates.
+
+Knit file layout:
+lifeless: the data file is made up of "delta records".  each delta record has a delta header 
+that contains; (1) a version id, (2) the size of the delta (in lines), and (3)  the digest of 
+the -expanded data- (ie, the delta applied to the parent).  the delta also ends with a 
+end-marker; simply "end VERSION"
+
+delta can be line or full contents.a
+... the 8's there are the index number of the annotation.
+version robertc@robertcollins.net-20051003014215-ee2990904cc4c7ad 7 c7d23b2a5bd6ca00e8e266cec0ec228158ee9f9e
+59,59,3
+8
+8         if ie.executable:
+8             e.set('executable', 'yes')
+130,130,2
+8         if elt.get('executable') == 'yes':
+8             ie.executable = True
+end robertc@robertcollins.net-20051003014215-ee2990904cc4c7ad 
+
+
+whats in an index:
+09:33 < jrydberg> lifeless: each index is made up of a tuple of; version id, options, position, size, parents
+09:33 < jrydberg> lifeless: the parents are currently dictionary compressed
+09:33 < jrydberg> lifeless: (meaning it currently does not support ghosts)
+09:33 < lifeless> right
+09:33 < jrydberg> lifeless: the position and size is the range in the data file
+
+
+so the index sequence is the dictionary compressed sequence number used
+in the deltas to provide line annotation
+
 """
 
-import os
+# TODOS:
+# 10:16 < lifeless> make partial index writes safe
+# 10:16 < lifeless> implement 'knit.check()' like weave.check()
+# 10:17 < lifeless> record known ghosts so we can detect when they are filled in rather than the current 'reweave 
+#                    always' approach.
+                  
+
 import difflib
 from difflib import SequenceMatcher
+from gzip import GzipFile
+import os
+from StringIO import StringIO
 
 from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
         InvalidRevisionId, KnitCorrupt, KnitHeaderError, \
@@ -36,9 +76,6 @@ from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
 from bzrlib.versionedfile import VersionedFile
 from bzrlib.tsort import topo_sort
 
-from StringIO import StringIO
-from gzip import GzipFile
-import sha
 
 # TODO: Split out code specific to this format into an associated object.
 
@@ -520,6 +557,7 @@ class KnitVersionedFile(VersionedFile):
         # We take the short path here, and extract all relevant texts
         # and put them in a weave and let that do all the work.  Far
         # from optimal, but is much simpler.
+        # FIXME RB 20060228 this really is inefficient!
         from bzrlib.weave import Weave
 
         w = Weave(self.filename)

@@ -21,14 +21,16 @@
 # map, or a graph object of some kind.
 
 
-from bzrlib.tests import TestCaseInTempDir
-from bzrlib.weave import Weave
-from bzrlib.trace import mutter
-from bzrlib.knit import KnitVersionedFile, \
-     KnitAnnotateFactory
-from bzrlib.transport.local import LocalTransport
+import bzrlib
+import bzrlib.errors as errors
 from bzrlib.errors import RevisionNotPresent, \
      RevisionAlreadyPresent
+from bzrlib.knit import KnitVersionedFile, \
+     KnitAnnotateFactory
+from bzrlib.tests import TestCaseInTempDir
+from bzrlib.trace import mutter
+from bzrlib.transport.local import LocalTransport
+from bzrlib.weave import Weave
 
 
 class VersionedFileTestMixIn(object):
@@ -142,11 +144,73 @@ class VersionedFileTestMixIn(object):
         self.assertTrue(lines['d\n'], ('rX', set([])))
         self.assertTrue(lines['e\n'], ('rY', set([])))
 
+    def test_detection(self):
+        # Test weaves detect corruption.
+        #
+        # Weaves contain a checksum of their texts.
+        # When a text is extracted, this checksum should be
+        # verified.
+
+        w = self.get_file_corrupted_text()
+
+        self.assertEqual('hello\n', w.get_text('v1'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
+
+        w = self.get_file_corrupted_checksum()
+
+        self.assertEqual('hello\n', w.get_text('v1'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
+        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
+
+
+    def get_file_corrupted_text(self):
+        """Return a versioned file with corrupt text but valid metadata."""
+        raise NotImplementedError(self.get_file_corrupted_text)
+
 
 class TestWeave(TestCaseInTempDir, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return Weave(name)
+
+    def get_file_corrupted_text(self):
+        w = Weave()
+        w.add('v1', [], ['hello\n'])
+        w.add('v2', ['v1'], ['hello\n', 'there\n'])
+        
+        # We are going to invasively corrupt the text
+        # Make sure the internals of weave are the same
+        self.assertEqual([('{', 0)
+                        , 'hello\n'
+                        , ('}', None)
+                        , ('{', 1)
+                        , 'there\n'
+                        , ('}', None)
+                        ], w._weave)
+        
+        self.assertEqual(['f572d396fae9206628714fb2ce00f72e94f2258f'
+                        , '90f265c6e75f1c8f9ab76dcf85528352c5f215ef'
+                        ], w._sha1s)
+        w.check()
+        
+        # Corrupted
+        w._weave[4] = 'There\n'
+        return w
+
+    def get_file_corrupted_checksum(self):
+        w = self.get_file_corrupted_text()
+        # Corrected
+        w._weave[4] = 'there\n'
+        self.assertEqual('hello\nthere\n', w.get_text('v2'))
+        
+        #Invalid checksum, first digit changed
+        w._sha1s[1] =  'f0f265c6e75f1c8f9ab76dcf85528352c5f215ef'
+        return w
 
 
 class TestKnit(TestCaseInTempDir, VersionedFileTestMixIn):
@@ -154,3 +218,9 @@ class TestKnit(TestCaseInTempDir, VersionedFileTestMixIn):
     def get_file(self, name='foo'):
         return KnitVersionedFile(LocalTransport('.'),
             name, 'w', KnitAnnotateFactory(), delta=True)
+
+    def get_file_corrupted_text(self):
+        knit = self.get_file()
+        knit.add_lines('v1', [], ['hello\n'])
+        knit.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
+        return knit

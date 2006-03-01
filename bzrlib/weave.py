@@ -80,6 +80,7 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         WeaveRevisionNotPresent,
         )
 import bzrlib.errors as errors
+from bzrlib.osutils import sha_strings
 from bzrlib.symbol_versioning import *
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import VersionedFile
@@ -309,7 +310,6 @@ class Weave(VersionedFile):
         lines
             Sequence of lines to be added in the new version.
         """
-        from bzrlib.osutils import sha_strings
 
         assert isinstance(version_id, basestring)
         if not sha1:

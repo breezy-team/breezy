@@ -868,57 +868,6 @@ class JoinWeavesTests(TestBase):
         eq(sorted(wa.iter_names()), ['v1', 'v2', 'v3', 'x1',])
         eq(wa.get_text('x1'), 'line from x1\n')
 
-
-class Corruption(TestCase):
-
-    def test_detection(self):
-        # Test weaves detect corruption.
-        #
-        # Weaves contain a checksum of their texts.
-        # When a text is extracted, this checksum should be
-        # verified.
-
-        w = Weave()
-        w.add('v1', [], ['hello\n'])
-        w.add('v2', ['v1'], ['hello\n', 'there\n'])
-
-        # We are going to invasively corrupt the text
-        # Make sure the internals of weave are the same
-        self.assertEqual([('{', 0)
-                        , 'hello\n'
-                        , ('}', None)
-                        , ('{', 1)
-                        , 'there\n'
-                        , ('}', None)
-                        ], w._weave)
-
-        self.assertEqual(['f572d396fae9206628714fb2ce00f72e94f2258f'
-                        , '90f265c6e75f1c8f9ab76dcf85528352c5f215ef'
-                        ], w._sha1s)
-        w.check()
-
-        # Corrupted
-        w._weave[4] = 'There\n'
-
-        self.assertEqual('hello\n', w.get_text('v1'))
-        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
-        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
-
-        # Corrected
-        w._weave[4] = 'there\n'
-        self.assertEqual('hello\nthere\n', w.get_text('v2'))
-
-        #Invalid checksum, first digit changed
-        w._sha1s[1] =  'f0f265c6e75f1c8f9ab76dcf85528352c5f215ef'
-
-        self.assertEqual('hello\n', w.get_text('v1'))
-        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
-        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
-
     def test_written_detection(self):
         # Test detection of weave file corruption.
         #
