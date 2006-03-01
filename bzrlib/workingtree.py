@@ -607,7 +607,7 @@ class WorkingTree(bzrlib.tree.Tree):
         my_file.write(MERGE_MODIFIED_HEADER_1 + '\n')
         writer = RioWriter(my_file)
         for file_id, hash in modified_hashes.iteritems():
-            s = Stanza(file_id=file_id.encode("UTF-8"), hash=hash)
+            s = Stanza(file_id=file_id, hash=hash)
             writer.write_stanza(s)
         my_file.seek(0)
         self._control_files.put('merge-hashes', my_file)
@@ -625,7 +625,7 @@ class WorkingTree(bzrlib.tree.Tree):
         except StopIteration:
             raise MergeModifiedFormatError()
         for s in RioReader(hashfile):
-            file_id = s.get("file_id").decode("UTF-8")
+            file_id = s.get("file_id")
             hash = s.get("hash")
             if hash == self.get_file_sha1(file_id):
                 merge_hashes[file_id] = hash
