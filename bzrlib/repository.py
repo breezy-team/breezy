@@ -23,6 +23,7 @@ import xml.sax.saxutils
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 from bzrlib.errors import InvalidRevisionId
+from bzrlib.inter import InterObject
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.osutils import safe_unicode
 from bzrlib.revision import NULL_REVISION
@@ -966,7 +967,7 @@ _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat6()]
 
 
-class InterRepository(object):
+class InterRepository(InterObject):
     """This class represents operations taking place between two repositories.
 
     Its instances have methods like copy_content and fetch, and contain
@@ -977,23 +978,9 @@ class InterRepository(object):
     operations with another repository - they will always forward to
     InterRepository.get(other).method_name(parameters).
     """
-    # XXX: FIXME: FUTURE: robertc
-    # testing of these probably requires a factory in optimiser type, and 
-    # then a test adapter to test each type thoroughly.
-    #
 
     _optimisers = set()
     """The available optimised InterRepository types."""
-
-    def __init__(self, source, target):
-        """Construct a default InterRepository instance. Please use 'get'.
-        
-        Only subclasses of InterRepository should call 
-        InterRepository.__init__ - clients should call InterRepository.get
-        instead which will create an optimised InterRepository if possible.
-        """
-        self.source = source
-        self.target = target
 
     @needs_write_lock
     def copy_content(self, revision_id=None, basis=None):
@@ -1053,22 +1040,6 @@ class InterRepository(object):
                         pb=pb)
         return f.count_copied, f.failed_revisions
 
-    @classmethod
-    def get(klass, repository_source, repository_target):
-        """Retrieve a InterRepository worker object for these repositories.
-
-        :param repository_source: the repository to be the 'source' member of
-                                  the InterRepository instance.
-        :param repository_target: the repository to be the 'target' member of
-                                the InterRepository instance.
-        If an optimised InterRepository worker exists it will be used otherwise
-        a default InterRepository instance will be created.
-        """
-        for provider in klass._optimisers:
-            if provider.is_compatible(repository_source, repository_target):
-                return provider(repository_source, repository_target)
-        return InterRepository(repository_source, repository_target)
-
     def lock_read(self):
         """Take out a logical read lock.
 
@@ -1107,22 +1078,12 @@ class InterRepository(object):
         # that we've decided we need.
         return [rev_id for rev_id in source_ids if rev_id in result_set]
 
-    @classmethod
-    def register_optimiser(klass, optimiser):
-        """Register an InterRepository optimiser."""
-        klass._optimisers.add(optimiser)
-
     def unlock(self):
         """Release the locks on source and target."""
         try:
             self.target.unlock()
         finally:
             self.source.unlock()
-
-    @classmethod
-    def unregister_optimiser(klass, optimiser):
-        """Unregister an InterRepository optimiser."""
-        klass._optimisers.remove(optimiser)
 
 
 class InterWeaveRepo(InterRepository):

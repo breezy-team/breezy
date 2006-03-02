@@ -97,6 +97,16 @@ DATA_SUFFIX = '.knit'
 INDEX_SUFFIX = '.kndx'
 
 
+# convenience factories for testing or use:
+def AnnotatedKnitFactory(name, transport, mode=None):
+    """Create a knit with path name in transport transport."""
+    return KnitVersionedFile(transport,
+                             name,
+                             'w',
+                             KnitAnnotateFactory(),
+                             delta=True)
+
+
 class KnitContent(object):
     """Content of a knit version to which deltas can be applied."""
 

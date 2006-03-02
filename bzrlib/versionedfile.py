@@ -24,6 +24,11 @@
 """Versioned text file storage api."""
 
 
+from copy import deepcopy
+from unittest import TestSuite
+
+
+from bzrlib.inter import InterObject
 from bzrlib.symbol_versioning import *
 
 
@@ -267,3 +272,71 @@ class VersionedFile(object):
                 assert state in ('irrelevant', 'ghost-a', 'ghost-b', 'killed-base',
                                  'killed-both'), \
                        state
+
+
+class InterVersionedFile(InterObject):
+    """This class represents operations taking place between two versionedfiles..
+
+    Its instances have methods like join, and contain
+    references to the source and target versionedfiles these operations can be 
+    carried out on.
+
+    Often we will provide convenience methods on 'versionedfile' which carry out
+    operations with another versionedfile - they will always forward to
+    InterVersionedFile.get(other).method_name(parameters).
+    """
+
+    _optimisers = set()
+    """The available optimised InterVersionedFile types."""
+
+
+class InterVersionedFileTestProviderAdapter(object):
+    """A tool to generate a suite testing multiple inter versioned-file classes.
+
+    This is done by copying the test once for each interversionedfile provider
+    and injecting the transport_server, transport_readonly_server,
+    versionedfile_factory and versionedfile_factory_to classes into each copy.
+    Each copy is also given a new id() to make it easy to identify.
+    """
+
+    def __init__(self, transport_server, transport_readonly_server, formats):
+        self._transport_server = transport_server
+        self._transport_readonly_server = transport_readonly_server
+        self._formats = formats
+    
+    def adapt(self, test):
+        result = TestSuite()
+        for (interversionedfile_class,
+             versionedfile_factory,
+             versionedfile_factory_to) in self._formats:
+            new_test = deepcopy(test)
+            new_test.transport_server = self._transport_server
+            new_test.transport_readonly_server = self._transport_readonly_server
+            new_test.interversionedfile_class = interversionedfile_class
+            new_test.versionedfile_factory = versionedfile_factory
+            new_test.versionedfile_factory_to = versionedfile_factory_to
+            def make_new_test_id():
+                new_id = "%s(%s)" % (new_test.id(), interversionedfile_class.__name__)
+                return lambda: new_id
+            new_test.id = make_new_test_id()
+            result.addTest(new_test)
+        return result
+
+    @staticmethod
+    def default_test_list():
+        """Generate the default list of interversionedfile permutations to test."""
+        from bzrlib.weave import WeaveFile
+        from bzrlib.knit import AnnotatedKnitFactory
+        result = []
+        # test the fallback InterVersionedFile from weave to annotated knits
+        result.append((InterVersionedFile, 
+                       WeaveFile,
+                       AnnotatedKnitFactory))
+        for optimiser in InterVersionedFile._optimisers:
+            result.append((optimiser,
+                           optimiser._matching_file_factory,
+                           optimiser._matching_file_factory
+                           ))
+        # if there are specific combinations we want to use, we can add them 
+        # here.
+        return result

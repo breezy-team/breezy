@@ -30,9 +30,10 @@ from bzrlib.errors import (
                            )
 from bzrlib.knit import KnitVersionedFile, \
      KnitAnnotateFactory
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.transport.local import LocalTransport
+import bzrlib.versionedfile as versionedfile
 from bzrlib.weave import WeaveFile
 from bzrlib.weavefile import read_weave
 
@@ -125,29 +126,6 @@ class VersionedFileTestMixIn(object):
 
         self.assertRaises(RevisionNotPresent,
             f.annotate, 'foo')
-
-    def test_join(self):
-        f1 = self.get_file('1')
-        f1.add_lines('r0', [], ['a\n', 'b\n'])
-        f1.add_lines('r1', ['r0'], ['c\n', 'b\n'])
-        f2 = self.get_file('2')
-        f2.join(f1, None)
-        def verify_file(f):
-            self.assertTrue(f.has_version('r0'))
-            self.assertTrue(f.has_version('r1'))
-        verify_file(f2)
-        verify_file(self.reopen_file('2'))
-
-        self.assertRaises(RevisionNotPresent,
-            f2.join, f1, version_ids=['r3'])
-
-        #f3 = self.get_file('1')
-        #f3.add_lines('r0', ['a\n', 'b\n'], [])
-        #f3.add_lines('r1', ['c\n', 'b\n'], ['r0'])
-        #f4 = self.get_file('2')
-        #f4.join(f3, ['r0'])
-        #self.assertTrue(f4.has_version('r0'))
-        #self.assertFalse(f4.has_version('r1'))
 
     def test_walk(self):
         f = self.get_file('1')
@@ -312,7 +290,7 @@ class VersionedFileTestMixIn(object):
         self.assertEqual(['a'], w1.get_parents('b'))
         self.assertEqual(['b'], w1.get_parents('c'))
 
-class TestWeave(TestCaseInTempDir, VersionedFileTestMixIn):
+class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return WeaveFile(name, LocalTransport('.'))
@@ -355,7 +333,7 @@ class TestWeave(TestCaseInTempDir, VersionedFileTestMixIn):
         return WeaveFile(name, LocalTransport('.'))
 
 
-class TestKnit(TestCaseInTempDir, VersionedFileTestMixIn):
+class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return KnitVersionedFile(LocalTransport('.'),
@@ -373,3 +351,70 @@ class TestKnit(TestCaseInTempDir, VersionedFileTestMixIn):
 
     def test_detection(self):
         print "TODO for merging: create a corrupted knit."
+
+
+class InterString(versionedfile.InterVersionedFile):
+    """An inter-versionedfile optimised code path for strings.
+
+    This is for use during testing where we use strings as versionedfiles
+    so that none of the default regsitered interversionedfile classes will
+    match - which lets us test the match logic.
+    """
+
+    @staticmethod
+    def is_compatible(source, target):
+        """InterString is compatible with strings-as-versionedfiles."""
+        return isinstance(source, str) and isinstance(target, str)
+
+
+# TODO this and the InterRepository core logic should be consolidatable
+# if we make the registry a separate class though we still need to 
+# test the behaviour in the active registry to catch failure-to-handle-
+# stange-objects
+class TestInterVersionedFile(TestCaseWithTransport):
+
+    def test_get_default_inter_versionedfile(self):
+        # test that the InterVersionedFile.get(a, b) probes
+        # for a class where is_compatible(a, b) returns
+        # true and returns a default interversionedfile otherwise.
+        # This also tests that the default registered optimised interversionedfile
+        # classes do not barf inappropriately when a surprising versionedfile type
+        # is handed to them.
+        dummy_a = "VersionedFile 1."
+        dummy_b = "VersionedFile 2."
+        self.assertGetsDefaultInterVersionedFile(dummy_a, dummy_b)
+
+    def assertGetsDefaultInterVersionedFile(self, a, b):
+        """Asserts that InterVersionedFile.get(a, b) -> the default."""
+        inter = versionedfile.InterVersionedFile.get(a, b)
+        self.assertEqual(versionedfile.InterVersionedFile,
+                         inter.__class__)
+        self.assertEqual(a, inter.source)
+        self.assertEqual(b, inter.target)
+
+    def test_register_inter_versionedfile_class(self):
+        # test that a optimised code path provider - a
+        # InterVersionedFile subclass can be registered and unregistered
+        # and that it is correctly selected when given a versionedfile
+        # pair that it returns true on for the is_compatible static method
+        # check
+        dummy_a = "VersionedFile 1."
+        dummy_b = "VersionedFile 2."
+        versionedfile.InterVersionedFile.register_optimiser(InterString)
+        try:
+            # we should get the default for something InterString returns False
+            # to
+            self.assertFalse(InterString.is_compatible(dummy_a, None))
+            self.assertGetsDefaultInterVersionedFile(dummy_a, None)
+            # and we should get an InterString for a pair it 'likes'
+            self.assertTrue(InterString.is_compatible(dummy_a, dummy_b))
+            inter = versionedfile.InterVersionedFile.get(dummy_a, dummy_b)
+            self.assertEqual(InterString, inter.__class__)
+            self.assertEqual(dummy_a, inter.source)
+            self.assertEqual(dummy_b, inter.target)
+        finally:
+            versionedfile.InterVersionedFile.unregister_optimiser(InterString)
+        # now we should get the default InterVersionedFile object again.
+        self.assertGetsDefaultInterVersionedFile(dummy_a, dummy_b)
+
+

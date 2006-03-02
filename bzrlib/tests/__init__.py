@@ -84,6 +84,7 @@ def packages_to_test():
     import bzrlib.tests.branch_implementations
     import bzrlib.tests.bzrdir_implementations
     import bzrlib.tests.interrepository_implementations
+    import bzrlib.tests.interversionedfile_implementations
     import bzrlib.tests.repository_implementations
     import bzrlib.tests.workingtree_implementations
     return [
@@ -92,6 +93,7 @@ def packages_to_test():
             bzrlib.tests.branch_implementations,
             bzrlib.tests.bzrdir_implementations,
             bzrlib.tests.interrepository_implementations,
+            bzrlib.tests.interversionedfile_implementations,
             bzrlib.tests.repository_implementations,
             bzrlib.tests.workingtree_implementations,
             ]
