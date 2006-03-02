@@ -639,17 +639,26 @@ class Weave(VersionedFile):
         """
         return self._sha1s[self._lookup(name)]
 
+    @deprecated_method(zero_eight)
     def numversions(self):
+        """How many versions are in this weave?
+
+        Deprecated in favour of num_versions.
+        """
+        return self.num_versions()
+
+    def num_versions(self):
+        """How many versions are in this weave?"""
         l = len(self._parents)
         assert l == len(self._sha1s)
         return l
 
-    __len__ = numversions
+    __len__ = num_versions
 
     def check(self, progress_bar=None):
         # TODO evaluate performance hit of using string sets in this routine.
         # check no circular inclusions
-        for version in range(self.numversions()):
+        for version in range(self.num_versions()):
             inclusions = list(self._parents[version])
             if inclusions:
                 inclusions.sort()
@@ -658,7 +667,7 @@ class Weave(VersionedFile):
                                            % (inclusions[-1], version))
 
         # try extracting all versions; parallel extraction is used
-        nv = self.numversions()
+        nv = self.num_versions()
         sha1s = {}
         texts = {}
         inclusions = {}
@@ -894,8 +903,8 @@ def _reweave(wa, wb, pb=None, msg=None):
     """
     wr = Weave()
     ia = ib = 0
-    queue_a = range(wa.numversions())
-    queue_b = range(wb.numversions())
+    queue_a = range(wa.num_versions())
+    queue_b = range(wb.num_versions())
     # first determine combined parents of all versions
     # map from version name -> all parent names
     combined_parents = _reweave_parent_graphs(wa, wb)
@@ -944,7 +953,7 @@ def weave_toc(w):
     for i in (6, 50, 10, 10):
         print '-' * i,
     print
-    for i in range(w.numversions()):
+    for i in range(w.num_versions()):
         sha1 = w._sha1s[i]
         name = w._names[i]
         parent_str = ' '.join(map(str, w._parents[i]))
@@ -1112,7 +1121,7 @@ def main(argv):
         pb = ProgressBar()
         w.check(pb)
         pb.clear()
-        print '%d versions ok' % w.numversions()
+        print '%d versions ok' % w.num_versions()
 
     elif cmd == 'inclusions':
         w = readit()

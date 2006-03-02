@@ -82,12 +82,13 @@ class VersionedFileStore(TransportStore):
         transaction.register_clean(w, precious=self._precious)
         return w
 
+    @deprecated_method(zero_eight)
     def get_lines(self, file_id, rev_id, transaction):
         """Return text from a particular version of a weave.
 
         Returned as a list of lines."""
         w = self.get_weave(file_id, transaction)
-        return w.get(rev_id)
+        return w.get_lines(rev_id)
     
     def _new_weave(self, file_id, transaction):
         """Make a new weave for file_id and return it."""

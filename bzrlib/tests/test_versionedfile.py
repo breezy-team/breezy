@@ -55,6 +55,8 @@ class VersionedFileTestMixIn(object):
             self.assertEquals(f.get_lines('r0'), ['a\n', 'b\n'])
             self.assertEquals(f.get_text('r0'), 'a\nb\n')
             self.assertEquals(f.get_lines('r1'), ['b\n', 'c\n'])
+            self.assertEqual(2, len(f))
+            self.assertEqual(2, f.num_versions())
     
             self.assertRaises(RevisionNotPresent,
                 f.add_lines, 'r2', ['foo'], [])

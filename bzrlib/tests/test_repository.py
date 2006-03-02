@@ -396,4 +396,3 @@ class TestRepositoryConverter(TestCaseWithTransport):
         converter.convert(repo, pb)
         repo = repo_dir.open_repository()
         self.assertTrue(isinstance(target_format, repo._format.__class__))
-

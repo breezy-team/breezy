@@ -1473,16 +1473,15 @@ class ConvertBzrDir4To5(Converter):
             if ie._unchanged(previous_ie):
                 ie.revision = previous_ie.revision
                 return
-        parent_indexes = map(w.lookup, previous_revisions)
         if ie.has_text():
             text = self.branch.repository.text_store.get(ie.text_id)
             file_lines = text.readlines()
             assert sha_strings(file_lines) == ie.text_sha1
             assert sum(map(len, file_lines)) == ie.text_size
-            w.add(rev_id, parent_indexes, file_lines, ie.text_sha1)
+            w.add_lines(rev_id, previous_revisions, file_lines)
             self.text_count += 1
         else:
-            w.add(rev_id, parent_indexes, [], None)
+            w.add_lines(rev_id, previous_revisions, [])
         ie.revision = rev_id
 
     def _make_order(self):

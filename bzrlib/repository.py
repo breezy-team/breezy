@@ -241,10 +241,9 @@ class Repository(object):
         #       won't be fixed, because AD never saw revision C
         #       to cause a conflict which would force a reweave.
         w = self.get_inventory_weave()
-        from_set = set(w.inclusions([w.lookup(from_revid)]))
-        to_set = set(w.inclusions([w.lookup(to_revid)]))
-        included = to_set.difference(from_set)
-        changed = map(w.idx_to_name, included)
+        from_set = set(w.get_ancestry(from_revid))
+        to_set = set(w.get_ancestry(to_revid))
+        changed = to_set.difference(from_set)
         return self._fileid_involved_by_set(changed)
 
     def fileid_involved(self, last_revid=None):
@@ -254,10 +253,9 @@ class Repository(object):
         """
         w = self.get_inventory_weave()
         if not last_revid:
-            changed = set(w._names)
+            changed = set(w.versions())
         else:
-            included = w.inclusions([w.lookup(last_revid)])
-            changed = map(w.idx_to_name, included)
+            changed = set(w.get_ancestry(last_revid))
         return self._fileid_involved_by_set(changed)
 
     def fileid_involved_by_set(self, changes):
@@ -333,7 +331,7 @@ class Repository(object):
         try:
             assert isinstance(revision_id, basestring), type(revision_id)
             iw = self.get_inventory_weave()
-            return iw.get_text(iw.lookup(revision_id))
+            return iw.get_text(revision_id)
         except IndexError:
             raise bzrlib.errors.HistoryMissing(self, 'inventory', revision_id)
 
@@ -390,8 +388,7 @@ class Repository(object):
         if not self.has_revision(revision_id):
             raise errors.NoSuchRevision(self, revision_id)
         w = self.get_inventory_weave()
-        return [None] + map(w.idx_to_name,
-                            w.inclusions([w.lookup(revision_id)]))
+        return [None] + w.get_ancestry(revision_id)
 
     @needs_read_lock
     def print_file(self, file, revision_id):
@@ -501,7 +498,7 @@ class AllInOneRepository(Repository):
         # and text_store | weave_store bits are still different.
         if isinstance(_format, RepositoryFormat4):
             self.inventory_store = get_store('inventory-store')
-            self.text_store = get_store('text-store')
+            text_store = get_store('text-store')
         elif isinstance(_format, RepositoryFormat5):
             self.control_weaves = get_weave('')
         elif isinstance(_format, RepositoryFormat6):
@@ -640,7 +637,8 @@ class RepositoryFormat(object):
         file_mode = control_files._file_mode
         return VersionedFileStore(weave_transport, prefixed=prefixed,
                                 dir_mode=dir_mode,
-                                file_mode=file_mode)
+                                file_mode=file_mode,
+                                versionedfile_class=versionedfile_class)
 
     def initialize(self, a_bzrdir, shared=False):
         """Initialize a repository of this format in a_bzrdir.

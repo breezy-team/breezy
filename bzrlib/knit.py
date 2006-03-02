@@ -460,6 +460,12 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.get_lines()."""
         return self._get_content(version_id).text()
 
+    def num_versions(self):
+        """See VersionedFile.num_versions()."""
+        return self._index.num_versions()
+
+    __len__ = num_versions
+
     def annotate_iter(self, version_id):
         """See VersionedFile.annotate_iter."""
         content = self._get_content(version_id)

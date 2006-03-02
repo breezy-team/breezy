@@ -161,8 +161,7 @@ class InventoryEntry(object):
         any other. If the file is new, the set will be empty.
         """
         def get_ancestors(weave, entry):
-            return set(map(weave.idx_to_name,
-                           weave.inclusions([weave.lookup(entry.revision)])))
+            return set(weave.get_ancestry(entry.revision))
         heads = {}
         head_ancestors = {}
         for inv in previous_inventories:
@@ -358,7 +357,7 @@ class InventoryEntry(object):
         """
         mutter('storing file {%s} in revision {%s}',
                self.file_id, self.revision)
-        self._add_text_to_weave([], file_parents, weave_store, transaction)
+        self._add_text_to_weave([], file_parents.keys(), weave_store, transaction)
 
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
@@ -588,10 +587,10 @@ class InventoryFile(InventoryEntry):
             and self.text_size == file_parents.values()[0].text_size):
             previous_ie = file_parents.values()[0]
             versionedfile = weave_store.get_weave(self.file_id, transaction)
-            versionedfile.clone_text(self.revision, previous_ie.revision, file_parents)
+            versionedfile.clone_text(self.revision, previous_ie.revision, file_parents.keys())
         else:
             new_lines = work_tree.get_file(self.file_id).readlines()
-            self._add_text_to_weave(new_lines, file_parents, weave_store,
+            self._add_text_to_weave(new_lines, file_parents.keys(), weave_store,
                                     transaction)
             self.text_sha1 = sha_strings(new_lines)
             self.text_size = sum(map(len, new_lines))

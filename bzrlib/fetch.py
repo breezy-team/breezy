@@ -161,7 +161,7 @@ class RepoFetcher(object):
             to_weave = self.to_weaves.get_weave_or_empty(file_id,
                 self.to_repository.get_transaction())
 
-            if to_weave.numversions() > 0:
+            if to_weave.num_versions() > 0:
                 # destination has contents, must merge
                 from_weave = self.from_weaves.get_weave(file_id,
                     self.from_repository.get_transaction())
@@ -177,7 +177,7 @@ class RepoFetcher(object):
         to_weave = self.to_control.get_weave('inventory',
                 self.to_repository.get_transaction())
 
-        if to_weave.numversions() > 0:
+        if to_weave.num_versions() > 0:
             # destination has contents, must merge
             self.pb.update("inventory fetch", 1, 2)
             from_weave = self.from_repository.get_inventory_weave()
