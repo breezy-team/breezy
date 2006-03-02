@@ -111,6 +111,21 @@ class VersionedFileTestMixIn(object):
         self.assertEqual([], new_f.versions())
         self.assertTrue(isinstance(new_f, f.__class__))
 
+    def test_copy_to(self):
+        f = self.get_file()
+        f.add_lines('0', [], ['a\n'])
+        t = MemoryTransport()
+        f.copy_to('foo', t)
+        for suffix in f.__class__.get_suffixes():
+            self.assertTrue(t.has('foo' + suffix))
+
+    def test_get_suffixes(self):
+        f = self.get_file()
+        # should be the same
+        self.assertEqual(f.__class__.get_suffixes(), f.__class__.get_suffixes())
+        # and should be a list
+        self.assertTrue(isinstance(f.__class__.get_suffixes(), list))
+
     def test_get_graph(self):
         f = self.get_file()
         f.add_lines('v1', [], ['hello\n'])

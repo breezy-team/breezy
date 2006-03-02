@@ -39,7 +39,6 @@ class WeaveStore(TransportStore):
 
     This has some shortcuts for reading and writing them.
     """
-    FILE_SUFFIX = '.weave'
 
     def __init__(self, transport, prefixed=False, precious=False,
                  dir_mode=None, file_mode=None):
@@ -51,34 +50,28 @@ class WeaveStore(TransportStore):
     def filename(self, file_id):
         """Return the path relative to the transport root."""
         if self._prefixed:
-            return hash_prefix(file_id) + urllib.quote(file_id) + WeaveStore.FILE_SUFFIX
+            return hash_prefix(file_id) + urllib.quote(file_id)
         else:
-            return urllib.quote(file_id) + WeaveStore.FILE_SUFFIX
+            return urllib.quote(file_id)
 
     def __iter__(self):
-        l = len(WeaveStore.FILE_SUFFIX)
+        suffixes = WeaveFile.get_suffixes()
+        ids = set()
         for relpath in self._iter_files_recursive():
-            if relpath.endswith(WeaveStore.FILE_SUFFIX):
-                yield os.path.basename(relpath[:-l])
+            for suffix in suffixes:
+                if relpath.endswith(suffix):
+                    id = os.path.basename(relpath[:-len(suffix)])
+                    if not id in ids:
+                        yield id
+                        ids.add(id)
 
     def has_id(self, fileid):
-        return self._transport.has(self.filename(fileid))
-
-    def _get(self, file_id):
-        return self._transport.get(self.filename(file_id))
-
-    def _put(self, file_id, weave):
-        f = StringIO()
-        write_weave_v5(weave, f)
-        f.seek(0)
-        # less round trips to mkdir on failure than mkdir always
-        try:
-            return self._transport.put(self.filename(file_id), f, mode=self._file_mode)
-        except NoSuchFile:
-            if not self._prefixed:
-                raise
-            self._transport.mkdir(hash_prefix(file_id), mode=self._dir_mode)
-            return self._transport.put(self.filename(file_id), f, mode=self._file_mode)
+        suffixes = WeaveFile.get_suffixes()
+        filename = self.filename(fileid)
+        for suffix in suffixes:
+            if not self._transport.has(filename + suffix):
+                return False
+        return True
 
     def get_weave(self, file_id, transaction):
         weave = transaction.map.find_weave(file_id)
@@ -136,7 +129,8 @@ class WeaveStore(TransportStore):
 
     def _put_weave(self, file_id, weave, transaction):
         """Preserved here for upgrades-to-weaves to use."""
-        self._put(file_id, weave)
+        myweave = self._make_new_versionedfile(file_id)
+        myweave.join(weave)
 
     @deprecated_method(zero_eight)
     def add_text(self, file_id, rev_id, new_lines, parents, transaction):
@@ -193,15 +187,12 @@ class WeaveStore(TransportStore):
             if pb:
                 pb.update('copy', count, len(file_ids))
             # if we have it in cache, its faster.
-            if from_transaction and from_transaction.map.find_weave(f):
-                mutter("cache hit in %s for %s", from_store, f)
-                weave = from_transaction.map.find_weave(f)
-                # joining is fast with knits, and bearable for weaves -
-                # indeed the new case can be optimised
-                target = self._make_new_versionedfile(f)
-                target.join(weave)
-            else:
+            if not from_transaction:
                 from bzrlib.transactions import PassThroughTransaction
-                self._put(f, from_store.get_weave(f, PassThroughTransaction()))
+                from_transaction = PassThroughTransaction()
+            # joining is fast with knits, and bearable for weaves -
+            # indeed the new case can be optimised
+            target = self._make_new_versionedfile(f)
+            target.join(from_store.get_weave(f, from_transaction))
         if pb:
             pb.clear()

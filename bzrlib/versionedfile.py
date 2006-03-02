@@ -48,6 +48,10 @@ class VersionedFile(object):
     Texts are identified by a version-id string.
     """
 
+    def copy_to(self, name, transport):
+        """Copy this versioned file to name on transport."""
+        raise NotImplementedError(self.copy_to)
+    
     @deprecated_method(zero_eight)
     def names(self):
         """Return a list of all the versions in this versioned file.
@@ -96,6 +100,10 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.create_empty)
 
+    def get_suffixes(self):
+        """Return the file suffixes associated with this versioned file."""
+        raise NotImplementedError(self.get_suffixes)
+    
     def get_text(self, version_id):
         """Return version contents as a text string.
 

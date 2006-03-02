@@ -260,8 +260,23 @@ class KnitVersionedFile(VersionedFile):
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
             mode)
 
+    def copy_to(self, name, transport):
+        """See VersionedFile.copy_to()."""
+        # copy the current index to a temp index to avoid racing with local
+        # writes
+        transport.put(name + INDEX_SUFFIX + '.tmp', self.transport.get(self._index._filename))
+        # copy the data file
+        transport.put(name + DATA_SUFFIX, self._data._open_file())
+        # rename the copied index into place
+        transport.rename(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
+
     def create_empty(self, name, transport, mode=None):
         return KnitVersionedFile(transport, name, 'w', self.factory, delta=self.delta)
+    
+    @staticmethod
+    def get_suffixes():
+        """See VersionedFile.get_suffixes()."""
+        return [DATA_SUFFIX, INDEX_SUFFIX]
 
     def versions(self):
         """See VersionedFile.versions."""

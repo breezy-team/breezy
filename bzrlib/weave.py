@@ -824,12 +824,14 @@ class Weave(VersionedFile):
 class WeaveFile(Weave):
     """A WeaveFile represents a Weave on disk and writes on change."""
 
+    WEAVE_SUFFIX = '.weave'
+    
     def __init__(self, name, transport, mode=None):
         super(WeaveFile, self).__init__(name)
         self._transport = transport
         self._mode = mode
         try:
-            _read_weave_v5(self._transport.get(name), self)
+            _read_weave_v5(self._transport.get(name + WeaveFile.WEAVE_SUFFIX), self)
         except errors.NoSuchFile:
             # new file, save it
             self._save()
@@ -839,6 +841,14 @@ class WeaveFile(Weave):
         super(WeaveFile, self).add_lines(version_id, parents, lines)
         self._save()
 
+    def copy_to(self, name, transport):
+        """See VersionedFile.copy_to()."""
+        # as we are all in memory always, just serialise to the new place.
+        sio = StringIO()
+        write_weave_v5(self, sio)
+        sio.seek(0)
+        transport.put(name + WeaveFile.WEAVE_SUFFIX, sio, self._mode)
+
     def create_empty(self, name, transport, mode=None):
         return WeaveFile(name, transport, mode)
 
@@ -847,7 +857,14 @@ class WeaveFile(Weave):
         sio = StringIO()
         write_weave_v5(self, sio)
         sio.seek(0)
-        self._transport.put(self._weave_name, sio, self._mode)
+        self._transport.put(self._weave_name + WeaveFile.WEAVE_SUFFIX,
+                            sio,
+                            self._mode)
+
+    @staticmethod
+    def get_suffixes():
+        """See VersionedFile.get_suffixes()."""
+        return [WeaveFile.WEAVE_SUFFIX]
 
     def join(self, other, pb=None, msg=None, version_ids=None):
         """Join other into self and save."""
