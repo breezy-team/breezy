@@ -238,7 +238,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertEqualDiff('# bzr weave file v5\n'
                              'w\n'
                              'W\n',
-                             t.get('inventory.weave').read())
+                             t.get('control/inventory.weave').read())
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -261,7 +261,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertEqualDiff('# bzr weave file v5\n'
                              'w\n'
                              'W\n',
-                             t.get('inventory.weave').read())
+                             t.get('control/inventory.weave').read())
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -288,7 +288,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertEqualDiff('# bzr weave file v5\n'
                              'w\n'
                              'W\n',
-                             t.get('inventory.weave').read())
+                             t.get('control/inventory.weave').read())
 
 
 class InterString(repository.InterRepository):
