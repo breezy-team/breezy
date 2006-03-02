@@ -30,6 +30,8 @@ from unittest import TestSuite
 
 from bzrlib.inter import InterObject
 from bzrlib.symbol_versioning import *
+from bzrlib.transport.memory import MemoryTransport
+from bzrlib.tsort import topo_sort
 
 
 class VersionedFile(object):
@@ -85,6 +87,15 @@ class VersionedFile(object):
         already present in file history."""
         raise NotImplementedError(self.clone_text)
 
+    def create_empty(self, name, transport, mode=None):
+        """Create a new versioned file of this exact type.
+
+        :param name: the file name
+        :param transport: the transport
+        :param mode: optional file mode.
+        """
+        raise NotImplementedError(self.create_empty)
+
     def get_text(self, version_id):
         """Return version contents as a text string.
 
@@ -112,12 +123,12 @@ class VersionedFile(object):
             version_ids = [version_ids]
         raise NotImplementedError(self.get_ancestry)
         
-    def get_graph(self, version_id):
-        """Return a graph.
-
-        Must raise RevisionNotPresent if version is not present in
-        file history."""
-        raise NotImplementedError(self.get_graph)
+    def get_graph(self):
+        """Return a graph for the entire versioned file."""
+        result = {}
+        for version in self.versions():
+            result[version] = self.get_parents(version)
+        return result
 
     @deprecated_method(zero_eight)
     def parent_names(self, version):
@@ -155,7 +166,7 @@ class VersionedFile(object):
 
         Must raise RevisionNotPresent if any of the specified versions
         are not present in the other files history."""
-        raise NotImplementedError(self.join)
+        return InterVersionedFile.get(other, self).join(pb, msg, version_ids)
 
     def walk(self, version_ids=None):
         """Walk the versioned file as a weave-like structure, for
@@ -288,6 +299,31 @@ class InterVersionedFile(InterObject):
 
     _optimisers = set()
     """The available optimised InterVersionedFile types."""
+
+    def join(self, pb=None, msg=None, version_ids=None):
+        """Integrate versions from self.source into self.target.
+
+        If version_ids is None all versions from source should be
+        incorporated into this versioned file.
+
+        Must raise RevisionNotPresent if any of the specified versions
+        are not present in the other files history.
+        """
+        # the default join: 
+        # - make a temporary versioned file of type target
+        # - insert the source content into it one at a time
+        # - join them
+        # Make a new target-format versioned file. 
+        temp_source = self.target.create_empty("temp", MemoryTransport())
+        graph = self.source.get_graph()
+        order = topo_sort(graph.items())
+        for version in order:
+            temp_source.add_lines(version,
+                                  self.source.get_parents(version),
+                                  self.source.get_lines(version))
+        
+        # this should hit the native code path for target
+        return self.target.join(temp_source, pb, msg, version_ids)
 
 
 class InterVersionedFileTestProviderAdapter(object):

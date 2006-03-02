@@ -17,9 +17,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# Remaing to do is to figure out if get_graph should return a simple
-# map, or a graph object of some kind.
-
 
 import bzrlib
 import bzrlib.errors as errors
@@ -33,6 +30,7 @@ from bzrlib.knit import KnitVersionedFile, \
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.transport.local import LocalTransport
+from bzrlib.transport.memory import MemoryTransport
 import bzrlib.versionedfile as versionedfile
 from bzrlib.weave import WeaveFile
 from bzrlib.weavefile import read_weave
@@ -104,6 +102,25 @@ class VersionedFileTestMixIn(object):
         verify_file(f)
         verify_file(self.reopen_file())
 
+    def test_create_empty(self):
+        f = self.get_file()
+        f.add_lines('0', [], ['a\n'])
+        new_f = f.create_empty('t', MemoryTransport())
+        # smoke test, specific types should check it is honoured correctly for
+        # non type attributes
+        self.assertEqual([], new_f.versions())
+        self.assertTrue(isinstance(new_f, f.__class__))
+
+    def test_get_graph(self):
+        f = self.get_file()
+        f.add_lines('v1', [], ['hello\n'])
+        f.add_lines('v2', ['v1'], ['hello\n', 'world\n'])
+        f.add_lines('v3', ['v2'], ['hello\n', 'cruel\n', 'world\n'])
+        self.assertEqual({'v1': [],
+                          'v2': ['v1'],
+                          'v3': ['v2']},
+                         f.get_graph())
+
     def test_get_parents(self):
         f = self.get_file()
         f.add_lines('r0', [], ['a\n', 'b\n'])
@@ -156,7 +173,6 @@ class VersionedFileTestMixIn(object):
         self.assertEqual('hello\n', w.get_text('v1'))
         self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
         self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
         self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
         w = self.get_file_corrupted_checksum()
@@ -164,7 +180,6 @@ class VersionedFileTestMixIn(object):
         self.assertEqual('hello\n', w.get_text('v1'))
         self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
         self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, list, w.get_iter('v2'))
         self.assertRaises(errors.WeaveInvalidChecksum, w.check)
 
     def get_file_corrupted_text(self):
@@ -175,120 +190,6 @@ class VersionedFileTestMixIn(object):
         """Open the versioned file from disk again."""
         raise NotImplementedError(self.reopen_file)
 
-    def test_join_add_parents(self):
-        """Reweave inserting new parents
-        
-        The new version must have the right parent list and must identify
-        lines originating in another parent.
-        """
-        w1 = self.get_file('w1')
-        w2 = self.get_file('w2')
-        w1.add_lines('v-1', [], ['line 1\n'])
-        w2.add_lines('v-2', [], ['line 2\n'])
-        w1.add_lines('v-3', ['v-1'], ['line 1\n'])
-        w2.add_lines('v-3', ['v-2'], ['line 1\n'])
-        w1.join(w2)
-        self.assertEqual(sorted(w1.names()),
-                         'v-1 v-2 v-3'.split())
-        self.assertEqualDiff(w1.get_text('v-3'),
-                'line 1\n')
-        self.assertEqual(sorted(w1.parent_names('v-3')),
-                ['v-1', 'v-2'])
-        ann = list(w1.annotate('v-3'))
-        self.assertEqual(len(ann), 1)
-        self.assertEqual(ann[0][0], 'v-1')
-        self.assertEqual(ann[0][1], 'line 1\n')
-        
-    def build_weave1(self):
-        weave1 = self.get_file()
-        self.lines1 = ['hello\n']
-        self.lines3 = ['hello\n', 'cruel\n', 'world\n']
-        weave1.add_lines('v1', [], self.lines1)
-        weave1.add_lines('v2', ['v1'], ['hello\n', 'world\n'])
-        weave1.add_lines('v3', ['v2'], self.lines3)
-        return weave1
-        
-    def test_join_with_empty(self):
-        """Reweave adding empty weave"""
-        wb = self.get_file('b')
-        w1 = self.build_weave1()
-        w1.join(wb)
-        self.assertEqual(sorted(w1.iter_names()), ['v1', 'v2', 'v3'])
-        self.assertEqual(w1.get_lines('v1'), ['hello\n'])
-        self.assertEqual([], w1.get_parents('v1'))
-        self.assertEqual(w1.get_lines('v2'), ['hello\n', 'world\n'])
-        self.assertEqual(['v1'], w1.get_parents('v2'))
-        self.assertEqual(w1.get_lines('v3'), ['hello\n', 'cruel\n', 'world\n'])
-        self.assertEqual(['v2'], w1.get_parents('v3'))
-
-    def test_join_with_ghosts_raises_parent_mismatch(self):
-        """Join combined parent lists"""
-        wa = self.build_weave1()
-        wb = self.get_file('b')
-        wb.add_lines('x1', [], ['line from x1\n'])
-        wb.add_lines('v1', [], ['hello\n'])
-        wb.add_lines('v2', ['v1', 'x1'], ['hello\n', 'world\n'])
-        wa.join(wb)
-        self.assertEqual(['v1','x1'], wa.get_parents('v2'))
-
-    def test_join_with_ghosts(self):
-        """Join that inserts parents of an existing revision.
-
-        This can happen when merging from another branch who
-        knows about revisions the destination does not.  In 
-        this test the second weave knows of an additional parent of 
-        v2.  Any revisions which are in common still have to have the 
-        same text.
-        """
-        w1 = self.build_weave1()
-        wb = self.get_file('b')
-        wb.add_lines('x1', [], ['line from x1\n'])
-        wb.add_lines('v1', [], ['hello\n'])
-        wb.add_lines('v2', ['v1', 'x1'], ['hello\n', 'world\n'])
-        w1.join(wb)
-        eq = self.assertEquals
-        eq(sorted(w1.iter_names()), ['v1', 'v2', 'v3', 'x1',])
-        eq(w1.get_text('x1'), 'line from x1\n')
-        eq(w1.get_lines('v2'), ['hello\n', 'world\n'])
-        eq(w1.parent_names('v2'), ['v1', 'x1'])
-
-    def build_empty_weave(self, name, *pattern):
-        w = self.get_file(name)
-        for version, parents in pattern:
-            w.add_lines(version, parents, [])
-        return w
-
-    def test_join_reorder(self):
-        """Reweave requiring reordering of versions.
-
-        Weaves must be stored such that parents come before children.  When
-        reweaving, we may add new parents to some children, but it is required
-        that there must be *some* valid order that can be found, otherwise the
-        ancestries are contradictory.  (For the specific case of inserting
-        ghost revisions there will be no disagreement, only partial knowledge
-        of the history.)
-
-        Note that the weaves are only partially ordered: when there are two
-        versions where neither is an ancestor of the other the order in which
-        they occur is unconstrained.  When we join those versions into
-        another weave, they may become more constrained and it may be
-        necessary to change their order.
-
-        One simple case of this is 
-
-        w1: (c[], a[], b[a])
-        w2: (b[], c[b], a[])
-        
-        We need to recognize that the final weave must show the ordering
-        a[], b[a], c[b].  The version that must be first in the result is 
-        not first in either of the input weaves.
-        """
-        w1 = self.build_empty_weave('1', ('c', []), ('a', []), ('b', ['a']))
-        w2 = self.build_empty_weave('2', ('b', []), ('c', ['b']), ('a', []))
-        w1.join(w2)
-        self.assertEqual([], w1.get_parents('a'))
-        self.assertEqual(['a'], w1.get_parents('b'))
-        self.assertEqual(['b'], w1.get_parents('c'))
 
 class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
 
@@ -297,8 +198,8 @@ class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
 
     def get_file_corrupted_text(self):
         w = WeaveFile('foo', LocalTransport('.'))
-        w.add('v1', [], ['hello\n'])
-        w.add('v2', ['v1'], ['hello\n', 'there\n'])
+        w.add_lines('v1', [], ['hello\n'])
+        w.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
         
         # We are going to invasively corrupt the text
         # Make sure the internals of weave are the same

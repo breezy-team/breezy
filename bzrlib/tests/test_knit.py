@@ -25,6 +25,7 @@ from bzrlib.knit import KnitVersionedFile, KnitPlainFactory, KnitAnnotateFactory
 from bzrlib.osutils import split_lines
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.transport.local import LocalTransport
+from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transactions import PassThroughTransaction
 
 
@@ -253,6 +254,16 @@ class KnitTests(TestCaseInTempDir):
         origins = k1.annotate('text-c')
         self.assertEquals(origins[0], ('text-c', 'z\n')) 
         self.assertEquals(origins[1], ('text-b', 'c\n')) 
+
+    def test_create_empty_annotated(self):
+        k1 = KnitVersionedFile(LocalTransport('.'), 'test1', 'w',
+                               KnitAnnotateFactory())
+        # 0
+        k1.add_lines('text-a', [], ['a\n', 'b\n'])
+        k2 = k1.create_empty('t', MemoryTransport())
+        self.assertTrue(isinstance(k2.factory, KnitAnnotateFactory))
+        self.assertEqual(k1.delta, k2.delta)
+        # the generic test checks for empty content and file class
 
 
 TEXT_1 = """\

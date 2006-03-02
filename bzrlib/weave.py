@@ -84,7 +84,7 @@ import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings
 from bzrlib.symbol_versioning import *
 from bzrlib.tsort import topo_sort
-from bzrlib.versionedfile import VersionedFile
+from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 from bzrlib.weavefile import _read_weave_v5, write_weave_v5
 
 
@@ -580,7 +580,10 @@ class Weave(VersionedFile):
 
     @deprecated_method(zero_eight)
     def get_iter(self, name_or_index):
-        """Deprecated, please do not use. Lookups are not not needed."""
+        """Deprecated, please do not use. Lookups are not not needed.
+        
+        Please use get_lines now.
+        """
         return self._get_iter(self._maybe_lookup(name_or_index))
 
     @deprecated_method(zero_eight)
@@ -705,27 +708,6 @@ class Weave(VersionedFile):
         # TODO: check insertions are properly nested, that there are
         # no lines outside of insertion blocks, that deletions are
         # properly paired, etc.
-
-
-    def join(self, other, pb=None, msg=None, version_ids=None):
-        import sys, time
-        """Integrate versions from other into this weave.
-
-        The resulting weave contains all the history of both weaves; 
-        any version you could retrieve from either self or other can be 
-        retrieved from self after this call.
-
-        It is illegal for the two weaves to contain different values 
-        or different parents for any version.  See also reweave().
-
-        :param other: The other weave to pull into this one
-        :param pb: An optional progress bar
-        :param msg: An optional message to display for progress
-        """
-        try:
-            self._join(other, pb, msg, version_ids)
-        except errors.WeaveParentMismatch:
-            self._reweave(other, pb, msg)
 
     def _join(self, other, pb, msg, version_ids):
         """Worker routine for join()."""
@@ -856,6 +838,9 @@ class WeaveFile(Weave):
         """Add a version and save the weave."""
         super(WeaveFile, self).add_lines(version_id, parents, lines)
         self._save()
+
+    def create_empty(self, name, transport, mode=None):
+        return WeaveFile(name, transport, mode)
 
     def _save(self):
         """Save the weave."""
@@ -1177,3 +1162,27 @@ if __name__ == '__main__':
     else:
         sys.exit(main(sys.argv))
 
+
+class InterWeave(InterVersionedFile):
+    """Optimised code paths for weave to weave operations."""
+    
+    _matching_file_factory = staticmethod(WeaveFile)
+    
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with weaves."""
+        try:
+            return (isinstance(source, Weave) and
+                    isinstance(target, Weave))
+        except AttributeError:
+            return False
+
+    def join(self, pb=None, msg=None, version_ids=None):
+        """See InterVersionedFile.join."""
+        try:
+            self.target._join(self.source, pb, msg, version_ids)
+        except errors.WeaveParentMismatch:
+            self.target._reweave(self.source, pb, msg)
+
+
+InterVersionedFile.register_optimiser(InterWeave)
