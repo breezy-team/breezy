@@ -370,12 +370,12 @@ class InterVersionedFileTestProviderAdapter(object):
     def default_test_list():
         """Generate the default list of interversionedfile permutations to test."""
         from bzrlib.weave import WeaveFile
-        from bzrlib.knit import AnnotatedKnitFactory
+        from bzrlib.knit import KnitVersionedFile
         result = []
         # test the fallback InterVersionedFile from weave to annotated knits
         result.append((InterVersionedFile, 
                        WeaveFile,
-                       AnnotatedKnitFactory))
+                       KnitVersionedFile))
         for optimiser in InterVersionedFile._optimisers:
             result.append((optimiser,
                            optimiser._matching_file_factory,

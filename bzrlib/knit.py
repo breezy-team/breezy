@@ -97,16 +97,6 @@ DATA_SUFFIX = '.knit'
 INDEX_SUFFIX = '.kndx'
 
 
-# convenience factories for testing or use:
-def AnnotatedKnitFactory(name, transport, mode=None):
-    """Create a knit with path name in transport transport."""
-    return KnitVersionedFile(transport,
-                             name,
-                             'w',
-                             KnitAnnotateFactory(),
-                             delta=True)
-
-
 class KnitContent(object):
     """Content of a knit version to which deltas can be applied."""
 
@@ -241,24 +231,26 @@ class KnitVersionedFile(VersionedFile):
     stored and retrieved.
     """
 
-    def __init__(self, transport, relpath, mode, factory,
+    def __init__(self, relpath, transport, file_mode=None, access_mode=None, factory=None,
                  basis_knit=None, delta=True):
         """Construct a knit at location specified by relpath."""
-        assert mode in ('r', 'w'), "invalid mode specified"
+        if access_mode is None:
+            access_mode = 'w'
+        assert access_mode in ('r', 'w'), "invalid mode specified %r" % access_mode
         assert not basis_knit or isinstance(basis_knit, KnitVersionedFile), \
             type(basis_knit)
 
         self.transport = transport
         self.filename = relpath
         self.basis_knit = basis_knit
-        self.factory = factory
-        self.writable = (mode == 'w')
+        self.factory = factory or KnitAnnotateFactory()
+        self.writable = (access_mode == 'w')
         self.delta = delta
 
         self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
-            mode)
+            access_mode)
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
-            mode)
+            access_mode)
 
     def copy_to(self, name, transport):
         """See VersionedFile.copy_to()."""
@@ -271,7 +263,7 @@ class KnitVersionedFile(VersionedFile):
         transport.rename(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
 
     def create_empty(self, name, transport, mode=None):
-        return KnitVersionedFile(transport, name, 'w', self.factory, delta=self.delta)
+        return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta)
     
     @staticmethod
     def get_suffixes():
@@ -814,7 +806,7 @@ class _KnitData(_KnitComponentFile):
 class InterKnit(InterVersionedFile):
     """Optimised code paths for knit to knit operations."""
     
-    _matching_file_factory = staticmethod(AnnotatedKnitFactory)
+    _matching_file_factory = KnitVersionedFile
     
     @staticmethod
     def is_compatible(source, target):

@@ -29,7 +29,7 @@ from bzrlib.knit import KnitVersionedFile, \
      KnitAnnotateFactory
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
-from bzrlib.transport.local import LocalTransport
+from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 import bzrlib.versionedfile as versionedfile
 from bzrlib.weave import WeaveFile
@@ -209,10 +209,10 @@ class VersionedFileTestMixIn(object):
 class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, LocalTransport('.'))
+        return WeaveFile(name, get_transport(self.get_url('.')))
 
     def get_file_corrupted_text(self):
-        w = WeaveFile('foo', LocalTransport('.'))
+        w = WeaveFile('foo', get_transport(self.get_url('.')))
         w.add_lines('v1', [], ['hello\n'])
         w.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
         
@@ -246,14 +246,14 @@ class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
         return w
 
     def reopen_file(self, name='foo'):
-        return WeaveFile(name, LocalTransport('.'))
+        return WeaveFile(name, get_transport(self.get_url('.')))
 
 
 class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return KnitVersionedFile(LocalTransport('.'),
-            name, 'w', KnitAnnotateFactory(), delta=True)
+        return KnitVersionedFile(name, get_transport(self.get_url('.')),
+                                 delta=True)
 
     def get_file_corrupted_text(self):
         knit = self.get_file()
@@ -262,8 +262,7 @@ class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
         return knit
 
     def reopen_file(self, name='foo'):
-        return KnitVersionedFile(LocalTransport('.'),
-            name, 'w', KnitAnnotateFactory(), delta=True)
+        return KnitVersionedFile(name, get_transport(self.get_url('.')), delta=True)
 
     def test_detection(self):
         print "TODO for merging: create a corrupted knit."
