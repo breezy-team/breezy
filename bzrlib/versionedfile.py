@@ -78,6 +78,10 @@ class VersionedFile(object):
         not present in file history."""
         raise NotImplementedError(self.add_lines)
 
+    def check(self, progress_bar=None):
+        """Check the versioned file for integrity."""
+        raise NotImplementedError(self.check)
+
     def clear_cache(self):
         """Remove any data cached in the versioned file object."""
 

@@ -268,6 +268,8 @@ class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
 
     def test_detection(self):
         print "TODO for merging: create a corrupted knit."
+        knit = self.get_file()
+        knit.check()
 
 
 class InterString(versionedfile.InterVersionedFile):

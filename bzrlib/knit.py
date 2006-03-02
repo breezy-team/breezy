@@ -451,6 +451,9 @@ class KnitVersionedFile(VersionedFile):
         where, size = self._data.add_record(version_id, digest, store_lines)
         self._index.add_version(version_id, options, where, size, parents)
 
+    def check(self, progress_bar=None):
+        """See VersionedFile.check()."""
+
     def clone_text(self, new_version_id, old_version_id, parents):
         """See VersionedFile.clone_text()."""
         # FIXME RBC 20060228 make fast by only inserting an index with null delta.
