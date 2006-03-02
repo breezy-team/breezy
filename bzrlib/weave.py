@@ -831,8 +831,8 @@ class WeaveFile(Weave):
         try:
             _read_weave_v5(self._transport.get(name), self)
         except errors.NoSuchFile:
-            # new file, no-op.
-            pass
+            # new file, save it
+            self._save()
 
     def add_lines(self, version_id, parents, lines):
         """Add a version and save the weave."""

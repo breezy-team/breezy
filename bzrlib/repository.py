@@ -27,7 +27,6 @@ from bzrlib.inter import InterObject
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.osutils import safe_unicode
 from bzrlib.revision import NULL_REVISION
-from bzrlib.store import copy_all
 from bzrlib.store.versioned.weave import WeaveStore
 from bzrlib.store.text import TextStore
 from bzrlib.symbol_versioning import *
@@ -1131,13 +1130,17 @@ class InterWeaveRepo(InterRepository):
             # FIXME do not peek!
             if self.source.control_files._transport.listable():
                 pb = bzrlib.ui.ui_factory.progress_bar()
-                copy_all(self.source.weave_store,
-                    self.target.weave_store, pb=pb)
+                self.target.weave_store.copy_all_ids(
+                    self.source.weave_store,
+                    pb=pb,
+                    from_transaction=self.source.get_transaction())
                 pb.update('copying inventory', 0, 1)
                 self.target.control_weaves.copy_multi(
-                    self.source.control_weaves, ['inventory'])
-                copy_all(self.source.revision_store,
-                    self.target.revision_store, pb=pb)
+                    self.source.control_weaves, ['inventory'],
+                    from_transaction=self.source.get_transaction())
+                self.target.revision_store.copy_all_ids(
+                    self.source.revision_store,
+                    pb=pb)
             else:
                 self.target.fetch(self.source, revision_id=revision_id)
 

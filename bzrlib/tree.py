@@ -132,10 +132,6 @@ class RevisionTree(Tree):
         return self._weave_store.get_weave(file_id,
                 self._branch.get_transaction())
 
-    def get_weave_prelude(self, file_id):
-        return self._weave_store.get_weave_prelude(file_id,
-                self._branch.get_transaction())
-
     def get_file_lines(self, file_id):
         ie = self._inventory[file_id]
         weave = self.get_weave(file_id)

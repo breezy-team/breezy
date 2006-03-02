@@ -26,7 +26,7 @@ from cStringIO import StringIO
 import urllib
 
 from bzrlib.weavefile import read_weave, write_weave_v5
-from bzrlib.weave import Weave, WeaveFile
+from bzrlib.weave import WeaveFile
 from bzrlib.store import TransportStore, hash_prefix
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.errors import NoSuchFile, FileExists
@@ -67,7 +67,10 @@ class WeaveStore(TransportStore):
     def _get(self, file_id):
         return self._transport.get(self.filename(file_id))
 
-    def _put(self, file_id, f):
+    def _put(self, file_id, weave):
+        f = StringIO()
+        write_weave_v5(weave, f)
+        f.seek(0)
         # less round trips to mkdir on failure than mkdir always
         try:
             return self._transport.put(self.filename(file_id), f, mode=self._file_mode)
@@ -85,22 +88,6 @@ class WeaveStore(TransportStore):
         w = WeaveFile(self.filename(file_id), self._transport, self._file_mode)
         transaction.map.add_weave(file_id, w)
         transaction.register_clean(w, precious=self._precious)
-        # TODO: jam 20051219 This should check if there is a prelude
-        #       which is already cached, and if so, should remove it
-        #       But transaction doesn't seem to have a 'remove'
-        #       One workaround would be to re-add the object with
-        #       the PRELUDE marker.
-        return w
-
-    def get_weave_prelude(self, file_id, transaction):
-        weave_id = file_id
-        weave = transaction.map.find_weave(weave_id)
-        if weave:
-            mutter("cache hit in %s for %s", self, weave_id)
-            return weave
-        w = read_weave(self._get(file_id), prelude=True)
-        # no point caching the prelude: any repeat action will need the real 
-        # thing
         return w
 
     def get_lines(self, file_id, rev_id, transaction):
@@ -110,24 +97,22 @@ class WeaveStore(TransportStore):
         w = self.get_weave(file_id, transaction)
         return w.get(rev_id)
     
-    def get_weave_prelude_or_empty(self, file_id, transaction):
-        """cheap version that reads the prelude but not the lines
-        """
-        try:
-            return self.get_weave_prelude(file_id, transaction)
-        except NoSuchFile:
-            # returns more than needed - harmless as its empty.
-            return self._new_weave(file_id, transaction)
-
     def _new_weave(self, file_id, transaction):
         """Make a new weave for file_id and return it."""
-        weave = WeaveFile(self.filename(file_id), self._transport, self._file_mode)
-        # ensure that the directories are created.
-        # this is so that weave does not encounter ENOTDIR etc.
-        weave_stream = self._weave_to_stream(weave)
-        self._put(file_id, weave_stream)
+        weave = self._make_new_versionedfile(file_id)
         transaction.map.add_weave(file_id, weave)
         transaction.register_clean(weave, precious=self._precious)
+        return weave
+
+    def _make_new_versionedfile(self, file_id):
+        try:
+            weave = WeaveFile(self.filename(file_id), self._transport, self._file_mode)
+        except NoSuchFile:
+            if not self._prefixed:
+                # unexpected error - NoSuchFile is raised on a missing dir only.
+                raise
+            self._transport.mkdir(hash_prefix(file_id), mode=self._dir_mode)
+            weave = WeaveFile(self.filename(file_id), self._transport, self._file_mode)
         return weave
 
     def get_weave_or_empty(self, file_id, transaction):
@@ -151,16 +136,7 @@ class WeaveStore(TransportStore):
 
     def _put_weave(self, file_id, weave, transaction):
         """Preserved here for upgrades-to-weaves to use."""
-        transaction.register_dirty(weave)
-        weave_stream = self._weave_to_stream(weave)
-        self._put(file_id, weave_stream)
-
-    def _weave_to_stream(self, weave):
-        """Make a stream from a weave."""
-        sio = StringIO()
-        write_weave_v5(weave, sio)
-        sio.seek(0)
-        return sio
+        self._put(file_id, weave)
 
     @deprecated_method(zero_eight)
     def add_text(self, file_id, rev_id, new_lines, parents, transaction):
@@ -183,8 +159,35 @@ class WeaveStore(TransportStore):
         vfile = self.get_weave_or_empty(file_id, transaction)
         vfile.clone_text(new_rev_id, old_rev_id, parents)
      
+    def copy_all_ids(self, store_from, pb=None, from_transaction=None):
+        """Copy all the file ids from store_from into self."""
+        if from_transaction is None:
+            warn("Please pase from_transaction into "
+                 "versioned_store.copy_all_ids.", stacklevel=2)
+        if not store_from.listable():
+            raise UnlistableStore(store_from)
+        ids = []
+        for count, file_id in enumerate(store_from):
+            if pb:
+                pb.update('listing files', count, count)
+            ids.append(file_id)
+        if pb:
+            pb.clear()
+        mutter('copy_all ids: %r', ids)
+        self.copy_multi(store_from, ids, pb=pb,
+                        from_transaction=from_transaction)
+
     def copy_multi(self, from_store, file_ids, pb=None, from_transaction=None):
+        """Copy all the versions for multiple file_ids from from_store.
+        
+        :param from_transaction: required current transaction in from_store.
+        """
         assert isinstance(from_store, WeaveStore)
+        if from_transaction is None:
+            warn("WeaveStore.copy_multi without a from_transaction parameter "
+                 "is deprecated. Please provide a from_transaction.",
+                 DeprecationWarning,
+                 stacklevel=2)
         for count, f in enumerate(file_ids):
             mutter("copy weave {%s} into %s", f, self)
             if pb:
@@ -193,9 +196,12 @@ class WeaveStore(TransportStore):
             if from_transaction and from_transaction.map.find_weave(f):
                 mutter("cache hit in %s for %s", from_store, f)
                 weave = from_transaction.map.find_weave(f)
-                weave_stream = self._weave_to_stream(weave)
-                self._put(f, weave_stream)
+                # joining is fast with knits, and bearable for weaves -
+                # indeed the new case can be optimised
+                target = self._make_new_versionedfile(f)
+                target.join(weave)
             else:
-                self._put(f, from_store._get(f))
+                from bzrlib.transactions import PassThroughTransaction
+                self._put(f, from_store.get_weave(f, PassThroughTransaction()))
         if pb:
             pb.clear()

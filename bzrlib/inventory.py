@@ -495,7 +495,7 @@ class InventoryFile(InventoryEntry):
             w.check()
             checker.checked_weaves[self.file_id] = True
         else:
-            w = tree.get_weave_prelude(self.file_id)
+            w = tree.get_weave(self.file_id)
 
         mutter('check version {%s} of {%s}', rev_id, self.file_id)
         checker.checked_text_cnt += 1 

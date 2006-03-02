@@ -168,7 +168,8 @@ class RepoFetcher(object):
                 to_weave.join(from_weave)
             else:
                 # destination is empty, just replace it
-                self.to_weaves.copy_multi(self.from_weaves, [file_id], self.pb)
+                self.to_weaves.copy_multi(self.from_weaves, [file_id], self.pb,
+                                          self.from_repository.get_transaction())
         self.pb.clear()
 
     def _fetch_inventory_weave(self, revs):
