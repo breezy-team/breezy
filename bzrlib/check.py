@@ -169,7 +169,7 @@ class Check(object):
                     self.missing_parent_links[parent] = missing_links
                     # list based so somewhat slow,
                     # TODO have a planned_revisions list and set.
-                    if self.branch.has_revision(parent):
+                    if self.branch.repository.has_revision(parent):
                         missing_ancestry = self.repository.get_ancestry(parent)
                         for missing in missing_ancestry:
                             if (missing is not None 
