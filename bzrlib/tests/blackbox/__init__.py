@@ -29,6 +29,8 @@ from bzrlib.tests import (
                           TestSuite,
                           TestLoader,
                           )
+import bzrlib.ui as ui
+
 
 def test_suite():
     testmod_names = [
@@ -49,6 +51,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_missing',
                      'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pull',
+                     'bzrlib.tests.blackbox.test_reconcile',
                      'bzrlib.tests.blackbox.test_re_sign',
                      'bzrlib.tests.blackbox.test_revert',
                      'bzrlib.tests.blackbox.test_revno',
@@ -79,3 +82,21 @@ class ExternalBase(TestCaseWithTransport):
             return self.run_bzr_captured(args, retcode=retcode)[0]
         else:
             return self.run_bzr_captured(args, retcode=retcode)
+
+
+class TestUIFactory(ui.UIFactory):
+    """A UI Factory which never captures its output.
+    """
+
+    def clear(self):
+        """See progress.ProgressBar.clear()."""
+
+    def note(self, fmt_string, *args, **kwargs):
+        """See progress.ProgressBar.note()."""
+        print fmt_string % args
+
+    def progress_bar(self):
+        return self
+        
+    def update(self, message, count=None, total=None):
+        """See progress.ProgressBar.update()."""

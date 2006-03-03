@@ -195,13 +195,14 @@ class TTYProgressBar(_BaseProgressBar):
             
         if current_cnt > total_cnt:
             total_cnt = current_cnt
-
+        
+        old_msg = self.last_msg
         # save these for the tick() function
         self.last_msg = msg
         self.last_cnt = current_cnt
         self.last_total = total_cnt
             
-        if self.throttle():
+        if old_msg == self.last_msg and self.throttle():
             return 
         
         if self.show_eta and self.start_time and total_cnt:

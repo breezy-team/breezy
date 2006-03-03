@@ -770,6 +770,32 @@ class cmd_file_path(Command):
             print fip
 
 
+class cmd_reconcile(Command):
+    """Reconcile bzr metadata in a branch.
+
+    This can correct data mismatches that may have been caused by
+    previous ghost operations or bzr upgrades. You should only
+    need to run this command if 'bzr check' or a bzr developer 
+    advises you to run it.
+
+    If a second branch is provided, cross-branch reconciliation is
+    also attempted, which will check that data like the tree root
+    id which was not present in very early bzr versions is represented
+    correctly in both branches.
+
+    At the same time it is run it may recompress data resulting in 
+    a potential saving in disk space or performance gain.
+
+    The branch *MUST* be on a listable system such as local disk or sftp.
+    """
+    takes_args = ['branch?']
+
+    def run(self, branch="."):
+        from bzrlib.reconcile import reconcile
+        dir = bzrlib.bzrdir.BzrDir.open(branch)
+        reconcile(dir)
+
+
 class cmd_revision_history(Command):
     """Display list of revision ids on this branch."""
     hidden = True
