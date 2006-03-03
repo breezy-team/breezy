@@ -76,6 +76,8 @@ class LockableFiles(object):
         self.lock_name = lock_name
         self._transaction = None
         self._find_modes()
+        self._lock_strategy = OldTransportLockStrategy(transport,
+                self._escape(lock_name))
 
     def __del__(self):
         if self._lock_mode or self._lock:
@@ -189,8 +191,7 @@ class LockableFiles(object):
                 raise ReadOnlyError(self)
             self._lock_count += 1
         else:
-            self._lock = self._transport.lock_write(
-                    self._escape(self.lock_name))
+            self._lock_strategy.lock_write()
             self._lock_mode = 'w'
             self._lock_count = 1
             self._set_transaction(transactions.PassThroughTransaction())
@@ -202,8 +203,7 @@ class LockableFiles(object):
                    "invalid lock mode %r" % self._lock_mode
             self._lock_count += 1
         else:
-            self._lock = self._transport.lock_read(
-                    self._escape(self.lock_name))
+            self._lock_strategy.lock_read()
             self._lock_mode = 'r'
             self._lock_count = 1
             self._set_transaction(transactions.ReadOnlyTransaction())
@@ -218,8 +218,7 @@ class LockableFiles(object):
             self._lock_count -= 1
         else:
             self._finish_transaction()
-            self._lock.unlock()
-            self._lock = None
+            self._lock_strategy.unlock()
             self._lock_mode = self._lock_count = None
 
     def is_locked(self):
@@ -252,3 +251,27 @@ class LockableFiles(object):
         transaction = self._transaction
         self._transaction = None
         transaction.finish()
+
+
+class OldTransportLockStrategy(object):
+    """Old locking method which uses transport-dependent locks.
+
+    This is not recommended for new code because it doesn't guard 
+    against simultaneous acquisition between different transports.
+    """
+    def __init__(self, transport, escaped_name):
+        self._transport = transport
+        self._escaped_name = escaped_name
+
+    def lock_write(self):
+        self._lock = self._transport.lock_write(self._escaped_name)
+
+    def lock_read(self):
+        self._lock = self._transport.lock_read(self._escaped_name)
+
+    def unlock(self):
+        self._lock.unlock()
+        self._lock = None
+
+    # TODO: for old locks we have to manually create the file the first time
+    # it's used; this should be here too.
