@@ -91,11 +91,11 @@ class _TestLockableFiles_mixin(object):
 # This method of adapting tests to parameters is different to 
 # the TestProviderAdapters used elsewhere, but seems simpler for this 
 # case.  
-class TestLockableFiles_OldLock(TestCaseInTempDir,
-                              _TestLockableFiles_mixin):
+class TestLockableFiles_TransportLock(TestCaseInTempDir,
+                                      _TestLockableFiles_mixin):
 
     def setUp(self):
-        super(TestLockableFiles_OldLock, self).setUp()
+        super(TestLockableFiles_TransportLock, self).setUp()
         transport = get_transport('.')
         transport.mkdir('.bzr')
         transport.put('.bzr/my-lock', StringIO(''))

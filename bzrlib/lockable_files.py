@@ -81,7 +81,7 @@ class LockableFiles(object):
         self._find_modes()
         # TODO: remove this and make the parameter mandatory
         if lock_strategy_class is None:
-            lock_strategy_class = OldTransportLockStrategy
+            lock_strategy_class = TransportLock
         esc_name = self._escape(lock_name)
         self._lock_strategy = lock_strategy_class(transport, esc_name)
 
@@ -251,11 +251,16 @@ class LockableFiles(object):
         transaction.finish()
 
 
-class OldTransportLockStrategy(object):
-    """Old locking method which uses transport-dependent locks.
+class TransportLock(object):
+    """Locking method which uses transport-dependent locks.
 
-    This is not recommended for new code because it doesn't guard 
-    against simultaneous acquisition between different transports.
+    On the local filesystem these transform into OS-managed locks.
+
+    These do not guard against concurrent access via different
+    transports.
+
+    This is suitable for use only in WorkingTrees (which are at present
+    always local).
     """
     def __init__(self, transport, escaped_name):
         self._transport = transport
