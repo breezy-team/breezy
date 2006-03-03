@@ -21,24 +21,11 @@
 import os
 
 import bzrlib.bzrdir as bzrdir
+import bzrlib.repository as repository
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.blackbox import TestUIFactory
 from bzrlib.transport import get_transport
 import bzrlib.ui as ui
-
-
-class TestUIFactory(ui.UIFactory):
-    """A UI Factory which never captures its output.
-    """
-
-    def note(self, fmt_string, *args, **kwargs):
-        """See progress.ProgressBar.note()."""
-        print fmt_string % args
-
-    def progress_bar(self):
-        return self
-        
-    def update(self, message, count, total):
-        """See progress.ProgressBar.update()."""
 
 
 class TestWithUpgradableBranches(TestCaseWithTransport):
@@ -57,6 +44,10 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         t.mkdir('format_5_branch')
         bzrdir.BzrDirFormat5().initialize(self.get_url('format_5_branch'))
         bzrdir.BzrDir.create_standalone_workingtree('current_format_branch')
+        d = bzrdir.BzrDir.create('metadir_weave_branch')
+        d.create_repository()
+        d.create_branch()
+        d.create_workingtree()
         self.run_bzr('checkout',
                      self.get_url('current_format_branch'),
                      'current_format_checkout')
@@ -129,3 +120,27 @@ finished
         self.assertTrue(isinstance(
             bzrdir.BzrDir.open(self.get_url('format_5_branch'))._format,
             bzrdir.BzrDirMetaFormat1))
+
+    def test_upgrade_explicit_knit(self):
+        # users can force an upgrade to knit format from a metadir weave 
+        # branch
+        url = get_transport(self.get_url('metadir_weave_branch')).base
+        # check --format takes effect
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
+        (out, err) = self.run_bzr_captured(
+            ['upgrade', '--format=knit', url])
+        self.assertEqualDiff("""starting upgrade of %s
+making backup of tree history
+%s.bzr has been backed up to %s.bzr.backup
+if conversion fails, you can move this directory back to .bzr
+if it succeeds, you can remove this directory if you wish
+starting repository conversion
+repository converted
+finished
+""" % (url, url, url), out)
+        self.assertEqualDiff("", err)
+        converted_dir = bzrdir.BzrDir.open(self.get_url('metadir_weave_branch'))
+        self.assertTrue(isinstance(converted_dir._format,
+                                   bzrdir.BzrDirMetaFormat1))
+        self.assertTrue(isinstance(converted_dir.open_repository()._format,
+                                   repository.RepositoryFormatKnit1))

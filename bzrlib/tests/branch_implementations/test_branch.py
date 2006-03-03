@@ -267,23 +267,6 @@ class TestBranch(TestCaseWithBranch):
                          d2.open_repository().revision_store.get('A', 
                             'sig').read())
 
-    def test_upgrade_preserves_signatures(self):
-        wt = self.make_branch_and_tree('source')
-        wt.commit('A', allow_pointless=True, rev_id='A')
-        wt.branch.repository.sign_revision('A',
-            bzrlib.gpg.LoopbackGPGStrategy(None))
-        old_signature = wt.branch.repository.revision_store.get('A',
-            'sig').read()
-        try:
-            upgrade(wt.basedir)
-        except errors.UpToDateFormat:
-            # this is in the most current format already.
-            return
-        wt = WorkingTree.open(wt.basedir)
-        new_signature = wt.branch.repository.revision_store.get('A',
-            'sig').read()
-        self.assertEqual(old_signature, new_signature)
-
     def test_nicks(self):
         """Branch nicknames"""
         t = get_transport(self.get_url())

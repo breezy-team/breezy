@@ -221,19 +221,28 @@ class BzrDir(object):
 
         The created Branch object is returned.
         If a working tree cannot be made due to base not being a file:// url,
-        no error is raised.
+        no error is raised unless force_new_tree is True, in which case no 
+        data is created on disk and NotLocalUrl is raised.
 
         :param base: The URL to create the branch at.
         :param force_new_repo: If True a new repository is always created.
         :param force_new_tree: If True or False force creation of a tree or 
                                prevent such creation respectively.
         """
+        if force_new_tree:
+            # check for non local urls
+            t = get_transport(safe_unicode(base))
+            if not isinstance(t, LocalTransport):
+                raise errors.NotLocalUrl(base)
         bzrdir = BzrDir.create(base)
         repo = bzrdir._find_or_create_repository(force_new_repo)
         result = bzrdir.create_branch()
         if force_new_tree or (repo.make_working_trees() and 
                               force_new_tree is None):
-            bzrdir.create_workingtree()
+            try:
+                bzrdir.create_workingtree()
+            except errors.NotLocalUrl:
+                pass
         return result
         
     @staticmethod
@@ -371,12 +380,7 @@ class BzrDir(object):
         :param format: Optional parameter indicating a specific desired
                        format we plan to arrive at.
         """
-        # for now, if the format is not the same as the system default,
-        # an upgrade is needed. In the future we will want to scan
-        # the individual repository/branch/checkout formats too
-        if format is None:
-            format = BzrDirFormat.get_default_format().__class__
-        return not isinstance(self._format, format)
+        raise NotImplementedError(self.needs_format_conversion)
 
     @staticmethod
     def open_unsupported(base):
@@ -609,6 +613,14 @@ class BzrDirPreSplitOut(BzrDir):
             return self.transport
         raise errors.IncompatibleFormat(workingtree_format, self._format)
 
+    def needs_format_conversion(self, format=None):
+        """See BzrDir.needs_format_conversion()."""
+        # if the format is not the same as the system default,
+        # an upgrade is needed.
+        if format is None:
+            format = BzrDirFormat.get_default_format()
+        return not isinstance(self._format, format.__class__)
+
     def open_branch(self, unsupported=False):
         """See BzrDir.open_branch."""
         from bzrlib.branch import BzrBranchFormat4
@@ -646,8 +658,7 @@ class BzrDir4(BzrDirPreSplitOut):
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
-        from bzrlib.repository import RepositoryFormat4
-        return RepositoryFormat4().initialize(self, shared)
+        return self._format.repository_format.initialize(self, shared)
 
     def needs_format_conversion(self, format=None):
         """Format 4 dirs are always in need of conversion."""
@@ -702,7 +713,7 @@ class BzrDirMeta1(BzrDir):
 
     def can_convert_format(self):
         """See BzrDir.can_convert_format()."""
-        return False
+        return True
 
     def create_branch(self):
         """See BzrDir.create_branch."""
@@ -711,8 +722,7 @@ class BzrDirMeta1(BzrDir):
 
     def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
-        from bzrlib.repository import RepositoryFormat
-        return RepositoryFormat.get_default_format().initialize(self, shared)
+        return self._format.repository_format.initialize(self, shared)
 
     def create_workingtree(self, revision_id=None):
         """See BzrDir.create_workingtree."""
@@ -763,7 +773,20 @@ class BzrDirMeta1(BzrDir):
 
     def needs_format_conversion(self, format=None):
         """See BzrDir.needs_format_conversion()."""
-        # currently there are no possible conversions for meta1 formats.
+        if format is None:
+            format = BzrDirFormat.get_default_format()
+        if not isinstance(self._format, format.__class__):
+            # it is not a meta dir format, conversion is needed.
+            return True
+        # we might want to push this down to the repository?
+        try:
+            if not isinstance(self.open_repository()._format,
+                              format.repository_format.__class__):
+                # the repository needs an upgrade.
+                return True
+        except errors.NoRepositoryPresent:
+            pass
+        # currently there are no other possible conversions for meta1 formats.
         return False
 
     def open_branch(self, unsupported=False):
@@ -959,6 +982,12 @@ class BzrDirFormat4(BzrDirFormat):
         """See BzrDirFormat._open."""
         return BzrDir4(transport, self)
 
+    def __return_repository_format(self):
+        """Circular import protection."""
+        from bzrlib.repository import RepositoryFormat4
+        return RepositoryFormat4(self)
+    repository_format = property(__return_repository_format)
+
 
 class BzrDirFormat5(BzrDirFormat):
     """Bzr control format 5.
@@ -998,6 +1027,12 @@ class BzrDirFormat5(BzrDirFormat):
     def _open(self, transport):
         """See BzrDirFormat._open."""
         return BzrDir5(transport, self)
+
+    def __return_repository_format(self):
+        """Circular import protection."""
+        from bzrlib.repository import RepositoryFormat5
+        return RepositoryFormat5(self)
+    repository_format = property(__return_repository_format)
 
 
 class BzrDirFormat6(BzrDirFormat):
@@ -1043,6 +1078,12 @@ class BzrDirFormat6(BzrDirFormat):
         """See BzrDirFormat._open."""
         return BzrDir6(transport, self)
 
+    def __return_repository_format(self):
+        """Circular import protection."""
+        from bzrlib.repository import RepositoryFormat6
+        return RepositoryFormat6(self)
+    repository_format = property(__return_repository_format)
+
 
 class BzrDirMetaFormat1(BzrDirFormat):
     """Bzr meta control format 1
@@ -1055,6 +1096,15 @@ class BzrDirMetaFormat1(BzrDirFormat):
      - Format 7 repositories [optional]
     """
 
+    def get_converter(self, format=None):
+        """See BzrDirFormat.get_converter()."""
+        if format is None:
+            format = BzrDirFormat.get_default_format()
+        if not isinstance(self, format.__class__):
+            # converting away from metadir is not implemented
+            raise NotImplementedError(self.get_converter)
+        return ConvertMetaToMeta(format)
+
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG meta directory, format 1\n"
@@ -1062,6 +1112,18 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def _open(self, transport):
         """See BzrDirFormat._open."""
         return BzrDirMeta1(transport, self)
+
+    def __return_repository_format(self):
+        """Circular import protection."""
+        if getattr(self, '_repository_format', None):
+            return self._repository_format
+        from bzrlib.repository import RepositoryFormat
+        return RepositoryFormat.get_default_format()
+
+    def __set_repository_format(self, value):
+        """Allow changint the repository format for metadir formats."""
+        self._repository_format = value
+    repository_format = property(__return_repository_format, __set_repository_format)
 
 
 BzrDirFormat.register_format(BzrDirFormat4())
@@ -1176,6 +1238,11 @@ class Converter(object):
         :param to_convert: The disk object to convert.
         :param pb: a progress bar to use for progress information.
         """
+
+    def step(self, message):
+        """Update the pb by a step."""
+        self.count +=1
+        self.pb.update(message, self.count, self.total)
 
 
 class ConvertBzrDir4To5(Converter):
@@ -1562,8 +1629,32 @@ class ConvertBzrDir6ToMeta(Converter):
     def put_format(self, dirname, format):
         self.bzrdir._control_files.put_utf8('%s/format' % dirname, format.get_format_string())
 
-    def step(self, message):
-        """Update the pb by a step."""
-        self.count +=1
-        self.pb.update('Upgrading repository  ', self.count, self.total)
 
+class ConvertMetaToMeta(Converter):
+    """Converts the components of metadirs."""
+
+    def __init__(self, target_format):
+        """Create a metadir to metadir converter.
+
+        :param target_format: The final metadir format that is desired.
+        """
+        self.target_format = target_format
+
+    def convert(self, to_convert, pb):
+        """See Converter.convert()."""
+        self.bzrdir = to_convert
+        self.pb = pb
+        self.count = 0
+        self.total = 1
+        self.step('checking repository format')
+        try:
+            repo = self.bzrdir.open_repository()
+        except errors.NoRepositoryPresent:
+            pass
+        else:
+            if not isinstance(repo._format, self.target_format.repository_format.__class__):
+                from bzrlib.repository import CopyConverter
+                self.pb.note('starting repository conversion')
+                converter = CopyConverter(self.target_format.repository_format)
+                converter.convert(repo, pb)
+        return to_convert

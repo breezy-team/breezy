@@ -221,6 +221,30 @@ class TestRepository(TestCaseWithRepository):
         self.assertTrue(result.open_repository().is_shared())
         self.assertFalse(result.open_repository().make_working_trees())
 
+    def test_upgrade_preserves_signatures(self):
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        wt.branch.repository.sign_revision('A',
+            bzrlib.gpg.LoopbackGPGStrategy(None))
+        old_signature = wt.branch.repository.revision_store.get('A',
+            'sig').read()
+        try:
+            old_format = bzrdir.BzrDirFormat.get_default_format()
+            # This gives metadir branches something they can convert to.
+            # it would be nice to have a 'latest' vs 'default' concept.
+            bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+            try:
+                upgrade(wt.basedir)
+            finally:
+                bzrdir.BzrDirFormat.set_default_format(old_format)
+        except errors.UpToDateFormat:
+            # this is in the most current format already.
+            return
+        wt = WorkingTree.open(wt.basedir)
+        new_signature = wt.branch.repository.revision_store.get('A',
+            'sig').read()
+        self.assertEqual(old_signature, new_signature)
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
@@ -248,3 +272,43 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         # -> NoSuchRevision
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_ancestry, 'orphan')
+
+
+class TestCaseWithCorruptRepository(TestCaseWithRepository):
+
+    def setUp(self):
+        super(TestCaseWithCorruptRepository, self).setUp()
+        # a inventory with no parents and the revision has parents..
+        # i.e. a ghost.
+        repo = self.make_repository('inventory_with_unnecessary_ghost')
+        inv = bzrlib.tree.EmptyTree().inventory
+        sha1 = repo.add_inventory('ghost', inv, [])
+        rev = bzrlib.revision.Revision(timestamp=0,
+                                       timezone=None,
+                                       committer="Foo Bar <foo@example.com>",
+                                       message="Message",
+                                       inventory_sha1=sha1,
+                                       revision_id='ghost')
+        rev.parent_ids = ['the_ghost']
+        repo.add_revision('ghost', rev)
+         
+        sha1 = repo.add_inventory('the_ghost', inv, [])
+        rev = bzrlib.revision.Revision(timestamp=0,
+                                       timezone=None,
+                                       committer="Foo Bar <foo@example.com>",
+                                       message="Message",
+                                       inventory_sha1=sha1,
+                                       revision_id='the_ghost')
+        rev.parent_ids = []
+        repo.add_revision('the_ghost', rev)
+        # check its setup usefully
+        inv_weave = repo.get_inventory_weave()
+        self.assertEqual(['ghost'], map(inv_weave.idx_to_name, inv_weave.inclusions([inv_weave.lookup('ghost')])))
+
+    def test_corrupt_revision_access_asserts(self):
+        repo = repository.Repository.open('inventory_with_unnecessary_ghost')
+        self.assertRaises(errors.CorruptRepository, repo.get_revision, 'ghost')
+
+    def test_corrupt_revision_get_revision_reconsile(self):
+        repo = repository.Repository.open('inventory_with_unnecessary_ghost')
+        repo.get_revision_reconcile('ghost')

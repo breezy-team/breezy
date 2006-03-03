@@ -31,7 +31,8 @@ from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
-                           NoSuchFile, NoWorkingTree, FileInWrongBranch)
+                           NoSuchFile, NoWorkingTree, FileInWrongBranch,
+                           NotVersionedError)
 from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
@@ -125,9 +126,9 @@ class cmd_status(Command):
     def run(self, all=False, show_ids=False, file_list=None, revision=None):
         tree, file_list = tree_files(file_list)
             
-        from bzrlib.status import show_status
-        show_status(tree.branch, show_unchanged=all, show_ids=show_ids,
-                    specific_files=file_list, revision=revision)
+        from bzrlib.status import show_tree_status
+        show_tree_status(tree, show_unchanged=all, show_ids=show_ids,
+                         specific_files=file_list, revision=revision)
 
 
 class cmd_cat_revision(Command):
@@ -769,6 +770,32 @@ class cmd_file_path(Command):
             print fip
 
 
+class cmd_reconcile(Command):
+    """Reconcile bzr metadata in a branch.
+
+    This can correct data mismatches that may have been caused by
+    previous ghost operations or bzr upgrades. You should only
+    need to run this command if 'bzr check' or a bzr developer 
+    advises you to run it.
+
+    If a second branch is provided, cross-branch reconciliation is
+    also attempted, which will check that data like the tree root
+    id which was not present in very early bzr versions is represented
+    correctly in both branches.
+
+    At the same time it is run it may recompress data resulting in 
+    a potential saving in disk space or performance gain.
+
+    The branch *MUST* be on a listable system such as local disk or sftp.
+    """
+    takes_args = ['branch?']
+
+    def run(self, branch="."):
+        from bzrlib.reconcile import reconcile
+        dir = bzrlib.bzrdir.BzrDir.open(branch)
+        reconcile(dir)
+
+
 class cmd_revision_history(Command):
     """Display list of revision ids on this branch."""
     hidden = True
@@ -851,40 +878,40 @@ class cmd_diff(Command):
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None):
-        from bzrlib.diff import show_diff
+        from bzrlib.diff import diff_cmd_helper, show_diff_trees
         try:
-            tree, file_list = internal_tree_files(file_list)
+            tree1, file_list = internal_tree_files(file_list)
+            tree2 = None
             b = None
             b2 = None
         except FileInWrongBranch:
             if len(file_list) != 2:
                 raise BzrCommandError("Files are in different branches")
 
-            b, file1 = Branch.open_containing(file_list[0])
-            b2, file2 = Branch.open_containing(file_list[1])
+            tree1, file1 = WorkingTree.open_containing(file_list[0])
+            tree2, file2 = WorkingTree.open_containing(file_list[1])
             if file1 != "" or file2 != "":
                 # FIXME diff those two files. rbc 20051123
                 raise BzrCommandError("Files are in different branches")
             file_list = None
         if revision is not None:
-            if b2 is not None:
+            if tree2 is not None:
                 raise BzrCommandError("Can't specify -r with two branches")
             if (len(revision) == 1) or (revision[1].spec is None):
-                return show_diff(tree.branch, revision[0], specific_files=file_list,
-                                 external_diff_options=diff_options)
+                return diff_cmd_helper(tree1, file_list, diff_options,
+                                       revision[0])
             elif len(revision) == 2:
-                return show_diff(tree.branch, revision[0], specific_files=file_list,
-                                 external_diff_options=diff_options,
-                                 revision2=revision[1])
+                return diff_cmd_helper(tree1, file_list, diff_options,
+                                       revision[0], revision[1])
             else:
                 raise BzrCommandError('bzr diff --revision takes exactly one or two revision identifiers')
         else:
-            if b is not None:
-                return show_diff(b, None, specific_files=file_list,
-                                 external_diff_options=diff_options, b2=b2)
+            if tree2 is not None:
+                return show_diff_trees(tree1, tree2, sys.stdout, 
+                                       specific_files=file_list,
+                                       external_diff_options=diff_options)
             else:
-                return show_diff(tree.branch, None, specific_files=file_list,
-                                 external_diff_options=diff_options)
+                return diff_cmd_helper(tree1, file_list, diff_options)
 
 
 class cmd_deleted(Command):
@@ -1367,7 +1394,6 @@ class cmd_commit(Command):
                 StrictCommitFailed)
         from bzrlib.msgeditor import edit_commit_message, \
                 make_commit_message_template
-        from bzrlib.status import show_status
         from tempfile import TemporaryFile
         import codecs
 
@@ -1454,7 +1480,11 @@ class cmd_scan_cache(Command):
 def get_format_type(typestring):
     """Parse and return a format specifier."""
     if typestring == "metadir":
-        return bzrdir.BzrDirMetaFormat1
+        return bzrdir.BzrDirMetaFormat1()
+    if typestring == "knit":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
+        return format
     msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
         (typestring)
     raise BzrCommandError(msg)
@@ -1795,6 +1825,8 @@ class cmd_remerge(Command):
                 interesting_ids = set()
                 for filename in file_list:
                     file_id = tree.path2id(filename)
+                    if file_id is None:
+                        raise NotVersionedError(filename)
                     interesting_ids.add(file_id)
                     if tree.kind(file_id) != "directory":
                         continue
@@ -2125,7 +2157,12 @@ class cmd_uncommit(bzrlib.commands.Command):
 
         if location is None:
             location = u'.'
-        b, relpath = Branch.open_containing(location)
+        control, relpath = bzrdir.BzrDir.open_containing(location)
+        b = control.open_branch()
+        try:
+            tree = control.open_workingtree()
+        except (errors.NoWorkingTree, errors.NotLocalUrl):
+            tree = None
 
         if revision is None:
             revno = b.revno()
@@ -2152,7 +2189,7 @@ class cmd_uncommit(bzrlib.commands.Command):
                     print 'Canceled'
                     return 0
 
-        uncommit(b, dry_run=dry_run, verbose=verbose,
+        uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                 revno=revno)
 
 
