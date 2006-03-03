@@ -95,6 +95,7 @@ Example usage:
 
 import os
 import time
+from warnings import warn
 from StringIO import StringIO
 
 import bzrlib.config
@@ -318,6 +319,23 @@ class LockDir(object):
                 time.sleep(poll)
             else:
                 raise LockContention(self)
+
+    def lock_write(self):
+        """Wait for and acquire the lock."""
+        self.attempt_lock()
+
+    def lock_read(self):
+        """Compatability-mode shared lock.
+
+        LockDir doesn't support shared read-only locks, so this 
+        lock is always exclusive.
+        """
+        # At the moment Branches are commonly locked for read, but 
+        # we can't rely on that remotely.  Once this is cleaned up,
+        # reenable this warning to prevent it coming back in 
+        # -- mbp 20060303
+        ## warn("LockDir.lock_read falls back to write lock")
+        self.lock_write()
 
     def wait(self, timeout=20, poll=0.5):
         """Wait a certain period for a lock to be released."""

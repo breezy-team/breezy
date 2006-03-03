@@ -273,32 +273,3 @@ class OldTransportLockStrategy(object):
 
     # TODO: for old locks we have to manually create the file the first time
     # it's used; this should be here too.
-
-
-class LockDirStrategy(object):
-    """Locking method using new-style LockDirs
-
-    This is turned on by newer storage formats which want to use
-    LockDirs.  This only guards writes, not reads.
-    """
-    # TODO: perhaps we should just refer to the LockDir directly rather than
-    # using this proxy; it would require adapting some of the method names
-    
-    def __init__(self, transport, escaped_name):
-        from bzrlib.lockdir import LockDir
-        self._lockdir = LockDir(transport, escaped_name)
-
-    def lock_write(self):
-        """Wait until the lock is acquired"""
-        self._lockdir.attempt_lock()
-
-    def lock_read(self):
-        """Lock for read.
-
-        LockDir always takes exclusive locks, even when a shared read 
-        lock is requested.
-        """
-        self.lock_write()
-
-    def unlock(self):
-        self._lockdir.unlock()
