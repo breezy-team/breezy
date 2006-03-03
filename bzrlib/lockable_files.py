@@ -203,6 +203,10 @@ class LockableFiles(object):
             self._lock = None
             self._lock_mode = self._lock_count = None
 
+    def is_locked(self):
+        """Return true if this LockableFiles group is locked"""
+        return self._lock_count >= 1
+
     def get_transaction(self):
         """Return the current active transaction.
 

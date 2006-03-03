@@ -160,6 +160,9 @@ class Repository(object):
     def lock_read(self):
         self.control_files.lock_read()
 
+    def is_locked(self):
+        return self.control_files.is_locked()
+
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None):
         """Return the revision ids that other has that this does not.

@@ -19,9 +19,16 @@
 import os
 
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseInTempDir
 
 class TestBreakLock(TestCaseInTempDir):
     def test_break_lock_help(self):
         self.run_bzr('break-lock', '--help')
         # shouldn't fail
+
+    def test_show_no_lock(self):
+        wt = BzrDir.create_standalone_workingtree('.')
+        out, err = self.run_bzr('break-lock', '--show', '.', retcode=3)
+        # shouldn't see any information
+        self.assertContainsRe(err, 'not locked')

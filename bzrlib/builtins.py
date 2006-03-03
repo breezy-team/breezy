@@ -2159,15 +2159,31 @@ class cmd_uncommit(bzrlib.commands.Command):
 class cmd_break_lock(Command):
     """Break a dead lock on a repository, branch or working directory.
 
-    Locks should only be broken when you are sure that the process
+    CAUTION: Locks should only be broken when you are sure that the process
     holding the lock has been stopped.
+    
+    example:
+        bzr break-lock .
     """
+    takes_args = ['location']
+    takes_options = [Option('show',
+                            help="just show information on the lock, " \
+                                 "don't break it"),
+                    ]
+    def run(self, location, show=False):
+        d = bzrdir.BzrDir.open(location)
+        repo = d.open_repository()
+        if not repo.is_locked():
+            raise errors.BranchNotLocked(repo)
 
 
+
+
+# command-line interpretation helper for merge-related commands
 def merge(other_revision, base_revision,
           check_clean=True, ignore_zero=False,
           this_dir=None, backup_files=False, merge_type=Merge3Merger,
-          file_list=None, show_base=False, reprocess=False, 
+          file_list=None, show_base=False, reprocess=False,
           pb=DummyProgress()):
     """Merge changes into a tree.
 

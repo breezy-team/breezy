@@ -346,6 +346,8 @@ class LockNotHeld(LockError):
         self.lock = lock
 
 
+# XXX: duplicated definition
+# TODO: change this to "object not locked"
 class BranchNotLocked(LockError):
     """Branch %(branch)r not locked"""
     def __init__(self, branch):
