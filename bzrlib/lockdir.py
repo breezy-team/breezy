@@ -129,6 +129,11 @@ from bzrlib.rio import RioWriter, read_stanza, Stanza
 # TODO: Some kind of callback run while polling a lock to show progress
 # indicators.
 
+# TODO: perhaps put everything (held, pending, releasing, broken) inside a
+# top-level directory with the name of the lock, so that we can still see the
+# lock actually exists -- the top-level directory can then be created only by
+# the init method.
+
 _DEFAULT_TIMEOUT_SECONDS = 300
 _DEFAULT_POLL_SECONDS = 0.5
 
