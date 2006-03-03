@@ -37,6 +37,10 @@ class LockableFiles(object):
     LockableFiles also provides some policy on top of Transport for encoding
     control files as utf-8.
 
+    LockableFiles manage a lock count and can be locked repeatedly by
+    a single caller.  (The underlying lock implementation generally does not
+    support this.)
+
     Instances of this class are often called control_files.
     
     This object builds on top of a Transport, which is used to actually 
