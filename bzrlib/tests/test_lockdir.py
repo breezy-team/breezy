@@ -267,3 +267,9 @@ class TestLockDir(TestCaseWithTransport):
         self.assertRaises(LockBreakMismatch, lf2.force_break,
                           holder_info)
         lf3.unlock()
+
+    def test_46_fake_read_lock(self):
+        t = self.get_transport()
+        lf1 = LockDir(t, 'test_lock')
+        lf1.lock_read()
+        lf1.unlock()

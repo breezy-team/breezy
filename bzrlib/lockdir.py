@@ -157,6 +157,7 @@ class LockDir(object):
         self.transport = transport
         self.path = path
         self._lock_held = False
+        self._fake_read_lock = False
         self._info_path = path + self.__INFO_NAME
         self.nonce = rand_chars(20)
 
@@ -173,6 +174,8 @@ class LockDir(object):
         If you wish to block until the lock can be obtained, call wait_lock()
         instead.
         """
+        if self._fake_read_lock:
+            raise LockContention(self)
         if self.transport.is_readonly():
             raise UnlockableTransport(self.transport)
         try:
@@ -198,6 +201,9 @@ class LockDir(object):
     def unlock(self):
         """Release a held lock
         """
+        if self._fake_read_lock:
+            self._fake_read_lock = False
+            return
         if not self._lock_held:
             raise LockNotHeld(self)
         # rename before deleting, because we can't atomically remove the whole
@@ -333,14 +339,16 @@ class LockDir(object):
         """Compatability-mode shared lock.
 
         LockDir doesn't support shared read-only locks, so this 
-        lock is always exclusive.
+        just pretends that the lock is taken but really does nothing.
         """
         # At the moment Branches are commonly locked for read, but 
         # we can't rely on that remotely.  Once this is cleaned up,
         # reenable this warning to prevent it coming back in 
         # -- mbp 20060303
         ## warn("LockDir.lock_read falls back to write lock")
-        self.lock_write()
+        if self._lock_held or self._fake_read_lock:
+            raise LockContention(self)
+        self._fake_read_lock = True
 
     def wait(self, timeout=20, poll=0.5):
         """Wait a certain period for a lock to be released."""
