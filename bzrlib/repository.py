@@ -19,7 +19,6 @@ from cStringIO import StringIO
 from unittest import TestSuite
 import xml.sax.saxutils
 
-
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
@@ -93,8 +92,10 @@ class Repository(object):
             # legacy: use a common control files.
             self.control_files = a_bzrdir._control_files
         else:
-            self.control_files = LockableFiles(a_bzrdir.get_repository_transport(None),
-                                               'lock')
+            repo_transport = a_bzrdir.get_repository_transport(None)
+            self.control_files = LockableFiles(repo_transport,
+                                               'lock',
+                                               LockDir)
 
         dir_mode = self.control_files._dir_mode
         file_mode = self.control_files._file_mode
@@ -159,7 +160,9 @@ class Repository(object):
         self.control_files.lock_write()
 
     def lock_read(self):
-        self.control_files.lock_read()
+        ## self.control_files.lock_read()
+        # repositories are no longer locked
+        pass
 
     def is_locked(self):
         return self.control_files.is_locked()

@@ -156,7 +156,6 @@ class TestFormat7(TestCaseWithTransport):
         t = control.get_repository_transport(None)
         self.assertEqualDiff('Bazaar-NG Repository format 7',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
         self.assertEqualDiff('# bzr weave file v5\n'
@@ -186,7 +185,7 @@ class TestFormat7(TestCaseWithTransport):
                              t.get('inventory.weave').read())
         self.assertFalse(t.has('branch-lock'))
 
-    def test_locked_by_lockdir(self):
+    def test_creates_lockdir(self):
         """Make sure it appears to be controlled by a LockDir existence"""
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = repository.RepositoryFormat7().initialize(control, shared=True)
@@ -194,6 +193,26 @@ class TestFormat7(TestCaseWithTransport):
         self.assertFalse(t.has('lock'))
         repo.lock_write()
         self.assertTrue(t.has('lock'))
+        self.assertTrue(t.has('lock/info'))
+
+    def test_uses_lockdir(self):
+        """repo format 7 actually locks on lockdir"""
+        base_url = self.get_url()
+        control = bzrdir.BzrDirMetaFormat1().initialize(base_url)
+        repo = repository.RepositoryFormat7().initialize(control, shared=True)
+        t = control.get_repository_transport(None)
+        repo.lock_write()
+        repo.unlock()
+        del repo
+        # make sure the same lock is created by opening it
+        repo = repository.Repository.open(base_url)
+        self.assertFalse(t.has('lock'))
+        repo.lock_write()
+        self.assertTrue(t.has('lock'))
+        self.assertTrue(t.has('lock/info'))
+        self.assertTrue(S_ISDIR(t.stat('lock').st_mode))
+        repo.unlock()
+        self.assertFalse(t.has('lock'))
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -209,7 +228,7 @@ class TestFormat7(TestCaseWithTransport):
         t = control.get_repository_transport(None)
         self.assertEqualDiff('Bazaar-NG Repository format 7',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
+        ## self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff('', t.get('shared-storage').read())
         self.assertEqualDiff('', t.get('no-working-trees').read())
         repo.set_make_working_trees(True)
