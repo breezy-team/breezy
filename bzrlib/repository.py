@@ -25,6 +25,7 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockdir import LockDir
 from bzrlib.osutils import safe_unicode
 from bzrlib.revision import NULL_REVISION
 from bzrlib.store import copy_all
@@ -747,14 +748,13 @@ class RepositoryFormat7(RepositoryFormat):
         
         # FIXME: RBC 20060125 dont peek under the covers
         # NB: no need to escape relative paths that are url safe.
-        lock_file = 'lock'
         repository_transport = a_bzrdir.get_repository_transport(self)
-        repository_transport.put(lock_file, StringIO()) # TODO get the file mode from the bzrdir lock files., mode=file_mode)
-        control_files = LockableFiles(repository_transport, 'lock')
+        control_files = LockableFiles(repository_transport, 'lock',
+                                      LockDir)
         control_files.lock_write()
-        control_files._transport.mkdir_multi(dirs,
-                mode=control_files._dir_mode)
         try:
+            control_files._transport.mkdir_multi(dirs,
+                    mode=control_files._dir_mode)
             for file, content in files:
                 control_files.put(file, content)
             for file, content in utf8_files:

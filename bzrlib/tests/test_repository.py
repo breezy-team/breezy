@@ -169,15 +169,14 @@ class TestFormat7(TestCaseWithTransport):
         repo = repository.RepositoryFormat7().initialize(control, shared=True)
         # we want:
         # format 'Bazaar-NG Repository format 7'
-        # lock ''
         # inventory.weave == empty_weave
         # empty revision-store directory
         # empty weaves directory
         # a 'shared-storage' marker file.
+        # lock is not present when unlocked
         t = control.get_repository_transport(None)
         self.assertEqualDiff('Bazaar-NG Repository format 7',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff('', t.get('shared-storage').read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
@@ -185,6 +184,16 @@ class TestFormat7(TestCaseWithTransport):
                              'w\n'
                              'W\n',
                              t.get('inventory.weave').read())
+        self.assertFalse(t.has('branch-lock'))
+
+    def test_locked_by_lockdir(self):
+        """Make sure it appears to be controlled by a LockDir existence"""
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = repository.RepositoryFormat7().initialize(control, shared=True)
+        t = control.get_repository_transport(None)
+        self.assertFalse(t.has('lock'))
+        repo.lock_write()
+        self.assertTrue(t.has('lock'))
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
