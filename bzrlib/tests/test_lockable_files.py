@@ -18,11 +18,10 @@ from StringIO import StringIO
 
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockable_files import LockableFiles, LockDirStrategy
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.transactions import PassThroughTransaction, ReadOnlyTransaction
 from bzrlib.transport import get_transport
-
 
 
 # these tests are applied in each parameterized suite for LockableFiles
@@ -91,7 +90,7 @@ class _TestLockableFiles_mixin(object):
 # This method of adapting tests to parameters is different to 
 # the TestProviderAdapters used elsewhere, but seems simpler for this 
 # case.  
-def TestLockableFiles_OldLock(TestCaseInTempDir,
+class TestLockableFiles_OldLock(TestCaseInTempDir,
                               _TestLockableFiles_mixin):
 
     def setUp(self):
@@ -99,4 +98,25 @@ def TestLockableFiles_OldLock(TestCaseInTempDir,
         transport = get_transport('.')
         transport.mkdir('.bzr')
         transport.put('.bzr/my-lock', StringIO(''))
-        self.lockable = LockableFiles(transport.clone('.bzr'), 'my-lock')
+        sub_transport = transport.clone('.bzr')
+        self.lockable = LockableFiles(sub_transport, 'my-lock')
+        
+
+class TestLockableFiles_LockDir(TestCaseInTempDir,
+                              _TestLockableFiles_mixin):
+    """LockableFile tests run with LockDir underneath"""
+
+    def setUp(self):
+        super(TestLockableFiles_LockDir, self).setUp()
+        transport = get_transport('.')
+        self.lockable = LockableFiles(transport, 'my-lock',
+                                      LockDirStrategy)
+
+    def test_lock_is_lockdir(self):
+        """Created instance should use a LockDir.
+        
+        This primarily tests the mixin adapter works properly.
+        """
+        ## self.assertIsInstance(self.lockable, LockableFiles)
+        ## self.assertIsInstance(self.lockable._lock_strategy,
+                              ## LockDirStrategy)

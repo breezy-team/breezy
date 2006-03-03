@@ -46,49 +46,44 @@ class LockableFiles(object):
 
     Instances of this class are often called control_files.
     
-    This object builds on top of a Transport, which is used to actually 
-    write the files to disk, and a Lock or LockDir, which controls how 
-    access to the files is controlled.  The particular type of locking used
-    is set when the object is constructed.
-
-    This class 
-
-    _lock_mode
-        None, or 'r' or 'w'
-
-    _lock_count
-        If _lock_mode is true, a positive count of the number of times the
-        lock has been taken *by this process*.  Others may have compatible 
-        read locks.
-
-    _lock
-        Lock object from bzrlib.lock.
+    This object builds on top of a Transport, which is used to actually write
+    the files to disk, and an OSLock or LockDir, which controls how access to
+    the files is controlled.  The particular type of locking used is set when
+    the object is constructed.  In older formats OSLocks are used everywhere.
+    in newer formats a LockDir is used for Repositories and Branches, and 
+    OSLocks for the local filesystem.
     """
 
-    _lock_mode = None
+    _lock_mode = None               # None, or 'r' or 'w'
+
+    # If _lock_mode is true, a positive count of the number of times the
+    # lock has been taken *by this process*.  Others may have compatible 
+    # read locks.
     _lock_count = None
-    _lock = None
+ 
     # If set to False (by a plugin, etc) BzrBranch will not set the
     # mode on created files or directories
     _set_file_mode = True
     _set_dir_mode = True
 
-    def __init__(self, transport, lock_name):
+    def __init__(self, transport, lock_name, lock_strategy_class=None):
+        """Create a LockableFiles group
+
+        :param transport: Transport pointing to the directory holding the 
+            control files and lock.
+        :param lock_name: Name of the lock guarding these files.
+        :param lock_strategy_class: Class of lock strategy to use.
+        """
         object.__init__(self)
         self._transport = transport
         self.lock_name = lock_name
         self._transaction = None
         self._find_modes()
-        self._lock_strategy = OldTransportLockStrategy(transport,
-                self._escape(lock_name))
-
-    def __del__(self):
-        if self._lock_mode or self._lock:
-            # XXX: This should show something every time, and be suitable for
-            # headless operation and embedding
-            from warnings import warn
-            warn("file group %r was not explicitly unlocked" % self)
-            self._lock.unlock()
+        # TODO: remove this and make the parameter mandatory
+        if lock_strategy_class is None:
+            lock_strategy_class = OldTransportLockStrategy
+        esc_name = self._escape(lock_name)
+        self._lock_strategy = lock_strategy_class(transport, esc_name)
 
     def _escape(self, file_or_path):
         if not isinstance(file_or_path, basestring):
@@ -132,7 +127,7 @@ class LockableFiles(object):
         """
 
         relpath = self._escape(file_or_path)
-        #TODO: codecs.open() buffers linewise, so it was overloaded with
+        # TODO: codecs.open() buffers linewise, so it was overloaded with
         # a much larger buffer, do we need to do the same for getreader/getwriter?
         if mode == 'rb': 
             return self.get(relpath)
@@ -286,6 +281,9 @@ class LockDirStrategy(object):
     This is turned on by newer storage formats which want to use
     LockDirs.  This only guards writes, not reads.
     """
+    # TODO: perhaps we should just refer to the LockDir directly rather than
+    # using this proxy; it would require adapting some of the method names
+    
     def __init__(self, transport, escaped_name):
         from bzrlib.lockdir import LockDir
         self._lockdir = LockDir(transport, escaped_name)
@@ -295,8 +293,12 @@ class LockDirStrategy(object):
         self._lockdir.attempt_lock()
 
     def lock_read(self):
-        """No locking is done for reads in this format"""
-        pass
+        """Lock for read.
+
+        LockDir always takes exclusive locks, even when a shared read 
+        lock is requested.
+        """
+        self.lock_write()
 
     def unlock(self):
         self._lockdir.unlock()
