@@ -34,6 +34,7 @@ def test_suite():
     testmod_names = [
                      'bzrlib.tests.blackbox.test_added',
                      'bzrlib.tests.blackbox.test_ancestry',
+                     'bzrlib.tests.blackbox.test_break_lock',
                      'bzrlib.tests.blackbox.test_cat',
                      'bzrlib.tests.blackbox.test_checkout',
                      'bzrlib.tests.blackbox.test_commit',

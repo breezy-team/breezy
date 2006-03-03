@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2103,12 +2103,12 @@ class cmd_uncommit(bzrlib.commands.Command):
     
     In the future, uncommit will create a changeset, which can then
     be re-applied.
-
-    TODO: jam 20060108 Add an option to allow uncommit to remove unreferenced
-              information in 'branch-as-repostory' branches.
-    TODO: jam 20060108 Add the ability for uncommit to remove unreferenced
-              information in shared branches as well.
     """
+
+    # TODO: jam 20060108 Add an option to allow uncommit to remove
+    # unreferenced information in 'branch-as-repostory' branches.
+    # TODO: jam 20060108 Add the ability for uncommit to remove unreferenced
+    # information in shared branches as well.
     takes_options = ['verbose', 'revision',
                     Option('dry-run', help='Don\'t actually make changes'),
                     Option('force', help='Say yes to all questions.')]
@@ -2154,6 +2154,14 @@ class cmd_uncommit(bzrlib.commands.Command):
 
         uncommit(b, dry_run=dry_run, verbose=verbose,
                 revno=revno)
+
+
+class cmd_break_lock(Command):
+    """Break a dead lock on a repository, branch or working directory.
+
+    Locks should only be broken when you are sure that the process
+    holding the lock has been stopped.
+    """
 
 
 def merge(other_revision, base_revision,
