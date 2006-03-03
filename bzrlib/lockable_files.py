@@ -23,7 +23,6 @@ import bzrlib.errors as errors
 from bzrlib.errors import LockError, ReadOnlyError
 from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.symbol_versioning import *
-from bzrlib.symbol_versioning import deprecated_method, zero_eight
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
 
@@ -54,36 +53,38 @@ class LockableFiles(object):
     OSLocks for the local filesystem.
     """
 
-    _lock_mode = None               # None, or 'r' or 'w'
+    # _lock_mode: None, or 'r' or 'w'
 
-    # If _lock_mode is true, a positive count of the number of times the
-    # lock has been taken *by this process*.  Others may have compatible 
-    # read locks.
-    _lock_count = None
- 
+    # _lock_count: If _lock_mode is true, a positive count of the number of
+    # times the lock has been taken *by this process*.   
+    
     # If set to False (by a plugin, etc) BzrBranch will not set the
     # mode on created files or directories
     _set_file_mode = True
     _set_dir_mode = True
 
-    def __init__(self, transport, lock_name, lock_strategy_class=None):
+    def __init__(self, transport, lock_name, lock_class=None):
         """Create a LockableFiles group
 
         :param transport: Transport pointing to the directory holding the 
             control files and lock.
         :param lock_name: Name of the lock guarding these files.
-        :param lock_strategy_class: Class of lock strategy to use.
+        :param lock_class: Class of lock strategy to use: typically
+            either LockDir or TransportLock.
         """
         object.__init__(self)
         self._transport = transport
         self.lock_name = lock_name
         self._transaction = None
         self._find_modes()
-        # TODO: remove this and make the parameter mandatory
-        if lock_strategy_class is None:
-            lock_strategy_class = TransportLock
+        self._lock_mode = None
+        self._lock_count = 0
         esc_name = self._escape(lock_name)
-        self._lock_strategy = lock_strategy_class(transport, esc_name)
+        if lock_class is None:
+            warn("LockableFiles: lock_class is now a mandatory parameter",
+                 DeprecationWarning, stacklevel=2)
+            lock_class = TransportLock
+        self._lock = lock_class(transport, esc_name)
 
     def _escape(self, file_or_path):
         if not isinstance(file_or_path, basestring):
@@ -189,7 +190,7 @@ class LockableFiles(object):
                 raise ReadOnlyError(self)
             self._lock_count += 1
         else:
-            self._lock_strategy.lock_write()
+            self._lock.lock_write()
             self._lock_mode = 'w'
             self._lock_count = 1
             self._set_transaction(transactions.PassThroughTransaction())
@@ -201,7 +202,7 @@ class LockableFiles(object):
                    "invalid lock mode %r" % self._lock_mode
             self._lock_count += 1
         else:
-            self._lock_strategy.lock_read()
+            self._lock.lock_read()
             self._lock_mode = 'r'
             self._lock_count = 1
             self._set_transaction(transactions.ReadOnlyTransaction())
@@ -216,7 +217,7 @@ class LockableFiles(object):
             self._lock_count -= 1
         else:
             self._finish_transaction()
-            self._lock_strategy.unlock()
+            self._lock.unlock()
             self._lock_mode = self._lock_count = None
 
     def is_locked(self):
