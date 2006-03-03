@@ -29,7 +29,22 @@ import bzrlib.transactions as transactions
 
 
 class LockableFiles(object):
-    """Object representing a set of files locked within the same scope
+    """Object representing a set of related files locked within the same scope.
+
+    These files are used by a WorkingTree, Repository or Branch, and should
+    generally only be touched by that object.
+
+    LockableFiles also provides some policy on top of Transport for encoding
+    control files as utf-8.
+
+    Instances of this class are often called control_files.
+    
+    This object builds on top of a Transport, which is used to actually 
+    write the files to disk, and a Lock or LockDir, which controls how 
+    access to the files is controlled.  The particular type of locking used
+    is set when the object is constructed.
+
+    This class 
 
     _lock_mode
         None, or 'r' or 'w'
