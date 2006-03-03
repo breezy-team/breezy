@@ -15,11 +15,13 @@
 
 """VersionedFile based revision store.
 
-This stores revisions as individual versions in a VersionedFileStore.
+This stores revisions as individual entries in a knit, and signatures in a 
+parallel knit.
 """
 
 
 from bzrlib.store.revision import RevisionStore
+from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.transport import get_transport
 
 
@@ -29,7 +31,30 @@ class KnitRevisionStoreFactory(object):
     def create(self, url):
         """Create a revision store at url."""
         t = get_transport(url)
-        return RevisionStore()
+        t.mkdir('revstore')
+        versioned_file_store = VersionedFileStore(t.clone('revstore'))
+        return KnitRevisionStore(versioned_file_store)
 
     def __str__(self):
         return "KnitRevisionStore"
+
+
+class KnitRevisionStore(RevisionStore):
+    """A RevisionStore layering on a VersionedFileStore."""
+
+    def __init__(self, versioned_file_store):
+        """Create a KnitRevisionStore object.
+
+        :param versioned_file_store: the text store to use for storing 
+                                     revisions and signatures.
+        """
+        self.versioned_file_store = versioned_file_store
+
+    def get_revision_file(self, transaction):
+        """Get the revision versioned file object."""
+        return self.versioned_file_store.get_weave('revisions', transaction)
+
+    def has_revision_id(self, revision_id, transaction):
+        """True if the store contains revision_id."""
+        return (revision_id is None
+                or self.get_revision_file(transaction).has_version(revision_id))

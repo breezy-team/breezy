@@ -1367,7 +1367,7 @@ class ConvertBzrDir4To5(Converter):
         self.pb.update('loading revision',
                        len(self.revisions),
                        len(self.known_revisions))
-        if not self.branch.repository.revision_store.has_id(rev_id):
+        if not self.branch.repository.has_revision(rev_id):
             self.pb.clear()
             self.pb.note('revision {%s} not present in branch; '
                          'will be converted as a ghost',

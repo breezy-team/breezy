@@ -17,12 +17,46 @@
 """Revision store tests."""
 
 
+import bzrlib.errors as errors
+from bzrlib.revision import Revision
 from bzrlib.store.revision import RevisionStore
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.transactions import PassThroughTransaction
+from bzrlib.tree import EmptyTree
 
 
-class TestAll(TestCaseWithTransport):
+class TestFactory(TestCaseWithTransport):
 
     def test_factory_keeps_smoke_in(self):
         s = self.store_factory.create(self.get_url('.'))
         self.assertTrue(isinstance(s, RevisionStore))
+
+
+class TestAll(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestAll, self).setUp()
+        self.store = self.store_factory.create(self.get_url('.'))
+        self.transaction = PassThroughTransaction()
+
+    def test_add(self):
+        # adding a revision should fail if the inventory is not present.
+        inv = EmptyTree().inventory
+        sha1 = "111111111111111111111111111111111111111"
+        rev = Revision(timestamp=0,
+                       timezone=None,
+                       committer="Foo Bar <foo@example.com>",
+                       message="Message",
+                       inventory_sha1=sha1,
+                       revision_id='should_fail')
+        self.assertRaises(errors.InventoryNotPresent,
+                          self.store.add_revision,
+                          rev, self.transaction)
+
+    def test_has_missing(self):
+        # has of a non present id -> False
+        self.assertFalse(self.store.has_revision_id('missing', self.transaction))
+
+    def test_has_None(self):
+        # has of None -> True
+        self.assertTrue(self.store.has_revision_id(None, self.transaction))

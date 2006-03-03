@@ -21,6 +21,7 @@ requires access to a inventory weave to produce object graphs.
 
 
 from bzrlib.store.revision import RevisionStore
+from bzrlib.store.text import TextStore
 from bzrlib.transport import get_transport
 
 
@@ -33,7 +34,25 @@ class TextRevisionStoreTestFactory(object):
     def create(self, url):
         """Create a revision store at url."""
         t = get_transport(url)
-        return RevisionStore()
+        t.mkdir('revstore')
+        text_store = TextStore(t.clone('revstore'))
+        return TextRevisionStore(text_store)
 
     def __str__(self):
         return "TextRevisionStore"
+
+
+class TextRevisionStore(RevisionStore):
+    """A RevisionStore layering on a TextStore and Inventory weave store."""
+
+    def __init__(self, text_store):
+        """Create a TextRevisionStore object.
+
+        :param text_store: the text store to put serialised revisions into.
+        """
+        self.text_store = text_store
+
+    def has_revision_id(self, revision_id, transaction):
+        """True if the store contains revision_id."""
+        return (revision_id is None
+                or self.text_store.has_id(revision_id))

@@ -33,6 +33,7 @@ from bzrlib.store.text import TextStore
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 from bzrlib.tree import RevisionTree
+from bzrlib.tsort import topo_sort
 from bzrlib.testament import Testament
 from bzrlib.tree import EmptyTree
 import bzrlib.ui
@@ -65,6 +66,13 @@ class Repository(object):
         present: for weaves ghosts may lead to a lack of correctness until
         the reweave updates the parents list.
         """
+        if self.revision_store.listable():
+            # yes this is slow, but its complete.
+            result_graph = {}
+            for rev_id in self.revision_store:
+                rev = self.get_revision(rev_id)
+                result_graph[rev_id] = rev.parent_ids
+            return topo_sort(result_graph.items())
         result = self._all_possible_ids()
         return self._eliminate_revisions_not_present(result)
 
@@ -100,7 +108,9 @@ class Repository(object):
         # the following are part of the public API for Repository:
         self.bzrdir = a_bzrdir
         self.control_files = control_files
-        self.revision_store = revision_store
+        # backwards compatible until we fully transition
+        self.revision_store = revision_store.text_store
+        self._revision_store = revision_store
         self.text_store = text_store
         # backwards compatability
         self.weave_store = text_store
@@ -171,13 +181,11 @@ class Repository(object):
         self.copy_content_into(result, revision_id, basis)
         return result
 
+    @needs_read_lock
     def has_revision(self, revision_id):
-        """True if this branch has a copy of the revision.
-
-        This does not necessarily imply the revision is merge
-        or on the mainline."""
-        return (revision_id is None
-                or self.revision_store.has_id(revision_id))
+        """True if this repository has a copy of the revision."""
+        return self._revision_store.has_revision_id(revision_id,
+                                                    self.get_transaction())
 
     @needs_read_lock
     def get_revision_xml_file(self, revision_id):
@@ -506,7 +514,6 @@ class AllInOneRepository(Repository):
         else:
             raise errors.BzrError('unreachable code: unexpected repository'
                                   ' format.')
-        revision_store.register_suffix('sig')
         super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, revision_store, text_store)
 
 
@@ -605,25 +612,27 @@ class RepositoryFormat(object):
         """Return the revision store object for this a_bzrdir."""
         raise NotImplementedError(self._get_revision_store)
 
-    def _get_rev_store(self,
-                   transport,
-                   control_files,
-                   name,
-                   compressed=True,
-                   prefixed=False):
+    def _get_text_rev_store(self,
+                            transport,
+                            control_files,
+                            name,
+                            compressed=True,
+                            prefixed=False):
         """Common logic for getting a revision store for a repository.
         
         see self._get_revision_store for the subclass-overridable method to 
         get the store for a repository.
         """
+        from bzrlib.store.revision.text import TextRevisionStore
         dir_mode = control_files._dir_mode
         file_mode = control_files._file_mode
-        revision_store =TextStore(transport.clone(name),
-                                  prefixed=prefixed,
-                                  compressed=compressed,
-                                  dir_mode=dir_mode,
-                                  file_mode=file_mode)
-        revision_store.register_suffix('sig')
+        text_store =TextStore(transport.clone(name),
+                              prefixed=prefixed,
+                              compressed=compressed,
+                              dir_mode=dir_mode,
+                              file_mode=file_mode)
+        text_store.register_suffix('sig')
+        revision_store = TextRevisionStore(text_store)
         return revision_store
 
     def _get_versioned_file_store(self,
@@ -774,9 +783,9 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
-        return self._get_rev_store(repo_transport,
-                                   control_files,
-                                   'revision-store')
+        return self._get_text_rev_store(repo_transport,
+                                        control_files,
+                                        'revision-store')
 
     def _get_text_store(self, transport, control_files):
         """See RepositoryFormat._get_text_store()."""
@@ -798,10 +807,10 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
         """Return the revision store object for this a_bzrdir."""
-        return self._get_rev_store(repo_transport,
-                                   control_files,
-                                   'revision-store',
-                                   compressed=False)
+        return self._get_text_rev_store(repo_transport,
+                                        control_files,
+                                        'revision-store',
+                                        compressed=False)
 
     def _get_text_store(self, transport, control_files):
         """See RepositoryFormat._get_text_store()."""
@@ -823,11 +832,11 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
-        return self._get_rev_store(repo_transport,
-                                   control_files,
-                                   'revision-store',
-                                   compressed=False,
-                                   prefixed=True)
+        return self._get_text_rev_store(repo_transport,
+                                        control_files,
+                                        'revision-store',
+                                        compressed=False,
+                                        prefixed=True)
 
     def _get_text_store(self, transport, control_files):
         """See RepositoryFormat._get_text_store()."""
@@ -853,12 +862,12 @@ class MetaDirRepositoryFormat(RepositoryFormat):
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
-        return self._get_rev_store(repo_transport,
-                                   control_files,
-                                   'revision-store',
-                                   compressed=False,
-                                   prefixed=True,
-                                   )
+        return self._get_text_rev_store(repo_transport,
+                                        control_files,
+                                        'revision-store',
+                                        compressed=False,
+                                        prefixed=True,
+                                        )
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
         """See RepositoryFormat.open().

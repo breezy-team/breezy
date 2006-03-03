@@ -67,3 +67,7 @@ class RevisionStoreTestProviderAdapter(object):
 
 class RevisionStore(object):
     """A revision store stores revisions and signatures."""
+
+    def has_revision_id(self, revision_id, transaction):
+        """True if the store contains revision_id."""
+        raise NotImplementedError(self.has_revision_id)

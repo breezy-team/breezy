@@ -755,3 +755,12 @@ class OutOfDateTree(BzrNewError):
     def __init__(self, tree):
         BzrNewError.__init__(self)
         self.tree = tree
+
+
+class InventoryNotPresent(BzrNewError):
+    """Inventory for revision $(revision_id)s is missing."""
+
+    def __init__(self, revision_id):
+        BzrNewError.__init__(self)
+        self.revision_id = revision_id
+
