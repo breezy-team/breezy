@@ -27,6 +27,9 @@ from bzrlib.symbol_versioning import deprecated_method, zero_eight
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
 
+# XXX: The tracking here of lock counts and whether the lock is held is
+# somewhat redundant with what's done in LockDir; the main difference is that
+# LockableFiles permits reentrancy.
 
 class LockableFiles(object):
     """Object representing a set of related files locked within the same scope.
@@ -275,3 +278,25 @@ class OldTransportLockStrategy(object):
 
     # TODO: for old locks we have to manually create the file the first time
     # it's used; this should be here too.
+
+
+class LockDirStrategy(object):
+    """Locking method using new-style LockDirs
+
+    This is turned on by newer storage formats which want to use
+    LockDirs.  This only guards writes, not reads.
+    """
+    def __init__(self, transport, escaped_name):
+        from bzrlib.lockdir import LockDir
+        self._lockdir = LockDir(transport, escaped_name)
+
+    def lock_write(self):
+        """Wait until the lock is acquired"""
+        self._lockdir.attempt_lock()
+
+    def lock_read(self):
+        """No locking is done for reads in this format"""
+        pass
+
+    def unlock(self):
+        self._lockdir.unlock()
