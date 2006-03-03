@@ -20,8 +20,11 @@ requires access to a inventory weave to produce object graphs.
 """
 
 
+import bzrlib
+import bzrlib.errors as errors
 from bzrlib.store.revision import RevisionStore
 from bzrlib.store.text import TextStore
+from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.transport import get_transport
 
 
@@ -50,7 +53,31 @@ class TextRevisionStore(RevisionStore):
 
         :param text_store: the text store to put serialised revisions into.
         """
+        super(TextRevisionStore, self).__init__()
         self.text_store = text_store
+
+    def _add_revision(self, revision, revision_as_file, transaction):
+        """Template method helper to store revision in this store."""
+        self.text_store.add(revision_as_file, revision.revision_id)
+
+    def get_revision(self, revision_id, transaction):
+        """See RevisionStore.get_revision()."""
+        xml_file = self._get_revision_xml_file(revision_id)
+        try:
+            r = bzrlib.xml5.serializer_v5.read_revision(xml_file)
+        except SyntaxError, e:
+            raise errors.BzrError('failed to unpack revision_xml',
+                                   [revision_id,
+                                   str(e)])
+            
+        assert r.revision_id == revision_id
+        return r
+
+    def _get_revision_xml_file(self, revision_id):
+        try:
+            return self.text_store.get(revision_id)
+        except (IndexError, KeyError):
+            raise bzrlib.errors.NoSuchRevision(self, revision_id)
 
     def has_revision_id(self, revision_id, transaction):
         """True if the store contains revision_id."""

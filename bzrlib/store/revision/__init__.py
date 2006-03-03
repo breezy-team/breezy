@@ -22,7 +22,13 @@ and ghosts information.
 
 
 from copy import deepcopy
+from cStringIO import StringIO
 from unittest import TestSuite
+
+
+import bzrlib
+import bzrlib.errors as errors
+from bzrlib.trace import mutter
 
 
 class RevisionStoreTestProviderAdapter(object):
@@ -66,7 +72,27 @@ class RevisionStoreTestProviderAdapter(object):
 
 
 class RevisionStore(object):
-    """A revision store stores revisions and signatures."""
+    """A revision store stores revisions."""
+
+    def add_revision(self, revision, transaction):
+        """Add revision to the revision store.
+
+        :param rev: The revision object.
+        """
+        # serialisation : common to all at the moment.
+        rev_tmp = StringIO()
+        bzrlib.xml5.serializer_v5.write_revision(revision, rev_tmp)
+        rev_tmp.seek(0)
+        self._add_revision(revision, rev_tmp, transaction)
+        mutter('added revision_id {%s}', revision.revision_id)
+
+    def _add_revision(self, revision, revision_as_file, transaction):
+        """Template method helper to store revision in this store."""
+        raise NotImplementedError(self._add_revision)
+
+    def get_revision(self, revision_id, transaction):
+        """Return the Revision object for a named revision."""
+        raise NotImplementedError(self.get_revision)
 
     def has_revision_id(self, revision_id, transaction):
         """True if the store contains revision_id."""

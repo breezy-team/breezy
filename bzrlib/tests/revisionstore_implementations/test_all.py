@@ -39,19 +39,17 @@ class TestAll(TestCaseWithTransport):
         self.store = self.store_factory.create(self.get_url('.'))
         self.transaction = PassThroughTransaction()
 
-    def test_add(self):
-        # adding a revision should fail if the inventory is not present.
-        inv = EmptyTree().inventory
-        sha1 = "111111111111111111111111111111111111111"
+    def test_add_has_get(self):
         rev = Revision(timestamp=0,
                        timezone=None,
                        committer="Foo Bar <foo@example.com>",
                        message="Message",
-                       inventory_sha1=sha1,
-                       revision_id='should_fail')
-        self.assertRaises(errors.InventoryNotPresent,
-                          self.store.add_revision,
-                          rev, self.transaction)
+                       inventory_sha1='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                       revision_id='A')
+        self.store.add_revision(rev, self.transaction)
+        self.assertTrue(self.store.has_revision_id('A', self.transaction))
+        rev2 = self.store.get_revision('A', self.transaction)
+        self.assertEqual(rev, rev2)
 
     def test_has_missing(self):
         # has of a non present id -> False
@@ -60,3 +58,10 @@ class TestAll(TestCaseWithTransport):
     def test_has_None(self):
         # has of None -> True
         self.assertTrue(self.store.has_revision_id(None, self.transaction))
+
+    def test_get_revision_none(self):
+        # get_revision(None) -> raises NoSuchRevision
+        self.assertRaises(errors.NoSuchRevision,
+                          self.store.get_revision,
+                          'B',
+                          self.transaction)

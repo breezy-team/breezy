@@ -20,6 +20,8 @@ parallel knit.
 """
 
 
+import bzrlib
+import bzrlib.errors as errors
 from bzrlib.store.revision import RevisionStore
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.transport import get_transport
@@ -48,7 +50,33 @@ class KnitRevisionStore(RevisionStore):
         :param versioned_file_store: the text store to use for storing 
                                      revisions and signatures.
         """
+        super(KnitRevisionStore, self).__init__()
         self.versioned_file_store = versioned_file_store
+
+    def _add_revision(self, revision, revision_as_file, transaction):
+        """Template method helper to store revision in this store."""
+        self.get_revision_file(transaction).add_lines(
+            revision.revision_id,
+            revision.parent_ids,
+            revision_as_file.readlines())
+
+    def get_revision(self, revision_id, transaction):
+        """See RevisionStore.get_revision()."""
+        xml = self._get_revision_xml(revision_id, transaction)
+        try:
+            r = bzrlib.xml5.serializer_v5.read_revision_from_string(xml)
+        except SyntaxError, e:
+            raise errors.BzrError('failed to unpack revision_xml',
+                                   [revision_id,
+                                   str(e)])
+        assert r.revision_id == revision_id
+        return r
+
+    def _get_revision_xml(self, revision_id, transaction):
+        try:
+            return self.get_revision_file(transaction).get_text(revision_id)
+        except (errors.RevisionNotPresent):
+            raise errors.NoSuchRevision(self, revision_id)
 
     def get_revision_file(self, transaction):
         """Get the revision versioned file object."""
