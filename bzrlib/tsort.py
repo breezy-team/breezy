@@ -55,7 +55,7 @@ class TopoSorter(object):
         The graph is sorted lazily: until you iterate or sort the input is
         not processed other than to create an internal representation.
 
-        iteration or sortign may raise GraphCycleError if a cycle is present 
+        iteration or sorting may raise GraphCycleError if a cycle is present 
         in the graph.
         """
         # a dict of the graph.
@@ -92,16 +92,7 @@ class TopoSorter(object):
 ###                    import pdb;pdb.set_trace()
 
     def iter_topo_order(self):
-        """Yield the nodes of a graph in a topological order.
-    
-        :param graph: sequence of pairs of node_name->parent_names_list.
-                      i.e. [('C', ['B']), ('B', ['A']), ('A', [])]
-                      For this input the following would be yielded:
-                      'A', 'B', 'C'
-        
-        node identifiers can be any hashable object, and are typically strings.
-
-        This may raise GraphCycleError if a cycle is present in the graph.
+        """Yield the nodes of the graph in a topological order.
         
         After finishing iteration the sorter is empty and you cannot continue
         iteration.
