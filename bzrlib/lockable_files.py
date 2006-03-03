@@ -86,6 +86,10 @@ class LockableFiles(object):
             lock_class = TransportLock
         self._lock = lock_class(transport, esc_name)
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__,
+                           self._transport)
+
     def _escape(self, file_or_path):
         if not isinstance(file_or_path, basestring):
             file_or_path = '/'.join(file_or_path)
