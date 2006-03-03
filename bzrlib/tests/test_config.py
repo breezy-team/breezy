@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (C) 2005 by Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
@@ -30,7 +31,7 @@ from bzrlib.tests import TestCase, TestCaseInTempDir
 
 sample_long_alias="log -r-15..-1 --line"
 sample_config_text = ("[DEFAULT]\n"
-                      "email=Robert Collins <robertc@example.com>\n"
+                      u"email=Erik Bågfors <erik@bagfors.nu>\n"
                       "editor=vim\n"
                       "gpg_signing_command=gnome-gpg\n"
                       "log_format=short\n"
@@ -87,8 +88,8 @@ class InstrumentedConfigObj(object):
         self._calls.append(('__getitem__', key))
         return self
 
-    def __init__(self, input):
-        self._calls = [('__init__', input)]
+    def __init__(self, input, encoding=None):
+        self._calls = [('__init__', input, encoding)]
 
     def __setitem__(self, key, value):
         self._calls.append(('__setitem__', key, value))
@@ -254,14 +255,14 @@ class TestIniConfig(TestCase):
         my_config = config.IniBasedConfig("nothing")
 
     def test_from_fp(self):
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         my_config = config.IniBasedConfig(None)
         self.failUnless(
             isinstance(my_config._get_parser(file=config_file),
                         ConfigObj))
 
     def test_cached(self):
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         my_config = config.IniBasedConfig(None)
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
@@ -282,7 +283,8 @@ class TestGetConfig(TestCase):
         finally:
             config.ConfigObj = oldparserclass
         self.failUnless(isinstance(parser, InstrumentedConfigObj))
-        self.assertEqual(parser._calls, [('__init__', config.config_filename())])
+        self.assertEqual(parser._calls, [('__init__', config.config_filename(),
+                                          'utf-8')])
 
 
 class TestBranchConfig(TestCaseInTempDir):
@@ -303,10 +305,10 @@ class TestBranchConfig(TestCaseInTempDir):
 class TestGlobalConfigItems(TestCase):
 
     def test_user_id(self):
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
-        self.assertEqual("Robert Collins <robertc@example.com>",
+        self.assertEqual(u"Erik Bågfors <erik@bagfors.nu>",
                          my_config._get_user_id())
 
     def test_absent_user_id(self):
@@ -316,7 +318,7 @@ class TestGlobalConfigItems(TestCase):
         self.assertEqual(None, my_config._get_user_id())
 
     def test_configured_editor(self):
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
         self.assertEqual("vim", my_config.get_editor())
@@ -346,7 +348,7 @@ class TestGlobalConfigItems(TestCase):
         self.assertEqual(False, my_config.signature_needed())
 
     def _get_sample_config(self):
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
         return my_config
@@ -546,10 +548,10 @@ class TestLocationConfig(TestCaseInTempDir):
 
     def get_location_config(self, location, global_config=None):
         if global_config is None:
-            global_file = StringIO(sample_config_text)
+            global_file = StringIO(sample_config_text.encode('utf-8'))
         else:
-            global_file = StringIO(global_config)
-        branches_file = StringIO(sample_branches_text)
+            global_file = StringIO(global_config.encode('utf-8'))
+        branches_file = StringIO(sample_branches_text.encode('utf-8'))
         self.my_config = config.LocationConfig(location)
         self.my_config._get_parser(branches_file)
         self.my_config._get_global_config()._get_parser(global_file)
@@ -596,10 +598,10 @@ class TestBranchConfigItems(TestCase):
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
         branch.control_files.email = None
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
-        self.assertEqual("Robert Collins <robertc@example.com>",
+        self.assertEqual(u"Erik Bågfors <erik@bagfors.nu>",
                          my_config._get_user_id())
         branch.control_files.email = "John"
         self.assertEqual("John", my_config._get_user_id())
@@ -622,7 +624,7 @@ class TestBranchConfigItems(TestCase):
     def test_gpg_signing_command(self):
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
         self.assertEqual('gnome-gpg', my_config.gpg_signing_command())
@@ -630,7 +632,7 @@ class TestBranchConfigItems(TestCase):
     def test_get_user_option_global(self):
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
         self.assertEqual('something',
@@ -640,7 +642,7 @@ class TestBranchConfigItems(TestCase):
         branch = FakeBranch()
         branch.base='/a/c'
         my_config = config.BranchConfig(branch)
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
         branch_file = StringIO(sample_branches_text)
