@@ -194,7 +194,7 @@ class LockableFiles(object):
     def unlock(self):
         # mutter("unlock: %s (%s)", self, self._lock_count)
         if not self._lock_mode:
-            raise errors.BranchNotLocked(self)
+            raise errors.LockNotHeld(self)
         if self._lock_count > 1:
             self._lock_count -= 1
         else:

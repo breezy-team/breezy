@@ -2174,9 +2174,7 @@ class cmd_break_lock(Command):
         d = bzrdir.BzrDir.open(location)
         repo = d.open_repository()
         if not repo.is_locked():
-            raise errors.BranchNotLocked(repo)
-
-
+            raise errors.ObjectNotLocked(repo)
 
 
 # command-line interpretation helper for merge-related commands
