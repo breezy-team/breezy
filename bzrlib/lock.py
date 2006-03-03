@@ -17,9 +17,9 @@
 
 """Locking using OS file locks or file existence.
 
-Note: This method of locking is deprecated in favour of LockDir, but is
-used by some old formats.  It's accessed through Transport.lock_read(),
-etc.
+Note: This method of locking is generally deprecated in favour of LockDir, but
+is used to lock local WorkingTrees, and by some old formats.  It's accessed
+through Transport.lock_read(), etc.
 
 This module causes two methods, lock() and unlock() to be defined in
 any way that works on the current platform.
