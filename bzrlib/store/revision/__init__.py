@@ -25,7 +25,6 @@ from copy import deepcopy
 from unittest import TestSuite
 
 
-
 class RevisionStoreTestProviderAdapter(object):
     """A tool to generate a suite testing multiple repository stores.
 
@@ -64,3 +63,7 @@ class RevisionStoreTestProviderAdapter(object):
         result.append(TextRevisionStoreTestFactory())
         result.append(KnitRevisionStoreFactory())
         return result
+
+
+class RevisionStore(object):
+    """A revision store stores revisions and signatures."""
