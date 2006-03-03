@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,11 +19,12 @@ from cStringIO import StringIO
 from unittest import TestSuite
 import xml.sax.saxutils
 
+
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 from bzrlib.errors import InvalidRevisionId
-from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import safe_unicode
 from bzrlib.revision import NULL_REVISION
@@ -92,10 +93,8 @@ class Repository(object):
             # legacy: use a common control files.
             self.control_files = a_bzrdir._control_files
         else:
-            repo_transport = a_bzrdir.get_repository_transport(None)
-            self.control_files = LockableFiles(repo_transport,
-                                               'lock',
-                                               LockDir)
+            self.control_files = LockableFiles(a_bzrdir.get_repository_transport(None),
+                                               'lock')
 
         dir_mode = self.control_files._dir_mode
         file_mode = self.control_files._file_mode
@@ -160,9 +159,7 @@ class Repository(object):
         self.control_files.lock_write()
 
     def lock_read(self):
-        ## self.control_files.lock_read()
-        # repositories are no longer locked
-        pass
+        self.control_files.lock_read()
 
     def is_locked(self):
         return self.control_files.is_locked()
@@ -639,13 +636,12 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['revision-store', 'weaves']
         lock_file = 'branch-lock'
-        files = [('inventory.weave', StringIO(empty_weave)),
+        files = [('inventory.weave', StringIO(empty_weave)), 
                  ]
         
         # FIXME: RBC 20060125 dont peek under the covers
         # NB: no need to escape relative paths that are url safe.
-        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock',
-                                      TransportLock)
+        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock')
         control_files.lock_write()
         control_files._transport.mkdir_multi(dirs,
                 mode=control_files._dir_mode)
