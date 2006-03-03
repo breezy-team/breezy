@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 from bzrlib.errors import InvalidRevisionId
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import safe_unicode
 from bzrlib.revision import NULL_REVISION
@@ -636,12 +636,13 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['revision-store', 'weaves']
         lock_file = 'branch-lock'
-        files = [('inventory.weave', StringIO(empty_weave)), 
+        files = [('inventory.weave', StringIO(empty_weave)),
                  ]
         
         # FIXME: RBC 20060125 dont peek under the covers
         # NB: no need to escape relative paths that are url safe.
-        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock')
+        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock',
+                                      TransportLock)
         control_files.lock_write()
         control_files._transport.mkdir_multi(dirs,
                 mode=control_files._dir_mode)
