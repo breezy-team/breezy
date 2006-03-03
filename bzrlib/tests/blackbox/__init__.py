@@ -85,8 +85,7 @@ class ExternalBase(TestCaseWithTransport):
 
 
 class TestUIFactory(ui.UIFactory):
-    """A UI Factory which never captures its output.
-    """
+    """A UI Factory for testing - hide the progress bar but emit note()s."""
 
     def clear(self):
         """See progress.ProgressBar.clear()."""

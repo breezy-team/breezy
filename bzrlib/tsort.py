@@ -49,6 +49,9 @@ class TopoSorter(object):
         
         node identifiers can be any hashable object, and are typically strings.
 
+        If you have a graph like [('a', ['b']), ('a', ['c'])] this will only use
+        one of the two values for 'a'.
+
         The graph is sorted lazily: until you iterate or sort the input is
         not processed other than to create an internal representation.
 
