@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,14 +23,10 @@ from bzrlib.tests import TestCaseInTempDir
 from bzrlib.transactions import PassThroughTransaction, ReadOnlyTransaction
 from bzrlib.transport import get_transport
 
-class TestLockableFiles(TestCaseInTempDir):
 
-    def setUp(self):
-        super(TestLockableFiles, self).setUp()
-        transport = get_transport('.')
-        transport.mkdir('.bzr')
-        transport.put('.bzr/my-lock', StringIO(''))
-        self.lockable = LockableFiles(transport.clone('.bzr'), 'my-lock')
+
+# these tests are applied in each parameterized suite for LockableFiles
+class _TestLockableFiles_mixin(object):
 
     def test_read_write(self):
         self.assertRaises(NoSuchFile, self.lockable.get, 'foo')
@@ -91,3 +87,16 @@ class TestLockableFiles(TestCaseInTempDir):
     def test__escape_empty(self):
         self.assertEqual('', self.lockable._escape(''))
 
+
+# This method of adapting tests to parameters is different to 
+# the TestProviderAdapters used elsewhere, but seems simpler for this 
+# case.  
+def TestLockableFiles_OldLock(TestCaseInTempDir,
+                              _TestLockableFiles_mixin):
+
+    def setUp(self):
+        super(TestLockableFiles_OldLock, self).setUp()
+        transport = get_transport('.')
+        transport.mkdir('.bzr')
+        transport.put('.bzr/my-lock', StringIO(''))
+        self.lockable = LockableFiles(transport.clone('.bzr'), 'my-lock')
