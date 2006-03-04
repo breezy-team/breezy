@@ -549,10 +549,11 @@ class cmd_branch(Command):
     branch before copying anything from the remote branch.
     """
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision', 'basis']
+    takes_options = ['revision', 'basis', 'bound']
     aliases = ['get', 'clone']
 
-    def run(self, from_location, to_location=None, revision=None, basis=None):
+    def run(self, from_location, to_location=None, revision=None, basis=None,
+            bound=False):
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -604,7 +605,7 @@ class cmd_branch(Command):
                 raise BzrCommandError(msg)
             except bzrlib.errors.UnlistableBranch:
                 rmtree(to_location)
-                msg = "The branch %s cannot be used as a --basis"
+                msg = "The branch %s cannot be used as a --basis" % (basis,)
                 raise BzrCommandError(msg)
             if name:
                 branch.control_files.put_utf8('branch-name', name)
@@ -612,6 +613,8 @@ class cmd_branch(Command):
             note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
+        if bound:
+            branch.bind(br_from)
 
 
 class cmd_checkout(Command):
@@ -1436,6 +1439,10 @@ class cmd_commit(Command):
         except StrictCommitFailed:
             raise BzrCommandError("Commit refused because there are unknown "
                                   "files in the working tree.")
+        except errors.BoundBranchOutOfDate, e:
+            raise BzrCommandError(str(e)
+                                  + ' Either unbind or update.')
+
         note('Committed revision %d.' % (tree.branch.revno(),))
 
 
@@ -2120,6 +2127,68 @@ class cmd_re_sign(Command):
                                                gpg_strategy)
             else:
                 raise BzrCommandError('Please supply either one revision, or a range.')
+
+
+class cmd_bind(Command):
+    """Bind the current branch to its parent.
+
+    After binding, commits must succeed on the parent branch
+    before they can be done on the local one.
+    """
+
+    takes_args = ['location?']
+    takes_options = []
+
+    def run(self, location=None):
+        b, relpath = Branch.open_containing(u'.')
+        if location is None:
+            location = b.get_bound_location()
+        if location is None:
+            location = b.get_parent()
+        if location is None:
+            raise BzrCommandError('Branch has no parent,'
+                                  ' you must supply a bind location.')
+        b_other = Branch.open(location)
+        try:
+            b.bind(b_other)
+        except DivergedBranches:
+            raise BzrCommandError('These branches have diverged.'
+                                  ' Try merging, and then bind again.')
+
+
+class cmd_unbind(Command):
+    """Bind the current branch to its parent.
+
+    After unbinding, the local branch is considered independent.
+    """
+
+    takes_args = []
+    takes_options = []
+
+    def run(self):
+        b, relpath = Branch.open_containing(u'.')
+        if not b.unbind():
+            raise BzrCommandError('Local branch is not bound')
+
+
+class cmd_update(Command):
+    """Update the local tree for checkouts and bound branches.
+    """
+    def run(self):
+        wt, relpath = WorkingTree.open_containing(u'.')
+        # TODO: jam 20051127 Check here to see if this is a checkout
+        bound_loc = wt.branch.get_bound_location()
+        if not bound_loc:
+            raise BzrCommandError('Working tree %s is not a checkout'
+                                  ' or a bound branch, you probably'
+                                  ' want pull' % wt.base)
+
+        br_bound = Branch.open(bound_loc)
+        try:
+            wt.pull(br_bound, overwrite=False)
+        except DivergedBranches:
+            raise BzrCommandError("These branches have diverged."
+                                  "  Try merge.")
 
 
 class cmd_uncommit(bzrlib.commands.Command):
