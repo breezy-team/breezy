@@ -90,4 +90,3 @@ class TestCommit(ExternalBase):
         self.assertEqualDiff('', out)
         self.assertEqualDiff('bzr: ERROR: Cannot perform local-only commits '
                              'on unbound branches.\n', err)
-        

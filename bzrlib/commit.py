@@ -227,6 +227,7 @@ class Commit(object):
 
         self.weave_store = self.branch.repository.weave_store
         self.bound_branch = None
+        self.local = local
         self.master_branch = None
         self.rev_id = rev_id
         self.specific_files = specific_files
@@ -239,9 +240,6 @@ class Commit(object):
         try:
             # setup the bound branch variables as needed.
             self._check_bound_branch()
-
-            if not self.bound_branch and local:
-                raise errors.LocalRequiresBoundBranch()
 
             # check for out of date working trees
             # if we are bound, then self.branch is the master branch and this
@@ -355,10 +353,12 @@ class Commit(object):
         done using the remote branch as the target branch.
         Only at the end will the local branch be updated.
         """
-        # TODO: jam 20051230 Consider a special error for the case
-        #       where the local branch is bound, and can't access the
-        #       master branch
-        self.master_branch = self.branch.get_master_branch()
+        if self.local and not self.branch.get_bound_location():
+            raise errors.LocalRequiresBoundBranch()
+
+        if not self.local:
+            self.master_branch = self.branch.get_master_branch()
+
         if not self.master_branch:
             # make this branch the reference branch for out of date checks.
             self.master_branch = self.branch
