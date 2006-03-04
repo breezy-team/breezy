@@ -307,13 +307,20 @@ class Commit(object):
                 self.present_parents
                 )
             self._make_revision()
-            # revision is in the master branch now.
+            # revision data is in the local branch now.
             
-            self.branch.append_revision(self.rev_id)
-            # now its in the master branch history.
+            # upload revision data to the master.
+            # this will propogate merged revisions too if needed.
+            if self.bound_branch:
+                self.master_branch.repository.fetch(self.branch.repository,
+                                                    revision_id=self.rev_id)
+                # now the master has the revision data
+                # 'commit' to the master first so a timeout here causes the local
+                # branch to be out of date
+                self.master_branch.append_revision(self.rev_id)
 
-            self._update_bound_branch()
-            # now the local branch is up to date
+            # and now do the commit locally.
+            self.branch.append_revision(self.rev_id)
 
             self.work_tree.set_pending_merges([])
             if len(self.parents):
@@ -372,15 +379,14 @@ class Commit(object):
         # so grab the lock
         self.bound_branch = self.branch
         self.master_branch.lock_write()
-        self.branch = self.master_branch
-        
-        # Check to see if we have any pending merges. If we do
-        # those need to be pushed into the master branch
-        pending_merges = self.work_tree.pending_merges()
-        if pending_merges:
-            for revision_id in pending_merges:
-                self.master_branch.repository.fetch(self.bound_branch.repository,
-                                                    revision_id=revision_id)
+####        
+####        # Check to see if we have any pending merges. If we do
+####        # those need to be pushed into the master branch
+####        pending_merges = self.work_tree.pending_merges()
+####        if pending_merges:
+####            for revision_id in pending_merges:
+####                self.master_branch.repository.fetch(self.bound_branch.repository,
+####                                                    revision_id=revision_id)
 
     def _cleanup_bound_branch(self):
         """Executed at the end of a try/finally to cleanup a bound branch.
@@ -391,25 +397,8 @@ class Commit(object):
         """
         if not self.bound_branch:
             return
-        self.branch = self.bound_branch
         self.master_branch.unlock()
 
-    def _update_bound_branch(self):
-        """Update the local bound branch, after commit.
-
-        This only runs if the commit to the master branch succeeds.
-        """
-        if not self.bound_branch:
-            return
-        # We always want the local branch to look like the remote one
-        # TODO: jam 20051231 We might want overwrite=True here, but
-        #       the local branch should be a prefix of master anyway
-        self.bound_branch.pull(self.master_branch)
-
-        # TODO: jam 20051231 At this point we probably 
-        #       want to merge any changes into master branch's
-        #       working tree.
-        
     def _escape_commit_message(self):
         """Replace xml-incompatible control characters."""
         # Python strings can include characters that can't be
