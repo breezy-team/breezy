@@ -1388,11 +1388,17 @@ class cmd_commit(Command):
                      Option('strict',
                             help="refuse to commit if there are unknown "
                             "files in the working tree."),
+                     Option('local',
+                            help="perform a local only commit in a bound "
+                                 "branch. Such commits are not pushed to "
+                                 "the master branch until a normal commit "
+                                 "is performed."
+                            ),
                      ]
     aliases = ['ci', 'checkin']
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
-            unchanged=False, strict=False):
+            unchanged=False, strict=False, local=False):
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
         from bzrlib.msgeditor import edit_commit_message, \
@@ -1409,6 +1415,8 @@ class cmd_commit(Command):
         # TODO: if the commit *does* happen to fail, then save the commit 
         # message to a temporary file where it can be recovered
         tree, selected_list = tree_files(selected_list)
+        if local and not tree.branch.get_bound_location():
+            raise errors.LocalRequiresBoundBranch()
         if message is None and not file:
             template = make_commit_message_template(tree, selected_list)
             message = edit_commit_message(template)

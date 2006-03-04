@@ -180,7 +180,8 @@ class Commit(object):
                strict=False,
                verbose=False,
                revprops=None,
-               working_tree=None):
+               working_tree=None,
+               local=False):
         """Commit working copy as a new revision.
 
         branch -- the deprecated branch to commit to. New callers should pass in 
@@ -206,6 +207,7 @@ class Commit(object):
             contains unknown files.
 
         revprops -- Properties for new revision
+        :param local: Perform a local only commit.
         """
         mutter('preparing to commit')
 
@@ -238,10 +240,13 @@ class Commit(object):
             # setup the bound branch variables as needed.
             self._check_bound_branch()
 
+            if not self.bound_branch and local:
+                raise errors.LocalRequiresBoundBranch()
+
             # check for out of date working trees
             # if we are bound, then self.branch is the master branch and this
             # test is thus all we need.
-            if self.work_tree.last_revision() != self.branch.last_revision():
+            if self.work_tree.last_revision() != self.master_branch.last_revision():
                 raise errors.OutOfDateTree(self.work_tree)
     
             if strict:
@@ -355,6 +360,8 @@ class Commit(object):
         #       master branch
         self.master_branch = self.branch.get_master_branch()
         if not self.master_branch:
+            # make this branch the reference branch for out of date checks.
+            self.master_branch = self.branch
             return
 
         # If the master branch is bound, we must fail

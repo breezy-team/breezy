@@ -765,3 +765,6 @@ class UpgradeRequired(BzrNewError):
         BzrNewError.__init__(self)
         self.path = path
 
+
+class LocalRequiresBoundBranch(BzrNewError):
+    """Cannot perform local-only commits on unbound branches."""

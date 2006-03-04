@@ -82,3 +82,12 @@ class TestCommit(ExternalBase):
                          ('',
                           "bzr: ERROR: Working tree is out of date, please run "
                           "'bzr update'.\n"))
+
+    def test_local_commit_unbound(self):
+        # a --local commit on an unbound branch is an error
+        self.make_branch_and_tree('.')
+        out, err = self.run_bzr('commit', '--local', retcode=3)
+        self.assertEqualDiff('', out)
+        self.assertEqualDiff('bzr: ERROR: Cannot perform local-only commits '
+                             'on unbound branches.\n', err)
+        

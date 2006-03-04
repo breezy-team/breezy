@@ -327,6 +327,15 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('foo', rev_id='foo', allow_pointless=True)
         self.assertEqual('foo', tree.last_revision())
 
+    def test_commit_local_unbound(self):
+        # using the library api to do a local commit on unbound branches is 
+        # also an error
+        tree = self.make_branch_and_tree('tree')
+        self.assertRaises(errors.LocalRequiresBoundBranch,
+                          tree.commit,
+                          'foo',
+                          local=True)
+
     def test_update_sets_last_revision(self):
         # working tree formats from the meta-dir format and newer support
         # setting the last revision on a tree independently of that on the 
