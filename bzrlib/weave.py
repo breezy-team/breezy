@@ -456,6 +456,14 @@ class Weave(VersionedFile):
             except IndexError:
                 raise IndexError("invalid version number %r" % i)
 
+    def _compatible_parents(self, my_parents, other_parents):
+        """During join check that other_parents are joinable with my_parents.
+
+        Joinable is defined as 'is a subset of' - supersets may require 
+        regeneration of diffs, but subsets do not.
+        """
+        return len(other_parents.difference(my_parents)) == 0
+
     def annotate(self, version_id):
         if isinstance(version_id, int):
             warn('Weave.annotate(int) is deprecated. Please use version names'
@@ -804,7 +812,7 @@ class Weave(VersionedFile):
             other_parents = other._parents[other_idx]
             n1 = set([self._names[i] for i in self_parents])
             n2 = set([other._names[i] for i in other_parents])
-            if n1 != n2:
+            if not self._compatible_parents(n1, n2):
                 raise WeaveParentMismatch("inconsistent parents "
                     "for version {%s}: %s vs %s" % (name, n1, n2))
             else:
