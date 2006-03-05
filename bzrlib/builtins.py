@@ -549,11 +549,10 @@ class cmd_branch(Command):
     branch before copying anything from the remote branch.
     """
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision', 'basis', 'bound']
+    takes_options = ['revision', 'basis']
     aliases = ['get', 'clone']
 
-    def run(self, from_location, to_location=None, revision=None, basis=None,
-            bound=False):
+    def run(self, from_location, to_location=None, revision=None, basis=None):
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -597,22 +596,9 @@ class cmd_branch(Command):
                 else:
                     raise
             try:
-                # bound branches require a version upgrade
-                if bound and not isinstance(br_from.bzrdir._format,
-                                            bzrdir.BzrDirMetaFormat1):
-                    old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
-                    bzrlib.bzrdir.BzrDirFormat.set_default_format(
-                        bzrdir.BzrDirMetaFormat1())
-                    try:
-                        branch = bzrlib.bzrdir.BzrDir.create_branch_convenience(
-                            to_location)
-                    finally:
-                        bzrlib.bzrdir.BzrDirFormat.set_default_format(
-                            old_format)
-                else:
-                    # preserve whatever source version we have.
-                    dir = br_from.bzrdir.sprout(to_location, revision_id, basis_dir)
-                    branch = dir.open_branch()
+                # preserve whatever source format we have.
+                dir = br_from.bzrdir.sprout(to_location, revision_id, basis_dir)
+                branch = dir.open_branch()
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
@@ -627,8 +613,6 @@ class cmd_branch(Command):
             note('Branched %d revision(s).' % branch.revno())
         finally:
             br_from.unlock()
-        if bound:
-            branch.bind(br_from)
 
 
 class cmd_checkout(Command):
@@ -647,9 +631,18 @@ class cmd_checkout(Command):
     branch being checked out. [Not implemented yet.]
     """
     takes_args = ['branch_location', 'to_location?']
-    takes_options = ['revision'] # , 'basis']
+    takes_options = ['revision', # , 'basis']
+                     Option('lightweight',
+                            help="perform a lightweight checkout. Lightweight "
+                                 "checkouts depend on access to the branch for "
+                                 "every operation. Normal checkouts can perform "
+                                 "common operations like diff and status without "
+                                 "such access, and also support local commits."
+                            ),
+                     ]
 
-    def run(self, branch_location, to_location=None, revision=None, basis=None):
+    def run(self, branch_location, to_location=None, revision=None, basis=None,
+            lightweight=False):
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -673,9 +666,23 @@ class cmd_checkout(Command):
                                       to_location)
             else:
                 raise
-        checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
-        bzrlib.branch.BranchReferenceFormat().initialize(checkout, source)
-        checkout.create_workingtree(revision_id)
+        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            if lightweight:
+                checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
+                bzrlib.branch.BranchReferenceFormat().initialize(checkout, source)
+            else:
+                checkout_branch =  bzrlib.bzrdir.BzrDir.create_branch_convenience(
+                    to_location, force_new_tree=False)
+                checkout = checkout_branch.bzrdir
+                checkout_branch.bind(source)
+                if revision_id is not None:
+                    rh = checkout_branch.revision_history()
+                    checkout_branch.set_revision_history(rh[:rh.index(revision_id) + 1])
+            checkout.create_workingtree(revision_id)
+        finally:
+            bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
 
 
 class cmd_renames(Command):
@@ -717,7 +724,7 @@ class cmd_update(Command):
             if tree.last_revision() == tree.branch.last_revision():
                 # may be up to date, check master too.
                 master = tree.branch.get_master_branch()
-                if master and master.last_revision == tree.last_revision():
+                if master is None or master.last_revision == tree.last_revision():
                     note("Tree is up to date.")
                     return
             conflicts = tree.update()
@@ -2159,24 +2166,17 @@ class cmd_re_sign(Command):
 
 
 class cmd_bind(Command):
-    """Bind the current branch to its parent.
+    """Bind the current branch to a master branch.
 
-    After binding, commits must succeed on the parent branch
-    before they can be done on the local one.
+    After binding, commits must succeed on the master branch
+    before they are executed on the local one.
     """
 
-    takes_args = ['location?']
+    takes_args = ['location']
     takes_options = []
 
     def run(self, location=None):
         b, relpath = Branch.open_containing(u'.')
-        if location is None:
-            location = b.get_bound_location()
-        if location is None:
-            location = b.get_parent()
-        if location is None:
-            raise BzrCommandError('Branch has no parent,'
-                                  ' you must supply a bind location.')
         b_other = Branch.open(location)
         try:
             b.bind(b_other)

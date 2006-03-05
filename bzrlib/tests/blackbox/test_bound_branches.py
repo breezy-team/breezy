@@ -73,7 +73,7 @@ class TestBoundBranches(TestCaseWithTransport):
 
         os.chdir('..')
 
-        bzr('get', '--bound', 'base', 'child')
+        bzr('checkout', 'base', 'child')
 
         self.failUnlessExists('child')
 
@@ -281,7 +281,7 @@ class TestBoundBranches(TestCaseWithTransport):
 
         os.chdir('../child')
         self.check_revno(2)
-        bzr('bind')
+        bzr('bind', '../base')
         self.check_revno(5)
 
     def test_bind_child_ahead(self):
@@ -305,7 +305,7 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(5)
 
         self.check_revno(2, '../base')
-        bzr('bind')
+        bzr('bind', '../base')
         self.check_revno(5, '../base')
 
     def test_commit_after_merge(self):

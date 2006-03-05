@@ -58,6 +58,35 @@ revision store:
         self.runbzr('checkout branch checkout')
         out, err = self.runbzr('info checkout')
         self.assertEqualDiff(
+"""branch format: Bazaar-NG Metadir branch format 5
+bound to branch: %s
+
+in the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+branch history:
+         0 revisions
+         0 committers
+
+revision store:
+         0 revisions
+         0 kB
+""" % a_branch.bzrdir.root_transport.base,
+        out)
+        self.assertEqual('', err)
+
+    def test_info_up_to_date_light_checkout(self):
+        a_branch = self.make_branch_and_tree('branch')
+        self.runbzr('checkout --lightweight branch checkout')
+        out, err = self.runbzr('info checkout')
+        self.assertEqualDiff(
 """working tree format: Bazaar-NG Working Tree format 3
 branch location: %s
 branch format: Bazaar-NG branch, format 6
@@ -128,6 +157,48 @@ revision store:
         # make two checkouts
         self.runbzr('checkout branch checkout')
         self.runbzr('checkout branch checkout2')
+        self.build_tree(['checkout/file'])
+        self.runbzr('add checkout/file')
+        self.runbzr('commit -m add-file checkout')
+        # now checkout2 should be out of date
+        out,err = self.runbzr('info checkout2')
+        rev = a_branch.repository.get_revision(a_branch.revision_history()[0])
+        datestring = format_date(rev.timestamp, rev.timezone)
+        self.assertEqualDiff(
+"""branch format: Bazaar-NG Metadir branch format 5
+bound to branch: %s
+
+Branch is out of date: missing 1 revision.
+in the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+branch history:
+         0 revisions
+         0 committers
+
+revision store:
+         0 revisions
+         0 kB
+""" % (a_branch.bzrdir.root_transport.base,
+       ),
+            out)
+        self.assertEqual('', err)
+
+    def test_info_out_of_date_light_checkout(self):
+        # note this deliberately uses a checkout at 'None' to 
+        # test the out of date message with a revision notin the 
+        # revision history.
+        a_branch = self.make_branch('branch')
+        # make two checkouts
+        self.runbzr('checkout --lightweight branch checkout')
+        self.runbzr('checkout --lightweight branch checkout2')
         self.build_tree(['checkout/file'])
         self.runbzr('add checkout/file')
         self.runbzr('commit -m add-file checkout')

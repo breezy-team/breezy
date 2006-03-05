@@ -32,9 +32,9 @@ class TestUpdate(ExternalBase):
         self.assertEqual('Tree is up to date.\n', err)
         self.assertEqual('', out)
 
-    def test_update_up_to_date_checkout(self):
+    def test_update_up_to_date_light_checkout(self):
         self.make_branch_and_tree('branch')
-        self.runbzr('checkout branch checkout')
+        self.runbzr('checkout --lightweight branch checkout')
         out, err = self.runbzr('update checkout')
         self.assertEqual('Tree is up to date.\n', err)
         self.assertEqual('', out)
@@ -45,7 +45,7 @@ class TestUpdate(ExternalBase):
         raise TestSkipped('default format too old')
         self.make_branch_and_tree('branch')
         # make a checkout
-        self.runbzr('checkout branch checkout')
+        self.runbzr('checkout --lightweight branch checkout')
         self.build_tree(['checkout/file'])
         self.runbzr('add checkout/file')
         self.runbzr('commit -m add-file checkout')
@@ -55,11 +55,11 @@ class TestUpdate(ExternalBase):
         self.assertEqual('', err)
         self.failUnlessExists('branch/file')
 
-    def test_update_out_of_date_checkout(self):
+    def test_update_out_of_date_light_checkout(self):
         self.make_branch_and_tree('branch')
         # make two checkouts
-        self.runbzr('checkout branch checkout')
-        self.runbzr('checkout branch checkout2')
+        self.runbzr('checkout --lightweight branch checkout')
+        self.runbzr('checkout --lightweight branch checkout2')
         self.build_tree(['checkout/file'])
         self.runbzr('add checkout/file')
         self.runbzr('commit -m add-file checkout')
@@ -73,11 +73,11 @@ class TestUpdate(ExternalBase):
     def test_update_conflicts_returns_2(self):
         self.make_branch_and_tree('branch')
         # make two checkouts
-        self.runbzr('checkout branch checkout')
+        self.runbzr('checkout --lightweight branch checkout')
         self.build_tree(['checkout/file'])
         self.runbzr('add checkout/file')
         self.runbzr('commit -m add-file checkout')
-        self.runbzr('checkout branch checkout2')
+        self.runbzr('checkout --lightweight branch checkout2')
         # now alter file in checkout
         a_file = file('checkout/file', 'wt')
         a_file.write('Foo')
@@ -100,9 +100,9 @@ class TestUpdate(ExternalBase):
         # branch with local commits.
         self.make_branch_and_tree('master')
         # make a bound branch
-        self.run_bzr('get', '--bound', 'master', 'child')
+        self.run_bzr('checkout', 'master', 'child')
         # check that out
-        self.run_bzr('checkout', 'child', 'checkout')
+        self.run_bzr('checkout', '--lightweight', 'child', 'checkout')
         # change master
         a_file = file('master/file', 'wt')
         a_file.write('Foo')

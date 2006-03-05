@@ -64,7 +64,9 @@ from bzrlib.errors import (BzrCheckError,
 from bzrlib.inventory import InventoryEntry, Inventory
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.merge import merge_inner, transform_tree
-from bzrlib.osutils import (appendpath,
+from bzrlib.osutils import (
+                            abspath,
+                            appendpath,
                             compact_date,
                             file_kind,
                             isdir,
@@ -74,7 +76,6 @@ from bzrlib.osutils import (appendpath,
                             safe_unicode,
                             splitpath,
                             rand_bytes,
-                            abspath,
                             normpath,
                             realpath,
                             relpath,

@@ -71,7 +71,7 @@ class TestCommit(ExternalBase):
         # of date checkout
         self.make_branch_and_tree('branch')
         # make a checkout
-        self.runbzr('checkout branch checkout')
+        self.runbzr('checkout --lightweight branch checkout')
         # commit to the original branch to make the checkout out of date
         self.runbzr('commit --unchanged -m message branch')
         # now commit to the checkout should emit

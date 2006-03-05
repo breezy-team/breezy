@@ -701,6 +701,9 @@ class BzrBranchFormat5(BranchFormat):
                           a_bzrdir=a_bzrdir,
                           _repository=a_bzrdir.find_repository())
 
+    def __str__(self):
+        return "Bazaar-NG Metadir branch format 5"
+
 
 class BranchReferenceFormat(BranchFormat):
     """Bzr branch reference format.
