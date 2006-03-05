@@ -1161,9 +1161,11 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_write_lock
     def update(self):
+        old_tip = self.branch.update()
         self.branch.lock_read()
         try:
             if self.last_revision() == self.branch.last_revision():
+                # no change
                 return
             basis = self.basis_tree()
             to_tree = self.branch.basis_tree()

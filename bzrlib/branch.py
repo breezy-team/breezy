@@ -412,6 +412,14 @@ class Branch(object):
     def set_parent(self, url):
         raise NotImplementedError('set_parent is abstract')
 
+    @needs_write_lock
+    def update(self):
+        """Synchronise this branch with the master branch if any. 
+
+        :return: None or the last_revision pivoted out during the update.
+        """
+        return None
+
     def check_revno(self, revno):
         """\
         Check whether a revno corresponds to any revision.
@@ -1104,14 +1112,6 @@ class BzrBranch5(BzrBranch):
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None):
         """Updates branch.pull to be bound branch aware."""
-        # TODO: jam 20051230 This does work, in that 'bzr pull'
-        #       will update the master branch before updating the
-        #       local branch. However, 'source' can also already
-        #       be the master branch. Which means that we are
-        #       asking it to update from itself, before we continue.
-        #       This probably causes double downloads, etc.
-        #       So we probably want to put in an explicit check
-        #       of whether source is already the master branch.
         bound_location = self.get_bound_location()
         if source.base != bound_location:
             # not pulling from master, so we need to update master.
@@ -1211,6 +1211,22 @@ class BzrBranch5(BzrBranch):
     def unbind(self):
         """If bound, unbind"""
         return self.set_bound_location(None)
+
+    @needs_write_lock
+    def update(self):
+        """Synchronise this branch with the master branch if any. 
+
+        :return: None or the last_revision that was pivoted out during the
+                 update.
+        """
+        master = self.get_master_branch()
+        if master is not None:
+            old_tip = self.last_revision()
+            self.pull(master, overwrite=True)
+            if old_tip == self.last_revision():
+                return None
+            return old_tip
+        return None
 
 
 class BranchTestProviderAdapter(object):

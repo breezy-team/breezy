@@ -688,8 +688,11 @@ class cmd_update(Command):
     """Update a tree to have the latest code committed to its branch.
     
     This will perform a merge into the working tree, and may generate
-    conflicts. If you have any uncommitted changes, you will still 
-    need to commit them after the update.
+    conflicts. If you have any local changes, you will still 
+    need to commit them after the update for the update to be complete.
+    
+    If you want to discard your local changes, you can just do a 
+    'bzr revert' instead of 'bzr commit' after the update.
     """
     takes_args = ['dir?']
 
@@ -2177,26 +2180,6 @@ class cmd_unbind(Command):
         b, relpath = Branch.open_containing(u'.')
         if not b.unbind():
             raise BzrCommandError('Local branch is not bound')
-
-
-class cmd_update(Command):
-    """Update the local tree for checkouts and bound branches.
-    """
-    def run(self):
-        wt, relpath = WorkingTree.open_containing(u'.')
-        # TODO: jam 20051127 Check here to see if this is a checkout
-        bound_loc = wt.branch.get_bound_location()
-        if not bound_loc:
-            raise BzrCommandError('Working tree %s is not a checkout'
-                                  ' or a bound branch, you probably'
-                                  ' want pull' % wt.base)
-
-        br_bound = Branch.open(bound_loc)
-        try:
-            wt.pull(br_bound, overwrite=False)
-        except DivergedBranches:
-            raise BzrCommandError("These branches have diverged."
-                                  "  Try merge.")
 
 
 class cmd_uncommit(bzrlib.commands.Command):

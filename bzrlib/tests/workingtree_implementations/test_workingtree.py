@@ -435,3 +435,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(1, old_tree.update())
         self.assertEqual('A', old_tree.last_revision())
 
+    def test_update_updates_bound_branch_no_local_commits(self):
+        # doing an update in a tree updates the branch its bound to too.
+        master_tree = self.make_branch_and_tree('master')
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.branch.bind(master_tree.branch)
+        except errors.UpgradeRequired:
+            # legacy branches cannot bind
+            return
+        master_tree.commit('foo', rev_id='foo', allow_pointless=True)
+        tree.update()
+        self.assertEqual('foo', tree.last_revision())
+        self.assertEqual('foo', tree.branch.last_revision())
