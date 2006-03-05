@@ -451,7 +451,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_update_turns_local_commit_into_merge(self):
         # doing an update with a few local commits and no master commits
-        # makes pending-merges.
+        # makes pending-merges. 
+        # this is done so that 'bzr update; bzr revert' will always produce
+        # an exact copy of the 'logical branch' - the referenced branch for
+        # a checkout, and the master for a bound branch.
+        # its possible that we should instead have 'bzr update' when there
+        # is nothing new on the master leave the current commits intact and
+        # alter 'revert' to revert to the master always. But for now, its
+        # good.
         master_tree = self.make_branch_and_tree('master')
         tree = self.make_branch_and_tree('tree')
         try:
