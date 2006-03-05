@@ -1469,7 +1469,8 @@ class cmd_commit(Command):
                                   "files in the working tree.")
         except errors.BoundBranchOutOfDate, e:
             raise BzrCommandError(str(e)
-                                  + ' Either unbind or update.')
+                                  + ' Either unbind, update, or'
+                                    ' pass --local to commit.')
 
         note('Committed revision %d.' % (tree.branch.revno(),))
 
