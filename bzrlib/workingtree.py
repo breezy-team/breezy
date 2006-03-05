@@ -1161,19 +1161,57 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_write_lock
     def update(self):
+        """Update a working tree along its branch.
+
+        This will update the branch if its bound too, which means we have multiple trees involved:
+        The new basis tree of the master.
+        The old basis tree of the branch.
+        The old basis tree of the working tree.
+        The current working tree state.
+        pathologically all three may be different, and non ancestors of each other.
+        Conceptually we want to:
+        Preserve the wt.basis->wt.state changes
+        Transform the wt.basis to the new master basis.
+        Apply a merge of the old branch basis to get any 'local' changes from it into the tree.
+        Restore the wt.basis->wt.state changes.
+
+        There isn't a single operation at the moment to do that, so we:
+        Merge current state -> basis tree of the master w.r.t. the old tree basis.
+        Do a 'normal' merge of the old branch basis if it is relevant.
+        """
         old_tip = self.branch.update()
+        if old_tip is not None:
+            self.add_pending_merge(old_tip)
         self.branch.lock_read()
         try:
-            if self.last_revision() == self.branch.last_revision():
-                # no change
-                return
-            basis = self.basis_tree()
-            to_tree = self.branch.basis_tree()
-            result = merge_inner(self.branch,
-                                 to_tree,
-                                 basis,
-                                 this_tree=self)
-            self.set_last_revision(self.branch.last_revision())
+            result = 0
+            if self.last_revision() != self.branch.last_revision():
+                # merge tree state up to new branch tip.
+                basis = self.basis_tree()
+                to_tree = self.branch.basis_tree()
+                result += merge_inner(self.branch,
+                                      to_tree,
+                                      basis,
+                                      this_tree=self)
+                self.set_last_revision(self.branch.last_revision())
+            if old_tip and old_tip != self.last_revision():
+                # our last revision was not the prior branch last reivison
+                # and we have converted that last revision to a pending merge.
+                # base is somewhere between the branch tip now
+                # and the now pending merge
+                from bzrlib.revision import common_ancestor
+                try:
+                    base_rev_id = common_ancestor(self.branch.last_revision(),
+                                                  old_tip,
+                                                  self.branch.repository)
+                except errors.NoCommonAncestor:
+                    base_rev_id = None
+                base_tree = self.branch.repository.revision_tree(base_rev_id)
+                other_tree = self.branch.repository.revision_tree(old_tip)
+                result += merge_inner(self.branch,
+                                      other_tree,
+                                      base_tree,
+                                      this_tree=self)
             return result
         finally:
             self.branch.unlock()

@@ -597,8 +597,22 @@ class cmd_branch(Command):
                 else:
                     raise
             try:
-                dir = br_from.bzrdir.sprout(to_location, revision_id, basis_dir)
-                branch = dir.open_branch()
+                # bound branches require a version upgrade
+                if bound and not isinstance(br_from.bzrdir._format,
+                                            bzrdir.BzrDirMetaFormat1):
+                    old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+                    bzrlib.bzrdir.BzrDirFormat.set_default_format(
+                        bzrdir.BzrDirMetaFormat1())
+                    try:
+                        branch = bzrlib.bzrdir.BzrDir.create_branch_convenience(
+                            to_location)
+                    finally:
+                        bzrlib.bzrdir.BzrDirFormat.set_default_format(
+                            old_format)
+                else:
+                    # preserve whatever source version we have.
+                    dir = br_from.bzrdir.sprout(to_location, revision_id, basis_dir)
+                    branch = dir.open_branch()
             except bzrlib.errors.NoSuchRevision:
                 rmtree(to_location)
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
@@ -701,8 +715,11 @@ class cmd_update(Command):
         tree.lock_write()
         try:
             if tree.last_revision() == tree.branch.last_revision():
-                note("Tree is up to date.")
-                return
+                # may be up to date, check master too.
+                master = tree.branch.get_master_branch()
+                if master and master.last_revision == tree.last_revision():
+                    note("Tree is up to date.")
+                    return
             conflicts = tree.update()
             note('Updated to revision %d.' %
                  (tree.branch.revision_id_to_revno(tree.last_revision()),))
@@ -1438,7 +1455,7 @@ class cmd_commit(Command):
             
         try:
             tree.commit(message, specific_files=selected_list,
-                        allow_pointless=unchanged, strict=strict)
+                        allow_pointless=unchanged, strict=strict, local=local)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit

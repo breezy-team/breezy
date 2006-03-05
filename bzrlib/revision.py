@@ -259,6 +259,8 @@ def combined_graph(revision_a, revision_b, revision_source):
 
 def common_ancestor(revision_a, revision_b, revision_source, 
                     pb=DummyProgress()):
+    if None in (revision_a, revision_b):
+        return None
     try:
         try:
             pb.update('Picking ancestor', 1, 3)

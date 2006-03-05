@@ -1223,7 +1223,7 @@ class BzrBranch5(BzrBranch):
         if master is not None:
             old_tip = self.last_revision()
             self.pull(master, overwrite=True)
-            if old_tip == self.last_revision():
+            if old_tip in self.repository.get_ancestry(self.last_revision()):
                 return None
             return old_tip
         return None

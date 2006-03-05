@@ -246,6 +246,7 @@ class TestCommonAncestor(TestCaseWithTransport):
                           revisions[4]) # revisions_2[5] is equally valid
         self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
                           revisions[4]) # revisions_2[5] is equally valid
+        self.assertEqual(None, common_ancestor(None, revisions[5], sources))
 
     def test_combined(self):
         """combined_graph

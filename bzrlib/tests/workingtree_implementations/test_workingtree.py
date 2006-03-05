@@ -448,3 +448,21 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.update()
         self.assertEqual('foo', tree.last_revision())
         self.assertEqual('foo', tree.branch.last_revision())
+
+    def test_update_turns_local_commit_into_merge(self):
+        # doing an update with a few local commits and no master commits
+        # makes pending-merges.
+        master_tree = self.make_branch_and_tree('master')
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.branch.bind(master_tree.branch)
+        except errors.UpgradeRequired:
+            # legacy branches cannot bind
+            return
+        tree.commit('foo', rev_id='foo', allow_pointless=True, local=True)
+        tree.commit('bar', rev_id='bar', allow_pointless=True, local=True)
+        tree.update()
+        self.assertEqual(None, tree.last_revision())
+        self.assertEqual([], tree.branch.revision_history())
+        self.assertEqual(['bar'], tree.pending_merges())
+

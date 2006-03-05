@@ -138,10 +138,13 @@ class TestBoundBranches(TestCaseWithTransport):
         os.chdir('base')
         open('a', 'wb').write('new base contents\n')
         bzr('commit', '-m', 'base')
+        self.check_revno(2)
 
         os.chdir('../child')
+        self.check_revno(1)
         open('b', 'wb').write('new b child contents\n')
         bzr('commit', '-m', 'child', retcode=3)
+        self.check_revno(1)
 
         bzr('update')
         self.check_revno(2)
