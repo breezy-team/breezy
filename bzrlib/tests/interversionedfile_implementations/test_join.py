@@ -148,6 +148,21 @@ class TestJoin(TestCaseWithTransport):
         eq(w1.get_lines('v2'), ['hello\n', 'world\n'])
         eq(w1.get_parents('v2'), ['v1', 'x1'])
 
+    def test_join_with_ignore_missing_versions(self):
+        # test that ignore_missing=True makes a listed but absent version id
+        # be ignored, and that unlisted version_ids are not integrated.
+        w1 = self.build_weave1()
+        wb = self.get_target()
+        wb.add_lines('x1', [], ['line from x1\n'])
+        wb.add_lines('v1', [], ['hello\n'])
+        wb.add_lines('v2', ['v1', 'x1'], ['hello\n', 'world\n'])
+        w1.join(wb, version_ids=['x1', 'z1'], ignore_missing=True)
+        eq = self.assertEquals
+        eq(sorted(w1.versions()), ['v1', 'v2', 'v3', 'x1'])
+        eq(w1.get_text('x1'), 'line from x1\n')
+        eq(w1.get_lines('v2'), ['hello\n', 'world\n'])
+        eq(w1.get_parents('v2'), ['v1'])
+    
     def build_source_weave(self, name, *pattern):
         w = self.get_source(name)
         for version, parents in pattern:

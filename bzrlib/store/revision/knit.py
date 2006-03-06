@@ -22,6 +22,7 @@ parallel knit.
 
 import bzrlib
 import bzrlib.errors as errors
+from bzrlib.knit import KnitVersionedFile
 from bzrlib.store.revision import RevisionStore
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.transport import get_transport
@@ -33,8 +34,10 @@ class KnitRevisionStoreFactory(object):
     def create(self, url):
         """Create a revision store at url."""
         t = get_transport(url)
-        t.mkdir('revstore')
-        versioned_file_store = VersionedFileStore(t.clone('revstore'))
+        t.mkdir('revision-store')
+        versioned_file_store = VersionedFileStore(
+            t.clone('revision-store'),
+            versionedfile_class=KnitVersionedFile)
         return KnitRevisionStore(versioned_file_store)
 
     def __str__(self):
@@ -55,9 +58,15 @@ class KnitRevisionStore(RevisionStore):
 
     def _add_revision(self, revision, revision_as_file, transaction):
         """Template method helper to store revision in this store."""
+        # FIXME: make this ghost aware at the knit level
+        rf = self.get_revision_file(transaction)
+        parents = []
+        for parent_id in revision.parent_ids:
+            if rf.has_version(parent_id):
+                parents.append(parent_id)
         self.get_revision_file(transaction).add_lines(
             revision.revision_id,
-            revision.parent_ids,
+            parents,
             revision_as_file.readlines())
 
     def add_revision_signature_text(self, revision_id, signature_text, transaction):

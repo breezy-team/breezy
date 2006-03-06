@@ -146,20 +146,6 @@ class RepoFetcher(object):
         except errors.NoSuchRevision:
             raise InstallFailed([self._last_revision])
 
-    def _fetch_revision_texts(self, revs):
-        self.to_repository.revision_store.copy_multi(
-            self.from_repository.revision_store,
-            revs,
-            pb=self.pb)
-        # fixup inventory if needed:
-        # this is expensive because we have no inverse index to current ghosts.
-        # but on local disk its a few seconds and sftp push is already insane.
-        # so we just-do-it.
-        # FIXME: the generic code path should not need this, if it truely is
-        # generic.
-        reconciler = RepoReconciler(self.to_repository)
-        reconciler.reconcile()
-
     def _fetch_weave_texts(self, revs):
         file_ids = self.from_repository.fileid_involved_by_set(revs)
         count = 0
@@ -200,6 +186,66 @@ class RepoFetcher(object):
                                        self.from_repository.get_transaction())
 
         self.pb.clear()
+
+
+class GenericRepoFetcher(RepoFetcher):
+    """This is a generic repo to repo fetcher.
+
+    This makes minimal assumptions about repo layout and contents.
+    It triggers a reconciliation after fetching to ensure integrity.
+    """
+
+    def _fetch_revision_texts(self, revs):
+        self.to_transaction = self.to_repository.get_transaction()
+        count = 0
+        total = len(revs)
+        for rev in revs:
+            self.pb.update('copying revisions', count, total)
+            try:
+                sig_text = self.from_repository.get_signature_text(rev)
+                self.to_repository._revision_store.add_revision_signature_text(
+                    rev, sig_text, self.to_transaction)
+            except errors.NoSuchRevision:
+                # not signed.
+                pass
+            self.to_repository._revision_store.add_revision(
+                self.from_repository.get_revision(rev),
+                self.to_transaction)
+            count += 1
+        self.pb.update('copying revisions', count, total)
+        # fixup inventory if needed: 
+        # this is expensive because we have no inverse index to current ghosts.
+        # but on local disk its a few seconds and sftp push is already insane.
+        # so we just-do-it.
+        # FIXME: repository should inform if this is needed.
+        reconciler = RepoReconciler(self.to_repository)
+        reconciler.reconcile()
+    
+
+class KnitRepoFetcher(RepoFetcher):
+    """This is a knit format repository specific fetcher.
+
+    This differs from the GenericRepoFetcher by not doing a 
+    reconciliation after copying, and using knit joining to
+    copy revision texts.
+    """
+
+    def _fetch_revision_texts(self, revs):
+        # may need to be a InterRevisionStore call here.
+        from_transaction = self.from_repository.get_transaction()
+        to_transaction = self.to_repository.get_transaction()
+        to_sf = self.to_repository._revision_store._get_signature_file(
+            to_transaction)
+        from_sf = self.from_repository._revision_store._get_signature_file(
+            from_transaction)
+        to_sf.join(from_sf, version_ids=revs, pb=self.pb, ignore_missing=True)
+        to_rf = self.to_repository._revision_store.get_revision_file(
+            to_transaction)
+        from_rf = self.from_repository._revision_store.get_revision_file(
+            from_transaction)
+        to_rf.join(from_rf, version_ids=revs, pb=self.pb)
+        reconciler = RepoReconciler(self.to_repository)
+        reconciler.reconcile()
 
 
 class Fetcher(object):

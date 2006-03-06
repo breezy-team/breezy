@@ -242,16 +242,19 @@ class TestBranch(TestCaseWithBranch):
         branch.repository.sign_revision('A', strategy)
         self.assertEqual(Testament.from_revision(branch.repository, 
                          'A').as_short_text(),
-                         branch.repository.revision_store.get('A', 
-                         'sig').read())
+                         branch.repository.get_signature_text('A'))
 
     def test_store_signature(self):
-        branch = self.get_branch()
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
         branch.repository.store_revision_signature(
             bzrlib.gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+        self.assertRaises(errors.NoSuchRevision,
+                          branch.repository.has_signature_for_revision_id,
+                          'A')
+        wt.commit("base", allow_pointless=True, rev_id='A')
         self.assertEqual('FOO', 
-                         branch.repository.revision_store.get('A', 
-                         'sig').read())
+                         branch.repository.get_signature_text('A'))
 
     def test_branch_keeps_signatures(self):
         wt = self.make_branch_and_tree('source')
@@ -262,10 +265,8 @@ class TestBranch(TestCaseWithBranch):
         # wt.clone should work to disks.
         self.build_tree(['target/'])
         d2 = wt.bzrdir.clone('target')
-        self.assertEqual(wt.branch.repository.revision_store.get('A', 
-                            'sig').read(),
-                         d2.open_repository().revision_store.get('A', 
-                            'sig').read())
+        self.assertEqual(wt.branch.repository.get_signature_text('A'),
+                         d2.open_repository().get_signature_text('A'))
 
     def test_nicks(self):
         """Branch nicknames"""

@@ -730,23 +730,28 @@ class Weave(VersionedFile):
         # no lines outside of insertion blocks, that deletions are
         # properly paired, etc.
 
-    def _join(self, other, pb, msg, version_ids):
+    def _join(self, other, pb, msg, version_ids, ignore_missing):
         """Worker routine for join()."""
         if not other.versions():
             return          # nothing to update, easy
 
         if version_ids:
             for version_id in version_ids:
-                if not self.has_version(version_id):
+                if not self.has_version(version_id) and not ignore_missing:
                     raise RevisionNotPresent(version_id, self._weave_name)
-        assert version_ids == None
+        else:
+            version_ids = other.versions()
 
         # two loops so that we do not change ourselves before verifying it
         # will be ok
         # work through in index order to make sure we get all dependencies
         names_to_join = []
         processed = 0
-        for other_idx, name in enumerate(other._names):
+        version_ids = set(other.versions()).intersection(set(version_ids))
+        pending_graph = [(version, other.get_parents(version)) for
+                         version in version_ids]
+        for name in topo_sort(pending_graph):
+            other_idx = other._name_map[name]
             self._check_version_consistent(other, other_idx, name)
             sha1 = other._sha1s[other_idx]
 
@@ -893,9 +898,10 @@ class WeaveFile(Weave):
         """See VersionedFile.get_suffixes()."""
         return [WeaveFile.WEAVE_SUFFIX]
 
-    def join(self, other, pb=None, msg=None, version_ids=None):
+    def join(self, other, pb=None, msg=None, version_ids=None,
+             ignore_missing=False):
         """Join other into self and save."""
-        super(WeaveFile, self).join(other, pb, msg, version_ids)
+        super(WeaveFile, self).join(other, pb, msg, version_ids, ignore_missing)
         self._save()
 
 
@@ -1221,10 +1227,10 @@ class InterWeave(InterVersionedFile):
         except AttributeError:
             return False
 
-    def join(self, pb=None, msg=None, version_ids=None):
+    def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
         try:
-            self.target._join(self.source, pb, msg, version_ids)
+            self.target._join(self.source, pb, msg, version_ids, ignore_missing)
         except errors.WeaveParentMismatch:
             self.target._reweave(self.source, pb, msg)
 

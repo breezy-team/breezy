@@ -829,13 +829,20 @@ class InterKnit(InterVersionedFile):
         except AttributeError:
             return False
 
-    def join(self, pb=None, msg=None, version_ids=None):
+    def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
         assert isinstance(self.source, KnitVersionedFile)
         assert isinstance(self.target, KnitVersionedFile)
 
         if version_ids is None:
             version_ids = self.source.versions()
+        else:
+            if not ignore_missing:
+                self.source._check_versions_present(version_ids)
+            else:
+                version_ids = set(self.source.versions()).intersection(
+                    set(version_ids))
+
         if not version_ids:
             return 0
 

@@ -163,10 +163,10 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         
     def test_fetch_preserves_signatures(self):
         from_repo = self.bzrdir.open_repository()
-        from_signature = from_repo.revision_store.get('rev2', 'sig').read()
+        from_signature = from_repo.get_signature_text('rev2')
         to_repo = self.make_to_repository('target')
         to_repo.fetch(from_repo)
-        to_signature = to_repo.revision_store.get('rev2', 'sig').read()
+        to_signature = to_repo.get_signature_text('rev2')
         self.assertEqual(from_signature, to_signature)
 
 

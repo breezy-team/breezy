@@ -170,15 +170,22 @@ class VersionedFile(object):
     def annotate(self, version_id):
         return list(self.annotate_iter(version_id))
 
-    def join(self, other, pb=None, msg=None, version_ids=None):
+    def join(self, other, pb=None, msg=None, version_ids=None,
+             ignore_missing=False):
         """Integrate versions from other into this versioned file.
 
         If version_ids is None all versions from other should be
         incorporated into this versioned file.
 
         Must raise RevisionNotPresent if any of the specified versions
-        are not present in the other files history."""
-        return InterVersionedFile.get(other, self).join(pb, msg, version_ids)
+        are not present in the other files history unless ignore_missing
+        is supplied when they are silently skipped.
+        """
+        return InterVersionedFile.get(other, self).join(
+            pb,
+            msg,
+            version_ids,
+            ignore_missing)
 
     def walk(self, version_ids=None):
         """Walk the versioned file as a weave-like structure, for
@@ -312,14 +319,15 @@ class InterVersionedFile(InterObject):
     _optimisers = set()
     """The available optimised InterVersionedFile types."""
 
-    def join(self, pb=None, msg=None, version_ids=None):
+    def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """Integrate versions from self.source into self.target.
 
         If version_ids is None all versions from source should be
         incorporated into this versioned file.
 
         Must raise RevisionNotPresent if any of the specified versions
-        are not present in the other files history.
+        are not present in the other files history unless ignore_missing is 
+        supplied when they are silently skipped.
         """
         # the default join: 
         # - make a temporary versioned file of type target
@@ -335,7 +343,11 @@ class InterVersionedFile(InterObject):
                                   self.source.get_lines(version))
         
         # this should hit the native code path for target
-        return self.target.join(temp_source, pb, msg, version_ids)
+        return self.target.join(temp_source,
+                                pb,
+                                msg,
+                                version_ids,
+                                ignore_missing)
 
 
 class InterVersionedFileTestProviderAdapter(object):

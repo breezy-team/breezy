@@ -230,5 +230,8 @@ class VersionedFileStore(TransportStore):
         if pb:
             pb.clear()
 
+    def total_size(self):
+        count, bytes =  super(VersionedFileStore, self).total_size()
+        return (count / len(self._versionedfile_class.get_suffixes())), bytes
 
 WeaveStore = VersionedFileStore
