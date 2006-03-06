@@ -129,6 +129,9 @@ from bzrlib.rio import RioWriter, read_stanza, Stanza
 # TODO: Some kind of callback run while polling a lock to show progress
 # indicators.
 
+# TODO: Make sure to pass the right file and directory mode bits to all
+# files/dirs created.
+
 _DEFAULT_TIMEOUT_SECONDS = 300
 _DEFAULT_POLL_SECONDS = 0.5
 
@@ -137,7 +140,7 @@ class LockDir(object):
 
     __INFO_NAME = '/info'
 
-    def __init__(self, transport, path):
+    def __init__(self, transport, path, file_modebits=0644, dir_modebits=0755):
         """Create a new LockDir object.
 
         The LockDir is initially unlocked - this just creates the object.
@@ -155,6 +158,9 @@ class LockDir(object):
         self._fake_read_lock = False
         self._held_dir = path + '/held'
         self._held_info_path = self._held_dir + self.__INFO_NAME
+        self._base_exists = False
+        self._file_modebits = file_modebits
+        self._dir_modebits = dir_modebits
         self.nonce = rand_chars(20)
 
     def __repr__(self):
@@ -173,10 +179,13 @@ class LockDir(object):
         if self.transport.is_readonly():
             raise UnlockableTransport(self.transport)
         self.transport.mkdir(self.path)
+        self._base_exists = True
 
     def _create_if_needed(self):
         # XXX: remove this in favour of creating the lock when the containing
         # directory is built
+        if self._base_exists:
+            return
         if not self.transport.has(self.path):
             self.create()
 

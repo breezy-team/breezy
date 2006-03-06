@@ -84,7 +84,9 @@ class LockableFiles(object):
             warn("LockableFiles: lock_class is now a mandatory parameter",
                  DeprecationWarning, stacklevel=2)
             lock_class = TransportLock
-        self._lock = lock_class(transport, esc_name)
+        self._lock = lock_class(transport, esc_name, 
+                                file_modebits=self._file_mode,
+                                dir_modebits=self._dir_mode)
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
@@ -267,9 +269,11 @@ class TransportLock(object):
     This is suitable for use only in WorkingTrees (which are at present
     always local).
     """
-    def __init__(self, transport, escaped_name):
+    def __init__(self, transport, escaped_name, file_modebits, dir_modebits):
         self._transport = transport
         self._escaped_name = escaped_name
+        self._file_modebits = file_modebits
+        self._dir_modebits = dir_modebits
 
     def lock_write(self):
         self._lock = self._transport.lock_write(self._escaped_name)
@@ -281,5 +285,7 @@ class TransportLock(object):
         self._lock.unlock()
         self._lock = None
 
-    # TODO: for old locks we have to manually create the file the first time
-    # it's used; this should be here too.
+    def create(self):
+        """Create lock mechanism"""
+        # for old-style locks, create the file now
+        self._transport.put(lock_file, StringIO(), mode=self._file_modebits)
