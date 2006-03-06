@@ -109,6 +109,9 @@ class PyCurlTransport(HttpTransportBase):
         return sio
 
     def _set_curl_cache_headers(self):
+        # There's no way in http/1.0 to say "must revalidate"; we don't want
+        # to force it to always retrieve.  so just turn off the default Pragma
+        # provided by Curl.
         headers = ['Cache-control: must-revalidate',
                    'Pragma:']
         self.curl.setopt(pycurl.HTTPHEADER, headers)
