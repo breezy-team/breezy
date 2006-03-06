@@ -835,6 +835,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     merger.backup_files = backup_files
     merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids
+    merger.ignore_zero = ignore_zero
     if interesting_files:
         assert not interesting_ids, ('Only supply interesting_ids'
                                      ' or interesting_files')
