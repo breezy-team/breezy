@@ -40,6 +40,12 @@ class TestAll(TestCaseWithTransport):
         self.transaction = PassThroughTransaction()
 
     def test_add_has_get(self):
+        rev = self.add_sample_rev()
+        self.assertTrue(self.store.has_revision_id('A', self.transaction))
+        rev2 = self.store.get_revision('A', self.transaction)
+        self.assertEqual(rev, rev2)
+
+    def add_sample_rev(self):
         rev = Revision(timestamp=0,
                        timezone=None,
                        committer="Foo Bar <foo@example.com>",
@@ -47,9 +53,7 @@ class TestAll(TestCaseWithTransport):
                        inventory_sha1='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
                        revision_id='A')
         self.store.add_revision(rev, self.transaction)
-        self.assertTrue(self.store.has_revision_id('A', self.transaction))
-        rev2 = self.store.get_revision('A', self.transaction)
-        self.assertEqual(rev, rev2)
+        return rev
 
     def test_has_missing(self):
         # has of a non present id -> False
@@ -73,3 +77,14 @@ class TestAll(TestCaseWithTransport):
                           'B',
                           'foo\nbar',
                           self.transaction)
+
+    def test_total_size(self):
+        # we get a revision count and a numeric size figure from total_size().
+        count, bytes = self.store.total_size(self.transaction)
+        self.assertEqual(0, count)
+        self.assertEqual(0, bytes)
+        self.add_sample_rev()
+        count, bytes = self.store.total_size(self.transaction)
+        self.assertEqual(1, count)
+        self.assertNotEqual(0, bytes)
+        

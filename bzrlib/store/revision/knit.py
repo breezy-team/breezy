@@ -69,7 +69,7 @@ class KnitRevisionStore(RevisionStore):
         """See RevisionStore.get_revision()."""
         xml = self._get_revision_xml(revision_id, transaction)
         try:
-            r = bzrlib.xml5.serializer_v5.read_revision_from_string(xml)
+            r = self._serializer.read_revision_from_string(xml)
         except SyntaxError, e:
             raise errors.BzrError('failed to unpack revision_xml',
                                    [revision_id,
@@ -91,3 +91,7 @@ class KnitRevisionStore(RevisionStore):
         """True if the store contains revision_id."""
         return (revision_id is None
                 or self.get_revision_file(transaction).has_version(revision_id))
+        
+    def total_size(self, transaction):
+        """ See RevisionStore.total_size()."""
+        return self.versioned_file_store.total_size()

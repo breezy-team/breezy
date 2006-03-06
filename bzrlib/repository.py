@@ -715,7 +715,8 @@ class RepositoryFormat(object):
                             control_files,
                             name,
                             compressed=True,
-                            prefixed=False):
+                            prefixed=False,
+                            serializer=None):
         """Common logic for getting a revision store for a repository.
         
         see self._get_revision_store for the subclass-overridable method to 
@@ -729,8 +730,7 @@ class RepositoryFormat(object):
                               compressed=compressed,
                               dir_mode=dir_mode,
                               file_mode=file_mode)
-        text_store.register_suffix('sig')
-        revision_store = TextRevisionStore(text_store)
+        revision_store = TextRevisionStore(text_store, serializer)
         return revision_store
 
     def _get_versioned_file_store(self,
@@ -897,9 +897,11 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
     
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
+        from bzrlib.xml4 import serializer_v4
         return self._get_text_rev_store(repo_transport,
                                         control_files,
-                                        'revision-store')
+                                        'revision-store',
+                                        serializer=serializer_v4)
 
     def _get_text_store(self, transport, control_files):
         """See RepositoryFormat._get_text_store()."""

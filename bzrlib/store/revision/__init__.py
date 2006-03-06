@@ -74,6 +74,11 @@ class RevisionStoreTestProviderAdapter(object):
 class RevisionStore(object):
     """A revision store stores revisions."""
 
+    def __init__(self, serializer=None):
+        if serializer is None:
+            serializer = bzrlib.xml5.serializer_v5
+        self._serializer = serializer
+
     def add_revision(self, revision, transaction):
         """Add revision to the revision store.
 
@@ -81,7 +86,7 @@ class RevisionStore(object):
         """
         # serialisation : common to all at the moment.
         rev_tmp = StringIO()
-        bzrlib.xml5.serializer_v5.write_revision(revision, rev_tmp)
+        self._serializer.write_revision(revision, rev_tmp)
         rev_tmp.seek(0)
         self._add_revision(revision, rev_tmp, transaction)
         mutter('added revision_id {%s}', revision.revision_id)
@@ -95,7 +100,7 @@ class RevisionStore(object):
         if not self.has_revision_id(revision_id, transaction):
             raise errors.NoSuchRevision(self, revision_id)
         self._add_revision_signature_text(revision_id, signature_text, transaction)
-            
+
     def _add_revision_signature_text(self, revision_id, signature_text, transaction):
         """Install signature_text for revision_id. 
         
@@ -110,3 +115,10 @@ class RevisionStore(object):
     def has_revision_id(self, revision_id, transaction):
         """True if the store contains revision_id."""
         raise NotImplementedError(self.has_revision_id)
+
+    def total_size(self, transaction):
+        """How big is the store?
+
+        :return: (count, bytes) tuple.
+        """
+        raise NotImplementedError(self.total_size)

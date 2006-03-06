@@ -36,6 +36,7 @@ from bzrlib.osutils import (
                             sha_strings,
                             sha_string,
                             )
+from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
 from bzrlib.symbol_versioning import *
@@ -1338,16 +1339,14 @@ class ConvertBzrDir4To5(Converter):
         self.bzrdir.transport.mkdir('revision-store')
         revision_transport = self.bzrdir.transport.clone('revision-store')
         # TODO permissions
-        revision_store = TextStore(revision_transport,
-                                   prefixed=False,
-                                   compressed=True)
+        _revision_store = TextRevisionStore(TextStore(revision_transport,
+                                                      prefixed=False,
+                                                      compressed=True))
         try:
+            transaction = bzrlib.transactions.PassThroughTransaction()
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update('write revision', i, len(self.converted_revs))
-                rev_tmp = StringIO()
-                serializer_v5.write_revision(self.revisions[rev_id], rev_tmp)
-                rev_tmp.seek(0)
-                revision_store.add(rev_tmp, rev_id)
+                _revision_store.add_revision(self.revisions[rev_id], transaction)
         finally:
             self.pb.clear()
             
@@ -1366,8 +1365,8 @@ class ConvertBzrDir4To5(Converter):
                          rev_id)
             self.absent_revisions.add(rev_id)
         else:
-            rev_xml = self.branch.repository.revision_store.get(rev_id).read()
-            rev = serializer_v4.read_revision_from_string(rev_xml)
+            rev = self.branch.repository._revision_store.get_revision(rev_id,
+                self.branch.repository.get_transaction())
             for parent_id in rev.parent_ids:
                 self.known_revisions.add(parent_id)
                 self.to_read.append(parent_id)
@@ -1411,10 +1410,9 @@ class ConvertBzrDir4To5(Converter):
                     (file_id, rev.revision_id)
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
         new_inv_sha1 = sha_string(new_inv_xml)
-        self.inv_weave.add(rev.revision_id, 
-                           present_parents,
-                           new_inv_xml.splitlines(True),
-                           new_inv_sha1)
+        self.inv_weave.add_lines(rev.revision_id, 
+                                 present_parents,
+                                 new_inv_xml.splitlines(True))
         rev.inventory_sha1 = new_inv_sha1
 
     def _convert_revision_contents(self, rev, inv, present_parents):

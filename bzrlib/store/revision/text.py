@@ -51,12 +51,12 @@ class TextRevisionStoreTestFactory(object):
 class TextRevisionStore(RevisionStore):
     """A RevisionStore layering on a TextStore and Inventory weave store."""
 
-    def __init__(self, text_store):
+    def __init__(self, text_store, serializer=None):
         """Create a TextRevisionStore object.
 
         :param text_store: the text store to put serialised revisions into.
         """
-        super(TextRevisionStore, self).__init__()
+        super(TextRevisionStore, self).__init__(serializer)
         self.text_store = text_store
         self.text_store.register_suffix('sig')
 
@@ -72,7 +72,7 @@ class TextRevisionStore(RevisionStore):
         """See RevisionStore.get_revision()."""
         xml_file = self._get_revision_xml_file(revision_id)
         try:
-            r = bzrlib.xml5.serializer_v5.read_revision(xml_file)
+            r = self._serializer.read_revision(xml_file)
         except SyntaxError, e:
             raise errors.BzrError('failed to unpack revision_xml',
                                    [revision_id,
@@ -91,3 +91,7 @@ class TextRevisionStore(RevisionStore):
         """True if the store contains revision_id."""
         return (revision_id is None
                 or self.text_store.has_id(revision_id))
+        
+    def total_size(self, transaction):
+        """ See RevisionStore.total_size()."""
+        return self.text_store.total_size()
