@@ -13,7 +13,7 @@ def test_remove(filename):
         print '* file does not exist: %r' % filename
 
 
-def uncommit(branch, dry_run=False, verbose=False, revno=None):
+def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
     """Remove the last revision from the supplied branch.
 
     :param dry_run: Don't actually change anything
@@ -38,6 +38,8 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None):
     # once we have removed at least one, all the rest are invalid.
     if not dry_run:
         new_rev_history.commit()
+        if tree is not None:
+            tree.set_last_revision(branch.last_revision())
     else:
         new_rev_history.abort()
 

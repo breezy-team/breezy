@@ -1,11 +1,28 @@
-# (C) 2005 Canonical
+# Copyright (C) 2005, 2006 Canonical
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 # FIXME: This test should be repeated for each available http client
 # implementation; at the moment we have urllib and pycurl.
 
+import bzrlib
 from bzrlib.tests import TestCase
 from bzrlib.transport.http import extract_auth
 from bzrlib.transport.http._urllib import HttpTransport
+from bzrlib.transport.http._pycurl import PyCurlTransport
+from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 
 class FakeManager (object):
     def __init__(self):
@@ -14,7 +31,7 @@ class FakeManager (object):
     def add_password(self, realm, host, username, password):
         self.credentials.append([realm, host, username, password])
 
-        
+
 class TestHttpUrls(TestCase):
     def test_url_parsing(self):
         f = FakeManager()
@@ -55,3 +72,46 @@ class TestHttpUrls(TestCase):
         eq = self.assertEqualDiff
         eq(t.abspath('.bzr/tree-version'),
            'http://bzr.ozlabs.org/.bzr/tree-version')
+
+
+class TestHttpConnections(TestCaseWithWebserver):
+
+    _transport = HttpTransport
+
+    def setUp(self):
+        super(TestHttpConnections, self).setUp()
+        self.build_tree(['xxx', 'foo/', 'foo/bar'], line_endings='binary')
+
+    def test_http_has(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertEqual(t.has('foo/bar'), True)
+        self.assertEqual(len(server.logs), 1)
+        self.assertContainsRe(server.logs[0], 
+            r'"HEAD /foo/bar HTTP/1.." (200|302) - "-" "bzr/')
+
+    def test_http_has_not_found(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        self.assertEqual(t.has('not-found'), False)
+        self.assertContainsRe(server.logs[1], 
+            r'"HEAD /not-found HTTP/1.." 404 - "-" "bzr/')
+
+    def test_http_get(self):
+        server = self.get_readonly_server()
+        t = self._transport(server.get_url())
+        fp = t.get('foo/bar')
+        self.assertEqualDiff(
+            fp.read(),
+            'contents of foo/bar\n')
+        self.assertEqual(len(server.logs), 1)
+        self.assertTrue(server.logs[0].find(
+            '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s' % bzrlib.__version__) > -1)
+
+
+class TestHttpConnections_pycurl(TestHttpConnections):
+    _transport = PyCurlTransport
+
+    def setUp(self):
+        super(TestHttpConnections_pycurl, self).setUp()
+

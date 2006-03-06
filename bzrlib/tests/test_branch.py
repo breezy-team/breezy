@@ -16,7 +16,7 @@
 
 """Tests for the Branch facility that are not interface  tests.
 
-For interface tests see test_branch_implementations.py.
+For interface tests see tests/branch_implementations/*.py.
 
 For concrete class tests see this file, and for meta-branch tests
 also see this file.
@@ -24,33 +24,35 @@ also see this file.
 
 from StringIO import StringIO
 
-import bzrlib.branch as branch
+import bzrlib.branch
+import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
 
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 
 class TestDefaultFormat(TestCase):
 
-    def test_get_set_default_initializer(self):
-        old_initializer = branch.Branch.get_default_initializer()
-        # default is BzrBranch._initialize
-        self.assertEqual(branch.BzrBranch._initialize, old_initializer)
-        def recorder(url):
-            return "a branch %s" % url
-        branch.Branch.set_default_initializer(recorder)
+    def test_get_set_default_format(self):
+        old_format = bzrlib.branch.BranchFormat.get_default_format()
+        # default is 5
+        self.assertTrue(isinstance(old_format, bzrlib.branch.BzrBranchFormat5))
+        bzrlib.branch.BranchFormat.set_default_format(SampleBranchFormat())
         try:
-            b = branch.Branch.create("memory:/")
-            self.assertEqual("a branch memory:/", b)
+            # the default branch format is used by the meta dir format
+            # which is not the default bzrdir format at this point
+            dir = bzrdir.BzrDirMetaFormat1().initialize('memory:/')
+            result = dir.create_branch()
+            self.assertEqual(result, 'A branch')
         finally:
-            branch.Branch.set_default_initializer(old_initializer)
-        self.assertEqual(old_initializer, branch.Branch.get_default_initializer())
+            bzrlib.branch.BranchFormat.set_default_format(old_format)
+        self.assertEqual(old_format, bzrlib.branch.BranchFormat.get_default_format())
 
 
-class SampleBranchFormat(branch.BzrBranchFormat):
+class SampleBranchFormat(bzrlib.branch.BranchFormat):
     """A sample format
 
     this format is initializable, unsupported to aid in testing the 
@@ -61,21 +63,20 @@ class SampleBranchFormat(branch.BzrBranchFormat):
         """See BzrBranchFormat.get_format_string()."""
         return "Sample branch format."
 
-    def initialize(self, url):
+    def initialize(self, a_bzrdir):
         """Format 4 branches cannot be created."""
-        t = get_transport(url)
-        t.mkdir('.bzr')
-        t.put('.bzr/branch-format', StringIO(self.get_format_string()))
+        t = a_bzrdir.get_branch_transport(self)
+        t.put('format', StringIO(self.get_format_string()))
         return 'A branch'
 
     def is_supported(self):
         return False
 
-    def open(self, transport):
+    def open(self, transport, _found=False):
         return "opened branch."
 
 
-class TestBzrBranchFormat(TestCaseInTempDir):
+class TestBzrBranchFormat(TestCaseWithTransport):
     """Tests for the BzrBranchFormat facility."""
 
     def test_find_format(self):
@@ -84,38 +85,55 @@ class TestBzrBranchFormat(TestCaseInTempDir):
         # this is not quite the same as 
         self.build_tree(["foo/", "bar/"])
         def check_format(format, url):
-            format.initialize(url)
-            t = get_transport(url)
-            found_format = branch.BzrBranchFormat.find_format(t)
+            dir = format._matchingbzrdir.initialize(url)
+            dir.create_repository()
+            format.initialize(dir)
+            found_format = bzrlib.branch.BranchFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
-        check_format(branch.BzrBranchFormat5(), "foo")
-        check_format(branch.BzrBranchFormat6(), "bar")
+        check_format(bzrlib.branch.BzrBranchFormat5(), "bar")
         
     def test_find_format_not_branch(self):
+        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         self.assertRaises(NotBranchError,
-                          branch.BzrBranchFormat.find_format,
-                          get_transport('.'))
+                          bzrlib.branch.BranchFormat.find_format,
+                          dir)
 
     def test_find_format_unknown_format(self):
-        t = get_transport('.')
-        t.mkdir('.bzr')
-        t.put('.bzr/branch-format', StringIO())
+        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        SampleBranchFormat().initialize(dir)
         self.assertRaises(UnknownFormatError,
-                          branch.BzrBranchFormat.find_format,
-                          get_transport('.'))
+                          bzrlib.branch.BranchFormat.find_format,
+                          dir)
 
     def test_register_unregister_format(self):
         format = SampleBranchFormat()
+        # make a control dir
+        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         # make a branch
-        format.initialize('.')
+        format.initialize(dir)
         # register a format for it.
-        branch.BzrBranchFormat.register_format(format)
+        bzrlib.branch.BranchFormat.register_format(format)
         # which branch.Open will refuse (not supported)
-        self.assertRaises(UnsupportedFormatError, branch.Branch.open, '.')
+        self.assertRaises(UnsupportedFormatError, bzrlib.branch.Branch.open, self.get_url())
         # but open_downlevel will work
-        t = get_transport('.')
-        self.assertEqual(format.open(t), branch.Branch.open_downlevel('.'))
+        self.assertEqual(format.open(dir), bzrdir.BzrDir.open(self.get_url()).open_branch(unsupported=True))
         # unregister the format
-        branch.BzrBranchFormat.unregister_format(format)
-        # now open_downlevel should fail too.
-        self.assertRaises(UnknownFormatError, branch.Branch.open_downlevel, '.')
+        bzrlib.branch.BranchFormat.unregister_format(format)
+
+
+class TestBranchReference(TestCaseWithTransport):
+    """Tests for the branch reference facility."""
+
+    def test_create_open_reference(self):
+        bzrdirformat = bzrdir.BzrDirMetaFormat1()
+        t = get_transport(self.get_url('.'))
+        t.mkdir('repo')
+        dir = bzrdirformat.initialize(self.get_url('repo'))
+        dir.create_repository()
+        target_branch = dir.create_branch()
+        t.mkdir('branch')
+        branch_dir = bzrdirformat.initialize(self.get_url('branch'))
+        made_branch = bzrlib.branch.BranchReferenceFormat().initialize(branch_dir, target_branch)
+        self.assertEqual(made_branch.base, target_branch.base)
+        opened_branch = branch_dir.open_branch()
+        self.assertEqual(opened_branch.base, target_branch.base)

@@ -20,6 +20,7 @@
 
 from StringIO import StringIO
 
+import bzrlib
 from bzrlib.trace import mutter
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError,
@@ -102,6 +103,9 @@ class PyCurlTransport(HttpTransportBase):
         headers = ['Cache-control: must-revalidate',
                    'Pragma:']
         ## curl.setopt(pycurl.VERBOSE, 1)
+        # TODO: maybe show a summary of the pycurl version
+        ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__) 
+        curl.setopt(pycurl.USERAGENT, ua_str)
         curl.setopt(pycurl.HTTPHEADER, headers)
         curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
 

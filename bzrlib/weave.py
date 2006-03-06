@@ -279,6 +279,8 @@ class Weave(object):
 
         # if we abort after here the (in-memory) weave will be corrupt because only
         # some fields are updated
+        # XXX: FIXME implement a succeed-or-fail of the rest of this routine.
+        #      - Robert Collins 20060226
         self._parents.append(parents[:])
         self._sha1s.append(sha1)
         self._names.append(name)
@@ -318,7 +320,7 @@ class Weave(object):
         # another small special case: a merge, producing the same text
         # as auto-merge
         if text == basis_lines:
-            return new_version            
+            return new_version
 
         # add a sentinal, because we can also match against the final line
         basis_lineno.append(len(self._weave))
@@ -746,7 +748,7 @@ class Weave(object):
 
 
 
-    def weave_merge(self, plan):
+    def weave_merge(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
         lines_a = []
         lines_b = []
         ch_a = ch_b = False
@@ -768,11 +770,11 @@ class Weave(object):
                 elif lines_a == lines_b:
                     for l in lines_a: yield l
                 else:
-                    yield '<<<<<<<\n'
+                    yield a_marker
                     for l in lines_a: yield l
                     yield '=======\n'
                     for l in lines_b: yield l
-                    yield '>>>>>>>\n'
+                    yield b_marker
 
                 del lines_a[:]
                 del lines_b[:]
@@ -819,20 +821,10 @@ class Weave(object):
         # two loops so that we do not change ourselves before verifying it
         # will be ok
         # work through in index order to make sure we get all dependencies
+        names_to_join = []
+        processed = 0
         for other_idx, name in enumerate(other._names):
             self._check_version_consistent(other, other_idx, name)
-
-        if pb and not msg:
-            msg = 'weave join'
-
-        merged = 0
-        processed = 0
-        time0 = time.time( )
-        for other_idx, name in enumerate(other._names):
-            # TODO: If all the parents of the other version are already
-            # present then we can avoid some work by just taking the delta
-            # and adjusting the offsets.
-            new_parents = self._imported_parents(other, other_idx)
             sha1 = other._sha1s[other_idx]
 
             processed += 1
@@ -844,18 +836,30 @@ class Weave(object):
                 if sha1 ==  self._sha1s[idx] and n1 == n2:
                         continue
 
-            if pb:
-                pb.update(msg, other_idx, len(other._names))
-           
+            names_to_join.append((other_idx, name))
+
+        if pb and not msg:
+            msg = 'weave join'
+
+        merged = 0
+        time0 = time.time( )
+        for other_idx, name in names_to_join:
+            # TODO: If all the parents of the other version are already
+            # present then we can avoid some work by just taking the delta
+            # and adjusting the offsets.
+            new_parents = self._imported_parents(other, other_idx)
+            sha1 = other._sha1s[other_idx]
+
             merged += 1
+
+            if pb:
+                pb.update(msg, merged, len(names_to_join))
+           
             lines = other.get_lines(other_idx)
             self.add(name, new_parents, lines, sha1)
 
         mutter("merged = %d, processed = %d, file_id=%s; deltat=%d"%(
-                merged,processed,self._weave_name, time.time( )-time0))
-
-
-
+                merged, processed, self._weave_name, time.time( )-time0))
  
     def _imported_parents(self, other, other_idx):
         """Return list of parents in self corresponding to indexes in other."""

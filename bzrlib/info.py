@@ -16,9 +16,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+__all__ = ['show_bzrdir_info']
+
 import time
 
+
+import bzrlib.diff as diff
+from bzrlib.missing import find_unmerged
 from bzrlib.osutils import format_date
+from bzrlib.symbol_versioning import *
 
 
 def _countiter(it):
@@ -29,12 +35,13 @@ def _countiter(it):
     return i        
 
 
-
+@deprecated_function(zero_eight)
 def show_info(b):
-    import diff
-    
-    print 'branch format:', b.control_files.get_utf8(
-        'branch-format').readline().rstrip('\n')
+    """Please see show_bzrdir_info."""
+    return show_bzrdir_info(b.bzrdir)
+
+def show_bzrdir_info(a_bzrdir):
+    """Output to stdout the 'info' for a_bzrdir."""
 
     def plural(n, base='', pl=None):
         if n == 1:
@@ -44,14 +51,46 @@ def show_info(b):
         else:
             return 's'
 
+    working = a_bzrdir.open_workingtree()
+    b = a_bzrdir.open_branch()
+    
+    if working.bzrdir != b.bzrdir:
+        print 'working tree format:', working._format
+        print 'branch location:', b.bzrdir.root_transport.base
+    try:
+        b._format.get_format_string()
+        format = b._format
+    except NotImplementedError:
+        format = b.bzrdir._format
+    print 'branch format:', format
+
+    if b.get_bound_location():
+        print 'bound to branch:',  b.get_bound_location()
+
     count_version_dirs = 0
 
-    basis = b.basis_tree()
-    working = b.working_tree()
+    basis = working.basis_tree()
     work_inv = working.inventory
     delta = diff.compare_trees(basis, working, want_unchanged=True)
+    history = b.revision_history()
     
     print
+    # Try with inaccessible branch ?
+    master = b.get_master_branch()
+    if master:
+        local_extra, remote_extra = find_unmerged(b, b.get_master_branch())
+        if remote_extra:
+            print 'Branch is out of date: missing %d revision%s.' % (
+                len(remote_extra), plural(len(remote_extra)))
+
+    if len(history) and working.last_revision() != history[-1]:
+        try:
+            missing_count = len(history) - history.index(working.last_revision())
+        except ValueError:
+            # consider it all out of date
+            missing_count = len(history)
+        print 'Working tree is out of date: missing %d revision%s.' % (
+            missing_count, plural(missing_count))
     print 'in the working tree:'
     print '  %8s unchanged' % len(delta.unchanged)
     print '  %8d modified' % len(delta.modified)
@@ -79,7 +118,6 @@ def show_info(b):
 
     print
     print 'branch history:'
-    history = b.revision_history()
     revno = len(history)
     print '  %8d revision%s' % (revno, plural(revno))
     committers = {}
@@ -106,7 +144,7 @@ def show_info(b):
     print
     print 'revision store:'
     c, t = b.repository.revision_store.total_size()
-    print '  %8d revisions' % c
+    print '  %8d revision%s' % (c, plural(c))
     print '  %8d kB' % (t/1024)
 
 

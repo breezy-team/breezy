@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,48 +23,78 @@ import bzrlib.errors as errors
 from bzrlib.errors import LockError, ReadOnlyError
 from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.symbol_versioning import *
-from bzrlib.symbol_versioning import deprecated_method, zero_eight
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
 
+# XXX: The tracking here of lock counts and whether the lock is held is
+# somewhat redundant with what's done in LockDir; the main difference is that
+# LockableFiles permits reentrancy.
 
 class LockableFiles(object):
-    """Object representing a set of files locked within the same scope
+    """Object representing a set of related files locked within the same scope.
 
-    _lock_mode
-        None, or 'r' or 'w'
+    These files are used by a WorkingTree, Repository or Branch, and should
+    generally only be touched by that object.
 
-    _lock_count
-        If _lock_mode is true, a positive count of the number of times the
-        lock has been taken *by this process*.  Others may have compatible 
-        read locks.
+    LockableFiles also provides some policy on top of Transport for encoding
+    control files as utf-8.
 
-    _lock
-        Lock object from bzrlib.lock.
+    LockableFiles manage a lock count and can be locked repeatedly by
+    a single caller.  (The underlying lock implementation generally does not
+    support this.)
+
+    Instances of this class are often called control_files.
+    
+    This object builds on top of a Transport, which is used to actually write
+    the files to disk, and an OSLock or LockDir, which controls how access to
+    the files is controlled.  The particular type of locking used is set when
+    the object is constructed.  In older formats OSLocks are used everywhere.
+    in newer formats a LockDir is used for Repositories and Branches, and 
+    OSLocks for the local filesystem.
     """
 
-    _lock_mode = None
-    _lock_count = None
-    _lock = None
+    # _lock_mode: None, or 'r' or 'w'
+
+    # _lock_count: If _lock_mode is true, a positive count of the number of
+    # times the lock has been taken *by this process*.   
+    
     # If set to False (by a plugin, etc) BzrBranch will not set the
     # mode on created files or directories
     _set_file_mode = True
     _set_dir_mode = True
 
-    def __init__(self, transport, lock_name):
+    def __init__(self, transport, lock_name, lock_class):
+        """Create a LockableFiles group
+
+        :param transport: Transport pointing to the directory holding the 
+            control files and lock.
+        :param lock_name: Name of the lock guarding these files.
+        :param lock_class: Class of lock strategy to use: typically
+            either LockDir or TransportLock.
+        """
         object.__init__(self)
         self._transport = transport
         self.lock_name = lock_name
         self._transaction = None
         self._find_modes()
+        self._lock_mode = None
+        self._lock_count = 0
+        esc_name = self._escape(lock_name)
+        self._lock = lock_class(transport, esc_name, 
+                                file_modebits=self._file_mode,
+                                dir_modebits=self._dir_mode)
 
-    def __del__(self):
-        if self._lock_mode or self._lock:
-            # XXX: This should show something every time, and be suitable for
-            # headless operation and embedding
-            from warnings import warn
-            warn("file group %r was not explicitly unlocked" % self)
-            self._lock.unlock()
+    def create_lock(self):
+        """Create the lock.
+
+        This should normally be called only when the LockableFiles directory
+        is first created on disk.
+        """
+        self._lock.create()
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__,
+                           self._transport)
 
     def _escape(self, file_or_path):
         if not isinstance(file_or_path, basestring):
@@ -108,7 +138,7 @@ class LockableFiles(object):
         """
 
         relpath = self._escape(file_or_path)
-        #TODO: codecs.open() buffers linewise, so it was overloaded with
+        # TODO: codecs.open() buffers linewise, so it was overloaded with
         # a much larger buffer, do we need to do the same for getreader/getwriter?
         if mode == 'rb': 
             return self.get(relpath)
@@ -162,30 +192,27 @@ class LockableFiles(object):
         self.put(path, StringIO(a_string.encode('utf-8')))
 
     def lock_write(self):
-        mutter("lock write: %s (%s)", self, self._lock_count)
+        # mutter("lock write: %s (%s)", self, self._lock_count)
         # TODO: Upgrade locking to support using a Transport,
         # and potentially a remote locking protocol
         if self._lock_mode:
             if self._lock_mode != 'w':
-                raise ReadOnlyError("can't upgrade to a write lock from %r" %
-                                self._lock_mode)
+                raise ReadOnlyError(self)
             self._lock_count += 1
         else:
-            self._lock = self._transport.lock_write(
-                    self._escape(self.lock_name))
+            self._lock.lock_write()
             self._lock_mode = 'w'
             self._lock_count = 1
             self._set_transaction(transactions.PassThroughTransaction())
 
     def lock_read(self):
-        mutter("lock read: %s (%s)", self, self._lock_count)
+        # mutter("lock read: %s (%s)", self, self._lock_count)
         if self._lock_mode:
             assert self._lock_mode in ('r', 'w'), \
                    "invalid lock mode %r" % self._lock_mode
             self._lock_count += 1
         else:
-            self._lock = self._transport.lock_read(
-                    self._escape(self.lock_name))
+            self._lock.lock_read()
             self._lock_mode = 'r'
             self._lock_count = 1
             self._set_transaction(transactions.ReadOnlyTransaction())
@@ -193,17 +220,19 @@ class LockableFiles(object):
             self.get_transaction().set_cache_size(5000)
                         
     def unlock(self):
-        mutter("unlock: %s (%s)", self, self._lock_count)
+        # mutter("unlock: %s (%s)", self, self._lock_count)
         if not self._lock_mode:
-            raise LockError('branch %r is not locked' % (self))
-
+            raise errors.LockNotHeld(self)
         if self._lock_count > 1:
             self._lock_count -= 1
         else:
             self._finish_transaction()
             self._lock.unlock()
-            self._lock = None
             self._lock_mode = self._lock_count = None
+
+    def is_locked(self):
+        """Return true if this LockableFiles group is locked"""
+        return self._lock_count >= 1
 
     def get_transaction(self):
         """Return the current active transaction.
@@ -231,3 +260,37 @@ class LockableFiles(object):
         transaction = self._transaction
         self._transaction = None
         transaction.finish()
+
+
+class TransportLock(object):
+    """Locking method which uses transport-dependent locks.
+
+    On the local filesystem these transform into OS-managed locks.
+
+    These do not guard against concurrent access via different
+    transports.
+
+    This is suitable for use only in WorkingTrees (which are at present
+    always local).
+    """
+    def __init__(self, transport, escaped_name, file_modebits, dir_modebits):
+        self._transport = transport
+        self._escaped_name = escaped_name
+        self._file_modebits = file_modebits
+        self._dir_modebits = dir_modebits
+
+    def lock_write(self):
+        self._lock = self._transport.lock_write(self._escaped_name)
+
+    def lock_read(self):
+        self._lock = self._transport.lock_read(self._escaped_name)
+
+    def unlock(self):
+        self._lock.unlock()
+        self._lock = None
+
+    def create(self):
+        """Create lock mechanism"""
+        # for old-style locks, create the file now
+        self._transport.put(self._escaped_name, StringIO(), 
+                            mode=self._file_modebits)

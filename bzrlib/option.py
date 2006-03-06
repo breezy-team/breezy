@@ -161,6 +161,7 @@ _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally')
 _global_option('basis', type=str)
+_global_option('bound')
 _global_option('diff-options', type=str)
 _global_option('help',
                help='show help message')
@@ -179,14 +180,16 @@ _global_option('show-ids',
 _global_option('timezone', 
                type=str,
                help='display timezone as local, original, or utc')
+_global_option('unbound')
 _global_option('verbose',
                help='display more information')
 _global_option('version')
 _global_option('email')
 _global_option('update')
-_global_option('long', help='Use detailed log format')
-_global_option('short', help='Use moderately short log format')
-_global_option('line', help='Use log format with one line per revision')
+_global_option('log-format', type=str, help="Use this log format")
+_global_option('long', help='Use detailed log format. Same as --log-format long')
+_global_option('short', help='Use moderately short log format. Same as --log-format short')
+_global_option('line', help='Use log format with one line per revision. Same as --log-format line')
 _global_option('root', type=str)
 _global_option('no-backup')
 _global_option('merge-type', type=_parse_merge_type)

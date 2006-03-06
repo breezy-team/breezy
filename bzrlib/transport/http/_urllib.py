@@ -16,11 +16,24 @@
 
 import urllib, urllib2
 
+import bzrlib  # for the version
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError)
+
+
+class Request(urllib2.Request):
+    """Request object for urllib2 that allows the method to be overridden."""
+
+    method = None
+
+    def get_method(self):
+        if self.method is not None:
+            return self.method
+        else:
+            return urllib2.Request.get_method(self)
 
 
 class HttpTransport(HttpTransportBase):
@@ -33,14 +46,17 @@ class HttpTransport(HttpTransportBase):
         """Set the base path where files will be stored."""
         super(HttpTransport, self).__init__(base)
 
-    def _get_url(self, url):
+    def _get_url(self, url, method=None):
         mutter("get_url %s" % url)
         manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
         url = extract_auth(url, manager)
         auth_handler = urllib2.HTTPBasicAuthHandler(manager)
         opener = urllib2.build_opener(auth_handler)
-        url_f = opener.open(url)
-        return url_f
+        request = Request(url)
+        request.method = method
+        request.add_header('User-Agent', 'bzr/%s' % bzrlib.__version__)
+        response = opener.open(request)
+        return response
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -49,19 +65,11 @@ class HttpTransport(HttpTransportBase):
 
     def has(self, relpath):
         """Does the target location exist?
-
-        TODO: HttpTransport.has() should use a HEAD request,
-        not a full GET request.
-
-        TODO: This should be changed so that we don't use
-        urllib2 and get an exception, the code path would be
-        cleaner if we just do an http HEAD request, and parse
-        the return code.
         """
         path = relpath
         try:
             path = self.abspath(relpath)
-            f = self._get_url(path)
+            f = self._get_url(path, 'HEAD')
             # Without the read and then close()
             # we tend to have busy sockets.
             f.read()

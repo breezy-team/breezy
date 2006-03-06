@@ -100,7 +100,7 @@ class Check(object):
     def report_results(self, verbose):
         note('checked branch %s format %s',
              self.branch.base, 
-             self.branch._branch_format)
+             self.branch._format)
 
         note('%6d revisions', self.checked_rev_cnt)
         note('%6d unique file texts', self.checked_text_cnt)
@@ -169,7 +169,7 @@ class Check(object):
                     self.missing_parent_links[parent] = missing_links
                     # list based so somewhat slow,
                     # TODO have a planned_revisions list and set.
-                    if self.branch.has_revision(parent):
+                    if self.branch.repository.has_revision(parent):
                         missing_ancestry = self.repository.get_ancestry(parent)
                         for missing in missing_ancestry:
                             if (missing is not None 

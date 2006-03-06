@@ -25,35 +25,36 @@ interface later, they will be non blackbox tests.
 
 
 from cStringIO import StringIO
-from os import mkdir
+from os import mkdir, chdir
 from tempfile import TemporaryFile
 import codecs
 
-from bzrlib.clone import copy_branch
-from bzrlib.branch import Branch
+import bzrlib.branch
 from bzrlib.builtins import merge
+import bzrlib.bzrdir as bzrdir
+from bzrlib.osutils import pathjoin
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib.status import show_status
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.status import show_tree_status
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class BranchStatus(TestCaseInTempDir):
+class BranchStatus(TestCaseWithTransport):
     
     def test_branch_status(self): 
         """Test basic branch status"""
-        wt = WorkingTree.create_standalone('.')
+        wt = self.make_branch_and_tree('.')
         b = wt.branch
 
         # status with nothing
         tof = StringIO()
-        show_status(b, to_file=tof)
+        show_tree_status(wt, to_file=tof)
         self.assertEquals(tof.getvalue(), "")
 
         tof = StringIO()
         self.build_tree(['hello.c', 'bye.c'])
         wt.add_pending_merge('pending@pending-0-0')
-        show_status(b, to_file=tof)
+        show_tree_status(wt, to_file=tof)
         tof.seek(0)
         self.assertEquals(tof.readlines(),
                           ['unknown:\n',
@@ -65,7 +66,7 @@ class BranchStatus(TestCaseInTempDir):
 
     def test_branch_status_revisions(self):
         """Tests branch status with revisions"""
-        wt = WorkingTree.create_standalone('.')
+        wt = self.make_branch_and_tree('.')
         b = wt.branch
 
         tof = StringIO()
@@ -78,7 +79,7 @@ class BranchStatus(TestCaseInTempDir):
         revs =[]
         revs.append(RevisionSpec(0))
         
-        show_status(b, to_file=tof, revision=revs)
+        show_tree_status(wt, to_file=tof, revision=revs)
         
         tof.seek(0)
         self.assertEquals(tof.readlines(),
@@ -93,7 +94,7 @@ class BranchStatus(TestCaseInTempDir):
         tof = StringIO()
         revs.append(RevisionSpec(1))
         
-        show_status(b, to_file=tof, revision=revs)
+        show_tree_status(wt, to_file=tof, revision=revs)
         
         tof.seek(0)
         self.assertEquals(tof.readlines(),
@@ -101,39 +102,41 @@ class BranchStatus(TestCaseInTempDir):
                            '  bye.c\n',
                            '  hello.c\n'])
 
-    def status_string(self, branch):
+    def status_string(self, wt):
         # use a real file rather than StringIO because it doesn't handle
         # Unicode very well.
         tof = codecs.getwriter('utf-8')(TemporaryFile())
-        show_status(branch, to_file=tof)
+        show_tree_status(wt, to_file=tof)
         tof.seek(0)
         return tof.read().decode('utf-8')
 
     def test_pending(self):
         """Pending merges display works, including Unicode"""
         mkdir("./branch")
-        wt = WorkingTree.create_standalone('branch')
+        wt = self.make_branch_and_tree('branch')
         b = wt.branch
         wt.commit("Empty commit 1")
-        b_2 = b.clone('./copy')
+        b_2_dir = b.bzrdir.sprout('./copy')
+        b_2 = b_2_dir.open_branch()
+        wt2 = b_2_dir.open_workingtree()
         wt.commit(u"\N{TIBETAN DIGIT TWO} Empty commit 2")
         merge(["./branch", -1], [None, None], this_dir = './copy')
-        message = self.status_string(b_2)
+        message = self.status_string(wt2)
         self.assert_(message.startswith("pending merges:\n"))
         self.assert_(message.endswith("Empty commit 2\n")) 
-        b_2.working_tree().commit("merged")
+        wt2.commit("merged")
         # must be long to make sure we see elipsis at the end
-        b.working_tree().commit("Empty commit 3 " + 
-                                "blah blah blah blah " * 10)
+        wt.commit("Empty commit 3 " + 
+                   "blah blah blah blah " * 10)
         merge(["./branch", -1], [None, None], this_dir = './copy')
-        message = self.status_string(b_2)
+        message = self.status_string(wt2)
         self.assert_(message.startswith("pending merges:\n"))
         self.assert_("Empty commit 3" in message)
         self.assert_(message.endswith("...\n")) 
 
     def test_branch_status_specific_files(self): 
         """Tests branch status with given specific files"""
-        wt = WorkingTree.create_standalone('.')
+        wt = self.make_branch_and_tree('.')
         b = wt.branch
 
         self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
@@ -142,7 +145,7 @@ class BranchStatus(TestCaseInTempDir):
         wt.commit('testing')
         
         tof = StringIO()
-        show_status(b, to_file=tof)
+        show_tree_status(wt, to_file=tof)
         tof.seek(0)
         self.assertEquals(tof.readlines(),
                           ['unknown:\n',
@@ -152,7 +155,8 @@ class BranchStatus(TestCaseInTempDir):
                            ])
 
         tof = StringIO()
-        show_status(b, specific_files=['bye.c','test.c','absent.c'], to_file=tof)
+        show_tree_status(wt, specific_files=['bye.c','test.c','absent.c'], 
+                         to_file=tof)
         tof.seek(0)
         self.assertEquals(tof.readlines(),
                           ['unknown:\n',
@@ -160,16 +164,53 @@ class BranchStatus(TestCaseInTempDir):
                            ])
         
         tof = StringIO()
-        show_status(b, specific_files=['directory'], to_file=tof)
+        show_tree_status(wt, specific_files=['directory'], to_file=tof)
         tof.seek(0)
         self.assertEquals(tof.readlines(),
                           ['unknown:\n',
                            '  directory/hello.c\n'
                            ])
         tof = StringIO()
-        show_status(b, specific_files=['dir2'], to_file=tof)
+        show_tree_status(wt, specific_files=['dir2'], to_file=tof)
         tof.seek(0)
         self.assertEquals(tof.readlines(),
                           ['unknown:\n',
                            '  dir2\n'
                            ])
+
+class CheckoutStatus(BranchStatus):
+
+    def setUp(self):
+        super(CheckoutStatus, self).setUp()
+        mkdir('codir')
+        chdir('codir')
+        
+    def make_branch_and_tree(self, relpath):
+        source = self.make_branch(pathjoin('..', relpath))
+        checkout = bzrdir.BzrDirMetaFormat1().initialize(relpath)
+        bzrlib.branch.BranchReferenceFormat().initialize(checkout, source)
+        return checkout.create_workingtree()
+
+
+class TestStatus(TestCaseWithTransport):
+
+    def test_status(self):
+        self.run_bzr("init")
+        self.build_tree(['hello.txt'])
+        result = self.run_bzr("status")[0]
+        self.assert_("unknown:\n  hello.txt\n" in result, result)
+        self.run_bzr("add", "hello.txt")
+        result = self.run_bzr("status")[0]
+        self.assert_("added:\n  hello.txt\n" in result, result)
+        self.run_bzr("commit", "-m", "added")
+        result = self.run_bzr("status", "-r", "0..1")[0]
+        self.assert_("added:\n  hello.txt\n" in result, result)
+        self.build_tree(['world.txt'])
+        result = self.run_bzr("status", "-r", "0")[0]
+        self.assert_("added:\n  hello.txt\n" \
+                     "unknown:\n  world.txt\n" in result, result)
+
+        result2 = self.run_bzr("status", "-r", "0..")[0]
+        self.assertEquals(result2, result)
+
+

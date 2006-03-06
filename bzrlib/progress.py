@@ -69,10 +69,11 @@ class _BaseProgressBar(object):
                  show_spinner=False,
                  show_eta=True,
                  show_bar=True,
-                 show_count=True):
+                 show_count=True,
+                 to_messages_file=sys.stdout):
         object.__init__(self)
         self.to_file = to_file
- 
+        self.to_messages_file = to_messages_file
         self.last_msg = None
         self.last_cnt = None
         self.last_total = None
@@ -82,6 +83,11 @@ class _BaseProgressBar(object):
         self.show_bar = show_bar
         self.show_count = show_count
 
+    def note(self, fmt_string, *args, **kwargs):
+        """Record a note without disrupting the progress bar."""
+        self.clear()
+        self.to_messages_file.write(fmt_string % args)
+        self.to_messages_file.write('\n')
 
 
 class DummyProgress(_BaseProgressBar):
@@ -98,7 +104,10 @@ class DummyProgress(_BaseProgressBar):
     def clear(self):
         pass
         
-    
+    def note(self, fmt_string, *args, **kwargs):
+        """See _BaseProgressBar.note()."""
+
+
 class DotsProgressBar(_BaseProgressBar):
     def __init__(self, **kwargs):
         _BaseProgressBar.__init__(self, **kwargs)
@@ -186,13 +195,14 @@ class TTYProgressBar(_BaseProgressBar):
             
         if current_cnt > total_cnt:
             total_cnt = current_cnt
-
+        
+        old_msg = self.last_msg
         # save these for the tick() function
         self.last_msg = msg
         self.last_cnt = current_cnt
         self.last_total = total_cnt
             
-        if self.throttle():
+        if old_msg == self.last_msg and self.throttle():
             return 
         
         if self.show_eta and self.start_time and total_cnt:
@@ -255,11 +265,9 @@ class TTYProgressBar(_BaseProgressBar):
         self.to_file.write('\r' + m.ljust(self.width - 1))
         #self.to_file.flush()
             
-
     def clear(self):        
         self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
         #self.to_file.flush()        
-    
 
         
 def str_tdelta(delt):

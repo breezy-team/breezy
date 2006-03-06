@@ -115,7 +115,7 @@ class SimpleLogTest(TestCaseWithTransport):
         # no entries yet
         eq(lf.logs, [])
 
-        b.working_tree().commit('empty commit')
+        wt.commit('empty commit')
         lf = LogCatcher()
         show_log(b, lf, verbose=True)
         eq(len(lf.logs), 1)
@@ -126,8 +126,8 @@ class SimpleLogTest(TestCaseWithTransport):
         self.checkDelta(d)
 
         self.build_tree(['hello'])
-        b.working_tree().add('hello')
-        b.working_tree().commit('add one file')
+        wt.add('hello')
+        wt.commit('add one file')
 
         lf = StringIO()
         # log using regular thing
@@ -155,7 +155,7 @@ class SimpleLogTest(TestCaseWithTransport):
         # commit a log message with control characters
         msg = "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)])
         self.log("original commit message: %r", msg)
-        b.working_tree().commit(msg)
+        wt.commit(msg)
         lf = LogCatcher()
         show_log(b, lf, verbose=True)
         committed_msg = lf.logs[0].rev.message
@@ -170,7 +170,7 @@ class SimpleLogTest(TestCaseWithTransport):
         # valid XML 1.0 characters.
         msg = "\x09" + ''.join([unichr(x) for x in range(0x20, 256)])
         self.log("original commit message: %r", msg)
-        b.working_tree().commit(msg)
+        wt.commit(msg)
         lf = LogCatcher()
         show_log(b, lf, verbose=True)
         committed_msg = lf.logs[0].rev.message
@@ -181,7 +181,6 @@ class SimpleLogTest(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         b.nick='test'
-        wt = b.working_tree()
         open('a', 'wb').write('hello moto\n')
         wt.add('a')
         wt.commit('simple log message', rev_id='a1'

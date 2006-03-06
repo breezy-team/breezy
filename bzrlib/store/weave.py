@@ -1,5 +1,3 @@
-#! /usr/bin/python
-
 # Copyright (C) 2005 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
@@ -67,12 +65,14 @@ class WeaveStore(TransportStore):
         return self._transport.get(self.filename(file_id))
 
     def _put(self, file_id, f):
-        if self._prefixed:
-            try:
-                self._transport.mkdir(hash_prefix(file_id), mode=self._dir_mode)
-            except FileExists:
-                pass
-        return self._transport.put(self.filename(file_id), f, mode=self._file_mode)
+        # less round trips to mkdir on failure than mkdir always
+        try:
+            return self._transport.put(self.filename(file_id), f, mode=self._file_mode)
+        except NoSuchFile:
+            if not self._prefixed:
+                raise
+            self._transport.mkdir(hash_prefix(file_id), mode=self._dir_mode)
+            return self._transport.put(self.filename(file_id), f, mode=self._file_mode)
 
     def get_weave(self, file_id, transaction):
         weave = transaction.map.find_weave(file_id)
@@ -162,8 +162,12 @@ class WeaveStore(TransportStore):
         w.add_identical(old_rev_id, new_rev_id, parent_idxs)
         self.put_weave(file_id, w, transaction)
      
-    def copy_multi(self, from_store, file_ids):
+    def copy_multi(self, from_store, file_ids, pb=None):
         assert isinstance(from_store, WeaveStore)
-        for f in file_ids:
+        for count, f in enumerate(file_ids):
             mutter("copy weave {%s} into %s", f, self)
+            if pb:
+                pb.update('copy', count, len(file_ids))
             self._put(f, from_store._get(f))
+        if pb:
+            pb.clear()

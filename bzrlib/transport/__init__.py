@@ -151,6 +151,8 @@ class Transport(object):
                 raise errors.FileExists(path, extra=e)
             if e.errno == errno.EACCES:
                 raise errors.PermissionDenied(path, extra=e)
+            if e.errno == errno.ENOTEMPTY:
+                raise errors.DirectoryNotEmpty(path, extra=e)
         if raise_generic:
             raise errors.TransportError(orig_error=e)
 
@@ -267,6 +269,8 @@ class Transport(object):
 
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree.
+
+        *NOTE*: This only lists *files*, not subdirectories!
         
         As with other listing functions, only some transports implement this,.
         you may check via is_listable to determine if it will.
@@ -402,8 +406,30 @@ class Transport(object):
                     files.append(path)
         source.copy_to(files, target)
 
+    def rename(self, rel_from, rel_to):
+        """Rename a file or directory.
+
+        This *must* fail if the destination is a nonempty directory - it must
+        not automatically remove it.  It should raise DirectoryNotEmpty, or
+        some other PathError if the case can't be specifically detected.
+
+        If the destination is an empty directory or a file this function may
+        either fail or succeed, depending on the underlying transport.  It
+        should not attempt to remove the destination if overwriting is not the
+        native transport behaviour.  If at all possible the transport should
+        ensure that the rename either completes or not, without leaving the
+        destination deleted and the new file not moved in place.
+
+        This is intended mainly for use in implementing LockDir.
+        """
+        # transports may need to override this
+        raise NotImplementedError(self.rename)
+
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to.
+
+        The destination is deleted if possible, even if it's a non-empty
+        directory tree.
         
         If a transport can directly implement this it is suggested that
         it do so for efficiency.
@@ -465,6 +491,9 @@ class Transport(object):
         for dir in pending_rmdirs:
             subtree.rmdir(dir)
         self.rmdir(relpath)
+
+    def __repr__(self):
+        return "<%s.%s url=%s>" % (self.__module__, self.__class__.__name__, self.base)
 
     def stat(self, relpath):
         """Return the stat information for a file.
@@ -658,5 +687,5 @@ register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTrans
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
-register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
+register_lazy_transport('memory:/', 'bzrlib.transport.memory', 'MemoryTransport')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')

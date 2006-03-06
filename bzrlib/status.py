@@ -15,21 +15,65 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import sys
-from bzrlib.osutils import is_inside_any
+
 from bzrlib.delta import compare_trees
-from bzrlib.log import line_log
 from bzrlib.errors import NoSuchRevision
+from bzrlib.log import line_log
+from bzrlib.osutils import is_inside_any
+from bzrlib.symbol_versioning import *
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
 
 
+@deprecated_function(zero_eight)
 def show_status(branch, show_unchanged=False,
                 specific_files=None,
                 show_ids=False,
                 to_file=None,
                 show_pending=True,
                 revision=None):
+    """Display summary of changes.
+
+    Please use show_tree_status instead.
+
+    By default this compares the working tree to a previous revision. 
+    If the revision argument is given, summarizes changes between the 
+    working tree and another, or between two revisions.
+
+    The result is written out as Unicode and to_file should be able 
+    to encode that.
+
+    show_unchanged
+        If set, includes unchanged files.
+
+    specific_files
+        If set, only show the status of files in this list.
+
+    show_ids
+        If set, includes each file's id.
+
+    to_file
+        If set, write to this file (default stdout.)
+
+    show_pending
+        If set, write pending merges.
+
+    revision
+        If None the compare latest revision with working tree
+        If one revision show compared it with working tree.
+        If two revisions show status between first and second.
+    """
+    show_tree_status(branch.bzrdir.open_workingtree(), show_unchanged, 
+                     specific_files, show_ids, to_file, show_pending, revision)
+
+
+def show_tree_status(wt, show_unchanged=False,
+                     specific_files=None,
+                     show_ids=False,
+                     to_file=None,
+                     show_pending=True,
+                     revision=None):
     """Display summary of changes.
 
     By default this compares the working tree to a previous revision. 
@@ -62,32 +106,30 @@ def show_status(branch, show_unchanged=False,
     if to_file == None:
         to_file = sys.stdout
     
-    branch.lock_read()
+    wt.lock_read()
     try:
         new_is_working_tree = True
         if revision is None:
-            old = branch.basis_tree()
-            new = branch.working_tree()
+            new = wt
+            old = new.basis_tree()
         elif len(revision) > 0:
             try:
-                rev_id = revision[0].in_history(branch).rev_id
-                old = branch.repository.revision_tree(rev_id)
+                rev_id = revision[0].in_history(wt.branch).rev_id
+                old = wt.branch.repository.revision_tree(rev_id)
             except NoSuchRevision, e:
                 raise BzrCommandError(str(e))
-            if len(revision) > 1:
+            if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
-                    rev_id = revision[1].in_history(branch).rev_id
-                    new = branch.repository.revision_tree(rev_id)
+                    rev_id = revision[1].in_history(wt.branch).rev_id
+                    new = wt.branch.repository.revision_tree(rev_id)
                     new_is_working_tree = False
                 except NoSuchRevision, e:
                     raise BzrCommandError(str(e))
             else:
-                new = branch.working_tree()
+                new = wt
                 
-
         delta = compare_trees(old, new, want_unchanged=show_unchanged,
                               specific_files=specific_files)
-
         delta.show(to_file,
                    show_ids=show_ids,
                    show_unchanged=show_unchanged)
@@ -98,7 +140,7 @@ def show_status(branch, show_unchanged=False,
         if new_is_working_tree and show_pending:
             show_pending_merges(new, to_file)
     finally:
-        branch.unlock()
+        wt.unlock()
 
 def show_pending_merges(new, to_file):
     """Write out a display of pending merges in a working tree."""
