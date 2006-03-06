@@ -3,4 +3,6 @@
 # 
 
  * test weave.walk with a version_ids list that is a subset.
+   this is for fileid_involved performance
 
+ * make knits ghost aware.
