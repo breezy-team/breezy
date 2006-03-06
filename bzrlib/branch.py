@@ -47,7 +47,7 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoWorkingTree)
 import bzrlib.inventory as inventory
 from bzrlib.inventory import Inventory
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.osutils import (isdir, quotefn,
                             rename, splitpath, sha_file,
                             file_kind, abspath, normpath, pathjoin,
@@ -579,7 +579,9 @@ class BzrBranchFormat4(BranchFormat):
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        control_files = LockableFiles(branch_transport, 'branch-lock')
+        control_files = LockableFiles(branch_transport, 'branch-lock',
+                                      TransportLock)
+        control_files.create_lock()
         control_files.lock_write()
         try:
             for file, content in utf8_files:
@@ -629,9 +631,8 @@ class BzrBranchFormat5(BranchFormat):
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        lock_file = 'lock'
-        branch_transport.put(lock_file, StringIO()) # TODO get the file mode from the bzrdir lock files., mode=file_mode)
-        control_files = LockableFiles(branch_transport, 'lock')
+        control_files = LockableFiles(branch_transport, 'lock', TransportLock)
+        control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
         try:
@@ -655,7 +656,7 @@ class BzrBranchFormat5(BranchFormat):
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
         transport = a_bzrdir.get_branch_transport(None)
-        control_files = LockableFiles(transport, 'lock')
+        control_files = LockableFiles(transport, 'lock', TransportLock)
         return BzrBranch(_format=self,
                          _control_files=control_files,
                          a_bzrdir=a_bzrdir,

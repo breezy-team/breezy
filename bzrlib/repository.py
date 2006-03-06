@@ -794,6 +794,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         # NB: no need to escape relative paths that are url safe.
         control_files = LockableFiles(a_bzrdir.transport, 'branch-lock',
                                       TransportLock)
+        control_files.create_lock()
         control_files.lock_write()
         control_files._transport.mkdir_multi(dirs,
                 mode=control_files._dir_mode)

@@ -63,7 +63,7 @@ class LockableFiles(object):
     _set_file_mode = True
     _set_dir_mode = True
 
-    def __init__(self, transport, lock_name, lock_class=None):
+    def __init__(self, transport, lock_name, lock_class):
         """Create a LockableFiles group
 
         :param transport: Transport pointing to the directory holding the 
@@ -80,10 +80,6 @@ class LockableFiles(object):
         self._lock_mode = None
         self._lock_count = 0
         esc_name = self._escape(lock_name)
-        if lock_class is None:
-            warn("LockableFiles: lock_class is now a mandatory parameter",
-                 DeprecationWarning, stacklevel=2)
-            lock_class = TransportLock
         self._lock = lock_class(transport, esc_name, 
                                 file_modebits=self._file_mode,
                                 dir_modebits=self._dir_mode)

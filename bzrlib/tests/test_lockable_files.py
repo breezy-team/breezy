@@ -18,7 +18,7 @@ from StringIO import StringIO
 
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.transactions import PassThroughTransaction, ReadOnlyTransaction
@@ -99,9 +99,8 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
         transport = get_transport('.')
         transport.mkdir('.bzr')
         sub_transport = transport.clone('.bzr')
-        self.lockable = LockableFiles(sub_transport, 'my-lock')
+        self.lockable = LockableFiles(sub_transport, 'my-lock', TransportLock)
         self.lockable.create_lock()
-
         
 
 class TestLockableFiles_LockDir(TestCaseInTempDir,
