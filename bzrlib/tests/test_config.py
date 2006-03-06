@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (C) 2005 by Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
@@ -31,7 +30,7 @@ from bzrlib.tests import TestCase, TestCaseInTempDir
 
 sample_long_alias="log -r-15..-1 --line"
 sample_config_text = ("[DEFAULT]\n"
-                      u"email=Erik Bågfors <erik@bagfors.nu>\n"
+                      u"email=Erik B\u00e5gfors <erik@bagfors.nu>\n"
                       "editor=vim\n"
                       "gpg_signing_command=gnome-gpg\n"
                       "log_format=short\n"
@@ -308,7 +307,7 @@ class TestGlobalConfigItems(TestCase):
         config_file = StringIO(sample_config_text.encode('utf-8'))
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
-        self.assertEqual(u"Erik Bågfors <erik@bagfors.nu>",
+        self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
 
     def test_absent_user_id(self):
@@ -601,7 +600,7 @@ class TestBranchConfigItems(TestCase):
         config_file = StringIO(sample_config_text.encode('utf-8'))
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
-        self.assertEqual(u"Erik Bågfors <erik@bagfors.nu>",
+        self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
         branch.control_files.email = "John"
         self.assertEqual("John", my_config._get_user_id())
