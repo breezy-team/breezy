@@ -158,37 +158,6 @@ def __get_closest(intersection):
     return matches
 
 
-def old_common_ancestor(revision_a, revision_b, revision_source):
-    """Find the ancestor common to both revisions that is closest to both.
-    """
-    from bzrlib.trace import mutter
-    a_ancestors = find_present_ancestors(revision_a, revision_source)
-    b_ancestors = find_present_ancestors(revision_b, revision_source)
-    a_intersection = []
-    b_intersection = []
-    # a_order is used as a tie-breaker when two equally-good bases are found
-    for revision, (a_order, a_distance) in a_ancestors.iteritems():
-        if b_ancestors.has_key(revision):
-            a_intersection.append((a_distance, a_order, revision))
-            b_intersection.append((b_ancestors[revision][1], a_order, revision))
-    mutter("a intersection: %r", a_intersection)
-    mutter("b intersection: %r", b_intersection)
-
-    a_closest = __get_closest(a_intersection)
-    if len(a_closest) == 0:
-        return None
-    b_closest = __get_closest(b_intersection)
-    assert len(b_closest) != 0
-    mutter ("a_closest %r", a_closest)
-    mutter ("b_closest %r", b_closest)
-    if a_closest[0] in b_closest:
-        return a_closest[0]
-    elif b_closest[0] in a_closest:
-        return b_closest[0]
-    else:
-        raise bzrlib.errors.AmbiguousBase((a_closest[0], b_closest[0]))
-    return a_closest[0]
-
 def revision_graph(revision, revision_source):
     """Produce a graph of the ancestry of the specified revision.
     Return root, ancestors map, descendants map
@@ -199,6 +168,14 @@ def revision_graph(revision, revision_source):
     RBC: 20051024: note that when we have two partial histories, this may not
          be possible. But if we are willing to pretend :)... sure.
     """
+    revision_source.lock_read()
+    try:
+        return _revision_graph(revision, revision_source)
+    finally:
+        revision_source.unlock()
+
+def _revision_graph(revision, revision_source):
+    """See revision_graph."""
     ancestors = {}
     descendants = {}
     lines = [revision]
@@ -282,6 +259,8 @@ def combined_graph(revision_a, revision_b, revision_source):
 
 def common_ancestor(revision_a, revision_b, revision_source, 
                     pb=DummyProgress()):
+    if None in (revision_a, revision_b):
+        return None
     try:
         try:
             pb.update('Picking ancestor', 1, 3)
@@ -315,6 +294,14 @@ class MultipleRevisionSources(object):
             except bzrlib.errors.NoSuchRevision, e:
                 pass
         raise e
+
+    def lock_read(self):
+        for source in self._revision_sources:
+            source.lock_read()
+
+    def unlock(self):
+        for source in self._revision_sources:
+            source.unlock()
 
 def get_intervening_revisions(ancestor_id, rev_id, rev_source, 
                               revision_history=None):

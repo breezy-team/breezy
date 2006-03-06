@@ -22,6 +22,7 @@ import time
 
 
 import bzrlib.diff as diff
+from bzrlib.missing import find_unmerged
 from bzrlib.osutils import format_date
 from bzrlib.symbol_versioning import *
 
@@ -42,6 +43,14 @@ def show_info(b):
 def show_bzrdir_info(a_bzrdir):
     """Output to stdout the 'info' for a_bzrdir."""
 
+    def plural(n, base='', pl=None):
+        if n == 1:
+            return base
+        elif pl != None:
+            return pl
+        else:
+            return 's'
+
     working = a_bzrdir.open_workingtree()
     b = a_bzrdir.open_branch()
     
@@ -55,13 +64,8 @@ def show_bzrdir_info(a_bzrdir):
         format = b.bzrdir._format
     print 'branch format:', format
 
-    def plural(n, base='', pl=None):
-        if n == 1:
-            return base
-        elif pl != None:
-            return pl
-        else:
-            return 's'
+    if b.get_bound_location():
+        print 'bound to branch:',  b.get_bound_location()
 
     count_version_dirs = 0
 
@@ -71,6 +75,14 @@ def show_bzrdir_info(a_bzrdir):
     history = b.revision_history()
     
     print
+    # Try with inaccessible branch ?
+    master = b.get_master_branch()
+    if master:
+        local_extra, remote_extra = find_unmerged(b, b.get_master_branch())
+        if remote_extra:
+            print 'Branch is out of date: missing %d revision%s.' % (
+                len(remote_extra), plural(len(remote_extra)))
+
     if len(history) and working.last_revision() != history[-1]:
         try:
             missing_count = len(history) - history.index(working.last_revision())

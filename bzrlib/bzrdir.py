@@ -525,12 +525,7 @@ class BzrDir(object):
             source_branch.sprout(result, revision_id=revision_id)
         else:
             result.create_branch()
-        try:
-            self.open_workingtree().clone(result,
-                                          revision_id=revision_id, 
-                                          basis=basis_tree)
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            result.create_workingtree()
+        result.create_workingtree()
         return result
 
 
@@ -642,11 +637,8 @@ class BzrDirPreSplitOut(BzrDir):
             self.open_branch().sprout(result, revision_id=revision_id)
         except errors.NotBranchError:
             pass
-        try:
-            self.open_workingtree().clone(result, basis=basis_tree)
-        except (errors.NotBranchError, errors.NotLocalUrl):
-            # we always want a working tree
-            WorkingTreeFormat2().initialize(result)
+        # we always want a working tree
+        WorkingTreeFormat2().initialize(result)
         return result
 
 

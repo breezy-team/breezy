@@ -49,6 +49,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         d.create_branch()
         d.create_workingtree()
         self.run_bzr('checkout',
+                     '--lightweight',
                      self.get_url('current_format_branch'),
                      'current_format_checkout')
 

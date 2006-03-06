@@ -596,6 +596,7 @@ class cmd_branch(Command):
                 else:
                     raise
             try:
+                # preserve whatever source format we have.
                 dir = br_from.bzrdir.sprout(to_location, revision_id, basis_dir)
                 branch = dir.open_branch()
             except bzrlib.errors.NoSuchRevision:
@@ -604,7 +605,7 @@ class cmd_branch(Command):
                 raise BzrCommandError(msg)
             except bzrlib.errors.UnlistableBranch:
                 rmtree(to_location)
-                msg = "The branch %s cannot be used as a --basis"
+                msg = "The branch %s cannot be used as a --basis" % (basis,)
                 raise BzrCommandError(msg)
             if name:
                 branch.control_files.put_utf8('branch-name', name)
@@ -630,9 +631,18 @@ class cmd_checkout(Command):
     branch being checked out. [Not implemented yet.]
     """
     takes_args = ['branch_location', 'to_location?']
-    takes_options = ['revision'] # , 'basis']
+    takes_options = ['revision', # , 'basis']
+                     Option('lightweight',
+                            help="perform a lightweight checkout. Lightweight "
+                                 "checkouts depend on access to the branch for "
+                                 "every operation. Normal checkouts can perform "
+                                 "common operations like diff and status without "
+                                 "such access, and also support local commits."
+                            ),
+                     ]
 
-    def run(self, branch_location, to_location=None, revision=None, basis=None):
+    def run(self, branch_location, to_location=None, revision=None, basis=None,
+            lightweight=False):
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -656,9 +666,23 @@ class cmd_checkout(Command):
                                       to_location)
             else:
                 raise
-        checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
-        bzrlib.branch.BranchReferenceFormat().initialize(checkout, source)
-        checkout.create_workingtree(revision_id)
+        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            if lightweight:
+                checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
+                bzrlib.branch.BranchReferenceFormat().initialize(checkout, source)
+            else:
+                checkout_branch =  bzrlib.bzrdir.BzrDir.create_branch_convenience(
+                    to_location, force_new_tree=False)
+                checkout = checkout_branch.bzrdir
+                checkout_branch.bind(source)
+                if revision_id is not None:
+                    rh = checkout_branch.revision_history()
+                    checkout_branch.set_revision_history(rh[:rh.index(revision_id) + 1])
+            checkout.create_workingtree(revision_id)
+        finally:
+            bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
 
 
 class cmd_renames(Command):
@@ -685,8 +709,11 @@ class cmd_update(Command):
     """Update a tree to have the latest code committed to its branch.
     
     This will perform a merge into the working tree, and may generate
-    conflicts. If you have any uncommitted changes, you will still 
-    need to commit them after the update.
+    conflicts. If you have any local changes, you will still 
+    need to commit them after the update for the update to be complete.
+    
+    If you want to discard your local changes, you can just do a 
+    'bzr revert' instead of 'bzr commit' after the update.
     """
     takes_args = ['dir?']
 
@@ -695,8 +722,11 @@ class cmd_update(Command):
         tree.lock_write()
         try:
             if tree.last_revision() == tree.branch.last_revision():
-                note("Tree is up to date.")
-                return
+                # may be up to date, check master too.
+                master = tree.branch.get_master_branch()
+                if master is None or master.last_revision == tree.last_revision():
+                    note("Tree is up to date.")
+                    return
             conflicts = tree.update()
             note('Updated to revision %d.' %
                  (tree.branch.revision_id_to_revno(tree.last_revision()),))
@@ -1385,11 +1415,17 @@ class cmd_commit(Command):
                      Option('strict',
                             help="refuse to commit if there are unknown "
                             "files in the working tree."),
+                     Option('local',
+                            help="perform a local only commit in a bound "
+                                 "branch. Such commits are not pushed to "
+                                 "the master branch until a normal commit "
+                                 "is performed."
+                            ),
                      ]
     aliases = ['ci', 'checkin']
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
-            unchanged=False, strict=False):
+            unchanged=False, strict=False, local=False):
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
         from bzrlib.msgeditor import edit_commit_message, \
@@ -1406,6 +1442,8 @@ class cmd_commit(Command):
         # TODO: if the commit *does* happen to fail, then save the commit 
         # message to a temporary file where it can be recovered
         tree, selected_list = tree_files(selected_list)
+        if local and not tree.branch.get_bound_location():
+            raise errors.LocalRequiresBoundBranch()
         if message is None and not file:
             template = make_commit_message_template(tree, selected_list)
             message = edit_commit_message(template)
@@ -1424,7 +1462,7 @@ class cmd_commit(Command):
             
         try:
             tree.commit(message, specific_files=selected_list,
-                        allow_pointless=unchanged, strict=strict)
+                        allow_pointless=unchanged, strict=strict, local=local)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
@@ -1436,6 +1474,11 @@ class cmd_commit(Command):
         except StrictCommitFailed:
             raise BzrCommandError("Commit refused because there are unknown "
                                   "files in the working tree.")
+        except errors.BoundBranchOutOfDate, e:
+            raise BzrCommandError(str(e)
+                                  + ' Either unbind, update, or'
+                                    ' pass --local to commit.')
+
         note('Committed revision %d.' % (tree.branch.revno(),))
 
 
@@ -2120,6 +2163,41 @@ class cmd_re_sign(Command):
                                                gpg_strategy)
             else:
                 raise BzrCommandError('Please supply either one revision, or a range.')
+
+
+class cmd_bind(Command):
+    """Bind the current branch to a master branch.
+
+    After binding, commits must succeed on the master branch
+    before they are executed on the local one.
+    """
+
+    takes_args = ['location']
+    takes_options = []
+
+    def run(self, location=None):
+        b, relpath = Branch.open_containing(u'.')
+        b_other = Branch.open(location)
+        try:
+            b.bind(b_other)
+        except DivergedBranches:
+            raise BzrCommandError('These branches have diverged.'
+                                  ' Try merging, and then bind again.')
+
+
+class cmd_unbind(Command):
+    """Bind the current branch to its parent.
+
+    After unbinding, the local branch is considered independent.
+    """
+
+    takes_args = []
+    takes_options = []
+
+    def run(self):
+        b, relpath = Branch.open_containing(u'.')
+        if not b.unbind():
+            raise BzrCommandError('Local branch is not bound')
 
 
 class cmd_uncommit(bzrlib.commands.Command):
