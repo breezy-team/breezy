@@ -491,28 +491,4 @@ class TestRevert(TestCaseWithTransport):
         wt.revert([])
         self.assertEqual(len(wt.inventory), 1)
 
-    def test_merge_revert(self):
-        from bzrlib.merge import merge_inner
-        this = self.make_branch_and_tree('b1')
-        open('b1/a', 'wb').write('a test\n')
-        this.add('a')
-        open('b1/b', 'wb').write('b test\n')
-        this.add('b')
-        this.commit(message='')
-        base = this.bzrdir.clone('b2').open_workingtree()
-        open('b2/a', 'wb').write('b test\n')
-        other = this.bzrdir.clone('b3').open_workingtree()
-        open('b3/a', 'wb').write('c test\n')
-        open('b3/c', 'wb').write('c test\n')
-        other.add('c')
 
-        open('b1/b', 'wb').write('q test\n')
-        open('b1/d', 'wb').write('d test\n')
-        merge_inner(this.branch, other, base, this_tree=this)
-        self.assertNotEqual(open('b1/a', 'rb').read(), 'a test\n')
-        this.revert([])
-        self.assertEqual(open('b1/a', 'rb').read(), 'a test\n')
-        self.assertIs(os.path.exists('b1/b~'), True)
-        self.assertIs(os.path.exists('b1/c'), False)
-        self.assertIs(os.path.exists('b1/a~'), False)
-        self.assertIs(os.path.exists('b1/d'), True)
