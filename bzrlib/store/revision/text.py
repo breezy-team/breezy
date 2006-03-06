@@ -65,8 +65,8 @@ class TextRevisionStore(RevisionStore):
         """Template method helper to store revision in this store."""
         self.text_store.add(revision_as_file, revision.revision_id)
 
-    def _add_revision_signature_text(self, revision_id, signature_text, transaction):
-        """See RevisionStore._add_revision_signature_text()."""
+    def add_revision_signature_text(self, revision_id, signature_text, transaction):
+        """See RevisionStore.add_revision_signature_text()."""
         self.text_store.add(StringIO(signature_text), revision_id, "sig")
 
     def all_revision_ids(self, transaction):
@@ -103,6 +103,13 @@ class TextRevisionStore(RevisionStore):
             return self.text_store.get(revision_id)
         except (IndexError, KeyError):
             raise bzrlib.errors.NoSuchRevision(self, revision_id)
+
+    def _get_signature_text(self, revision_id, transaction):
+        """See RevisionStore._get_signature_text()."""
+        try:
+            return self.text_store.get(revision_id, suffix='sig').read()
+        except (IndexError, KeyError):
+            raise errors.NoSuchRevision(self, revision_id)
 
     def has_revision_id(self, revision_id, transaction):
         """True if the store contains revision_id."""

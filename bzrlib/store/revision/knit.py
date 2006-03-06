@@ -60,8 +60,8 @@ class KnitRevisionStore(RevisionStore):
             revision.parent_ids,
             revision_as_file.readlines())
 
-    def _add_revision_signature_text(self, revision_id, signature_text, transaction):
-        """See RevisionStore._add_revision_signature_text()."""
+    def add_revision_signature_text(self, revision_id, signature_text, transaction):
+        """See RevisionStore.add_revision_signature_text()."""
         self._get_signature_file(transaction).add_lines(
             revision_id, [], bzrlib.osutils.split_lines(signature_text))
 
@@ -95,6 +95,13 @@ class KnitRevisionStore(RevisionStore):
     def _get_signature_file(self, transaction):
         """Get the signature text versioned file object."""
         return self.versioned_file_store.get_weave_or_empty('signatures', transaction)
+
+    def _get_signature_text(self, revision_id, transaction):
+        """See RevisionStore._get_signature_text()."""
+        try:
+            return self._get_signature_file(transaction).get_text(revision_id)
+        except errors.RevisionNotPresent:
+            raise errors.NoSuchRevision(self, revision_id)
 
     def has_revision_id(self, revision_id, transaction):
         """True if the store contains revision_id."""

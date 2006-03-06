@@ -316,7 +316,7 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         repo.add_revision('the_ghost', rev)
         # check its setup usefully
         inv_weave = repo.get_inventory_weave()
-        self.assertEqual(['ghost'], map(inv_weave.idx_to_name, inv_weave.inclusions([inv_weave.lookup('ghost')])))
+        self.assertEqual(['ghost'], inv_weave.get_ancestry(['ghost']))
 
     def test_corrupt_revision_access_asserts(self):
         repo = repository.Repository.open('inventory_with_unnecessary_ghost')

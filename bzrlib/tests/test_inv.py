@@ -263,8 +263,9 @@ class TestSnapshot(TestCaseWithTransport):
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '2')
         # this should be a separate test probably, but lets check it once..
-        lines = self.branch.repository.weave_store.get_lines('fileid','2',
-            self.branch.get_transaction())
+        lines = self.branch.repository.weave_store.get_weave(
+            'fileid', 
+            self.branch.get_transaction()).get_lines('2')
         self.assertEqual(lines, ['contents of subdir/file\n'])
 
     def test_snapshot_unchanged(self):

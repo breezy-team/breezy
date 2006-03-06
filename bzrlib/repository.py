@@ -1340,8 +1340,8 @@ class InterWeaveRepo(InterRepository):
                 self.target.control_weaves.copy_multi(
                     self.source.control_weaves, ['inventory'],
                     from_transaction=self.source.get_transaction())
-                self.target.revision_store.copy_all_ids(
-                    self.source.revision_store,
+                self.target.revision_store._text_store.copy_all_ids(
+                    self.source._revision_store.text_store,
                     pb=pb)
             else:
                 self.target.fetch(self.source, revision_id=revision_id)

@@ -71,23 +71,37 @@ class TestAll(TestCaseWithTransport):
                           self.transaction)
 
     def test_add_signature_text_missing(self):
-        # add of a text signature for a missing revision -> NoSuchRevision
-        self.assertRaises(errors.NoSuchRevision,
-                          self.store.add_revision_signature_text,
-                          'B',
-                          'foo\nbar',
-                          self.transaction)
+        # add of a text signature for a missing revision must work, to allow
+        # revisions to be added after the signature.
+        self.store.add_revision_signature_text('A', 'foo\nbar', self.transaction)
+        # but must not be visible
         self.assertRaises(errors.NoSuchRevision,
                           self.store.has_signature,
-                          'B',
+                          'A',
                           self.transaction)
+        # at all
+        self.assertRaises(errors.NoSuchRevision,
+                          self.store.get_signature_text,
+                          'A',
+                          self.transaction)
+        # until the revision is added
+        self.add_sample_rev()
+        self.assertTrue(self.store.has_signature('A', self.transaction))
+        self.assertEqual('foo\nbar',
+                         self.store.get_signature_text('A', self.transaction))
     
     def test_add_signature_text(self):
         # add a signature to a existing revision works.
         self.add_sample_rev()
         self.assertFalse(self.store.has_signature('A', self.transaction))
+        self.assertRaises(errors.NoSuchRevision,
+                          self.store.get_signature_text,
+                          'A',
+                          self.transaction)
         self.store.add_revision_signature_text('A', 'foo\nbar', self.transaction)
         self.assertTrue(self.store.has_signature('A', self.transaction))
+        self.assertEqual('foo\nbar',
+                         self.store.get_signature_text('A', self.transaction))
 
     def test_total_size(self):
         # we get a revision count and a numeric size figure from total_size().

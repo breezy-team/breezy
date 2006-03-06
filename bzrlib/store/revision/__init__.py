@@ -97,19 +97,6 @@ class RevisionStore(object):
 
     def add_revision_signature_text(self, revision_id, signature_text, transaction):
         """Add signature_text as a signature for revision_id."""
-        self._guard_revision(revision_id, transaction)
-        self._add_revision_signature_text(revision_id, signature_text, transaction)
-
-    def _guard_revision(self, revision_id, transaction):
-        """Guard method for testing the presence of a revision."""
-        if not self.has_revision_id(revision_id, transaction):
-            raise errors.NoSuchRevision(self, revision_id)
-
-    def _add_revision_signature_text(self, revision_id, signature_text, transaction):
-        """Install signature_text for revision_id. 
-        
-        This is a worker method of the add_revision_signature_text method.
-        """
         raise NotImplementedError(self.add_revision_signature_text)
 
     def all_revision_ids(self, transaction):
@@ -122,6 +109,23 @@ class RevisionStore(object):
     def get_revision(self, revision_id, transaction):
         """Return the Revision object for a named revision."""
         raise NotImplementedError(self.get_revision)
+
+    def get_signature_text(self, revision_id, transaction):
+        """Get the signature text for the digital signature of revision_id.
+        
+        :return: a signature text.
+        """
+        self._guard_revision(revision_id, transaction)
+        return self._get_signature_text(revision_id, transaction)
+
+    def _get_signature_text(self, revision_id, transaction):
+        """Helper method for get_signature_text to return the text itself."""
+        raise NotImplementedError(self.get_signature_text)
+
+    def _guard_revision(self, revision_id, transaction):
+        """Guard method for testing the presence of a revision."""
+        if not self.has_revision_id(revision_id, transaction):
+            raise errors.NoSuchRevision(self, revision_id)
 
     def has_revision_id(self, revision_id, transaction):
         """True if the store contains revision_id."""
