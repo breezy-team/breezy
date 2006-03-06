@@ -90,6 +90,19 @@ class RevisionStore(object):
         """Template method helper to store revision in this store."""
         raise NotImplementedError(self._add_revision)
 
+    def add_revision_signature_text(self, revision_id, signature_text, transaction):
+        """Add signature_text as a signature for revision_id."""
+        if not self.has_revision_id(revision_id, transaction):
+            raise errors.NoSuchRevision(self, revision_id)
+        self._add_revision_signature_text(revision_id, signature_text, transaction)
+            
+    def _add_revision_signature_text(self, revision_id, signature_text, transaction):
+        """Install signature_text for revision_id. 
+        
+        This is a worker method of the add_revision_signature_text method.
+        """
+        raise NotImplementedError(self.add_revision_signature_text)
+
     def get_revision(self, revision_id, transaction):
         """Return the Revision object for a named revision."""
         raise NotImplementedError(self.get_revision)

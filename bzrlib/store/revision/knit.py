@@ -60,6 +60,11 @@ class KnitRevisionStore(RevisionStore):
             revision.parent_ids,
             revision_as_file.readlines())
 
+    def _add_revision_signature_text(self, revision_id, signature_text, transaction):
+        """See RevisionStore._add_revision_signature_text()."""
+        self._get_signature_file(transaction).add_lines(
+            revision_id, bzrlib.osutils.split_lines(signature_text))
+
     def get_revision(self, revision_id, transaction):
         """See RevisionStore.get_revision()."""
         xml = self._get_revision_xml(revision_id, transaction)

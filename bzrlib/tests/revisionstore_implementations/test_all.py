@@ -65,3 +65,11 @@ class TestAll(TestCaseWithTransport):
                           self.store.get_revision,
                           'B',
                           self.transaction)
+
+    def test_add_signature_text_missing(self):
+        # add of a text signature for a missing revision -> NoSuchRevision
+        self.assertRaises(errors.NoSuchRevision,
+                          self.store.add_revision_signature_text,
+                          'B',
+                          'foo\nbar',
+                          self.transaction)

@@ -20,6 +20,9 @@ requires access to a inventory weave to produce object graphs.
 """
 
 
+from cStringIO import StringIO
+
+
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.store.revision import RevisionStore
@@ -55,10 +58,15 @@ class TextRevisionStore(RevisionStore):
         """
         super(TextRevisionStore, self).__init__()
         self.text_store = text_store
+        self.text_store.register_suffix('sig')
 
     def _add_revision(self, revision, revision_as_file, transaction):
         """Template method helper to store revision in this store."""
         self.text_store.add(revision_as_file, revision.revision_id)
+
+    def _add_revision_signature_text(self, revision_id, signature_text, transaction):
+        """See RevisionStore._add_revision_signature_text()."""
+        self.text_store.add(StringIO(signature_text), revision_id, "sig")
 
     def get_revision(self, revision_id, transaction):
         """See RevisionStore.get_revision()."""
