@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,19 +18,15 @@ from StringIO import StringIO
 
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.transactions import PassThroughTransaction, ReadOnlyTransaction
 from bzrlib.transport import get_transport
 
-class TestLockableFiles(TestCaseInTempDir):
 
-    def setUp(self):
-        super(TestLockableFiles, self).setUp()
-        transport = get_transport('.')
-        transport.mkdir('.bzr')
-        transport.put('.bzr/my-lock', StringIO(''))
-        self.lockable = LockableFiles(transport.clone('.bzr'), 'my-lock')
+# these tests are applied in each parameterized suite for LockableFiles
+class _TestLockableFiles_mixin(object):
 
     def test_read_write(self):
         self.assertRaises(NoSuchFile, self.lockable.get, 'foo')
@@ -91,3 +87,49 @@ class TestLockableFiles(TestCaseInTempDir):
     def test__escape_empty(self):
         self.assertEqual('', self.lockable._escape(''))
 
+
+# This method of adapting tests to parameters is different to 
+# the TestProviderAdapters used elsewhere, but seems simpler for this 
+# case.  
+class TestLockableFiles_TransportLock(TestCaseInTempDir,
+                                      _TestLockableFiles_mixin):
+
+    def setUp(self):
+        super(TestLockableFiles_TransportLock, self).setUp()
+        transport = get_transport('.')
+        transport.mkdir('.bzr')
+        sub_transport = transport.clone('.bzr')
+        self.lockable = LockableFiles(sub_transport, 'my-lock', TransportLock)
+        self.lockable.create_lock()
+        
+
+class TestLockableFiles_LockDir(TestCaseInTempDir,
+                              _TestLockableFiles_mixin):
+    """LockableFile tests run with LockDir underneath"""
+
+    def setUp(self):
+        super(TestLockableFiles_LockDir, self).setUp()
+        self.transport = get_transport('.')
+        self.lockable = LockableFiles(self.transport, 'my-lock', LockDir)
+        self.lockable.create_lock()
+
+    def test_lock_is_lockdir(self):
+        """Created instance should use a LockDir.
+        
+        This primarily tests the mixin adapter works properly.
+        """
+        ## self.assertIsInstance(self.lockable, LockableFiles)
+        ## self.assertIsInstance(self.lockable._lock_strategy,
+                              ## LockDirStrategy)
+
+    def test_lock_created(self):
+        self.assertTrue(self.transport.has('my-lock'))
+        self.lockable.lock_write()
+        self.assertTrue(self.transport.has('my-lock/held/info'))
+        self.lockable.unlock()
+        self.assertFalse(self.transport.has('my-lock/held/info'))
+        self.assertTrue(self.transport.has('my-lock'))
+
+
+    # TODO: Test the lockdir inherits the right file and directory permissions
+    # from the LockableFiles.
