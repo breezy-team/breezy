@@ -55,19 +55,15 @@ class PyCurlTransport(HttpTransportBase):
 
     def has(self, relpath):
         self.curl = pycurl.Curl()
-
         abspath = self.abspath(relpath)
         if isinstance(abspath, unicode):
             abspath = abspath.encode('ascii', 'strict')
-        #     raise ValueError("paths passed to Transport must be plain strings: "
-        #             + `abspath`)
         self.curl.setopt(pycurl.URL, abspath)
-        self._set_curl_cache_headers()
+        self.curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
+        self._set_curl_options()
         # don't want the body - ie just do a HEAD request
         self.curl.setopt(pycurl.NOBODY, 1)
-
         self._curl_perform()
-
         try:
             code = self.curl.getinfo(pycurl.HTTP_CODE)
             if code == 404: # not found
@@ -84,37 +80,34 @@ class PyCurlTransport(HttpTransportBase):
         self.curl = pycurl.Curl()
         abspath = self.abspath(relpath)
         sio = StringIO()
-        # pycurl needs plain ascii
         if isinstance(abspath, unicode):
-            # XXX: HttpTransportBase.abspath should probably url-escape
-            # unicode characters if any in the path - domain name must be
-            # IDNA-escaped
             abspath = abspath.encode('ascii')
         self.curl.setopt(pycurl.URL, abspath)
-        ## self.curl.setopt(pycurl.VERBOSE, 1)
-        self._set_curl_cache_headers()
+        self._set_curl_options(self.curl)
         self.curl.setopt(pycurl.WRITEFUNCTION, sio.write)
         self.curl.setopt(pycurl.NOBODY, 0)
-
         self._curl_perform()
-
         code = self.curl.getinfo(pycurl.HTTP_CODE)
         if code == 404:
             raise NoSuchFile(abspath)
-        elif not 200 <= code <= 399:
+        elif code == 200:
+            sio.seek(0)
+            del self.curl
+            return sio
+        else:
             raise TransportError('http error %d acccessing %s' % 
                     (code, self.curl.getinfo(pycurl.EFFECTIVE_URL)))
-        sio.seek(0)
-        del self.curl
-        return sio
 
-    def _set_curl_cache_headers(self):
+    def _set_curl_options(self, curl):
+        """Set options for all requests"""
         # There's no way in http/1.0 to say "must revalidate"; we don't want
         # to force it to always retrieve.  so just turn off the default Pragma
         # provided by Curl.
         headers = ['Cache-control: must-revalidate',
                    'Pragma:']
-        self.curl.setopt(pycurl.HTTPHEADER, headers)
+        ## self.curl.setopt(pycurl.VERBOSE, 1)
+        curl.setopt(pycurl.HTTPHEADER, headers)
+        curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
 
     def _curl_perform(self):
         """Perform curl operation and translate exceptions."""
