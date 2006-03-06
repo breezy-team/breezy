@@ -71,7 +71,7 @@ class TestCommit(ExternalBase):
         # of date checkout
         self.make_branch_and_tree('branch')
         # make a checkout
-        self.runbzr('checkout branch checkout')
+        self.runbzr('checkout --lightweight branch checkout')
         # commit to the original branch to make the checkout out of date
         self.runbzr('commit --unchanged -m message branch')
         # now commit to the checkout should emit
@@ -82,3 +82,11 @@ class TestCommit(ExternalBase):
                          ('',
                           "bzr: ERROR: Working tree is out of date, please run "
                           "'bzr update'.\n"))
+
+    def test_local_commit_unbound(self):
+        # a --local commit on an unbound branch is an error
+        self.make_branch_and_tree('.')
+        out, err = self.run_bzr('commit', '--local', retcode=3)
+        self.assertEqualDiff('', out)
+        self.assertEqualDiff('bzr: ERROR: Cannot perform local-only commits '
+                             'on unbound branches.\n', err)

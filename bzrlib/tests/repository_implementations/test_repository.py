@@ -274,6 +274,18 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_ancestry, 'orphan')
 
+    def test_get_revision_graph(self):
+        # we can get a mapping of id->parents for the entire revision graph or bits thereof.
+        self.assertEqual({'rev1':[], 'rev2':['rev1']},
+                         self.bzrdir.open_repository().get_revision_graph(None))
+        self.assertEqual({'rev1':[]},
+                         self.bzrdir.open_repository().get_revision_graph('rev1'))
+        self.assertEqual({'rev1':[], 'rev2':['rev1']},
+                         self.bzrdir.open_repository().get_revision_graph('rev2'))
+        self.assertRaises(NoSuchRevision,
+                          self.bzrdir.open_repository().get_revision_graph,
+                          'orphan')
+
 
 class TestCaseWithCorruptRepository(TestCaseWithRepository):
 

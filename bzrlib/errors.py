@@ -368,8 +368,10 @@ class UpToDateFormat(BzrNewError):
         self.format = format
 
 
+
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
+
 
 class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):
@@ -415,6 +417,7 @@ class NoCommonRoot(BzrError):
         BzrError.__init__(self, msg)
 
 
+
 class NotAncestor(BzrError):
     def __init__(self, rev_id, not_ancestor_id):
         msg = "Revision %s is not an ancestor of %s" % (not_ancestor_id, 
@@ -450,9 +453,43 @@ class UnlistableStore(BzrError):
         BzrError.__init__(self, "Store %s is not listable" % store)
 
 
+
 class UnlistableBranch(BzrError):
     def __init__(self, br):
         BzrError.__init__(self, "Stores for branch %s are not listable" % br)
+
+
+class BoundBranchOutOfDate(BzrNewError):
+    """Bound branch %(branch)s is out of date with master branch %(master)s."""
+    def __init__(self, branch, master):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.master = master
+
+        
+class CommitToDoubleBoundBranch(BzrNewError):
+    """Cannot commit to branch %(branch)s. It is bound to %(master)s, which is bound to %(remote)s."""
+    def __init__(self, branch, master, remote):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.master = master
+        self.remote = remote
+
+
+class OverwriteBoundBranch(BzrNewError):
+    """Cannot pull --overwrite to a branch which is bound %(branch)s"""
+    def __init__(self, branch):
+        BzrNewError.__init__(self)
+        self.branch = branch
+
+
+class BoundBranchConnectionFailure(BzrNewError):
+    """Unable to connect to target of bound branch %(branch)s => %(target)s: %(error)s"""
+    def __init__(self, branch, target, error):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.target = target
+        self.error = error
 
 
 class WeaveError(BzrNewError):
@@ -665,8 +702,10 @@ class MissingText(BzrNewError):
         self.text_revision = text_revision
         self.file_id = file_id
 
+
 class DuplicateKey(BzrNewError):
     """Key %(key)s is already present in map"""
+
 
 class MalformedTransform(BzrNewError):
     """Tree transform is malformed %(conflicts)r"""
@@ -757,14 +796,6 @@ class OutOfDateTree(BzrNewError):
         self.tree = tree
 
 
-class InventoryNotPresent(BzrNewError):
-    """Inventory for revision $(revision_id)s is missing."""
-
-    def __init__(self, revision_id):
-        BzrNewError.__init__(self)
-        self.revision_id = revision_id
-
-
 class CorruptRepository(BzrNewError):
     """An error has been detected in the repository %(repo_path)s.
 Please run bzr reconcile on this repository."""
@@ -772,3 +803,15 @@ Please run bzr reconcile on this repository."""
     def __init__(self, repo):
         BzrNewError.__init__(self)
         self.repo_path = repo.bzrdir.root_transport.base
+
+
+class UpgradeRequired(BzrNewError):
+    """To use this feature you must upgrade your branch at %(path)s."""
+
+    def __init__(self, path):
+        BzrNewError.__init__(self)
+        self.path = path
+
+
+class LocalRequiresBoundBranch(BzrNewError):
+    """Cannot perform local-only commits on unbound branches."""
