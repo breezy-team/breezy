@@ -37,8 +37,16 @@ class TestCheckout(ExternalBase):
         tree.add('added_in_2')
         tree.commit('2', rev_id='2')
 
-    def test_checkout_makes_checkout(self):
+    def test_checkout_makes_bound_branch(self):
         self.runbzr('checkout branch checkout')
+        # if we have a checkout, the branch base should be 'branch'
+        source = bzrdir.BzrDir.open('branch')
+        result = bzrdir.BzrDir.open('checkout')
+        self.assertEqual(source.open_branch().bzrdir.root_transport.base,
+                         result.open_branch().get_bound_location())
+
+    def test_checkout_light_makes_checkout(self):
+        self.runbzr('checkout --lightweight branch checkout')
         # if we have a checkout, the branch base should be 'branch'
         source = bzrdir.BzrDir.open('branch')
         result = bzrdir.BzrDir.open('checkout')
@@ -47,6 +55,14 @@ class TestCheckout(ExternalBase):
 
     def test_checkout_dash_r(self):
         self.runbzr('checkout -r -2 branch checkout')
+        # the working tree should now be at revision '1' with the content
+        # from 1.
+        result = bzrdir.BzrDir.open('checkout')
+        self.assertEqual('1', result.open_workingtree().last_revision())
+        self.failIfExists('checkout/added_in_2')
+
+    def test_checkout_light_dash_r(self):
+        self.runbzr('checkout --lightweight -r -2 branch checkout')
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = bzrdir.BzrDir.open('checkout')

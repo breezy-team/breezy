@@ -29,15 +29,20 @@ from bzrlib.tests import (
                           TestSuite,
                           TestLoader,
                           )
+import bzrlib.ui as ui
+
 
 def test_suite():
     testmod_names = [
                      'bzrlib.tests.blackbox.test_added',
                      'bzrlib.tests.blackbox.test_aliases',
                      'bzrlib.tests.blackbox.test_ancestry',
+                     'bzrlib.tests.blackbox.test_break_lock',
+                     'bzrlib.tests.blackbox.test_bound_branches',
                      'bzrlib.tests.blackbox.test_cat',
                      'bzrlib.tests.blackbox.test_checkout',
                      'bzrlib.tests.blackbox.test_commit',
+                     'bzrlib.tests.blackbox.test_conflicts',
                      'bzrlib.tests.blackbox.test_diff',
                      'bzrlib.tests.blackbox.test_export',
                      'bzrlib.tests.blackbox.test_find_merge_base',
@@ -48,6 +53,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_missing',
                      'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pull',
+                     'bzrlib.tests.blackbox.test_reconcile',
                      'bzrlib.tests.blackbox.test_re_sign',
                      'bzrlib.tests.blackbox.test_revert',
                      'bzrlib.tests.blackbox.test_revno',
@@ -78,3 +84,20 @@ class ExternalBase(TestCaseWithTransport):
             return self.run_bzr_captured(args, retcode=retcode)[0]
         else:
             return self.run_bzr_captured(args, retcode=retcode)
+
+
+class TestUIFactory(ui.UIFactory):
+    """A UI Factory for testing - hide the progress bar but emit note()s."""
+
+    def clear(self):
+        """See progress.ProgressBar.clear()."""
+
+    def note(self, fmt_string, *args, **kwargs):
+        """See progress.ProgressBar.note()."""
+        print fmt_string % args
+
+    def progress_bar(self):
+        return self
+        
+    def update(self, message, count=None, total=None):
+        """See progress.ProgressBar.update()."""

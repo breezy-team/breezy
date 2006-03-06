@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,13 +19,15 @@ from cStringIO import StringIO
 from unittest import TestSuite
 import xml.sax.saxutils
 
-
+import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-import bzrlib.errors as errors
 from bzrlib.errors import InvalidRevisionId
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.lockdir import LockDir
 from bzrlib.osutils import safe_unicode
 from bzrlib.revision import NULL_REVISION
+import bzrlib.errors as errors
+import bzrlib.gpg as gpg
 from bzrlib.store import copy_all
 from bzrlib.store.weave import WeaveStore
 from bzrlib.store.text import TextStore
@@ -49,6 +51,54 @@ class Repository(object):
     describe the disk data format and the way of accessing the (possibly 
     remote) disk.
     """
+
+    @needs_write_lock
+    def add_inventory(self, revid, inv, parents):
+        """Add the inventory inv to the repository as revid.
+        
+        :param parents: The revision ids of the parents that revid
+                        is known to have and are in the repository already.
+
+        returns the sha1 of the serialized inventory.
+        """
+        inv_text = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
+        inv_sha1 = bzrlib.osutils.sha_string(inv_text)
+        self.control_weaves.add_text('inventory', revid,
+                   bzrlib.osutils.split_lines(inv_text), parents,
+                   self.get_transaction())
+        return inv_sha1
+
+    @needs_write_lock
+    def add_revision(self, rev_id, rev, inv=None, config=None):
+        """Add rev to the revision store as rev_id.
+
+        :param rev_id: the revision id to use.
+        :param rev: The revision object.
+        :param inv: The inventory for the revision. if None, it will be looked
+                    up in the inventory storer
+        :param config: If None no digital signature will be created.
+                       If supplied its signature_needed method will be used
+                       to determine if a signature should be made.
+        """
+        if config is not None and config.signature_needed():
+            if inv is None:
+                inv = self.get_inventory(rev_id)
+            plaintext = Testament(rev, inv).as_short_text()
+            self.store_revision_signature(
+                gpg.GPGStrategy(config), plaintext, rev_id)
+        if not rev_id in self.get_inventory_weave():
+            if inv is None:
+                raise errors.WeaveRevisionNotPresent(rev_id,
+                                                     self.get_inventory_weave())
+            else:
+                # yes, this is not suitable for adding with ghosts.
+                self.add_inventory(rev_id, inv, rev.parent_ids)
+            
+        rev_tmp = StringIO()
+        bzrlib.xml5.serializer_v5.write_revision(rev, rev_tmp)
+        rev_tmp.seek(0)
+        self.revision_store.add(rev_tmp, rev_id)
+        mutter('added revision_id {%s}', rev_id)
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -105,6 +155,9 @@ class Repository(object):
 
     def lock_read(self):
         self.control_files.lock_read()
+
+    def is_locked(self):
+        return self.control_files.is_locked()
 
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None):
@@ -189,8 +242,14 @@ class Repository(object):
         return self.get_revision_xml_file(revision_id).read()
 
     @needs_read_lock
-    def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
+    def get_revision_reconcile(self, revision_id):
+        """'reconcile' helper routine that allows access to a revision always.
+        
+        This variant of get_revision does not cross check the weave graph
+        against the revision one as get_revision does: but it should only
+        be used by reconcile, or reconcile-alike commands that are correcting
+        or testing the revision graph.
+        """
         xml_file = self.get_revision_xml_file(revision_id)
 
         try:
@@ -202,6 +261,37 @@ class Repository(object):
             
         assert r.revision_id == revision_id
         return r
+
+    @needs_read_lock
+    def get_revision(self, revision_id):
+        """Return the Revision object for a named revision"""
+        r = self.get_revision_reconcile(revision_id)
+        # weave corruption can lead to absent revision markers that should be
+        # present.
+        # the following test is reasonably cheap (it needs a single weave read)
+        # and the weave is cached in read transactions. In write transactions
+        # it is not cached but typically we only read a small number of
+        # revisions. For knits when they are introduced we will probably want
+        # to ensure that caching write transactions are in use.
+        inv = self.get_inventory_weave()
+        self._check_revision_parents(r, inv)
+        return r
+
+    def _check_revision_parents(self, revision, inventory):
+        """Private to Repository and Fetch.
+        
+        This checks the parentage of revision in an inventory weave for 
+        consistency and is only applicable to inventory-weave-for-ancestry
+        using repository formats & fetchers.
+        """
+        weave_parents = inventory.parent_names(revision.revision_id)
+        weave_names = inventory.names()
+        for parent_id in revision.parent_ids:
+            if parent_id in weave_names:
+                # this parent must not be a ghost.
+                if not parent_id in weave_parents:
+                    # but it is a ghost
+                    raise errors.CorruptRepository(self)
 
     @needs_read_lock
     def get_revision_sha1(self, revision_id):
@@ -339,6 +429,32 @@ class Repository(object):
         return self.get_revision(revision_id).inventory_sha1
 
     @needs_read_lock
+    def get_revision_graph(self, revision_id=None):
+        """Return a dictionary containing the revision graph.
+        
+        :return: a dictionary of revision_id->revision_parents_list.
+        """
+        weave = self.get_inventory_weave()
+        all_revisions = self._eliminate_revisions_not_present(weave.names())
+        entire_graph = dict([(node, weave.parent_names(node)) for 
+                             node in all_revisions])
+        if revision_id is None:
+            return entire_graph
+        elif revision_id not in entire_graph:
+            raise errors.NoSuchRevision(self, revision_id)
+        else:
+            # add what can be reached from revision_id
+            result = {}
+            pending = set([revision_id])
+            while len(pending) > 0:
+                node = pending.pop()
+                result[node] = entire_graph[node]
+                for revision_id in result[node]:
+                    if revision_id not in result:
+                        pending.add(revision_id)
+            return result
+
+    @needs_read_lock
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""
         # TODO: Unify this with get_inventory()
@@ -415,6 +531,9 @@ class Repository(object):
 
     def get_transaction(self):
         return self.control_files.get_transaction()
+
+    def revision_parents(self, revid):
+        return self.get_inventory_weave().parent_names(revid)
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
@@ -697,13 +816,14 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
 
         mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['revision-store', 'weaves']
-        lock_file = 'branch-lock'
-        files = [('inventory.weave', StringIO(empty_weave)), 
+        files = [('inventory.weave', StringIO(empty_weave)),
                  ]
         
         # FIXME: RBC 20060125 dont peek under the covers
         # NB: no need to escape relative paths that are url safe.
-        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock')
+        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock',
+                                      TransportLock)
+        control_files.create_lock()
         control_files.lock_write()
         control_files._transport.mkdir_multi(dirs,
                 mode=control_files._dir_mode)
@@ -819,10 +939,9 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         """Create the required files and the initial control_files object."""
         # FIXME: RBC 20060125 dont peek under the covers
         # NB: no need to escape relative paths that are url safe.
-        lock_file = 'lock'
         repository_transport = a_bzrdir.get_repository_transport(self)
-        repository_transport.put(lock_file, StringIO()) # TODO get the file mode from the bzrdir lock files., mode=file_mode)
-        control_files = LockableFiles(repository_transport, 'lock')
+        control_files = LockableFiles(repository_transport, 'lock', LockDir)
+        control_files.create_lock()
         return control_files
 
     def _get_revision_store(self, repo_transport, control_files):
@@ -848,7 +967,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
             repo_transport = _override_transport
         else:
             repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = LockableFiles(repo_transport, 'lock')
+        control_files = LockableFiles(repo_transport, 'lock', LockDir)
         revision_store = self._get_revision_store(repo_transport, control_files)
         return MetaDirRepository(_format=self,
                                  a_bzrdir=a_bzrdir,
@@ -859,9 +978,9 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         """Upload the initial blank content."""
         control_files = self._create_control_files(a_bzrdir)
         control_files.lock_write()
-        control_files._transport.mkdir_multi(dirs,
-                mode=control_files._dir_mode)
         try:
+            control_files._transport.mkdir_multi(dirs,
+                    mode=control_files._dir_mode)
             for file, content in files:
                 control_files.put(file, content)
             for file, content in utf8_files:
@@ -923,6 +1042,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
      - a format marker of its own
      - an optional 'shared-storage' flag
      - an optional 'no-working-trees' flag
+     - a LockDir lock
     """
 
     def get_format_string(self):
