@@ -2,19 +2,3 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 
- * Should raise DependencyNotFound (sp?) when pycurl can't be loaded
-
- * Transport factory abstraction must detect when a transport's dependency
-   isn't present
-
- * Add a transport for testing that always fails to load, and check that 
-   the transport factory handles it properly
-
- * Send HTTP HEAD request for .has() method
-
- * Can the test framework try to prevent a particular module being overloaded
-   by overriding the import hook while running a test?  Then we could test that 
-   the correct fallback behaviour happens when e.g. pycurl isn't available.
-
-Still to do in bzr.dev
-
