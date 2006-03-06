@@ -425,6 +425,32 @@ class Repository(object):
         return self.get_revision(revision_id).inventory_sha1
 
     @needs_read_lock
+    def get_revision_graph(self, revision_id=None):
+        """Return a dictionary containing the revision graph.
+        
+        :return: a dictionary of revision_id->revision_parents_list.
+        """
+        weave = self.get_inventory_weave()
+        all_revisions = self._eliminate_revisions_not_present(weave.names())
+        entire_graph = dict([(node, weave.parent_names(node)) for 
+                             node in all_revisions])
+        if revision_id is None:
+            return entire_graph
+        elif revision_id not in entire_graph:
+            raise errors.NoSuchRevision(self, revision_id)
+        else:
+            # add what can be reached from revision_id
+            result = {}
+            pending = set([revision_id])
+            while len(pending) > 0:
+                node = pending.pop()
+                result[node] = entire_graph[node]
+                for revision_id in result[node]:
+                    if revision_id not in result:
+                        pending.add(revision_id)
+            return result
+
+    @needs_read_lock
     def get_revision_inventory(self, revision_id):
         """Return inventory of a past revision."""
         # TODO: Unify this with get_inventory()
@@ -501,6 +527,9 @@ class Repository(object):
 
     def get_transaction(self):
         return self.control_files.get_transaction()
+
+    def revision_parents(self, revid):
+        return self.get_inventory_weave().parent_names(revid)
 
     @needs_write_lock
     def set_make_working_trees(self, new_value):
