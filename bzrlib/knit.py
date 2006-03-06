@@ -915,7 +915,7 @@ class InterKnit(InterVersionedFile):
                         new_version_id, new_version_idx)
 
             count = count + 1
-            pb.update(self.target.filename, count, len(version_list))
+            pb.update("Joining knit", count, len(version_list))
 
             pos, size = self.target._data.add_record(version_id, digest, lines)
             self.target._index.add_version(version_id, options, pos, size, parents)

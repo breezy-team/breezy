@@ -32,6 +32,7 @@ from bzrlib.inter import InterObject
 from bzrlib.symbol_versioning import *
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.tsort import topo_sort
+from bzrlib import ui
 
 
 class VersionedFile(object):
@@ -337,7 +338,10 @@ class InterVersionedFile(InterObject):
         temp_source = self.target.create_empty("temp", MemoryTransport())
         graph = self.source.get_graph()
         order = topo_sort(graph.items())
-        for version in order:
+        if pb is None:
+            pb = ui.ui_factory.progress_bar()
+        for index, version in enumerate(order):
+            pb.update('Converting versioned data', index, len(order))
             temp_source.add_lines(version,
                                   self.source.get_parents(version),
                                   self.source.get_lines(version))
