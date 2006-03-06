@@ -95,12 +95,7 @@ class Repository(object):
             else:
                 # yes, this is not suitable for adding with ghosts.
                 self.add_inventory(rev_id, inv, rev.parent_ids)
-            
-        rev_tmp = StringIO()
-        bzrlib.xml5.serializer_v5.write_revision(rev, rev_tmp)
-        rev_tmp.seek(0)
-        self.revision_store.add(rev_tmp, rev_id)
-        mutter('added revision_id {%s}', rev_id)
+        self._revision_store.add_revision(rev, self.get_transaction())   
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -115,18 +110,8 @@ class Repository(object):
         present: for weaves ghosts may lead to a lack of correctness until
         the reweave updates the parents list.
         """
-        if self.revision_store.listable():
-            # yes this is slow, but its complete.
-            result_graph = {}
-            for rev_id in self.revision_store:
-                rev = self.get_revision(rev_id)
-                result_graph[rev_id] = rev.parent_ids
-            # remove ghosts
-            for rev_id, parents in result_graph.items():
-                for parent in parents:
-                    if not parent in result_graph:
-                        del parents[parents.index(parent)]
-            return topo_sort(result_graph.items())
+        if self._revision_store.text_store.listable():
+            return self._revision_store.all_revision_ids(self.get_transaction())
         result = self._all_possible_ids()
         return self._eliminate_revisions_not_present(result)
 
@@ -147,7 +132,7 @@ class Repository(object):
         """Construct the current default format repository in a_bzrdir."""
         return RepositoryFormat.get_default_format().initialize(a_bzrdir)
 
-    def __init__(self, _format, a_bzrdir, control_files, revision_store, control_store, text_store):
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store, control_store, text_store):
         """instantiate a Repository.
 
         :param _format: The format of the repository on disk.
@@ -163,8 +148,8 @@ class Repository(object):
         self.bzrdir = a_bzrdir
         self.control_files = control_files
         # backwards compatible until we fully transition
-        self.revision_store = revision_store.text_store
-        self._revision_store = revision_store
+        self.revision_store = _revision_store.text_store
+        self._revision_store = _revision_store
         self.text_store = text_store
         # backwards compatability
         self.weave_store = text_store
@@ -246,20 +231,6 @@ class Repository(object):
                                                     self.get_transaction())
 
     @needs_read_lock
-    def get_revision_xml_file(self, revision_id):
-        """Return XML file object for revision object."""
-        if not revision_id or not isinstance(revision_id, basestring):
-            raise InvalidRevisionId(revision_id=revision_id, branch=self)
-        try:
-            return self.revision_store.get(revision_id)
-        except (IndexError, KeyError):
-            raise bzrlib.errors.NoSuchRevision(self, revision_id)
-
-    @needs_read_lock
-    def get_revision_xml(self, revision_id):
-        return self.get_revision_xml_file(revision_id).read()
-
-    @needs_read_lock
     def get_revision_reconcile(self, revision_id):
         """'reconcile' helper routine that allows access to a revision always.
         
@@ -272,6 +243,15 @@ class Repository(object):
             raise InvalidRevisionId(revision_id=revision_id, branch=self)
         return self._revision_store.get_revision(revision_id,
                                                  self.get_transaction())
+
+    @needs_read_lock
+    def get_revision_xml(self, revision_id):
+        rev = self.get_revision(revision_id) 
+        rev_tmp = StringIO()
+        # the current serializer..
+        self._revision_store._serializer.write_revision(rev, rev_tmp)
+        rev_tmp.seek(0)
+        return rev_tmp.getvalue()
 
     @needs_read_lock
     def get_revision(self, revision_id):
@@ -306,8 +286,10 @@ class Repository(object):
 
     @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        self.revision_store.add(StringIO(gpg_strategy.sign(plaintext)), 
-                                revision_id, "sig")
+        signature = gpg_strategy.sign(plaintext)
+        self._revision_store.add_revision_signature_text(revision_id,
+                                                         signature,
+                                                         self.get_transaction())
 
     def fileid_involved_between_revs(self, from_revid, to_revid):
         """Find file_id(s) which are involved in the changes between revisions.
@@ -569,11 +551,17 @@ class Repository(object):
         plaintext = Testament.from_revision(self, revision_id).as_short_text()
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
+    @needs_read_lock
+    def has_signature_for_revision_id(self, revision_id):
+        """Query for a revision signature for revision_id in the repository."""
+        return self._revision_store.has_signature(revision_id,
+                                                  self.get_transaction())
+
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
 
-    def __init__(self, _format, a_bzrdir, revision_store, control_store, text_store):
+    def __init__(self, _format, a_bzrdir, _revision_store, control_store, text_store):
         # we reuse one control files instance.
         dir_mode = a_bzrdir._control_files._dir_mode
         file_mode = a_bzrdir._control_files._file_mode
@@ -615,17 +603,17 @@ class AllInOneRepository(Repository):
             # which allows access to this old info.
             self.inventory_store = get_store('inventory-store')
             text_store = get_store('text-store')
-        super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, revision_store, control_store, text_store)
+        super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
 
 
 class MetaDirRepository(Repository):
     """Repositories in the new meta-dir layout."""
 
-    def __init__(self, _format, a_bzrdir, control_files, revision_store, control_store, text_store):
+    def __init__(self, _format, a_bzrdir, control_files, _revision_store, control_store, text_store):
         super(MetaDirRepository, self).__init__(_format,
                                                 a_bzrdir,
                                                 control_files,
-                                                revision_store,
+                                                _revision_store,
                                                 control_store,
                                                 text_store)
 
@@ -645,6 +633,15 @@ class MetaDirRepository(Repository):
             if self.control_files._transport.should_cache():
                 ws.enable_cache = True
             return ws
+
+
+class KnitRepository(MetaDirRepository):
+    """Knit format repository."""
+
+    @needs_read_lock
+    def all_revision_ids(self):
+        """See Repository.all_revision_ids()."""
+        return self._revision_store.all_revision_ids(self.get_transaction())
 
 
 class RepositoryFormat(object):
@@ -730,8 +727,8 @@ class RepositoryFormat(object):
                               compressed=compressed,
                               dir_mode=dir_mode,
                               file_mode=file_mode)
-        revision_store = TextRevisionStore(text_store, serializer)
-        return revision_store
+        _revision_store = TextRevisionStore(text_store, serializer)
+        return _revision_store
 
     def _get_versioned_file_store(self,
                                   name,
@@ -851,10 +848,10 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         control_files = a_bzrdir._control_files
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
-        revision_store = self._get_revision_store(repo_transport, control_files)
+        _revision_store = self._get_revision_store(repo_transport, control_files)
         return AllInOneRepository(_format=self,
                                   a_bzrdir=a_bzrdir,
-                                  revision_store=revision_store,
+                                  _revision_store=_revision_store,
                                   control_store=control_store,
                                   text_store=text_store)
 
@@ -1009,11 +1006,11 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         control_files = LockableFiles(repo_transport, 'lock')
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
-        revision_store = self._get_revision_store(repo_transport, control_files)
+        _revision_store = self._get_revision_store(repo_transport, control_files)
         return MetaDirRepository(_format=self,
                                  a_bzrdir=a_bzrdir,
                                  control_files=control_files,
-                                 revision_store=revision_store,
+                                 _revision_store=_revision_store,
                                  control_store=control_store,
                                  text_store=text_store)
 
@@ -1078,6 +1075,31 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
  
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
         return self.open(a_bzrdir=a_bzrdir, _found=True)
+
+    def open(self, a_bzrdir, _found=False, _override_transport=None):
+        """See RepositoryFormat.open().
+        
+        :param _override_transport: INTERNAL USE ONLY. Allows opening the
+                                    repository at a slightly different url
+                                    than normal. I.e. during 'upgrade'.
+        """
+        if not _found:
+            format = RepositoryFormat.find_format(a_bzrdir)
+            assert format.__class__ ==  self.__class__
+        if _override_transport is not None:
+            repo_transport = _override_transport
+        else:
+            repo_transport = a_bzrdir.get_repository_transport(None)
+        control_files = LockableFiles(repo_transport, 'lock')
+        text_store = self._get_text_store(repo_transport, control_files)
+        control_store = self._get_control_store(repo_transport, control_files)
+        _revision_store = self._get_revision_store(repo_transport, control_files)
+        return KnitRepository(_format=self,
+                              a_bzrdir=a_bzrdir,
+                              control_files=control_files,
+                              _revision_store=_revision_store,
+                              control_store=control_store,
+                              text_store=text_store)
 
 
 class RepositoryFormatKnit1(MetaDirRepositoryFormat):

@@ -413,6 +413,8 @@ class Weave(VersionedFile):
 
     def _inclusions(self, versions):
         """Return set of all ancestors of given version(s)."""
+        if not len(versions):
+            return []
         i = set(versions)
         for v in xrange(max(versions), 0, -1):
             if v in i:

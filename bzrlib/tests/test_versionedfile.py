@@ -68,11 +68,13 @@ class VersionedFileTestMixIn(object):
 
     def test_ancestry(self):
         f = self.get_file()
+        self.assertEqual([], f.get_ancestry([]))
         f.add_lines('r0', [], ['a\n', 'b\n'])
         f.add_lines('r1', ['r0'], ['b\n', 'c\n'])
         f.add_lines('r2', ['r0'], ['b\n', 'c\n'])
         f.add_lines('r3', ['r2'], ['b\n', 'c\n'])
         f.add_lines('rM', ['r1', 'r2'], ['b\n', 'c\n'])
+        self.assertEqual([], f.get_ancestry([]))
         versions = set(f.get_ancestry(['rM']))
         self.assertEquals(versions, set(['rM', 'r2', 'r1', 'r0']))
 

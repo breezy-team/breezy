@@ -63,7 +63,12 @@ class KnitRevisionStore(RevisionStore):
     def _add_revision_signature_text(self, revision_id, signature_text, transaction):
         """See RevisionStore._add_revision_signature_text()."""
         self._get_signature_file(transaction).add_lines(
-            revision_id, bzrlib.osutils.split_lines(signature_text))
+            revision_id, [], bzrlib.osutils.split_lines(signature_text))
+
+    def all_revision_ids(self, transaction):
+        """See RevisionStore.all_revision_ids()."""
+        rev_file = self.get_revision_file(transaction)
+        return rev_file.get_ancestry(rev_file.versions())
 
     def get_revision(self, revision_id, transaction):
         """See RevisionStore.get_revision()."""
@@ -87,11 +92,19 @@ class KnitRevisionStore(RevisionStore):
         """Get the revision versioned file object."""
         return self.versioned_file_store.get_weave_or_empty('revisions', transaction)
 
+    def _get_signature_file(self, transaction):
+        """Get the signature text versioned file object."""
+        return self.versioned_file_store.get_weave_or_empty('signatures', transaction)
+
     def has_revision_id(self, revision_id, transaction):
         """True if the store contains revision_id."""
         return (revision_id is None
                 or self.get_revision_file(transaction).has_version(revision_id))
         
+    def _has_signature(self, revision_id, transaction):
+        """See RevisionStore._has_signature()."""
+        return self._get_signature_file(transaction).has_version(revision_id)
+
     def total_size(self, transaction):
         """ See RevisionStore.total_size()."""
         return self.versioned_file_store.total_size()

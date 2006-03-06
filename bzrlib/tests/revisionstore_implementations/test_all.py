@@ -77,6 +77,17 @@ class TestAll(TestCaseWithTransport):
                           'B',
                           'foo\nbar',
                           self.transaction)
+        self.assertRaises(errors.NoSuchRevision,
+                          self.store.has_signature,
+                          'B',
+                          self.transaction)
+    
+    def test_add_signature_text(self):
+        # add a signature to a existing revision works.
+        self.add_sample_rev()
+        self.assertFalse(self.store.has_signature('A', self.transaction))
+        self.store.add_revision_signature_text('A', 'foo\nbar', self.transaction)
+        self.assertTrue(self.store.has_signature('A', self.transaction))
 
     def test_total_size(self):
         # we get a revision count and a numeric size figure from total_size().
@@ -88,3 +99,7 @@ class TestAll(TestCaseWithTransport):
         self.assertEqual(1, count)
         self.assertNotEqual(0, bytes)
         
+    def test_all_revision_ids(self):
+        self.assertEqual([], self.store.all_revision_ids(self.transaction))
+        self.add_sample_rev()
+        self.assertEqual(['A'], self.store.all_revision_ids(self.transaction))

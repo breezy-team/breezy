@@ -95,10 +95,11 @@ class RepoReconciler(object):
 
     def _reweave_inventory(self):
         """Regenerate the inventory weave for the repository from scratch."""
+        transaction = self.repo.get_transaction()
         self.pb.update('Reading inventory data.')
         self.inventory = self.repo.get_inventory_weave()
         # the total set of revisions to process
-        self.pending = set([file_id for file_id in self.repo.revision_store])
+        self.pending = set([rev_id for rev_id in self.repo._revision_store.all_revision_ids(transaction)])
 
         # mapping from revision_id to parents
         self._rev_graph = {}

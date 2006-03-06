@@ -29,6 +29,7 @@ from bzrlib.store.revision import RevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.transport import get_transport
+from bzrlib.tsort import topo_sort
 
 
 class TextRevisionStoreTestFactory(object):
@@ -68,6 +69,22 @@ class TextRevisionStore(RevisionStore):
         """See RevisionStore._add_revision_signature_text()."""
         self.text_store.add(StringIO(signature_text), revision_id, "sig")
 
+    def all_revision_ids(self, transaction):
+        """See RevisionStore.all_revision_ids()."""
+        # for TextRevisionStores, this is only functional
+        # on listable transports.
+        assert self.text_store.listable()
+        result_graph = {}
+        for rev_id in self.text_store:
+            rev = self.get_revision(rev_id, transaction)
+            result_graph[rev_id] = rev.parent_ids
+        # remove ghosts
+        for rev_id, parents in result_graph.items():
+            for parent in parents:
+                if not parent in result_graph:
+                    del parents[parents.index(parent)]
+        return topo_sort(result_graph.items())
+
     def get_revision(self, revision_id, transaction):
         """See RevisionStore.get_revision()."""
         xml_file = self._get_revision_xml_file(revision_id)
@@ -91,7 +108,11 @@ class TextRevisionStore(RevisionStore):
         """True if the store contains revision_id."""
         return (revision_id is None
                 or self.text_store.has_id(revision_id))
-        
+ 
+    def _has_signature(self, revision_id, transaction):
+        """See RevisionStore._has_signature()."""
+        return self.text_store.has_id(revision_id, suffix='sig')
+
     def total_size(self, transaction):
         """ See RevisionStore.total_size()."""
         return self.text_store.total_size()

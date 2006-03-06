@@ -97,9 +97,13 @@ class RevisionStore(object):
 
     def add_revision_signature_text(self, revision_id, signature_text, transaction):
         """Add signature_text as a signature for revision_id."""
+        self._guard_revision(revision_id, transaction)
+        self._add_revision_signature_text(revision_id, signature_text, transaction)
+
+    def _guard_revision(self, revision_id, transaction):
+        """Guard method for testing the presence of a revision."""
         if not self.has_revision_id(revision_id, transaction):
             raise errors.NoSuchRevision(self, revision_id)
-        self._add_revision_signature_text(revision_id, signature_text, transaction)
 
     def _add_revision_signature_text(self, revision_id, signature_text, transaction):
         """Install signature_text for revision_id. 
@@ -107,6 +111,13 @@ class RevisionStore(object):
         This is a worker method of the add_revision_signature_text method.
         """
         raise NotImplementedError(self.add_revision_signature_text)
+
+    def all_revision_ids(self, transaction):
+        """Returns a list of all the revision ids in the revision store. 
+
+        :return: list of revision_ids in topological order.
+        """
+        raise NotImplementedError(self.all_revision_ids)
 
     def get_revision(self, revision_id, transaction):
         """Return the Revision object for a named revision."""
@@ -116,6 +127,19 @@ class RevisionStore(object):
         """True if the store contains revision_id."""
         raise NotImplementedError(self.has_revision_id)
 
+    def has_signature(self, revision_id, transaction):
+        """True if the store has a signature for revision_id."""
+        self._guard_revision(revision_id, transaction)
+        return self._has_signature(revision_id, transaction)
+
+    def _has_signature(self, revision_id, transaction):
+        """Return the presence of a signature for revision_id.
+
+        A worker memrthod for has_signature, this can assume the
+        revision is present.
+        """
+        return NotImplementedError(self._has_signature)
+        
     def total_size(self, transaction):
         """How big is the store?
 
