@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,12 @@
 
 The abstraction is to allow access from the local filesystem, as well
 as remote (such as http or sftp).
+
+Transports are constructed from a string, being a URL or (as a degenerate
+case) a local filesystem path.  This is typically the top directory of
+a bzrdir, repository, or similar object we are interested in working with.
+The Transport returned has methods to read, write and manipulate files within
+it.
 """
 
 import errno
@@ -29,31 +35,55 @@ from unittest import TestSuite
 from bzrlib.trace import mutter, warning
 import bzrlib.errors as errors
 from bzrlib.errors import DependencyNotPresent
+from bzrlib.symbol_versioning import *
 
+# {prefix: [transport_classes]}
+# Transports are inserted onto the list LIFO and tried in order; as a result
+# transports provided by plugins are tried first, which is usually what we
+# want.
 _protocol_handlers = {
 }
 
-def register_transport(prefix, klass, override=True):
+def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
     """Register a transport that can be used to open URLs
 
     Normally you should use register_lazy_transport, which defers loading the
     implementation until it's actually used, and so avoids pulling in possibly
     large implementation libraries.
     """
+    # Note that this code runs very early in library setup -- trace may not be
+    # working, etc.
     global _protocol_handlers
-    # trace messages commented out because they're typically 
-    # run during import before trace is set up
-    if _protocol_handlers.has_key(prefix):
-        if override:
-            ## mutter('overriding transport: %s => %s' % (prefix, klass.__name__))
-            _protocol_handlers[prefix] = klass
-    else:
-        ## mutter('registering transport: %s => %s' % (prefix, klass.__name__))
-        _protocol_handlers[prefix] = klass
+    if deprecated_passed(override):
+        warn("register_transport(override) is deprecated")
+    _protocol_handlers.setdefault(prefix, []).insert(0, klass)
+
+
+def register_lazy_transport(scheme, module, classname):
+    """Register lazy-loaded transport class.
+
+    When opening a URL with the given scheme, load the module and then
+    instantiate the particular class.  
+
+    If the module raises DependencyNotPresent when it's imported, it is
+    skipped and another implementation of the protocol is tried.  This is
+    intended to be used when the implementation depends on an external
+    implementation that may not be present.  If any other error is raised, it
+    propagates up and the attempt to open the url fails.
+    """
+    # TODO: If no implementation of a protocol is available because of missing
+    # dependencies, we should perhaps show the message about what dependency
+    # was missing.
+    def _loader(base):
+        mod = __import__(module, globals(), locals(), [classname])
+        klass = getattr(mod, classname)
+        return klass(base)
+    _loader.module = module
+    register_transport(scheme, _loader)
 
 
 def _get_protocol_handlers():
-    """Return a dictionary of prefix:transport-factories."""
+    """Return a dictionary of {urlprefix: [factory]}"""
     return _protocol_handlers
 
 
@@ -66,16 +96,22 @@ def _set_protocol_handlers(new_handlers):
     _protocol_handlers = new_handlers
 
 
+def _clear_protocol_handlers():
+    global _protocol_handlers
+    _protocol_handlers = {}
+
+
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory in _protocol_handlers.items():
-        if factory.__module__ == "bzrlib.transport":
-            # this is a lazy load transport, because no real ones
-            # are directlry in bzrlib.transport
-            modules.add(factory.module)
-        else:
-            modules.add(factory.__module__)
+    for prefix, factory_list in _protocol_handlers.items():
+        for factory in factory_list:
+            if factory.__module__ == "bzrlib.transport":
+                # this is a lazy load transport, because no real ones
+                # are directlry in bzrlib.transport
+                modules.add(factory.module)
+            else:
+                modules.add(factory.__module__)
     result = list(modules)
     result.sort()
     return result
@@ -505,40 +541,24 @@ def get_transport(base):
         base = u'.'
     else:
         base = unicode(base)
-    for proto, klass in _protocol_handlers.iteritems():
+    for proto, factory_list in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
-            try:
-                return klass(base)
-            except DependencyNotPresent, e:
-                mutter("failed to instantiate transport %r for %r: %r" %
-                        (klass, base, e))
-                continue
-    # The default handler is the filesystem handler
-    # which has a lookup of None
-    return _protocol_handlers[None](base)
+            t = _try_transport_factories(base, factory_list)
+            if t:
+                return t
+    # The default handler is the filesystem handler, stored as protocol None
+    return _try_transport_factories(base, _protocol_handlers[None])
 
 
-def register_lazy_transport(scheme, module, classname):
-    """Register lazy-loaded transport class.
-
-    When opening a URL with the given scheme, load the module and then
-    instantiate the particular class.  
-
-    If the module raises DependencyNotPresent when it's imported, it is
-    skipped and another implementation of the protocol is tried.  This is
-    intended to be used when the implementation depends on an external
-    implementation that may not be present.  If any other error is raised, it
-    propagates up and the attempt to open the url fails.
-    """
-    # TODO: If no implementation of a protocol is available because of missing
-    # dependencies, we should perhaps show the message about what dependency
-    # was missing.
-    def _loader(base):
-        mod = __import__(module, globals(), locals(), [classname])
-        klass = getattr(mod, classname)
-        return klass(base)
-    _loader.module = module
-    register_transport(scheme, _loader)
+def _try_transport_factories(base, factory_list):
+    for factory in factory_list:
+        try:
+            return factory(base)
+        except DependencyNotPresent, e:
+            mutter("failed to instantiate transport %r for %r: %r" %
+                    (factory, base, e))
+            continue
+    return None
 
 
 def urlescape(relpath):

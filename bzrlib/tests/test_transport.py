@@ -84,15 +84,14 @@ class TestTransport(TestCase):
         """Transport with missing dependency causes no error"""
         saved_handlers = _get_protocol_handlers()
         try:
+            _set_protocol_handlers({})
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
                     'BackupTransportHandler')
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
                     'BadTransportHandler')
             t = get_transport('foo://fooserver/foo')
-            # we should have got the backup one
             self.assertTrue(isinstance(t, BackupTransportHandler))
         finally:
-            # restore original values
             _set_protocol_handlers(saved_handlers)
             
 
