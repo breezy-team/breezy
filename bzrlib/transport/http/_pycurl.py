@@ -25,7 +25,7 @@ from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError,
                            DependencyNotPresent)
 from bzrlib.transport import Transport
-from bzrlib.transport.http import HttpTransportBase
+from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
 
 try:
     import pycurl
@@ -48,13 +48,19 @@ class PyCurlTransport(HttpTransportBase):
         super(PyCurlTransport, self).__init__(base)
         mutter('using pycurl %s' % pycurl.version)
 
+    def should_cache(self):
+        """Return True if the data pulled across should be cached locally.
+        """
+        return True
+
     def has(self, relpath):
         self.curl = pycurl.Curl()
 
         abspath = self.abspath(relpath)
         if isinstance(abspath, unicode):
-            raise ValueError("paths passed to Transport must be plain strings: "
-                    + `abspath`)
+            abspath = abspath.encode('ascii', 'strict')
+        #     raise ValueError("paths passed to Transport must be plain strings: "
+        #             + `abspath`)
         self.curl.setopt(pycurl.URL, abspath)
         self._set_curl_cache_headers()
         # don't want the body - ie just do a HEAD request
@@ -118,3 +124,8 @@ class PyCurlTransport(HttpTransportBase):
                 raise NoSuchFile(self.curl.getinfo(pycurl.EFFECTIVE_URL), e)
 
 
+
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    return [(PyCurlTransport, HttpServer),
+            ]

@@ -77,6 +77,22 @@ class TestTransport(TestCase):
             # because we failed to load the transport
             self.assertTrue(isinstance(t, LocalTransport))
         finally:
+            # restore original values
+            _set_protocol_handlers(saved_handlers)
+            
+    def test_transport_fallback(self):
+        """Transport with missing dependency causes no error"""
+        saved_handlers = _get_protocol_handlers()
+        try:
+            register_lazy_transport('foo', 'bzrlib.tests.test_transport',
+                    'BackupTransportHandler')
+            register_lazy_transport('foo', 'bzrlib.tests.test_transport',
+                    'BadTransportHandler')
+            t = get_transport('foo://fooserver/foo')
+            # we should have got the backup one
+            self.assertTrue(isinstance(t, BackupTransportHandler))
+        finally:
+            # restore original values
             _set_protocol_handlers(saved_handlers)
             
 
@@ -207,3 +223,4 @@ class BadTransportHandler(Transport):
 
 class BackupTransportHandler(Transport):
     """Test transport that works as a backup for the BadTransportHandler"""
+    pass
