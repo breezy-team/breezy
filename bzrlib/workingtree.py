@@ -62,7 +62,7 @@ from bzrlib.errors import (BzrCheckError,
                            NoSuchFile,
                            NotVersionedError)
 from bzrlib.inventory import InventoryEntry, Inventory
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.merge import merge_inner, transform_tree
 from bzrlib.osutils import (
                             abspath,
@@ -255,7 +255,7 @@ class WorkingTree(bzrlib.tree.Tree):
             assert isinstance(self._format, WorkingTreeFormat3)
             self._control_files = LockableFiles(
                 self.bzrdir.get_workingtree_transport(None),
-                'lock')
+                'lock', TransportLock)
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -1429,7 +1429,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         transport = a_bzrdir.get_workingtree_transport(self)
-        control_files = LockableFiles(transport, 'lock')
+        control_files = LockableFiles(transport, 'lock', TransportLock)
         control_files.put_utf8('format', self.get_format_string())
         branch = a_bzrdir.open_branch()
         if revision_id is None:
