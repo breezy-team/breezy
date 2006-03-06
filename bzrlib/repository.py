@@ -911,6 +911,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         # NB: no need to escape relative paths that are url safe.
         repository_transport = a_bzrdir.get_repository_transport(self)
         control_files = LockableFiles(repository_transport, 'lock', LockDir)
+        control_files.create_lock()
         return control_files
 
     def _get_revision_store(self, repo_transport, control_files):

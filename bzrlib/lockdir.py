@@ -87,6 +87,7 @@ Example usage:
 >>> # typically will be obtained from a BzrDir, Branch, etc
 >>> t = MemoryTransport()
 >>> l = LockDir(t, 'sample-lock')
+>>> l.create()
 >>> l.wait_lock()
 >>> # do something here
 >>> l.unlock()
@@ -158,7 +159,6 @@ class LockDir(object):
         self._fake_read_lock = False
         self._held_dir = path + '/held'
         self._held_info_path = self._held_dir + self.__INFO_NAME
-        self._base_exists = False
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
         self.nonce = rand_chars(20)
@@ -179,15 +179,6 @@ class LockDir(object):
         if self.transport.is_readonly():
             raise UnlockableTransport(self.transport)
         self.transport.mkdir(self.path)
-        self._base_exists = True
-
-    def _create_if_needed(self):
-        # XXX: remove this in favour of creating the lock when the containing
-        # directory is built
-        if self._base_exists:
-            return
-        if not self.transport.has(self.path):
-            self.create()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
@@ -199,7 +190,6 @@ class LockDir(object):
             raise LockContention(self)
         if self.transport.is_readonly():
             raise UnlockableTransport(self.transport)
-        self._create_if_needed()
         try:
             tmpname = '%s/pending.%s.tmp' % (self.path, rand_chars(20))
             self.transport.mkdir(tmpname)

@@ -98,9 +98,9 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
         super(TestLockableFiles_TransportLock, self).setUp()
         transport = get_transport('.')
         transport.mkdir('.bzr')
-        transport.put('.bzr/my-lock', StringIO(''))
         sub_transport = transport.clone('.bzr')
         self.lockable = LockableFiles(sub_transport, 'my-lock')
+        self.lockable.create_lock()
 
         
 
@@ -110,8 +110,9 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
 
     def setUp(self):
         super(TestLockableFiles_LockDir, self).setUp()
-        transport = get_transport('.')
-        self.lockable = LockableFiles(transport, 'my-lock', LockDir)
+        self.transport = get_transport('.')
+        self.lockable = LockableFiles(self.transport, 'my-lock', LockDir)
+        self.lockable.create_lock()
 
     def test_lock_is_lockdir(self):
         """Created instance should use a LockDir.
@@ -123,11 +124,13 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
                               ## LockDirStrategy)
 
     def test_lock_created(self):
-        transport = get_transport('.')
-        lockable = LockableFiles(transport, 'my-lock', LockDir)
-        lockable.create_lock()
-        self.assertTrue(transport.has('my-lock'))
-        lockable.lock_write()
-        self.assertTrue(transport.has('my-lock/held/info'))
-        lockable.unlock()
+        self.assertTrue(self.transport.has('my-lock'))
+        self.lockable.lock_write()
+        self.assertTrue(self.transport.has('my-lock/held/info'))
+        self.lockable.unlock()
+        self.assertFalse(self.transport.has('my-lock/held/info'))
+        self.assertTrue(self.transport.has('my-lock'))
 
+
+    # TODO: Test the lockdir inherits the right file and directory permissions
+    # from the LockableFiles.
