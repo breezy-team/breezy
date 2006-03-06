@@ -54,49 +54,45 @@ class PyCurlTransport(HttpTransportBase):
         return True
 
     def has(self, relpath):
-        self.curl = pycurl.Curl()
+        curl = pycurl.Curl()
         abspath = self.abspath(relpath)
         if isinstance(abspath, unicode):
             abspath = abspath.encode('ascii', 'strict')
-        self.curl.setopt(pycurl.URL, abspath)
-        self.curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
-        self._set_curl_options()
+        curl.setopt(pycurl.URL, abspath)
+        curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
+        self._set_curl_options(curl)
         # don't want the body - ie just do a HEAD request
-        self.curl.setopt(pycurl.NOBODY, 1)
-        self._curl_perform()
-        try:
-            code = self.curl.getinfo(pycurl.HTTP_CODE)
-            if code == 404: # not found
-                return False
-            elif code in (200, 302): # "ok", "found"
-                return True
-            else:
-                raise TransportError('http error %d probing for %s' %
-                        (code, self.curl.getinfo(pycurl.EFFECTIVE_URL)))
-        finally:
-            del self.curl
+        curl.setopt(pycurl.NOBODY, 1)
+        self._curl_perform(curl)
+        code = curl.getinfo(pycurl.HTTP_CODE)
+        if code == 404: # not found
+            return False
+        elif code in (200, 302): # "ok", "found"
+            return True
+        else:
+            raise TransportError('http error %d probing for %s' %
+                    (code, curl.getinfo(pycurl.EFFECTIVE_URL)))
         
     def get(self, relpath):
-        self.curl = pycurl.Curl()
+        curl = pycurl.Curl()
         abspath = self.abspath(relpath)
         sio = StringIO()
         if isinstance(abspath, unicode):
             abspath = abspath.encode('ascii')
-        self.curl.setopt(pycurl.URL, abspath)
-        self._set_curl_options(self.curl)
-        self.curl.setopt(pycurl.WRITEFUNCTION, sio.write)
-        self.curl.setopt(pycurl.NOBODY, 0)
-        self._curl_perform()
-        code = self.curl.getinfo(pycurl.HTTP_CODE)
+        curl.setopt(pycurl.URL, abspath)
+        self._set_curl_options(curl)
+        curl.setopt(pycurl.WRITEFUNCTION, sio.write)
+        curl.setopt(pycurl.NOBODY, 0)
+        self._curl_perform(curl)
+        code = curl.getinfo(pycurl.HTTP_CODE)
         if code == 404:
             raise NoSuchFile(abspath)
         elif code == 200:
             sio.seek(0)
-            del self.curl
             return sio
         else:
             raise TransportError('http error %d acccessing %s' % 
-                    (code, self.curl.getinfo(pycurl.EFFECTIVE_URL)))
+                    (code, curl.getinfo(pycurl.EFFECTIVE_URL)))
 
     def _set_curl_options(self, curl):
         """Set options for all requests"""
@@ -105,20 +101,19 @@ class PyCurlTransport(HttpTransportBase):
         # provided by Curl.
         headers = ['Cache-control: must-revalidate',
                    'Pragma:']
-        ## self.curl.setopt(pycurl.VERBOSE, 1)
+        ## curl.setopt(pycurl.VERBOSE, 1)
         curl.setopt(pycurl.HTTPHEADER, headers)
         curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
 
-    def _curl_perform(self):
+    def _curl_perform(self, curl):
         """Perform curl operation and translate exceptions."""
         try:
-            self.curl.perform()
+            curl.perform()
         except pycurl.error, e:
             # XXX: There seem to be no symbolic constants for these values.
             if e[0] == 6:
                 # couldn't resolve host
-                raise NoSuchFile(self.curl.getinfo(pycurl.EFFECTIVE_URL), e)
-
+                raise NoSuchFile(curl.getinfo(pycurl.EFFECTIVE_URL), e)
 
 
 def get_test_permutations():
