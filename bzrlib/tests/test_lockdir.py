@@ -31,6 +31,12 @@ from bzrlib.tests import TestCaseWithTransport
 # concurrent actors.  This is not a typical (or necessarily supported) use;
 # they're really meant for guarding between processes.
 
+# These tests are run on the default transport provided by the test framework
+# (typically a local disk transport).  That can be changed by the --transport
+# option to bzr selftest.  The required properties of the transport
+# implementation are tested separately.  (The main requirement is just that
+# they don't allow overwriting nonempty directories.)
+
 class TestLockDir(TestCaseWithTransport):
     """Test LockDir operations"""
 
@@ -58,6 +64,7 @@ class TestLockDir(TestCaseWithTransport):
         """Acquire and release a lock"""
         t = self.get_transport()
         lf = LockDir(t, 'test_lock')
+        lf.create()
         lf.attempt_lock()
         try:
             self.assertTrue(lf.is_held)
@@ -65,16 +72,24 @@ class TestLockDir(TestCaseWithTransport):
             lf.unlock()
             self.assertFalse(lf.is_held)
 
-    def test_11_lock_readonly_transport(self):
-        """Fail to lock on readonly transport"""
+    def test_11_create_readonly_transport(self):
+        """Fail to create lock on readonly transport"""
         t = self.get_readonly_transport()
         lf = LockDir(t, 'test_lock')
+        self.assertRaises(UnlockableTransport, lf.create)
+
+    def test_12_lock_readonly_transport(self):
+        """Fail to lock on readonly transport"""
+        lf = LockDir(self.get_transport(), 'test_lock')
+        lf.create()
+        lf = LockDir(self.get_readonly_transport(), 'test_lock')
         self.assertRaises(UnlockableTransport, lf.attempt_lock)
 
     def test_20_lock_contested(self):
         """Contention to get a lock"""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         lf1.attempt_lock()
         lf2 = LockDir(t, 'test_lock')
         try:
@@ -92,6 +107,7 @@ class TestLockDir(TestCaseWithTransport):
         """Peek at the state of a lock"""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         lf1.attempt_lock()
         # lock is held, should get some info on it
         info1 = lf1.peek()
@@ -108,6 +124,7 @@ class TestLockDir(TestCaseWithTransport):
         """Peek over a readonly transport"""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         lf2 = LockDir(self.get_readonly_transport(), 'test_lock')
         self.assertEqual(lf2.peek(), None)
         lf1.attempt_lock()
@@ -124,6 +141,7 @@ class TestLockDir(TestCaseWithTransport):
         """
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         lf2 = LockDir(t, 'test_lock')
         lf1.attempt_lock()
         try:
@@ -139,14 +157,15 @@ class TestLockDir(TestCaseWithTransport):
         """Succeed when waiting on a lock with no contention.
         """
         t = self.get_transport()
-        lf2 = LockDir(t, 'test_lock')
+        lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         try:
             before = time.time()
-            lf2.wait_lock(timeout=0.4, poll=0.1)
+            lf1.wait_lock(timeout=0.4, poll=0.1)
             after = time.time()
             self.assertTrue(after - before <= 1.0)
         finally:
-            lf2.unlock()
+            lf1.unlock()
 
     def test_32_lock_wait_succeed(self):
         """Succeed when trying to acquire a lock that gets released
@@ -155,6 +174,7 @@ class TestLockDir(TestCaseWithTransport):
         """
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         lf1.attempt_lock()
 
         def wait_and_unlock():
@@ -181,6 +201,7 @@ class TestLockDir(TestCaseWithTransport):
         """
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         lf1.attempt_lock()
 
         def wait_and_unlock():
@@ -202,6 +223,7 @@ class TestLockDir(TestCaseWithTransport):
         """Confirm a lock that's already held"""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         lf1.attempt_lock()
         lf1.confirm()
 
@@ -209,12 +231,14 @@ class TestLockDir(TestCaseWithTransport):
         """Confirm a lock that's already held"""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         self.assertRaises(LockNotHeld, lf1.confirm)
 
     def test_42_confirm_broken_manually(self):
         """Confirm a lock broken by hand"""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         lf1.attempt_lock()
         t.move('test_lock', 'lock_gone_now')
         self.assertRaises(LockBroken, lf1.confirm)
@@ -223,6 +247,7 @@ class TestLockDir(TestCaseWithTransport):
         """Break a lock whose caller has forgotten it"""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         lf1.attempt_lock()
         # we incorrectly discard the lock object without unlocking it
         del lf1
@@ -239,6 +264,7 @@ class TestLockDir(TestCaseWithTransport):
         """Lock break races with regular release"""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         lf1.attempt_lock()
         # someone else sees it's still locked
         lf2 = LockDir(t, 'test_lock')
@@ -255,6 +281,7 @@ class TestLockDir(TestCaseWithTransport):
         """Lock break races with someone else acquiring it"""
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         lf1.attempt_lock()
         # someone else sees it's still locked
         lf2 = LockDir(t, 'test_lock')
@@ -271,5 +298,22 @@ class TestLockDir(TestCaseWithTransport):
     def test_46_fake_read_lock(self):
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')
+        lf1.create()
         lf1.lock_read()
         lf1.unlock()
+
+    def test_50_lockdir_representation(self):
+        """Check the on-disk representation of LockDirs is as expected.
+
+        There should always be a top-level directory named by the lock.
+        When the lock is held, there should be a lockname/held directory 
+        containing an info file.
+        """
+        t = self.get_transport()
+        lf1 = LockDir(t, 'test_lock')
+        lf1.create()
+        self.assertTrue(t.has('test_lock'))
+        lf1.lock_write()
+        self.assertTrue(t.has('test_lock/held/info'))
+        lf1.unlock()
+        self.assertFalse(t.has('test_lock/held/info'))

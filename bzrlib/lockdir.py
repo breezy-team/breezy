@@ -129,11 +129,6 @@ from bzrlib.rio import RioWriter, read_stanza, Stanza
 # TODO: Some kind of callback run while polling a lock to show progress
 # indicators.
 
-# TODO: perhaps put everything (held, pending, releasing, broken) inside a
-# top-level directory with the name of the lock, so that we can still see the
-# lock actually exists -- the top-level directory can then be created only by
-# the init method.
-
 _DEFAULT_TIMEOUT_SECONDS = 300
 _DEFAULT_POLL_SECONDS = 0.5
 
@@ -158,7 +153,8 @@ class LockDir(object):
         self.path = path
         self._lock_held = False
         self._fake_read_lock = False
-        self._info_path = path + self.__INFO_NAME
+        self._held_dir = path + '/held'
+        self._held_info_path = self._held_dir + self.__INFO_NAME
         self.nonce = rand_chars(20)
 
     def __repr__(self):
@@ -167,6 +163,22 @@ class LockDir(object):
                              self.path)
 
     is_held = property(lambda self: self._lock_held)
+
+    def create(self):
+        """Create the on-disk lock.
+
+        This is typically only called when the object/directory containing the 
+        directory is first created.  The lock is not held when it's created.
+        """
+        if self.transport.is_readonly():
+            raise UnlockableTransport(self.transport)
+        self.transport.mkdir(self.path)
+
+    def _create_if_needed(self):
+        # XXX: remove this in favour of creating the lock when the containing
+        # directory is built
+        if not self.transport.has(self.path):
+            self.create()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
@@ -178,18 +190,15 @@ class LockDir(object):
             raise LockContention(self)
         if self.transport.is_readonly():
             raise UnlockableTransport(self.transport)
+        self._create_if_needed()
         try:
-            tmpname = '%s.pending.%s.tmp' % (self.path, rand_chars(20))
+            tmpname = '%s/pending.%s.tmp' % (self.path, rand_chars(20))
             self.transport.mkdir(tmpname)
             sio = StringIO()
             self._prepare_info(sio)
             sio.seek(0)
             self.transport.put(tmpname + self.__INFO_NAME, sio)
-            # FIXME: this turns into os.rename on posix, but into a fancy rename 
-            # on Windows that may overwrite existing directory trees.  
-            # NB: posix rename will overwrite empty directories, but not 
-            # non-empty directories.
-            self.transport.move(tmpname, self.path)
+            self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
             self.confirm()
             return
@@ -208,8 +217,8 @@ class LockDir(object):
             raise LockNotHeld(self)
         # rename before deleting, because we can't atomically remove the whole
         # tree
-        tmpname = '%s.releasing.%s.tmp' % (self.path, rand_chars(20))
-        self.transport.rename(self.path, tmpname)
+        tmpname = '%s/releasing.%s.tmp' % (self.path, rand_chars(20))
+        self.transport.rename(self._held_dir, tmpname)
         self._lock_held = False
         self.transport.delete(tmpname + self.__INFO_NAME)
         self.transport.rmdir(tmpname)
@@ -240,8 +249,8 @@ class LockDir(object):
             return
         if current_info != dead_holder_info:
             raise LockBreakMismatch(self, current_info, dead_holder_info)
-        tmpname = '%s.broken.%s.tmp' % (self.path, rand_chars(20))
-        self.transport.rename(self.path, tmpname)
+        tmpname = '%s/broken.%s.tmp' % (self.path, rand_chars(20))
+        self.transport.rename(self._held_dir, tmpname)
         # check that we actually broke the right lock, not someone else;
         # there's a small race window between checking it and doing the 
         # rename.
@@ -273,6 +282,10 @@ class LockDir(object):
             raise LockBroken(self)
         
     def _read_info_file(self, path):
+        """Read one given info file.
+
+        peek() reads the info file of the lock holder, if any.
+        """
         return self._parse_info(self.transport.get(path))
 
     def peek(self):
@@ -283,7 +296,7 @@ class LockDir(object):
         Otherwise returns None.
         """
         try:
-            info = self._read_info_file(self._info_path)
+            info = self._read_info_file(self._held_info_path)
             assert isinstance(info, dict), \
                     "bad parse result %r" % info
             return info

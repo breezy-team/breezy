@@ -191,10 +191,11 @@ class TestFormat7(TestCaseWithTransport):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         repo = repository.RepositoryFormat7().initialize(control, shared=True)
         t = control.get_repository_transport(None)
-        self.assertFalse(t.has('lock'))
+        # TODO: Should check there is a 'lock' toplevel directory, 
+        # regardless of contents
+        self.assertFalse(t.has('lock/held/info'))
         repo.lock_write()
-        self.assertTrue(t.has('lock'))
-        self.assertTrue(t.has('lock/info'))
+        self.assertTrue(t.has('lock/held/info'))
 
     def test_uses_lockdir(self):
         """repo format 7 actually locks on lockdir"""
@@ -207,13 +208,10 @@ class TestFormat7(TestCaseWithTransport):
         del repo
         # make sure the same lock is created by opening it
         repo = repository.Repository.open(base_url)
-        self.assertFalse(t.has('lock'))
         repo.lock_write()
-        self.assertTrue(t.has('lock'))
-        self.assertTrue(t.has('lock/info'))
-        self.assertTrue(S_ISDIR(t.stat('lock').st_mode))
+        self.assertTrue(t.has('lock/held/info'))
         repo.unlock()
-        self.assertFalse(t.has('lock'))
+        self.assertFalse(t.has('lock/held/info'))
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
