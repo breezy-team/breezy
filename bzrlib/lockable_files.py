@@ -88,6 +88,14 @@ class LockableFiles(object):
                                 file_modebits=self._file_mode,
                                 dir_modebits=self._dir_mode)
 
+    def create_lock(self):
+        """Create the lock.
+
+        This should normally be called only when the LockableFiles directory
+        is first created on disk.
+        """
+        self._lock.create()
+
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
                            self._transport)
@@ -288,4 +296,5 @@ class TransportLock(object):
     def create(self):
         """Create lock mechanism"""
         # for old-style locks, create the file now
-        self._transport.put(lock_file, StringIO(), mode=self._file_modebits)
+        self._transport.put(self._escaped_name, StringIO(), 
+                            mode=self._file_modebits)

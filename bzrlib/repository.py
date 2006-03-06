@@ -787,7 +787,6 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
 
         mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['revision-store', 'weaves']
-        lock_file = 'branch-lock'
         files = [('inventory.weave', StringIO(empty_weave)),
                  ]
         

@@ -101,6 +101,7 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
         transport.put('.bzr/my-lock', StringIO(''))
         sub_transport = transport.clone('.bzr')
         self.lockable = LockableFiles(sub_transport, 'my-lock')
+
         
 
 class TestLockableFiles_LockDir(TestCaseInTempDir,
@@ -120,3 +121,13 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
         ## self.assertIsInstance(self.lockable, LockableFiles)
         ## self.assertIsInstance(self.lockable._lock_strategy,
                               ## LockDirStrategy)
+
+    def test_lock_created(self):
+        transport = get_transport('.')
+        lockable = LockableFiles(transport, 'my-lock', LockDir)
+        lockable.create_lock()
+        self.assertTrue(transport.has('my-lock'))
+        lockable.lock_write()
+        self.assertTrue(transport.has('my-lock/held/info'))
+        lockable.unlock()
+

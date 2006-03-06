@@ -889,8 +889,8 @@ class BzrDirFormat(object):
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
-        control.put(lock_file, StringIO(), mode=file_mode)
         control_files = LockableFiles(control, lock_file, TransportLock)
+        control_files.create_lock()
         control_files.lock_write()
         try:
             for file, content in utf8_files:
