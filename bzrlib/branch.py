@@ -183,6 +183,14 @@ class Branch(object):
         """
         raise NotImplementedError('abspath is abstract')
 
+    def bind(self, other):
+        """Bind the local branch the other branch.
+
+        :param other: The branch to bind to
+        :type other: Branch
+        """
+        raise errors.UpgradeRequired(self.base)
+
     @needs_write_lock
     def fetch(self, from_branch, last_revision=None, pb=None):
         """Copy revisions from from_branch into this branch.
@@ -217,6 +225,21 @@ class Branch(object):
         finally:
             from_branch.unlock()
 
+    def get_bound_location(self):
+        """Return the URL of the rbanch we are bound to.
+
+        Older format branches cannot bind, please be sure to use a metadir
+        branch.
+        """
+        return None
+
+    def get_master_branch(self):
+        """Return the branch we are bound to.
+        
+        :return: Either a Branch, or None
+        """
+        return None
+
     def get_root_id(self):
         """Return the id of this branches root"""
         raise NotImplementedError('get_root_id is abstract')
@@ -243,6 +266,10 @@ class Branch(object):
         """
         return len(self.revision_history())
 
+    def unbind(self):
+        """Older format branches cannot bind or unbind."""
+        raise errors.UpgradeRequired(self.base)
+
     def last_revision(self):
         """Return last patch hash, or None if no history."""
         ph = self.revision_history()
@@ -251,7 +278,7 @@ class Branch(object):
         else:
             return None
 
-    def missing_revisions(self, other, stop_revision=None, diverged_ok=False):
+    def missing_revisions(self, other, stop_revision=None):
         """Return a list of new revisions that would perfectly fit.
         
         If self and other have not diverged, return a list of the revisions
@@ -301,7 +328,12 @@ class Branch(object):
         return other_history[self_len:stop_revision]
 
     def update_revisions(self, other, stop_revision=None):
-        """Pull in new perfect-fit revisions."""
+        """Pull in new perfect-fit revisions.
+
+        :param other: Another Branch to pull from
+        :param stop_revision: Updated until the given revision
+        :return: None
+        """
         raise NotImplementedError('update_revisions is abstract')
 
     def pullable_revisions(self, other, stop_revision):
@@ -379,6 +411,14 @@ class Branch(object):
 
     def set_parent(self, url):
         raise NotImplementedError('set_parent is abstract')
+
+    @needs_write_lock
+    def update(self):
+        """Synchronise this branch with the master branch if any. 
+
+        :return: None or the last_revision pivoted out during the update.
+        """
+        return None
 
     def check_revno(self, revno):
         """\
@@ -656,10 +696,13 @@ class BzrBranchFormat5(BranchFormat):
             assert format.__class__ == self.__class__
         transport = a_bzrdir.get_branch_transport(None)
         control_files = LockableFiles(transport, 'lock')
-        return BzrBranch(_format=self,
-                         _control_files=control_files,
-                         a_bzrdir=a_bzrdir,
-                         _repository=a_bzrdir.find_repository())
+        return BzrBranch5(_format=self,
+                          _control_files=control_files,
+                          a_bzrdir=a_bzrdir,
+                          _repository=a_bzrdir.find_repository())
+
+    def __str__(self):
+        return "Bazaar-NG Metadir branch format 5"
 
 
 class BranchReferenceFormat(BranchFormat):
@@ -744,17 +787,7 @@ class BzrBranch(Branch):
     really matter if it's on an nfs/smb/afs/coda/... share, as long as
     it's writable, and can be accessed via the normal filesystem API.
     """
-    # We actually expect this class to be somewhat short-lived; part of its
-    # purpose is to try to isolate what bits of the branch logic are tied to
-    # filesystem access, so that in a later step, we can extricate them to
-    # a separarte ("storage") class.
-    _inventory_weave = None
     
-    # Map some sort of prefix into a namespace
-    # stuff like "revno:10", "revid:", etc.
-    # This should match a prefix with a function which accepts
-    REVISION_NAMESPACES = {}
-
     def __init__(self, transport=DEPRECATED_PARAMETER, init=DEPRECATED_PARAMETER,
                  relax_version_check=DEPRECATED_PARAMETER, _format=None,
                  _control_files=None, a_bzrdir=None, _repository=None):
@@ -901,7 +934,7 @@ class BzrBranch(Branch):
         # TODO: test for failed two phase locks. This is known broken.
         self.repository.unlock()
         self.control_files.unlock()
-
+        
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:
             return None
@@ -979,7 +1012,6 @@ class BzrBranch(Branch):
             self.append_revision(*pullable_revs)
 
     def pullable_revisions(self, other, stop_revision):
-        """See Branch.pullable_revisions."""
         other_revno = other.revision_id_to_revno(stop_revision)
         try:
             return self.missing_revisions(other, other_revno)
@@ -1063,39 +1095,141 @@ class BzrBranch(Branch):
     def tree_config(self):
         return TreeConfig(self)
 
-    def _get_truncated_history(self, revision_id):
-        history = self.revision_history()
-        if revision_id is None:
-            return history
+
+class BzrBranch5(BzrBranch):
+    """A format 5 branch. This supports new features over plan branches.
+
+    It has support for a master_branch which is the data for bound branches.
+    """
+
+    def __init__(self,
+                 _format,
+                 _control_files,
+                 a_bzrdir,
+                 _repository):
+        super(BzrBranch5, self).__init__(_format=_format,
+                                         _control_files=_control_files,
+                                         a_bzrdir=a_bzrdir,
+                                         _repository=_repository)
+        
+    @needs_write_lock
+    def pull(self, source, overwrite=False, stop_revision=None):
+        """Updates branch.pull to be bound branch aware."""
+        bound_location = self.get_bound_location()
+        if source.base != bound_location:
+            # not pulling from master, so we need to update master.
+            master_branch = self.get_master_branch()
+            if master_branch:
+                master_branch.pull(source)
+                source = master_branch
+        return super(BzrBranch5, self).pull(source, overwrite, stop_revision)
+
+    def get_bound_location(self):
         try:
-            idx = history.index(revision_id)
-        except ValueError:
-            raise InvalidRevisionId(revision_id=revision, branch=self)
-        return history[:idx+1]
+            return self.control_files.get_utf8('bound').read()[:-1]
+        except errors.NoSuchFile:
+            return None
 
     @needs_read_lock
-    def _clone_weave(self, to_location, revision=None, basis_branch=None):
-        # prevent leakage
-        from bzrlib.workingtree import WorkingTree
-        assert isinstance(to_location, basestring)
-        if basis_branch is not None:
-            note("basis_branch is not supported for fast weave copy yet.")
+    def get_master_branch(self):
+        """Return the branch we are bound to.
+        
+        :return: Either a Branch, or None
 
-        history = self._get_truncated_history(revision)
-        if not bzrlib.osutils.lexists(to_location):
-            os.mkdir(to_location)
-        bzrdir_to = self.bzrdir._format.initialize(to_location)
-        self.repository.clone(bzrdir_to)
-        branch_to = bzrdir_to.create_branch()
-        mutter("copy branch from %s to %s", self, branch_to)
+        This could memoise the branch, but if thats done
+        it must be revalidated on each new lock.
+        So for now we just dont memoise it.
+        # RBC 20060304 review this decision.
+        """
+        bound_loc = self.get_bound_location()
+        if not bound_loc:
+            return None
+        try:
+            return Branch.open(bound_loc)
+        except (errors.NotBranchError, errors.ConnectionError), e:
+            raise errors.BoundBranchConnectionFailure(
+                    self, bound_loc, e)
 
-        # FIXME duplicate code with base .clone().
-        # .. would template method be useful here?  RBC 20051207
-        branch_to.set_parent(self.base)
-        branch_to.append_revision(*history)
-        WorkingTree.create(branch_to, branch_to.base)
-        mutter("copied")
-        return branch_to
+    @needs_write_lock
+    def set_bound_location(self, location):
+        """Set the target where this branch is bound to.
+
+        :param location: URL to the target branch
+        """
+        if location:
+            self.control_files.put_utf8('bound', location+'\n')
+        else:
+            try:
+                self.control_files._transport.delete('bound')
+            except NoSuchFile:
+                return False
+            return True
+
+    @needs_write_lock
+    def bind(self, other):
+        """Bind the local branch the other branch.
+
+        :param other: The branch to bind to
+        :type other: Branch
+        """
+        # TODO: jam 20051230 Consider checking if the target is bound
+        #       It is debatable whether you should be able to bind to
+        #       a branch which is itself bound.
+        #       Committing is obviously forbidden,
+        #       but binding itself may not be.
+        #       Since we *have* to check at commit time, we don't
+        #       *need* to check here
+        self.pull(other)
+
+        # we are now equal to or a suffix of other.
+
+        # Since we have 'pulled' from the remote location,
+        # now we should try to pull in the opposite direction
+        # in case the local tree has more revisions than the
+        # remote one.
+        # There may be a different check you could do here
+        # rather than actually trying to install revisions remotely.
+        # TODO: capture an exception which indicates the remote branch
+        #       is not writeable. 
+        #       If it is up-to-date, this probably should not be a failure
+        
+        # lock other for write so the revision-history syncing cannot race
+        other.lock_write()
+        try:
+            other.pull(self)
+            # if this does not error, other now has the same last rev we do
+            # it can only error if the pull from other was concurrent with
+            # a commit to other from someone else.
+
+            # until we ditch revision-history, we need to sync them up:
+            self.set_revision_history(other.revision_history())
+            # now other and self are up to date with each other and have the
+            # same revision-history.
+        finally:
+            other.unlock()
+
+        self.set_bound_location(other.base)
+
+    @needs_write_lock
+    def unbind(self):
+        """If bound, unbind"""
+        return self.set_bound_location(None)
+
+    @needs_write_lock
+    def update(self):
+        """Synchronise this branch with the master branch if any. 
+
+        :return: None or the last_revision that was pivoted out during the
+                 update.
+        """
+        master = self.get_master_branch()
+        if master is not None:
+            old_tip = self.last_revision()
+            self.pull(master, overwrite=True)
+            if old_tip in self.repository.get_ancestry(self.last_revision()):
+                return None
+            return old_tip
+        return None
 
 
 class BranchTestProviderAdapter(object):
