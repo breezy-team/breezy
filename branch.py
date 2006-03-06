@@ -11,11 +11,9 @@ Support for SVN branches has been splitted up into two kinds:
 - wc (working copy) local checkouts. These are directories that contain a 
     .svn/ subdirectory)
 
-For the latter, a working_tree is available. This WorkingTree will be 
-special (can't use the default bzr one), and is not implemented yet. 
-RA repositories can only be 
-changed by doing a commit and are thus always considered 'remote' in the 
-bzr meaning of the word.
+Subversion always relies on the repository for the history information. Thus,
+RA can roughly be mapped to what bzr calls a Branch, and wc to what bzr calls a 
+WorkingTree.
 
 Three different identifiers are used in this file to refer to 
 revisions:
@@ -130,7 +128,7 @@ class SvnBranch(Branch):
 
     def url_from_file_id(self,revision_id,file_id):
         """Generate a full Subversion URL from a bzr file id."""
-        return self.base+self.sep+self.filename_from_file_id(revision_id,file_id)
+        return self.url+"/"+self.filename_from_file_id(revision_id,file_id)
 
     def _get_last_revnum(self,kind):
         # The python bindings for the svn_client_info() function
@@ -141,8 +139,8 @@ class SvnBranch(Branch):
         self.last_revnum = None
         def rcvr(paths,rev,author,date,message,pool):
             self.last_revnum = rev
-        mutter("svn log -r HEAD %r" % self.base)
-        svn.client.log2([self.base.encode('utf8')], revt_head, revt_head, \
+        mutter("svn log -r HEAD %r" % self.url)
+        svn.client.log2([self.url.encode('utf8')], revt_head, revt_head, \
                 1, 0, 0, rcvr, self.client, self.pool)
         assert self.last_revnum
 
@@ -190,7 +188,7 @@ class SvnBranch(Branch):
         return inv.root.file_id
 
     def abspath(self, name):
-        return self.base+self.sep+self.sep.join("/".split(name))
+        return self.url+"/"+name
 
     def push_stores(self, branch_to):
         raise NotImplementedError('push_stores is abstract') #FIXME
@@ -225,7 +223,7 @@ class SvnBranch(Branch):
         # then a revid
         revnum = self.get_revnum(self.get_rev_id(revno))
         stream = svn.core.svn_stream_empty(self.pool)
-        file_url = self.base+self.sep+file
+        file_url = self.url+"/"+file
         mutter('svn cat -r %r %r' % (revnum.value.number,file_url))
         svn.client.cat(stream,file_url.encode('utf8'),revnum,self.client,self.pool)
         print Stream(stream).read()
@@ -281,10 +279,10 @@ class SvnBranch(Branch):
 
     def get_inventory(self, revision_id):
         revnum = self.get_revnum(revision_id)
-        mutter('getting inventory %r for branch %r' % (revnum.value.number, self.base))
+        mutter('getting inventory %r for branch %r' % (revnum.value.number, self.url))
 
-        mutter("svn ls -r %d '%r'" % (revnum.value.number, self.base))
-        remote_ls = svn.client.ls(self.base.encode('utf8'),
+        mutter("svn ls -r %d '%r'" % (revnum.value.number, self.url))
+        remote_ls = svn.client.ls(self.url.encode('utf8'),
                                          revnum,
                                          True, # recurse
                                          self.client, self.pool)
@@ -334,11 +332,35 @@ class SvnBranch(Branch):
         
         return SvnRevisionTree(self, revision_id)
 
-    def rename_one(self, from_rel, to_rel):
-        # There is no difference between rename and move in SVN
-        self.move([from_rel], to_rel)
+    # The remote server handles all this for us
+    def lock_write(self):
+        pass
+        
+    def lock_read(self):
+        pass
 
-    # FIXME: perhaps move these two to a 'ForeignBranch' class in 
+    def unlock(self):
+        pass
+
+    def get_parent(self):
+        return None
+
+    def set_parent(self, url):
+        raise NotImplementedError('can not change parent of SVN branch')
+
+    def get_transaction(self):
+        raise NotImplementedError('get_transaction is abstract') #FIXME
+
+    def append_revision(self, *revision_ids):
+        raise NotImplementedError('append_revision is abstract') #FIXME
+
+    def working_tree(self):
+        if self.path is None:
+            raise NoWorkingTree(self.url)
+        else:
+            return SvnWorkingTree(self.path,branch=self)
+
+    # FIXME: perhaps move these four to a 'ForeignBranch' class in 
     # bzr core?
     def get_revision_xml(self, revision_id):
         return bzrlib.xml5.serializer_v5.write_revision_to_string(self.get_revision(revision_id))
@@ -353,145 +375,27 @@ class SvnBranch(Branch):
         return bzrlib.osutils.sha_string(self.get_inventory_xml(revision_id))
 
 class RemoteSvnBranch(SvnBranch):
-    """Branch representing a remote Subversion repository.
+    """Branch representing a remote Subversion repository.  """
 
-    """
-    sep = "/"
+    def _get_uid(self):
+        mutter("svn uuid '%r'" % self.url)
+        uuid = svn.client.uuid_from_url(self.url.encode('utf8'), self.client, self.pool)
+        assert uuid
+        return uuid
     
     def __init__(self, url):
         SvnBranch.__init__(self,url,svn.core.svn_opt_revision_base)
         self.url = url
-        mutter("svn uuid '%r'" % self.url)
-        self.uuid = svn.client.uuid_from_url(self.url.encode('utf8'), self.client, self.pool)
-        assert self.uuid
         self._generate_revnum_map()
 
-    def lock_write(self):
-        raise NoWorkingTree(self.url)
-        
-    def lock_read(self):
-        pass
-
-    def unlock(self):
-        pass
-
-    def add(self, files, ids=None):
-        raise NoWorkingTree(self.url)
-
-    def unknowns(self):
-        raise NoWorkingTree(self.url)
-
-    def controlfilename(self, file_or_path):
-        raise NoWorkingTree(self.url)
-
-    def controlfile(self, file_or_path, mode='r'):
-        raise NoWorkingTree(self.url)
-
-    def put_controlfile(self, path, f, encode=True):
-        raise NoWorkingTree(self.url)
-
-    def put_controlfiles(self, files, encode=True):
-        raise NoWorkingTree(self.url)
-
-    def move(self, from_paths, to_name):
-        raise NoWorkingTree(self.url)
-
-    def get_parent(self):
-        return self.url
-
-    def working_tree(self):
-        raise NoWorkingTree(self.url)
-
-    def set_parent(self, url):
-        raise NoWorkingTree(self.url)
-
-    def get_transaction(self):
-        raise NotImplementedError('get_transaction is abstract') #FIXME
-
-    def append_revision(self, *revision_ids):
-        raise NotImplementedError('append_revision is abstract') #FIXME
-
-class SvnWorkingTree(WorkingTree):
-    def __init__(self,path,branch):
-        WorkingTree.__init__(self,path,branch)
-        self.path = path
-
-    def revert(self,filenames,old_tree=None,backups=True):
-        # FIXME: Respect old_tree and backups
-        svn.client.revert(filenames,True,self.client,self.pool)
 
 class LocalSvnBranch(SvnBranch):
-    """Branch representing a local Subversion checkout.
-    
-    Most of the methods in here will move to SvnWorkingTree later on, 
-    as more of Roberts work on refactoring Branch and WorkingTree enters
-    bzr.dev.
-    """
-    sep = os.path.sep
-   
-    def get_parent(self):
-        return self.path
-
-    def working_tree(self):
-        return SvnWorkingTree(self.path,branch=self)
+    """Branch representing a local Subversion checkout.  """
 
     def __init__(self, path):
         SvnBranch.__init__(self,path,svn.core.svn_opt_revision_working)
         self.path = path
-        self.adm_baton = svn.wc.adm_open(None, self.path.encode('utf8'), False, True, self.pool)
         self.url = svn.client.url_from_path(self.path.encode('utf8'),self.pool)
-        self.uuid = svn.client.uuid_from_path(self.path.encode('utf8'), self.adm_baton, self.client, self.pool)
-        assert self.uuid
-        self._generate_revnum_map()
-
-    def unknowns(self):
-        return self.working_tree().unknowns()
-
-    def get_transaction(self):
-        raise NotImplementedError('get_transaction is abstract') #FIXME
-
-    #FIXME: Do some kind of locking?
-    def lock_write(self):
-        pass
         
-    def lock_read(self):
-        pass
-
-    def unlock(self):
-        pass
-
-    def controlfilename(self, file_or_path):
-        raise NotImplementedError('controlfilename is abstract') #FIXME
-
-    def controlfile(self, file_or_path, mode='r'):
-        raise NotImplementedError('controlfile is abstract') #FIXME
-
-    def put_controlfile(self, path, f, encode=True):
-        raise NotImplementedError('put_controlfile is abstract') #FIXME
-
-    def put_controlfiles(self, files, encode=True):
-        raise NotImplementedError('put_controlfiles is abstract') #FIXME
-
-    def add(self, files, ids=None):
-        for f in files:
-            svn.client.add(f, False, self.client, self.pool)
-            if ids:
-                id = ids.pop()
-                if id:
-                    svn.client.propset('bzr:id', id, f, False, self.pool)
-
-    def append_revision(self, *revision_ids):
-        raise NotImplementedError('append_revision is abstract') #FIXME
-
-    def move(self, from_paths, to_name):
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_unspecified
-        for entry in from_paths:
-            svn.client.move(entry, revt, to_name, False, self.client, self.pool)
-
-    def set_parent(self, url):
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_base
-        self.last_revnum = svn.client.switch(self.path, url, revt, True, self.client, self.pool)
-        self.url = url
+        assert self.uuid
         self._generate_revnum_map()
