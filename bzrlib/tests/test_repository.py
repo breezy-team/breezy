@@ -250,7 +250,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         repo.unlock()
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
-        # lock ''
+        # lock: is a directory
         # inventory.weave == empty_weave
         # empty revision-store directory
         # empty weaves directory
@@ -261,6 +261,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         # self.assertEqualDiff('', t.get('lock').read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('lock').st_mode))
         # cheating and using a weave for now.
         self.assertEqualDiff('# bzr weave file v5\n'
                              'w\n'
@@ -272,7 +273,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         repo = repository.RepositoryFormatKnit1().initialize(control, shared=True)
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
-        # lock ''
+        # lock: is a directory
         # inventory.weave == empty_weave
         # empty revision-store directory
         # empty weaves directory
@@ -285,6 +286,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertEqualDiff('', t.get('shared-storage').read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('lock').st_mode))
         # cheating and using a weave for now.
         self.assertEqualDiff('# bzr weave file v5\n'
                              'w\n'
@@ -313,6 +315,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertFalse(t.has('no-working-trees'))
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('lock').st_mode))
         # cheating and using a weave for now.
         self.assertEqualDiff('# bzr weave file v5\n'
                              'w\n'

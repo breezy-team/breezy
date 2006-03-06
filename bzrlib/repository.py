@@ -1012,6 +1012,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
      - a format marker of its own
      - an optional 'shared-storage' flag
      - an optional 'no-working-trees' flag
+     - a LockDir lock
     """
 
     def get_format_string(self):
