@@ -76,7 +76,7 @@ from bzrlib.atomicfile import AtomicFile
 from bzrlib.osutils import (local_time_offset,
                             rand_bytes, compact_date,
                             kind_marker, is_inside_any, quotefn,
-                            sha_string, sha_strings, sha_file, isdir, isfile,
+                            sha_file, isdir, isfile,
                             split_lines)
 import bzrlib.config
 import bzrlib.errors as errors
@@ -85,7 +85,6 @@ from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
-import bzrlib.gpg as gpg
 from bzrlib.revision import Revision
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
@@ -293,7 +292,11 @@ class Commit(object):
             if len(list(self.work_tree.iter_conflicts()))>0:
                 raise ConflictsInTree
 
-            self._record_inventory()
+            self.inv_sha1 = self.branch.repository.add_inventory(
+                self.rev_id,
+                self.new_inv,
+                self.present_parents
+                )
             self._make_revision()
             self.work_tree.set_pending_merges([])
             self.branch.append_revision(self.rev_id)
@@ -313,17 +316,6 @@ class Commit(object):
                                    'rev_id':self.rev_id})
         finally:
             self.branch.unlock()
-
-    def _record_inventory(self):
-        """Store the inventory for the new revision."""
-        inv_text = serializer_v5.write_inventory_to_string(self.new_inv)
-        self.inv_sha1 = sha_string(inv_text)
-        s = self.branch.repository.control_weaves
-        inv_versioned_file = s.get_weave('inventory',
-                                         self.branch.repository.get_transaction())
-        inv_versioned_file.add_lines(self.rev_id,
-                                     self.present_parents,
-                                     split_lines(inv_text))
 
     def _escape_commit_message(self):
         """Replace xml-incompatible control characters."""
@@ -366,23 +358,15 @@ class Commit(object):
             
     def _make_revision(self):
         """Record a new revision object for this commit."""
-        self.rev = Revision(timestamp=self.timestamp,
-                            timezone=self.timezone,
-                            committer=self.committer,
-                            message=self.message,
-                            inventory_sha1=self.inv_sha1,
-                            revision_id=self.rev_id,
-                            properties=self.revprops)
-        self.rev.parent_ids = self.parents
-        rev_tmp = StringIO()
-        serializer_v5.write_revision(self.rev, rev_tmp)
-        rev_tmp.seek(0)
-        if self.config.signature_needed():
-            plaintext = Testament(self.rev, self.new_inv).as_short_text()
-            self.branch.repository.store_revision_signature(
-                gpg.GPGStrategy(self.config), plaintext, self.rev_id)
-        self.branch.repository.revision_store.add(rev_tmp, self.rev_id)
-        mutter('new revision_id is {%s}', self.rev_id)
+        rev = Revision(timestamp=self.timestamp,
+                       timezone=self.timezone,
+                       committer=self.committer,
+                       message=self.message,
+                       inventory_sha1=self.inv_sha1,
+                       revision_id=self.rev_id,
+                       properties=self.revprops)
+        rev.parent_ids = self.parents
+        self.branch.repository.add_revision(self.rev_id, rev, self.new_inv, self.config)
 
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.

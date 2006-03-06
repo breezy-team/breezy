@@ -315,6 +315,8 @@ class Weave(VersionedFile):
 
         # if we abort after here the (in-memory) weave will be corrupt because only
         # some fields are updated
+        # XXX: FIXME implement a succeed-or-fail of the rest of this routine.
+        #      - Robert Collins 20060226
         self._parents.append(parents[:])
         self._sha1s.append(sha1)
         self._names.append(version_id)
@@ -843,13 +845,19 @@ class WeaveFile(Weave):
 
     WEAVE_SUFFIX = '.weave'
     
-    def __init__(self, name, transport, mode=None):
+    def __init__(self, name, transport, mode=None, create=False):
+        """Create a WeaveFile.
+        
+        :param create: If not True, only open an existing knit.
+        """
         super(WeaveFile, self).__init__(name)
         self._transport = transport
         self._mode = mode
         try:
             _read_weave_v5(self._transport.get(name + WeaveFile.WEAVE_SUFFIX), self)
         except errors.NoSuchFile:
+            if not create:
+                raise
             # new file, save it
             self._save()
 
@@ -867,7 +875,7 @@ class WeaveFile(Weave):
         transport.put(name + WeaveFile.WEAVE_SUFFIX, sio, self._mode)
 
     def create_empty(self, name, transport, mode=None):
-        return WeaveFile(name, transport, mode)
+        return WeaveFile(name, transport, mode, create=True)
 
     def _save(self):
         """Save the weave."""

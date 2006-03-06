@@ -30,12 +30,14 @@ class TestJoin(TestCaseWithTransport):
     def get_source(self, name='source'):
         """Get a versioned file we will be joining from."""
         return self.versionedfile_factory(name,
-                                          get_transport(self.get_url()))
+                                          get_transport(self.get_url()),
+                                          create=True)
 
     def get_target(self, name='target'):
         """"Get an empty versioned file to join into."""
         return self.versionedfile_factory_to(name,
-                                             get_transport(self.get_url()))
+                                             get_transport(self.get_url()),
+                                             create=True)
 
     def test_join(self):
         f1 = self.get_source()

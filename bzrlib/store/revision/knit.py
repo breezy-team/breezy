@@ -80,7 +80,7 @@ class KnitRevisionStore(RevisionStore):
 
     def get_revision_file(self, transaction):
         """Get the revision versioned file object."""
-        return self.versioned_file_store.get_weave('revisions', transaction)
+        return self.versioned_file_store.get_weave_or_empty('revisions', transaction)
 
     def has_revision_id(self, revision_id, transaction):
         """True if the store contains revision_id."""

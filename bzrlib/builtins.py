@@ -31,7 +31,8 @@ from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
-                           NoSuchFile, NoWorkingTree, FileInWrongBranch)
+                           NoSuchFile, NoWorkingTree, FileInWrongBranch,
+                           NotVersionedError)
 from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
@@ -767,6 +768,32 @@ class cmd_file_path(Command):
             raise BzrError("%r is not a versioned file" % filename)
         for fip in inv.get_idpath(fid):
             print fip
+
+
+class cmd_reconcile(Command):
+    """Reconcile bzr metadata in a branch.
+
+    This can correct data mismatches that may have been caused by
+    previous ghost operations or bzr upgrades. You should only
+    need to run this command if 'bzr check' or a bzr developer 
+    advises you to run it.
+
+    If a second branch is provided, cross-branch reconciliation is
+    also attempted, which will check that data like the tree root
+    id which was not present in very early bzr versions is represented
+    correctly in both branches.
+
+    At the same time it is run it may recompress data resulting in 
+    a potential saving in disk space or performance gain.
+
+    The branch *MUST* be on a listable system such as local disk or sftp.
+    """
+    takes_args = ['branch?']
+
+    def run(self, branch="."):
+        from bzrlib.reconcile import reconcile
+        dir = bzrlib.bzrdir.BzrDir.open(branch)
+        reconcile(dir)
 
 
 class cmd_revision_history(Command):
@@ -1798,6 +1825,8 @@ class cmd_remerge(Command):
                 interesting_ids = set()
                 for filename in file_list:
                     file_id = tree.path2id(filename)
+                    if file_id is None:
+                        raise NotVersionedError(filename)
                     interesting_ids.add(file_id)
                     if tree.kind(file_id) != "directory":
                         continue

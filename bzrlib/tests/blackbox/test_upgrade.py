@@ -23,26 +23,9 @@ import os
 import bzrlib.bzrdir as bzrdir
 import bzrlib.repository as repository
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.blackbox import TestUIFactory
 from bzrlib.transport import get_transport
 import bzrlib.ui as ui
-
-
-class TestUIFactory(ui.UIFactory):
-    """A UI Factory which never captures its output.
-    """
-
-    def clear(self):
-        """See progress.ProgressBar.clear()."""
-
-    def note(self, fmt_string, *args, **kwargs):
-        """See progress.ProgressBar.note()."""
-        print fmt_string % args
-
-    def progress_bar(self):
-        return self
-        
-    def update(self, message, count=None, total=None):
-        """See progress.ProgressBar.update()."""
 
 
 class TestWithUpgradableBranches(TestCaseWithTransport):

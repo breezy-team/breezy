@@ -36,6 +36,7 @@ from bzrlib.errors import (InstallFailed, NoSuchRevision,
                            MissingText)
 from bzrlib.trace import mutter
 from bzrlib.progress import ProgressBar
+from bzrlib.reconcile import RepoReconciler
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import *
 
@@ -150,6 +151,14 @@ class RepoFetcher(object):
             self.from_repository.revision_store,
             revs,
             pb=self.pb)
+        # fixup inventory if needed:
+        # this is expensive because we have no inverse index to current ghosts.
+        # but on local disk its a few seconds and sftp push is already insane.
+        # so we just-do-it.
+        # FIXME: the generic code path should not need this, if it truely is
+        # generic.
+        reconciler = RepoReconciler(self.to_repository)
+        reconciler.reconcile()
 
     def _fetch_weave_texts(self, revs):
         file_ids = self.from_repository.fileid_involved_by_set(revs)

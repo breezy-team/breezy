@@ -44,7 +44,7 @@ class KnitTests(TestCaseInTempDir):
             factory = KnitPlainFactory()
         else:
             factory = None
-        return KnitVersionedFile('test', LocalTransport('.'), access_mode='w', factory=factory)
+        return KnitVersionedFile('test', LocalTransport('.'), access_mode='w', factory=factory, create=True)
 
     def test_knit_add(self):
         """Store one text in knit and retrieve"""
@@ -58,7 +58,7 @@ class KnitTests(TestCaseInTempDir):
         k = self.make_test_knit()
         k.add_lines('text-1', [], split_lines(TEXT_1))
         del k
-        k2 = KnitVersionedFile('test', LocalTransport('.'), access_mode='r', factory=KnitPlainFactory())
+        k2 = KnitVersionedFile('test', LocalTransport('.'), access_mode='r', factory=KnitPlainFactory(), create=True)
         self.assertTrue(k2.has_version('text-1'))
         self.assertEqualDiff(''.join(k2.get_lines('text-1')), TEXT_1)
 
@@ -86,7 +86,7 @@ class KnitTests(TestCaseInTempDir):
     def test_incomplete(self):
         """Test if texts without a ending line-end can be inserted and
         extracted."""
-        k = KnitVersionedFile('test', LocalTransport('.'), delta=False)
+        k = KnitVersionedFile('test', LocalTransport('.'), delta=False, create=True)
         k.add_lines('text-1', [], ['a\n',    'b'  ])
         k.add_lines('text-2', ['text-1'], ['a\rb\n', 'b\n'])
         self.assertEquals(k.get_lines('text-1'), ['a\n',    'b'  ])
@@ -117,14 +117,14 @@ class KnitTests(TestCaseInTempDir):
     def test_add_delta(self):
         """Store in knit with parents"""
         k = KnitVersionedFile('test', LocalTransport('.'), factory=KnitPlainFactory(),
-            delta=True)
+            delta=True, create=True)
         self.add_stock_one_and_one_a(k)
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
 
     def test_annotate(self):
         """Annotations"""
         k = KnitVersionedFile('knit', LocalTransport('.'), factory=KnitAnnotateFactory(),
-            delta=True)
+            delta=True, create=True)
         self.insert_and_test_small_annotate(k)
 
     def insert_and_test_small_annotate(self, k):
@@ -139,7 +139,7 @@ class KnitTests(TestCaseInTempDir):
     def test_annotate_fulltext(self):
         """Annotations"""
         k = KnitVersionedFile('knit', LocalTransport('.'), factory=KnitAnnotateFactory(),
-            delta=False)
+            delta=False, create=True)
         self.insert_and_test_small_annotate(k)
 
     def test_annotate_merge_1(self):
@@ -217,7 +217,7 @@ class KnitTests(TestCaseInTempDir):
 
     def test_knit_join(self):
         """Store in knit with parents"""
-        k1 = KnitVersionedFile('test1', LocalTransport('.'), factory=KnitPlainFactory())
+        k1 = KnitVersionedFile('test1', LocalTransport('.'), factory=KnitPlainFactory(), create=True)
         k1.add_lines('text-a', [], split_lines(TEXT_1))
         k1.add_lines('text-b', ['text-a'], split_lines(TEXT_1))
 
@@ -226,7 +226,7 @@ class KnitTests(TestCaseInTempDir):
 
         k1.add_lines('text-m', ['text-b', 'text-d'], split_lines(TEXT_1))
 
-        k2 = KnitVersionedFile('test2', LocalTransport('.'), factory=KnitPlainFactory())
+        k2 = KnitVersionedFile('test2', LocalTransport('.'), factory=KnitPlainFactory(), create=True)
         count = k2.join(k1, version_ids=['text-m'])
         self.assertEquals(count, 5)
         self.assertTrue(k2.has_version('text-a'))
@@ -234,14 +234,14 @@ class KnitTests(TestCaseInTempDir):
 
     def test_reannotate(self):
         k1 = KnitVersionedFile('knit1', LocalTransport('.'),
-                               factory=KnitAnnotateFactory())
+                               factory=KnitAnnotateFactory(), create=True)
         # 0
         k1.add_lines('text-a', [], ['a\n', 'b\n'])
         # 1
         k1.add_lines('text-b', ['text-a'], ['a\n', 'c\n'])
 
         k2 = KnitVersionedFile('test2', LocalTransport('.'),
-                               factory=KnitAnnotateFactory())
+                               factory=KnitAnnotateFactory(), create=True)
         k2.join(k1, version_ids=['text-b'])
 
         # 2

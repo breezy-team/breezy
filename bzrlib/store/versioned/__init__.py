@@ -1,5 +1,3 @@
-#! /usr/bin/python
-
 # Copyright (C) 2005 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
@@ -46,6 +44,21 @@ class VersionedFileStore(TransportStore):
         self._precious = precious
         self._versionedfile_class = versionedfile_class
 
+    def _clear_cache_id(self, file_id, transaction):
+        """WARNING may lead to inconsistent object references for file_id.
+
+        Remove file_id from the transaction map. 
+
+        NOT in the transaction api because theres no reliable way to clear
+        callers. So its here for very specialised use rather than having an
+        'api' that isn't.
+        """
+        weave = transaction.map.find_weave(file_id)
+        if weave:
+            mutter("old data in transaction in %s for %s", self, file_id)
+            # FIXME abstraction violation.
+            transaction.map.remove_object('weave-' + file-id)
+
     def filename(self, file_id):
         """Return the path relative to the transport root."""
         if self._prefixed:
@@ -71,6 +84,20 @@ class VersionedFileStore(TransportStore):
             if not self._transport.has(filename + suffix):
                 return False
         return True
+
+    def get_empty(self, file_id, transaction):
+        """Get an empty weave, which implies deleting the existing one first."""
+        if self.has_id(file_id):
+            self.delete(file_id, transaction)
+        return self.get_weave_or_empty(file_id, transaction)
+
+    def delete(self, file_id, transaction):
+        """Remove file_id from the store."""
+        suffixes = self._versionedfile_class.get_suffixes()
+        filename = self.filename(file_id)
+        for suffix in suffixes:
+            self._transport.delete(filename + suffix)
+        self._clear_cache_id(file_id, transaction)
 
     def get_weave(self, file_id, transaction):
         weave = transaction.map.find_weave(file_id)
@@ -99,14 +126,14 @@ class VersionedFileStore(TransportStore):
 
     def _make_new_versionedfile(self, file_id):
         try:
-            weave = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode)
+            weave = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode, create=True)
         except NoSuchFile:
             if not self._prefixed:
                 # unexpected error - NoSuchFile is raised on a missing dir only and that
                 # only occurs when we are prefixed.
                 raise
             self._transport.mkdir(hash_prefix(file_id), mode=self._dir_mode)
-            weave = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode)
+            weave = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode, create=True)
         return weave
 
     def get_weave_or_empty(self, file_id, transaction):
@@ -153,7 +180,12 @@ class VersionedFileStore(TransportStore):
         """
         vfile = self.get_weave_or_empty(file_id, transaction)
         vfile.clone_text(new_rev_id, old_rev_id, parents)
-     
+ 
+    def copy(self, source, result_id, transaction):
+        """Copy the source versioned file to result_id in this store."""
+        self._clear_cache_id(result_id, transaction)
+        source.copy_to(self.filename(result_id), self._transport)
+ 
     def copy_all_ids(self, store_from, pb=None, from_transaction=None):
         """Copy all the file ids from store_from into self."""
         if from_transaction is None:

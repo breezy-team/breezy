@@ -211,10 +211,10 @@ class VersionedFileTestMixIn(object):
 class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, get_transport(self.get_url('.')))
+        return WeaveFile(name, get_transport(self.get_url('.')), create=True)
 
     def get_file_corrupted_text(self):
-        w = WeaveFile('foo', get_transport(self.get_url('.')))
+        w = WeaveFile('foo', get_transport(self.get_url('.')), create=True)
         w.add_lines('v1', [], ['hello\n'])
         w.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
         
@@ -250,12 +250,18 @@ class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
     def reopen_file(self, name='foo'):
         return WeaveFile(name, get_transport(self.get_url('.')))
 
+    def test_no_implicit_create(self):
+        self.assertRaises(errors.NoSuchFile,
+                          WeaveFile,
+                          'foo',
+                          get_transport(self.get_url('.')))
+
 
 class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return KnitVersionedFile(name, get_transport(self.get_url('.')),
-                                 delta=True)
+                                 delta=True, create=True)
 
     def get_file_corrupted_text(self):
         knit = self.get_file()
@@ -270,6 +276,12 @@ class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
         print "TODO for merging: create a corrupted knit."
         knit = self.get_file()
         knit.check()
+
+    def test_no_implicit_create(self):
+        self.assertRaises(errors.NoSuchFile,
+                          KnitVersionedFile,
+                          'foo',
+                          get_transport(self.get_url('.')))
 
 
 class InterString(versionedfile.InterVersionedFile):

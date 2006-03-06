@@ -43,7 +43,7 @@ class MergeBuilder(object):
         for tt in (self.this_tt, self.base_tt, self.other_tt):
             new_file(tt)
 
-    def merge(self, merge_type=Merge3Merger):
+    def merge(self, merge_type=Merge3Merger, interesting_ids=None):
         self.base_tt.apply()
         self.base.commit('base commit')
         for tt, wt in ((self.this_tt, self.this), (self.other_tt, self.other)):
@@ -53,7 +53,8 @@ class MergeBuilder(object):
             assert len(wt.branch.revision_history()) == 2
         self.this.branch.fetch(self.other.branch)
         other_basis = self.other.branch.basis_tree()
-        merger = merge_type(self.this, self.this, self.base, other_basis)
+        merger = merge_type(self.this, self.this, self.base, other_basis, 
+                            interesting_ids=interesting_ids)
         return merger.cooked_conflicts
 
     def list_transforms(self):
@@ -192,6 +193,16 @@ class MergeTest(TestCase):
         conflicts = builder.merge()
         self.assertEqual(conflicts, [('path conflict', '1', 'name3', 'name2')])
         builder.cleanup()
+
+    def test_merge_one(self):
+        builder = MergeBuilder()
+        builder.add_file("1", "TREE_ROOT", "name1", "hello1", True)
+        builder.change_contents("1", other="text4")
+        builder.add_file("2", "TREE_ROOT", "name2", "hello1", True)
+        builder.change_contents("2", other="text4")
+        builder.merge(interesting_ids=["1"])
+        self.assertEqual(builder.this.get_file("1").read(), "text4" )
+        self.assertEqual(builder.this.get_file("2").read(), "hello1" )
         
     def test_file_moves(self):
         """Test moves"""

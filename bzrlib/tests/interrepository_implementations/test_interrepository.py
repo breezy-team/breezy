@@ -169,3 +169,46 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         to_signature = to_repo.revision_store.get('rev2', 'sig').read()
         self.assertEqual(from_signature, to_signature)
 
+
+class TestCaseWithGhosts(TestCaseWithInterRepository):
+
+    def setUp(self):
+        super(TestCaseWithGhosts, self).setUp()
+        # we want two repositories at this point
+        # one with a revision that is a ghost in the other
+        # repository.
+
+        # 'ghost' is a ghost in missing_ghost and not in with_ghost_rev
+        inv = bzrlib.tree.EmptyTree().inventory
+        repo = self.make_repository('with_ghost_rev')
+        sha1 = repo.add_inventory('ghost', inv, [])
+        rev = bzrlib.revision.Revision(timestamp=0,
+                                       timezone=None,
+                                       committer="Foo Bar <foo@example.com>",
+                                       message="Message",
+                                       inventory_sha1=sha1,
+                                       revision_id='ghost')
+        rev.parent_ids = []
+        repo.add_revision('ghost', rev)
+         
+        repo = self.make_to_repository('missing_ghost')
+        sha1 = repo.add_inventory('with_ghost', inv, [])
+        rev = bzrlib.revision.Revision(timestamp=0,
+                                       timezone=None,
+                                       committer="Foo Bar <foo@example.com>",
+                                       message="Message",
+                                       inventory_sha1=sha1,
+                                       revision_id='with_ghost')
+        rev.parent_ids = ['ghost']
+        repo.add_revision('with_ghost', rev)
+
+    def test_fetch_all_fixes_up_ghost(self):
+        # fetching from a repo with a current ghost unghosts it in referencing
+        # revisions.
+        repo = repository.Repository.open('missing_ghost')
+        rev = repo.get_revision('with_ghost')
+        from_repo = repository.Repository.open('with_ghost_rev')
+        repo.fetch(from_repo)
+        # rev must not be corrupt now
+        rev = repo.get_revision('with_ghost')
+        self.assertEqual([None, 'ghost', 'with_ghost'], repo.get_ancestry('with_ghost'))

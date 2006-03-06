@@ -23,6 +23,7 @@ import xml.sax.saxutils
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 from bzrlib.errors import InvalidRevisionId
+import bzrlib.gpg as gpg
 from bzrlib.inter import InterObject
 from bzrlib.knit import KnitVersionedFile
 from bzrlib.lockable_files import LockableFiles
@@ -53,6 +54,54 @@ class Repository(object):
     remote) disk.
     """
 
+    @needs_write_lock
+    def add_inventory(self, revid, inv, parents):
+        """Add the inventory inv to the repository as revid.
+        
+        :param parents: The revision ids of the parents that revid
+                        is known to have and are in the repository already.
+
+        returns the sha1 of the serialized inventory.
+        """
+        inv_text = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
+        inv_sha1 = bzrlib.osutils.sha_string(inv_text)
+        inv_vf = self.control_weaves.get_weave('inventory',
+                                               self.get_transaction())
+        inv_vf.add_lines(revid, parents, bzrlib.osutils.split_lines(inv_text))
+        return inv_sha1
+
+    @needs_write_lock
+    def add_revision(self, rev_id, rev, inv=None, config=None):
+        """Add rev to the revision store as rev_id.
+
+        :param rev_id: the revision id to use.
+        :param rev: The revision object.
+        :param inv: The inventory for the revision. if None, it will be looked
+                    up in the inventory storer
+        :param config: If None no digital signature will be created.
+                       If supplied its signature_needed method will be used
+                       to determine if a signature should be made.
+        """
+        if config is not None and config.signature_needed():
+            if inv is None:
+                inv = self.get_inventory(rev_id)
+            plaintext = Testament(rev, inv).as_short_text()
+            self.store_revision_signature(
+                gpg.GPGStrategy(config), plaintext, rev_id)
+        if not rev_id in self.get_inventory_weave():
+            if inv is None:
+                raise errors.WeaveRevisionNotPresent(rev_id,
+                                                     self.get_inventory_weave())
+            else:
+                # yes, this is not suitable for adding with ghosts.
+                self.add_inventory(rev_id, inv, rev.parent_ids)
+            
+        rev_tmp = StringIO()
+        bzrlib.xml5.serializer_v5.write_revision(rev, rev_tmp)
+        rev_tmp.seek(0)
+        self.revision_store.add(rev_tmp, rev_id)
+        mutter('added revision_id {%s}', rev_id)
+
     @needs_read_lock
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
@@ -72,6 +121,11 @@ class Repository(object):
             for rev_id in self.revision_store:
                 rev = self.get_revision(rev_id)
                 result_graph[rev_id] = rev.parent_ids
+            # remove ghosts
+            for rev_id, parents in result_graph.items():
+                for parent in parents:
+                    if not parent in result_graph:
+                        del parents[parents.index(parent)]
             return topo_sort(result_graph.items())
         result = self._all_possible_ids()
         return self._eliminate_revisions_not_present(result)
@@ -206,12 +260,49 @@ class Repository(object):
         return self.get_revision_xml_file(revision_id).read()
 
     @needs_read_lock
-    def get_revision(self, revision_id):
-        """Return the Revision object for a named revision"""
+    def get_revision_reconcile(self, revision_id):
+        """'reconcile' helper routine that allows access to a revision always.
+        
+        This variant of get_revision does not cross check the weave graph
+        against the revision one as get_revision does: but it should only
+        be used by reconcile, or reconcile-alike commands that are correcting
+        or testing the revision graph.
+        """
         if not revision_id or not isinstance(revision_id, basestring):
             raise InvalidRevisionId(revision_id=revision_id, branch=self)
         return self._revision_store.get_revision(revision_id,
                                                  self.get_transaction())
+
+    @needs_read_lock
+    def get_revision(self, revision_id):
+        """Return the Revision object for a named revision"""
+        r = self.get_revision_reconcile(revision_id)
+        # weave corruption can lead to absent revision markers that should be
+        # present.
+        # the following test is reasonably cheap (it needs a single weave read)
+        # and the weave is cached in read transactions. In write transactions
+        # it is not cached but typically we only read a small number of
+        # revisions. For knits when they are introduced we will probably want
+        # to ensure that caching write transactions are in use.
+        inv = self.get_inventory_weave()
+        self._check_revision_parents(r, inv)
+        return r
+
+    def _check_revision_parents(self, revision, inventory):
+        """Private to Repository and Fetch.
+        
+        This checks the parentage of revision in an inventory weave for 
+        consistency and is only applicable to inventory-weave-for-ancestry
+        using repository formats & fetchers.
+        """
+        weave_parents = inventory.get_parents(revision.revision_id)
+        weave_names = inventory.versions()
+        for parent_id in revision.parent_ids:
+            if parent_id in weave_names:
+                # this parent must not be a ghost.
+                if not parent_id in weave_parents:
+                    # but it is a ghost
+                    raise errors.CorruptRepository(self)
 
     @needs_write_lock
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
@@ -1005,6 +1096,11 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
         utf8_files = [('format', self.get_format_string())]
         
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
+        repo_transport = a_bzrdir.get_repository_transport(None)
+        control_files = LockableFiles(repo_transport, 'lock')
+        control_store = self._get_control_store(repo_transport, control_files)
+        control_store.get_weave_or_empty('inventory',
+            bzrlib.transactions.PassThroughTransaction())
         return self.open(a_bzrdir=a_bzrdir, _found=True)
 
 

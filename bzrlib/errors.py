@@ -764,3 +764,11 @@ class InventoryNotPresent(BzrNewError):
         BzrNewError.__init__(self)
         self.revision_id = revision_id
 
+
+class CorruptRepository(BzrNewError):
+    """An error has been detected in the repository %(repo_path)s.
+Please run bzr reconcile on this repository."""
+
+    def __init__(self, repo):
+        BzrNewError.__init__(self)
+        self.repo_path = repo.bzrdir.root_transport.base

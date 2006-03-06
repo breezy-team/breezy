@@ -232,8 +232,11 @@ class KnitVersionedFile(VersionedFile):
     """
 
     def __init__(self, relpath, transport, file_mode=None, access_mode=None, factory=None,
-                 basis_knit=None, delta=True):
-        """Construct a knit at location specified by relpath."""
+                 basis_knit=None, delta=True, create=False):
+        """Construct a knit at location specified by relpath.
+        
+        :param create: If not True, only open an existing knit.
+        """
         if access_mode is None:
             access_mode = 'w'
         assert access_mode in ('r', 'w'), "invalid mode specified %r" % access_mode
@@ -248,7 +251,7 @@ class KnitVersionedFile(VersionedFile):
         self.delta = delta
 
         self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
-            access_mode)
+            access_mode, create=create)
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
             access_mode)
 
@@ -263,7 +266,7 @@ class KnitVersionedFile(VersionedFile):
         transport.rename(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
 
     def create_empty(self, name, transport, mode=None):
-        return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta)
+        return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta, create=True)
     
     @staticmethod
     def get_suffixes():
@@ -605,7 +608,7 @@ class _KnitIndex(_KnitComponentFile):
         for l in lines.splitlines(False):
             yield l.split()
 
-    def __init__(self, transport, filename, mode):
+    def __init__(self, transport, filename, mode, create=False):
         _KnitComponentFile.__init__(self, transport, filename, mode)
         self._cache = {}
         # position in _history is the 'official' index for a revision
@@ -620,8 +623,8 @@ class _KnitIndex(_KnitComponentFile):
                 self._cache_version(rec[0], rec[1].split(','), int(rec[2]), int(rec[3]),
                     [self._history[int(i)] for i in rec[4:]])
         except NoSuchFile, e:
-            if mode != 'w':
-                raise e
+            if mode != 'w' or not create:
+                raise
             self.write_header()
 
     def get_graph(self):
