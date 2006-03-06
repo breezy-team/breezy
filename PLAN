@@ -1,3 +1,12 @@
+class SvnBranch(ForeignBranch):
+
+
+class SvnRepository(ForeignRepository):
+
+
+class SvnWorkingTree(WorkingTree):
+	
+
 - svnpull
  - Maybe store latest known revision somewhere ?
  - walk over revno's and see if they already exist locally
