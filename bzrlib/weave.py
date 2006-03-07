@@ -737,7 +737,7 @@ class Weave(VersionedFile):
 
         if version_ids:
             for version_id in version_ids:
-                if not self.has_version(version_id) and not ignore_missing:
+                if not other.has_version(version_id) and not ignore_missing:
                     raise RevisionNotPresent(version_id, self._weave_name)
         else:
             version_ids = other.versions()
@@ -747,7 +747,10 @@ class Weave(VersionedFile):
         # work through in index order to make sure we get all dependencies
         names_to_join = []
         processed = 0
+        # get the selected versions only that are in other.versions.
         version_ids = set(other.versions()).intersection(set(version_ids))
+        # pull in the referenced graph.
+        version_ids = other.get_ancestry(version_ids)
         pending_graph = [(version, other.get_parents(version)) for
                          version in version_ids]
         for name in topo_sort(pending_graph):

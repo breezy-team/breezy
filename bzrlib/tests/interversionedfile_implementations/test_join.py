@@ -67,7 +67,26 @@ class TestJoin(TestCaseWithTransport):
         target = self.get_target()
         inter = versionedfile.InterVersionedFile.get(source, target)
         self.assertTrue(isinstance(inter, self.interversionedfile_class))
-        
+
+    def test_join_versions_joins_ancestors_not_siblings(self):
+        # joining with a version list should bring in ancestors of the
+        # named versions but not siblings thereof.
+        target = self.get_target()
+        target.add_lines('base', [], [])
+        source = self.get_source()
+        source.add_lines('base', [], [])
+        source.add_lines('sibling', ['base'], [])
+        source.add_lines('ancestorleft', ['base'], [])
+        source.add_lines('ancestorright', ['base'], [])
+        source.add_lines('namedleft', ['ancestorleft'], [])
+        source.add_lines('namedright', ['ancestorright'], [])
+        target.join(source, version_ids=['namedleft', 'namedright'])
+        self.assertFalse(target.has_version('sibling'))
+        self.assertTrue(target.has_version('ancestorleft'))
+        self.assertTrue(target.has_version('ancestorright'))
+        self.assertTrue(target.has_version('namedleft'))
+        self.assertTrue(target.has_version('namedright'))
+
     def test_join_add_parents(self):
         """Join inserting new parents into existing versions
         
