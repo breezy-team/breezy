@@ -454,13 +454,18 @@ class WorkingTree(bzrlib.tree.Tree):
             tree.set_last_revision(revision_id)
 
     @needs_write_lock
-    def commit(self, *args, **kwargs):
+    def commit(self, message=None, revprops=None, *args, **kwargs):
+        # avoid circular imports
         from bzrlib.commit import Commit
+        if revprops is None:
+            revprops = {}
+        if not 'branch-nick' in revprops:
+            revprops['branch-nick'] = self.branch.nick
         # args for wt.commit start at message from the Commit.commit method,
         # but with branch a kwarg now, passing in args as is results in the
         #message being used for the branch
-        args = (DEPRECATED_PARAMETER, ) + args
-        Commit().commit(working_tree=self, *args, **kwargs)
+        args = (DEPRECATED_PARAMETER, message, ) + args
+        Commit().commit(working_tree=self, revprops=revprops, *args, **kwargs)
         self._set_inventory(self.read_working_inventory())
 
     def id2abspath(self, file_id):
