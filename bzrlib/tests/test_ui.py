@@ -21,7 +21,9 @@ import os
 from StringIO import StringIO
 import sys
 
-from bzrlib.progress import TTYProgressBar
+
+import bzrlib.errors as errors
+from bzrlib.progress import TTYProgressBar, ProgressBarStack
 from bzrlib.tests import TestCase
 from bzrlib.ui import SilentUIFactory
 from bzrlib.ui.text import TextUIFactory
@@ -56,7 +58,6 @@ class UITests(TestCase):
     def test_progress_note(self):
         stderr = StringIO()
         stdout = StringIO()
-        ui = TextUIFactory()
         pb = TTYProgressBar(to_file=stderr, to_messages_file=stdout)
         result = pb.note('t')
         self.assertEqual(None, result)
@@ -65,3 +66,34 @@ class UITests(TestCase):
         # care about that right now - but you're probably running it on at
         # least a 10-character wide terminal :)
         self.assertContainsRe(stderr.getvalue(), r'^\r {10,}\r$')
+
+    def test_progress_nested(self):
+        # test factory based nested and popping.
+        ui = TextUIFactory()
+        pb1 = ui.nested_progress_bar()
+        pb2 = ui.nested_progress_bar()
+        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        pb2.finished()
+        pb1.finished()
+
+    def test_progress_stack(self):
+        # test the progress bar stack which the default text factory 
+        # uses.
+        stderr = StringIO()
+        stdout = StringIO()
+        # make a stack, which accepts parameters like a pb.
+        stack = ProgressBarStack(to_file=stderr, to_messages_file=stdout)
+        # but is not one
+        self.assertFalse(getattr(stack, 'note', False))
+        pb1 = stack.get_nested()
+        pb2 = stack.get_nested()
+        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        pb2.finished()
+        pb1.finished()
+        # the text ui factory never actually removes the stack once its setup.
+        # we need to be able to nest again correctly from here.
+        pb1 = stack.get_nested()
+        pb2 = stack.get_nested()
+        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        pb2.finished()
+        pb1.finished()

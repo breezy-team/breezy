@@ -28,7 +28,9 @@ Set the ui_factory member to define the behaviour.  The default
 displays no output.
 """
 
+
 import bzrlib.progress
+from bzrlib.symbol_versioning import *
 
 
 class UIFactory(object):
@@ -37,9 +39,11 @@ class UIFactory(object):
     This tells the library how to display things to the user.  Through this
     layer different applications can choose the style of UI.
     """
+
+    deprecated_method(zero_eight)
     def progress_bar(self):
-        """Return a progress bar object"""
-        raise NotImplementedError
+        """See UIFactory.nested_progress_bar()."""
+        raise NotImplementedError(self.progress_bar)
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -51,19 +55,33 @@ class UIFactory(object):
         :return: The password string, return None if the user 
                  canceled the request.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.get_password)
         
+    def nested_progress_bar(self):
+        """Return a nested progress bar.
+
+        When the bar has been finished with, it should be released bu calling
+        bar.finished().
+        """
+        raise NotImplementedError(self.nested_progress_bar)
+
 
 class SilentUIFactory(UIFactory):
     """A UI Factory which never prints anything.
 
     This is the default UI, if another one is never registered.
     """
+
+    deprecated_method(zero_eight)
     def progress_bar(self):
+        """See UIFactory.nested_progress_bar()."""
         return bzrlib.progress.DummyProgress()
 
     def get_password(self, prompt='', **kwargs):
         return None
+
+    def nested_progress_bar(self):
+        return bzrlib.progress.DummyProgress()
 
 
 ui_factory = SilentUIFactory()
