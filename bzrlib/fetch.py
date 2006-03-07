@@ -165,6 +165,8 @@ class RepoFetcher(object):
                 # destination has contents, must merge
                 from_weave = self.from_weaves.get_weave(file_id,
                     self.from_repository.get_transaction())
+                # we fetch all the texts, because texts do
+                # not reference anything, and its cheap enough
                 to_weave.join(from_weave)
             else:
                 # destination is empty, just replace it
@@ -183,7 +185,12 @@ class RepoFetcher(object):
             self.pb.update("inventory fetch", 1, 2)
             from_weave = self.from_repository.get_inventory_weave()
             self.pb.update("inventory fetch", 2, 2)
-            to_weave.join(from_weave, pb=self.pb, msg='merge inventory')
+            # we fetch only the referenced inventories because we do not
+            # know for unselected inventories whether all their required
+            # texts are present in the other repository - it could be
+            # corrupt.
+            to_weave.join(from_weave, pb=self.pb, msg='merge inventory',
+                          version_ids=revs)
         else:
             # destination is empty, just replace it
             self.to_control.copy_multi(self.from_control,
