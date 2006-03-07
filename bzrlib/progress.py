@@ -104,7 +104,7 @@ class ProgressBarStack(object):
 
     def return_pb(self, bar):
         """Return bar after its been used."""
-        if bar != self._stack[-1]:
+        if bar is not self._stack[-1]:
             raise errors.MissingProgressBarFinish()
         self._stack.pop()
 
