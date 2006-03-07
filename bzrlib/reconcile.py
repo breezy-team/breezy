@@ -57,7 +57,14 @@ class Reconciler(object):
         garbage_inventories: The number of inventory objects without revisions
                              that were garbage collected.
         """
-        self.pb = ui.ui_factory.progress_bar()
+        self.pb = ui.ui_factory.nested_progress_bar()
+        try:
+            self._reconcile()
+        finally:
+            self.pb.finished()
+
+    def _reconcile(self):
+        """Helper function for performing reconciliation."""
         self.repo = self.bzrdir.find_repository()
         self.pb.note('Reconciling repository %s',
                      self.repo.bzrdir.root_transport.base)
@@ -86,10 +93,13 @@ class RepoReconciler(object):
         garbage_inventories: The number of inventory objects without revisions
                              that were garbage collected.
         """
-        self.pb = ui.ui_factory.progress_bar()
         self.repo.lock_write()
         try:
-            self._reweave_inventory()
+            self.pb = ui.ui_factory.nested_progress_bar()
+            try:
+                self._reweave_inventory()
+            finally:
+                self.pb.finished()
         finally:
             self.repo.unlock()
 

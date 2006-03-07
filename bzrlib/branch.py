@@ -207,7 +207,10 @@ class Branch(object):
             raise Exception("can't fetch from a branch to itself %s, %s" % 
                             (self.base, to_branch.base))
         if pb is None:
-            pb = bzrlib.ui.ui_factory.progress_bar()
+            nested_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            pb = nested_pb
+        else:
+            nested_pb = None
 
         from_branch.lock_read()
         try:
@@ -221,8 +224,10 @@ class Branch(object):
                     last_revision = NULL_REVISION
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
-                                         pb=pb)
+                                         pb=nested_pb)
         finally:
+            if nested_pb is not None:
+                nested_pb.finished()
             from_branch.unlock()
 
     def get_bound_location(self):

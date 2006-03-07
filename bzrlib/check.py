@@ -55,7 +55,7 @@ class Check(object):
 
     def check(self):
         self.branch.lock_read()
-        self.progress = bzrlib.ui.ui_factory.progress_bar()
+        self.progress = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             self.progress.update('retrieving inventory', 0, 0)
             # do not put in init, as it should be done with progess,
@@ -75,7 +75,7 @@ class Check(object):
                 revno += 1
                 self.check_one_rev(rev_id)
         finally:
-            self.progress.clear()
+            self.progress.finished()
             self.branch.unlock()
 
     def plan_revisions(self):

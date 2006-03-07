@@ -1289,14 +1289,17 @@ class InterWeaveRepo(InterRepository):
                 pass
             # FIXME do not peek!
             if self.source.control_files._transport.listable():
-                pb = bzrlib.ui.ui_factory.progress_bar()
-                copy_all(self.source.weave_store,
-                    self.target.weave_store, pb=pb)
-                pb.update('copying inventory', 0, 1)
-                self.target.control_weaves.copy_multi(
-                    self.source.control_weaves, ['inventory'])
-                copy_all(self.source.revision_store,
-                    self.target.revision_store, pb=pb)
+                pb = bzrlib.ui.ui_factory.nested_progress_bar()
+                try:
+                    copy_all(self.source.weave_store,
+                        self.target.weave_store, pb=pb)
+                    pb.update('copying inventory', 0, 1)
+                    self.target.control_weaves.copy_multi(
+                        self.source.control_weaves, ['inventory'])
+                    copy_all(self.source.revision_store,
+                        self.target.revision_store, pb=pb)
+                finally:
+                    pb.finished()
             else:
                 self.target.fetch(self.source, revision_id=revision_id)
 

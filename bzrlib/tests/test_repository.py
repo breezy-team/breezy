@@ -422,10 +422,12 @@ class TestRepositoryConverter(TestCaseWithTransport):
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
         repo = repository.RepositoryFormat7().initialize(repo_dir)
         target_format = repository.RepositoryFormatKnit1()
-        pb = bzrlib.ui.ui_factory.progress_bar()
-
         converter = repository.CopyConverter(target_format)
-        converter.convert(repo, pb)
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            converter.convert(repo, pb)
+        finally:
+            pb.finished()
         repo = repo_dir.open_repository()
         self.assertTrue(isinstance(target_format, repo._format.__class__))
 
