@@ -26,8 +26,9 @@ The copying is done in a slightly complicated order.  We don't want to
 add a revision to the store until everything it refers to is also
 stored, so that if a revision is present we can totally recreate it.
 However, we can't know what files are included in a revision until we
-read its inventory.  Therefore, we first pull the XML and hold it in
-memory until we've updated all of the files referenced.
+read its inventory.  So we query the inventory store of the source for
+the ids we need, and then pull those ids and finally actually join
+the inventories.
 """
 
 import bzrlib
@@ -164,7 +165,8 @@ class RepoFetcher(object):
             else:
                 # destination is empty, just replace it
                 self.to_weaves.copy_multi(self.from_weaves, [file_id], self.pb,
-                                          self.from_repository.get_transaction())
+                                          self.from_repository.get_transaction(),
+                                          self.to_repository.get_transaction())
         self.pb.clear()
 
     def _fetch_inventory_weave(self, revs):
@@ -183,7 +185,8 @@ class RepoFetcher(object):
             self.to_control.copy_multi(self.from_control,
                                        ['inventory'],
                                        self.pb,
-                                       self.from_repository.get_transaction())
+                                       self.from_repository.get_transaction(),
+                                       self.to_repository.get_transaction())
 
         self.pb.clear()
 

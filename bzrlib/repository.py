@@ -413,8 +413,8 @@ class Repository(object):
         :return: a dictionary of revision_id->revision_parents_list.
         """
         weave = self.get_inventory_weave()
-        all_revisions = self._eliminate_revisions_not_present(weave.names())
-        entire_graph = dict([(node, weave.parent_names(node)) for 
+        all_revisions = self._eliminate_revisions_not_present(weave.versions())
+        entire_graph = dict([(node, weave.get_parents(node)) for 
                              node in all_revisions])
         if revision_id is None:
             return entire_graph
@@ -1105,6 +1105,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
             repo_transport.clone('revision-store'),
             file_mode = control_files._file_mode,
             prefixed=False,
+            precious=True,
             versionedfile_class=KnitVersionedFile)
         return KnitRevisionStore(versioned_file_store)
 
@@ -1141,6 +1142,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
         repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = LockableFiles(repo_transport, 'lock')
         control_store = self._get_control_store(repo_transport, control_files)
+        # trigger a write of the inventory store.
         control_store.get_weave_or_empty('inventory',
             bzrlib.transactions.PassThroughTransaction())
         return self.open(a_bzrdir=a_bzrdir, _found=True)
@@ -1349,11 +1351,13 @@ class InterWeaveRepo(InterRepository):
                 self.target.weave_store.copy_all_ids(
                     self.source.weave_store,
                     pb=pb,
-                    from_transaction=self.source.get_transaction())
+                    from_transaction=self.source.get_transaction(),
+                    to_transaction=self.target.get_transaction())
                 pb.update('copying inventory', 0, 1)
                 self.target.control_weaves.copy_multi(
                     self.source.control_weaves, ['inventory'],
-                    from_transaction=self.source.get_transaction())
+                    from_transaction=self.source.get_transaction(),
+                    to_transaction=self.target.get_transaction())
                 self.target._revision_store.text_store.copy_all_ids(
                     self.source._revision_store.text_store,
                     pb=pb)

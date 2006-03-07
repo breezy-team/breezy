@@ -41,7 +41,7 @@ from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
-from bzrlib.transactions import PassThroughTransaction
+from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
 from bzrlib.weave import Weave
@@ -1319,7 +1319,7 @@ class ConvertBzrDir4To5(Converter):
         controlweaves = WeaveStore(self.bzrdir.transport, prefixed=False)
         weave_transport = self.bzrdir.transport.clone('weaves')
         weaves = WeaveStore(weave_transport, prefixed=False)
-        transaction = PassThroughTransaction()
+        transaction = WriteTransaction()
 
         try:
             i = 0
@@ -1343,7 +1343,7 @@ class ConvertBzrDir4To5(Converter):
                                                       prefixed=False,
                                                       compressed=True))
         try:
-            transaction = bzrlib.transactions.PassThroughTransaction()
+            transaction = bzrlib.transactions.WriteTransaction()
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update('write revision', i, len(self.converted_revs))
                 _revision_store.add_revision(self.revisions[rev_id], transaction)

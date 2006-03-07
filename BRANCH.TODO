@@ -6,3 +6,5 @@
    this is for fileid_involved performance
 
  * make knits ghost aware.
+
+ * make revision store not annotate the contentsA

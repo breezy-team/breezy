@@ -54,10 +54,10 @@ class VersionedFileStore(TransportStore):
         'api' that isn't.
         """
         weave = transaction.map.find_weave(file_id)
-        if weave:
+        if weave is not None:
             mutter("old data in transaction in %s for %s", self, file_id)
-            # FIXME abstraction violation.
-            transaction.map.remove_object('weave-' + file-id)
+            # FIXME abstraction violation - transaction now has stale data.
+            transaction.map.remove_object(weave)
 
     def filename(self, file_id):
         """Return the path relative to the transport root."""
@@ -101,7 +101,7 @@ class VersionedFileStore(TransportStore):
 
     def get_weave(self, file_id, transaction):
         weave = transaction.map.find_weave(file_id)
-        if weave:
+        if weave is not None:
             mutter("cache hit in %s for %s", self, file_id)
             return weave
         w = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode)
@@ -119,12 +119,14 @@ class VersionedFileStore(TransportStore):
     
     def _new_weave(self, file_id, transaction):
         """Make a new weave for file_id and return it."""
-        weave = self._make_new_versionedfile(file_id)
+        weave = self._make_new_versionedfile(file_id, transaction)
         transaction.map.add_weave(file_id, weave)
         transaction.register_clean(weave, precious=self._precious)
         return weave
 
-    def _make_new_versionedfile(self, file_id):
+    def _make_new_versionedfile(self, file_id, transaction):
+        if self.has_id(file_id):
+            self.delete(file_id, transaction)
         try:
             weave = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode, create=True)
         except NoSuchFile:
@@ -157,7 +159,7 @@ class VersionedFileStore(TransportStore):
 
     def _put_weave(self, file_id, weave, transaction):
         """Preserved here for upgrades-to-weaves to use."""
-        myweave = self._make_new_versionedfile(file_id)
+        myweave = self._make_new_versionedfile(file_id, transaction)
         myweave.join(weave)
 
     @deprecated_method(zero_eight)
@@ -186,10 +188,14 @@ class VersionedFileStore(TransportStore):
         self._clear_cache_id(result_id, transaction)
         source.copy_to(self.filename(result_id), self._transport)
  
-    def copy_all_ids(self, store_from, pb=None, from_transaction=None):
+    def copy_all_ids(self, store_from, pb=None, from_transaction=None,
+                     to_transaction=None):
         """Copy all the file ids from store_from into self."""
         if from_transaction is None:
-            warn("Please pase from_transaction into "
+            warn("Please pass from_transaction into "
+                 "versioned_store.copy_all_ids.", stacklevel=2)
+        if to_transaction is None:
+            warn("Please pass to_transaction into "
                  "versioned_store.copy_all_ids.", stacklevel=2)
         if not store_from.listable():
             raise UnlistableStore(store_from)
@@ -202,30 +208,40 @@ class VersionedFileStore(TransportStore):
             pb.clear()
         mutter('copy_all ids: %r', ids)
         self.copy_multi(store_from, ids, pb=pb,
-                        from_transaction=from_transaction)
+                        from_transaction=from_transaction,
+                        to_transaction=to_transaction)
 
-    def copy_multi(self, from_store, file_ids, pb=None, from_transaction=None):
+    def copy_multi(self, from_store, file_ids, pb=None, from_transaction=None,
+                   to_transaction=None):
         """Copy all the versions for multiple file_ids from from_store.
         
         :param from_transaction: required current transaction in from_store.
         """
+        from bzrlib.transactions import PassThroughTransaction
         assert isinstance(from_store, WeaveStore)
         if from_transaction is None:
             warn("WeaveStore.copy_multi without a from_transaction parameter "
                  "is deprecated. Please provide a from_transaction.",
                  DeprecationWarning,
                  stacklevel=2)
+            # we are reading one object - caching is irrelevant.
+            from_transaction = PassThroughTransaction()
+        if to_transaction is None:
+            warn("WeaveStore.copy_multi without a to_transaction parameter "
+                 "is deprecated. Please provide a to_transaction.",
+                 DeprecationWarning,
+                 stacklevel=2)
+            # we are copying single objects, and there may be open tranasactions
+            # so again with the passthrough
+            to_transaction = PassThroughTransaction()
         for count, f in enumerate(file_ids):
             mutter("copy weave {%s} into %s", f, self)
             if pb:
                 pb.update('copy', count, len(file_ids))
             # if we have it in cache, its faster.
-            if not from_transaction:
-                from bzrlib.transactions import PassThroughTransaction
-                from_transaction = PassThroughTransaction()
             # joining is fast with knits, and bearable for weaves -
-            # indeed the new case can be optimised
-            target = self._make_new_versionedfile(f)
+            # indeed the new case can be optimised if needed.
+            target = self._make_new_versionedfile(f, to_transaction)
             target.join(from_store.get_weave(f, from_transaction))
         if pb:
             pb.clear()

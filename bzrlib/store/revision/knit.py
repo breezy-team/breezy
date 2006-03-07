@@ -37,6 +37,7 @@ class KnitRevisionStoreFactory(object):
         t.mkdir('revision-store')
         versioned_file_store = VersionedFileStore(
             t.clone('revision-store'),
+            precious=True,
             versionedfile_class=KnitVersionedFile)
         return KnitRevisionStore(versioned_file_store)
 

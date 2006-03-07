@@ -960,6 +960,19 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         self.control_files.put_utf8(
             'revision-history', '\n'.join(rev_history))
+        transaction = self.get_transaction()
+        history = transaction.map.find_revision_history()
+        if history is not None:
+            # update the revision history in the identity map.
+            history[:] = list(rev_history)
+            # this call is disabled because revision_history is 
+            # not really an object yet, and the transaction is for objects.
+            # transaction.register_dirty(history)
+        else:
+            transaction.map.add_revision_history(rev_history)
+            # this call is disabled because revision_history is 
+            # not really an object yet, and the transaction is for objects.
+            # transaction.register_clean(history)
 
     def get_revision_delta(self, revno):
         """Return the delta for one revision.
@@ -984,7 +997,6 @@ class BzrBranch(Branch):
     @needs_read_lock
     def revision_history(self):
         """See Branch.revision_history."""
-        # FIXME are transactions bound to control files ? RBC 20051121
         transaction = self.get_transaction()
         history = transaction.map.find_revision_history()
         if history is not None:

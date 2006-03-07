@@ -174,7 +174,7 @@ class LockableFiles(object):
                     self._escape(self.lock_name))
             self._lock_mode = 'w'
             self._lock_count = 1
-            self._set_transaction(transactions.PassThroughTransaction())
+            self._set_transaction(transactions.WriteTransaction())
 
     def lock_read(self):
         # mutter("lock read: %s (%s)", self, self._lock_count)
