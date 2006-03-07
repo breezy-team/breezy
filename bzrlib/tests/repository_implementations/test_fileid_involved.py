@@ -173,7 +173,6 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.assertEquals( l1, l2 )
 
     def test_fileid_involved_full_compare(self):
-        from bzrlib.tsort import topo_sort
         pp=[]
         history = self.branch.revision_history( )
 

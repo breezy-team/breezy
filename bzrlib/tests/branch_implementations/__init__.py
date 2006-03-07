@@ -39,9 +39,11 @@ from bzrlib.tests import (
 def test_suite():
     result = TestSuite()
     test_branch_implementations = [
+        'bzrlib.tests.branch_implementations.test_bound_sftp',
         'bzrlib.tests.branch_implementations.test_branch',
         'bzrlib.tests.branch_implementations.test_parent',
         'bzrlib.tests.branch_implementations.test_permissions',
+        'bzrlib.tests.branch_implementations.test_update',
         ]
     adapter = BranchTestProviderAdapter(
         default_transport,
