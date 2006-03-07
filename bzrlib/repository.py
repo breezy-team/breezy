@@ -22,6 +22,7 @@ import xml.sax.saxutils
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import InvalidRevisionId
+from bzrlib.graph import Graph
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import safe_unicode
@@ -453,6 +454,41 @@ class Repository(object):
                     if revision_id not in result:
                         pending.add(revision_id)
             return result
+
+    @needs_read_lock
+    def get_revision_graph_with_ghosts(self, revision_ids=None):
+        """Return a graph of the revisions with ghosts marked as applicable.
+
+        :param revision_ids: an iterable of revisions to graph or None for all.
+        :return: a Graph object with the graph reachable from revision_ids.
+        """
+        result = Graph()
+        if not revision_ids:
+            pending = set(self.all_revision_ids())
+            required = set([])
+        else:
+            pending = set(revision_ids)
+            required = set(revision_ids)
+        done = set([])
+        while len(pending):
+            revision_id = pending.pop()
+            try:
+                rev = self.get_revision(revision_id)
+            except errors.NoSuchRevision:
+                if revision_id in required:
+                    raise
+                # a ghost
+                result.add_ghost(revision_id)
+                continue
+            for parent_id in rev.parent_ids:
+                # is this queued or done ?
+                if (parent_id not in pending and
+                    parent_id not in done):
+                    # no, queue it.
+                    pending.add(parent_id)
+            result.add_node(revision_id, rev.parent_ids)
+            done.add(result)
+        return result
 
     @needs_read_lock
     def get_revision_inventory(self, revision_id):
