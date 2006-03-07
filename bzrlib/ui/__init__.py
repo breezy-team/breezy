@@ -40,6 +40,10 @@ class UIFactory(object):
     layer different applications can choose the style of UI.
     """
 
+    def __init__(self):
+        super(UIFactory, self).__init__()
+        self._progress_bar_stack = None
+
     @deprecated_method(zero_eight)
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""
@@ -81,7 +85,10 @@ class SilentUIFactory(UIFactory):
         return None
 
     def nested_progress_bar(self):
-        return bzrlib.progress.DummyProgress()
+        if self._progress_bar_stack is None:
+            self._progress_bar_stack = bzrlib.progress.ProgressBarStack(
+                klass=bzrlib.progress.DummyProgress)
+        return self._progress_bar_stack.get_nested()
 
 
 ui_factory = SilentUIFactory()

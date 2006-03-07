@@ -75,7 +75,8 @@ class ProgressBarStack(object):
                  show_eta=True,
                  show_bar=True,
                  show_count=True,
-                 to_messages_file=sys.stdout):
+                 to_messages_file=sys.stdout,
+                 klass=None):
         """Setup the stack with the parameters the progress bars should have."""
         self._to_file = to_file
         self._show_pct = show_pct
@@ -85,18 +86,19 @@ class ProgressBarStack(object):
         self._show_count = show_count
         self._to_messages_file = to_messages_file
         self._stack = []
+        self._klass = klass or TTYProgressBar
 
     def get_nested(self):
         """Return a nested progress bar."""
         # initial implementation - return a new bar each time.
-        new_bar = TTYProgressBar(to_file=self._to_file,
-                                 show_pct=self._show_pct,
-                                 show_spinner=self._show_spinner,
-                                 show_eta=self._show_eta,
-                                 show_bar=self._show_bar,
-                                 show_count=self._show_count,
-                                 to_messages_file=self._to_messages_file,
-                                 _stack=self)
+        new_bar = self._klass(to_file=self._to_file,
+                              show_pct=self._show_pct,
+                              show_spinner=self._show_spinner,
+                              show_eta=self._show_eta,
+                              show_bar=self._show_bar,
+                              show_count=self._show_count,
+                              to_messages_file=self._to_messages_file,
+                              _stack=self)
         self._stack.append(new_bar)
         return new_bar
 
@@ -134,7 +136,7 @@ class _BaseProgressBar(object):
     def finished(self):
         """Return this bar to its progress stack."""
         self.clear()
-        assert self._stack
+        assert self._stack is not None
         self._stack.return_pb(self)
 
     def note(self, fmt_string, *args, **kwargs):
@@ -163,6 +165,7 @@ class DummyProgress(_BaseProgressBar):
 
 
 class DotsProgressBar(_BaseProgressBar):
+
     def __init__(self, **kwargs):
         _BaseProgressBar.__init__(self, **kwargs)
         self.last_msg = None

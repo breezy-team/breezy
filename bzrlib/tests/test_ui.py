@@ -33,17 +33,21 @@ class UITests(TestCase):
     def test_silent_factory(self):
 
         ui = SilentUIFactory()
-        pb = ui.progress_bar()
-        # TODO: Test that there is no output from SilentUIFactory
-
-        self.assertEquals(ui.get_password(), None)
-        self.assertEquals(ui.get_password(u'Hello There \u1234 %(user)s',
-                                          user=u'some\u1234')
-                         , None)
+        pb = ui.nested_progress_bar()
+        try:
+            # TODO: Test that there is no output from SilentUIFactory
+    
+            self.assertEquals(ui.get_password(), None)
+            self.assertEquals(ui.get_password(u'Hello There \u1234 %(user)s',
+                                              user=u'some\u1234')
+                             , None)
+        finally:
+            pb.finished()
 
     def test_text_factory(self):
         ui = TextUIFactory()
-        pb = ui.progress_bar()
+        pb = ui.nested_progress_bar()
+        pb.finished()
         # TODO: Test the output from TextUIFactory, perhaps by overriding sys.stdout
 
         # Unfortunately we can't actually test the ui.get_password() because 

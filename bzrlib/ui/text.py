@@ -29,10 +29,6 @@ from bzrlib.ui import UIFactory
 
 class TextUIFactory(UIFactory):
 
-    def __init__(self):
-        super(TextUIFactory, self).__init__()
-        self._progress_bar_stack = None
-
     @deprecated_method(zero_eight)
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""
