@@ -279,6 +279,8 @@ class Weave(object):
 
         # if we abort after here the (in-memory) weave will be corrupt because only
         # some fields are updated
+        # XXX: FIXME implement a succeed-or-fail of the rest of this routine.
+        #      - Robert Collins 20060226
         self._parents.append(parents[:])
         self._sha1s.append(sha1)
         self._names.append(name)
@@ -318,7 +320,7 @@ class Weave(object):
         # another small special case: a merge, producing the same text
         # as auto-merge
         if text == basis_lines:
-            return new_version            
+            return new_version
 
         # add a sentinal, because we can also match against the final line
         basis_lineno.append(len(self._weave))

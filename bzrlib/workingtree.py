@@ -62,9 +62,11 @@ from bzrlib.errors import (BzrCheckError,
                            NoSuchFile,
                            NotVersionedError)
 from bzrlib.inventory import InventoryEntry, Inventory
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.merge import merge_inner, transform_tree
-from bzrlib.osutils import (appendpath,
+from bzrlib.osutils import (
+                            abspath,
+                            appendpath,
                             compact_date,
                             file_kind,
                             isdir,
@@ -74,7 +76,6 @@ from bzrlib.osutils import (appendpath,
                             safe_unicode,
                             splitpath,
                             rand_bytes,
-                            abspath,
                             normpath,
                             realpath,
                             relpath,
@@ -254,7 +255,7 @@ class WorkingTree(bzrlib.tree.Tree):
             assert isinstance(self._format, WorkingTreeFormat3)
             self._control_files = LockableFiles(
                 self.bzrdir.get_workingtree_transport(None),
-                'lock')
+                'lock', TransportLock)
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -453,13 +454,18 @@ class WorkingTree(bzrlib.tree.Tree):
             tree.set_last_revision(revision_id)
 
     @needs_write_lock
-    def commit(self, *args, **kwargs):
+    def commit(self, message=None, revprops=None, *args, **kwargs):
+        # avoid circular imports
         from bzrlib.commit import Commit
+        if revprops is None:
+            revprops = {}
+        if not 'branch-nick' in revprops:
+            revprops['branch-nick'] = self.branch.nick
         # args for wt.commit start at message from the Commit.commit method,
         # but with branch a kwarg now, passing in args as is results in the
         #message being used for the branch
-        args = (DEPRECATED_PARAMETER, ) + args
-        Commit().commit(working_tree=self, *args, **kwargs)
+        args = (DEPRECATED_PARAMETER, message, ) + args
+        Commit().commit(working_tree=self, revprops=revprops, *args, **kwargs)
         self._set_inventory(self.read_working_inventory())
 
     def id2abspath(self, file_id):
@@ -1161,17 +1167,57 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_write_lock
     def update(self):
+        """Update a working tree along its branch.
+
+        This will update the branch if its bound too, which means we have multiple trees involved:
+        The new basis tree of the master.
+        The old basis tree of the branch.
+        The old basis tree of the working tree.
+        The current working tree state.
+        pathologically all three may be different, and non ancestors of each other.
+        Conceptually we want to:
+        Preserve the wt.basis->wt.state changes
+        Transform the wt.basis to the new master basis.
+        Apply a merge of the old branch basis to get any 'local' changes from it into the tree.
+        Restore the wt.basis->wt.state changes.
+
+        There isn't a single operation at the moment to do that, so we:
+        Merge current state -> basis tree of the master w.r.t. the old tree basis.
+        Do a 'normal' merge of the old branch basis if it is relevant.
+        """
+        old_tip = self.branch.update()
+        if old_tip is not None:
+            self.add_pending_merge(old_tip)
         self.branch.lock_read()
         try:
-            if self.last_revision() == self.branch.last_revision():
-                return
-            basis = self.basis_tree()
-            to_tree = self.branch.basis_tree()
-            result = merge_inner(self.branch,
-                                 to_tree,
-                                 basis,
-                                 this_tree=self)
-            self.set_last_revision(self.branch.last_revision())
+            result = 0
+            if self.last_revision() != self.branch.last_revision():
+                # merge tree state up to new branch tip.
+                basis = self.basis_tree()
+                to_tree = self.branch.basis_tree()
+                result += merge_inner(self.branch,
+                                      to_tree,
+                                      basis,
+                                      this_tree=self)
+                self.set_last_revision(self.branch.last_revision())
+            if old_tip and old_tip != self.last_revision():
+                # our last revision was not the prior branch last reivison
+                # and we have converted that last revision to a pending merge.
+                # base is somewhere between the branch tip now
+                # and the now pending merge
+                from bzrlib.revision import common_ancestor
+                try:
+                    base_rev_id = common_ancestor(self.branch.last_revision(),
+                                                  old_tip,
+                                                  self.branch.repository)
+                except errors.NoCommonAncestor:
+                    base_rev_id = None
+                base_tree = self.branch.repository.revision_tree(base_rev_id)
+                other_tree = self.branch.repository.revision_tree(old_tip)
+                result += merge_inner(self.branch,
+                                      other_tree,
+                                      base_tree,
+                                      this_tree=self)
             return result
         finally:
             self.branch.unlock()
@@ -1388,7 +1434,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         transport = a_bzrdir.get_workingtree_transport(self)
-        control_files = LockableFiles(transport, 'lock')
+        control_files = LockableFiles(transport, 'lock', TransportLock)
         control_files.put_utf8('format', self.get_format_string())
         branch = a_bzrdir.open_branch()
         if revision_id is None:

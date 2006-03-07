@@ -52,6 +52,10 @@ bzr development version
     * Default log format can be set in configuration and plugins can register
       their own formatters. (Erik Bågfors)
 
+    * New 'reconcile' command will check branch consistency and repair indexes
+      that can become out of sync in pre 0.8 formats. (Robert Collins,
+      Aaron Bentley)
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now

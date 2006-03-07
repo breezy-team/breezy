@@ -272,3 +272,55 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         # -> NoSuchRevision
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_ancestry, 'orphan')
+
+    def test_get_revision_graph(self):
+        # we can get a mapping of id->parents for the entire revision graph or bits thereof.
+        self.assertEqual({'rev1':[], 'rev2':['rev1']},
+                         self.bzrdir.open_repository().get_revision_graph(None))
+        self.assertEqual({'rev1':[]},
+                         self.bzrdir.open_repository().get_revision_graph('rev1'))
+        self.assertEqual({'rev1':[], 'rev2':['rev1']},
+                         self.bzrdir.open_repository().get_revision_graph('rev2'))
+        self.assertRaises(NoSuchRevision,
+                          self.bzrdir.open_repository().get_revision_graph,
+                          'orphan')
+
+
+class TestCaseWithCorruptRepository(TestCaseWithRepository):
+
+    def setUp(self):
+        super(TestCaseWithCorruptRepository, self).setUp()
+        # a inventory with no parents and the revision has parents..
+        # i.e. a ghost.
+        repo = self.make_repository('inventory_with_unnecessary_ghost')
+        inv = bzrlib.tree.EmptyTree().inventory
+        sha1 = repo.add_inventory('ghost', inv, [])
+        rev = bzrlib.revision.Revision(timestamp=0,
+                                       timezone=None,
+                                       committer="Foo Bar <foo@example.com>",
+                                       message="Message",
+                                       inventory_sha1=sha1,
+                                       revision_id='ghost')
+        rev.parent_ids = ['the_ghost']
+        repo.add_revision('ghost', rev)
+         
+        sha1 = repo.add_inventory('the_ghost', inv, [])
+        rev = bzrlib.revision.Revision(timestamp=0,
+                                       timezone=None,
+                                       committer="Foo Bar <foo@example.com>",
+                                       message="Message",
+                                       inventory_sha1=sha1,
+                                       revision_id='the_ghost')
+        rev.parent_ids = []
+        repo.add_revision('the_ghost', rev)
+        # check its setup usefully
+        inv_weave = repo.get_inventory_weave()
+        self.assertEqual(['ghost'], map(inv_weave.idx_to_name, inv_weave.inclusions([inv_weave.lookup('ghost')])))
+
+    def test_corrupt_revision_access_asserts(self):
+        repo = repository.Repository.open('inventory_with_unnecessary_ghost')
+        self.assertRaises(errors.CorruptRepository, repo.get_revision, 'ghost')
+
+    def test_corrupt_revision_get_revision_reconsile(self):
+        repo = repository.Repository.open('inventory_with_unnecessary_ghost')
+        repo.get_revision_reconcile('ghost')
