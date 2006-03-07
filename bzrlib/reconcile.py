@@ -105,6 +105,8 @@ class RepoReconciler(object):
 
     def _reweave_inventory(self):
         """Regenerate the inventory weave for the repository from scratch."""
+        # local because its really a wart we want to hide
+        from bzrlib.weave import WeaveFile, Weave
         transaction = self.repo.get_transaction()
         self.pb.update('Reading inventory data.')
         self.inventory = self.repo.get_inventory_weave()
@@ -141,8 +143,14 @@ class RepoReconciler(object):
             # this entry has all the non ghost parents in the inventory
             # file already.
             self._reweave_step('adding inventories')
-            new_inventory.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
+            # ugly but needed, weaves are just way tooooo slow else.
+            if isinstance(new_inventory, WeaveFile):
+                Weave.add_lines(new_inventory, rev_id, parents, self.inventory.get_lines(rev_id))
+            else:
+                new_inventory.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
 
+        if isinstance(new_inventory, WeaveFile):
+            new_inventory._save()
         # if this worked, the set of new_inventory.names should equal
         # self.pending
         assert set(new_inventory.versions()) == self.pending
