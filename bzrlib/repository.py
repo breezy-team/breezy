@@ -1360,20 +1360,23 @@ class InterWeaveRepo(InterRepository):
                 pass
             # FIXME do not peek!
             if self.source.control_files._transport.listable():
-                pb = bzrlib.ui.ui_factory.progress_bar()
-                self.target.weave_store.copy_all_ids(
-                    self.source.weave_store,
-                    pb=pb,
-                    from_transaction=self.source.get_transaction(),
-                    to_transaction=self.target.get_transaction())
-                pb.update('copying inventory', 0, 1)
-                self.target.control_weaves.copy_multi(
-                    self.source.control_weaves, ['inventory'],
-                    from_transaction=self.source.get_transaction(),
-                    to_transaction=self.target.get_transaction())
-                self.target._revision_store.text_store.copy_all_ids(
-                    self.source._revision_store.text_store,
-                    pb=pb)
+                pb = bzrlib.ui.ui_factory.nested_progress_bar()
+                try:
+                    self.target.weave_store.copy_all_ids(
+                        self.source.weave_store,
+                        pb=pb,
+                        from_transaction=self.source.get_transaction(),
+                        to_transaction=self.target.get_transaction())
+                    pb.update('copying inventory', 0, 1)
+                    self.target.control_weaves.copy_multi(
+                        self.source.control_weaves, ['inventory'],
+                        from_transaction=self.source.get_transaction(),
+                        to_transaction=self.target.get_transaction())
+                    self.target._revision_store.text_store.copy_all_ids(
+                        self.source._revision_store.text_store,
+                        pb=pb)
+                finally:
+                    pb.finished()
             else:
                 self.target.fetch(self.source, revision_id=revision_id)
 

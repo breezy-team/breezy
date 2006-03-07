@@ -95,15 +95,19 @@ class RepoFetcher(object):
         # must not mutate self._last_revision as its potentially a shared instance
         self._last_revision = last_revision
         if pb is None:
-            self.pb = bzrlib.ui.ui_factory.progress_bar()
+            self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            self.nested_pb = self.pb
         else:
             self.pb = pb
+            self.nested_pb = None
         self.from_repository.lock_read()
         try:
             self.to_repository.lock_write()
             try:
                 self.__fetch()
             finally:
+                if self.nested_pb is not None:
+                    self.nested_pb.finished()
                 self.to_repository.unlock()
         finally:
             self.from_repository.unlock()

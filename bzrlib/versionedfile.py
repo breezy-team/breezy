@@ -338,20 +338,22 @@ class InterVersionedFile(InterObject):
         temp_source = self.target.create_empty("temp", MemoryTransport())
         graph = self.source.get_graph()
         order = topo_sort(graph.items())
-        if pb is None:
-            pb = ui.ui_factory.progress_bar()
-        for index, version in enumerate(order):
-            pb.update('Converting versioned data', index, len(order))
-            temp_source.add_lines(version,
-                                  self.source.get_parents(version),
-                                  self.source.get_lines(version))
-        
-        # this should hit the native code path for target
-        return self.target.join(temp_source,
-                                pb,
-                                msg,
-                                version_ids,
-                                ignore_missing)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for index, version in enumerate(order):
+                pb.update('Converting versioned data', index, len(order))
+                temp_source.add_lines(version,
+                                      self.source.get_parents(version),
+                                      self.source.get_lines(version))
+            
+            # this should hit the native code path for target
+            return self.target.join(temp_source,
+                                    pb,
+                                    msg,
+                                    version_ids,
+                                    ignore_missing)
+        finally:
+            pb.finished()
 
 
 class InterVersionedFileTestProviderAdapter(object):

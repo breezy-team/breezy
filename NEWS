@@ -84,6 +84,9 @@ bzr development version
       be checked, if you need to determine whether a given callable is 
       deprecated at runtime. (Robert Collins)
 
+    * Progress bars are now nested - see
+      bzrlib.ui.ui_factory.nested_progress_bar. (Robert Collins, Robey Pointer)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead

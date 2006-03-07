@@ -811,3 +811,7 @@ class UpgradeRequired(BzrNewError):
 
 class LocalRequiresBoundBranch(BzrNewError):
     """Cannot perform local-only commits on unbound branches."""
+
+
+class MissingProgressBarFinish(BzrNewError):
+    """A nested progress bar was not 'finished' correctly."""
