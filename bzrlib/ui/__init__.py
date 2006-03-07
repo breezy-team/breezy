@@ -40,7 +40,7 @@ class UIFactory(object):
     layer different applications can choose the style of UI.
     """
 
-    deprecated_method(zero_eight)
+    @deprecated_method(zero_eight)
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""
         raise NotImplementedError(self.progress_bar)
@@ -72,7 +72,7 @@ class SilentUIFactory(UIFactory):
     This is the default UI, if another one is never registered.
     """
 
-    deprecated_method(zero_eight)
+    @deprecated_method(zero_eight)
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""
         return bzrlib.progress.DummyProgress()

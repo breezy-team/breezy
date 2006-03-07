@@ -33,7 +33,7 @@ class TextUIFactory(UIFactory):
         super(TextUIFactory, self).__init__()
         self._progress_bar_stack = None
 
-    deprecated_method(zero_eight)
+    @deprecated_method(zero_eight)
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""
         # this in turn is abstract, and creates either a tty or dots
