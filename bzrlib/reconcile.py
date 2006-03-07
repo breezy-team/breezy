@@ -120,10 +120,7 @@ class RepoReconciler(object):
         for rev_id in self.pending:
             # put a revision into the graph.
             self._graph_revision(rev_id)
-        # we gc unreferenced inventories too
-        self.garbage_inventories = len(self.inventory.versions()) \
-                                   - len(self._rev_graph)
-
+        self._check_garbage_inventories()
         if not self.inconsistent_parents and not self.garbage_inventories:
             self.pb.note('Inventory ok.')
             return
@@ -176,6 +173,27 @@ class RepoReconciler(object):
         self._rev_graph[rev_id] = parents   
         if set(self.inventory.get_parents(rev_id)) != set(parents):
             self.inconsistent_parents += 1
+            mutter('Inconsistent inventory parents: id {%s} '
+                   'inventory claims %r, '
+                   'available parents are %r, '
+                   'unavailable parents are %r',
+                   rev_id, 
+                   set(self.inventory.get_parents(rev_id)),
+                   set(parents),
+                   set(rev.parent_ids).difference(set(parents)))
+
+    def _check_garbage_inventories(self):
+        """Check for garbage inventories which we cannot trust
+
+        We cant trust them because their pre-requisite file data may not
+        be present - all we know is that their revision was not installed.
+        """
+        inventories = set(self.inventory.versions())
+        revisions = set(self._rev_graph.keys())
+        garbage = inventories.difference(revisions)
+        self.garbage_inventories = len(garbage)
+        for revision_id in garbage:
+            mutter('Garbage inventory {%s} found.', revision_id)
 
     def _parent_is_available(self, parent):
         """True if parent is a fully available revision
