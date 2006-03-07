@@ -61,7 +61,8 @@ from bzrlib.errors import (BzrCheckError,
                            WeaveRevisionNotPresent,
                            NotBranchError,
                            NoSuchFile,
-                           NotVersionedError)
+                           NotVersionedError,
+                           MergeModifiedFormatError)
 from bzrlib.inventory import InventoryEntry, Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.merge import merge_inner, transform_tree

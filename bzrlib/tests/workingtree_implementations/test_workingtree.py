@@ -499,3 +499,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual([], tree.branch.revision_history())
         self.assertEqual(['bar'], tree.pending_merges())
 
+    def test_merge_modified(self):
+        tree = self.make_branch_and_tree('master')
+        tree._control_files.put('merge-hashes', StringIO('asdfasdf'))
+        self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
