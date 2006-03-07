@@ -230,8 +230,8 @@ class Commit(object):
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
-        self.revprops = {'branch-nick': self.branch.nick}
-        if revprops:
+        self.revprops = {}
+        if revprops is not None:
             self.revprops.update(revprops)
 
         self.work_tree.lock_write()

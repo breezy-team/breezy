@@ -365,3 +365,15 @@ class TestCommit(TestCaseWithTransport):
             self.assertEqual(['called', 'called'], calls)
         finally:
             del bzrlib.ahook
+
+    def test_commit_object_doesnt_set_nick(self):
+        # using the Commit object directly does not set the branch nick.
+        wt = self.make_branch_and_tree('.')
+        c = Commit()
+        c.commit(working_tree=wt, message='empty tree', allow_pointless=True)
+        self.assertEquals(wt.branch.revno(), 1)
+        self.assertEqual({},
+                         wt.branch.repository.get_revision(
+                            wt.branch.last_revision()).properties)
+
+

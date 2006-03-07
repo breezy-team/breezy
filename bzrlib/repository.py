@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,14 +19,15 @@ from cStringIO import StringIO
 from unittest import TestSuite
 import xml.sax.saxutils
 
-
+import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 from bzrlib.errors import InvalidRevisionId
 import bzrlib.gpg as gpg
 from bzrlib.inter import InterObject
 from bzrlib.knit import KnitVersionedFile
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.lockdir import LockDir
 from bzrlib.osutils import safe_unicode
 from bzrlib.revision import NULL_REVISION
 from bzrlib.store.versioned import VersionedFileStore, WeaveStore
@@ -161,6 +162,9 @@ class Repository(object):
 
     def lock_read(self):
         self.control_files.lock_read()
+
+    def is_locked(self):
+        return self.control_files.is_locked()
 
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None):
@@ -811,13 +815,14 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
 
         mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['revision-store', 'weaves']
-        lock_file = 'branch-lock'
-        files = [('inventory.weave', StringIO(empty_weave)), 
+        files = [('inventory.weave', StringIO(empty_weave)),
                  ]
         
         # FIXME: RBC 20060125 dont peek under the covers
         # NB: no need to escape relative paths that are url safe.
-        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock')
+        control_files = LockableFiles(a_bzrdir.transport, 'branch-lock',
+                                      TransportLock)
+        control_files.create_lock()
         control_files.lock_write()
         control_files._transport.mkdir_multi(dirs,
                 mode=control_files._dir_mode)
@@ -968,19 +973,18 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         """Create the required files and the initial control_files object."""
         # FIXME: RBC 20060125 dont peek under the covers
         # NB: no need to escape relative paths that are url safe.
-        lock_file = 'lock'
         repository_transport = a_bzrdir.get_repository_transport(self)
-        repository_transport.put(lock_file, StringIO()) # TODO get the file mode from the bzrdir lock files., mode=file_mode)
-        control_files = LockableFiles(repository_transport, 'lock')
+        control_files = LockableFiles(repository_transport, 'lock', LockDir)
+        control_files.create_lock()
         return control_files
 
     def _upload_blank_content(self, a_bzrdir, dirs, files, utf8_files, shared):
         """Upload the initial blank content."""
         control_files = self._create_control_files(a_bzrdir)
         control_files.lock_write()
-        control_files._transport.mkdir_multi(dirs,
-                mode=control_files._dir_mode)
         try:
+            control_files._transport.mkdir_multi(dirs,
+                    mode=control_files._dir_mode)
             for file, content in files:
                 control_files.put(file, content)
             for file, content in utf8_files:
@@ -1066,7 +1070,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
             repo_transport = _override_transport
         else:
             repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = LockableFiles(repo_transport, 'lock')
+        control_files = LockableFiles(repo_transport, 'lock', LockDir)
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
         _revision_store = self._get_revision_store(repo_transport, control_files)
@@ -1089,6 +1093,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
      - a format marker of its own
      - an optional 'shared-storage' flag
      - an optional 'no-working-trees' flag
+     - a LockDir lock
     """
 
     def _get_control_store(self, repo_transport, control_files):
@@ -1145,7 +1150,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
         
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
         repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = LockableFiles(repo_transport, 'lock')
+        control_files = LockableFiles(repo_transport, 'lock', LockDir)
         control_store = self._get_control_store(repo_transport, control_files)
         transaction = bzrlib.transactions.PassThroughTransaction()
         # trigger a write of the inventory store.
@@ -1169,7 +1174,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
             repo_transport = _override_transport
         else:
             repo_transport = a_bzrdir.get_repository_transport(None)
-        control_files = LockableFiles(repo_transport, 'lock')
+        control_files = LockableFiles(repo_transport, 'lock', LockDir)
         text_store = self._get_text_store(repo_transport, control_files)
         control_store = self._get_control_store(repo_transport, control_files)
         _revision_store = self._get_revision_store(repo_transport, control_files)

@@ -300,11 +300,13 @@ class ReadOnlyError(LockError):
         self.obj = obj
 
 
-class BranchNotLocked(LockError):
-    """Branch %(branch)r is not locked"""
-    def __init__(self, branch):
-        # XXX: sometimes called with a LockableFiles instance not a Branch
-        self.branch = branch
+class ObjectNotLocked(LockError):
+    """%(obj)r is not locked"""
+    # this can indicate that any particular object is not locked; see also
+    # LockNotHeld which means that a particular *lock* object is not held by
+    # the caller -- perhaps they should be unified.
+    def __init__(self, obj):
+        self.obj = obj
 
 
 class ReadOnlyObjectDirtiedError(ReadOnlyError):
@@ -344,12 +346,6 @@ class LockNotHeld(LockError):
     """Lock not held: %(lock)s"""
     def __init__(self, lock):
         self.lock = lock
-
-
-class BranchNotLocked(LockError):
-    """Branch %(branch)r not locked"""
-    def __init__(self, branch):
-        self.branch = branch
 
 
 class PointlessCommit(BzrNewError):

@@ -62,7 +62,7 @@ from bzrlib.errors import (BzrCheckError,
                            NoSuchFile,
                            NotVersionedError)
 from bzrlib.inventory import InventoryEntry, Inventory
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.merge import merge_inner, transform_tree
 from bzrlib.osutils import (
                             abspath,
@@ -255,7 +255,7 @@ class WorkingTree(bzrlib.tree.Tree):
             assert isinstance(self._format, WorkingTreeFormat3)
             self._control_files = LockableFiles(
                 self.bzrdir.get_workingtree_transport(None),
-                'lock')
+                'lock', TransportLock)
 
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -454,13 +454,18 @@ class WorkingTree(bzrlib.tree.Tree):
             tree.set_last_revision(revision_id)
 
     @needs_write_lock
-    def commit(self, *args, **kwargs):
+    def commit(self, message=None, revprops=None, *args, **kwargs):
+        # avoid circular imports
         from bzrlib.commit import Commit
+        if revprops is None:
+            revprops = {}
+        if not 'branch-nick' in revprops:
+            revprops['branch-nick'] = self.branch.nick
         # args for wt.commit start at message from the Commit.commit method,
         # but with branch a kwarg now, passing in args as is results in the
         #message being used for the branch
-        args = (DEPRECATED_PARAMETER, ) + args
-        Commit().commit(working_tree=self, *args, **kwargs)
+        args = (DEPRECATED_PARAMETER, message, ) + args
+        Commit().commit(working_tree=self, revprops=revprops, *args, **kwargs)
         self._set_inventory(self.read_working_inventory())
 
     def id2abspath(self, file_id):
@@ -1429,7 +1434,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         transport = a_bzrdir.get_workingtree_transport(self)
-        control_files = LockableFiles(transport, 'lock')
+        control_files = LockableFiles(transport, 'lock', TransportLock)
         control_files.put_utf8('format', self.get_format_string())
         branch = a_bzrdir.open_branch()
         if revision_id is None:
