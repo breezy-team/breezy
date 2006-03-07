@@ -551,7 +551,11 @@ class BzrDirPreSplitOut(BzrDir):
             self.open_workingtree().clone(result, basis=basis_tree)
         except errors.NotLocalUrl:
             # make a new one, this format always has to have one.
-            WorkingTreeFormat2().initialize(result)
+            try:
+                WorkingTreeFormat2().initialize(result)
+            except errors.NotLocalUrl:
+                # but we canot do it for remote trees.
+                pass
         return result
 
     def create_branch(self):
