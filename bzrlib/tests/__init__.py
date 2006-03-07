@@ -591,9 +591,22 @@ class TestCaseInTempDir(TestCase):
         _currentdir = os.getcwdu()
         short_id = self.id().replace('bzrlib.tests.', '') \
                    .replace('__main__.', '')
-        self.test_dir = osutils.pathjoin(self.TEST_ROOT, short_id)
-        os.mkdir(self.test_dir)
-        os.chdir(self.test_dir)
+        # it's possible the same test class is run several times for
+        # parameterized tests, so make sure the names don't collide.  
+        i = 0
+        while True:
+            if i > 0:
+                candidate_dir = '%s/%s.%d' % (self.TEST_ROOT, short_id, i)
+            else:
+                candidate_dir = '%s/%s' % (self.TEST_ROOT, short_id)
+            if os.path.exists(candidate_dir):
+                i = i + 1
+                continue
+            else:
+                self.test_dir = candidate_dir
+                os.mkdir(self.test_dir)
+                os.chdir(self.test_dir)
+                break
         os.environ['HOME'] = self.test_dir
         os.environ['APPDATA'] = self.test_dir
         def _leaveDirectory():
