@@ -327,6 +327,50 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('foo', rev_id='foo', allow_pointless=True)
         self.assertEqual('foo', tree.last_revision())
 
+    def test_commit_local_unbound(self):
+        # using the library api to do a local commit on unbound branches is 
+        # also an error
+        tree = self.make_branch_and_tree('tree')
+        self.assertRaises(errors.LocalRequiresBoundBranch,
+                          tree.commit,
+                          'foo',
+                          local=True)
+ 
+    def test_local_commit_ignores_master(self):
+        # a --local commit does not require access to the master branch
+        # at all, or even for it to exist.
+        # we test this by setting up a bound branch and then corrupting
+        # the master.
+        master = self.make_branch('master')
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.branch.bind(master)
+        except errors.UpgradeRequired:
+            # older format.
+            return
+        master.bzrdir.transport.put('branch-format', StringIO('garbage'))
+        del master
+        # check its corrupted.
+        self.assertRaises(errors.UnknownFormatError,
+                          bzrdir.BzrDir.open,
+                          'master')
+        tree.commit('foo', rev_id='foo', local=True)
+ 
+    def test_local_commit_does_not_push_to_master(self):
+        # a --local commit does not require access to the master branch
+        # at all, or even for it to exist.
+        # we test that even when its available it does not push to it.
+        master = self.make_branch('master')
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.branch.bind(master)
+        except errors.UpgradeRequired:
+            # older format.
+            return
+        tree.commit('foo', rev_id='foo', local=True)
+        self.failIf(master.repository.has_revision('foo'))
+        self.assertEqual(None, master.last_revision())
+        
     def test_update_sets_last_revision(self):
         # working tree formats from the meta-dir format and newer support
         # setting the last revision on a tree independently of that on the 
@@ -416,3 +460,42 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertIs(os.path.exists('b1/c'), False)
         self.assertIs(os.path.exists('b1/a~'), False)
         self.assertIs(os.path.exists('b1/d'), True)
+
+    def test_update_updates_bound_branch_no_local_commits(self):
+        # doing an update in a tree updates the branch its bound to too.
+        master_tree = self.make_branch_and_tree('master')
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.branch.bind(master_tree.branch)
+        except errors.UpgradeRequired:
+            # legacy branches cannot bind
+            return
+        master_tree.commit('foo', rev_id='foo', allow_pointless=True)
+        tree.update()
+        self.assertEqual('foo', tree.last_revision())
+        self.assertEqual('foo', tree.branch.last_revision())
+
+    def test_update_turns_local_commit_into_merge(self):
+        # doing an update with a few local commits and no master commits
+        # makes pending-merges. 
+        # this is done so that 'bzr update; bzr revert' will always produce
+        # an exact copy of the 'logical branch' - the referenced branch for
+        # a checkout, and the master for a bound branch.
+        # its possible that we should instead have 'bzr update' when there
+        # is nothing new on the master leave the current commits intact and
+        # alter 'revert' to revert to the master always. But for now, its
+        # good.
+        master_tree = self.make_branch_and_tree('master')
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.branch.bind(master_tree.branch)
+        except errors.UpgradeRequired:
+            # legacy branches cannot bind
+            return
+        tree.commit('foo', rev_id='foo', allow_pointless=True, local=True)
+        tree.commit('bar', rev_id='bar', allow_pointless=True, local=True)
+        tree.update()
+        self.assertEqual(None, tree.last_revision())
+        self.assertEqual([], tree.branch.revision_history())
+        self.assertEqual(['bar'], tree.pending_merges())
+

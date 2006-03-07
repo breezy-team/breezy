@@ -36,6 +36,7 @@ from bzrlib.errors import (InstallFailed, NoSuchRevision, WeaveError,
                            MissingText)
 from bzrlib.trace import mutter
 from bzrlib.progress import ProgressBar
+from bzrlib.reconcile import RepoReconciler
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import *
 
@@ -150,6 +151,14 @@ class RepoFetcher(object):
             self.from_repository.revision_store,
             revs,
             pb=self.pb)
+        # fixup inventory if needed:
+        # this is expensive because we have no inverse index to current ghosts.
+        # but on local disk its a few seconds and sftp push is already insane.
+        # so we just-do-it.
+        # FIXME: the generic code path should not need this, if it truely is
+        # generic.
+        reconciler = RepoReconciler(self.to_repository)
+        reconciler.reconcile()
 
     def _fetch_weave_texts(self, revs):
         file_ids = self.from_repository.fileid_involved_by_set(revs)
@@ -180,23 +189,24 @@ class RepoFetcher(object):
     def _fetch_inventory_weave(self, revs):
         self.pb.update("inventory fetch", 0, 2)
         from_weave = self.from_repository.get_inventory_weave()
-        to_weave = self.to_repository.get_inventory_weave()
+        self.to_inventory_weave = self.to_repository.get_inventory_weave()
         self.pb.update("inventory fetch", 1, 2)
-        to_weave = self.to_control.get_weave('inventory',
+        self.to_inventory_weave = self.to_control.get_weave('inventory',
                 self.to_repository.get_transaction())
         self.pb.update("inventory fetch", 2, 2)
 
-        if to_weave.numversions() > 0:
+        if self.to_inventory_weave.numversions() > 0:
             # destination has contents, must merge
             try:
-                to_weave.join(from_weave, pb=self.pb, msg='merge inventory')
+                self.to_inventory_weave.join(from_weave, pb=self.pb, msg='merge inventory')
             except errors.WeaveParentMismatch:
-                to_weave.reweave(from_weave, pb=self.pb, msg='reweave inventory')
+                self.to_inventory_weave.reweave(from_weave, pb=self.pb, msg='reweave inventory')
         else:
             # destination is empty, just replace it
-            to_weave = from_weave.copy()
+            self.to_inventory_weave = from_weave.copy()
 
-        self.to_control.put_weave('inventory', to_weave,
+        # must be written before pulling any revisions
+        self.to_control.put_weave('inventory', self.to_inventory_weave,
             self.to_repository.get_transaction())
 
         self.pb.clear()

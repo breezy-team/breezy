@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ from unittest import TestSuite
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.osutils import safe_unicode
 from bzrlib.osutils import (
                             abspath,
@@ -525,12 +525,7 @@ class BzrDir(object):
             source_branch.sprout(result, revision_id=revision_id)
         else:
             result.create_branch()
-        try:
-            self.open_workingtree().clone(result,
-                                          revision_id=revision_id, 
-                                          basis=basis_tree)
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            result.create_workingtree()
+        result.create_workingtree()
         return result
 
 
@@ -541,7 +536,8 @@ class BzrDirPreSplitOut(BzrDir):
         """See BzrDir.__init__."""
         super(BzrDirPreSplitOut, self).__init__(_transport, _format)
         self._control_files = LockableFiles(self.get_branch_transport(None),
-                                            'branch-lock')
+                                            'branch-lock',
+                                            TransportLock)
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         """See BzrDir.clone()."""
@@ -641,11 +637,8 @@ class BzrDirPreSplitOut(BzrDir):
             self.open_branch().sprout(result, revision_id=revision_id)
         except errors.NotBranchError:
             pass
-        try:
-            self.open_workingtree().clone(result, basis=basis_tree)
-        except (errors.NotBranchError, errors.NotLocalUrl):
-            # we always want a working tree
-            WorkingTreeFormat2().initialize(result)
+        # we always want a working tree
+        WorkingTreeFormat2().initialize(result)
         return result
 
 
@@ -872,7 +865,7 @@ class BzrDirFormat(object):
         # Since we don't have a .bzr directory, inherit the
         # mode from the root directory
         t = get_transport(url)
-        temp_control = LockableFiles(t, '')
+        temp_control = LockableFiles(t, '', TransportLock)
         temp_control._transport.mkdir('.bzr',
                                       # FIXME: RBC 20060121 dont peek under
                                       # the covers
@@ -888,8 +881,8 @@ class BzrDirFormat(object):
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
-        control.put(lock_file, StringIO(), mode=file_mode)
-        control_files = LockableFiles(control, lock_file)
+        control_files = LockableFiles(control, lock_file, TransportLock)
+        control_files.create_lock()
         control_files.lock_write()
         try:
             for file, content in utf8_files:

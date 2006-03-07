@@ -157,7 +157,6 @@ class TestFormat7(TestCaseWithTransport):
         t = control.get_repository_transport(None)
         self.assertEqualDiff('Bazaar-NG Repository format 7',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
         self.assertEqualDiff('# bzr weave file v5\n'
@@ -170,15 +169,14 @@ class TestFormat7(TestCaseWithTransport):
         repo = repository.RepositoryFormat7().initialize(control, shared=True)
         # we want:
         # format 'Bazaar-NG Repository format 7'
-        # lock ''
         # inventory.weave == empty_weave
         # empty revision-store directory
         # empty weaves directory
         # a 'shared-storage' marker file.
+        # lock is not present when unlocked
         t = control.get_repository_transport(None)
         self.assertEqualDiff('Bazaar-NG Repository format 7',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff('', t.get('shared-storage').read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
@@ -186,6 +184,34 @@ class TestFormat7(TestCaseWithTransport):
                              'w\n'
                              'W\n',
                              t.get('inventory.weave').read())
+        self.assertFalse(t.has('branch-lock'))
+
+    def test_creates_lockdir(self):
+        """Make sure it appears to be controlled by a LockDir existence"""
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = repository.RepositoryFormat7().initialize(control, shared=True)
+        t = control.get_repository_transport(None)
+        # TODO: Should check there is a 'lock' toplevel directory, 
+        # regardless of contents
+        self.assertFalse(t.has('lock/held/info'))
+        repo.lock_write()
+        self.assertTrue(t.has('lock/held/info'))
+
+    def test_uses_lockdir(self):
+        """repo format 7 actually locks on lockdir"""
+        base_url = self.get_url()
+        control = bzrdir.BzrDirMetaFormat1().initialize(base_url)
+        repo = repository.RepositoryFormat7().initialize(control, shared=True)
+        t = control.get_repository_transport(None)
+        repo.lock_write()
+        repo.unlock()
+        del repo
+        # make sure the same lock is created by opening it
+        repo = repository.Repository.open(base_url)
+        repo.lock_write()
+        self.assertTrue(t.has('lock/held/info'))
+        repo.unlock()
+        self.assertFalse(t.has('lock/held/info'))
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -201,7 +227,7 @@ class TestFormat7(TestCaseWithTransport):
         t = control.get_repository_transport(None)
         self.assertEqualDiff('Bazaar-NG Repository format 7',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
+        ## self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff('', t.get('shared-storage').read())
         self.assertEqualDiff('', t.get('no-working-trees').read())
         repo.set_make_working_trees(True)
@@ -224,16 +250,18 @@ class TestFormatKnit1(TestCaseWithTransport):
         repo.unlock()
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
-        # lock ''
+        # lock: is a directory
         # inventory.weave == empty_weave
         # empty revision-store directory
         # empty weaves directory
         t = control.get_repository_transport(None)
         self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
+        # XXX: no locks left when unlocked at the moment
+        # self.assertEqualDiff('', t.get('lock').read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('lock').st_mode))
         # cheating and using a weave for now.
         self.assertEqualDiff('# bzr weave file v5\n'
                              'w\n'
@@ -245,7 +273,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         repo = repository.RepositoryFormatKnit1().initialize(control, shared=True)
         # we want:
         # format 'Bazaar-NG Knit Repository Format 1'
-        # lock ''
+        # lock: is a directory
         # inventory.weave == empty_weave
         # empty revision-store directory
         # empty weaves directory
@@ -253,10 +281,12 @@ class TestFormatKnit1(TestCaseWithTransport):
         t = control.get_repository_transport(None)
         self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
+        # XXX: no locks left when unlocked at the moment
+        # self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff('', t.get('shared-storage').read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('lock').st_mode))
         # cheating and using a weave for now.
         self.assertEqualDiff('# bzr weave file v5\n'
                              'w\n'
@@ -277,13 +307,15 @@ class TestFormatKnit1(TestCaseWithTransport):
         t = control.get_repository_transport(None)
         self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
+        # XXX: no locks left when unlocked at the moment
+        # self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff('', t.get('shared-storage').read())
         self.assertEqualDiff('', t.get('no-working-trees').read())
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        self.assertTrue(S_ISDIR(t.stat('lock').st_mode))
         # cheating and using a weave for now.
         self.assertEqualDiff('# bzr weave file v5\n'
                              'w\n'

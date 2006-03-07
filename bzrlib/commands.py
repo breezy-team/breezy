@@ -34,15 +34,16 @@ from inspect import getdoc
 import errno
 
 import bzrlib
-import bzrlib.trace
-from bzrlib.trace import mutter, note, log_error, warning, be_quiet
 from bzrlib.errors import (BzrError, 
                            BzrCheckError,
                            BzrCommandError,
                            BzrOptionError,
                            NotBranchError)
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.option import Option
+from bzrlib.revisionspec import RevisionSpec
+from bzrlib.symbol_versioning import *
+import bzrlib.trace
+from bzrlib.trace import mutter, note, log_error, warning, be_quiet
 
 plugin_cmds = {}
 
@@ -207,8 +208,16 @@ class Command(object):
             r[o.name] = o
         return r
 
-    def run_argv(self, argv, alias_argv=None):
-        """Parse command line and run."""
+    @deprecated_method(zero_eight)
+    def run_argv(self, argv):
+        """Parse command line and run.
+        
+        See run_argv_aliases for the 0.8 and beyond api.
+        """
+        return self.run_argv_aliases(argv)
+
+    def run_argv_aliases(self, argv, alias_argv=None):
+        """Parse the command line and run with extra aliases in alias_argv."""
         args, opts = parse_args(self, argv, alias_argv)
         if 'help' in opts:  # e.g. bzr add --help
             from bzrlib.help import help_on_command
@@ -584,15 +593,20 @@ def run_bzr(argv):
     cmd = str(argv.pop(0))
 
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
+    if not getattr(cmd_obj.run_argv, 'is_deprecated', False):
+        run = cmd_obj.run_argv
+        run_argv = [argv]
+    else:
+        run = cmd_obj.run_argv_aliases
+        run_argv = [argv, alias_argv]
 
     try:
         if opt_lsprof:
-            ret = apply_lsprofiled(opt_lsprof_file, cmd_obj.run_argv, argv, 
-                                   alias_argv)
+            ret = apply_lsprofiled(opt_lsprof_file, run, *run_argv)
         elif opt_profile:
-            ret = apply_profiled(cmd_obj.run_argv, argv, alias_argv)
+            ret = apply_profiled(run, *run_argv)
         else:
-            ret = cmd_obj.run_argv(argv, alias_argv)
+            ret = run(*run_argv)
         return ret or 0
     finally:
         # reset, in case we may do other commands later within the same process
