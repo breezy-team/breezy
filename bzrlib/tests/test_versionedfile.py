@@ -75,8 +75,21 @@ class VersionedFileTestMixIn(object):
         f.add_lines('r3', ['r2'], ['b\n', 'c\n'])
         f.add_lines('rM', ['r1', 'r2'], ['b\n', 'c\n'])
         self.assertEqual([], f.get_ancestry([]))
-        versions = set(f.get_ancestry(['rM']))
-        self.assertEquals(versions, set(['rM', 'r2', 'r1', 'r0']))
+        versions = f.get_ancestry(['rM'])
+        # there are some possibilities:
+        # r0 r1 r2 rM r3
+        # r0 r1 r2 r3 rM
+        # etc
+        # so we check indexes
+        r0 = versions.index('r0')
+        r1 = versions.index('r1')
+        r2 = versions.index('r2')
+        self.assertFalse('r3' in versions)
+        rM = versions.index('rM')
+        self.assertTrue(r0 < r1)
+        self.assertTrue(r0 < r2)
+        self.assertTrue(r1 < rM)
+        self.assertTrue(r2 < rM)
 
         self.assertRaises(RevisionNotPresent,
             f.get_ancestry, ['rM', 'rX'])
@@ -164,6 +177,8 @@ class VersionedFileTestMixIn(object):
             f.annotate, 'foo')
 
     def test_walk(self):
+        # tests that walk returns all the inclusions for the requested
+        # revisions as well as the revisions changes themselves.
         f = self.get_file('1')
         f.add_lines('r0', [], ['a\n', 'b\n'])
         f.add_lines('r1', ['r0'], ['c\n', 'b\n'])

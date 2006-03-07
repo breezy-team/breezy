@@ -355,11 +355,8 @@ class Repository(object):
 
         w = self.get_inventory_weave()
         file_ids = set()
-        for line in w._weave:
 
-            # it is ugly, but it is due to the weave structure
-            if not isinstance(line, basestring): continue
-
+        for lineno, insert, deletes, line in w.walk(changes):
             start = line.find('file_id="')+9
             if start < 9: continue
             end = line.find('"', start)
@@ -977,13 +974,6 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         control_files = LockableFiles(repository_transport, 'lock')
         return control_files
 
-    def _get_control_store(self, repo_transport, control_files):
-        """Return the control store for this repository."""
-        return self._get_versioned_file_store('',
-                                              repo_transport,
-                                              control_files,
-                                              prefixed=False)
-
     def _upload_blank_content(self, a_bzrdir, dirs, files, utf8_files, shared):
         """Upload the initial blank content."""
         control_files = self._create_control_files(a_bzrdir)
@@ -1012,6 +1002,13 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
      - an optional 'shared-storage' flag
      - an optional 'no-working-trees' flag
     """
+
+    def _get_control_store(self, repo_transport, control_files):
+        """Return the control store for this repository."""
+        return self._get_versioned_file_store('',
+                                              repo_transport,
+                                              control_files,
+                                              prefixed=False)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -1094,6 +1091,14 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
      - an optional 'no-working-trees' flag
     """
 
+    def _get_control_store(self, repo_transport, control_files):
+        """Return the control store for this repository."""
+        return self._get_versioned_file_store('',
+                                              repo_transport,
+                                              control_files,
+                                              prefixed=False,
+                                              versionedfile_class=KnitVersionedFile)
+
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Knit Repository Format 1"
@@ -1102,7 +1107,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
         """See RepositoryFormat._get_revision_store()."""
         from bzrlib.store.revision.knit import KnitRevisionStore
         versioned_file_store = VersionedFileStore(
-            repo_transport.clone('revision-store'),
+            repo_transport,
             file_mode = control_files._file_mode,
             prefixed=False,
             precious=True,
@@ -1142,9 +1147,12 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
         repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = LockableFiles(repo_transport, 'lock')
         control_store = self._get_control_store(repo_transport, control_files)
+        transaction = bzrlib.transactions.PassThroughTransaction()
         # trigger a write of the inventory store.
-        control_store.get_weave_or_empty('inventory',
-            bzrlib.transactions.PassThroughTransaction())
+        control_store.get_weave_or_empty('inventory', transaction)
+        _revision_store = self._get_revision_store(repo_transport, control_files)
+        _revision_store.has_revision_id('A', transaction)
+        _revision_store.get_signature_file(transaction)
         return self.open(a_bzrdir=a_bzrdir, _found=True)
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):

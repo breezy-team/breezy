@@ -277,9 +277,12 @@ class TestSnapshot(TestCaseWithTransport):
                                   self.branch.get_transaction())
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '1')
+        vf = self.branch.repository.weave_store.get_weave(
+            'fileid', 
+            self.branch.repository.get_transaction())
         self.assertRaises(errors.RevisionNotPresent,
-                          self.branch.repository.weave_store.get_lines, 
-                          'fileid', '2', self.branch.get_transaction())
+                          vf.get_lines,
+                          '2')
 
     def test_snapshot_merge_identical_different_revid(self):
         # This tests that a commit with two identical parents, one of which has

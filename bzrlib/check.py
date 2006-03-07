@@ -82,7 +82,7 @@ class Check(object):
         repository = self.branch.repository
         self.planned_revisions = set(repository.all_revision_ids())
         self.progress.clear()
-        inventoried = set(self.inventory_weave.names())
+        inventoried = set(self.inventory_weave.versions())
         awol = self.planned_revisions - inventoried
         if len(awol) > 0:
             raise BzrCheckError('Stored revisions missing from inventory'

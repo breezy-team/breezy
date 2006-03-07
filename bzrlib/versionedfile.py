@@ -214,8 +214,8 @@ class VersionedFile(object):
 
         Weave lines present in none of them are skipped entirely.
         """
-        inc_a = set(self.inclusions([ver_a]))
-        inc_b = set(self.inclusions([ver_b]))
+        inc_a = set(self.get_ancestry([ver_a]))
+        inc_b = set(self.get_ancestry([ver_b]))
         inc_c = inc_a & inc_b
 
         for lineno, insert, deleteset, line in self.walk():

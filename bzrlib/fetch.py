@@ -237,9 +237,9 @@ class KnitRepoFetcher(RepoFetcher):
         # may need to be a InterRevisionStore call here.
         from_transaction = self.from_repository.get_transaction()
         to_transaction = self.to_repository.get_transaction()
-        to_sf = self.to_repository._revision_store._get_signature_file(
+        to_sf = self.to_repository._revision_store.get_signature_file(
             to_transaction)
-        from_sf = self.from_repository._revision_store._get_signature_file(
+        from_sf = self.from_repository._revision_store.get_signature_file(
             from_transaction)
         to_sf.join(from_sf, version_ids=revs, pb=self.pb, ignore_missing=True)
         to_rf = self.to_repository._revision_store.get_revision_file(

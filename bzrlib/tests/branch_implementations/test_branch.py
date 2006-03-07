@@ -470,11 +470,11 @@ class TestBranchTransaction(TestCaseWithBranch):
                                    transactions.ReadOnlyTransaction))
         self.get_branch().unlock()
         
-    def test_lock_write_acquires_passthrough_transaction(self):
+    def test_lock_write_acquires_write_transaction(self):
         self.get_branch().lock_write()
         # cannot use get_transaction as its magic
         self.failUnless(isinstance(self.get_branch().control_files._transaction,
-                                   transactions.PassThroughTransaction))
+                                   transactions.WriteTransaction))
         self.get_branch().unlock()
 
 

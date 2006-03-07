@@ -253,7 +253,7 @@ class KnitVersionedFile(VersionedFile):
         self._index = _KnitIndex(transport, relpath + INDEX_SUFFIX,
             access_mode, create=create)
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
-            access_mode)
+            access_mode, create=not len(self.versions()))
 
     def copy_to(self, name, transport):
         """See VersionedFile.copy_to()."""
@@ -635,15 +635,17 @@ class _KnitIndex(_KnitComponentFile):
 
     def get_ancestry(self, versions):
         """See VersionedFile.get_ancestry."""
-        version_idxs = []
-        for version_id in versions:
-            version_idxs.append(self._history.index(version_id))
-        i = set(versions)
-        for v in xrange(max(version_idxs), 0, -1):
-            if self._history[v] in i:
-                # include all its parents
-                i.update(self._cache[self._history[v]][4])
-        return list(i)
+        # get a graph of all the mentioned versions:
+        graph = {}
+        pending = set(versions)
+        while len(pending):
+            version = pending.pop()
+            parents = self._cache[version][4]
+            for parent in parents:
+                if parent not in graph:
+                    pending.add(parent)
+            graph[version] = parents
+        return topo_sort(graph.items())
 
     def num_versions(self):
         return len(self._history)
@@ -712,10 +714,12 @@ class _KnitData(_KnitComponentFile):
 
     HEADER = "# bzr knit data 7\n"
 
-    def __init__(self, transport, filename, mode):
+    def __init__(self, transport, filename, mode, create=False):
         _KnitComponentFile.__init__(self, transport, filename, mode)
         self._file = None
         self._checked = False
+        if create:
+            self._transport.put(self._filename, StringIO(''))
 
     def _open_file(self):
         if self._file is None:

@@ -21,7 +21,6 @@ import os
 import gzip
 
 from bzrlib.errors import BzrError, UnlistableStore, NoSuchFile
-from bzrlib.store import copy_all
 from bzrlib.transport.local import LocalTransport
 from bzrlib.store.text import TextStore
 from bzrlib.tests import TestCase, TestCaseInTempDir
@@ -50,7 +49,7 @@ class TestStores(object):
         store_a.add('foo', '1')
         os.mkdir('b')
         store_b = self.get_store('b')
-        copy_all(store_a, store_b)
+        store_b.copy_all_ids(store_a)
         self.assertEqual(store_a.get('1').read(), 'foo')
         self.assertEqual(store_b.get('1').read(), 'foo')
         # TODO: Switch the exception form UnlistableStore to
@@ -387,7 +386,7 @@ class TestTransportStore(TestCase):
         to_store = TextStore(MemoryTransport(),
                              prefixed=True, compressed=True)
         to_store.register_suffix('sig')
-        copy_all(from_store, to_store)
+        to_store.copy_all_ids(from_store)
         self.assertEqual(1, len(to_store))
         self.assertEqual(set(['foo']), set(to_store.__iter__()))
         self.assertEqual('content', to_store.get('foo').read())

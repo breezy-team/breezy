@@ -113,7 +113,9 @@ class VersionedFileStore(TransportStore):
     def get_lines(self, file_id, rev_id, transaction):
         """Return text from a particular version of a weave.
 
-        Returned as a list of lines."""
+        Returned as a list of lines.
+        """
+        assert 0
         w = self.get_weave(file_id, transaction)
         return w.get_lines(rev_id)
     

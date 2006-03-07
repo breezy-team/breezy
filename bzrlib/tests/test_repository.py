@@ -232,13 +232,23 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
                              t.get('format').read())
         self.assertEqualDiff('', t.get('lock').read())
-        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
-        # cheating and using a weave for now.
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
-                             t.get('control/inventory.weave').read())
+        self.check_knits(t)
+
+    def check_knits(self, t):
+        """check knit content for a repository."""
+        self.assertEqualDiff('# bzr knit index 7\n',
+                             t.get('inventory.kndx').read())
+        # no default content
+        self.assertTrue(t.has('inventory.knit'))
+        self.assertEqualDiff('# bzr knit index 7\n',
+                             t.get('revisions.kndx').read())
+        # no default content
+        self.assertTrue(t.has('revisions.knit'))
+        self.assertEqualDiff('# bzr knit index 7\n',
+                             t.get('signatures.kndx').read())
+        # no default content
+        self.assertTrue(t.has('signatures.knit'))
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -255,13 +265,8 @@ class TestFormatKnit1(TestCaseWithTransport):
                              t.get('format').read())
         self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff('', t.get('shared-storage').read())
-        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
-        # cheating and using a weave for now.
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
-                             t.get('control/inventory.weave').read())
+        self.check_knits(t)
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -282,13 +287,8 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertEqualDiff('', t.get('no-working-trees').read())
         repo.set_make_working_trees(True)
         self.assertFalse(t.has('no-working-trees'))
-        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
-        # cheating and using a weave for now.
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
-                             t.get('control/inventory.weave').read())
+        self.check_knits(t)
 
 
 class InterString(repository.InterRepository):
