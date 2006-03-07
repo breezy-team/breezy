@@ -36,6 +36,12 @@ def unique_add(map, key, value):
     map[key] = value
 
 
+class _TransformResults(object):
+    def __init__(self, modified_paths):
+        object.__init__(self)
+        self.modified_paths = modified_paths
+
+
 class TreeTransform(object):
     """Represent a tree transformation.
     
@@ -660,10 +666,11 @@ class TreeTransform(object):
         limbo_inv = {}
         inv = self._tree.inventory
         self._apply_removals(inv, limbo_inv)
-        self._apply_insertions(inv, limbo_inv)
+        modified_paths = self._apply_insertions(inv, limbo_inv)
         self._tree._write_inventory(inv)
         self.__done = True
         self.finalize()
+        return _TransformResults(modified_paths)
 
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
@@ -711,6 +718,7 @@ class TreeTransform(object):
         parent-to-child order.
         """
         new_paths = self.new_paths()
+        modified_paths = []
         for num, (path, trans_id) in enumerate(new_paths):
             self._pb.update('adding file', num+1, len(new_paths))
             try:
@@ -726,6 +734,7 @@ class TreeTransform(object):
                     if e.errno != errno.ENOENT:
                         raise
                 if trans_id in self._new_contents:
+                    modified_paths.append(full_path)
                     del self._new_contents[trans_id]
 
             if trans_id in self._new_id:
@@ -744,6 +753,7 @@ class TreeTransform(object):
             if trans_id in self._new_executability:
                 self._set_executability(path, inv, trans_id)
         self._pb.clear()
+        return modified_paths
 
     def _set_executability(self, path, inv, trans_id):
         """Set the executability of versioned files """
@@ -1002,6 +1012,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
 
     tt = TreeTransform(working_tree, pb)
     try:
+        merge_modified = working_tree.merge_modified()
         trans_id = {}
         def trans_id_file_id(file_id):
             try:
@@ -1019,17 +1030,26 @@ def revert(working_tree, target_tree, filenames, backups=False,
                 e_trans_id = new_by_entry(tt, entry, parent_id, target_tree)
                 trans_id[file_id] = e_trans_id
             else:
+                backup_this = backups
+                if file_id in merge_modified:
+                    backup_this = False
+                    del merge_modified[file_id]
                 change_entry(tt, file_id, working_tree, target_tree, 
-                             trans_id_file_id, backups, trans_id)
+                             trans_id_file_id, backup_this, trans_id)
         wt_interesting = [i for i in working_tree.inventory if interesting(i)]
         for id_num, file_id in enumerate(wt_interesting):
             pb.update("New file check", id_num+1, len(sorted_interesting))
             if file_id not in target_tree:
-                tt.unversion_file(tt.trans_id_tree_file_id(file_id))
+                trans_id = tt.trans_id_tree_file_id(file_id)
+                tt.unversion_file(trans_id)
+                if file_id in merge_modified:
+                    tt.delete_contents(trans_id)
+                    del merge_modified[file_id]
         raw_conflicts = resolve_conflicts(tt, pb)
         for line in conflicts_strings(cook_conflicts(raw_conflicts, tt)):
             warning(line)
         tt.apply()
+        working_tree.set_merge_modified({})
     finally:
         tt.finalize()
         pb.clear()
