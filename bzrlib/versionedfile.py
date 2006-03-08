@@ -65,6 +65,10 @@ class VersionedFile(object):
         """Return a unsorted list of versions."""
         raise NotImplementedError(self.versions)
 
+    def has_ghost(self, version_id):
+        """Returns whether version is present as a ghost."""
+        raise NotImplementedError(self.has_ghost)
+
     def has_version(self, version_id):
         """Returns whether version is present."""
         raise NotImplementedError(self.has_version)
@@ -78,6 +82,10 @@ class VersionedFile(object):
         Must raise RevisionNotPresent if any of the given parents are
         not present in file history."""
         raise NotImplementedError(self.add_lines)
+
+    def add_lines_with_ghosts(self, version_id, parents, lines):
+        """Add lines to the versioned file, allowing ghosts to be present."""
+        raise NotImplementedError(self.add_lines_with_ghosts)
 
     def check(self, progress_bar=None):
         """Check the versioned file for integrity."""
@@ -146,12 +154,35 @@ class VersionedFile(object):
             version_ids = [version_ids]
         raise NotImplementedError(self.get_ancestry)
         
+    def get_ancestry_with_ghosts(self, version_ids):
+        """Return a list of all ancestors of given version(s). This
+        will not include the null revision.
+
+        Must raise RevisionNotPresent if any of the given versions are
+        not present in file history.
+        
+        Ghosts that are known about will be included in ancestry list,
+        but are not explicitly marked.
+        """
+        raise NotImplementedError(self.get_ancestry_with_ghosts)
+        
     def get_graph(self):
-        """Return a graph for the entire versioned file."""
+        """Return a graph for the entire versioned file.
+        
+        Ghosts are not listed or referenced in the graph.
+        """
         result = {}
         for version in self.versions():
             result[version] = self.get_parents(version)
         return result
+
+    def get_graph_with_ghosts(self):
+        """Return a graph for the entire versioned file.
+        
+        Ghosts are referenced in parents list but are not
+        explicitly listed.
+        """
+        raise NotImplementedError(self.get_graph_with_ghosts)
 
     @deprecated_method(zero_eight)
     def parent_names(self, version):
@@ -168,6 +199,17 @@ class VersionedFile(object):
         file history.
         """
         raise NotImplementedError(self.get_parents)
+
+    def get_parents_with_ghosts(self, version_id):
+        """Return version names for parents of version_id.
+
+        Will raise RevisionNotPresent if version_id is not present
+        in the history.
+
+        Ghosts that are known about will be included in the parent list,
+        but are not explicitly marked.
+        """
+        raise NotImplementedError(self.get_parents_with_ghosts)
 
     def annotate_iter(self, version_id):
         """Yield list of (version-id, line) pairs for the specified

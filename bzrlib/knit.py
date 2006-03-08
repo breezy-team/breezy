@@ -284,10 +284,29 @@ class KnitVersionedFile(VersionedFile):
                                 current_values[3],
                                 new_parents)
 
+    def get_graph_with_ghosts(self):
+        """See VersionedFile.get_graph_with_ghosts()."""
+        graph_items = self._index.get_graph()
+        return dict(graph_items)
+
     @staticmethod
     def get_suffixes():
         """See VersionedFile.get_suffixes()."""
         return [DATA_SUFFIX, INDEX_SUFFIX]
+
+    def has_ghost(self, version_id):
+        """True if there is a ghost reference in the file to version_id."""
+        # maybe we have it
+        if self.has_version(version_id):
+            return False
+        # optimisable if needed by memoising the _ghosts set.
+        items = self._index.get_graph()
+        for node, parents in items:
+            for parent in parents:
+                if parent not in self._index._cache:
+                    if parent == version_id:
+                        return True
+        return False
 
     def versions(self):
         """See VersionedFile.versions."""
@@ -405,8 +424,19 @@ class KnitVersionedFile(VersionedFile):
         if version_ids:
             raise RevisionNotPresent(list(version_ids)[0], self.filename)
 
+    def add_lines_with_ghosts(self, version_id, parents, lines):
+        """See VersionedFile.add_lines_with_ghosts()."""
+        self._check_add(version_id, lines)
+        return self._add(version_id, lines[:], parents, self.delta)
+
     def add_lines(self, version_id, parents, lines):
         """See VersionedFile.add_lines."""
+        self._check_add(version_id, lines)
+        self._check_versions_present(parents)
+        return self._add(version_id, lines[:], parents, self.delta)
+
+    def _check_add(self, version_id, lines):
+        """check that version_id and lines are safe to add."""
         assert self.writable, "knit is not opened for write"
         ### FIXME escape. RBC 20060228
         if contains_whitespace(version_id):
@@ -418,16 +448,20 @@ class KnitVersionedFile(VersionedFile):
             for l in lines:
                 assert '\n' not in l[:-1]
 
-        self._check_versions_present(parents)
-        return self._add(version_id, lines[:], parents, self.delta)
-
     def _add(self, version_id, lines, parents, delta):
         """Add a set of lines on top of version specified by parents.
 
         If delta is true, compress the text as a line-delta against
         the first parent.
+
+        Any versions not present will be converted into ghosts.
         """
-        if delta and not parents:
+        ghosts = []
+        for parent in parents:
+            if not self.has_version(parent):
+                ghosts.append(parent)
+
+        if delta and not len(parents)-len(ghosts):
             delta = False
 
         digest = sha_strings(lines)
@@ -438,16 +472,17 @@ class KnitVersionedFile(VersionedFile):
                 lines[-1] = lines[-1] + '\n'
 
         lines = self.factory.make(lines, len(self._index))
-        if self.factory.annotated and len(parents) > 0:
+        if self.factory.annotated and len(parents)-len(ghosts) > 0:
             # Merge annotations from parent texts if so is needed.
             self._merge_annotations(lines, parents)
 
-        if parents and delta:
+        if len(parents)-len(ghosts) and delta:
             # To speed the extract of texts the delta chain is limited
             # to a fixed number of deltas.  This should minimize both
             # I/O and the time spend applying deltas.
             count = 0
-            delta_parents = parents
+            delta_parents = [parent for parent in parents if not parent in ghosts]
+            first_parent = delta_parents[0]
             while count < 25:
                 parent = delta_parents[0]
                 method = self._index.get_method(parent)
@@ -460,7 +495,7 @@ class KnitVersionedFile(VersionedFile):
 
         if delta:
             options.append('line-delta')
-            content = self._get_content(parents[0])
+            content = self._get_content(first_parent)
             delta_hunks = content.line_delta(lines)
             store_lines = self.factory.lower_line_delta(delta_hunks)
         else:
@@ -527,6 +562,11 @@ class KnitVersionedFile(VersionedFile):
         self._check_versions_present([version_id])
         return list(self._index.get_parents(version_id))
 
+    def get_parents_with_ghosts(self, version_id):
+        """See VersionedFile.get_parents."""
+        self._check_versions_present([version_id])
+        return list(self._index.get_parents_with_ghosts(version_id))
+
     def get_ancestry(self, versions):
         """See VersionedFile.get_ancestry."""
         if isinstance(versions, basestring):
@@ -535,6 +575,15 @@ class KnitVersionedFile(VersionedFile):
             return []
         self._check_versions_present(versions)
         return self._index.get_ancestry(versions)
+
+    def get_ancestry_with_ghosts(self, versions):
+        """See VersionedFile.get_ancestry_with_ghosts."""
+        if isinstance(versions, basestring):
+            versions = [versions]
+        if not versions:
+            return []
+        self._check_versions_present(versions)
+        return self._index.get_ancestry_with_ghosts(versions)
 
     def _reannotate_line_delta(self, other, lines, new_version_id,
                                new_version_idx):
@@ -665,12 +714,27 @@ class _KnitIndex(_KnitComponentFile):
             fp = self._transport.get(self._filename)
             self.check_header(fp)
             for rec in self._iter_index(fp):
+                parents = self._parse_parents(rec[4:])
                 self._cache_version(rec[0], rec[1].split(','), int(rec[2]), int(rec[3]),
-                    [self._history[int(i)] for i in rec[4:]])
+                    parents)
         except NoSuchFile, e:
             if mode != 'w' or not create:
                 raise
             self.write_header()
+
+    def _parse_parents(self, compressed_parents):
+        """convert a list of string parent values into version ids.
+
+        ints are looked up in the index.
+        .FOO values are ghosts and converted in to FOO.
+        """
+        result = []
+        for value in compressed_parents:
+            if value.startswith('.'):
+                result.append(value[1:])
+            else:
+                result.append(self._history[int(value)])
+        return result
 
     def get_graph(self):
         graph = []
@@ -685,11 +749,41 @@ class _KnitIndex(_KnitComponentFile):
         pending = set(versions)
         while len(pending):
             version = pending.pop()
+#            try:
             parents = self._cache[version][4]
+#            except KeyError:
+#                # ghost, elide it.
+#                pass
+#            else:
+            # got the parents ok
+            # trim ghosts
+            parents = [parent for parent in parents if parent in self._cache]
             for parent in parents:
+                # if not completed and not a ghost
                 if parent not in graph:
                     pending.add(parent)
             graph[version] = parents
+        return topo_sort(graph.items())
+
+    def get_ancestry_with_ghosts(self, versions):
+        """See VersionedFile.get_ancestry_with_ghosts."""
+        # get a graph of all the mentioned versions:
+        graph = {}
+        pending = set(versions)
+        while len(pending):
+            version = pending.pop()
+            try:
+                parents = self._cache[version][4]
+            except KeyError:
+                # ghost, fake it
+                graph[version] = []
+                pass
+            else:
+                # got the parents ok
+                for parent in parents:
+                    if parent not in graph:
+                        pending.add(parent)
+                graph[version] = parents
         return topo_sort(graph.items())
 
     def num_versions(self):
@@ -707,6 +801,15 @@ class _KnitIndex(_KnitComponentFile):
         assert version_id in self._cache
         return self._history.index(version_id)
 
+    def _version_list_to_index(self, versions):
+        result_list = []
+        for version in versions:
+            if version in self._cache:
+                result_list.append(str(self._history.index(version)))
+            else:
+                result_list.append('.' + version)
+        return ' '.join(result_list)
+
     def add_version(self, version_id, options, pos, size, parents):
         """Add a version record to the index."""
         self._cache_version(version_id, options, pos, size, parents)
@@ -715,8 +818,7 @@ class _KnitIndex(_KnitComponentFile):
                                         ','.join(options),
                                         pos,
                                         size,
-                                        ' '.join([str(self.lookup(vid)) for 
-                                                  vid in parents]))
+                                        self._version_list_to_index(parents))
         self._transport.append(self._filename, StringIO(content))
 
     def has_version(self, version_id):
@@ -741,8 +843,13 @@ class _KnitIndex(_KnitComponentFile):
         return self._cache[version_id][1]
 
     def get_parents(self, version_id):
-        """Return parents of specified version."""
-        return self._cache[version_id][4]
+        """Return parents of specified version ignoring ghosts."""
+        return [parent for parent in self._cache[version_id][4] 
+                if parent in self._cache]
+
+    def get_parents_with_ghosts(self, version_id):
+        """Return parents of specified version wth ghosts."""
+        return self._cache[version_id][4] 
 
     def check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
@@ -899,8 +1006,8 @@ class InterKnit(InterVersionedFile):
         mismatched_versions = set()
         for version in cross_check_versions:
             # scan to include needed parents.
-            n1 = set(self.target.get_parents(version))
-            n2 = set(self.source.get_parents(version))
+            n1 = set(self.target.get_parents_with_ghosts(version))
+            n2 = set(self.source.get_parents_with_ghosts(version))
             if n1 != n2:
                 # FIXME TEST this check for cycles being introduced works
                 # the logic is we have a cycle if in our graph we are an
@@ -920,7 +1027,7 @@ class InterKnit(InterVersionedFile):
 
         if not needed_versions and not cross_check_versions:
             return 0
-        full_list = topo_sort(self.source._index.get_graph())
+        full_list = topo_sort(self.source.get_graph())
 
         version_list = [i for i in full_list if (not self.target.has_version(i)
                         and i in needed_versions)]
@@ -934,10 +1041,12 @@ class InterKnit(InterVersionedFile):
         for version_id, lines, digest \
                 in self.source._data.read_records_iter(records):
             options = self.source._index.get_options(version_id)
-            parents = self.source._index.get_parents(version_id)
+            parents = self.source._index.get_parents_with_ghosts(version_id)
             
             for parent in parents:
-                assert self.target.has_version(parent)
+                # if source has the parent, we must hav grabbed it first.
+                assert (self.target.has_version(parent) or not
+                        self.source.has_version(parent))
 
             if self.target.factory.annotated:
                 # FIXME jrydberg: it should be possible to skip
@@ -959,11 +1068,11 @@ class InterKnit(InterVersionedFile):
             self.target._index.add_version(version_id, options, pos, size, parents)
 
         for version in mismatched_versions:
-            n1 = set(self.target.get_parents(version))
-            n2 = set(self.source.get_parents(version))
+            n1 = set(self.target.get_parents_with_ghosts(version))
+            n2 = set(self.source.get_parents_with_ghosts(version))
             # write a combined record to our history preserving the current 
             # parents as first in the list
-            new_parents = self.target.get_parents(version) + list(n2.difference(n1))
+            new_parents = self.target.get_parents_with_ghosts(version) + list(n2.difference(n1))
             self.target.fix_parents(version, new_parents)
         pb.clear()
         return count
