@@ -265,13 +265,16 @@ class TTYProgressBar(_BaseProgressBar):
                     self.child_fraction)
 
     def child_update(self, message, current, total):
-        child_fraction = float(current) / total
-        if self.last_cnt is None:
-            pass
-        elif self.last_cnt + child_fraction <= total:
-            self.child_fraction = child_fraction
-        else:
-            mutter('not updating child fraction')
+        if current is not None:
+            child_fraction = float(current) / total
+            if self.last_cnt is None:
+                pass
+            elif self.last_cnt + child_fraction <= self.last_total:
+                self.child_fraction = child_fraction
+            else:
+                mutter('not updating child fraction')
+        if self.last_msg is None:
+            self.last_msg = ''
         self.tick()
 
 
@@ -296,8 +299,8 @@ class TTYProgressBar(_BaseProgressBar):
             return 
         
         if self.show_eta and self.start_time and total_cnt:
-            eta = get_eta(self.start_time, current_cnt, total_cnt,
-                    last_updates = self.last_updates)
+            eta = get_eta(self.start_time, current_cnt+child_fraction, 
+                    total_cnt, last_updates = self.last_updates)
             eta_str = " " + str_tdelta(eta)
         else:
             eta_str = ""
@@ -311,7 +314,7 @@ class TTYProgressBar(_BaseProgressBar):
         self.spin_pos += 1
 
         if self.show_pct and total_cnt and current_cnt:
-            pct = 100.0 * (current_cnt / total_cnt + child_fraction)
+            pct = 100.0 * ((current_cnt + child_fraction) / total_cnt)
             pct_str = ' (%5.1f%%)' % pct
         else:
             pct_str = ''
@@ -335,7 +338,8 @@ class TTYProgressBar(_BaseProgressBar):
 
             if total_cnt:
                 # number of markers highlighted in bar
-                markers = int(round(float(cols) * current_cnt / total_cnt))
+                markers = int(round(float(cols) * 
+                              (current_cnt + child_fraction) / total_cnt))
                 bar_str = '[' + ('=' * markers).ljust(cols) + '] '
             elif False:
                 # don't know total, so can't show completion.
@@ -378,18 +382,24 @@ class ChildProgress(_BaseProgressBar):
         self.tick()
 
     def child_update(self, message, current, total):
-        self.child_fraction = float(current) / total
+        if current is None:
+            self.child_fraction = 0
+        else:
+            self.child_fraction = float(current) / total
         self.tick()
 
     def tick(self):
-        count = self.current+self.child_fraction
-        if count > self.total:
-            mutter('clamping count of %d to %d' % (count, self.total))
-            count = self.total
+        if self.current is None:
+            count = None
+        else:
+            count = self.current+self.child_fraction
+            if count > self.total:
+                mutter('clamping count of %d to %d' % (count, self.total))
+                count = self.total
         self.parent.child_update(self.message, count, self.total)
 
     def clear(self):
-        self.parent.clear()
+        pass
 
  
 def str_tdelta(delt):
