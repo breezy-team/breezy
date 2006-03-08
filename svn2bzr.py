@@ -405,7 +405,7 @@ class BranchCreator(object):
                         content = self._dump.get_entry_content(entry)
                         self.change_file(node_path, content)
 
-                if os.path.isdir(node_path):
+                if os.path.isfile(node_path):
                     if entry.prop.has_key('svn:executable') and \
                         entry.prop['svn:executable'] == '*':
                         self.set_executable(node_path, True)
