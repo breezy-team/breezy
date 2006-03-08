@@ -1,15 +1,15 @@
-# (C) 2005 Canonical Ltd
-
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -25,7 +25,11 @@ also see this file.
 from StringIO import StringIO
 
 import bzrlib.branch
+from bzrlib.branch import (BzrBranch5, 
+                           BzrBranchFormat5)
 import bzrlib.bzrdir as bzrdir
+from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
+                           BzrDir, BzrDirFormat)
 from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
@@ -44,12 +48,32 @@ class TestDefaultFormat(TestCase):
         try:
             # the default branch format is used by the meta dir format
             # which is not the default bzrdir format at this point
-            dir = bzrdir.BzrDirMetaFormat1().initialize('memory:/')
+            dir = BzrDirMetaFormat1().initialize('memory:/')
             result = dir.create_branch()
             self.assertEqual(result, 'A branch')
         finally:
             bzrlib.branch.BranchFormat.set_default_format(old_format)
         self.assertEqual(old_format, bzrlib.branch.BranchFormat.get_default_format())
+
+
+class TestBranchFormat5(TestCaseWithTransport):
+    """Tests specific to branch format 5"""
+
+    def test_branch_format_5_uses_lockdir(self):
+        # XXX: There's really got to be a better way than setting the default
+        # format!  All I want is to create a bzrdir of a specified format.
+        url = self.get_url()
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            branch = BzrDir.create_branch_and_repo(url)
+            self.log("branch instance is %r" % branch)
+            self.assert_(isinstance(branch, BzrBranch5))
+            self.assertIsDirectory('.', self.get_transport())
+            self.assertIsDirectory('.bzr/branch', self.get_transport())
+            self.assertIsDirectory('.bzr/branch/lock', self.get_transport())
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
 
 
 class SampleBranchFormat(bzrlib.branch.BranchFormat):

@@ -151,8 +151,8 @@ class BzrDir(object):
             except errors.FileExists:
                 pass
 
-    @staticmethod
-    def create(base):
+    @classmethod
+    def create(cls, base):
         """Create a new BzrDir at the url 'base'.
         
         This will call the current default formats initialize with base
@@ -161,6 +161,9 @@ class BzrDir(object):
         If you need a specific format, consider creating an instance
         of that and calling initialize().
         """
+        if cls is not BzrDir:
+            raise AssertionError("BzrDir.create always creates the default format, "
+                    "not one of %r" % cls)
         segments = base.split('/')
         if segments and segments[-1] not in ('', '.'):
             parent = '/'.join(segments[:-1])
