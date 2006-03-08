@@ -274,11 +274,12 @@ class Transport(object):
             if not combined_offsets:
                 combined_offsets = [[offset, size]]
             else:
-                if combined_offsets[-1][0] + combined_offsets[-1][1] == offset:
+                if (len (combined_offsets) < 50 and
+                    combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
                     # combatible offset:
                     combined_offsets.append([offset, size])
                 else:
-                    # incompatible, issue a read and yield
+                    # incompatible, or over the threshold issue a read and yield
                     pending_offsets.appendleft((offset, size))
                     for result in do_combined_read(combined_offsets):
                         yield result

@@ -67,7 +67,9 @@ from cStringIO import StringIO
 import difflib
 from difflib import SequenceMatcher
 from gzip import GzipFile
+from itertools import izip
 import os
+
 
 import bzrlib
 import bzrlib.errors as errors
@@ -537,6 +539,7 @@ class KnitVersionedFile(VersionedFile):
         count = 0
         total = len(version_id_records)
         try:
+            pb.update('Walking content.', count, total)
             for version_id, data, sha_value in \
                 self._data.read_records_iter(version_id_records):
                 pb.update('Walking content.', count, total)
@@ -553,6 +556,8 @@ class KnitVersionedFile(VersionedFile):
                         for origin, line in lines:
                             yield line
                 count +=1
+            pb.update('Walking content.', total, total)
+            pb.finished()
         except:
             pb.update('Walking content.', total, total)
             pb.finished()
@@ -972,7 +977,7 @@ class _KnitData(_KnitComponentFile):
         response = self._transport.readv(self._filename,
             [(pos, size) for version_id, pos, size in records])
 
-        for (record_id, pos, size), (pos, data) in zip(records, response):
+        for (record_id, pos, size), (pos, data) in izip(iter(records), response):
             content, digest = self._parse_record(record_id, data)
             yield record_id, content, digest
 
