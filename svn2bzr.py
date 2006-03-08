@@ -33,7 +33,6 @@ logger = logging.getLogger("bzr")
 logger.addHandler(logging.FileHandler("/dev/null"))
 
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 import bzrlib.trace
 
 VERSION = "0.6"
@@ -512,7 +511,7 @@ class DynamicBranchCreator(BranchCreator):
             dest_abspath = os.path.join(self._root, unpref_dest_path)
             (orig_branch,revid) = self._revisions[orig_revno][unpref_orig_path]
             os.makedirs(dest_abspath)
-            copy_branch(orig_branch, dest_abspath, revid)
+            orig_branch.clone(to_location=dest_abspath, revision=revid)
             branch = Branch.open(dest_abspath)
             self._branches[unpref_dest_path] = branch
             self._new_branch(branch)
