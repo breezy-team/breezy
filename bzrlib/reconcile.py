@@ -233,7 +233,8 @@ class KnitReconciler(RepoReconciler):
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
         self._load_indexes()
-        self._reinsert_revisions()
+        # knits never suffer this
+        self.inconsistent_parents = 0
         self._gc_inventory()
 
     def _load_indexes(self):
@@ -261,9 +262,9 @@ class KnitReconciler(RepoReconciler):
             self.transaction)
 
         # we have topological order of revisions and non ghost parents ready.
-        self._setup_steps(len(self._rev_graph))
-        for rev_id in TopoSorter(self._rev_graph.items()).iter_topo_order():
-            parents = self._rev_graph[rev_id]
+        self._setup_steps(len(self.revisions))
+        for rev_id in TopoSorter(self.revisions.get_graph().items()).iter_topo_order():
+            parents = self.revisions.get_parents(rev_id)
             # double check this really is in topological order.
             unavailable = [p for p in parents if p not in new_inventory]
             assert len(unavailable) == 0

@@ -456,12 +456,15 @@ class KnitVersionedFile(VersionedFile):
 
         Any versions not present will be converted into ghosts.
         """
+        ghostless_parents = []
         ghosts = []
         for parent in parents:
             if not self.has_version(parent):
                 ghosts.append(parent)
+            else:
+                ghostless_parents.append(parent)
 
-        if delta and not len(parents)-len(ghosts):
+        if delta and not len(ghostless_parents):
             delta = False
 
         digest = sha_strings(lines)
@@ -472,17 +475,16 @@ class KnitVersionedFile(VersionedFile):
                 lines[-1] = lines[-1] + '\n'
 
         lines = self.factory.make(lines, len(self._index))
-        if self.factory.annotated and len(parents)-len(ghosts) > 0:
+        if self.factory.annotated and len(ghostless_parents) > 0:
             # Merge annotations from parent texts if so is needed.
-            self._merge_annotations(lines, parents)
+            self._merge_annotations(lines, ghostless_parents)
 
-        if len(parents)-len(ghosts) and delta:
+        if len(ghostless_parents) and delta:
             # To speed the extract of texts the delta chain is limited
             # to a fixed number of deltas.  This should minimize both
             # I/O and the time spend applying deltas.
             count = 0
-            delta_parents = [parent for parent in parents if not parent in ghosts]
-            first_parent = delta_parents[0]
+            delta_parents = ghostless_parents
             while count < 25:
                 parent = delta_parents[0]
                 method = self._index.get_method(parent)
@@ -495,7 +497,7 @@ class KnitVersionedFile(VersionedFile):
 
         if delta:
             options.append('line-delta')
-            content = self._get_content(first_parent)
+            content = self._get_content(ghostless_parents[0])
             delta_hunks = content.line_delta(lines)
             store_lines = self.factory.lower_line_delta(delta_hunks)
         else:
@@ -733,6 +735,7 @@ class _KnitIndex(_KnitComponentFile):
             if value.startswith('.'):
                 result.append(value[1:])
             else:
+                assert isinstance(value, str)
                 result.append(self._history[int(value)])
         return result
 
@@ -749,12 +752,7 @@ class _KnitIndex(_KnitComponentFile):
         pending = set(versions)
         while len(pending):
             version = pending.pop()
-#            try:
             parents = self._cache[version][4]
-#            except KeyError:
-#                # ghost, elide it.
-#                pass
-#            else:
             # got the parents ok
             # trim ghosts
             parents = [parent for parent in parents if parent in self._cache]
@@ -807,7 +805,7 @@ class _KnitIndex(_KnitComponentFile):
             if version in self._cache:
                 result_list.append(str(self._history.index(version)))
             else:
-                result_list.append('.' + version)
+                result_list.append('.' + version.encode('utf-8'))
         return ' '.join(result_list)
 
     def add_version(self, version_id, options, pos, size, parents):

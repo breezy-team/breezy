@@ -522,7 +522,8 @@ class Repository(object):
         if not self.has_revision(revision_id):
             raise errors.NoSuchRevision(self, revision_id)
         w = self.get_inventory_weave()
-        return [None] + w.get_ancestry(revision_id)
+        candidates = w.get_ancestry(revision_id)
+        return [None] + candidates # self._eliminate_revisions_not_present(candidates)
 
     @needs_read_lock
     def print_file(self, file, revision_id):
@@ -699,7 +700,46 @@ class KnitRepository(MetaDirRepository):
         if revision_id is None:
             return [None]
         vf = self._revision_store.get_revision_file(self.get_transaction())
-        return [None] + vf.get_ancestry(revision_id)
+        try:
+            return [None] + vf.get_ancestry(revision_id)
+        except errors.RevisionNotPresent:
+            raise errors.NoSuchRevision(self, revision_id)
+
+    @needs_read_lock
+    def get_revision_graph_with_ghosts(self, revision_ids=None):
+        """Return a graph of the revisions with ghosts marked as applicable.
+
+        :param revision_ids: an iterable of revisions to graph or None for all.
+        :return: a Graph object with the graph reachable from revision_ids.
+        """
+        result = Graph()
+        vf = self._revision_store.get_revision_file(self.get_transaction())
+        versions = vf.versions()
+        if not revision_ids:
+            pending = set(self.all_revision_ids())
+            required = set([])
+        else:
+            pending = set(revision_ids)
+            required = set(revision_ids)
+        done = set([])
+        while len(pending):
+            revision_id = pending.pop()
+            if not revision_id in versions:
+                if revision_id in required:
+                    raise errors.NoSuchRevision(self, revision_id)
+                # a ghost
+                result.add_ghost(revision_id)
+                continue
+            parent_ids = vf.get_parents_with_ghosts(revision_id)
+            for parent_id in parent_ids:
+                # is this queued or done ?
+                if (parent_id not in pending and
+                    parent_id not in done):
+                    # no, queue it.
+                    pending.add(parent_id)
+            result.add_node(revision_id, parent_ids)
+            done.add(result)
+        return result
 
     @needs_write_lock
     def reconcile(self):

@@ -353,6 +353,26 @@ class VersionedFileTestMixIn(object):
                          vf.get_graph_with_ghosts())
         self.assertFalse(vf.has_ghost('base'))
 
+    def test_add_lines_with_ghosts_after_normal_revs(self):
+        # some versioned file formats allow lines to be added with parent
+        # information that is > than that in the format. Formats that do
+        # not support this need to raise NotImplementedError on the
+        # add_lines_with_ghosts api.
+        vf = self.get_file()
+        # probe for ghost support
+        try:
+            vf.has_ghost('hoo')
+        except NotImplementedError:
+            return
+        vf.add_lines_with_ghosts('base', [], ['line\n', 'line_b\n'])
+        vf.add_lines_with_ghosts('references_ghost',
+                                 ['base', 'a_ghost'],
+                                 ['line\n', 'line_b\n', 'line_c\n'])
+        origins = vf.annotate('references_ghost')
+        self.assertEquals(('base', 'line\n'), origins[0])
+        self.assertEquals(('base', 'line_b\n'), origins[1])
+        self.assertEquals(('references_ghost', 'line_c\n'), origins[2])
+        
 
 class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
 
