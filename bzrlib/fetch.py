@@ -169,7 +169,9 @@ class RepoFetcher(object):
                 # not reference anything, and its cheap enough
                 to_weave.join(from_weave)
             else:
-                # destination is empty, just replace it
+                # destination is empty, just copy it.
+                # this copies all the texts, which is useful and 
+                # on per-file basis quite cheap.
                 self.to_weaves.copy_multi(self.from_weaves, [file_id], self.pb,
                                           self.from_repository.get_transaction(),
                                           self.to_repository.get_transaction())
@@ -180,25 +182,17 @@ class RepoFetcher(object):
         to_weave = self.to_control.get_weave('inventory',
                 self.to_repository.get_transaction())
 
-        if to_weave.num_versions() > 0:
-            # destination has contents, must merge
-            self.pb.update("inventory fetch", 1, 2)
-            from_weave = self.from_repository.get_inventory_weave()
-            self.pb.update("inventory fetch", 2, 2)
-            # we fetch only the referenced inventories because we do not
-            # know for unselected inventories whether all their required
-            # texts are present in the other repository - it could be
-            # corrupt.
-            to_weave.join(from_weave, pb=self.pb, msg='merge inventory',
-                          version_ids=revs)
-        else:
-            # destination is empty, just replace it
-            self.to_control.copy_multi(self.from_control,
-                                       ['inventory'],
-                                       self.pb,
-                                       self.from_repository.get_transaction(),
-                                       self.to_repository.get_transaction())
-
+        # just merge, this is optimisable and its means we dont
+        # copy unreferenced data such as not-needed inventories.
+        self.pb.update("inventory fetch", 1, 2)
+        from_weave = self.from_repository.get_inventory_weave()
+        self.pb.update("inventory fetch", 2, 2)
+        # we fetch only the referenced inventories because we do not
+        # know for unselected inventories whether all their required
+        # texts are present in the other repository - it could be
+        # corrupt.
+        to_weave.join(from_weave, pb=self.pb, msg='merge inventory',
+                      version_ids=revs)
         self.pb.clear()
 
 
@@ -232,8 +226,7 @@ class GenericRepoFetcher(RepoFetcher):
         # but on local disk its a few seconds and sftp push is already insane.
         # so we just-do-it.
         # FIXME: repository should inform if this is needed.
-        reconciler = RepoReconciler(self.to_repository)
-        reconciler.reconcile()
+        self.to_repository.reconcile()
     
 
 class KnitRepoFetcher(RepoFetcher):
@@ -258,8 +251,6 @@ class KnitRepoFetcher(RepoFetcher):
         from_rf = self.from_repository._revision_store.get_revision_file(
             from_transaction)
         to_rf.join(from_rf, version_ids=revs, pb=self.pb)
-        reconciler = RepoReconciler(self.to_repository)
-        reconciler.reconcile()
 
 
 class Fetcher(object):
