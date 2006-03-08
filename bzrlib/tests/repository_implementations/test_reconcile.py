@@ -101,8 +101,8 @@ class TestsNeedingReweave(TestCaseWithRepository):
         repo = d.open_repository()
         backup = repo.control_weaves.get_weave('inventory.backup',
                                                repo.get_transaction())
-        self.assertTrue('missing' in backup.names())
-        self.assertRaises(errors.WeaveRevisionNotPresent,
+        self.assertTrue('missing' in backup.versions())
+        self.assertRaises(errors.RevisionNotPresent,
                           repo.get_inventory, 'missing')
 
     def test_reweave_inventory_without_revision_reconciler(self):
@@ -119,8 +119,8 @@ class TestsNeedingReweave(TestCaseWithRepository):
         repo = d.open_repository()
         backup = repo.control_weaves.get_weave('inventory.backup',
                                                repo.get_transaction())
-        self.assertTrue('missing' in backup.names())
-        self.assertRaises(errors.WeaveRevisionNotPresent,
+        self.assertTrue('missing' in backup.versions())
+        self.assertRaises(errors.RevisionNotPresent,
                           repo.get_inventory, 'missing')
 
     def test_reweave_inventory_without_revision(self):
@@ -136,8 +136,8 @@ class TestsNeedingReweave(TestCaseWithRepository):
         repo = d.open_repository()
         backup = repo.control_weaves.get_weave('inventory.backup',
                                                repo.get_transaction())
-        self.assertTrue('missing' in backup.names())
-        self.assertRaises(errors.WeaveRevisionNotPresent,
+        self.assertTrue('missing' in backup.versions())
+        self.assertRaises(errors.RevisionNotPresent,
                           repo.get_inventory, 'missing')
         # and the parent list for 'references_missing' should have that
         # revision a ghost now.

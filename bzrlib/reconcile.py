@@ -105,10 +105,13 @@ class RepoReconciler(object):
 
     def _reweave_inventory(self):
         """Regenerate the inventory weave for the repository from scratch."""
+        # local because its really a wart we want to hide
+        from bzrlib.weave import WeaveFile, Weave
+        transaction = self.repo.get_transaction()
         self.pb.update('Reading inventory data.')
         self.inventory = self.repo.get_inventory_weave()
         # the total set of revisions to process
-        self.pending = set([file_id for file_id in self.repo.revision_store])
+        self.pending = set([rev_id for rev_id in self.repo._revision_store.all_revision_ids(transaction)])
 
         # mapping from revision_id to parents
         self._rev_graph = {}
@@ -124,12 +127,10 @@ class RepoReconciler(object):
             self.pb.note('Inventory ok.')
             return
         self.pb.update('Backing up inventory...', 0, 0)
-        self.repo.control_weaves.put_weave('inventory.backup',
-                                           self.inventory,
-                                           self.repo.get_transaction())
+        self.repo.control_weaves.copy(self.inventory, 'inventory.backup', self.repo.get_transaction())
         self.pb.note('Backup Inventory created.')
         # asking for '' should never return a non-empty weave
-        new_inventory = self.repo.control_weaves.get_weave_or_empty('',
+        new_inventory = self.repo.control_weaves.get_empty('inventory.new',
             self.repo.get_transaction())
 
         # we have topological order of revisions and non ghost parents ready.
@@ -142,15 +143,20 @@ class RepoReconciler(object):
             # this entry has all the non ghost parents in the inventory
             # file already.
             self._reweave_step('adding inventories')
-            new_inventory.add(rev_id, parents, self.inventory.get(rev_id))
+            # ugly but needed, weaves are just way tooooo slow else.
+            if isinstance(new_inventory, WeaveFile):
+                Weave.add_lines(new_inventory, rev_id, parents, self.inventory.get_lines(rev_id))
+            else:
+                new_inventory.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
 
+        if isinstance(new_inventory, WeaveFile):
+            new_inventory._save()
         # if this worked, the set of new_inventory.names should equal
         # self.pending
-        assert set(new_inventory.names()) == self.pending
+        assert set(new_inventory.versions()) == self.pending
         self.pb.update('Writing weave')
-        self.repo.control_weaves.put_weave('inventory',
-                                           new_inventory,
-                                           self.repo.get_transaction())
+        self.repo.control_weaves.copy(new_inventory, 'inventory', self.repo.get_transaction())
+        self.repo.control_weaves.delete('inventory.new', self.repo.get_transaction())
         self.inventory = None
         self.pb.note('Inventory regenerated.')
 
@@ -173,14 +179,14 @@ class RepoReconciler(object):
             else:
                 mutter('found ghost %s', parent)
         self._rev_graph[rev_id] = parents   
-        if set(self.inventory.parent_names(rev_id)) != set(parents):
+        if set(self.inventory.get_parents(rev_id)) != set(parents):
             self.inconsistent_parents += 1
             mutter('Inconsistent inventory parents: id {%s} '
                    'inventory claims %r, '
                    'available parents are %r, '
                    'unavailable parents are %r',
                    rev_id, 
-                   set(self.inventory.parent_names(rev_id)),
+                   set(self.inventory.get_parents(rev_id)),
                    set(parents),
                    set(rev.parent_ids).difference(set(parents)))
 
@@ -190,7 +196,7 @@ class RepoReconciler(object):
         We cant trust them because their pre-requisite file data may not
         be present - all we know is that their revision was not installed.
         """
-        inventories = set(self.inventory.names())
+        inventories = set(self.inventory.versions())
         revisions = set(self._rev_graph.keys())
         garbage = inventories.difference(revisions)
         self.garbage_inventories = len(garbage)

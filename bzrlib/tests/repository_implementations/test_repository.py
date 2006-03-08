@@ -226,8 +226,7 @@ class TestRepository(TestCaseWithRepository):
         wt.commit('A', allow_pointless=True, rev_id='A')
         wt.branch.repository.sign_revision('A',
             bzrlib.gpg.LoopbackGPGStrategy(None))
-        old_signature = wt.branch.repository.revision_store.get('A',
-            'sig').read()
+        old_signature = wt.branch.repository.get_signature_text('A')
         try:
             old_format = bzrdir.BzrDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
@@ -241,8 +240,7 @@ class TestRepository(TestCaseWithRepository):
             # this is in the most current format already.
             return
         wt = WorkingTree.open(wt.basedir)
-        new_signature = wt.branch.repository.revision_store.get('A',
-            'sig').read()
+        new_signature = wt.branch.repository.get_signature_text('A')
         self.assertEqual(old_signature, new_signature)
 
 
@@ -254,9 +252,10 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.bzrdir = tree_a.branch.bzrdir
         # add a corrupt inventory 'orphan'
         # this may need some generalising for knits.
-        tree_a.branch.repository.control_weaves.add_text(
-            'inventory', 'orphan', [], [],
+        inv_file = tree_a.branch.repository.control_weaves.get_weave(
+            'inventory', 
             tree_a.branch.repository.get_transaction())
+        inv_file.add_lines('orphan', [], [])
         # add a real revision 'rev1'
         tree_a.commit('rev1', rev_id='rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
@@ -355,7 +354,7 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         repo.add_revision('the_ghost', rev)
         # check its setup usefully
         inv_weave = repo.get_inventory_weave()
-        self.assertEqual(['ghost'], map(inv_weave.idx_to_name, inv_weave.inclusions([inv_weave.lookup('ghost')])))
+        self.assertEqual(['ghost'], inv_weave.get_ancestry(['ghost']))
 
     def test_corrupt_revision_access_asserts(self):
         repo = repository.Repository.open('inventory_with_unnecessary_ghost')

@@ -80,17 +80,9 @@ class Check(object):
 
     def plan_revisions(self):
         repository = self.branch.repository
-        if not repository.revision_store.listable():
-            self.planned_revisions = repository.get_ancestry(self.history[-1])
-            self.planned_revisions.remove(None)
-            # FIXME progress bars should support this more nicely.
-            self.progress.clear()
-            print ("Checking reachable history -"
-                   " for a complete check use a local branch.")
-            return
-        
-        self.planned_revisions = set(repository.revision_store)
-        inventoried = set(self.inventory_weave.names())
+        self.planned_revisions = set(repository.all_revision_ids())
+        self.progress.clear()
+        inventoried = set(self.inventory_weave.versions())
         awol = self.planned_revisions - inventoried
         if len(awol) > 0:
             raise BzrCheckError('Stored revisions missing from inventory'

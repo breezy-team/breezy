@@ -26,13 +26,14 @@ The copying is done in a slightly complicated order.  We don't want to
 add a revision to the store until everything it refers to is also
 stored, so that if a revision is present we can totally recreate it.
 However, we can't know what files are included in a revision until we
-read its inventory.  Therefore, we first pull the XML and hold it in
-memory until we've updated all of the files referenced.
+read its inventory.  So we query the inventory store of the source for
+the ids we need, and then pull those ids and finally actually join
+the inventories.
 """
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.errors import (InstallFailed, NoSuchRevision, WeaveError,
+from bzrlib.errors import (InstallFailed, NoSuchRevision,
                            MissingText)
 from bzrlib.trace import mutter
 from bzrlib.progress import ProgressBar
@@ -150,20 +151,6 @@ class RepoFetcher(object):
         except errors.NoSuchRevision:
             raise InstallFailed([self._last_revision])
 
-    def _fetch_revision_texts(self, revs):
-        self.to_repository.revision_store.copy_multi(
-            self.from_repository.revision_store,
-            revs,
-            pb=self.pb)
-        # fixup inventory if needed:
-        # this is expensive because we have no inverse index to current ghosts.
-        # but on local disk its a few seconds and sftp push is already insane.
-        # so we just-do-it.
-        # FIXME: the generic code path should not need this, if it truely is
-        # generic.
-        reconciler = RepoReconciler(self.to_repository)
-        reconciler.reconcile()
-
     def _fetch_weave_texts(self, revs):
         file_ids = self.from_repository.fileid_involved_by_set(revs)
         count = 0
@@ -173,47 +160,106 @@ class RepoFetcher(object):
             count +=1
             to_weave = self.to_weaves.get_weave_or_empty(file_id,
                 self.to_repository.get_transaction())
-            from_weave = self.from_weaves.get_weave(file_id,
-                self.from_repository.get_transaction())
 
-            if to_weave.numversions() > 0:
+            if to_weave.num_versions() > 0:
                 # destination has contents, must merge
-                try:
-                    to_weave.join(from_weave)
-                except errors.WeaveParentMismatch:
-                    to_weave.reweave(from_weave)
+                from_weave = self.from_weaves.get_weave(file_id,
+                    self.from_repository.get_transaction())
+                # we fetch all the texts, because texts do
+                # not reference anything, and its cheap enough
+                to_weave.join(from_weave)
             else:
                 # destination is empty, just replace it
-                to_weave = from_weave.copy()
-
-            self.to_weaves.put_weave(file_id, to_weave,
-                self.to_repository.get_transaction())
+                self.to_weaves.copy_multi(self.from_weaves, [file_id], self.pb,
+                                          self.from_repository.get_transaction(),
+                                          self.to_repository.get_transaction())
         self.pb.clear()
 
     def _fetch_inventory_weave(self, revs):
         self.pb.update("inventory fetch", 0, 2)
-        from_weave = self.from_repository.get_inventory_weave()
-        self.to_inventory_weave = self.to_repository.get_inventory_weave()
-        self.pb.update("inventory fetch", 1, 2)
-        self.to_inventory_weave = self.to_control.get_weave('inventory',
+        to_weave = self.to_control.get_weave('inventory',
                 self.to_repository.get_transaction())
-        self.pb.update("inventory fetch", 2, 2)
 
-        if self.to_inventory_weave.numversions() > 0:
+        if to_weave.num_versions() > 0:
             # destination has contents, must merge
-            try:
-                self.to_inventory_weave.join(from_weave, pb=self.pb, msg='merge inventory')
-            except errors.WeaveParentMismatch:
-                self.to_inventory_weave.reweave(from_weave, pb=self.pb, msg='reweave inventory')
+            self.pb.update("inventory fetch", 1, 2)
+            from_weave = self.from_repository.get_inventory_weave()
+            self.pb.update("inventory fetch", 2, 2)
+            # we fetch only the referenced inventories because we do not
+            # know for unselected inventories whether all their required
+            # texts are present in the other repository - it could be
+            # corrupt.
+            to_weave.join(from_weave, pb=self.pb, msg='merge inventory',
+                          version_ids=revs)
         else:
             # destination is empty, just replace it
-            self.to_inventory_weave = from_weave.copy()
-
-        # must be written before pulling any revisions
-        self.to_control.put_weave('inventory', self.to_inventory_weave,
-            self.to_repository.get_transaction())
+            self.to_control.copy_multi(self.from_control,
+                                       ['inventory'],
+                                       self.pb,
+                                       self.from_repository.get_transaction(),
+                                       self.to_repository.get_transaction())
 
         self.pb.clear()
+
+
+class GenericRepoFetcher(RepoFetcher):
+    """This is a generic repo to repo fetcher.
+
+    This makes minimal assumptions about repo layout and contents.
+    It triggers a reconciliation after fetching to ensure integrity.
+    """
+
+    def _fetch_revision_texts(self, revs):
+        self.to_transaction = self.to_repository.get_transaction()
+        count = 0
+        total = len(revs)
+        for rev in revs:
+            self.pb.update('copying revisions', count, total)
+            try:
+                sig_text = self.from_repository.get_signature_text(rev)
+                self.to_repository._revision_store.add_revision_signature_text(
+                    rev, sig_text, self.to_transaction)
+            except errors.NoSuchRevision:
+                # not signed.
+                pass
+            self.to_repository._revision_store.add_revision(
+                self.from_repository.get_revision(rev),
+                self.to_transaction)
+            count += 1
+        self.pb.update('copying revisions', count, total)
+        # fixup inventory if needed: 
+        # this is expensive because we have no inverse index to current ghosts.
+        # but on local disk its a few seconds and sftp push is already insane.
+        # so we just-do-it.
+        # FIXME: repository should inform if this is needed.
+        reconciler = RepoReconciler(self.to_repository)
+        reconciler.reconcile()
+    
+
+class KnitRepoFetcher(RepoFetcher):
+    """This is a knit format repository specific fetcher.
+
+    This differs from the GenericRepoFetcher by not doing a 
+    reconciliation after copying, and using knit joining to
+    copy revision texts.
+    """
+
+    def _fetch_revision_texts(self, revs):
+        # may need to be a InterRevisionStore call here.
+        from_transaction = self.from_repository.get_transaction()
+        to_transaction = self.to_repository.get_transaction()
+        to_sf = self.to_repository._revision_store.get_signature_file(
+            to_transaction)
+        from_sf = self.from_repository._revision_store.get_signature_file(
+            from_transaction)
+        to_sf.join(from_sf, version_ids=revs, pb=self.pb, ignore_missing=True)
+        to_rf = self.to_repository._revision_store.get_revision_file(
+            to_transaction)
+        from_rf = self.from_repository._revision_store.get_revision_file(
+            from_transaction)
+        to_rf.join(from_rf, version_ids=revs, pb=self.pb)
+        reconciler = RepoReconciler(self.to_repository)
+        reconciler.reconcile()
 
 
 class Fetcher(object):

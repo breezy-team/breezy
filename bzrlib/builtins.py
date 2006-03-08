@@ -482,7 +482,8 @@ class cmd_push(Command):
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
         try:
-            br_to = Branch.open(location)
+            dir_to = bzrlib.bzrdir.BzrDir.open(location)
+            br_to = dir_to.open_branch()
         except NotBranchError:
             # create a branch.
             transport = get_transport(location).clone('..')
@@ -507,16 +508,19 @@ class cmd_push(Command):
                         if new_transport.base == transport.base:
                             raise BzrCommandError("Could not creeate "
                                                   "path prefix.")
-            br_to = bzrlib.bzrdir.BzrDir.create_branch_convenience(location)
+            dir_to = br_from.bzrdir.clone(location)
+            br_to = dir_to.open_branch()
         old_rh = br_to.revision_history()
         try:
             try:
-                tree_to = br_to.working_tree()
-            except NoWorkingTree:
+                tree_to = dir_to.open_workingtree()
+            except errors.NotLocalUrl:
                 # TODO: This should be updated for branches which don't have a
                 # working tree, as opposed to ones where we just couldn't 
                 # update the tree.
                 warning('Unable to update the working tree of: %s' % (br_to.base,))
+                count = br_to.pull(br_from, overwrite)
+            except NoWorkingTree:
                 count = br_to.pull(br_from, overwrite)
             else:
                 count = tree_to.pull(br_from, overwrite)

@@ -2,3 +2,9 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 
+ * test weave.walk with a version_ids list that is a subset.
+   this is for fileid_involved performance
+
+ * make knits ghost aware.
+
+ * make revision store not annotate the contentsA
