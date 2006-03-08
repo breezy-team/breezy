@@ -23,12 +23,15 @@ import getpass
 import sys
 
 import bzrlib.progress
+from bzrlib.symbol_versioning import *
 from bzrlib.ui import UIFactory
 
 
 class TextUIFactory(UIFactory):
-    def progress_bar(self):
 
+    @deprecated_method(zero_eight)
+    def progress_bar(self):
+        """See UIFactory.nested_progress_bar()."""
         # this in turn is abstract, and creates either a tty or dots
         # bar depending on what we think of the terminal
         return bzrlib.progress.ProgressBar()
@@ -50,3 +53,12 @@ class TextUIFactory(UIFactory):
         except KeyboardInterrupt:
             return None
 
+    def nested_progress_bar(self):
+        """Return a nested progress bar.
+        
+        The actual bar type returned depends on the progress module which
+        may return a tty or dots bar depending on the terminal.
+        """
+        if self._progress_bar_stack is None:
+            self._progress_bar_stack = bzrlib.progress.ProgressBarStack()
+        return self._progress_bar_stack.get_nested()

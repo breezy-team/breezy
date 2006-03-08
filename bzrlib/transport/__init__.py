@@ -165,15 +165,16 @@ class Transport(object):
                         as a single parameter.
         """
         total = self._get_total(multi)
+        result = []
         count = 0
         for entry in multi:
             self._update_pb(pb, msg, count, total)
             if expand:
-                func(*entry)
+                result.append(func(*entry))
             else:
-                func(entry)
+                result.append(func(entry))
             count += 1
-        return count
+        return tuple(result)
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -280,7 +281,7 @@ class Transport(object):
         """
         def put(path, f):
             self.put(path, f, mode=mode)
-        return self._iterate_over(files, put, pb, 'put', expand=True)
+        return len(self._iterate_over(files, put, pb, 'put', expand=True))
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
@@ -290,11 +291,13 @@ class Transport(object):
         """Create a group of directories"""
         def mkdir(path):
             self.mkdir(path, mode=mode)
-        return self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False)
+        return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
     def append(self, relpath, f):
         """Append the text in the file-like or string object to 
         the supplied location.
+
+        returns the length of f before the content was written to it.
         """
         raise NotImplementedError
 
@@ -336,7 +339,7 @@ class Transport(object):
         def copy_entry(path):
             other.put(path, self.get(path), mode=mode)
 
-        return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
+        return len(self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False))
 
     def copy_tree(self, from_relpath, to_relpath):
         """Copy a subtree from one relpath to another.

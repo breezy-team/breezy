@@ -762,9 +762,7 @@ class WeaveMerger(Merge3Merger):
         this_revision_id = self.this_revision_tree.inventory[file_id].revision
         other_revision_id = \
             self.other_revision_tree.inventory[file_id].revision
-        this_i = weave.lookup(this_revision_id)
-        other_i = weave.lookup(other_revision_id)
-        plan =  weave.plan_merge(this_i, other_i)
+        plan =  weave.plan_merge(this_revision_id, other_revision_id)
         return weave.weave_merge(plan, '<<<<<<< TREE\n', 
                                        '>>>>>>> MERGE-SOURCE\n')
 

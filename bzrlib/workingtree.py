@@ -887,11 +887,15 @@ class WorkingTree(bzrlib.tree.Tree):
                 else:
                     other_revision = None
                 repository = self.branch.repository
-                merge_inner(self.branch,
-                            self.branch.basis_tree(),
-                            basis_tree, 
-                            this_tree=self, 
-                            pb=bzrlib.ui.ui_factory.progress_bar())
+                pb = bzrlib.ui.ui_factory.nested_progress_bar()
+                try:
+                    merge_inner(self.branch,
+                                self.branch.basis_tree(),
+                                basis_tree, 
+                                this_tree=self, 
+                                pb=pb)
+                finally:
+                    pb.finished()
                 self.set_last_revision(self.branch.last_revision())
             return count
         finally:

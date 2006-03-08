@@ -231,10 +231,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertRaises(FileExists, t.mkdir, 'dir_g')
 
         # Test get/put in sub-directories
-        self.assertEqual(
+        self.assertEqual(2, 
             t.put_multi([('dir_a/a', StringIO('contents of dir_a/a')),
-                         ('dir_b/b', StringIO('contents of dir_b/b'))])
-                        , 2)
+                         ('dir_b/b', StringIO('contents of dir_b/b'))]))
         self.check_transport_contents('contents of dir_a/a', t, 'dir_a/a')
         self.check_transport_contents('contents of dir_b/b', t, 'dir_b/b')
 
@@ -268,7 +267,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         def simple_copy_files(transport_from, transport_to):
             files = ['a', 'b', 'c', 'd']
             self.build_tree(files, transport=transport_from)
-            transport_from.copy_to(files, transport_to)
+            self.assertEqual(4, transport_from.copy_to(files, transport_to))
             for f in files:
                 self.check_transport_contents(transport_to.get(f).read(),
                                               transport_from, f)
@@ -326,7 +325,8 @@ class TestTransportImplementation(TestCaseInTempDir):
                     t.append, 'a', 'add\nsome\nmore\ncontents\n')
             _append('a', StringIO('add\nsome\nmore\ncontents\n'))
         else:
-            t.append('a', StringIO('add\nsome\nmore\ncontents\n'))
+            self.assertEqual(20,
+                t.append('a', StringIO('add\nsome\nmore\ncontents\n')))
 
         self.check_transport_contents(
             'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
@@ -340,8 +340,9 @@ class TestTransportImplementation(TestCaseInTempDir):
             _append('a', StringIO('and\nthen\nsome\nmore\n'))
             _append('b', StringIO('some\nmore\nfor\nb\n'))
         else:
-            t.append_multi([('a', StringIO('and\nthen\nsome\nmore\n')),
-                    ('b', StringIO('some\nmore\nfor\nb\n'))])
+            self.assertEqual((43, 15), 
+                t.append_multi([('a', StringIO('and\nthen\nsome\nmore\n')),
+                                ('b', StringIO('some\nmore\nfor\nb\n'))]))
         self.check_transport_contents(
             'diff\ncontents for\na\n'
             'add\nsome\nmore\ncontents\n'
@@ -356,8 +357,9 @@ class TestTransportImplementation(TestCaseInTempDir):
             _append('a', StringIO('a little bit more\n'))
             _append('b', StringIO('from an iterator\n'))
         else:
-            t.append_multi(iter([('a', StringIO('a little bit more\n')),
-                    ('b', StringIO('from an iterator\n'))]))
+            self.assertEqual((62, 31),
+                t.append_multi(iter([('a', StringIO('a little bit more\n')),
+                                     ('b', StringIO('from an iterator\n'))])))
         self.check_transport_contents(
             'diff\ncontents for\na\n'
             'add\nsome\nmore\ncontents\n'
@@ -375,9 +377,11 @@ class TestTransportImplementation(TestCaseInTempDir):
             _append('a', StringIO('some text in a\n'))
             _append('d', StringIO('missing file r\n'))
         else:
-            t.append('c', StringIO('some text\nfor a missing file\n'))
-            t.append_multi([('a', StringIO('some text in a\n')),
-                            ('d', StringIO('missing file r\n'))])
+            self.assertEqual(0,
+                t.append('c', StringIO('some text\nfor a missing file\n')))
+            self.assertEqual((80, 0),
+                t.append_multi([('a', StringIO('some text in a\n')),
+                                ('d', StringIO('missing file r\n'))]))
         self.check_transport_contents(
             'diff\ncontents for\na\n'
             'add\nsome\nmore\ncontents\n'

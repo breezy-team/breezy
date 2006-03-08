@@ -119,8 +119,8 @@ class InventoryEntry(object):
                  'revision']
 
     def _add_text_to_weave(self, new_lines, parents, weave_store, transaction):
-        weave_store.add_text(self.file_id, self.revision, new_lines, parents,
-                             transaction)
+        versionedfile = weave_store.get_weave(self.file_id, transaction)
+        versionedfile.add_lines(self.revision, parents, new_lines)
 
     def detect_changes(self, old_entry):
         """Return a (text_modified, meta_modified) from this to old_entry.
@@ -161,8 +161,7 @@ class InventoryEntry(object):
         any other. If the file is new, the set will be empty.
         """
         def get_ancestors(weave, entry):
-            return set(map(weave.idx_to_name,
-                           weave.inclusions([weave.lookup(entry.revision)])))
+            return set(weave.get_ancestry(entry.revision))
         heads = {}
         head_ancestors = {}
         for inv in previous_inventories:
@@ -358,7 +357,7 @@ class InventoryEntry(object):
         """
         mutter('storing file {%s} in revision {%s}',
                self.file_id, self.revision)
-        self._add_text_to_weave([], file_parents, weave_store, transaction)
+        self._add_text_to_weave([], file_parents.keys(), weave_store, transaction)
 
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
@@ -495,7 +494,7 @@ class InventoryFile(InventoryEntry):
             w.check()
             checker.checked_weaves[self.file_id] = True
         else:
-            w = tree.get_weave_prelude(self.file_id)
+            w = tree.get_weave(self.file_id)
 
         mutter('check version {%s} of {%s}', rev_id, self.file_id)
         checker.checked_text_cnt += 1 
@@ -587,12 +586,11 @@ class InventoryFile(InventoryEntry):
             and self.text_sha1 == file_parents.values()[0].text_sha1
             and self.text_size == file_parents.values()[0].text_size):
             previous_ie = file_parents.values()[0]
-            weave_store.add_identical_text(
-                self.file_id, previous_ie.revision, 
-                self.revision, file_parents, transaction)
+            versionedfile = weave_store.get_weave(self.file_id, transaction)
+            versionedfile.clone_text(self.revision, previous_ie.revision, file_parents.keys())
         else:
             new_lines = work_tree.get_file(self.file_id).readlines()
-            self._add_text_to_weave(new_lines, file_parents, weave_store,
+            self._add_text_to_weave(new_lines, file_parents.keys(), weave_store,
                                     transaction)
             self.text_sha1 = sha_strings(new_lines)
             self.text_size = sum(map(len, new_lines))
