@@ -1011,8 +1011,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
         return interesting_ids is None or file_id in interesting_ids
 
     tt = TreeTransform(working_tree, pb)
-    merge_modified = working_tree.merge_modified()
     try:
+        merge_modified = working_tree.merge_modified()
         trans_id = {}
         def trans_id_file_id(file_id):
             try:
