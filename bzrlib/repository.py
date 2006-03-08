@@ -17,7 +17,6 @@
 from copy import deepcopy
 from cStringIO import StringIO
 from unittest import TestSuite
-import xml.sax.saxutils
 
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -366,7 +365,7 @@ class Repository(object):
             if start < 9: continue
             end = line.find('"', start)
             assert end>= 0
-            file_id = xml.sax.saxutils.unescape(line[start:end])
+            file_id = _unescape_xml(line[start:end])
 
             # check if file_id is already present
             if file_id in file_ids: continue
@@ -375,8 +374,7 @@ class Repository(object):
             if start < 10: continue
             end = line.find('"', start)
             assert end>= 0
-            revision_id = xml.sax.saxutils.unescape(line[start:end])
-
+            revision_id = _unescape_xml(line[start:end])
             if revision_id in changes:
                 file_ids.add(file_id)
         return file_ids
@@ -1664,3 +1662,13 @@ class CopyConverter(object):
         """Update the pb by a step."""
         self.count +=1
         self.pb.update(message, self.count, self.total)
+
+
+# Copied from xml.sax.saxutils
+def _unescape_xml(data):
+    """Unescape &amp;, &lt;, and &gt; in a string of data.
+    """
+    data = data.replace("&lt;", "<")
+    data = data.replace("&gt;", ">")
+    # must do ampersand last
+    return data.replace("&amp;", "&")
