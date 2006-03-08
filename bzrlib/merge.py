@@ -44,6 +44,7 @@ from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               conflicts_strings, FinalPaths, create_by_entry,
                               unique_add)
+import bzrlib.ui
 
 # TODO: Report back as changes are merged in
 
@@ -339,23 +340,34 @@ class Merge3Merger(object):
             all_ids.update(other_tree)
         self.tt = TreeTransform(working_tree, self.pb)
         try:
-            for num, file_id in enumerate(all_ids):
-                self.pb.update('Preparing file merge', num+1, len(all_ids))
-                self.merge_names(file_id)
-                file_status = self.merge_contents(file_id)
-                self.merge_executable(file_id, file_status)
-            self.pb.clear()
+            self.pb.update('Merge phase', 0, 3)
+            child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            try:
+                for num, file_id in enumerate(all_ids):
+                    child_pb.update('Preparing file merge', num, len(all_ids))
+                    self.merge_names(file_id)
+                    file_status = self.merge_contents(file_id)
+                    self.merge_executable(file_id, file_status)
+            finally:
+                child_pb.finished()
                 
-            fs_conflicts = resolve_conflicts(self.tt, self.pb)
+            self.pb.update('Merge phase', 1, 3)
+            child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            try:
+                fs_conflicts = resolve_conflicts(self.tt, child_pb)
+            finally:
+                child_pb.finished()
             self.cook_conflicts(fs_conflicts)
             for line in conflicts_strings(self.cooked_conflicts):
                 warning(line)
+            self.pb.update('Merge phase', 2, 3)
             results = self.tt.apply()
         finally:
             try:
                 self.tt.finalize()
             except:
                 pass
+            self.pb.clear()
         self.write_modified(results)
 
     def write_modified(self, results):
