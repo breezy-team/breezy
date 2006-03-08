@@ -67,6 +67,7 @@
 # the possible relationships.
 
 
+from copy import copy
 from cStringIO import StringIO
 from difflib import SequenceMatcher
 import os
@@ -865,9 +866,13 @@ class Weave(VersionedFile):
         :param msg: An optional message for the progress
         """
         new_weave = _reweave(self, other, pb=pb, msg=msg)
+        self._copy_weave_content(new_weave)
+
+    def _copy_weave_content(self, otherweave):
+        """adsorb the content from otherweave."""
         for attr in self.__slots__:
             if attr != '_weave_name':
-                setattr(self, attr, getattr(new_weave, attr))
+                setattr(self, attr, copy(getattr(otherweave, attr)))
 
 
 class WeaveFile(Weave):
@@ -1252,6 +1257,10 @@ class InterWeave(InterVersionedFile):
 
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
+        if self.target.versions() == []:
+            # optimised copy
+            self.target._copy_weave_content(self.source)
+            return
         try:
             self.target._join(self.source, pb, msg, version_ids, ignore_missing)
         except errors.WeaveParentMismatch:

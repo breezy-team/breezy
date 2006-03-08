@@ -400,27 +400,34 @@ class InterVersionedFile(InterObject):
         supplied when they are silently skipped.
         """
         # the default join: 
+        # - if the target is empty, just add all the versions from 
+        #   source to target, otherwise:
         # - make a temporary versioned file of type target
         # - insert the source content into it one at a time
         # - join them
-        # Make a new target-format versioned file. 
-        temp_source = self.target.create_empty("temp", MemoryTransport())
+        if not self.target.versions():
+            target = self.target
+        else:
+            # Make a new target-format versioned file. 
+            temp_source = self.target.create_empty("temp", MemoryTransport())
+            target = temp_source
         graph = self.source.get_graph()
         order = topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, len(order))
-                temp_source.add_lines(version,
-                                      self.source.get_parents(version),
-                                      self.source.get_lines(version))
+                target.add_lines(version,
+                                 self.source.get_parents(version),
+                                 self.source.get_lines(version))
             
             # this should hit the native code path for target
-            return self.target.join(temp_source,
-                                    pb,
-                                    msg,
-                                    version_ids,
-                                    ignore_missing)
+            if target is not self.target:
+                return self.target.join(temp_source,
+                                        pb,
+                                        msg,
+                                        version_ids,
+                                        ignore_missing)
         finally:
             pb.finished()
 
