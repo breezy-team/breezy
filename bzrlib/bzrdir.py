@@ -28,6 +28,7 @@ from unittest import TestSuite
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.lockdir import LockDir
 from bzrlib.osutils import safe_unicode
 from bzrlib.osutils import (
                             abspath,
@@ -535,9 +536,11 @@ class BzrDirPreSplitOut(BzrDir):
     def __init__(self, _transport, _format):
         """See BzrDir.__init__."""
         super(BzrDirPreSplitOut, self).__init__(_transport, _format)
+        assert self._format._lock_class == TransportLock
+        assert self._format._lock_file_name == 'branch-lock'
         self._control_files = LockableFiles(self.get_branch_transport(None),
-                                            'branch-lock',
-                                            TransportLock)
+                                            self._format._lock_file_name,
+                                            self._format._lock_class)
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         """See BzrDir.clone()."""
@@ -828,6 +831,11 @@ class BzrDirFormat(object):
     _formats = {}
     """The known formats."""
 
+    _lock_file_name = 'branch-lock'
+
+    # _lock_class must be set in subclasses to the lock type, typ.
+    # TransportLock or LockDir
+
     @classmethod
     def find_format(klass, transport):
         """Return the format registered for URL."""
@@ -876,14 +884,13 @@ class BzrDirFormat(object):
         del temp_control
         mutter('created control directory in ' + t.base)
         control = t.clone('.bzr')
-        lock_file = 'branch-lock'
         utf8_files = [('README', 
                        "This is a Bazaar-NG control directory.\n"
                        "Do not change any files in this directory.\n"),
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
-        control_files = LockableFiles(control, lock_file, TransportLock)
+        control_files = LockableFiles(control, self._lock_file_name, self._lock_class)
         control_files.create_lock()
         control_files.lock_write()
         try:
@@ -950,6 +957,8 @@ class BzrDirFormat4(BzrDirFormat):
     removed in format 5; write support for this format has been removed.
     """
 
+    _lock_class = TransportLock
+
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 0.0.4\n"
@@ -993,6 +1002,8 @@ class BzrDirFormat5(BzrDirFormat):
      - Format 5 repositories [always]
        Unhashed stores in the repository.
     """
+
+    _lock_class = TransportLock
 
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
@@ -1038,6 +1049,8 @@ class BzrDirFormat6(BzrDirFormat):
      - Format 4 branches [always] 
      - Format 6 repositories [always]
     """
+
+    _lock_class = TransportLock
 
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
@@ -1089,6 +1102,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
      - Format 5 branches [optional]
      - Format 7 repositories [optional]
     """
+
+    _lock_class = LockDir
 
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""

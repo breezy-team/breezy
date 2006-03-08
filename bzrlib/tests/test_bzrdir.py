@@ -1,4 +1,4 @@
-# (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -386,6 +386,12 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         self.assertEqual(checkout_base, dir.get_workingtree_transport(None).base)
         self.assertEqual(checkout_base,
                          dir.get_workingtree_transport(workingtree.WorkingTreeFormat3()).base)
+
+    def test_meta1dir_uses_lockdir(self):
+        """Meta1 format uses a LockDir to guard the whole directory, not a file."""
+        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        t = dir.transport
+        self.assertIsDirectory('branch-lock', t)
 
         
 class TestFormat5(TestCaseWithTransport):
