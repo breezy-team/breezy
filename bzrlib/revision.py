@@ -20,7 +20,7 @@
 
 import bzrlib.errors
 import bzrlib.errors as errors
-from bzrlib.graph import node_distances, select_farthest, all_descendants
+from bzrlib.graph import node_distances, select_farthest, all_descendants, Graph
 from bzrlib.osutils import contains_whitespace
 from bzrlib.progress import DummyProgress
 
@@ -232,13 +232,29 @@ def common_ancestor(revision_a, revision_b, revision_source,
                     pb=DummyProgress()):
     if None in (revision_a, revision_b):
         return None
+    # trivial optimisation
+    if revision_a == revision_b:
+        return revision_a
     try:
         try:
             pb.update('Picking ancestor', 1, 3)
-            root, ancestors, descendants, common = \
-                combined_graph(revision_a,
-                               revision_b,
-                               revision_source)
+            graph = revision_source.get_revision_graph_with_ghosts(
+                [revision_a, revision_b])
+            # convert to a NULL_REVISION based graph.
+            ancestors = graph.get_ancestors()
+            descendants = graph.get_descendants()
+            common = set(graph.get_ancestry(revision_a)).intersection(
+                     set(graph.get_ancestry(revision_b)))
+            descendants[NULL_REVISION] = {}
+            ancestors[NULL_REVISION] = []
+            for root in graph.roots:
+                descendants[NULL_REVISION][root] = 1
+                ancestors[root].append(NULL_REVISION)
+            if len(graph.roots) == 0:
+                # no reachable roots - not handled yet.
+                raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+            root = NULL_REVISION
+            common.add(NULL_REVISION)
         except bzrlib.errors.NoCommonRoot:
             raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
             
@@ -314,6 +330,54 @@ class MultipleRevisionSources(object):
             except errors.NoSuchRevision:
                 # ghost, ignore it.
                 pass
+        return result
+
+    def get_revision_graph_with_ghosts(self, revision_ids):
+        # query all the sources for their entire graphs 
+        # and then build a combined graph for just
+        # revision_ids.
+        graphs = []
+        for source in self._revision_sources:
+            ghost_graph = source.get_revision_graph_with_ghosts()
+            graphs.append(ghost_graph.get_ancestors())
+        for revision_id in revision_ids:
+            absent = 0
+            for graph in graphs:
+                    if not revision_id in graph:
+                        absent += 1
+            if absent == len(graphs):
+                raise errors.NoSuchRevision(self._revision_sources[0],
+                                            revision_id)
+
+        # combine the graphs
+        result = Graph()
+        pending = set(revision_ids)
+        done = set()
+        def find_parents(node_id):
+            """find the parents for node_id."""
+            for graph in graphs:
+                try:
+                    return graph[node_id]
+                except KeyError:
+                    pass
+            raise errors.NoSuchRevision(self._revision_sources[0], node_id)
+        while len(pending):
+            # all the graphs should have identical parent lists
+            node_id = pending.pop()
+            try:
+                parents = find_parents(node_id)
+                for parent_node in parents:
+                    # queued or done? 
+                    if (parent_node not in pending and
+                        parent_node not in done):
+                        # no, queue
+                        pending.add(parent_node)
+                result.add_node(node_id, parents)
+                done.add(node_id)
+            except errors.NoSuchRevision:
+                # ghost
+                result.add_ghost(node_id)
+                continue
         return result
 
     def lock_read(self):

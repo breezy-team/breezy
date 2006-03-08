@@ -464,7 +464,7 @@ class Repository(object):
                     # no, queue it.
                     pending.add(parent_id)
             result.add_node(revision_id, rev.parent_ids)
-            done.add(result)
+            done.add(revision_id)
         return result
 
     @needs_read_lock
