@@ -65,13 +65,19 @@ class BzrDir(object):
         """Return true if this bzrdir is one whose format we can convert from."""
         return True
 
-    def _check_supported(self, format, allow_unsupported):
+    @staticmethod
+    def _check_supported(format, allow_unsupported):
         """Check whether format is a supported format.
 
         If allow_unsupported is True, this is a no-op.
         """
         if not allow_unsupported and not format.is_supported():
-            raise errors.UnsupportedFormatError(format)
+            # see open_downlevel to open legacy branches.
+            raise errors.UnsupportedFormatError(
+                    'sorry, format %s not supported' % format,
+                    ['use a different bzr version',
+                     'or remove the .bzr directory'
+                     ' and "bzr init" again'])
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         """Clone this bzrdir and its contents to url verbatim.
@@ -396,13 +402,7 @@ class BzrDir(object):
         t = get_transport(base)
         mutter("trying to open %r with transport %r", base, t)
         format = BzrDirFormat.find_format(t)
-        if not _unsupported and not format.is_supported():
-            # see open_downlevel to open legacy branches.
-            raise errors.UnsupportedFormatError(
-                    'sorry, format %s not supported' % format,
-                    ['use a different bzr version',
-                     'or remove the .bzr directory'
-                     ' and "bzr init" again'])
+        BzrDir._check_supported(format, _unsupported)
         return format.open(t, _found=True)
 
     def open_branch(self, unsupported=False):
@@ -441,6 +441,7 @@ class BzrDir(object):
         while True:
             try:
                 format = BzrDirFormat.find_format(a_transport)
+                BzrDir._check_supported(format, False)
                 return format.open(a_transport), a_transport.relpath(url)
             except errors.NotBranchError, e:
                 mutter('not a branch in: %r %s', a_transport.base, e)
