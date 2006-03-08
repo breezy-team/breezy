@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as published by
@@ -320,3 +320,13 @@ class TestChrootedTest(ChrootedTestCase):
         t = get_transport(self.get_readonly_url())
         url = t.base
         self.assertEqual(url, t.clone('..').base)
+
+
+class TestExtraAssertions(TestCase):
+    """Tests for new test assertions in bzrlib test suite"""
+
+    def test_assert_isinstance(self):
+        self.assertIsInstance(2, int)
+        self.assertIsInstance(u'', basestring)
+        self.assertRaises(AssertionError, self.assertIsInstance, None, int)
+        self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)

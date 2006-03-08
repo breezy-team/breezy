@@ -327,6 +327,11 @@ class TestCase(unittest.TestCase):
         self.assertEqual(mode, actual_mode,
             'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
 
+    def assertIsInstance(self, obj, kls):
+        """Fail if obj is not an instance of kls"""
+        if not isinstance(obj, kls):
+            self.fail("%r is not an instance of %s" % (obj, kls))
+
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
 

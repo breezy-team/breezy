@@ -17,6 +17,8 @@
 # FIXME: This test should be repeated for each available http client
 # implementation; at the moment we have urllib and pycurl.
 
+# TODO: Should be renamed to bzrlib.transport.http.tests?
+
 import bzrlib
 from bzrlib.tests import TestCase
 from bzrlib.transport.http import extract_auth
