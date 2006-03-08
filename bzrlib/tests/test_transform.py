@@ -77,12 +77,16 @@ class TestTreeTransform(TestCaseInTempDir):
         transform.create_file('contents', trans_id2)
         transform.set_executability(False, trans_id2)
         transform.version_file('my_pretties2', trans_id2)
-        transform.apply()
+        modified_paths = transform.apply().modified_paths
         self.assertEqual('contents', self.wt.get_file_byname('name').read())
         self.assertEqual(self.wt.path2id('name'), 'my_pretties')
         self.assertIs(self.wt.is_executable('my_pretties'), True)
         self.assertIs(self.wt.is_executable('my_pretties2'), False)
         self.assertEqual('directory', file_kind(self.wt.abspath('oz')))
+        self.assertEqual(len(modified_paths), 3)
+        tree_mod_paths = [self.wt.id2abspath(f) for f in 
+                          ('ozzie', 'my_pretties', 'my_pretties2')]
+        self.assertSubset(tree_mod_paths, modified_paths)
         # is it safe to finalize repeatedly?
         transform.finalize()
         transform.finalize()
@@ -554,6 +558,15 @@ class TestTransformMerge(TestCaseInTempDir):
         self.assertEqual(this.wt.get_file_byname('i.OTHER').read(),
                          'h\ni\nj\nk\n')
         self.assertEqual(os.path.exists(this.wt.abspath('i.BASE')), False)
+        modified = ['a', 'b', 'c', 'h', 'i']
+        merge_modified = this.wt.merge_modified()
+        self.assertSubset(merge_modified, modified)
+        self.assertEqual(len(merge_modified), len(modified))
+        file(this.wt.id2abspath('a'), 'wb').write('booga')
+        modified.pop(0)
+        merge_modified = this.wt.merge_modified()
+        self.assertSubset(merge_modified, modified)
+        self.assertEqual(len(merge_modified), len(modified))
 
     def test_file_merge(self):
         if not has_symlinks():

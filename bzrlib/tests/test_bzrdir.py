@@ -144,6 +144,8 @@ class TestBzrDirFormat(TestCaseWithTransport):
         bzrdir.BzrDirFormat.register_format(format)
         # which bzrdir.Open will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, bzrdir.BzrDir.open, url)
+        # which bzrdir.open_containing will refuse (not supported)
+        self.assertRaises(UnsupportedFormatError, bzrdir.BzrDir.open_containing, url)
         # but open_downlevel will work
         t = get_transport(url)
         self.assertEqual(format.open(t), bzrdir.BzrDir.open_unsupported(url))
