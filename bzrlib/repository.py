@@ -1258,7 +1258,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
         repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = LockableFiles(repo_transport, 'lock', LockDir)
         control_store = self._get_control_store(repo_transport, control_files)
-        transaction = bzrlib.transactions.PassThroughTransaction()
+        transaction = bzrlib.transactions.WriteTransaction()
         # trigger a write of the inventory store.
         control_store.get_weave_or_empty('inventory', transaction)
         _revision_store = self._get_revision_store(repo_transport, control_files)
