@@ -711,8 +711,10 @@ class _KnitIndex(_KnitComponentFile):
             self._history.append(version_id)
 
     def _iter_index(self, fp):
-        for l in fp.readlines():
+        l = fp.readline()
+        while l != '':
             yield l.split()
+            l = fp.readline()
         #lines = fp.read()
         #for l in lines.splitlines(False):
         #    yield l.split()
