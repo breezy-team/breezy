@@ -43,6 +43,7 @@ from collections import deque
 
 
 import bzrlib.errors as errors
+from bzrlib.trace import mutter 
 
 
 def _supports_progress(f):
@@ -157,6 +158,9 @@ class DummyProgress(_BaseProgressBar):
     def update(self, msg=None, current=None, total=None):
         pass
 
+    def child_update(self, message, current, total):
+        pass
+
     def clear(self):
         pass
         
@@ -240,12 +244,13 @@ class TTYProgressBar(_BaseProgressBar):
         
 
     def tick(self):
-        self.update(self.last_msg, self.last_cnt, self.last_total)
-                 
+        self.update(self.last_msg, self.last_cnt, self.last_total, 
+                    self.child_fraction)
 
-
-    def update(self, msg, current_cnt=None, total_cnt=None):
+    def update(self, msg, current_cnt=None, total_cnt=None, 
+               child_fraction=0):
         """Update and redraw progress bar."""
+        self.child_fraction = child_fraction
 
         if current_cnt < 0:
             current_cnt = 0
@@ -278,7 +283,7 @@ class TTYProgressBar(_BaseProgressBar):
         self.spin_pos += 1
 
         if self.show_pct and total_cnt and current_cnt:
-            pct = 100.0 * current_cnt / total_cnt
+            pct = 100.0 * (current_cnt / total_cnt + child_fraction)
             pct_str = ' (%5.1f%%)' % pct
         else:
             pct_str = ''
@@ -326,7 +331,35 @@ class TTYProgressBar(_BaseProgressBar):
         self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
         #self.to_file.flush()        
 
-        
+
+class ChildProgress(object):
+    """A progress indicator that pushes its data to the parent"""
+    def __init__(self, stack, *kwargs):
+        self.parent = stack[-1]
+        self.current = None
+        self.total = None
+        self.child_fraction = 0
+        self.message = None
+
+    def update(self, msg, current_cnt=None, total_cnt=None):
+        self.current = current_cnt
+        self.total = total_cnt
+        self.message = msg
+        self.child_fraction = 0
+        self.tick()
+
+    def child_update(self, message, current, total):
+        self.child_fraction = float(current) / total
+        self.tick()
+
+    def tick(self):
+        count = self.current+self.child_fraction
+        if count > self.total:
+            mutter('clamping count of %d to %d' % (count, self.total))
+            count = self.total
+        self.parent.child_update(self.message, count, self.total)
+
+ 
 def str_tdelta(delt):
     if delt is None:
         return "-:--:--"

@@ -912,6 +912,7 @@ def test_suite():
                    'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
+                   'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revision',
