@@ -937,11 +937,7 @@ def test_suite():
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_fetch',
-<<<<<<< TREE
                    'bzrlib.tests.test_fileid_involved',
-                   'bzrlib.tests.test_glob_matcher',
-=======
->>>>>>> MERGE-SOURCE
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
                    'bzrlib.tests.test_hashcache',
