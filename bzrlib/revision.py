@@ -277,15 +277,44 @@ class MultipleRevisionSources(object):
         raise e
 
     def get_revision_graph(self, revision_id):
-        result = {}
+        # we could probe incrementally until the pending
+        # ghosts list stop growing, but its cheaper for now
+        # to just ask for the complete graph for each repository.
+        graphs = []
         for source in self._revision_sources:
+            ghost_graph = source.get_revision_graph_with_ghosts()
+            graphs.append(ghost_graph)
+        absent = 0
+        for graph in graphs:
+            if not revision_id in graph.get_ancestors():
+                absent += 1
+        if absent == len(graphs):
+            raise errors.NoSuchRevision(self._revision_sources[0], revision_id)
+
+        # combine the graphs
+        result = {}
+        pending = set([revision_id])
+        def find_parents(node_id):
+            """find the parents for node_id."""
+            for graph in graphs:
+                ancestors = graph.get_ancestors()
+                try:
+                    return ancestors[node_id]
+                except KeyError:
+                    pass
+            raise errors.NoSuchRevision(self._revision_sources[0], node_id)
+        while len(pending):
+            # all the graphs should have identical parent lists
+            node_id = pending.pop()
             try:
-                result.update(source.get_revision_graph(revision_id))
-            except (errors.WeaveRevisionNotPresent, errors.NoSuchRevision), e:
+                result[node_id] = find_parents(node_id)
+                for parent_node in result[node_id]:
+                    if not parent_node in result:
+                        pending.add(parent_node)
+            except errors.NoSuchRevision:
+                # ghost, ignore it.
                 pass
-        if result:
-            return result
-        raise e
+        return result
 
     def lock_read(self):
         for source in self._revision_sources:

@@ -226,8 +226,7 @@ class TestRepository(TestCaseWithRepository):
         wt.commit('A', allow_pointless=True, rev_id='A')
         wt.branch.repository.sign_revision('A',
             bzrlib.gpg.LoopbackGPGStrategy(None))
-        old_signature = wt.branch.repository.revision_store.get('A',
-            'sig').read()
+        old_signature = wt.branch.repository.get_signature_text('A')
         try:
             old_format = bzrdir.BzrDirFormat.get_default_format()
             # This gives metadir branches something they can convert to.
@@ -241,8 +240,7 @@ class TestRepository(TestCaseWithRepository):
             # this is in the most current format already.
             return
         wt = WorkingTree.open(wt.basedir)
-        new_signature = wt.branch.repository.revision_store.get('A',
-            'sig').read()
+        new_signature = wt.branch.repository.get_signature_text('A')
         self.assertEqual(old_signature, new_signature)
 
 
@@ -254,17 +252,25 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.bzrdir = tree_a.branch.bzrdir
         # add a corrupt inventory 'orphan'
         # this may need some generalising for knits.
-        tree_a.branch.repository.control_weaves.add_text(
-            'inventory', 'orphan', [], [],
+        inv_file = tree_a.branch.repository.control_weaves.get_weave(
+            'inventory', 
             tree_a.branch.repository.get_transaction())
+        inv_file.add_lines('orphan', [], [])
         # add a real revision 'rev1'
         tree_a.commit('rev1', rev_id='rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
         tree_a.commit('rev2', rev_id='rev2', allow_pointless=True)
+        # add a reference to a ghost
+        tree_a.add_pending_merge('ghost1')
+        tree_a.commit('rev3', rev_id='rev3', allow_pointless=True)
+        # add another reference to a ghost, and a second ghost.
+        tree_a.add_pending_merge('ghost1')
+        tree_a.add_pending_merge('ghost2')
+        tree_a.commit('rev4', rev_id='rev4', allow_pointless=True)
 
     def test_all_revision_ids(self):
         # all_revision_ids -> all revisions
-        self.assertEqual(['rev1', 'rev2'],
+        self.assertEqual(['rev1', 'rev2', 'rev3', 'rev4'],
                          self.bzrdir.open_repository().all_revision_ids())
 
     def test_get_ancestry_missing_revision(self):
@@ -275,15 +281,48 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def test_get_revision_graph(self):
         # we can get a mapping of id->parents for the entire revision graph or bits thereof.
-        self.assertEqual({'rev1':[], 'rev2':['rev1']},
+        self.assertEqual({'rev1':[],
+                          'rev2':['rev1'],
+                          'rev3':['rev2'],
+                          'rev4':['rev3'],
+                          },
                          self.bzrdir.open_repository().get_revision_graph(None))
         self.assertEqual({'rev1':[]},
                          self.bzrdir.open_repository().get_revision_graph('rev1'))
-        self.assertEqual({'rev1':[], 'rev2':['rev1']},
+        self.assertEqual({'rev1':[],
+                          'rev2':['rev1']},
                          self.bzrdir.open_repository().get_revision_graph('rev2'))
         self.assertRaises(NoSuchRevision,
                           self.bzrdir.open_repository().get_revision_graph,
                           'orphan')
+        # and ghosts are not mentioned
+        self.assertEqual({'rev1':[],
+                          'rev2':['rev1'],
+                          'rev3':['rev2'],
+                          },
+                         self.bzrdir.open_repository().get_revision_graph('rev3'))
+
+    def test_get_revision_graph_with_ghosts(self):
+        # we can get a graph object with roots, ghosts, ancestors and
+        # descendants.
+        repo = self.bzrdir.open_repository()
+        graph = repo.get_revision_graph_with_ghosts([])
+        self.assertEqual(set(['rev1']), graph.roots)
+        self.assertEqual(set(['ghost1', 'ghost2']), graph.ghosts)
+        self.assertEqual({'rev1':[],
+                          'rev2':['rev1'],
+                          'rev3':['rev2', 'ghost1'],
+                          'rev4':['rev3', 'ghost1', 'ghost2'],
+                          },
+                          graph.get_ancestors())
+        self.assertEqual({'ghost1':{'rev3':1, 'rev4':1},
+                          'ghost2':{'rev4':1},
+                          'rev1':{'rev2':1},
+                          'rev2':{'rev3':1},
+                          'rev3':{'rev4':1},
+                          'rev4':{},
+                          },
+                          graph.get_descendants())
 
 
 class TestCaseWithCorruptRepository(TestCaseWithRepository):
@@ -315,12 +354,12 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         repo.add_revision('the_ghost', rev)
         # check its setup usefully
         inv_weave = repo.get_inventory_weave()
-        self.assertEqual(['ghost'], map(inv_weave.idx_to_name, inv_weave.inclusions([inv_weave.lookup('ghost')])))
+        self.assertEqual(['ghost'], inv_weave.get_ancestry(['ghost']))
 
     def test_corrupt_revision_access_asserts(self):
         repo = repository.Repository.open('inventory_with_unnecessary_ghost')
         self.assertRaises(errors.CorruptRepository, repo.get_revision, 'ghost')
 
-    def test_corrupt_revision_get_revision_reconsile(self):
+    def test_corrupt_revision_get_revision_reconcile(self):
         repo = repository.Repository.open('inventory_with_unnecessary_ghost')
         repo.get_revision_reconcile('ghost')
