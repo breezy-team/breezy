@@ -17,6 +17,8 @@
 from copy import deepcopy
 from cStringIO import StringIO
 from unittest import TestSuite
+
+# FIXME: Pulling this in just for the unescape() routine seems like overkill.
 import xml.sax.saxutils
 
 import bzrlib.bzrdir as bzrdir
