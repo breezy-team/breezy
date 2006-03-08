@@ -492,3 +492,18 @@ class NonLocalTests(TestCaseWithTransport):
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
+    def test_clone(self):
+        # clone into a nonlocal path works
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            branch = bzrdir.BzrDir.create_branch_convenience('local')
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+        branch.bzrdir.open_workingtree()
+        result = branch.bzrdir.clone(self.get_url('remote'))
+        self.assertRaises(errors.NoWorkingTree,
+                          result.open_workingtree)
+        result.open_branch()
+        result.open_repository()
+

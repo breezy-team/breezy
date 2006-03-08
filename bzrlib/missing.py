@@ -27,7 +27,7 @@ def iter_log_data(revisions, revision_source, verbose):
 
 
 def find_unmerged(local_branch, remote_branch):
-    progress = ui.ui_factory.progress_bar()
+    progress = ui.ui_factory.nested_progress_bar()
     local_branch.lock_read()
     try:
         remote_branch.lock_read()
@@ -61,7 +61,7 @@ def find_unmerged(local_branch, remote_branch):
             remote_branch.unlock()
     finally:
         local_branch.unlock()
-        progress.clear()
+        progress.finished()
     return (local_extra, remote_extra)
 
 def _shortcut(local_rev_history, remote_rev_history):

@@ -350,13 +350,26 @@ class Merge3Merger(object):
             self.cook_conflicts(fs_conflicts)
             for line in conflicts_strings(self.cooked_conflicts):
                 warning(line)
-            self.tt.apply()
+            results = self.tt.apply()
         finally:
             try:
                 self.tt.finalize()
             except:
                 pass
-       
+        self.write_modified(results)
+
+    def write_modified(self, results):
+        modified_hashes = {}
+        for path in results.modified_paths:
+            file_id = self.this_tree.path2id(self.this_tree.relpath(path))
+            if file_id is None:
+                continue
+            hash = self.this_tree.get_file_sha1(file_id)
+            if hash is None:
+                continue
+            modified_hashes[file_id] = hash
+        self.this_tree.set_merge_modified(modified_hashes)
+
     @staticmethod
     def parent(entry, file_id):
         """Determine the parent for a file_id (used as a key method)"""
@@ -749,9 +762,7 @@ class WeaveMerger(Merge3Merger):
         this_revision_id = self.this_revision_tree.inventory[file_id].revision
         other_revision_id = \
             self.other_revision_tree.inventory[file_id].revision
-        this_i = weave.lookup(this_revision_id)
-        other_i = weave.lookup(other_revision_id)
-        plan =  weave.plan_merge(this_i, other_i)
+        plan =  weave.plan_merge(this_revision_id, other_revision_id)
         return weave.weave_merge(plan, '<<<<<<< TREE\n', 
                                        '>>>>>>> MERGE-SOURCE\n')
 

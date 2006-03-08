@@ -207,7 +207,10 @@ class Branch(object):
             raise Exception("can't fetch from a branch to itself %s, %s" % 
                             (self.base, to_branch.base))
         if pb is None:
-            pb = bzrlib.ui.ui_factory.progress_bar()
+            nested_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            pb = nested_pb
+        else:
+            nested_pb = None
 
         from_branch.lock_read()
         try:
@@ -221,8 +224,10 @@ class Branch(object):
                     last_revision = NULL_REVISION
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
-                                         pb=pb)
+                                         pb=nested_pb)
         finally:
+            if nested_pb is not None:
+                nested_pb.finished()
             from_branch.unlock()
 
     def get_bound_location(self):
@@ -961,6 +966,19 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         self.control_files.put_utf8(
             'revision-history', '\n'.join(rev_history))
+        transaction = self.get_transaction()
+        history = transaction.map.find_revision_history()
+        if history is not None:
+            # update the revision history in the identity map.
+            history[:] = list(rev_history)
+            # this call is disabled because revision_history is 
+            # not really an object yet, and the transaction is for objects.
+            # transaction.register_dirty(history)
+        else:
+            transaction.map.add_revision_history(rev_history)
+            # this call is disabled because revision_history is 
+            # not really an object yet, and the transaction is for objects.
+            # transaction.register_clean(history)
 
     def get_revision_delta(self, revno):
         """Return the delta for one revision.
@@ -985,7 +1003,6 @@ class BzrBranch(Branch):
     @needs_read_lock
     def revision_history(self):
         """See Branch.revision_history."""
-        # FIXME are transactions bound to control files ? RBC 20051121
         transaction = self.get_transaction()
         history = transaction.map.find_revision_history()
         if history is not None:

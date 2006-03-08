@@ -29,6 +29,7 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
+MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
 
 # FIXME: I don't know if writing out the cache from the destructor is really a
 # good idea, because destructors are considered poor taste in Python, and it's
@@ -60,7 +61,8 @@ from bzrlib.errors import (BzrCheckError,
                            WeaveRevisionNotPresent,
                            NotBranchError,
                            NoSuchFile,
-                           NotVersionedError)
+                           NotVersionedError,
+                           MergeModifiedFormatError)
 from bzrlib.inventory import InventoryEntry, Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.merge import merge_inner, transform_tree
@@ -84,6 +86,7 @@ from bzrlib.osutils import (
                             )
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
+from bzrlib.rio import RioReader, RioWriter, Stanza
 from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
@@ -454,13 +457,18 @@ class WorkingTree(bzrlib.tree.Tree):
             tree.set_last_revision(revision_id)
 
     @needs_write_lock
-    def commit(self, *args, **kwargs):
+    def commit(self, message=None, revprops=None, *args, **kwargs):
+        # avoid circular imports
         from bzrlib.commit import Commit
+        if revprops is None:
+            revprops = {}
+        if not 'branch-nick' in revprops:
+            revprops['branch-nick'] = self.branch.nick
         # args for wt.commit start at message from the Commit.commit method,
         # but with branch a kwarg now, passing in args as is results in the
         #message being used for the branch
-        args = (DEPRECATED_PARAMETER, ) + args
-        Commit().commit(working_tree=self, *args, **kwargs)
+        args = (DEPRECATED_PARAMETER, message, ) + args
+        Commit().commit(working_tree=self, revprops=revprops, *args, **kwargs)
         self._set_inventory(self.read_working_inventory())
 
     def id2abspath(self, file_id):
@@ -599,6 +607,36 @@ class WorkingTree(bzrlib.tree.Tree):
     @needs_write_lock
     def set_pending_merges(self, rev_list):
         self._control_files.put_utf8('pending-merges', '\n'.join(rev_list))
+
+    @needs_write_lock
+    def set_merge_modified(self, modified_hashes):
+        my_file = StringIO()
+        my_file.write(MERGE_MODIFIED_HEADER_1 + '\n')
+        writer = RioWriter(my_file)
+        for file_id, hash in modified_hashes.iteritems():
+            s = Stanza(file_id=file_id, hash=hash)
+            writer.write_stanza(s)
+        my_file.seek(0)
+        self._control_files.put('merge-hashes', my_file)
+
+    @needs_read_lock
+    def merge_modified(self):
+        try:
+            hashfile = self._control_files.get('merge-hashes')
+        except NoSuchFile:
+            return {}
+        merge_hashes = {}
+        try:
+            if hashfile.next() != MERGE_MODIFIED_HEADER_1 + '\n':
+                raise MergeModifiedFormatError()
+        except StopIteration:
+            raise MergeModifiedFormatError()
+        for s in RioReader(hashfile):
+            file_id = s.get("file_id")
+            hash = s.get("hash")
+            if hash == self.get_file_sha1(file_id):
+                merge_hashes[file_id] = hash
+        return merge_hashes
 
     def get_symlink_target(self, file_id):
         return os.readlink(self.id2abspath(file_id))
@@ -850,11 +888,15 @@ class WorkingTree(bzrlib.tree.Tree):
                 else:
                     other_revision = None
                 repository = self.branch.repository
-                merge_inner(self.branch,
-                            self.branch.basis_tree(),
-                            basis_tree, 
-                            this_tree=self, 
-                            pb=bzrlib.ui.ui_factory.progress_bar())
+                pb = bzrlib.ui.ui_factory.nested_progress_bar()
+                try:
+                    merge_inner(self.branch,
+                                self.branch.basis_tree(),
+                                basis_tree, 
+                                this_tree=self, 
+                                pb=pb)
+                finally:
+                    pb.finished()
                 self.set_last_revision(self.branch.last_revision())
             return count
         finally:

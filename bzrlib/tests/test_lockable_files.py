@@ -21,7 +21,10 @@ from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 from bzrlib.tests import TestCaseInTempDir
-from bzrlib.transactions import PassThroughTransaction, ReadOnlyTransaction
+from bzrlib.transactions import (PassThroughTransaction,
+                                 ReadOnlyTransaction,
+                                 WriteTransaction,
+                                 )
 from bzrlib.transport import get_transport
 
 
@@ -78,7 +81,7 @@ class _TestLockableFiles_mixin(object):
                       PassThroughTransaction)
         self.lockable.lock_write()
         self.assertIs(self.lockable.get_transaction().__class__,
-                      PassThroughTransaction)
+                      WriteTransaction)
         self.lockable.unlock()
 
     def test__escape(self):

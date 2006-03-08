@@ -263,8 +263,9 @@ class TestSnapshot(TestCaseWithTransport):
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '2')
         # this should be a separate test probably, but lets check it once..
-        lines = self.branch.repository.weave_store.get_lines('fileid','2',
-            self.branch.get_transaction())
+        lines = self.branch.repository.weave_store.get_weave(
+            'fileid', 
+            self.branch.get_transaction()).get_lines('2')
         self.assertEqual(lines, ['contents of subdir/file\n'])
 
     def test_snapshot_unchanged(self):
@@ -276,9 +277,12 @@ class TestSnapshot(TestCaseWithTransport):
                                   self.branch.get_transaction())
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '1')
-        self.assertRaises(errors.WeaveError,
-                          self.branch.repository.weave_store.get_lines, 
-                          'fileid', '2', self.branch.get_transaction())
+        vf = self.branch.repository.weave_store.get_weave(
+            'fileid', 
+            self.branch.repository.get_transaction())
+        self.assertRaises(errors.RevisionNotPresent,
+                          vf.get_lines,
+                          '2')
 
     def test_snapshot_merge_identical_different_revid(self):
         # This tests that a commit with two identical parents, one of which has
@@ -292,8 +296,9 @@ class TestSnapshot(TestCaseWithTransport):
         self.assertEqual(self.file_1, other_ie)
         other_ie.revision = 'other'
         self.assertNotEqual(self.file_1, other_ie)
-        self.branch.repository.weave_store.add_identical_text('fileid', '1', 
-            'other', ['1'], self.branch.get_transaction())
+        versionfile = self.branch.repository.weave_store.get_weave(
+            'fileid', self.branch.repository.get_transaction())
+        versionfile.clone_text('other', '1', ['1'])
         self.file_active.snapshot('2', 'subdir/file', 
                                   {'1':self.file_1, 'other':other_ie},
                                   self.wt, 
@@ -490,3 +495,5 @@ class TestRevert(TestCaseWithTransport):
         os.unlink('b1/a')
         wt.revert([])
         self.assertEqual(len(wt.inventory), 1)
+
+
