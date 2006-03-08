@@ -26,15 +26,26 @@ import os
 import errno
 
 import bzrlib.status
-from bzrlib.errors import BzrCommandError, NotConflicted
 from bzrlib.commands import register_command
+from bzrlib.errors import BzrCommandError, NotConflicted
+from bzrlib.option import Option
 from bzrlib.workingtree import CONFLICT_SUFFIXES, WorkingTree
 from bzrlib.osutils import rename
 
 class cmd_conflicts(bzrlib.commands.Command):
     """List files with conflicts.
+
+    Merge will do its best to combine the changes in two branches, but there
+    are some kinds of problems only a human can fix.  When it encounters those,
+    it will mark a conflict.  A conflict means that you need to fix something,
+    before you should commit.
+
+    Use bzr resolve when you have fixed a problem.
+
     (conflicts are determined by the presence of .BASE .TREE, and .OTHER 
     files.)
+
+    See also bzr resolve.
     """
     def run(self):
         for path in WorkingTree.open_containing(u'.')[0].iter_conflicts():
@@ -42,10 +53,21 @@ class cmd_conflicts(bzrlib.commands.Command):
 
 class cmd_resolve(bzrlib.commands.Command):
     """Mark a conflict as resolved.
+
+    Merge will do its best to combine the changes in two branches, but there
+    are some kinds of problems only a human can fix.  When it encounters those,
+    it will mark a conflict.  A conflict means that you need to fix something,
+    before you should commit.
+
+    Once you have fixed a problem, use "bzr resolve FILE.." to mark
+    individual files as fixed, or "bzr resolve --all" to mark all conflicts as
+    resolved.
+
+    See also bzr conflicts.
     """
     aliases = ['resolved']
     takes_args = ['file*']
-    takes_options = ['all']
+    takes_options = [Option('all', help='Resolve all conflicts in this tree')]
     def run(self, file_list=None, all=False):
         if file_list is None:
             if not all:

@@ -1770,10 +1770,17 @@ class cmd_merge(Command):
     will be used as a BASE, and the second one as OTHER.  Revision
     numbers are always relative to the specified branch.
 
-    By default bzr will try to merge in all new work from the other
+    By default, bzr will try to merge in all new work from the other
     branch, automatically determining an appropriate base.  If this
     fails, you may need to give an explicit base.
     
+    Merge will do its best to combine the changes in two branches, but there
+    are some kinds of problems only a human can fix.  When it encounters those,
+    it will mark a conflict.  A conflict means that you need to fix something,
+    before you should commit.
+
+    Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
+
     Examples:
 
     To merge the latest revision from bzr.dev
