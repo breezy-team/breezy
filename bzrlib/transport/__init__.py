@@ -244,6 +244,17 @@ class Transport(object):
         """
         raise NotImplementedError
 
+    def readv(self, relpath, offsets):
+        """Get parts of the file at the given relative path.
+
+        :offsets: A list of (offset, size) tuples.
+        :return: A list or generator of (offset, data) tuples
+        """
+        fp = self.get(relpath)
+        for offset, size in offsets:
+            fp.seek(offset)
+            yield offset, fp.read(size)
+
     def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
 

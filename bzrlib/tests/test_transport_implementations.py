@@ -892,3 +892,15 @@ class TestTransportImplementation(TestCaseInTempDir):
         # TODO make this consistent on all platforms:
         # self.assertRaises(LockError, transport.lock_read, 'lock')
         lock.unlock()
+
+    def test_readv(self):
+        transport = self.get_transport()
+        if transport.is_readonly():
+            file('a', 'w').write('0123456789')
+        else:
+            transport.put('a', StringIO('01234567890'))
+
+        d = list(transport.readv('a', ((0, 1), (3, 1), (9, 1))))
+        self.assertEqual(d[0], (0, '0'))
+        self.assertEqual(d[1], (3, '3'))
+        self.assertEqual(d[2], (9, '9'))

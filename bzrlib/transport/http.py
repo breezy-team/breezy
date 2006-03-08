@@ -74,7 +74,7 @@ class Request(urllib2.Request):
             return urllib2.Request.get_method(self)
 
 
-def get_url(url, method=None):
+def get_url(url, method=None, ranges=None):
     import urllib2
     mutter("get_url %s", url)
     manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
@@ -85,6 +85,8 @@ def get_url(url, method=None):
     request = Request(url)
     request.method = method
     request.add_header('User-Agent', 'bzr/%s' % bzrlib.__version__)
+    if ranges:
+        request.add_header('Range', ranges)
     response = opener.open(request)
     return response
 
@@ -190,15 +192,11 @@ class HttpTransport(Transport):
                 return False
             raise TransportError(orig_error=e)
 
-    def get(self, relpath, decode=False):
-        """Get the file at the given relative path.
-
-        :param relpath: The relative path to the file
-        """
+    def _get(self, relpath, decode=False, ranges=None):
         path = relpath
         try:
             path = self.abspath(relpath)
-            return get_url(path)
+            return get_url(path, ranges=ranges)
         except urllib2.HTTPError, e:
             mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
@@ -213,6 +211,31 @@ class HttpTransport(Transport):
             raise ConnectionError(msg = "Error retrieving %s: %s" 
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
+
+    def get(self, relpath, decode=False):
+        """Get the file at the given relative path.
+
+        :param relpath: The relative path to the file
+        """
+        return self._get(relpath, decode=decode)
+
+    def readv(self, relpath, offsets):
+        """Get parts of the file at the given relative path.
+
+        :offsets: A list of (offset, size) tuples.
+        :return: A list or generator of (offset, data) tuples
+        """
+        response = self._get(relpath,
+            ranges=','.join(['%d-%d' % (off, off + size - 1)
+                             for off, size in offsets]))
+        if response.code == 206:
+            for off, size in offsets:
+                yield off, response.read(size)
+        elif response.code == 200:
+            fp = StringIO(response.read())
+            for off, size in offsets:
+                fp.seek(off)
+                yield off, fp.read(size)
 
     def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.

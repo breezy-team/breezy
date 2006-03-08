@@ -791,25 +791,14 @@ class _KnitData(_KnitComponentFile):
                 for rec_id, pos, size in self.versions:
                     yield rec_id, fp.read(size)
 
-        fp = self._open_file()
+        # We take it that the transport optimizes the fetching as good
+        # as possible (ie, reads continous ranges.)
+        response = self._transport.readv(self._filename,
+            [(pos, size) for version_id, pos, size in records])
 
-        # Loop through all records and try to collect as large
-        # continuous region as possible to read.
-        while records:
-            record_id, pos, size = records.pop(0)
-            continuous_range = ContinuousRange(record_id, pos, size)
-            while records:
-                record_id, pos, size = records[0]
-                if continuous_range.add(record_id, pos, size):
-                    del records[0]
-                else:
-                    break
-            fp.seek(continuous_range.start_pos, 0)
-            for record_id, data in continuous_range.split(fp):
-                content, digest = self._parse_record(record_id, data)
-                yield record_id, content, digest
-
-        self._file = None
+        for (record_id, pos, size), (pos, data) in zip(records, response):
+            content, digest = self._parse_record(record_id, data)
+            yield record_id, content, digest
 
     def read_records(self, records):
         """Read records into a dictionary."""
