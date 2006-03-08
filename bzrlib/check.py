@@ -55,7 +55,7 @@ class Check(object):
 
     def check(self):
         self.branch.lock_read()
-        self.progress = bzrlib.ui.ui_factory.progress_bar()
+        self.progress = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             self.progress.update('retrieving inventory', 0, 0)
             # do not put in init, as it should be done with progess,
@@ -75,22 +75,14 @@ class Check(object):
                 revno += 1
                 self.check_one_rev(rev_id)
         finally:
-            self.progress.clear()
+            self.progress.finished()
             self.branch.unlock()
 
     def plan_revisions(self):
         repository = self.branch.repository
-        if not repository.revision_store.listable():
-            self.planned_revisions = repository.get_ancestry(self.history[-1])
-            self.planned_revisions.remove(None)
-            # FIXME progress bars should support this more nicely.
-            self.progress.clear()
-            print ("Checking reachable history -"
-                   " for a complete check use a local branch.")
-            return
-        
-        self.planned_revisions = set(repository.revision_store)
-        inventoried = set(self.inventory_weave.names())
+        self.planned_revisions = set(repository.all_revision_ids())
+        self.progress.clear()
+        inventoried = set(self.inventory_weave.versions())
         awol = self.planned_revisions - inventoried
         if len(awol) > 0:
             raise BzrCheckError('Stored revisions missing from inventory'
@@ -100,7 +92,7 @@ class Check(object):
     def report_results(self, verbose):
         note('checked branch %s format %s',
              self.branch.base, 
-             self.branch._branch_format)
+             self.branch._format)
 
         note('%6d revisions', self.checked_rev_cnt)
         note('%6d unique file texts', self.checked_text_cnt)
@@ -169,7 +161,7 @@ class Check(object):
                     self.missing_parent_links[parent] = missing_links
                     # list based so somewhat slow,
                     # TODO have a planned_revisions list and set.
-                    if self.branch.has_revision(parent):
+                    if self.branch.repository.has_revision(parent):
                         missing_ancestry = self.repository.get_ancestry(parent)
                         for missing in missing_ancestry:
                             if (missing is not None 

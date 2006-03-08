@@ -178,7 +178,7 @@ class TestCommit(TestCaseWithTransport):
         b = wt.branch
         wt.commit('initial', rev_id='test@rev-1', allow_pointless=True)
         self.assertRaises(Exception,
-                          b.working_tree().commit,
+                          wt.commit,
                           message='reused id',
                           rev_id='test@rev-1',
                           allow_pointless=True)
@@ -195,7 +195,7 @@ class TestCommit(TestCaseWithTransport):
         wt.move(['hello'], 'a')
         r2 = 'test@rev-2'
         wt.commit('two', rev_id=r2, allow_pointless=False)
-        self.check_inventory_shape(b.working_tree().read_working_inventory(),
+        self.check_inventory_shape(wt.read_working_inventory(),
                                    ['a', 'a/hello', 'b'])
 
         wt.move(['b'], 'a')
@@ -270,7 +270,7 @@ class TestCommit(TestCaseWithTransport):
         file('hello', 'w').write('hello world')
         wt.add('hello')
         file('goodbye', 'w').write('goodbye cruel world!')
-        self.assertRaises(StrictCommitFailed, b.working_tree().commit,
+        self.assertRaises(StrictCommitFailed, wt.commit,
             message='add hello but not goodbye', strict=True)
 
     def test_strict_commit_without_unknowns(self):
@@ -308,7 +308,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.repository.revision_store.has_id('A', 'sig'))
+        self.failIf(branch.repository.has_signature_for_revision_id('A'))
         try:
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
@@ -319,8 +319,7 @@ class TestCommit(TestCaseWithTransport):
                                                       working_tree=wt)
             self.assertEqual(Testament.from_revision(branch.repository,
                              'B').as_short_text(),
-                             branch.repository.revision_store.get('B', 
-                                                               'sig').read())
+                             branch.repository.get_signature_text('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
 
@@ -331,7 +330,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.repository.revision_store.has_id('A', 'sig'))
+        self.failIf(branch.repository.has_signature_for_revision_id('A'))
         try:
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
@@ -339,12 +338,13 @@ class TestCommit(TestCaseWithTransport):
             config = MustSignConfig(branch)
             self.assertRaises(SigningFailed,
                               commit.Commit(config=config).commit,
-                              branch, "base",
+                              message="base",
                               allow_pointless=True,
-                              rev_id='B')
+                              rev_id='B',
+                              working_tree=wt)
             branch = Branch.open(self.get_url('.'))
             self.assertEqual(branch.revision_history(), ['A'])
-            self.failIf(branch.repository.revision_store.has_id('B'))
+            self.failIf(branch.repository.has_revision('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
 
@@ -365,3 +365,15 @@ class TestCommit(TestCaseWithTransport):
             self.assertEqual(['called', 'called'], calls)
         finally:
             del bzrlib.ahook
+
+    def test_commit_object_doesnt_set_nick(self):
+        # using the Commit object directly does not set the branch nick.
+        wt = self.make_branch_and_tree('.')
+        c = Commit()
+        c.commit(working_tree=wt, message='empty tree', allow_pointless=True)
+        self.assertEquals(wt.branch.revno(), 1)
+        self.assertEqual({},
+                         wt.branch.repository.get_revision(
+                            wt.branch.last_revision()).properties)
+
+

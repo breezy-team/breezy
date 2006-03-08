@@ -32,6 +32,7 @@ from zlib import adler32
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
+from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 import bzrlib.transport as transport
 from bzrlib.transport.local import LocalTransport
@@ -87,6 +88,20 @@ class Store(object):
         """Return True if this store is able to be listed."""
         return hasattr(self, "__iter__")
 
+    def copy_all_ids(self, store_from, pb=None):
+        """Copy all the file ids from store_from into self."""
+        if not store_from.listable():
+            raise UnlistableStore(store_from)
+        ids = []
+        for count, file_id in enumerate(store_from):
+            if pb:
+                pb.update('listing files', count, count)
+            ids.append(file_id)
+        if pb:
+            pb.clear()
+        mutter('copy_all ids: %r', ids)
+        self.copy_multi(store_from, ids, pb=pb)
+
     def copy_multi(self, other, ids, pb=None, permit_failure=False):
         """Copy texts for ids from other into self.
 
@@ -101,9 +116,8 @@ class Store(object):
             followed by a list of entries which could not be copied (because they
             were missing)
         """
-        if pb is None:
-            pb = bzrlib.ui.ui_factory.progress_bar()
-        pb.update('preparing to copy')
+        if pb:
+            pb.update('preparing to copy')
         failed = set()
         count = 0
         ids = list(ids) # get the list for showing a length.
@@ -118,14 +132,16 @@ class Store(object):
                         self._copy_one(fileid, suffix, other, pb)
                     except KeyError:
                         pass
-                pb.update('copy', count, len(ids))
+                if pb:
+                    pb.update('copy', count, len(ids))
             except KeyError:
                 if permit_failure:
                     failed.add(fileid)
                 else:
                     raise
         assert count == len(ids)
-        pb.clear()
+        if pb:
+            pb.clear()
         return count, failed
 
     def _copy_one(self, fileid, suffix, other, pb):
@@ -311,15 +327,13 @@ def ImmutableMemoryStore():
     return bzrlib.store.text.TextStore(transport.memory.MemoryTransport())
         
 
-def copy_all(store_from, store_to):
+@deprecated_function(zero_eight)
+def copy_all(store_from, store_to, pb=None):
     """Copy all ids from one store to another."""
-    # TODO: Optional progress indicator
-    if not store_from.listable():
-        raise UnlistableStore(store_from)
-    ids = [f for f in store_from]
-    mutter('copy_all ids: %r', ids)
-    store_to.copy_multi(store_from, ids)
+    store_to.copy_all_ids(store_from, pb)
+
 
 def hash_prefix(fileid):
     return "%02x/" % (adler32(fileid) & 0xff)
+
 

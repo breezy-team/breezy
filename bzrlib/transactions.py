@@ -19,24 +19,21 @@
 
 Transactions provide hooks to allow data objects (i.e. inventory weaves or
 the revision-history file) to be placed in a registry and retrieved later
-during the same transaction.  This allows for repeated read isolation. At
-the end of a transaction, a callback is issued to each registered changed
-item informing it whether it should commit or not. We provide a two layer
-facility - domain objects are notified first, then data objects.
+during the same transaction. Transactions in bzr are not atomic - they
+depend on data ordering of writes, so we do not have commit or rollback
+facilities at the transaction level.
 
 Read only transactions raise an assert when objects are listed as dirty
-against them - preventing unintended writes. Once all the data storage is
-hooked into this facility, it might be nice to have a readonly transaction
-that just excepts on commit, for testing or simulating of things.
+against them - preventing unintended writes.
 
-Write transactions queue all changes in the transaction (which may in the 
-future involve writing them to uncommitted atomic files in preparation 
-for commit - i.e. on network connections where latency matters) and then
-notify each object of commit or rollback.
+Write transactions preserve dirty objects in the cache, though due to the
+write ordering approach we use for consistency 'dirty' is a misleading term.
+A dirty object is one we have modified.
 
 Both read and write transactions *may* flush unchanged objects out of 
-memory, unless they are marked as 'preserve' which indicates that 
-repeated reads cannot be obtained if the object is ejected.
+memory, unless they are marked as 'precious' which indicates that 
+repeated reads cannot be obtained if the object is ejected, or that
+the object is an expensive one for obtaining.
 """
 
 import sys
@@ -49,16 +46,8 @@ from bzrlib.trace import mutter
 class ReadOnlyTransaction(object):
     """A read only unit of work for data objects."""
 
-    def commit(self):
-        """ReadOnlyTransactions cannot commit."""
-        raise errors.CommitNotPossible('In a read only transaction')
-
     def finish(self):
-        """Clean up this transaction
-
-        This will rollback on transactions that can if they have nto been
-        committed.
-        """
+        """Clean up this transaction."""
 
     def __init__(self):
         super(ReadOnlyTransaction, self).__init__()
@@ -67,6 +56,10 @@ class ReadOnlyTransaction(object):
         self._clean_queue = []
         self._limit = -1
         self._precious_objects = set()
+
+    def is_clean(self, an_object):
+        """Return True if an_object is clean."""
+        return an_object in self._clean_objects
 
     def register_clean(self, an_object, precious=False):
         """Register an_object as being clean.
@@ -82,11 +75,7 @@ class ReadOnlyTransaction(object):
 
     def register_dirty(self, an_object):
         """Register an_object as being dirty."""
-        raise errors.ReadOnlyError(
-            "Cannot dirty objects in a read only transaction")
-
-    def rollback(self):
-        """Let people call this even though nothing has to happen."""
+        raise errors.ReadOnlyObjectDirtiedError(an_object)
 
     def set_cache_size(self, size):
         """Set a new cache size."""
@@ -121,24 +110,44 @@ class ReadOnlyTransaction(object):
                 offset += 1
 
 
+class WriteTransaction(ReadOnlyTransaction):
+    """A write transaction
+
+    - caches domain objects
+    - clean objects can be removed from the cache
+    - dirty objects are retained.
+    """
+
+    def __init__(self):
+        super(WriteTransaction, self).__init__()
+        self._dirty_objects = set()
+
+    def is_dirty(self, an_object):
+        """Return True if an_object is dirty."""
+        return an_object in self._dirty_objects
+
+    def register_dirty(self, an_object):
+        """Register an_object as being dirty.
+        
+        Dirty objects are not ejected from the identity map
+        until the transaction finishes.
+        """
+        self._dirty_objects.add(an_object)
+        if self.is_clean(an_object):
+            self._clean_objects.remove(an_object)
+            del self._clean_queue[self._clean_queue.index(an_object)]
+        self._trim()
+
         
 class PassThroughTransaction(object):
     """A pass through transaction
     
-    - all actions are committed immediately.
-    - rollback is not supported.
-    - commit() is a no-op.
+    - nothing is cached.
+    - nothing ever gets into the identity map.
     """
 
-    def commit(self):
-        """PassThroughTransactions have nothing to do."""
-
     def finish(self):
-        """Clean up this transaction
-
-        This will rollback on transactions that can if they have nto been
-        committed.
-        """
+        """Clean up this transaction."""
 
     def __init__(self):
         super(PassThroughTransaction, self).__init__()
@@ -153,10 +162,6 @@ class PassThroughTransaction(object):
 
     def register_dirty(self, an_object):
         """Register an_object as being dirty."""
-
-    def rollback(self):
-        """Cannot rollback a pass through transaction."""
-        raise errors.AlreadyCommitted
 
     def set_cache_size(self, ignored):
         """Do nothing, we are passing through."""

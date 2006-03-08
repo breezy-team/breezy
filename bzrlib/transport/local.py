@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -139,7 +139,9 @@ class LocalTransport(Transport):
             fp = open(self.abspath(relpath), 'ab')
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
+        result = fp.tell()
         self._pump(f, fp)
+        return result
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
@@ -152,12 +154,23 @@ class LocalTransport(Transport):
             # TODO: What about path_to?
             self._translate_error(e, path_from)
 
+    def rename(self, rel_from, rel_to):
+        path_from = self.abspath(rel_from)
+        try:
+            # *don't* call bzrlib.osutils.rename, because we want to 
+            # detect errors on rename
+            os.rename(path_from, self.abspath(rel_to))
+        except (IOError, OSError),e:
+            # TODO: What about path_to?
+            self._translate_error(e, path_from)
+
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         path_from = self.abspath(rel_from)
         path_to = self.abspath(rel_to)
 
         try:
+            # this version will delete the destination if necessary
             rename(path_from, path_to)
         except (IOError, OSError),e:
             # TODO: What about path_to?
@@ -256,6 +269,7 @@ class LocalTransport(Transport):
             os.rmdir(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
+
 
 class ScratchTransport(LocalTransport):
     """A transport that works in a temporary dir and cleans up after itself.

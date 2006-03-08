@@ -24,7 +24,10 @@ Specific tests for individual formats are in the tests/test_branch file
 rather than in tests/branch_implementations/*.py.
 """
 
-from bzrlib.branch import BranchTestProviderAdapter, BzrBranchFormat
+from bzrlib.branch import (BranchFormat,
+                           BranchTestProviderAdapter,
+                           _legacy_formats,
+                           )
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
@@ -36,14 +39,19 @@ from bzrlib.tests import (
 def test_suite():
     result = TestSuite()
     test_branch_implementations = [
+        'bzrlib.tests.branch_implementations.test_bound_sftp',
         'bzrlib.tests.branch_implementations.test_branch',
+        'bzrlib.tests.branch_implementations.test_parent',
+        'bzrlib.tests.branch_implementations.test_permissions',
+        'bzrlib.tests.branch_implementations.test_update',
         ]
     adapter = BranchTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        BzrBranchFormat._formats.values())
+        [(format, format._matchingbzrdir) for format in 
+         BranchFormat._formats.values() + _legacy_formats])
     loader = TestLoader()
     adapt_modules(test_branch_implementations, adapter, loader, result)
     return result

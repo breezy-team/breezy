@@ -18,8 +18,12 @@
 """
 
 import os
+from StringIO import StringIO
 import sys
 
+
+import bzrlib.errors as errors
+from bzrlib.progress import TTYProgressBar, ProgressBarStack
 from bzrlib.tests import TestCase
 from bzrlib.ui import SilentUIFactory
 from bzrlib.ui.text import TextUIFactory
@@ -29,17 +33,21 @@ class UITests(TestCase):
     def test_silent_factory(self):
 
         ui = SilentUIFactory()
-        pb = ui.progress_bar()
-        # TODO: Test that there is no output from SilentUIFactory
-
-        self.assertEquals(ui.get_password(), None)
-        self.assertEquals(ui.get_password(u'Hello There \u1234 %(user)s',
-                                          user=u'some\u1234')
-                         , None)
+        pb = ui.nested_progress_bar()
+        try:
+            # TODO: Test that there is no output from SilentUIFactory
+    
+            self.assertEquals(ui.get_password(), None)
+            self.assertEquals(ui.get_password(u'Hello There \u1234 %(user)s',
+                                              user=u'some\u1234')
+                             , None)
+        finally:
+            pb.finished()
 
     def test_text_factory(self):
         ui = TextUIFactory()
-        pb = ui.progress_bar()
+        pb = ui.nested_progress_bar()
+        pb.finished()
         # TODO: Test the output from TextUIFactory, perhaps by overriding sys.stdout
 
         # Unfortunately we can't actually test the ui.get_password() because 
@@ -50,3 +58,46 @@ class UITests(TestCase):
         #                                   user=u'some\u1234')
         #                  , 'bogus')
 
+
+    def test_progress_note(self):
+        stderr = StringIO()
+        stdout = StringIO()
+        pb = TTYProgressBar(to_file=stderr, to_messages_file=stdout)
+        result = pb.note('t')
+        self.assertEqual(None, result)
+        self.assertEqual("t\n", stdout.getvalue())
+        # the exact contents will depend on the terminal width and we don't
+        # care about that right now - but you're probably running it on at
+        # least a 10-character wide terminal :)
+        self.assertContainsRe(stderr.getvalue(), r'^\r {10,}\r$')
+
+    def test_progress_nested(self):
+        # test factory based nested and popping.
+        ui = TextUIFactory()
+        pb1 = ui.nested_progress_bar()
+        pb2 = ui.nested_progress_bar()
+        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        pb2.finished()
+        pb1.finished()
+
+    def test_progress_stack(self):
+        # test the progress bar stack which the default text factory 
+        # uses.
+        stderr = StringIO()
+        stdout = StringIO()
+        # make a stack, which accepts parameters like a pb.
+        stack = ProgressBarStack(to_file=stderr, to_messages_file=stdout)
+        # but is not one
+        self.assertFalse(getattr(stack, 'note', False))
+        pb1 = stack.get_nested()
+        pb2 = stack.get_nested()
+        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        pb2.finished()
+        pb1.finished()
+        # the text ui factory never actually removes the stack once its setup.
+        # we need to be able to nest again correctly from here.
+        pb1 = stack.get_nested()
+        pb2 = stack.get_nested()
+        self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
+        pb2.finished()
+        pb1.finished()

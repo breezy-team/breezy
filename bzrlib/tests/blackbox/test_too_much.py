@@ -41,6 +41,7 @@ import shutil
 import sys
 
 from bzrlib.branch import Branch
+import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import has_symlinks, pathjoin
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
@@ -50,13 +51,6 @@ from bzrlib.workingtree import WorkingTree
 
 
 class TestCommands(ExternalBase):
-
-    def test_help_commands(self):
-        self.runbzr('--help')
-        self.runbzr('help')
-        self.runbzr('help commands')
-        self.runbzr('help help')
-        self.runbzr('commit -h')
 
     def test_init_branch(self):
         self.runbzr(['init'])
@@ -117,24 +111,10 @@ class TestCommands(ExternalBase):
         nick = self.runbzr("nick",backtick=True)
         self.assertEqual(nick, 'moo\n')
 
-
     def test_invalid_commands(self):
         self.runbzr("pants", retcode=3)
         self.runbzr("--pants off", retcode=3)
         self.runbzr("diff --message foo", retcode=3)
-
-    def test_empty_commit(self):
-        self.runbzr("init")
-        self.build_tree(['hello.txt'])
-        self.runbzr("commit -m empty", retcode=3)
-        self.runbzr("add hello.txt")
-        self.runbzr("commit -m added")       
-
-    def test_empty_commit_message(self):
-        self.runbzr("init")
-        file('foo.c', 'wt').write('int main() {}')
-        self.runbzr(['add', 'foo.c'])
-        self.runbzr(["commit", "-m", ""] , retcode=3) 
 
     def test_remove_deleted(self):
         self.runbzr("init")
@@ -143,26 +123,6 @@ class TestCommands(ExternalBase):
         self.runbzr(['commit', '-m', 'added a'])
         os.unlink('a')
         self.runbzr(['remove', 'a'])
-
-    def test_other_branch_commit(self):
-        # this branch is to ensure consistent behaviour, whether we're run
-        # inside a branch, or not.
-        os.mkdir('empty_branch')
-        os.chdir('empty_branch')
-        self.runbzr('init')
-        os.mkdir('branch')
-        os.chdir('branch')
-        self.runbzr('init')
-        file('foo.c', 'wt').write('int main() {}')
-        file('bar.c', 'wt').write('int main() {}')
-        os.chdir('..')
-        self.runbzr(['add', 'branch/foo.c'])
-        self.runbzr(['add', 'branch'])
-        # can't commit files in different trees; sane error
-        self.runbzr('commit -m newstuff branch/foo.c .', retcode=3)
-        self.runbzr('commit -m newstuff branch/foo.c')
-        self.runbzr('commit -m newstuff branch')
-        self.runbzr('commit -m newstuff branch', retcode=3)
 
     def test_ignore_patterns(self):
         self.runbzr('init')
@@ -341,12 +301,26 @@ class TestCommands(ExternalBase):
         os.chdir('b')
         self.runbzr('commit -m foo --unchanged')
         os.chdir('..')
-        # naughty - abstraction violations RBC 20050928  
-        print "test_branch used to delete the stores, how is this meant to work ?"
-        #shutil.rmtree('a/.bzr/revision-store')
-        #shutil.rmtree('a/.bzr/inventory-store', ignore_errors=True)
-        #shutil.rmtree('a/.bzr/text-store', ignore_errors=True)
-        self.runbzr('branch a d --basis b')
+
+    def test_branch_basis(self):
+        # ensure that basis really does grab from the basis by having incomplete source
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
+        source = self.make_branch_and_tree('source')
+        # this gives us an incomplete repository
+        tree.bzrdir.open_repository().copy_content_into(source.branch.repository)
+        tree.commit('revision 2', rev_id='2', allow_pointless=True)
+        tree.bzrdir.open_branch().copy_content_into(source.branch)
+        tree.copy_content_into(source)
+        self.assertFalse(source.branch.repository.has_revision('2'))
+        dir = source.bzrdir
+        self.runbzr('branch source target --basis commit_tree')
+        target = bzrdir.BzrDir.open('target')
+        self.assertEqual('2', target.open_branch().last_revision())
+        self.assertEqual('2', target.open_workingtree().last_revision())
+        self.assertTrue(target.open_branch().repository.has_revision('2'))
 
     def test_merge(self):
         from bzrlib.branch import Branch
@@ -376,15 +350,15 @@ class TestCommands(ExternalBase):
         self.runbzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
-        a = Branch.open('.')
+        a = WorkingTree.open('.')
         b = Branch.open('../b')
-        a.repository.get_revision_xml(b.last_revision())
-        self.log('pending merges: %s', a.working_tree().pending_merges())
-        self.assertEquals(a.working_tree().pending_merges(),
+        a.branch.repository.get_revision_xml(b.last_revision())
+        self.log('pending merges: %s', a.pending_merges())
+        self.assertEquals(a.pending_merges(),
                           [b.last_revision()])
         self.runbzr('commit -m merged')
         self.runbzr('merge ../b -r last:1')
-        self.assertEqual(Branch.open('.').working_tree().pending_merges(), [])
+        self.assertEqual(a.pending_merges(), [])
 
     def test_merge_with_missing_file(self):
         """Merge handles missing file conflicts"""
@@ -688,7 +662,7 @@ class TestCommands(ExternalBase):
         ass = self.assert_
         chdir = os.chdir
         
-        t = WorkingTree.create_standalone('.')
+        t = self.make_branch_and_tree('.')
         b = t.branch
         self.build_tree(['src/', 'README'])
         
@@ -751,8 +725,11 @@ class TestCommands(ExternalBase):
         assert '|||||||' not in conflict_text
         assert 'hi world' not in conflict_text
         os.unlink('hello.OTHER')
+        os.unlink('question.OTHER')
+        self.runbzr('remerge jello --merge-type weave', retcode=3)
         self.runbzr('remerge hello --merge-type weave', retcode=1)
         assert os.path.exists('hello.OTHER')
+        self.assertIs(False, os.path.exists('question.OTHER'))
         file_id = self.runbzr('file-id hello')
         file_id = self.runbzr('file-id hello.THIS', retcode=3)
         self.runbzr('remerge --merge-type weave', retcode=1)
@@ -814,51 +791,6 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m conflicts')
         self.assertEquals(result, "")
 
-    def test_resign(self):
-        """Test re signing of data."""
-        import bzrlib.gpg
-        oldstrategy = bzrlib.gpg.GPGStrategy
-        wt = WorkingTree.create_standalone('.')
-        branch = wt.branch
-        wt.commit("base", allow_pointless=True, rev_id='A')
-        try:
-            # monkey patch gpg signing mechanism
-            from bzrlib.testament import Testament
-            bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            self.runbzr('re-sign -r revid:A')
-            self.assertEqual(Testament.from_revision(branch.repository,
-                             'A').as_short_text(),
-                             branch.repository.revision_store.get('A', 
-                             'sig').read())
-        finally:
-            bzrlib.gpg.GPGStrategy = oldstrategy
-            
-    def test_resign_range(self):
-        import bzrlib.gpg
-        oldstrategy = bzrlib.gpg.GPGStrategy
-        wt = WorkingTree.create_standalone('.')
-        branch = wt.branch
-        wt.commit("base", allow_pointless=True, rev_id='A')
-        wt.commit("base", allow_pointless=True, rev_id='B')
-        wt.commit("base", allow_pointless=True, rev_id='C')
-        try:
-            # monkey patch gpg signing mechanism
-            from bzrlib.testament import Testament
-            bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            self.runbzr('re-sign -r 1..')
-            self.assertEqual(
-                Testament.from_revision(branch.repository,'A').as_short_text(),
-                branch.repository.revision_store.get('A', 'sig').read())
-            self.assertEqual(
-                Testament.from_revision(branch.repository,'B').as_short_text(),
-                branch.repository.revision_store.get('B', 'sig').read())
-            self.assertEqual(Testament.from_revision(branch.repository,
-                             'C').as_short_text(),
-                             branch.repository.revision_store.get('C', 
-                             'sig').read())
-        finally:
-            bzrlib.gpg.GPGStrategy = oldstrategy
-
     def test_push(self):
         # create a source branch
         os.mkdir('my-branch')
@@ -905,19 +837,17 @@ class TestCommands(ExternalBase):
         self.runbzr('missing ../missing/new-branch')
 
     def test_external_command(self):
-        """test that external commands can be run by setting the path"""
+        """Test that external commands can be run by setting the path
+        """
+        # We don't at present run bzr in a subprocess for blackbox tests, and so 
+        # don't really capture stdout, only the internal python stream.
+        # Therefore we don't use a subcommand that produces any output or does
+        # anything -- we just check that it can be run successfully.  
         cmd_name = 'test-command'
-        output = 'Hello from test-command'
         if sys.platform == 'win32':
             cmd_name += '.bat'
-            output += '\r\n'
-        else:
-            output += '\n'
-
         oldpath = os.environ.get('BZRPATH', None)
-
         bzr = self.capture
-
         try:
             if os.environ.has_key('BZRPATH'):
                 del os.environ['BZRPATH']
@@ -927,7 +857,7 @@ class TestCommands(ExternalBase):
                 f.write('@echo off\n')
             else:
                 f.write('#!/bin/sh\n')
-            f.write('echo Hello from test-command')
+            # f.write('echo Hello from test-command')
             f.close()
             os.chmod(cmd_name, 0755)
 
@@ -939,11 +869,6 @@ class TestCommands(ExternalBase):
             os.environ['BZRPATH'] = '.'
 
             bzr(cmd_name)
-            # The test suite does not capture stdout for external commands
-            # this is because you have to have a real file object
-            # to pass to Popen(stdout=FOO), and StringIO is not one of those.
-            # (just replacing sys.stdout does not change a spawned objects stdout)
-            #self.assertEquals(bzr(cmd_name), output)
 
             # Make sure empty path elements are ignored
             os.environ['BZRPATH'] = os.pathsep
@@ -1239,20 +1164,22 @@ class RemoteTests(object):
 
     def test_branch(self):
         os.mkdir('from')
-        wt = WorkingTree.create_standalone('from')
+        wt = self.make_branch_and_tree('from')
         branch = wt.branch
         wt.commit('empty commit for nonsense', allow_pointless=True)
-        url = self.get_remote_url('from')
+        url = self.get_readonly_url('from')
         self.run_bzr('branch', url, 'to')
         branch = Branch.open('to')
         self.assertEqual(1, len(branch.revision_history()))
+        # the branch should be set in to to from
+        self.assertEqual(url + '/', branch.get_parent())
 
     def test_log(self):
         self.build_tree(['branch/', 'branch/file'])
         self.capture('init branch')
         self.capture('add branch/file')
         self.capture('commit -m foo branch')
-        url = self.get_remote_url('branch/file')
+        url = self.get_readonly_url('branch/file')
         output = self.capture('log %s' % url)
         self.assertEqual(8, len(output.split('\n')))
         
@@ -1261,9 +1188,21 @@ class RemoteTests(object):
         self.capture('init branch')
         self.capture('add branch/file')
         self.capture('commit -m foo branch')
-        url = self.get_remote_url('branch/')
+        url = self.get_readonly_url('branch/')
         self.run_bzr('check', url)
     
+    def test_push(self):
+        # create a source branch
+        os.mkdir('my-branch')
+        os.chdir('my-branch')
+        self.run_bzr('init')
+        file('hello', 'wt').write('foo')
+        self.run_bzr('add', 'hello')
+        self.run_bzr('commit', '-m', 'setup')
+
+        # with an explicit target work
+        self.run_bzr('push', self.get_url('output-branch'))
+
     
 class HTTPTests(TestCaseWithWebserver, RemoteTests):
     """Test various commands against a HTTP server."""

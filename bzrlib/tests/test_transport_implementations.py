@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,8 +25,8 @@ from cStringIO import StringIO
 import stat
 import sys
 
-from bzrlib.errors import (NoSuchFile, FileExists,
-                           LockError,
+from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
+                           LockError, PathError,
                            TransportNotPossible, ConnectionError,
                            InvalidURL)
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
@@ -231,10 +231,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertRaises(FileExists, t.mkdir, 'dir_g')
 
         # Test get/put in sub-directories
-        self.assertEqual(
+        self.assertEqual(2, 
             t.put_multi([('dir_a/a', StringIO('contents of dir_a/a')),
-                         ('dir_b/b', StringIO('contents of dir_b/b'))])
-                        , 2)
+                         ('dir_b/b', StringIO('contents of dir_b/b'))]))
         self.check_transport_contents('contents of dir_a/a', t, 'dir_a/a')
         self.check_transport_contents('contents of dir_b/b', t, 'dir_b/b')
 
@@ -268,7 +267,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         def simple_copy_files(transport_from, transport_to):
             files = ['a', 'b', 'c', 'd']
             self.build_tree(files, transport=transport_from)
-            transport_from.copy_to(files, transport_to)
+            self.assertEqual(4, transport_from.copy_to(files, transport_to))
             for f in files:
                 self.check_transport_contents(transport_to.get(f).read(),
                                               transport_from, f)
@@ -326,7 +325,8 @@ class TestTransportImplementation(TestCaseInTempDir):
                     t.append, 'a', 'add\nsome\nmore\ncontents\n')
             _append('a', StringIO('add\nsome\nmore\ncontents\n'))
         else:
-            t.append('a', StringIO('add\nsome\nmore\ncontents\n'))
+            self.assertEqual(20,
+                t.append('a', StringIO('add\nsome\nmore\ncontents\n')))
 
         self.check_transport_contents(
             'diff\ncontents for\na\nadd\nsome\nmore\ncontents\n',
@@ -340,8 +340,9 @@ class TestTransportImplementation(TestCaseInTempDir):
             _append('a', StringIO('and\nthen\nsome\nmore\n'))
             _append('b', StringIO('some\nmore\nfor\nb\n'))
         else:
-            t.append_multi([('a', StringIO('and\nthen\nsome\nmore\n')),
-                    ('b', StringIO('some\nmore\nfor\nb\n'))])
+            self.assertEqual((43, 15), 
+                t.append_multi([('a', StringIO('and\nthen\nsome\nmore\n')),
+                                ('b', StringIO('some\nmore\nfor\nb\n'))]))
         self.check_transport_contents(
             'diff\ncontents for\na\n'
             'add\nsome\nmore\ncontents\n'
@@ -356,8 +357,9 @@ class TestTransportImplementation(TestCaseInTempDir):
             _append('a', StringIO('a little bit more\n'))
             _append('b', StringIO('from an iterator\n'))
         else:
-            t.append_multi(iter([('a', StringIO('a little bit more\n')),
-                    ('b', StringIO('from an iterator\n'))]))
+            self.assertEqual((62, 31),
+                t.append_multi(iter([('a', StringIO('a little bit more\n')),
+                                     ('b', StringIO('from an iterator\n'))])))
         self.check_transport_contents(
             'diff\ncontents for\na\n'
             'add\nsome\nmore\ncontents\n'
@@ -375,9 +377,11 @@ class TestTransportImplementation(TestCaseInTempDir):
             _append('a', StringIO('some text in a\n'))
             _append('d', StringIO('missing file r\n'))
         else:
-            t.append('c', StringIO('some text\nfor a missing file\n'))
-            t.append_multi([('a', StringIO('some text in a\n')),
-                            ('d', StringIO('missing file r\n'))])
+            self.assertEqual(0,
+                t.append('c', StringIO('some text\nfor a missing file\n')))
+            self.assertEqual((80, 0),
+                t.append_multi([('a', StringIO('some text in a\n')),
+                                ('d', StringIO('missing file r\n'))]))
         self.check_transport_contents(
             'diff\ncontents for\na\n'
             'add\nsome\nmore\ncontents\n'
@@ -552,6 +556,44 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertRaises(NoSuchFile, t.stat, 'adir/bdir')
         t.rmdir('adir')
         self.assertRaises(NoSuchFile, t.stat, 'adir')
+
+    def test_rmdir_not_empty(self):
+        """Deleting a non-empty directory raises an exception
+        
+        sftp (and possibly others) don't give us a specific "directory not
+        empty" exception -- we can just see that the operation failed.
+        """
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        t.mkdir('adir')
+        t.mkdir('adir/bdir')
+        self.assertRaises(PathError, t.rmdir, 'adir')
+
+    def test_rename_dir_succeeds(self):
+        t = self.get_transport()
+        if t.is_readonly():
+            raise TestSkipped("transport is readonly")
+        t.mkdir('adir')
+        t.mkdir('adir/asubdir')
+        t.rename('adir', 'bdir')
+        self.assertTrue(t.has('bdir/asubdir'))
+        self.assertFalse(t.has('adir'))
+
+    def test_rename_dir_nonempty(self):
+        """Attempting to replace a nonemtpy directory should fail"""
+        t = self.get_transport()
+        if t.is_readonly():
+            raise TestSkipped("transport is readonly")
+        t.mkdir('adir')
+        t.mkdir('adir/asubdir')
+        t.mkdir('bdir')
+        t.mkdir('bdir/bsubdir')
+        self.assertRaises(PathError, t.rename, 'bdir', 'adir')
+        # nothing was changed so it should still be as before
+        self.assertTrue(t.has('bdir/bsubdir'))
+        self.assertFalse(t.has('adir/bdir'))
+        self.assertFalse(t.has('adir/bsubdir'))
 
     def test_delete_tree(self):
         t = self.get_transport()
@@ -791,17 +833,23 @@ class TestTransportImplementation(TestCaseInTempDir):
     def test_iter_files_recursive(self):
         transport = self.get_transport()
         if not transport.listable():
-            self.assertRaises(TransportNotPossible, 
+            self.assertRaises(TransportNotPossible,
                               transport.iter_files_recursive)
             return
-        self.build_tree(['isolated/', 
+        self.build_tree(['isolated/',
                          'isolated/dir/',
                          'isolated/dir/foo',
                          'isolated/dir/bar',
                          'isolated/bar'],
                         transport=transport)
-        transport = transport.clone('isolated')
         paths = set(transport.iter_files_recursive())
+        # nb the directories are not converted
+        self.assertEqual(paths,
+                    set(['isolated/dir/foo',
+                         'isolated/dir/bar',
+                         'isolated/bar']))
+        sub_transport = transport.clone('isolated')
+        paths = set(sub_transport.iter_files_recursive())
         self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
 
     def test_unicode_paths(self):

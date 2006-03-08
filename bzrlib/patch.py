@@ -1,5 +1,8 @@
+import errno
 import os
 from subprocess import Popen, PIPE
+
+from bzrlib.errors import NoDiff3
 """
 Diff and patch functionality
 """
@@ -53,7 +56,13 @@ def diff3(out_file, mine_path, older_path, yours_path):
     add_label(args, "ANCESTOR")
     add_label(args, "MERGE-SOURCE")
     args.extend((mine_path, older_path, yours_path))
-    output, stderr, status = write_to_cmd(args)
+    try:
+        output, stderr, status = write_to_cmd(args)
+    except OSError, e:
+        if e.errno == errno.ENOENT:
+            raise NoDiff3
+        else:
+            raise
     if status not in (0, 1):
         raise Exception(stderr)
     file(out_file, "wb").write(output)

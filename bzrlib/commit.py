@@ -76,23 +76,21 @@ from bzrlib.atomicfile import AtomicFile
 from bzrlib.osutils import (local_time_offset,
                             rand_bytes, compact_date,
                             kind_marker, is_inside_any, quotefn,
-                            sha_string, sha_strings, sha_file, isdir, isfile,
+                            sha_file, isdir, isfile,
                             split_lines)
 import bzrlib.config
+import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
                            HistoryMissing,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
-import bzrlib.gpg as gpg
 from bzrlib.revision import Revision
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID
 from bzrlib.symbol_versioning import *
-from bzrlib.weave import Weave
-from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.workingtree import WorkingTree
 
 
@@ -180,7 +178,8 @@ class Commit(object):
                strict=False,
                verbose=False,
                revprops=None,
-               working_tree=None):
+               working_tree=None,
+               local=False):
         """Commit working copy as a new revision.
 
         branch -- the deprecated branch to commit to. New callers should pass in 
@@ -206,6 +205,7 @@ class Commit(object):
             contains unknown files.
 
         revprops -- Properties for new revision
+        :param local: Perform a local only commit.
         """
         mutter('preparing to commit')
 
@@ -214,7 +214,7 @@ class Commit(object):
                  "deprecated as of bzr 0.8. Please use working_tree= instead.",
                  DeprecationWarning, stacklevel=2)
             self.branch = branch
-            self.work_tree = WorkingTree(branch.base, branch)
+            self.work_tree = self.branch.bzrdir.open_workingtree()
         elif working_tree is None:
             raise BzrError("One of branch and working_tree must be passed into commit().")
         else:
@@ -224,52 +224,64 @@ class Commit(object):
             raise BzrError("The message keyword parameter is required for commit().")
 
         self.weave_store = self.branch.repository.weave_store
+        self.bound_branch = None
+        self.local = local
+        self.master_branch = None
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
-        self.revprops = {'branch-nick': self.branch.nick}
-        if revprops:
+        self.revprops = {}
+        if revprops is not None:
             self.revprops.update(revprops)
 
-        if strict:
-            # raise an exception as soon as we find a single unknown.
-            for unknown in self.work_tree.unknowns():
-                raise StrictCommitFailed()
-
-        if timestamp is None:
-            self.timestamp = time.time()
-        else:
-            self.timestamp = long(timestamp)
-            
-        if self.config is None:
-            self.config = bzrlib.config.BranchConfig(self.branch)
-
-        if rev_id is None:
-            self.rev_id = _gen_revision_id(self.config, self.timestamp)
-        else:
-            self.rev_id = rev_id
-
-        if committer is None:
-            self.committer = self.config.username()
-        else:
-            assert isinstance(committer, basestring), type(committer)
-            self.committer = committer
-
-        if timezone is None:
-            self.timezone = local_time_offset()
-        else:
-            self.timezone = int(timezone)
-
-        if isinstance(message, str):
-            message = message.decode(bzrlib.user_encoding)
-        assert isinstance(message, unicode), type(message)
-        self.message = message
-        self._escape_commit_message()
-
-        self.branch.lock_write()
+        self.work_tree.lock_write()
         try:
+            # setup the bound branch variables as needed.
+            self._check_bound_branch()
+
+            # check for out of date working trees
+            # if we are bound, then self.branch is the master branch and this
+            # test is thus all we need.
+            if self.work_tree.last_revision() != self.master_branch.last_revision():
+                raise errors.OutOfDateTree(self.work_tree)
+    
+            if strict:
+                # raise an exception as soon as we find a single unknown.
+                for unknown in self.work_tree.unknowns():
+                    raise StrictCommitFailed()
+    
+            if timestamp is None:
+                self.timestamp = time.time()
+            else:
+                self.timestamp = long(timestamp)
+                
+            if self.config is None:
+                self.config = bzrlib.config.BranchConfig(self.branch)
+    
+            if rev_id is None:
+                self.rev_id = _gen_revision_id(self.config, self.timestamp)
+            else:
+                self.rev_id = rev_id
+    
+            if committer is None:
+                self.committer = self.config.username()
+            else:
+                assert isinstance(committer, basestring), type(committer)
+                self.committer = committer
+    
+            if timezone is None:
+                self.timezone = local_time_offset()
+            else:
+                self.timezone = int(timezone)
+    
+            if isinstance(message, str):
+                message = message.decode(bzrlib.user_encoding)
+            assert isinstance(message, unicode), type(message)
+            self.message = message
+            self._escape_commit_message()
+
             self.work_inv = self.work_tree.inventory
-            self.basis_tree = self.branch.basis_tree()
+            self.basis_tree = self.work_tree.basis_tree()
             self.basis_inv = self.basis_tree.inventory
 
             self._gather_parents()
@@ -290,15 +302,35 @@ class Commit(object):
             if len(list(self.work_tree.iter_conflicts()))>0:
                 raise ConflictsInTree
 
-            self._record_inventory()
+            self.inv_sha1 = self.branch.repository.add_inventory(
+                self.rev_id,
+                self.new_inv,
+                self.present_parents
+                )
             self._make_revision()
-            self.work_tree.set_pending_merges([])
+            # revision data is in the local branch now.
+            
+            # upload revision data to the master.
+            # this will propogate merged revisions too if needed.
+            if self.bound_branch:
+                self.master_branch.repository.fetch(self.branch.repository,
+                                                    revision_id=self.rev_id)
+                # now the master has the revision data
+                # 'commit' to the master first so a timeout here causes the local
+                # branch to be out of date
+                self.master_branch.append_revision(self.rev_id)
+
+            # and now do the commit locally.
             self.branch.append_revision(self.rev_id)
+
+            self.work_tree.set_pending_merges([])
             if len(self.parents):
                 precursor = self.parents[0]
             else:
                 precursor = None
             self.work_tree.set_last_revision(self.rev_id, precursor)
+            # now the work tree is up to date with the branch
+            
             self.reporter.completed(self.branch.revno()+1, self.rev_id)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
@@ -309,16 +341,68 @@ class Commit(object):
                                    'bzrlib':bzrlib,
                                    'rev_id':self.rev_id})
         finally:
-            self.branch.unlock()
+            self._cleanup_bound_branch()
+            self.work_tree.unlock()
 
-    def _record_inventory(self):
-        """Store the inventory for the new revision."""
-        inv_text = serializer_v5.write_inventory_to_string(self.new_inv)
-        self.inv_sha1 = sha_string(inv_text)
-        s = self.branch.repository.control_weaves
-        s.add_text('inventory', self.rev_id,
-                   split_lines(inv_text), self.present_parents,
-                   self.branch.get_transaction())
+    def _check_bound_branch(self):
+        """Check to see if the local branch is bound.
+
+        If it is bound, then most of the commit will actually be
+        done using the remote branch as the target branch.
+        Only at the end will the local branch be updated.
+        """
+        if self.local and not self.branch.get_bound_location():
+            raise errors.LocalRequiresBoundBranch()
+
+        if not self.local:
+            self.master_branch = self.branch.get_master_branch()
+
+        if not self.master_branch:
+            # make this branch the reference branch for out of date checks.
+            self.master_branch = self.branch
+            return
+
+        # If the master branch is bound, we must fail
+        master_bound_location = self.master_branch.get_bound_location()
+        if master_bound_location:
+            raise errors.CommitToDoubleBoundBranch(self.branch,
+                    self.master_branch, master_bound_location)
+
+        # TODO: jam 20051230 We could automatically push local
+        #       commits to the remote branch if they would fit.
+        #       But for now, just require remote to be identical
+        #       to local.
+        
+        # Make sure the local branch is identical to the master
+        master_rh = self.master_branch.revision_history()
+        local_rh = self.branch.revision_history()
+        if local_rh != master_rh:
+            raise errors.BoundBranchOutOfDate(self.branch,
+                    self.master_branch)
+
+        # Now things are ready to change the master branch
+        # so grab the lock
+        self.bound_branch = self.branch
+        self.master_branch.lock_write()
+####        
+####        # Check to see if we have any pending merges. If we do
+####        # those need to be pushed into the master branch
+####        pending_merges = self.work_tree.pending_merges()
+####        if pending_merges:
+####            for revision_id in pending_merges:
+####                self.master_branch.repository.fetch(self.bound_branch.repository,
+####                                                    revision_id=revision_id)
+
+    def _cleanup_bound_branch(self):
+        """Executed at the end of a try/finally to cleanup a bound branch.
+
+        If the branch wasn't bound, this is a no-op.
+        If it was, it resents self.branch to the local branch, instead
+        of being the master.
+        """
+        if not self.bound_branch:
+            return
+        self.master_branch.unlock()
 
     def _escape_commit_message(self):
         """Replace xml-incompatible control characters."""
@@ -361,23 +445,15 @@ class Commit(object):
             
     def _make_revision(self):
         """Record a new revision object for this commit."""
-        self.rev = Revision(timestamp=self.timestamp,
-                            timezone=self.timezone,
-                            committer=self.committer,
-                            message=self.message,
-                            inventory_sha1=self.inv_sha1,
-                            revision_id=self.rev_id,
-                            properties=self.revprops)
-        self.rev.parent_ids = self.parents
-        rev_tmp = StringIO()
-        serializer_v5.write_revision(self.rev, rev_tmp)
-        rev_tmp.seek(0)
-        if self.config.signature_needed():
-            plaintext = Testament(self.rev, self.new_inv).as_short_text()
-            self.branch.repository.store_revision_signature(
-                gpg.GPGStrategy(self.config), plaintext, self.rev_id)
-        self.branch.repository.revision_store.add(rev_tmp, self.rev_id)
-        mutter('new revision_id is {%s}', self.rev_id)
+        rev = Revision(timestamp=self.timestamp,
+                       timezone=self.timezone,
+                       committer=self.committer,
+                       message=self.message,
+                       inventory_sha1=self.inv_sha1,
+                       revision_id=self.rev_id,
+                       properties=self.revprops)
+        rev.parent_ids = self.parents
+        self.branch.repository.add_revision(self.rev_id, rev, self.new_inv, self.config)
 
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.
@@ -417,7 +493,7 @@ class Commit(object):
         for path, ie in self.new_inv.iter_entries():
             previous_entries = ie.find_previous_heads(
                 self.parent_invs, 
-                self.weave_store.get_weave_prelude_or_empty(ie.file_id,
+                self.weave_store.get_weave_or_empty(ie.file_id,
                     self.branch.get_transaction()))
             if ie.revision is None:
                 change = ie.snapshot(self.rev_id, path, previous_entries,

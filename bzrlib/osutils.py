@@ -130,7 +130,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     import random
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
-    tmp_name = u'tmp.%s.%.9f.%d.%d' % (base, time.time(), os.getpid(), random.randint(0, 0x7FFFFFFF))
+    tmp_name = u'tmp.%s.%.9f.%d.%s' % (base, time.time(), os.getpid(), rand_chars(10))
     tmp_name = pathjoin(dirname, tmp_name)
 
     # Rename the file out of the way, but keep track if it didn't exist
@@ -442,6 +442,7 @@ def filesize(f):
     """Return size of given open file."""
     return os.fstat(f.fileno())[ST_SIZE]
 
+
 # Define rand_bytes based on platform.
 try:
     # Python 2.4 and later have os.urandom,
@@ -463,6 +464,20 @@ except (NotImplementedError, AttributeError):
                 s += chr(random.randint(0, 255))
                 n -= 1
             return s
+
+
+ALNUM = '0123456789abcdefghijklmnopqrstuvwxyz'
+def rand_chars(num):
+    """Return a random string of num alphanumeric characters
+    
+    The result only contains lowercase chars because it may be used on 
+    case-insensitive filesystems.
+    """
+    s = ''
+    for raw_byte in rand_bytes(num):
+        s += ALNUM[ord(raw_byte) % 36]
+    return s
+
 
 ## TODO: We could later have path objects that remember their list
 ## decomposition (might be too tricksy though.)
@@ -667,3 +682,6 @@ def terminal_width():
         return int(os.environ['COLUMNS'])
     except (IndexError, KeyError, ValueError):
         return 80
+
+def supports_executable():
+    return sys.platform != "win32"

@@ -33,10 +33,10 @@ class TestamentTests(TestCaseWithTransport):
 
     def setUp(self):
         super(TestamentTests, self).setUp()
-        wt = self.make_branch_and_tree('.')
-        b = self.b = wt.branch
+        self.wt = self.make_branch_and_tree('.')
+        b = self.b = self.wt.branch
         b.nick = "test branch"
-        wt.commit(message='initial null commit',
+        self.wt.commit(message='initial null commit',
                  committer='test@user',
                  timestamp=1129025423, # 'Tue Oct 11 20:10:23 2005'
                  timezone=0,
@@ -44,9 +44,9 @@ class TestamentTests(TestCaseWithTransport):
         self.build_tree_contents([('hello', 'contents of hello file'),
                              ('src/', ),
                              ('src/foo.c', 'int main()\n{\n}\n')])
-        wt.add(['hello', 'src', 'src/foo.c'],
+        self.wt.add(['hello', 'src', 'src/foo.c'],
                              ['hello-id', 'src-id', 'foo.c-id'])
-        wt.commit(message='add files and directories',
+        self.wt.commit(message='add files and directories',
                  timestamp=1129025483,
                  timezone=36000,
                  rev_id='test@user-2',
@@ -96,8 +96,8 @@ class TestamentTests(TestCaseWithTransport):
         if not has_symlinks():
             return
         os.symlink('wibble/linktarget', 'link')
-        self.b.working_tree().add(['link'], ['link-id'])
-        self.b.working_tree().commit(message='add symlink',
+        self.wt.add(['link'], ['link-id'])
+        self.wt.commit(message='add symlink',
                  timestamp=1129025493,
                  timezone=36000,
                  rev_id='test@user-3',
@@ -109,7 +109,7 @@ class TestamentTests(TestCaseWithTransport):
         """Testament to revision with extra properties"""
         props = dict(flavor='sour cherry\ncream cheese',
                      size='medium')
-        self.b.working_tree().commit(message='revision with properties',
+        self.wt.commit(message='revision with properties',
                       timestamp=1129025493,
                       timezone=36000,
                       rev_id='test@user-3',
@@ -117,6 +117,17 @@ class TestamentTests(TestCaseWithTransport):
                       revprops=props)
         t = Testament.from_revision(self.b.repository, 'test@user-3')
         self.assertEqualDiff(t.as_text(), REV_PROPS_TESTAMENT)
+
+    def test_testament_unicode_commit_message(self):
+        self.wt.commit(
+            message=u'non-ascii commit \N{COPYRIGHT SIGN} me',
+            timestamp=1129025493,
+            timezone=36000,
+            rev_id='test@user-3',
+            committer='test@user')
+        t = Testament.from_revision(self.b.repository, 'test@user-3')
+        self.assertEqualDiff(
+            SAMPLE_UNICODE_TESTAMENT.encode('utf-8'), t.as_text())
 
     def test___init__(self):
         revision = self.b.repository.get_revision('test@user-2')
@@ -214,6 +225,26 @@ message:
 inventory:
   file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73
   symlink link link-id wibble/linktarget
+  directory src src-id
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
+properties:
+  branch-nick:
+    test branch
+"""
+
+
+SAMPLE_UNICODE_TESTAMENT = u"""\
+bazaar-ng testament version 1
+revision-id: test@user-3
+committer: test@user
+timestamp: 1129025493
+timezone: 36000
+parents:
+  test@user-2
+message:
+  non-ascii commit \N{COPYRIGHT SIGN} me
+inventory:
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73
   directory src src-id
   file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
 properties:

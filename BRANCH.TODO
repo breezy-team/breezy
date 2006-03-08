@@ -2,15 +2,9 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 
- * add news - fixed --one with testskipped
-   branch formats are now tested uniformly, preventing regressions as new
-   formats come online.
- * add news upgrade on url works
- * add testing news - branch_implementations
- * add testing news - testcasewithtransport
- * add testing news skips with --one
- * cleanup remnans of check_format in the BzrBranch constructor.
- * upgrade from .bzr to a '.bzr-new', then do a bait and switch.
- * document WorkingTree.create, branch.create, workingtree.create_standalone, branch.init deprecation.
- * merge in storage, use lockable files to reinstate permissions for checkout control files.
- * branch.clone duplicate code addressing 
+ * test weave.walk with a version_ids list that is a subset.
+   this is for fileid_involved performance
+
+ * make knits ghost aware.
+
+ * make revision store not annotate the contentsA

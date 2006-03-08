@@ -119,8 +119,8 @@ class InventoryEntry(object):
                  'revision']
 
     def _add_text_to_weave(self, new_lines, parents, weave_store, transaction):
-        weave_store.add_text(self.file_id, self.revision, new_lines, parents,
-                             transaction)
+        versionedfile = weave_store.get_weave(self.file_id, transaction)
+        versionedfile.add_lines(self.revision, parents, new_lines)
 
     def detect_changes(self, old_entry):
         """Return a (text_modified, meta_modified) from this to old_entry.
@@ -161,8 +161,7 @@ class InventoryEntry(object):
         any other. If the file is new, the set will be empty.
         """
         def get_ancestors(weave, entry):
-            return set(map(weave.idx_to_name,
-                           weave.inclusions([weave.lookup(entry.revision)])))
+            return set(weave.get_ancestry(entry.revision))
         heads = {}
         head_ancestors = {}
         for inv in previous_inventories:
@@ -358,7 +357,7 @@ class InventoryEntry(object):
         """
         mutter('storing file {%s} in revision {%s}',
                self.file_id, self.revision)
-        self._add_text_to_weave([], file_parents, weave_store, transaction)
+        self._add_text_to_weave([], file_parents.keys(), weave_store, transaction)
 
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
@@ -406,6 +405,9 @@ class InventoryEntry(object):
         # working sha1 and other expensive properties when they're
         # first requested, or preload them if they're already known
         pass            # nothing to do by default
+
+    def _forget_tree_state(self):
+        pass
 
 
 class RootEntry(InventoryEntry):
@@ -492,7 +494,7 @@ class InventoryFile(InventoryEntry):
             w.check()
             checker.checked_weaves[self.file_id] = True
         else:
-            w = tree.get_weave_prelude(self.file_id)
+            w = tree.get_weave(self.file_id)
 
         mutter('check version {%s} of {%s}', rev_id, self.file_id)
         checker.checked_text_cnt += 1 
@@ -570,6 +572,10 @@ class InventoryFile(InventoryEntry):
         self.text_sha1 = work_tree.get_file_sha1(self.file_id)
         self.executable = work_tree.is_executable(self.file_id)
 
+    def _forget_tree_state(self):
+        self.text_sha1 = None
+        self.executable = None
+
     def _snapshot_text(self, file_parents, work_tree, weave_store, transaction):
         """See InventoryEntry._snapshot_text."""
         mutter('storing file {%s} in revision {%s}',
@@ -580,12 +586,11 @@ class InventoryFile(InventoryEntry):
             and self.text_sha1 == file_parents.values()[0].text_sha1
             and self.text_size == file_parents.values()[0].text_size):
             previous_ie = file_parents.values()[0]
-            weave_store.add_identical_text(
-                self.file_id, previous_ie.revision, 
-                self.revision, file_parents, transaction)
+            versionedfile = weave_store.get_weave(self.file_id, transaction)
+            versionedfile.clone_text(self.revision, previous_ie.revision, file_parents.keys())
         else:
             new_lines = work_tree.get_file(self.file_id).readlines()
-            self._add_text_to_weave(new_lines, file_parents, weave_store,
+            self._add_text_to_weave(new_lines, file_parents.keys(), weave_store,
                                     transaction)
             self.text_sha1 = sha_strings(new_lines)
             self.text_size = sum(map(len, new_lines))
@@ -678,6 +683,9 @@ class InventoryLink(InventoryEntry):
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
         self.symlink_target = work_tree.get_symlink_target(self.file_id)
+
+    def _forget_tree_state(self):
+        self.symlink_target = None
 
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
@@ -893,16 +901,19 @@ class Inventory(object):
         from bzrlib.workingtree import gen_file_id
         
         parts = bzrlib.osutils.splitpath(relpath)
-        if len(parts) == 0:
-            raise BzrError("cannot re-add root of inventory")
 
         if file_id == None:
             file_id = gen_file_id(relpath)
 
-        parent_path = parts[:-1]
-        parent_id = self.path2id(parent_path)
-        if parent_id == None:
-            raise NotVersionedError(path=parent_path)
+        if len(parts) == 0:
+            self.root = RootEntry(file_id)
+            self._byid = {self.root.file_id: self.root}
+            return
+        else:
+            parent_path = parts[:-1]
+            parent_id = self.path2id(parent_path)
+            if parent_id == None:
+                raise NotVersionedError(path=parent_path)
         if kind == 'directory':
             ie = InventoryDirectory(file_id, parts[-1], parent_id)
         elif kind == 'file':
@@ -928,17 +939,12 @@ class Inventory(object):
         """
         ie = self[file_id]
 
-        assert self[ie.parent_id].children[ie.name] == ie
+        assert ie.parent_id is None or \
+            self[ie.parent_id].children[ie.name] == ie
         
-        # TODO: Test deleting all children; maybe hoist to a separate
-        # deltree method?
-        if ie.kind == 'directory':
-            for cie in ie.children.values():
-                del self[cie.file_id]
-            del ie.children
-
         del self._byid[file_id]
-        del self[ie.parent_id].children[ie.name]
+        if ie.parent_id is not None:
+            del self[ie.parent_id].children[ie.name]
 
 
     def __eq__(self, other):

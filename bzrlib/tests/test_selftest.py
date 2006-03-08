@@ -241,15 +241,176 @@ class TestBranchProviderAdapter(TestCase):
             "test_adapted_tests")
         server1 = "a"
         server2 = "b"
-        formats = ["c", "d"]
+        formats = [("c", "C"), ("d", "D")]
         adapter = BranchTestProviderAdapter(server1, server2, formats)
         suite = adapter.adapt(input_test)
         tests = list(iter(suite))
         self.assertEqual(2, len(tests))
-        self.assertEqual(tests[0].branch_format, formats[0])
+        self.assertEqual(tests[0].branch_format, formats[0][0])
+        self.assertEqual(tests[0].bzrdir_format, formats[0][1])
         self.assertEqual(tests[0].transport_server, server1)
         self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[1].branch_format, formats[1])
+        self.assertEqual(tests[1].branch_format, formats[1][0])
+        self.assertEqual(tests[1].bzrdir_format, formats[1][1])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+
+
+class TestBzrDirProviderAdapter(TestCase):
+    """A group of tests that test the bzr dir implementation test adapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        from bzrlib.bzrdir import BzrDirTestProviderAdapter
+        input_test = TestBzrDirProviderAdapter(
+            "test_adapted_tests")
+        server1 = "a"
+        server2 = "b"
+        formats = ["c", "d"]
+        adapter = BzrDirTestProviderAdapter(server1, server2, formats)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].bzrdir_format, formats[0])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].bzrdir_format, formats[1])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+
+
+class TestRepositoryProviderAdapter(TestCase):
+    """A group of tests that test the repository implementation test adapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        from bzrlib.repository import RepositoryTestProviderAdapter
+        input_test = TestRepositoryProviderAdapter(
+            "test_adapted_tests")
+        server1 = "a"
+        server2 = "b"
+        formats = [("c", "C"), ("d", "D")]
+        adapter = RepositoryTestProviderAdapter(server1, server2, formats)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].bzrdir_format, formats[0][1])
+        self.assertEqual(tests[0].repository_format, formats[0][0])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].bzrdir_format, formats[1][1])
+        self.assertEqual(tests[1].repository_format, formats[1][0])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+
+
+class TestInterRepositoryProviderAdapter(TestCase):
+    """A group of tests that test the InterRepository test adapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        from bzrlib.repository import InterRepositoryTestProviderAdapter
+        input_test = TestInterRepositoryProviderAdapter(
+            "test_adapted_tests")
+        server1 = "a"
+        server2 = "b"
+        formats = [(str, "C1", "C2"), (int, "D1", "D2")]
+        adapter = InterRepositoryTestProviderAdapter(server1, server2, formats)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].interrepo_class, formats[0][0])
+        self.assertEqual(tests[0].repository_format, formats[0][1])
+        self.assertEqual(tests[0].repository_format_to, formats[0][2])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].interrepo_class, formats[1][0])
+        self.assertEqual(tests[1].repository_format, formats[1][1])
+        self.assertEqual(tests[1].repository_format_to, formats[1][2])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+
+
+class TestInterVersionedFileProviderAdapter(TestCase):
+    """A group of tests that test the InterVersionedFile test adapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        from bzrlib.versionedfile import InterVersionedFileTestProviderAdapter
+        input_test = TestInterRepositoryProviderAdapter(
+            "test_adapted_tests")
+        server1 = "a"
+        server2 = "b"
+        formats = [(str, "C1", "C2"), (int, "D1", "D2")]
+        adapter = InterVersionedFileTestProviderAdapter(server1, server2, formats)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].interversionedfile_class, formats[0][0])
+        self.assertEqual(tests[0].versionedfile_factory, formats[0][1])
+        self.assertEqual(tests[0].versionedfile_factory_to, formats[0][2])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].interversionedfile_class, formats[1][0])
+        self.assertEqual(tests[1].versionedfile_factory, formats[1][1])
+        self.assertEqual(tests[1].versionedfile_factory_to, formats[1][2])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+
+
+class TestRevisionStoreProviderAdapter(TestCase):
+    """A group of tests that test the RevisionStore test adapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        from bzrlib.store.revision import RevisionStoreTestProviderAdapter
+        input_test = TestRevisionStoreProviderAdapter(
+            "test_adapted_tests")
+        # revision stores need a store factory - i.e. RevisionKnit
+        #, a readonly and rw transport 
+        # transport servers:
+        server1 = "a"
+        server2 = "b"
+        store_factories = ["c", "d"]
+        adapter = RevisionStoreTestProviderAdapter(server1, server2, store_factories)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].store_factory, store_factories[0][0])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].store_factory, store_factories[1][0])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+
+
+class TestWorkingTreeProviderAdapter(TestCase):
+    """A group of tests that test the workingtree implementation test adapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        from bzrlib.workingtree import WorkingTreeTestProviderAdapter
+        input_test = TestWorkingTreeProviderAdapter(
+            "test_adapted_tests")
+        server1 = "a"
+        server2 = "b"
+        formats = [("c", "C"), ("d", "D")]
+        adapter = WorkingTreeTestProviderAdapter(server1, server2, formats)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].workingtree_format, formats[0][0])
+        self.assertEqual(tests[0].bzrdir_format, formats[0][1])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].workingtree_format, formats[1][0])
+        self.assertEqual(tests[1].bzrdir_format, formats[1][1])
         self.assertEqual(tests[1].transport_server, server1)
         self.assertEqual(tests[1].transport_readonly_server, server2)
 

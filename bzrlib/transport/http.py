@@ -61,8 +61,20 @@ def extract_auth(url, password_manager):
     url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
     return url
 
-    
-def get_url(url):
+
+class Request(urllib2.Request):
+    """Request object for urllib2 that allows the method to be overridden."""
+
+    method = None
+
+    def get_method(self):
+        if self.method is not None:
+            return self.method
+        else:
+            return urllib2.Request.get_method(self)
+
+
+def get_url(url, method=None):
     import urllib2
     mutter("get_url %s", url)
     manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
@@ -70,10 +82,12 @@ def get_url(url):
     auth_handler = urllib2.HTTPBasicAuthHandler(manager)
     opener = urllib2.build_opener(auth_handler)
 
-    request = urllib2.Request(url)
+    request = Request(url)
+    request.method = method
     request.add_header('User-Agent', 'bzr/%s' % bzrlib.__version__)
     response = opener.open(request)
     return response
+
 
 class HttpTransport(Transport):
     """This is the transport agent for http:// access.
@@ -152,9 +166,6 @@ class HttpTransport(Transport):
     def has(self, relpath):
         """Does the target location exist?
 
-        TODO: HttpTransport.has() should use a HEAD request,
-        not a full GET request.
-
         TODO: This should be changed so that we don't use
         urllib2 and get an exception, the code path would be
         cleaner if we just do an http HEAD request, and parse
@@ -163,13 +174,13 @@ class HttpTransport(Transport):
         path = relpath
         try:
             path = self.abspath(relpath)
-            f = get_url(path)
+            f = get_url(path, method='HEAD')
             # Without the read and then close()
             # we tend to have busy sockets.
             f.read()
             f.close()
             return True
-        except urllib2.URLError, e:
+        except urllib2.HTTPError, e:
             mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
                 return False
@@ -307,10 +318,12 @@ class BadWebserverPath(ValueError):
 class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
-        self.server.test_case.log("webserver - %s - - [%s] %s",
+        self.server.test_case.log('webserver - %s - - [%s] %s "%s" "%s"',
                                   self.address_string(),
                                   self.log_date_time_string(),
-                                  format%args)
+                                  format % args,
+                                  self.headers.get('referer', '-'),
+                                  self.headers.get('user-agent', '-'))
 
     def handle_one_request(self):
         """Handle a single HTTP request.
@@ -346,6 +359,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         method = getattr(self, mname)
         method()
 
+
 class TestingHTTPServer(BaseHTTPServer.HTTPServer):
     def __init__(self, server_address, RequestHandlerClass, test_case):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
@@ -356,28 +370,12 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
 class HttpServer(Server):
     """A test server for http transports."""
 
-    _HTTP_PORTS = range(13000, 0x8000)
-
     def _http_start(self):
         httpd = None
-        for port in self._HTTP_PORTS:
-            try:
-                httpd = TestingHTTPServer(('localhost', port),
-                                          TestingHTTPRequestHandler,
-                                          self)
-            except socket.error, e:
-                if e.args[0] == errno.EADDRINUSE:
-                    continue
-                print >>sys.stderr, "Cannot run webserver :-("
-                raise
-            else:
-                break
-
-        if httpd is None:
-            raise WebserverNotAvailable("Cannot run webserver :-( "
-                                        "no free ports in range %s..%s" %
-                                        (_HTTP_PORTS[0], _HTTP_PORTS[-1]))
-
+        httpd = TestingHTTPServer(('localhost', 0),
+                                  TestingHTTPRequestHandler,
+                                  self)
+        host, port = httpd.socket.getsockname()
         self._http_base_url = 'http://localhost:%s/' % port
         self._http_starting.release()
         httpd.socket.settimeout(0.1)
@@ -402,9 +400,9 @@ class HttpServer(Server):
         self._http_starting.release()
         return self._http_base_url + remote_path
 
-    def log(self, *args, **kwargs):
+    def log(self, format, *args):
         """Capture Server log output."""
-        self.logs.append(args[3])
+        self.logs.append(format % args)
 
     def setUp(self):
         """See bzrlib.transport.Server.setUp."""
