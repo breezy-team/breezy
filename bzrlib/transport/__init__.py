@@ -250,8 +250,18 @@ class Transport(object):
         :offsets: A list of (offset, size) tuples.
         :return: A list or generator of (offset, data) tuples
         """
+        if not len(offsets):
+            return
         fp = self.get(relpath)
-        for offset, size in offsets:
+        # coalesce records
+        new_offsets = [list(offsets[0])]
+        for offset, size in offsets[1:]:
+            if offset == new_offsets[-1][0] + new_offsets[-1][1]:
+                new_offsets[-1][1] += size
+            else:
+                new_offsets.append([offset, size])
+        mutter('readv coalesced %d reads to %d', len(offsets), len(new_offsets))
+        for offset, size in new_offsets:
             fp.seek(offset)
             yield offset, fp.read(size)
 
