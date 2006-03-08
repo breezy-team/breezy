@@ -1828,12 +1828,16 @@ class cmd_merge(Command):
 
                 base = [branch, revision[0].in_history(b).revno]
                 other = [branch, revision[1].in_history(b).revno]
-
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            conflict_count = merge(other, base, check_clean=(not force),
-                                   merge_type=merge_type, reprocess=reprocess,
-                                   show_base=show_base, 
-                                   pb=bzrlib.ui.ui_factory.progress_bar())
+            try:
+                conflict_count = merge(other, base, check_clean=(not force),
+                                       merge_type=merge_type, 
+                                       reprocess=reprocess,
+                                       show_base=show_base, 
+                                       pb=pb)
+            finally:
+                pb.finished()
             if conflict_count != 0:
                 return 1
             else:
@@ -1937,8 +1941,13 @@ class cmd_revert(Command):
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:
             rev_id = revision[0].in_history(tree.branch).rev_id
-        tree.revert(file_list, tree.branch.repository.revision_tree(rev_id),
-                    not no_backup, bzrlib.ui.ui_factory.progress_bar())
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            tree.revert(file_list, 
+                        tree.branch.repository.revision_tree(rev_id),
+                        not no_backup, pb)
+        finally:
+            pb.finished()
 
 
 class cmd_assert_fail(Command):
