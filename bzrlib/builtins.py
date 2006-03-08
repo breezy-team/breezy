@@ -1901,7 +1901,8 @@ class cmd_remerge(Command):
                     restore(tree.abspath(filename))
                 except NotConflicted:
                     pass
-            conflicts =  merge_inner(tree.branch, other_tree, base_tree, 
+            conflicts =  merge_inner(tree.branch, other_tree, base_tree,
+                                     this_tree=tree,
                                      interesting_ids = interesting_ids, 
                                      other_rev_id=pending_merges[0], 
                                      merge_type=merge_type, 
