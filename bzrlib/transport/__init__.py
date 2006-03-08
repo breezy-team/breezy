@@ -681,6 +681,14 @@ class TransportTestProviderAdapter(object):
 register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
+register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
+                        'HttpTransport')
+register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
+                        'HttpTransport')
+register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl', 
+                        'PyCurlTransport')
+register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl', 
+                        'PyCurlTransport')
 register_lazy_transport('http://', 'bzrlib.transport.http._urllib', 'HttpTransport')
 register_lazy_transport('https://', 'bzrlib.transport.http._urllib', 'HttpTransport')
 register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')

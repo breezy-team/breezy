@@ -21,6 +21,7 @@
 
 import bzrlib
 from bzrlib.tests import TestCase
+from bzrlib.transport import Transport
 from bzrlib.transport.http import extract_auth
 from bzrlib.transport.http._urllib import HttpTransport
 from bzrlib.transport.http._pycurl import PyCurlTransport
@@ -117,3 +118,14 @@ class TestHttpConnections_pycurl(TestHttpConnections):
     def setUp(self):
         super(TestHttpConnections_pycurl, self).setUp()
 
+
+class TestHttpTransportRegistration(TestCase):
+    """Test registrations of various http implementations"""
+
+    def test_http_registered(self):
+        import bzrlib.transport.http._urllib
+        from bzrlib.transport import get_transport
+        # urlllib should always be present
+        t = get_transport('http+urllib://bzr.google.com/')
+        self.assertIsInstance(t, Transport)
+        self.assertIsInstance(t, bzrlib.transport.http._urllib.HttpTransport)

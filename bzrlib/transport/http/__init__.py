@@ -22,6 +22,7 @@ There are separate implementation modules for each http client implementation.
 import errno
 import os
 from cStringIO import StringIO
+import re
 import urlparse
 import urllib
 from warnings import warn
@@ -71,10 +72,21 @@ def extract_auth(url, password_manager):
 class HttpTransportBase(Transport):
     """Base class for http implementations.
 
-    Does URL parsing, etc, but not any network IO."""
+    Does URL parsing, etc, but not any network IO.
+
+    The protocol can be given as e.g. http+urllib://host/ to use a particular
+    implementation.
+    """
+
     def __init__(self, base):
         """Set the base path where files will be stored."""
-        assert base.startswith('http://') or base.startswith('https://')
+        proto_match = re.match(r'^(https?)(\+\w+)?://', base)
+        if not proto_match:
+            raise AssertionError("not a http url: %r" % base)
+        real_proto=proto_match.group(1)
+        impl_name=proto_match.group(2)
+        if impl_name:
+            impl_name = impl_name[1:]
         if base[-1] != '/':
             base = base + '/'
         super(HttpTransportBase, self).__init__(base)
@@ -84,6 +96,7 @@ class HttpTransportBase(Transport):
         (self._proto, self._host,
             self._path, self._parameters,
             self._query, self._fragment) = urlparse.urlparse(self.base)
+        self._proto = real_proto
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
