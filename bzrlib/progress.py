@@ -192,6 +192,8 @@ class DotsProgressBar(_BaseProgressBar):
         if self.need_nl:
             self.to_file.write('\n')
         
+    def child_update(self, message, current, total):
+        self.tick()
     
 class TTYProgressBar(_BaseProgressBar):
     """Progress bar display object.
@@ -225,6 +227,7 @@ class TTYProgressBar(_BaseProgressBar):
         self.start_time = None
         self.last_update = None
         self.last_updates = deque()
+        self.child_fraction = 0
     
 
     def throttle(self):
@@ -246,6 +249,17 @@ class TTYProgressBar(_BaseProgressBar):
     def tick(self):
         self.update(self.last_msg, self.last_cnt, self.last_total, 
                     self.child_fraction)
+
+    def child_update(self, message, current, total):
+        child_fraction = float(current) / total
+        if self.last_cnt is None:
+            pass
+        elif self.last_cnt + child_fraction <= total:
+            self.child_fraction = child_fraction
+        else:
+            mutter('not updating child fraction')
+        self.tick()
+
 
     def update(self, msg, current_cnt=None, total_cnt=None, 
                child_fraction=0):
@@ -332,9 +346,10 @@ class TTYProgressBar(_BaseProgressBar):
         #self.to_file.flush()        
 
 
-class ChildProgress(object):
+class ChildProgress(_BaseProgressBar):
     """A progress indicator that pushes its data to the parent"""
-    def __init__(self, stack, *kwargs):
+    def __init__(self, stack, **kwargs):
+        super(_BaseProgressBar, self).__init__(stack=stack, **kwargs)
         self.parent = stack[-1]
         self.current = None
         self.total = None

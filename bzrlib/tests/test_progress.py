@@ -14,7 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.progress import DummyProgress, ChildProgress
+from StringIO import StringIO
+
+from bzrlib.progress import *
 from bzrlib.tests import TestCase
 
 class TestProgress(TestCase):
@@ -49,3 +51,16 @@ class TestProgress(TestCase):
         #test clamping
         grandchild.update('barbells', 2, 2)
         self.assertEqual(self.top.child_fraction, 1)
+
+    def test_implementations(self):
+        for implementation in (TTYProgressBar, DotsProgressBar, 
+                               DummyProgress):
+            self.check_parent_handling(implementation)
+
+    def check_parent_handling(self, parentclass):
+        top = parentclass(to_file=StringIO())
+        top.update('foobles', 1, 2)
+        child = ChildProgress(stack=[top])
+        child.update('baubles', 4, 4)
+        top.update('lala', 2, 2)
+        child.update('baubles', 4, 4)
