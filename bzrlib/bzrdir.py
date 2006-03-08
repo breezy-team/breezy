@@ -700,7 +700,9 @@ class BzrDirMeta1(BzrDir):
     """A .bzr meta version 1 control object.
     
     This is the first control object where the 
-    individual formats are really split out.
+    individual aspects are really split out: there are separate repository,
+    workingtree and branch subdirectories and any subset of the three can be
+    present within a BzrDir.
     """
 
     def can_convert_format(self):
