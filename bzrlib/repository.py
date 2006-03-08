@@ -489,6 +489,14 @@ class Repository(object):
         # FIXME format 4-6 cannot be shared, this is technically faulty.
         return self.control_files._transport.has('shared-storage')
 
+    @needs_write_lock
+    def reconcile(self):
+        """Reconcile this repository."""
+        from bzrlib.reconcile import RepoReconciler
+        reconciler = RepoReconciler(self)
+        reconciler.reconcile()
+        return reconciler
+    
     @needs_read_lock
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
@@ -682,6 +690,25 @@ class KnitRepository(MetaDirRepository):
         """See Repository.all_revision_ids()."""
         return self._revision_store.all_revision_ids(self.get_transaction())
 
+    @needs_read_lock
+    def get_ancestry(self, revision_id):
+        """Return a list of revision-ids integrated by a revision.
+        
+        This is topologically sorted.
+        """
+        if revision_id is None:
+            return [None]
+        vf = self._revision_store.get_revision_file(self.get_transaction())
+        return [None] + vf.get_ancestry(revision_id)
+
+    @needs_write_lock
+    def reconcile(self):
+        """Reconcile this repository."""
+        from bzrlib.reconcile import KnitReconciler
+        reconciler = KnitReconciler(self)
+        reconciler.reconcile()
+        return reconciler
+    
 
 class RepositoryFormat(object):
     """A repository format.

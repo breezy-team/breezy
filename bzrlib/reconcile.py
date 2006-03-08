@@ -97,11 +97,15 @@ class RepoReconciler(object):
         try:
             self.pb = ui.ui_factory.nested_progress_bar()
             try:
-                self._reweave_inventory()
+                self._reconcile_steps()
             finally:
                 self.pb.finished()
         finally:
             self.repo.unlock()
+
+    def _reconcile_steps(self):
+        """Perform the steps to reconcile this repository."""
+        self._reweave_inventory()
 
     def _reweave_inventory(self):
         """Regenerate the inventory weave for the repository from scratch."""
@@ -216,3 +220,127 @@ class RepoReconciler(object):
         """Mark a single step of regeneration complete."""
         self.pb.update(message, self.count, self.total)
         self.count += 1
+
+
+class KnitReconciler(RepoReconciler):
+    """Reconciler that reconciles a knit format repository.
+
+    This will detect garbage inventories and remove them.
+
+    Inconsistent parentage is checked for in the revision weave.
+    """
+
+    def _reconcile_steps(self):
+        """Perform the steps to reconcile this repository."""
+        self._load_indexes()
+        self._reinsert_revisions()
+        self._gc_inventory()
+
+    def _load_indexes(self):
+        """Load indexes for the reconciliation."""
+        self.transaction = self.repo.get_transaction()
+        self.pb.update('Reading indexes.', 0, 2)
+        self.inventory = self.repo.get_inventory_weave()
+        self.pb.update('Reading indexes.', 1, 2)
+        self.revisions = self.repo._revision_store.get_revision_file(self.transaction)
+        self.pb.update('Reading indexes.', 2, 2)
+
+    def _gc_inventory(self):
+        """Remove inventories that are not referenced from the revision store."""
+        self.pb.update('Checking unused inventories.', 0, 1)
+        self._check_garbage_inventories()
+        self.pb.update('Checking unused inventories.', 1, 3)
+        if not self.garbage_inventories:
+            self.pb.note('Inventory ok.')
+            return
+        self.pb.update('Backing up inventory...', 0, 0)
+        self.repo.control_weaves.copy(self.inventory, 'inventory.backup', self.transaction)
+        self.pb.note('Backup Inventory created.')
+        # asking for '' should never return a non-empty weave
+        new_inventory = self.repo.control_weaves.get_empty('inventory.new',
+            self.transaction)
+
+        # we have topological order of revisions and non ghost parents ready.
+        self._setup_steps(len(self._rev_graph))
+        for rev_id in TopoSorter(self._rev_graph.items()).iter_topo_order():
+            parents = self._rev_graph[rev_id]
+            # double check this really is in topological order.
+            unavailable = [p for p in parents if p not in new_inventory]
+            assert len(unavailable) == 0
+            # this entry has all the non ghost parents in the inventory
+            # file already.
+            self._reweave_step('adding inventories')
+            # ugly but needed, weaves are just way tooooo slow else.
+            new_inventory.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
+
+        # if this worked, the set of new_inventory.names should equal
+        # self.pending
+        assert set(new_inventory.versions()) == set(self.revisions.versions())
+        self.pb.update('Writing weave')
+        self.repo.control_weaves.copy(new_inventory, 'inventory', self.transaction)
+        self.repo.control_weaves.delete('inventory.new', self.transaction)
+        self.inventory = None
+        self.pb.note('Inventory regenerated.')
+
+    def _reinsert_revisions(self):
+        """Correct the revision history for revisions in the revision knit."""
+        # the total set of revisions to process
+        self.pending = set(self.revisions.versions())
+
+        # mapping from revision_id to parents
+        self._rev_graph = {}
+        # errors that we detect
+        self.inconsistent_parents = 0
+        # we need the revision id of each revision and its available parents list
+        self._setup_steps(len(self.pending))
+        for rev_id in self.pending:
+            # put a revision into the graph.
+            self._graph_revision(rev_id)
+
+        if not self.inconsistent_parents:
+            self.pb.note('Revision history accurate.')
+            return
+        self._setup_steps(len(self._rev_graph))
+        for rev_id, parents in self._rev_graph.items():
+            if parents != self.revisions.get_parents(rev_id):
+                self.revisions.fix_parents(rev_id, parents)
+            self._reweave_step('Fixing parents')
+        self.pb.note('Ancestry corrected.')
+
+    def _graph_revision(self, rev_id):
+        """Load a revision into the revision graph."""
+        # pick a random revision
+        # analyse revision id rev_id and put it in the stack.
+        self._reweave_step('loading revisions')
+        rev = self.repo._revision_store.get_revision(rev_id, self.transaction)
+        assert rev.revision_id == rev_id
+        parents = []
+        for parent in rev.parent_ids:
+            if self.revisions.has_version(parent):
+                parents.append(parent)
+            else:
+                mutter('found ghost %s', parent)
+        self._rev_graph[rev_id] = parents   
+        if set(self.inventory.get_parents(rev_id)) != set(parents):
+            self.inconsistent_parents += 1
+            mutter('Inconsistent inventory parents: id {%s} '
+                   'inventory claims %r, '
+                   'available parents are %r, '
+                   'unavailable parents are %r',
+                   rev_id, 
+                   set(self.inventory.get_parents(rev_id)),
+                   set(parents),
+                   set(rev.parent_ids).difference(set(parents)))
+
+    def _check_garbage_inventories(self):
+        """Check for garbage inventories which we cannot trust
+
+        We cant trust them because their pre-requisite file data may not
+        be present - all we know is that their revision was not installed.
+        """
+        inventories = set(self.inventory.versions())
+        revisions = set(self.revisions.versions())
+        garbage = inventories.difference(revisions)
+        self.garbage_inventories = len(garbage)
+        for revision_id in garbage:
+            mutter('Garbage inventory {%s} found.', revision_id)

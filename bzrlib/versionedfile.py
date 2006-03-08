@@ -105,6 +105,16 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.create_empty)
 
+    def fix_parents(self, version, new_parents):
+        """Fix the parents list for version.
+        
+        This is done by appending a new version to the index
+        with identical data except for the parents list.
+        the parents list must be a superset of the current
+        list.
+        """
+        raise NotImplementedError(self.fix_parents)
+
     def get_suffixes(self):
         """Return the file suffixes associated with this versioned file."""
         raise NotImplementedError(self.get_suffixes)

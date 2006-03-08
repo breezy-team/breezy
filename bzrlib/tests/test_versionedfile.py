@@ -268,7 +268,23 @@ class VersionedFileTestMixIn(object):
         self.assertTrue(lines['rancestor\n'] > 0)
         self.assertTrue(lines['child\n'] > 0)
         self.assertTrue(lines['otherchild\n'] > 0)
-        
+
+    def test_fix_parents(self):
+        # some versioned files allow incorrect parents to be corrected after
+        # insertion - this may not fix ancestry..
+        # if they do not supported, they just do not implement it.
+        vf = self.get_file()
+        vf.add_lines('notbase', [], [])
+        vf.add_lines('base', [], [])
+        try:
+            vf.fix_parents('notbase', ['base'])
+        except NotImplementedError:
+            return
+        self.assertEqual(['base'], vf.get_parents('notbase'))
+        # open again, check it stuck.
+        vf = self.get_file()
+        self.assertEqual(['base'], vf.get_parents('notbase'))
+
 
 class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
 

@@ -268,6 +268,22 @@ class KnitVersionedFile(VersionedFile):
     def create_empty(self, name, transport, mode=None):
         return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta, create=True)
     
+    def fix_parents(self, version, new_parents):
+        """Fix the parents list for version.
+        
+        This is done by appending a new version to the index
+        with identical data except for the parents list.
+        the parents list must be a superset of the current
+        list.
+        """
+        current_values = self._index._cache[version]
+        assert set(current_values[4]).difference(set(new_parents)) == set()
+        self._index.add_version(version,
+                                current_values[1], 
+                                current_values[2],
+                                current_values[3],
+                                new_parents)
+
     @staticmethod
     def get_suffixes():
         """See VersionedFile.get_suffixes()."""
@@ -945,14 +961,10 @@ class InterKnit(InterVersionedFile):
         for version in mismatched_versions:
             n1 = set(self.target.get_parents(version))
             n2 = set(self.source.get_parents(version))
-            # write a combined record to our history.
+            # write a combined record to our history preserving the current 
+            # parents as first in the list
             new_parents = self.target.get_parents(version) + list(n2.difference(n1))
-            current_values = self.target._index._cache[version]
-            self.target._index.add_version(version,
-                                    current_values[1], 
-                                    current_values[2],
-                                    current_values[3],
-                                    new_parents)
+            self.target.fix_parents(version, new_parents)
         pb.clear()
         return count
 
