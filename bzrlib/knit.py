@@ -69,6 +69,7 @@ from difflib import SequenceMatcher
 from gzip import GzipFile
 import os
 
+import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
         InvalidRevisionId, KnitCorrupt, KnitHeaderError, \
@@ -532,20 +533,30 @@ class KnitVersionedFile(VersionedFile):
                 raise RevisionNotPresent(version_id, self.filename)
             data_pos, length = self._index.get_position(version_id)
             version_id_records.append((version_id, data_pos, length))
-        for version_id, data, sha_value in \
-            self._data.read_records_iter(version_id_records):
-            method = self._index.get_method(version_id)
-            version_idx = self._index.lookup(version_id)
-            assert method in ('fulltext', 'line-delta')
-            if method == 'fulltext':
-                content = self.factory.parse_fulltext(data, version_idx)
-                for line in content.text():
-                    yield line
-            else:
-                delta = self.factory.parse_line_delta(data, version_idx)
-                for start, end, count, lines in delta:
-                    for origin, line in lines:
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        count = 0
+        total = len(version_id_records)
+        try:
+            for version_id, data, sha_value in \
+                self._data.read_records_iter(version_id_records):
+                pb.update('Walking content.', count, total)
+                method = self._index.get_method(version_id)
+                version_idx = self._index.lookup(version_id)
+                assert method in ('fulltext', 'line-delta')
+                if method == 'fulltext':
+                    content = self.factory.parse_fulltext(data, version_idx)
+                    for line in content.text():
                         yield line
+                else:
+                    delta = self.factory.parse_line_delta(data, version_idx)
+                    for start, end, count, lines in delta:
+                        for origin, line in lines:
+                            yield line
+                count +=1
+        except:
+            pb.update('Walking content.', total, total)
+            pb.finished()
+            raise
         
     def num_versions(self):
         """See VersionedFile.num_versions()."""
@@ -700,9 +711,11 @@ class _KnitIndex(_KnitComponentFile):
             self._history.append(version_id)
 
     def _iter_index(self, fp):
-        lines = fp.read()
-        for l in lines.splitlines(False):
+        for l in fp.readlines():
             yield l.split()
+        #lines = fp.read()
+        #for l in lines.splitlines(False):
+        #    yield l.split()
 
     def __init__(self, transport, filename, mode, create=False):
         _KnitComponentFile.__init__(self, transport, filename, mode)
@@ -712,17 +725,28 @@ class _KnitIndex(_KnitComponentFile):
         # so - wc -l of a knit index is != the number of uniqe names
         # in the weave.
         self._history = []
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            fp = self._transport.get(self._filename)
-            self.check_header(fp)
-            for rec in self._iter_index(fp):
-                parents = self._parse_parents(rec[4:])
-                self._cache_version(rec[0], rec[1].split(','), int(rec[2]), int(rec[3]),
-                    parents)
-        except NoSuchFile, e:
-            if mode != 'w' or not create:
-                raise
-            self.write_header()
+            count = 0
+            total = 1
+            try:
+                pb.update('read knit index', count, total)
+                fp = self._transport.get(self._filename)
+                self.check_header(fp)
+                for rec in self._iter_index(fp):
+                    count += 1
+                    total += 1
+                    pb.update('read knit index', count, total)
+                    parents = self._parse_parents(rec[4:])
+                    self._cache_version(rec[0], rec[1].split(','), int(rec[2]), int(rec[3]),
+                        parents)
+            except NoSuchFile, e:
+                if mode != 'w' or not create:
+                    raise
+                self.write_header()
+        finally:
+            pb.update('read knit index', total, total)
+            pb.finished()
 
     def _parse_parents(self, compressed_parents):
         """convert a list of string parent values into version ids.

@@ -900,7 +900,8 @@ class TestTransportImplementation(TestCaseInTempDir):
         else:
             transport.put('a', StringIO('01234567890'))
 
-        d = list(transport.readv('a', ((0, 1), (3, 1), (9, 1))))
+        d = list(transport.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
         self.assertEqual(d[0], (0, '0'))
-        self.assertEqual(d[1], (3, '3'))
-        self.assertEqual(d[2], (9, '9'))
+        self.assertEqual(d[1], (1, '1'))
+        self.assertEqual(d[2], (3, '34'))
+        self.assertEqual(d[3], (9, '9'))
