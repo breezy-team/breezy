@@ -19,9 +19,17 @@ from StringIO import StringIO
 from bzrlib.progress import *
 from bzrlib.tests import TestCase
 
+class FakeStack:
+    def __init__(self, top):
+        self.__top = top
+
+    def top(self):
+        return self.__top
+
 class TestProgress(TestCase):
     def setUp(self):
-        self.top = ChildProgress(stack=[DummyProgress()])
+        q = DummyProgress()
+        self.top = ChildProgress(_stack=FakeStack(q))
 
     def test_propogation(self):
         self.top.update('foobles', 1, 2)
@@ -29,13 +37,13 @@ class TestProgress(TestCase):
         self.assertEqual(self.top.current, 1)
         self.assertEqual(self.top.total, 2)
         self.assertEqual(self.top.child_fraction, 0)
-        child = ChildProgress(stack=[self.top])
+        child = ChildProgress(_stack=FakeStack(self.top))
         child.update('baubles', 2, 4)
         self.assertEqual(self.top.message, 'foobles')
         self.assertEqual(self.top.current, 1)
         self.assertEqual(self.top.total, 2)
         self.assertEqual(self.top.child_fraction, 0.5)
-        grandchild = ChildProgress(stack=[child])
+        grandchild = ChildProgress(_stack=FakeStack(child))
         grandchild.update('barbells', 1, 2)
         self.assertEqual(self.top.child_fraction, 0.625)
         self.assertEqual(child.child_fraction, 0.5)
@@ -60,7 +68,25 @@ class TestProgress(TestCase):
     def check_parent_handling(self, parentclass):
         top = parentclass(to_file=StringIO())
         top.update('foobles', 1, 2)
-        child = ChildProgress(stack=[top])
+        child = ChildProgress(_stack=FakeStack(top))
         child.update('baubles', 4, 4)
         top.update('lala', 2, 2)
         child.update('baubles', 4, 4)
+
+    def test_stacking(self):
+        self.check_stack(TTYProgressBar, ChildProgress)
+        self.check_stack(DotsProgressBar, ChildProgress)
+        self.check_stack(DummyProgress, DummyProgress)
+
+    def check_stack(self, parent_class, child_class):
+        stack = ProgressBarStack(klass=parent_class, to_file=StringIO())
+        parent = stack.get_nested()
+        try:
+            self.assertIs(parent.__class__, parent_class)
+            child = stack.get_nested()
+            try:
+                self.assertIs(child.__class__, child_class)
+            finally:
+                child.finished()
+        finally:
+            parent.finished()

@@ -89,17 +89,26 @@ class ProgressBarStack(object):
         self._stack = []
         self._klass = klass or TTYProgressBar
 
+    def top(self):
+        if len(self._stack) != 0:
+            return self._stack[-1]
+        else:
+            return None
+
     def get_nested(self):
         """Return a nested progress bar."""
-        # initial implementation - return a new bar each time.
-        new_bar = self._klass(to_file=self._to_file,
-                              show_pct=self._show_pct,
-                              show_spinner=self._show_spinner,
-                              show_eta=self._show_eta,
-                              show_bar=self._show_bar,
-                              show_count=self._show_count,
-                              to_messages_file=self._to_messages_file,
-                              _stack=self)
+        if len(self._stack) == 0:
+            func = self._klass
+        else:
+            func = self.top().child_progress
+        new_bar = func(to_file=self._to_file,
+                       show_pct=self._show_pct,
+                       show_spinner=self._show_spinner,
+                       show_eta=self._show_eta,
+                       show_bar=self._show_bar,
+                       show_count=self._show_count,
+                       to_messages_file=self._to_messages_file,
+                       _stack=self)
         self._stack.append(new_bar)
         return new_bar
 
@@ -146,6 +155,9 @@ class _BaseProgressBar(object):
         self.to_messages_file.write(fmt_string % args)
         self.to_messages_file.write('\n')
 
+    def child_progress(self, **kwargs):
+        return ChildProgress(**kwargs)
+
 
 class DummyProgress(_BaseProgressBar):
     """Progress-bar standin that does nothing.
@@ -167,6 +179,8 @@ class DummyProgress(_BaseProgressBar):
     def note(self, fmt_string, *args, **kwargs):
         """See _BaseProgressBar.note()."""
 
+    def child_progress(self, **kwargs):
+        return DummyProgress(**kwargs)
 
 class DotsProgressBar(_BaseProgressBar):
 
@@ -348,9 +362,9 @@ class TTYProgressBar(_BaseProgressBar):
 
 class ChildProgress(_BaseProgressBar):
     """A progress indicator that pushes its data to the parent"""
-    def __init__(self, stack, **kwargs):
-        super(_BaseProgressBar, self).__init__(stack=stack, **kwargs)
-        self.parent = stack[-1]
+    def __init__(self, _stack, **kwargs):
+        _BaseProgressBar.__init__(self, _stack=_stack, **kwargs)
+        self.parent = _stack.top()
         self.current = None
         self.total = None
         self.child_fraction = 0
@@ -373,6 +387,9 @@ class ChildProgress(_BaseProgressBar):
             mutter('clamping count of %d to %d' % (count, self.total))
             count = self.total
         self.parent.child_update(self.message, count, self.total)
+
+    def clear(self):
+        self.parent.clear()
 
  
 def str_tdelta(delt):
