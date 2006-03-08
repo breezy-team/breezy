@@ -23,14 +23,6 @@ import shutil
 import sys
 from unittest import TestSuite
 from warnings import warn
-try:
-    import xml.sax.saxutils
-except ImportError:
-    raise ImportError("We were unable to import 'xml.sax.saxutils',"
-                      " most likely you have an xml.pyc or xml.pyo file"
-                      " lying around in your bzrlib directory."
-                      " Please remove it.")
-
 
 import bzrlib
 import bzrlib.bzrdir as bzrdir
