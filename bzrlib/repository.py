@@ -300,16 +300,6 @@ class Repository(object):
         This determines the set of revisions which are involved, and then
         finds all file ids affected by those revisions.
         """
-        # TODO: jam 20060119 This code assumes that w.inclusions will
-        #       always be correct. But because of the presence of ghosts
-        #       it is possible to be wrong.
-        #       One specific example from Robert Collins:
-        #       Two branches, with revisions ABC, and AD
-        #       C is a ghost merge of D.
-        #       Inclusions doesn't recognize D as an ancestor.
-        #       If D is ever merged in the future, the weave
-        #       won't be fixed, because AD never saw revision C
-        #       to cause a conflict which would force a reweave.
         w = self.get_inventory_weave()
         from_set = set(w.get_ancestry(from_revid))
         to_set = set(w.get_ancestry(to_revid))
@@ -361,7 +351,15 @@ class Repository(object):
         w = self.get_inventory_weave()
         file_ids = set()
 
-        for lineno, insert, deletes, line in w.walk(changes):
+        # this code needs to read every line in every inventory for the
+        # inventories [changes]. Seeing a line twice is ok. Seeing a line
+        # not pesent in one of those inventories is unnecessary and not 
+        # harmful because we are filtering by the revision id marker in the
+        # inventory lines to only select file ids altered in one of those  
+        # revisions. We dont need to see all lines in the inventory because
+        # only those added in an inventory in rev X can contain a revision=X
+        # line.
+        for line in w.iter_lines_added_or_present_in_versions(changes):
             start = line.find('file_id="')+9
             if start < 9: continue
             end = line.find('"', start)

@@ -224,6 +224,51 @@ class VersionedFileTestMixIn(object):
         """Open the versioned file from disk again."""
         raise NotImplementedError(self.reopen_file)
 
+    def test_iter_lines_added_or_present_in_versions(self):
+        # test that we get at least an equalset of the lines added by
+        # versions in the weave 
+        # the ordering here is to make a tree so that dumb searches have
+        # more changes to muck up.
+        vf = self.get_file()
+        # add a base to get included
+        vf.add_lines('base', [], ['base\n'])
+        # add a ancestor to be included on one side
+        vf.add_lines('lancestor', [], ['lancestor\n'])
+        # add a ancestor to be included on the other side
+        vf.add_lines('rancestor', ['base'], ['rancestor\n'])
+        # add a child of rancestor with no eofile-nl
+        vf.add_lines('child', ['rancestor'], ['base\n', 'child\n'])
+        # add a child of lancestor and base to join the two roots
+        vf.add_lines('otherchild',
+                     ['lancestor', 'base'],
+                     ['base\n', 'lancestor\n', 'otherchild\n'])
+        def iter_with_versions(versions):
+            # now we need to see what lines are returned, and how often.
+            lines = {'base\n':0,
+                     'lancestor\n':0,
+                     'rancestor\n':0,
+                     'child\n':0,
+                     'otherchild\n':0,
+                     }
+            # iterate over the lines
+            for line in vf.iter_lines_added_or_present_in_versions(versions):
+                lines[line] += 1
+            return lines
+        lines = iter_with_versions(['child', 'otherchild'])
+        # we must see child and otherchild
+        self.assertTrue(lines['child\n'] > 0)
+        self.assertTrue(lines['otherchild\n'] > 0)
+        # we dont care if we got more than that.
+        
+        # test all lines
+        lines = iter_with_versions(None)
+        # all lines must be seen at least once
+        self.assertTrue(lines['base\n'] > 0)
+        self.assertTrue(lines['lancestor\n'] > 0)
+        self.assertTrue(lines['rancestor\n'] > 0)
+        self.assertTrue(lines['child\n'] > 0)
+        self.assertTrue(lines['otherchild\n'] > 0)
+        
 
 class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
 
@@ -364,5 +409,3 @@ class TestInterVersionedFile(TestCaseWithTransport):
             versionedfile.InterVersionedFile.unregister_optimiser(InterString)
         # now we should get the default InterVersionedFile object again.
         self.assertGetsDefaultInterVersionedFile(dummy_a, dummy_b)
-
-

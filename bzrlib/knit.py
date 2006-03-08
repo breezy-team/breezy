@@ -398,7 +398,7 @@ class KnitVersionedFile(VersionedFile):
         if self.has_version(version_id):
             raise RevisionAlreadyPresent(version_id, self.filename)
 
-        if True or __debug__:
+        if False or __debug__:
             for l in lines:
                 assert '\n' not in l[:-1]
 
@@ -466,6 +466,34 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.get_lines()."""
         return self._get_content(version_id).text()
 
+    def iter_lines_added_or_present_in_versions(self, version_ids=None):
+        """See VersionedFile.iter_lines_added_or_present_in_versions()."""
+        if version_ids is None:
+            version_ids = self.versions()
+        # we dont care about inclusions, the caller cares.
+        # but we need to setup a list of records to visit.
+        # we need version_id, position, length
+        version_id_records = []
+        for version_id in version_ids:
+            if not self.has_version(version_id):
+                raise RevisionNotPresent(version_id, self.filename)
+            data_pos, length = self._index.get_position(version_id)
+            version_id_records.append((version_id, data_pos, length))
+        for version_id, data, sha_value in \
+            self._data.read_records_iter(version_id_records):
+            method = self._index.get_method(version_id)
+            version_idx = self._index.lookup(version_id)
+            assert method in ('fulltext', 'line-delta')
+            if method == 'fulltext':
+                content = self.factory.parse_fulltext(data, version_idx)
+                for line in content.text():
+                    yield line
+            else:
+                delta = self.factory.parse_line_delta(data, version_idx)
+                for start, end, count, lines in delta:
+                    for origin, line in lines:
+                        yield line
+        
     def num_versions(self):
         """See VersionedFile.num_versions()."""
         return self._index.num_versions()
@@ -525,6 +553,7 @@ class KnitVersionedFile(VersionedFile):
 
         return self.factory.lower_fulltext(KnitContent(new_lines))
 
+    #@deprecated_method(zero_eight)
     def walk(self, version_ids):
         """See VersionedFile.walk."""
         # We take the short path here, and extract all relevant texts

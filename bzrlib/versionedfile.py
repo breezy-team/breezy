@@ -188,6 +188,21 @@ class VersionedFile(object):
             version_ids,
             ignore_missing)
 
+    def iter_lines_added_or_present_in_versions(self, version_ids=None):
+        """Iterate over the lines in the versioned file from version_ids.
+
+        This may return lines from other versions, and does not return the
+        specific version marker at this point. The api may be changed
+        during development to include the version that the versioned file
+        thinks is relevant, but given that such hints are just guesses,
+        its better not to have it if we dont need it.
+
+        NOTES: Lines are normalised: they will all have \n terminators.
+               Lines are returned in arbitrary order.
+        """
+        raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
+
+    @deprecated_method(zero_eight)
     def walk(self, version_ids=None):
         """Walk the versioned file as a weave-like structure, for
         versions relative to version_ids.  Yields sequence of (lineno,
@@ -198,6 +213,8 @@ class VersionedFile(object):
 
         :param version_ids: the version_ids to walk with respect to. If not
                             supplied the entire weave-like structure is walked.
+
+        walk is deprecated in favour of iter_lines_added_or_present_in_versions
         """
         raise NotImplementedError(self.walk)
 
@@ -218,7 +235,7 @@ class VersionedFile(object):
         inc_b = set(self.get_ancestry([ver_b]))
         inc_c = inc_a & inc_b
 
-        for lineno, insert, deleteset, line in self.walk():
+        for lineno, insert, deleteset, line in self.walk([ver_a, ver_b]):
             if deleteset & inc_c:
                 # killed in parent; can't be in either a or b
                 # not relevant to our work
