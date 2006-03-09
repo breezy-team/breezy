@@ -37,15 +37,15 @@ from bzrlib.osutils import (
                             sha_strings,
                             sha_string,
                             )
+from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
-from bzrlib.store.weave import WeaveStore
+from bzrlib.store.versioned import WeaveStore
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
-from bzrlib.transactions import PassThroughTransaction
+from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
 from bzrlib.weave import Weave
-from bzrlib.weavefile import read_weave, write_weave
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
 
@@ -557,7 +557,11 @@ class BzrDirPreSplitOut(BzrDir):
             self.open_workingtree().clone(result, basis=basis_tree)
         except errors.NotLocalUrl:
             # make a new one, this format always has to have one.
-            WorkingTreeFormat2().initialize(result)
+            try:
+                WorkingTreeFormat2().initialize(result)
+            except errors.NotLocalUrl:
+                # but we canot do it for remote trees.
+                pass
         return result
 
     def create_branch(self):
@@ -1288,6 +1292,7 @@ class ConvertBzrDir4To5(Converter):
                 self.bzrdir.transport.mkdir('weaves')
         except errors.NoSuchFile:
             self.bzrdir.transport.mkdir('weaves')
+        # deliberately not a WeaveFile as we want to build it up slowly.
         self.inv_weave = Weave('inventory')
         # holds in-memory weaves for all files
         self.text_weaves = {}
@@ -1340,15 +1345,17 @@ class ConvertBzrDir4To5(Converter):
         controlweaves = WeaveStore(self.bzrdir.transport, prefixed=False)
         weave_transport = self.bzrdir.transport.clone('weaves')
         weaves = WeaveStore(weave_transport, prefixed=False)
-        transaction = PassThroughTransaction()
+        transaction = WriteTransaction()
 
-        controlweaves.put_weave('inventory', self.inv_weave, transaction)
-        i = 0
         try:
+            i = 0
             for file_id, file_weave in self.text_weaves.items():
                 self.pb.update('writing weave', i, len(self.text_weaves))
-                weaves.put_weave(file_id, file_weave, transaction)
+                weaves._put_weave(file_id, file_weave, transaction)
                 i += 1
+            self.pb.update('inventory', 0, 1)
+            controlweaves._put_weave('inventory', self.inv_weave, transaction)
+            self.pb.update('inventory', 1, 1)
         finally:
             self.pb.clear()
 
@@ -1358,16 +1365,14 @@ class ConvertBzrDir4To5(Converter):
         self.bzrdir.transport.mkdir('revision-store')
         revision_transport = self.bzrdir.transport.clone('revision-store')
         # TODO permissions
-        revision_store = TextStore(revision_transport,
-                                   prefixed=False,
-                                   compressed=True)
+        _revision_store = TextRevisionStore(TextStore(revision_transport,
+                                                      prefixed=False,
+                                                      compressed=True))
         try:
+            transaction = bzrlib.transactions.WriteTransaction()
             for i, rev_id in enumerate(self.converted_revs):
                 self.pb.update('write revision', i, len(self.converted_revs))
-                rev_tmp = StringIO()
-                serializer_v5.write_revision(self.revisions[rev_id], rev_tmp)
-                rev_tmp.seek(0)
-                revision_store.add(rev_tmp, rev_id)
+                _revision_store.add_revision(self.revisions[rev_id], transaction)
         finally:
             self.pb.clear()
             
@@ -1379,15 +1384,15 @@ class ConvertBzrDir4To5(Converter):
         self.pb.update('loading revision',
                        len(self.revisions),
                        len(self.known_revisions))
-        if not self.branch.repository.revision_store.has_id(rev_id):
+        if not self.branch.repository.has_revision(rev_id):
             self.pb.clear()
             self.pb.note('revision {%s} not present in branch; '
                          'will be converted as a ghost',
                          rev_id)
             self.absent_revisions.add(rev_id)
         else:
-            rev_xml = self.branch.repository.revision_store.get(rev_id).read()
-            rev = serializer_v4.read_revision_from_string(rev_xml)
+            rev = self.branch.repository._revision_store.get_revision(rev_id,
+                self.branch.repository.get_transaction())
             for parent_id in rev.parent_ids:
                 self.known_revisions.add(parent_id)
                 self.to_read.append(parent_id)
@@ -1431,10 +1436,9 @@ class ConvertBzrDir4To5(Converter):
                     (file_id, rev.revision_id)
         new_inv_xml = serializer_v5.write_inventory_to_string(inv)
         new_inv_sha1 = sha_string(new_inv_xml)
-        self.inv_weave.add(rev.revision_id, 
-                           present_parents,
-                           new_inv_xml.splitlines(True),
-                           new_inv_sha1)
+        self.inv_weave.add_lines(rev.revision_id, 
+                                 present_parents,
+                                 new_inv_xml.splitlines(True))
         rev.inventory_sha1 = new_inv_sha1
 
     def _convert_revision_contents(self, rev, inv, present_parents):
@@ -1485,16 +1489,15 @@ class ConvertBzrDir4To5(Converter):
             if ie._unchanged(previous_ie):
                 ie.revision = previous_ie.revision
                 return
-        parent_indexes = map(w.lookup, previous_revisions)
         if ie.has_text():
             text = self.branch.repository.text_store.get(ie.text_id)
             file_lines = text.readlines()
             assert sha_strings(file_lines) == ie.text_sha1
             assert sum(map(len, file_lines)) == ie.text_size
-            w.add(rev_id, parent_indexes, file_lines, ie.text_sha1)
+            w.add_lines(rev_id, previous_revisions, file_lines)
             self.text_count += 1
         else:
-            w.add(rev_id, parent_indexes, [], None)
+            w.add_lines(rev_id, previous_revisions, [])
         ie.revision = rev_id
 
     def _make_order(self):

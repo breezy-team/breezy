@@ -53,6 +53,12 @@ class ReSign(TestCaseInTempDir):
 
         return wt
 
+    def assertEqualSignature(self, repo, revision_id):
+        """Assert a signature is stored correctly in repository."""
+        self.assertEqual(
+            Testament.from_revision(repo, revision_id).as_short_text(),
+            repo.get_signature_text(revision_id))
+
     def test_resign(self):
         #Test re signing of data.
         wt = self.setup_tree()
@@ -61,14 +67,10 @@ class ReSign(TestCaseInTempDir):
         self.monkey_patch_gpg()
         self.run_bzr('re-sign', '-r', 'revid:A')
 
-        self.assertEqual(
-            Testament.from_revision(repo, 'A').as_short_text(),
-            repo.revision_store.get('A', 'sig').read())
+        self.assertEqualSignature(repo, 'A')
 
         self.run_bzr('re-sign', 'B')
-        self.assertEqual(
-            Testament.from_revision(repo, 'B').as_short_text(),
-            repo.revision_store.get('B', 'sig').read())
+        self.assertEqualSignature(repo, 'B')
             
     def test_resign_range(self):
         wt = self.setup_tree()
@@ -76,15 +78,9 @@ class ReSign(TestCaseInTempDir):
 
         self.monkey_patch_gpg()
         self.run_bzr('re-sign', '-r', '1..')
-        self.assertEqual(
-            Testament.from_revision(repo, 'A').as_short_text(),
-            repo.revision_store.get('A', 'sig').read())
-        self.assertEqual(
-            Testament.from_revision(repo, 'B').as_short_text(),
-            repo.revision_store.get('B', 'sig').read())
-        self.assertEqual(
-            Testament.from_revision(repo, 'C').as_short_text(),
-            repo.revision_store.get('C', 'sig').read())
+        self.assertEqualSignature(repo, 'A')
+        self.assertEqualSignature(repo, 'B')
+        self.assertEqualSignature(repo, 'C')
 
     def test_resign_multiple(self):
         wt = self.setup_tree()
@@ -92,14 +88,6 @@ class ReSign(TestCaseInTempDir):
 
         self.monkey_patch_gpg()
         self.run_bzr('re-sign', 'A', 'B', 'C')
-        self.assertEqual(
-            Testament.from_revision(repo, 'A').as_short_text(),
-            repo.revision_store.get('A', 'sig').read())
-        self.assertEqual(
-            Testament.from_revision(repo, 'B').as_short_text(),
-            repo.revision_store.get('B', 'sig').read())
-        self.assertEqual(
-            Testament.from_revision(repo, 'C').as_short_text(),
-            repo.revision_store.get('C', 'sig').read())
-
-
+        self.assertEqualSignature(repo, 'A')
+        self.assertEqualSignature(repo, 'B')
+        self.assertEqualSignature(repo, 'C')

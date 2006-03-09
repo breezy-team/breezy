@@ -242,10 +242,10 @@ class TestCommonAncestor(TestCaseWithTransport):
                           revisions_2[4])
         self.assertEqual(common_ancestor(revisions[4], revisions_2[5], sources),
                           revisions_2[4])
-        self.assertEqual(common_ancestor(revisions[5], revisions_2[6], sources),
-                          revisions[4]) # revisions_2[5] is equally valid
-        self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
-                          revisions[4]) # revisions_2[5] is equally valid
+        self.assertTrue(common_ancestor(revisions[5], revisions_2[6], sources) in
+                        (revisions[4], revisions_2[5]))
+        self.assertTrue(common_ancestor(revisions_2[6], revisions[5], sources),
+                        (revisions[4], revisions_2[5]))
         self.assertEqual(None, common_ancestor(None, revisions[5], sources))
 
     def test_combined(self):
@@ -281,3 +281,23 @@ class TestCommonAncestor(TestCaseWithTransport):
         rev = tree.branch.repository.get_revision('3')
         history = rev.get_history(tree.branch.repository)
         self.assertEqual([None, '1', '2' ,'3'], history)
+
+
+class TestMultipleRevisionSources(TestCaseWithTransport):
+    """Tests for the MultipleRevisionSources adapter."""
+
+    def test_get_revision_graph_merges_ghosts(self):
+        # when we ask for the revision graph for B, which
+        # is in repo 1 with a ghost of A, and which is not
+        # in repo 2, which has A, the revision_graph()
+        # should return A and B both.
+        tree_1 = self.make_branch_and_tree('1')
+        tree_1.add_pending_merge('A')
+        tree_1.commit('foo', rev_id='B', allow_pointless=True)
+        tree_2 = self.make_branch_and_tree('2')
+        tree_2.commit('bar', rev_id='A', allow_pointless=True)
+        source = MultipleRevisionSources(tree_1.branch.repository,
+                                         tree_2.branch.repository)
+        self.assertEqual({'B':['A'],
+                          'A':[]},
+                         source.get_revision_graph('B'))

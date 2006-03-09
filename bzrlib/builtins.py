@@ -495,7 +495,8 @@ class cmd_push(Command):
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
         try:
-            br_to = Branch.open(location)
+            dir_to = bzrlib.bzrdir.BzrDir.open(location)
+            br_to = dir_to.open_branch()
         except NotBranchError:
             # create a branch.
             transport = get_transport(location).clone('..')
@@ -520,16 +521,19 @@ class cmd_push(Command):
                         if new_transport.base == transport.base:
                             raise BzrCommandError("Could not creeate "
                                                   "path prefix.")
-            br_to = bzrlib.bzrdir.BzrDir.create_branch_convenience(location)
+            dir_to = br_from.bzrdir.clone(location)
+            br_to = dir_to.open_branch()
         old_rh = br_to.revision_history()
         try:
             try:
-                tree_to = br_to.working_tree()
-            except NoWorkingTree:
+                tree_to = dir_to.open_workingtree()
+            except errors.NotLocalUrl:
                 # TODO: This should be updated for branches which don't have a
                 # working tree, as opposed to ones where we just couldn't 
                 # update the tree.
                 warning('Unable to update the working tree of: %s' % (br_to.base,))
+                count = br_to.pull(br_from, overwrite)
+            except NoWorkingTree:
                 count = br_to.pull(br_from, overwrite)
             else:
                 count = tree_to.pull(br_from, overwrite)
@@ -1782,10 +1786,17 @@ class cmd_merge(Command):
     will be used as a BASE, and the second one as OTHER.  Revision
     numbers are always relative to the specified branch.
 
-    By default bzr will try to merge in all new work from the other
+    By default, bzr will try to merge in all new work from the other
     branch, automatically determining an appropriate base.  If this
     fails, you may need to give an explicit base.
     
+    Merge will do its best to combine the changes in two branches, but there
+    are some kinds of problems only a human can fix.  When it encounters those,
+    it will mark a conflict.  A conflict means that you need to fix something,
+    before you should commit.
+
+    Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
+
     Examples:
 
     To merge the latest revision from bzr.dev
@@ -1833,12 +1844,16 @@ class cmd_merge(Command):
 
                 base = [branch, revision[0].in_history(b).revno]
                 other = [branch, revision[1].in_history(b).revno]
-
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            conflict_count = merge(other, base, check_clean=(not force),
-                                   merge_type=merge_type, reprocess=reprocess,
-                                   show_base=show_base, 
-                                   pb=bzrlib.ui.ui_factory.progress_bar())
+            try:
+                conflict_count = merge(other, base, check_clean=(not force),
+                                       merge_type=merge_type, 
+                                       reprocess=reprocess,
+                                       show_base=show_base, 
+                                       pb=pb)
+            finally:
+                pb.finished()
             if conflict_count != 0:
                 return 1
             else:
@@ -1942,8 +1957,13 @@ class cmd_revert(Command):
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:
             rev_id = revision[0].in_history(tree.branch).rev_id
-        tree.revert(file_list, tree.branch.repository.revision_tree(rev_id),
-                    not no_backup, bzrlib.ui.ui_factory.progress_bar())
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            tree.revert(file_list, 
+                        tree.branch.repository.revision_tree(rev_id),
+                        not no_backup, pb)
+        finally:
+            pb.finished()
 
 
 class cmd_assert_fail(Command):

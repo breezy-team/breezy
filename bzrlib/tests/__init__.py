@@ -89,7 +89,9 @@ def packages_to_test():
     import bzrlib.tests.branch_implementations
     import bzrlib.tests.bzrdir_implementations
     import bzrlib.tests.interrepository_implementations
+    import bzrlib.tests.interversionedfile_implementations
     import bzrlib.tests.repository_implementations
+    import bzrlib.tests.revisionstore_implementations
     import bzrlib.tests.workingtree_implementations
     return [
             bzrlib.doc,
@@ -97,7 +99,9 @@ def packages_to_test():
             bzrlib.tests.branch_implementations,
             bzrlib.tests.bzrdir_implementations,
             bzrlib.tests.interrepository_implementations,
+            bzrlib.tests.interversionedfile_implementations,
             bzrlib.tests.repository_implementations,
+            bzrlib.tests.revisionstore_implementations,
             bzrlib.tests.workingtree_implementations,
             ]
 
@@ -914,6 +918,7 @@ def test_suite():
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_inv',
+                   'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
@@ -932,7 +937,6 @@ def test_suite():
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revprops',
-                   'bzrlib.tests.test_reweave',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
@@ -951,6 +955,7 @@ def test_suite():
                    'bzrlib.tests.test_ui',
                    'bzrlib.tests.test_uncommit',
                    'bzrlib.tests.test_upgrade',
+                   'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',

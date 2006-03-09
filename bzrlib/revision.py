@@ -17,7 +17,9 @@
 # TODO: Some kind of command-line display of revision properties: 
 # perhaps show them in log -v and allow them as options to the commit command.
 
+
 import bzrlib.errors
+import bzrlib.errors as errors
 from bzrlib.graph import node_distances, select_farthest, all_descendants
 from bzrlib.osutils import contains_whitespace
 from bzrlib.progress import DummyProgress
@@ -160,13 +162,8 @@ def __get_closest(intersection):
 
 def revision_graph(revision, revision_source):
     """Produce a graph of the ancestry of the specified revision.
-    Return root, ancestors map, descendants map
-
-    TODO: Produce graphs with the NULL revision as root, so that we can find
-    a common even when trees are not branches don't represent a single line
-    of descent.
-    RBC: 20051024: note that when we have two partial histories, this may not
-         be possible. But if we are willing to pretend :)... sure.
+    
+    :return: root, ancestors map, descendants map
     """
     revision_source.lock_read()
     try:
@@ -174,62 +171,35 @@ def revision_graph(revision, revision_source):
     finally:
         revision_source.unlock()
 
+
 def _revision_graph(revision, revision_source):
     """See revision_graph."""
+    from bzrlib.tsort import topo_sort
+    graph = revision_source.get_revision_graph(revision)
+    # mark all no-parent revisions as being NULL_REVISION parentage.
+    for node, parents in graph.items():
+        if len(parents) == 0:
+            graph[node] = [NULL_REVISION]
+    # add NULL_REVISION to the graph
+    graph[NULL_REVISION] = []
+
+    # pick a root. If there are multiple roots
+    # this could pick a random one.
+    topo_order = topo_sort(graph.items())
+    root = topo_order[0]
+
     ancestors = {}
     descendants = {}
-    lines = [revision]
-    root = None
-    descendants[revision] = {}
-    while len(lines) > 0:
-        new_lines = set()
-        for line in lines:
-            if line == NULL_REVISION:
-                parents = []
-                root = NULL_REVISION
-            else:
-                try:
-                    rev = revision_source.get_revision(line)
-                    parents = list(rev.parent_ids)
-                    if len(parents) == 0:
-                        parents = [NULL_REVISION]
-                except bzrlib.errors.NoSuchRevision:
-                    if line == revision:
-                        raise
-                    parents = None
-            if parents is not None:
-                for parent in parents:
-                    if parent not in ancestors:
-                        new_lines.add(parent)
-                    if parent not in descendants:
-                        descendants[parent] = {}
-                    descendants[parent][line] = 1
-            if parents is not None:
-                ancestors[line] = set(parents)
-        lines = new_lines
-    if root is None:
-        # The history for revision becomes inaccessible without
-        # actually hitting a no-parents revision. This then
-        # makes these asserts below trigger. So, if root is None
-        # determine the actual root by walking the accessible tree
-        # and then stash NULL_REVISION at the end.
-        root = NULL_REVISION
-        descendants[root] = {}
-        # for every revision, check we can access at least
-        # one parent, if we cant, add NULL_REVISION and
-        # a link
-        for rev in ancestors:
-            if len(ancestors[rev]) == 0:
-                raise RuntimeError('unreachable code ?!')
-            ok = False
-            for parent in ancestors[rev]:
-                if parent in ancestors:
-                    ok = True
-            if ok:
-                continue
-            descendants[root][rev] = 1
-            ancestors[rev].add(root)
-        ancestors[root] = set()
+
+    # map the descendants of the graph.
+    # and setup our set based return graph.
+    for node in graph.keys():
+        descendants[node] = {}
+    for node, parents in graph.items():
+        for parent in parents:
+            descendants[parent][node] = 1
+        ancestors[node] = set(parents)
+
     assert root not in descendants[root]
     assert root not in ancestors[root]
     return root, ancestors, descendants
@@ -238,9 +208,10 @@ def _revision_graph(revision, revision_source):
 def combined_graph(revision_a, revision_b, revision_source):
     """Produce a combined ancestry graph.
     Return graph root, ancestors map, descendants map, set of common nodes"""
-    root, ancestors, descendants = revision_graph(revision_a, revision_source)
-    root_b, ancestors_b, descendants_b = revision_graph(revision_b, 
-                                                        revision_source)
+    root, ancestors, descendants = revision_graph(
+        revision_a, revision_source)
+    root_b, ancestors_b, descendants_b = revision_graph(
+        revision_b, revision_source)
     if root != root_b:
         raise bzrlib.errors.NoCommonRoot(revision_a, revision_b)
     common = set()
@@ -265,7 +236,9 @@ def common_ancestor(revision_a, revision_b, revision_source,
         try:
             pb.update('Picking ancestor', 1, 3)
             root, ancestors, descendants, common = \
-                combined_graph(revision_a, revision_b, revision_source)
+                combined_graph(revision_a,
+                               revision_b,
+                               revision_source)
         except bzrlib.errors.NoCommonRoot:
             raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
             
@@ -287,6 +260,14 @@ class MultipleRevisionSources(object):
         assert len(args) != 0
         self._revision_sources = args
 
+    def revision_parents(self, revision_id):
+        for source in self._revision_sources:
+            try:
+                return source.revision_parents(revision_id)
+            except (errors.WeaveRevisionNotPresent, errors.NoSuchRevision), e:
+                pass
+        raise e
+
     def get_revision(self, revision_id):
         for source in self._revision_sources:
             try:
@@ -295,6 +276,46 @@ class MultipleRevisionSources(object):
                 pass
         raise e
 
+    def get_revision_graph(self, revision_id):
+        # we could probe incrementally until the pending
+        # ghosts list stop growing, but its cheaper for now
+        # to just ask for the complete graph for each repository.
+        graphs = []
+        for source in self._revision_sources:
+            ghost_graph = source.get_revision_graph_with_ghosts()
+            graphs.append(ghost_graph)
+        absent = 0
+        for graph in graphs:
+            if not revision_id in graph.get_ancestors():
+                absent += 1
+        if absent == len(graphs):
+            raise errors.NoSuchRevision(self._revision_sources[0], revision_id)
+
+        # combine the graphs
+        result = {}
+        pending = set([revision_id])
+        def find_parents(node_id):
+            """find the parents for node_id."""
+            for graph in graphs:
+                ancestors = graph.get_ancestors()
+                try:
+                    return ancestors[node_id]
+                except KeyError:
+                    pass
+            raise errors.NoSuchRevision(self._revision_sources[0], node_id)
+        while len(pending):
+            # all the graphs should have identical parent lists
+            node_id = pending.pop()
+            try:
+                result[node_id] = find_parents(node_id)
+                for parent_node in result[node_id]:
+                    if not parent_node in result:
+                        pending.add(parent_node)
+            except errors.NoSuchRevision:
+                # ghost, ignore it.
+                pass
+        return result
+
     def lock_read(self):
         for source in self._revision_sources:
             source.lock_read()
@@ -302,6 +323,7 @@ class MultipleRevisionSources(object):
     def unlock(self):
         for source in self._revision_sources:
             source.unlock()
+
 
 def get_intervening_revisions(ancestor_id, rev_id, rev_source, 
                               revision_history=None):

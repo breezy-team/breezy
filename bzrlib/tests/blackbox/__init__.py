@@ -93,12 +93,18 @@ class TestUIFactory(ui.UIFactory):
     def clear(self):
         """See progress.ProgressBar.clear()."""
 
+    def finished(self):
+        """See progress.ProgressBar.finished()."""
+
     def note(self, fmt_string, *args, **kwargs):
         """See progress.ProgressBar.note()."""
         print fmt_string % args
 
     def progress_bar(self):
         return self
-        
+    
+    def nested_progress_bar(self):
+        return self
+
     def update(self, message, count=None, total=None):
         """See progress.ProgressBar.update()."""

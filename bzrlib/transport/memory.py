@@ -93,6 +93,7 @@ class MemoryTransport(Transport):
         self._check_parent(_abspath)
         orig_content, orig_mode = self._files.get(_abspath, ("", None))
         self._files[_abspath] = (orig_content + f.read(), orig_mode)
+        return len(orig_content)
 
     def _check_parent(self, _abspath):
         dir = os.path.dirname(_abspath)
