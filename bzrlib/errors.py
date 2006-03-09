@@ -300,11 +300,17 @@ class ReadOnlyError(LockError):
         self.obj = obj
 
 
-class BranchNotLocked(LockError):
-    """Branch %(branch)r is not locked"""
-    def __init__(self, branch):
-        # XXX: sometimes called with a LockableFiles instance not a Branch
-        self.branch = branch
+class OutSideTransaction(BzrNewError):
+    """A transaction related operation was attempted after the transaction finished."""
+
+
+class ObjectNotLocked(LockError):
+    """%(obj)r is not locked"""
+    # this can indicate that any particular object is not locked; see also
+    # LockNotHeld which means that a particular *lock* object is not held by
+    # the caller -- perhaps they should be unified.
+    def __init__(self, obj):
+        self.obj = obj
 
 
 class ReadOnlyObjectDirtiedError(ReadOnlyError):
@@ -346,12 +352,6 @@ class LockNotHeld(LockError):
         self.lock = lock
 
 
-class BranchNotLocked(LockError):
-    """Branch %(branch)r not locked"""
-    def __init__(self, branch):
-        self.branch = branch
-
-
 class PointlessCommit(BzrNewError):
     """No changes to commit"""
 
@@ -368,8 +368,10 @@ class UpToDateFormat(BzrNewError):
         self.format = format
 
 
+
 class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
+
 
 class NoSuchRevision(BzrError):
     def __init__(self, branch, revision):
@@ -415,6 +417,7 @@ class NoCommonRoot(BzrError):
         BzrError.__init__(self, msg)
 
 
+
 class NotAncestor(BzrError):
     def __init__(self, rev_id, not_ancestor_id):
         msg = "Revision %s is not an ancestor of %s" % (not_ancestor_id, 
@@ -450,13 +453,48 @@ class UnlistableStore(BzrError):
         BzrError.__init__(self, "Store %s is not listable" % store)
 
 
+
 class UnlistableBranch(BzrError):
     def __init__(self, br):
         BzrError.__init__(self, "Stores for branch %s are not listable" % br)
 
 
+class BoundBranchOutOfDate(BzrNewError):
+    """Bound branch %(branch)s is out of date with master branch %(master)s."""
+    def __init__(self, branch, master):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.master = master
+
+        
+class CommitToDoubleBoundBranch(BzrNewError):
+    """Cannot commit to branch %(branch)s. It is bound to %(master)s, which is bound to %(remote)s."""
+    def __init__(self, branch, master, remote):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.master = master
+        self.remote = remote
+
+
+class OverwriteBoundBranch(BzrNewError):
+    """Cannot pull --overwrite to a branch which is bound %(branch)s"""
+    def __init__(self, branch):
+        BzrNewError.__init__(self)
+        self.branch = branch
+
+
+class BoundBranchConnectionFailure(BzrNewError):
+    """Unable to connect to target of bound branch %(branch)s => %(target)s: %(error)s"""
+    def __init__(self, branch, target, error):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.target = target
+        self.error = error
+
+
 class WeaveError(BzrNewError):
     """Error in processing weave: %(message)s"""
+
     def __init__(self, message=None):
         BzrNewError.__init__(self)
         self.message = message
@@ -465,6 +503,7 @@ class WeaveError(BzrNewError):
 class WeaveRevisionAlreadyPresent(WeaveError):
     """Revision {%(revision_id)s} already present in %(weave)s"""
     def __init__(self, revision_id, weave):
+
         WeaveError.__init__(self)
         self.revision_id = revision_id
         self.weave = weave
@@ -472,6 +511,7 @@ class WeaveRevisionAlreadyPresent(WeaveError):
 
 class WeaveRevisionNotPresent(WeaveError):
     """Revision {%(revision_id)s} not present in %(weave)s"""
+
     def __init__(self, revision_id, weave):
         WeaveError.__init__(self)
         self.revision_id = revision_id
@@ -480,6 +520,7 @@ class WeaveRevisionNotPresent(WeaveError):
 
 class WeaveFormatError(WeaveError):
     """Weave invariant violated: %(what)s"""
+
     def __init__(self, what):
         WeaveError.__init__(self)
         self.what = what
@@ -511,6 +552,49 @@ class WeaveTextDiffers(WeaveError):
         self.revision_id = revision_id
         self.weave_a = weave_a
         self.weave_b = weave_b
+
+
+class VersionedFileError(BzrNewError):
+    """Versioned file error."""
+
+
+class RevisionNotPresent(VersionedFileError):
+    """Revision {%(revision_id)s} not present in %(file_id)s."""
+
+    def __init__(self, revision_id, file_id):
+        VersionedFileError.__init__(self)
+        self.revision_id = revision_id
+        self.file_id = file_id
+
+
+class RevisionAlreadyPresent(VersionedFileError):
+    """Revision {%(revision_id)s} already present in %(file_id)s."""
+
+    def __init__(self, revision_id, file_id):
+        VersionedFileError.__init__(self)
+        self.revision_id = revision_id
+        self.file_id = file_id
+
+
+class KnitError(BzrNewError):
+    """Knit error"""
+
+
+class KnitHeaderError(KnitError):
+    """Knit header error: %(badline)r unexpected"""
+
+    def __init__(self, badline):
+        KnitError.__init__(self)
+        self.badline = badline
+
+
+class KnitCorrupt(KnitError):
+    """Knit %(filename)s corrupt: %(how)s"""
+
+    def __init__(self, filename, how):
+        KnitError.__init__(self)
+        self.filename = filename
+        self.how = how
 
 
 class NoSuchExportFormat(BzrNewError):
@@ -618,8 +702,10 @@ class MissingText(BzrNewError):
         self.text_revision = text_revision
         self.file_id = file_id
 
+
 class DuplicateKey(BzrNewError):
     """Key %(key)s is already present in map"""
+
 
 class MalformedTransform(BzrNewError):
     """Tree transform is malformed %(conflicts)r"""
@@ -709,5 +795,31 @@ class OutOfDateTree(BzrNewError):
         BzrNewError.__init__(self)
         self.tree = tree
 
+
 class MergeModifiedFormatError(BzrNewError):
     """Error in merge modified format"""
+
+
+class CorruptRepository(BzrNewError):
+    """An error has been detected in the repository %(repo_path)s.
+Please run bzr reconcile on this repository."""
+
+    def __init__(self, repo):
+        BzrNewError.__init__(self)
+        self.repo_path = repo.bzrdir.root_transport.base
+
+
+class UpgradeRequired(BzrNewError):
+    """To use this feature you must upgrade your branch at %(path)s."""
+
+    def __init__(self, path):
+        BzrNewError.__init__(self)
+        self.path = path
+
+
+class LocalRequiresBoundBranch(BzrNewError):
+    """Cannot perform local-only commits on unbound branches."""
+
+
+class MissingProgressBarFinish(BzrNewError):
+    """A nested progress bar was not 'finished' correctly."""

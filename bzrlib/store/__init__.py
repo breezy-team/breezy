@@ -32,6 +32,7 @@ from zlib import adler32
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
+from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 import bzrlib.transport as transport
 from bzrlib.transport.local import LocalTransport
@@ -86,6 +87,20 @@ class Store(object):
     def listable(self):
         """Return True if this store is able to be listed."""
         return hasattr(self, "__iter__")
+
+    def copy_all_ids(self, store_from, pb=None):
+        """Copy all the file ids from store_from into self."""
+        if not store_from.listable():
+            raise UnlistableStore(store_from)
+        ids = []
+        for count, file_id in enumerate(store_from):
+            if pb:
+                pb.update('listing files', count, count)
+            ids.append(file_id)
+        if pb:
+            pb.clear()
+        mutter('copy_all ids: %r', ids)
+        self.copy_multi(store_from, ids, pb=pb)
 
     def copy_multi(self, other, ids, pb=None, permit_failure=False):
         """Copy texts for ids from other into self.
@@ -312,20 +327,10 @@ def ImmutableMemoryStore():
     return bzrlib.store.text.TextStore(transport.memory.MemoryTransport())
         
 
+@deprecated_function(zero_eight)
 def copy_all(store_from, store_to, pb=None):
     """Copy all ids from one store to another."""
-    # TODO: Optional progress indicator
-    if not store_from.listable():
-        raise UnlistableStore(store_from)
-    ids = []
-    for count, file_id in enumerate(store_from):
-        if pb:
-            pb.update('listing files', count, count)
-        ids.append(file_id)
-    if pb:
-        pb.clear()
-    mutter('copy_all ids: %r', ids)
-    store_to.copy_multi(store_from, ids, pb=pb)
+    store_to.copy_all_ids(store_from, pb)
 
 
 def hash_prefix(fileid):

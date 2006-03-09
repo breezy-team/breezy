@@ -22,6 +22,7 @@ import time
 
 
 import bzrlib.diff as diff
+from bzrlib.missing import find_unmerged
 from bzrlib.osutils import format_date
 from bzrlib.symbol_versioning import *
 
@@ -34,16 +35,36 @@ def _countiter(it):
     return i        
 
 
+def plural(n, base='', pl=None):
+    if n == 1:
+        return base
+    elif pl != None:
+        return pl
+    else:
+        return 's'
+
+
 @deprecated_function(zero_eight)
 def show_info(b):
     """Please see show_bzrdir_info."""
     return show_bzrdir_info(b.bzrdir)
 
+
 def show_bzrdir_info(a_bzrdir):
     """Output to stdout the 'info' for a_bzrdir."""
 
     working = a_bzrdir.open_workingtree()
-    b = a_bzrdir.open_branch()
+    working.lock_read()
+    try:
+        show_tree_info(working)
+    finally:
+        working.unlock()
+
+
+def show_tree_info(working):
+    """Output to stdout the 'info' for working."""
+
+    b = working.branch
     
     if working.bzrdir != b.bzrdir:
         print 'working tree format:', working._format
@@ -55,13 +76,8 @@ def show_bzrdir_info(a_bzrdir):
         format = b.bzrdir._format
     print 'branch format:', format
 
-    def plural(n, base='', pl=None):
-        if n == 1:
-            return base
-        elif pl != None:
-            return pl
-        else:
-            return 's'
+    if b.get_bound_location():
+        print 'bound to branch:',  b.get_bound_location()
 
     count_version_dirs = 0
 
@@ -71,6 +87,14 @@ def show_bzrdir_info(a_bzrdir):
     history = b.revision_history()
     
     print
+    # Try with inaccessible branch ?
+    master = b.get_master_branch()
+    if master:
+        local_extra, remote_extra = find_unmerged(b, b.get_master_branch())
+        if remote_extra:
+            print 'Branch is out of date: missing %d revision%s.' % (
+                len(remote_extra), plural(len(remote_extra)))
+
     if len(history) and working.last_revision() != history[-1]:
         try:
             missing_count = len(history) - history.index(working.last_revision())
@@ -131,7 +155,7 @@ def show_bzrdir_info(a_bzrdir):
 
     print
     print 'revision store:'
-    c, t = b.repository.revision_store.total_size()
+    c, t = b.repository._revision_store.total_size(b.repository.get_transaction())
     print '  %8d revision%s' % (c, plural(c))
     print '  %8d kB' % (t/1024)
 

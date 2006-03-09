@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,19 +15,19 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Locking wrappers.
+"""Locking using OS file locks or file existence.
 
-This only does local locking using OS locks for now.
+Note: This method of locking is generally deprecated in favour of LockDir, but
+is used to lock local WorkingTrees, and by some old formats.  It's accessed
+through Transport.lock_read(), etc.
 
 This module causes two methods, lock() and unlock() to be defined in
 any way that works on the current platform.
 
 It is not specified whether these locks are reentrant (i.e. can be
 taken repeatedly by a single process) or whether they exclude
-different threads in a single process.  
-
-Eventually we may need to use some kind of lock representation that
-will work on a dumb filesystem without actual locking primitives.
+different threads in a single process.  That reentrancy is provided by 
+LockableFiles.
 
 This defines two classes: ReadLock and WriteLock, which can be
 implemented in different ways on different platforms.  Both have an
@@ -250,10 +250,3 @@ except ImportError:
         except ImportError:
             raise NotImplementedError("please write a locking method "
                                       "for platform %r" % sys.platform)
-
-
-
-
-
-
-

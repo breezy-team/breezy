@@ -87,6 +87,7 @@ Example usage:
 >>> # typically will be obtained from a BzrDir, Branch, etc
 >>> t = MemoryTransport()
 >>> l = LockDir(t, 'sample-lock')
+>>> l.create()
 >>> l.wait_lock()
 >>> # do something here
 >>> l.unlock()
@@ -95,6 +96,7 @@ Example usage:
 
 import os
 import time
+from warnings import warn
 from StringIO import StringIO
 
 import bzrlib.config
@@ -128,6 +130,9 @@ from bzrlib.rio import RioWriter, read_stanza, Stanza
 # TODO: Some kind of callback run while polling a lock to show progress
 # indicators.
 
+# TODO: Make sure to pass the right file and directory mode bits to all
+# files/dirs created.
+
 _DEFAULT_TIMEOUT_SECONDS = 300
 _DEFAULT_POLL_SECONDS = 0.5
 
@@ -136,7 +141,7 @@ class LockDir(object):
 
     __INFO_NAME = '/info'
 
-    def __init__(self, transport, path):
+    def __init__(self, transport, path, file_modebits=0644, dir_modebits=0755):
         """Create a new LockDir object.
 
         The LockDir is initially unlocked - this just creates the object.
@@ -151,7 +156,11 @@ class LockDir(object):
         self.transport = transport
         self.path = path
         self._lock_held = False
-        self._info_path = path + self.__INFO_NAME
+        self._fake_read_lock = False
+        self._held_dir = path + '/held'
+        self._held_info_path = self._held_dir + self.__INFO_NAME
+        self._file_modebits = file_modebits
+        self._dir_modebits = dir_modebits
         self.nonce = rand_chars(20)
 
     def __repr__(self):
@@ -161,26 +170,34 @@ class LockDir(object):
 
     is_held = property(lambda self: self._lock_held)
 
+    def create(self):
+        """Create the on-disk lock.
+
+        This is typically only called when the object/directory containing the 
+        directory is first created.  The lock is not held when it's created.
+        """
+        if self.transport.is_readonly():
+            raise UnlockableTransport(self.transport)
+        self.transport.mkdir(self.path)
+
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
         
         If you wish to block until the lock can be obtained, call wait_lock()
         instead.
         """
+        if self._fake_read_lock:
+            raise LockContention(self)
         if self.transport.is_readonly():
             raise UnlockableTransport(self.transport)
         try:
-            tmpname = '%s.pending.%s.tmp' % (self.path, rand_chars(20))
+            tmpname = '%s/pending.%s.tmp' % (self.path, rand_chars(20))
             self.transport.mkdir(tmpname)
             sio = StringIO()
             self._prepare_info(sio)
             sio.seek(0)
             self.transport.put(tmpname + self.__INFO_NAME, sio)
-            # FIXME: this turns into os.rename on posix, but into a fancy rename 
-            # on Windows that may overwrite existing directory trees.  
-            # NB: posix rename will overwrite empty directories, but not 
-            # non-empty directories.
-            self.transport.move(tmpname, self.path)
+            self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
             self.confirm()
             return
@@ -192,12 +209,15 @@ class LockDir(object):
     def unlock(self):
         """Release a held lock
         """
+        if self._fake_read_lock:
+            self._fake_read_lock = False
+            return
         if not self._lock_held:
             raise LockNotHeld(self)
         # rename before deleting, because we can't atomically remove the whole
         # tree
-        tmpname = '%s.releasing.%s.tmp' % (self.path, rand_chars(20))
-        self.transport.rename(self.path, tmpname)
+        tmpname = '%s/releasing.%s.tmp' % (self.path, rand_chars(20))
+        self.transport.rename(self._held_dir, tmpname)
         self._lock_held = False
         self.transport.delete(tmpname + self.__INFO_NAME)
         self.transport.rmdir(tmpname)
@@ -228,8 +248,8 @@ class LockDir(object):
             return
         if current_info != dead_holder_info:
             raise LockBreakMismatch(self, current_info, dead_holder_info)
-        tmpname = '%s.broken.%s.tmp' % (self.path, rand_chars(20))
-        self.transport.rename(self.path, tmpname)
+        tmpname = '%s/broken.%s.tmp' % (self.path, rand_chars(20))
+        self.transport.rename(self._held_dir, tmpname)
         # check that we actually broke the right lock, not someone else;
         # there's a small race window between checking it and doing the 
         # rename.
@@ -261,6 +281,10 @@ class LockDir(object):
             raise LockBroken(self)
         
     def _read_info_file(self, path):
+        """Read one given info file.
+
+        peek() reads the info file of the lock holder, if any.
+        """
         return self._parse_info(self.transport.get(path))
 
     def peek(self):
@@ -271,7 +295,7 @@ class LockDir(object):
         Otherwise returns None.
         """
         try:
-            info = self._read_info_file(self._info_path)
+            info = self._read_info_file(self._held_info_path)
             assert isinstance(info, dict), \
                     "bad parse result %r" % info
             return info
@@ -318,6 +342,25 @@ class LockDir(object):
                 time.sleep(poll)
             else:
                 raise LockContention(self)
+
+    def lock_write(self):
+        """Wait for and acquire the lock."""
+        self.attempt_lock()
+
+    def lock_read(self):
+        """Compatability-mode shared lock.
+
+        LockDir doesn't support shared read-only locks, so this 
+        just pretends that the lock is taken but really does nothing.
+        """
+        # At the moment Branches are commonly locked for read, but 
+        # we can't rely on that remotely.  Once this is cleaned up,
+        # reenable this warning to prevent it coming back in 
+        # -- mbp 20060303
+        ## warn("LockDir.lock_read falls back to write lock")
+        if self._lock_held or self._fake_read_lock:
+            raise LockContention(self)
+        self._fake_read_lock = True
 
     def wait(self, timeout=20, poll=0.5):
         """Wait a certain period for a lock to be released."""

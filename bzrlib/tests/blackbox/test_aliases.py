@@ -57,8 +57,9 @@ class TestAliases(TestCaseInTempDir):
 
         # If --no-aliases breaks all of bzr, we also get retcode=3
         # So we need to catch the output as well
-        self.assertEquals(bzr_catch_error('--no-aliases', 'c', 'a', retcode=None), 
-                "bzr: ERROR: unknown command 'c'\n")
+        self.assertEquals(bzr_catch_error('--no-aliases', 'c', 'a', 
+                                          retcode=None), 
+                          "bzr: ERROR: unknown command 'c'\n")
 
         bzr('c', '-r1', '-r2', retcode=3)
         bzr('c1', '-r1', '-r2', retcode=3)

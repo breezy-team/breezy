@@ -499,7 +499,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
-        self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
+                                    ['./.bzr/stat-cache',
+                                     './.bzr/checkout/stat-cache',
+                                     './.bzr/inventory',
+                                     './.bzr/checkout/inventory',
+                                     ])
 
     def test_sprout_bzrdir_branch_and_repo_shared(self):
         # sprouting a branch with a repo into a shared repo uses the shared
@@ -634,11 +639,15 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.sprout(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
+                                    ['./.bzr/stat-cache',
+                                     './.bzr/checkout/stat-cache',
+                                     './.bzr/inventory',
+                                     './.bzr/checkout/inventory',
+                                     ])
 
     def test_sprout_bzrdir_tree_branch_reference(self):
         # sprouting should create a repository if needed and a sprouted branch.
-        # the tree state should be copied.
+        # the tree state should not be copied.
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
         try:
@@ -648,7 +657,9 @@ class TestBzrDir(TestCaseWithBzrDir):
             # this is ok too, not all formats have to support references.
             return
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
-        dir.create_workingtree()
+        tree = dir.create_workingtree()
+        tree.bzrdir.root_transport.mkdir('subdir')
+        tree.add('subdir')
         target = dir.sprout(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         # we want target to have a branch that is in-place.
@@ -656,12 +667,12 @@ class TestBzrDir(TestCaseWithBzrDir):
         # and as we dont support repositories being detached yet, a repo in 
         # place
         target.open_repository()
-        # we trust that the working tree sprouting works via the other tests.
-        target.open_workingtree()
+        result_tree = target.open_workingtree()
+        self.assertFalse(result_tree.has_filename('subdir'))
 
     def test_sprout_bzrdir_tree_branch_reference_revision(self):
         # sprouting should create a repository if needed and a sprouted branch.
-        # the tree state should be copied but the revision changed,
+        # the tree state should not be copied but the revision changed,
         # and the likewise the new branch should be truncated too
         referenced_branch = self.make_branch('referencced')
         dir = self.make_bzrdir('source')
@@ -1060,11 +1071,12 @@ class TestBzrDir(TestCaseWithBzrDir):
             # as downgrades may not be available
             old_format = bzrdir.BzrDirFormat.get_default_format()
             bzrdir.BzrDirFormat.set_default_format(dir._format)
+            pb = ui.ui_factory.nested_progress_bar()
             try:
-                dir._format.get_converter(None).convert(dir,
-                    ui.ui_factory.progress_bar())
+                dir._format.get_converter(None).convert(dir, pb)
             finally:
                 bzrdir.BzrDirFormat.set_default_format(old_format)
+                pb.finished()
             # and it should pass 'check' now.
             check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)
 

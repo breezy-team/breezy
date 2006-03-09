@@ -69,7 +69,6 @@ class IdentityMap(object):
         else:
             self._map.pop(self._reverse_map[an_object])
             self._reverse_map.pop(an_object)
-        
 
     def _weave_key(self, id):
         """Return the key for a weaves id."""

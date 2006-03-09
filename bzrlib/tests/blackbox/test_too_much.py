@@ -725,8 +725,11 @@ class TestCommands(ExternalBase):
         assert '|||||||' not in conflict_text
         assert 'hi world' not in conflict_text
         os.unlink('hello.OTHER')
+        os.unlink('question.OTHER')
+        self.runbzr('remerge jello --merge-type weave', retcode=3)
         self.runbzr('remerge hello --merge-type weave', retcode=1)
         assert os.path.exists('hello.OTHER')
+        self.assertIs(False, os.path.exists('question.OTHER'))
         file_id = self.runbzr('file-id hello')
         file_id = self.runbzr('file-id hello.THIS', retcode=3)
         self.runbzr('remerge --merge-type weave', retcode=1)
@@ -834,19 +837,17 @@ class TestCommands(ExternalBase):
         self.runbzr('missing ../missing/new-branch')
 
     def test_external_command(self):
-        """test that external commands can be run by setting the path"""
+        """Test that external commands can be run by setting the path
+        """
+        # We don't at present run bzr in a subprocess for blackbox tests, and so 
+        # don't really capture stdout, only the internal python stream.
+        # Therefore we don't use a subcommand that produces any output or does
+        # anything -- we just check that it can be run successfully.  
         cmd_name = 'test-command'
-        output = 'Hello from test-command'
         if sys.platform == 'win32':
             cmd_name += '.bat'
-            output += '\r\n'
-        else:
-            output += '\n'
-
         oldpath = os.environ.get('BZRPATH', None)
-
         bzr = self.capture
-
         try:
             if os.environ.has_key('BZRPATH'):
                 del os.environ['BZRPATH']
@@ -856,7 +857,7 @@ class TestCommands(ExternalBase):
                 f.write('@echo off\n')
             else:
                 f.write('#!/bin/sh\n')
-            f.write('echo Hello from test-command')
+            # f.write('echo Hello from test-command')
             f.close()
             os.chmod(cmd_name, 0755)
 
@@ -868,11 +869,6 @@ class TestCommands(ExternalBase):
             os.environ['BZRPATH'] = '.'
 
             bzr(cmd_name)
-            # The test suite does not capture stdout for external commands
-            # this is because you have to have a real file object
-            # to pass to Popen(stdout=FOO), and StringIO is not one of those.
-            # (just replacing sys.stdout does not change a spawned objects stdout)
-            #self.assertEquals(bzr(cmd_name), output)
 
             # Make sure empty path elements are ignored
             os.environ['BZRPATH'] = os.pathsep

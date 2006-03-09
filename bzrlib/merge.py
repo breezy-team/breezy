@@ -227,7 +227,8 @@ class Merger(object):
 
     def do_merge(self):
         kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree, 
-                  'other_tree': self.other_tree}
+                  'other_tree': self.other_tree, 
+                  'interesting_ids': self.interesting_ids}
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
         if self.merge_type.supports_reprocess:
@@ -318,7 +319,8 @@ class Merge3Merger(object):
     history_based = False
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
-                 reprocess=False, show_base=False, pb=DummyProgress()):
+                 interesting_ids=None, reprocess=False, show_base=False,
+                 pb=DummyProgress()):
         """Initialize the merger object and perform the merge."""
         object.__init__(self)
         self.this_tree = working_tree
@@ -330,8 +332,12 @@ class Merge3Merger(object):
         self.show_base = show_base
         self.pb = pb
 
-        all_ids = set(base_tree)
-        all_ids.update(other_tree)
+        if interesting_ids is not None:
+            all_ids = interesting_ids
+        else:
+            all_ids = set(base_tree)
+            all_ids.update(other_tree)
+        working_tree.lock_write()
         self.tt = TreeTransform(working_tree, self.pb)
         try:
             for num, file_id in enumerate(all_ids):
@@ -346,12 +352,13 @@ class Merge3Merger(object):
             for line in conflicts_strings(self.cooked_conflicts):
                 warning(line)
             results = self.tt.apply()
+            self.write_modified(results)
         finally:
             try:
                 self.tt.finalize()
             except:
                 pass
-        self.write_modified(results)
+            working_tree.unlock()
 
     def write_modified(self, results):
         modified_hashes = {}
@@ -721,11 +728,13 @@ class WeaveMerger(Merge3Merger):
     supports_show_base = False
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
-                 pb=DummyProgress()):
+                 interesting_ids=None, pb=DummyProgress()):
         self.this_revision_tree = self._get_revision_tree(this_tree)
         self.other_revision_tree = self._get_revision_tree(other_tree)
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
-                                          base_tree, other_tree, pb=pb)
+                                          base_tree, other_tree, 
+                                          interesting_ids=interesting_ids, 
+                                          pb=pb)
 
     def _get_revision_tree(self, tree):
         """Return a revision tree releated to this tree.
@@ -755,9 +764,7 @@ class WeaveMerger(Merge3Merger):
         this_revision_id = self.this_revision_tree.inventory[file_id].revision
         other_revision_id = \
             self.other_revision_tree.inventory[file_id].revision
-        this_i = weave.lookup(this_revision_id)
-        other_i = weave.lookup(other_revision_id)
-        plan =  weave.plan_merge(this_i, other_i)
+        plan =  weave.plan_merge(this_revision_id, other_revision_id)
         return weave.weave_merge(plan, '<<<<<<< TREE\n', 
                                        '>>>>>>> MERGE-SOURCE\n')
 
@@ -841,6 +848,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     merger.backup_files = backup_files
     merger.merge_type = merge_type
     merger.interesting_ids = interesting_ids
+    merger.ignore_zero = ignore_zero
     if interesting_files:
         assert not interesting_ids, ('Only supply interesting_ids'
                                      ' or interesting_files')

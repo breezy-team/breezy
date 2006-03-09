@@ -1,5 +1,5 @@
 # Copyright (C) 2005 Aaron Bentley <aaron.bentley@utoronto.ca>
-# Copyright (C) 2005 Canonical <canonical.com>
+# Copyright (C) 2005, 2006 Canonical <canonical.com>
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -42,6 +42,9 @@ import os
 from collections import deque
 
 
+import bzrlib.errors as errors
+
+
 def _supports_progress(f):
     if not hasattr(f, 'isatty'):
         return False
@@ -61,8 +64,10 @@ def ProgressBar(to_file=sys.stderr, **kwargs):
     else:
         return DotsProgressBar(to_file=to_file, **kwargs)
     
-    
-class _BaseProgressBar(object):
+ 
+class ProgressBarStack(object):
+    """A stack of progress bars."""
+
     def __init__(self,
                  to_file=sys.stderr,
                  show_pct=False,
@@ -70,7 +75,51 @@ class _BaseProgressBar(object):
                  show_eta=True,
                  show_bar=True,
                  show_count=True,
-                 to_messages_file=sys.stdout):
+                 to_messages_file=sys.stdout,
+                 klass=None):
+        """Setup the stack with the parameters the progress bars should have."""
+        self._to_file = to_file
+        self._show_pct = show_pct
+        self._show_spinner = show_spinner
+        self._show_eta = show_eta
+        self._show_bar = show_bar
+        self._show_count = show_count
+        self._to_messages_file = to_messages_file
+        self._stack = []
+        self._klass = klass or TTYProgressBar
+
+    def get_nested(self):
+        """Return a nested progress bar."""
+        # initial implementation - return a new bar each time.
+        new_bar = self._klass(to_file=self._to_file,
+                              show_pct=self._show_pct,
+                              show_spinner=self._show_spinner,
+                              show_eta=self._show_eta,
+                              show_bar=self._show_bar,
+                              show_count=self._show_count,
+                              to_messages_file=self._to_messages_file,
+                              _stack=self)
+        self._stack.append(new_bar)
+        return new_bar
+
+    def return_pb(self, bar):
+        """Return bar after its been used."""
+        if bar is not self._stack[-1]:
+            raise errors.MissingProgressBarFinish()
+        self._stack.pop()
+
+ 
+class _BaseProgressBar(object):
+
+    def __init__(self,
+                 to_file=sys.stderr,
+                 show_pct=False,
+                 show_spinner=False,
+                 show_eta=True,
+                 show_bar=True,
+                 show_count=True,
+                 to_messages_file=sys.stdout,
+                 _stack=None):
         object.__init__(self)
         self.to_file = to_file
         self.to_messages_file = to_messages_file
@@ -82,6 +131,13 @@ class _BaseProgressBar(object):
         self.show_eta = show_eta
         self.show_bar = show_bar
         self.show_count = show_count
+        self._stack = _stack
+
+    def finished(self):
+        """Return this bar to its progress stack."""
+        self.clear()
+        assert self._stack is not None
+        self._stack.return_pb(self)
 
     def note(self, fmt_string, *args, **kwargs):
         """Record a note without disrupting the progress bar."""
@@ -109,6 +165,7 @@ class DummyProgress(_BaseProgressBar):
 
 
 class DotsProgressBar(_BaseProgressBar):
+
     def __init__(self, **kwargs):
         _BaseProgressBar.__init__(self, **kwargs)
         self.last_msg = None
@@ -195,13 +252,14 @@ class TTYProgressBar(_BaseProgressBar):
             
         if current_cnt > total_cnt:
             total_cnt = current_cnt
-
+        
+        old_msg = self.last_msg
         # save these for the tick() function
         self.last_msg = msg
         self.last_cnt = current_cnt
         self.last_total = total_cnt
             
-        if self.throttle():
+        if old_msg == self.last_msg and self.throttle():
             return 
         
         if self.show_eta and self.start_time and total_cnt:
