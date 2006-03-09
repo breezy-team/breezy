@@ -35,11 +35,13 @@ class MemoryStat(object):
 
     def __init__(self, size, is_dir, perms):
         self.st_size = size
-        if perms is None:
-            perms = 0644
         if not is_dir:
+            if perms is None:
+                perms = 0644
             self.st_mode = S_IFREG | perms
         else:
+            if perms is None:
+                perms = 0755
             self.st_mode = S_IFDIR | perms
 
 
@@ -91,6 +93,7 @@ class MemoryTransport(Transport):
         self._check_parent(_abspath)
         orig_content, orig_mode = self._files.get(_abspath, ("", None))
         self._files[_abspath] = (orig_content + f.read(), orig_mode)
+        return len(orig_content)
 
     def _check_parent(self, _abspath):
         dir = os.path.dirname(_abspath)

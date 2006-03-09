@@ -56,6 +56,10 @@ bzr development version
       that can become out of sync in pre 0.8 formats. (Robert Collins,
       Aaron Bentley)
 
+    * New 'bzr init --format' and 'bzr upgrade --format' option to control 
+      what storage format is created or produced.  (Robert Collins, 
+      Martin Pool)
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now
@@ -83,6 +87,9 @@ bzr development version
     * deprecated methods now have a 'is_deprecated' flag on them that can
       be checked, if you need to determine whether a given callable is 
       deprecated at runtime. (Robert Collins)
+
+    * Progress bars are now nested - see
+      bzrlib.ui.ui_factory.nested_progress_bar. (Robert Collins, Robey Pointer)
 
   TESTING:
 

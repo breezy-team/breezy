@@ -48,6 +48,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_find_merge_base',
                      'bzrlib.tests.blackbox.test_help',
                      'bzrlib.tests.blackbox.test_info',
+                     'bzrlib.tests.blackbox.test_init',
                      'bzrlib.tests.blackbox.test_log',
                      'bzrlib.tests.blackbox.test_logformats',
                      'bzrlib.tests.blackbox.test_missing',
@@ -92,12 +93,18 @@ class TestUIFactory(ui.UIFactory):
     def clear(self):
         """See progress.ProgressBar.clear()."""
 
+    def finished(self):
+        """See progress.ProgressBar.finished()."""
+
     def note(self, fmt_string, *args, **kwargs):
         """See progress.ProgressBar.note()."""
         print fmt_string % args
 
     def progress_bar(self):
         return self
-        
+    
+    def nested_progress_bar(self):
+        return self
+
     def update(self, message, count=None, total=None):
         """See progress.ProgressBar.update()."""

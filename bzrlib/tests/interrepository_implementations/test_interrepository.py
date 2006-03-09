@@ -127,9 +127,10 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         tree_a = self.make_branch_and_tree('a')
         self.bzrdir = tree_a.branch.bzrdir
         # add a corrupt inventory 'orphan'
-        tree_a.branch.repository.control_weaves.add_text(
-            'inventory', 'orphan', [], [],
+        inv_file = tree_a.branch.repository.control_weaves.get_weave(
+            'inventory', 
             tree_a.branch.repository.get_transaction())
+        inv_file.add_lines('orphan', [], [])
         # add a real revision 'rev1'
         tree_a.commit('rev1', rev_id='rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
@@ -162,10 +163,10 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         
     def test_fetch_preserves_signatures(self):
         from_repo = self.bzrdir.open_repository()
-        from_signature = from_repo.revision_store.get('rev2', 'sig').read()
+        from_signature = from_repo.get_signature_text('rev2')
         to_repo = self.make_to_repository('target')
         to_repo.fetch(from_repo)
-        to_signature = to_repo.revision_store.get('rev2', 'sig').read()
+        to_signature = to_repo.get_signature_text('rev2')
         self.assertEqual(from_signature, to_signature)
 
 

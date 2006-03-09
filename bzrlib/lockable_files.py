@@ -196,14 +196,14 @@ class LockableFiles(object):
         # TODO: Upgrade locking to support using a Transport,
         # and potentially a remote locking protocol
         if self._lock_mode:
-            if self._lock_mode != 'w':
+            if self._lock_mode != 'w' or not self.get_transaction().writeable():
                 raise ReadOnlyError(self)
             self._lock_count += 1
         else:
             self._lock.lock_write()
             self._lock_mode = 'w'
             self._lock_count = 1
-            self._set_transaction(transactions.PassThroughTransaction())
+            self._set_transaction(transactions.WriteTransaction())
 
     def lock_read(self):
         # mutter("lock read: %s (%s)", self, self._lock_count)

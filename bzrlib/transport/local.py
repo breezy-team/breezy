@@ -138,7 +138,9 @@ class LocalTransport(Transport):
             fp = open(self.abspath(relpath), 'ab')
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
+        result = fp.tell()
         self._pump(f, fp)
+        return result
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
@@ -266,6 +268,7 @@ class LocalTransport(Transport):
             os.rmdir(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
+
 
 class ScratchTransport(LocalTransport):
     """A transport that works in a temporary dir and cleans up after itself.

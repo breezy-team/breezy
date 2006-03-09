@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,15 +31,12 @@ WorkingTree.open(dir).
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
 
-# FIXME: I don't know if writing out the cache from the destructor is really a
-# good idea, because destructors are considered poor taste in Python, and it's
-# not predictable when it will be written out.
-
 # TODO: Give the workingtree sole responsibility for the working inventory;
 # remove the variable and references to it from the branch.  This may require
 # updating the commit code so as to update the inventory within the working
 # copy, and making sure there's only one WorkingTree for any directory on disk.
-# At the momenthey may alias the inventory and have old copies of it in memory.
+# At the moment they may alias the inventory and have old copies of it in
+# memory.  (Now done? -- mbp 20060309)
 
 from copy import deepcopy
 from cStringIO import StringIO
@@ -65,6 +62,7 @@ from bzrlib.errors import (BzrCheckError,
                            MergeModifiedFormatError)
 from bzrlib.inventory import InventoryEntry, Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.lockdir import LockDir
 from bzrlib.merge import merge_inner, transform_tree
 from bzrlib.osutils import (
                             abspath,
@@ -250,16 +248,13 @@ class WorkingTree(bzrlib.tree.Tree):
         if isinstance(self._format, WorkingTreeFormat2):
             # share control object
             self._control_files = self.branch.control_files
-        elif _control_files is not None:
-            assert False, "not done yet"
-#            self._control_files = _control_files
         else:
             # only ready for format 3
             assert isinstance(self._format, WorkingTreeFormat3)
-            self._control_files = LockableFiles(
-                self.bzrdir.get_workingtree_transport(None),
-                'lock', TransportLock)
-
+            assert isinstance(_control_files, LockableFiles), \
+                    "_control_files must be a LockableFiles, not %r" \
+                    % _control_files
+            self._control_files = _control_files
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
         # two possible ways offer themselves : in self._unlock, write the cache
@@ -888,11 +883,15 @@ class WorkingTree(bzrlib.tree.Tree):
                 else:
                     other_revision = None
                 repository = self.branch.repository
-                merge_inner(self.branch,
-                            self.branch.basis_tree(),
-                            basis_tree, 
-                            this_tree=self, 
-                            pb=bzrlib.ui.ui_factory.progress_bar())
+                pb = bzrlib.ui.ui_factory.nested_progress_bar()
+                try:
+                    merge_inner(self.branch,
+                                self.branch.basis_tree(),
+                                basis_tree, 
+                                this_tree=self, 
+                                pb=pb)
+                finally:
+                    pb.finished()
                 self.set_last_revision(self.branch.last_revision())
             return count
         finally:
@@ -1272,6 +1271,8 @@ class WorkingTree3(WorkingTree):
     This differs from the base WorkingTree by:
      - having its own file lock
      - having its own last-revision property.
+
+    This is new in bzr 0.8
     """
 
     @needs_read_lock
@@ -1451,12 +1452,26 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 class WorkingTreeFormat3(WorkingTreeFormat):
     """The second working tree format updated to record a format marker.
 
-    This format modified the hash cache from the format 1 hash cache.
+    This format:
+        - exists within a metadir controlling .bzr
+        - includes an explicit version marker for the workingtree control
+          files, separate from the BzrDir format
+        - modifies the hash cache format
+        - is new in bzr 0.8
+        - uses a LockDir to guard access to the repository
     """
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar-NG Working Tree format 3"
+
+    _lock_file_name = 'lock'
+    _lock_class = LockDir
+
+    def _open_control_files(self, a_bzrdir):
+        transport = a_bzrdir.get_workingtree_transport(None)
+        return LockableFiles(transport, self._lock_file_name, 
+                             self._lock_class)
 
     def initialize(self, a_bzrdir, revision_id=None):
         """See WorkingTreeFormat.initialize().
@@ -1467,7 +1482,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         transport = a_bzrdir.get_workingtree_transport(self)
-        control_files = LockableFiles(transport, 'lock', TransportLock)
+        control_files = self._open_control_files(a_bzrdir)
+        control_files.create_lock()
         control_files.put_utf8('format', self.get_format_string())
         branch = a_bzrdir.open_branch()
         if revision_id is None:
@@ -1478,7 +1494,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          inv,
                          _internal=True,
                          _format=self,
-                         _bzrdir=a_bzrdir)
+                         _bzrdir=a_bzrdir,
+                         _control_files=control_files)
         wt._write_inventory(inv)
         wt.set_root_id(inv.root.file_id)
         wt.set_last_revision(revision_id)
@@ -1501,10 +1518,12 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        control_files = self._open_control_files(a_bzrdir)
         return WorkingTree3(a_bzrdir.root_transport.base,
                            _internal=True,
                            _format=self,
-                           _bzrdir=a_bzrdir)
+                           _bzrdir=a_bzrdir,
+                           _control_files=control_files)
 
     def __str__(self):
         return self.get_format_string()

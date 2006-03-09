@@ -20,12 +20,13 @@ from cStringIO import StringIO
 import os
 import gzip
 
+import bzrlib.errors as errors
 from bzrlib.errors import BzrError, UnlistableStore, NoSuchFile
-from bzrlib.store import copy_all
 from bzrlib.transport.local import LocalTransport
 from bzrlib.store.text import TextStore
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 import bzrlib.store as store
+import bzrlib.transactions as transactions
 import bzrlib.transport as transport
 from bzrlib.transport.memory import MemoryTransport
 
@@ -50,7 +51,7 @@ class TestStores(object):
         store_a.add('foo', '1')
         os.mkdir('b')
         store_b = self.get_store('b')
-        copy_all(store_a, store_b)
+        store_b.copy_all_ids(store_a)
         self.assertEqual(store_a.get('1').read(), 'foo')
         self.assertEqual(store_b.get('1').read(), 'foo')
         # TODO: Switch the exception form UnlistableStore to
@@ -387,7 +388,7 @@ class TestTransportStore(TestCase):
         to_store = TextStore(MemoryTransport(),
                              prefixed=True, compressed=True)
         to_store.register_suffix('sig')
-        copy_all(from_store, to_store)
+        to_store.copy_all_ids(from_store)
         self.assertEqual(1, len(to_store))
         self.assertEqual(set(['foo']), set(to_store.__iter__()))
         self.assertEqual('content', to_store.get('foo').read())
@@ -397,3 +398,36 @@ class TestTransportStore(TestCase):
     def test_relpath_escaped(self):
         my_store = store.TransportStore(MemoryTransport())
         self.assertEqual('%25', my_store._relpath('%'))
+
+
+class TestVersionFileStore(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestVersionFileStore, self).setUp()
+        self.vfstore = store.versioned.VersionedFileStore(MemoryTransport())
+
+    def test_get_weave_registers_dirty_in_write(self):
+        transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', transaction)
+        transaction.finish()
+        self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
+        transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave('id', transaction)
+        transaction.finish()
+        self.assertRaises(errors.OutSideTransaction, vf.add_lines, 'b', [], [])
+
+    def test_get_weave_or_empty_readonly_fails(self):
+        transaction = transactions.ReadOnlyTransaction()
+        vf = self.assertRaises(errors.ReadOnlyError,
+                               self.vfstore.get_weave_or_empty,
+                               'id',
+                               transaction)
+
+    def test_get_weave_readonly_cant_write(self):
+        transaction = transactions.WriteTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', transaction)
+        transaction.finish()
+        transaction = transactions.ReadOnlyTransaction()
+        vf = self.vfstore.get_weave_or_empty('id', transaction)
+        self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'b', [], [])
+

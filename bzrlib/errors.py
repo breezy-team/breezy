@@ -300,6 +300,10 @@ class ReadOnlyError(LockError):
         self.obj = obj
 
 
+class OutSideTransaction(BzrNewError):
+    """A transaction related operation was attempted after the transaction finished."""
+
+
 class ObjectNotLocked(LockError):
     """%(obj)r is not locked"""
     # this can indicate that any particular object is not locked; see also
@@ -490,6 +494,7 @@ class BoundBranchConnectionFailure(BzrNewError):
 
 class WeaveError(BzrNewError):
     """Error in processing weave: %(message)s"""
+
     def __init__(self, message=None):
         BzrNewError.__init__(self)
         self.message = message
@@ -498,6 +503,7 @@ class WeaveError(BzrNewError):
 class WeaveRevisionAlreadyPresent(WeaveError):
     """Revision {%(revision_id)s} already present in %(weave)s"""
     def __init__(self, revision_id, weave):
+
         WeaveError.__init__(self)
         self.revision_id = revision_id
         self.weave = weave
@@ -505,6 +511,7 @@ class WeaveRevisionAlreadyPresent(WeaveError):
 
 class WeaveRevisionNotPresent(WeaveError):
     """Revision {%(revision_id)s} not present in %(weave)s"""
+
     def __init__(self, revision_id, weave):
         WeaveError.__init__(self)
         self.revision_id = revision_id
@@ -513,6 +520,7 @@ class WeaveRevisionNotPresent(WeaveError):
 
 class WeaveFormatError(WeaveError):
     """Weave invariant violated: %(what)s"""
+
     def __init__(self, what):
         WeaveError.__init__(self)
         self.what = what
@@ -544,6 +552,49 @@ class WeaveTextDiffers(WeaveError):
         self.revision_id = revision_id
         self.weave_a = weave_a
         self.weave_b = weave_b
+
+
+class VersionedFileError(BzrNewError):
+    """Versioned file error."""
+
+
+class RevisionNotPresent(VersionedFileError):
+    """Revision {%(revision_id)s} not present in %(file_id)s."""
+
+    def __init__(self, revision_id, file_id):
+        VersionedFileError.__init__(self)
+        self.revision_id = revision_id
+        self.file_id = file_id
+
+
+class RevisionAlreadyPresent(VersionedFileError):
+    """Revision {%(revision_id)s} already present in %(file_id)s."""
+
+    def __init__(self, revision_id, file_id):
+        VersionedFileError.__init__(self)
+        self.revision_id = revision_id
+        self.file_id = file_id
+
+
+class KnitError(BzrNewError):
+    """Knit error"""
+
+
+class KnitHeaderError(KnitError):
+    """Knit header error: %(badline)r unexpected"""
+
+    def __init__(self, badline):
+        KnitError.__init__(self)
+        self.badline = badline
+
+
+class KnitCorrupt(KnitError):
+    """Knit %(filename)s corrupt: %(how)s"""
+
+    def __init__(self, filename, how):
+        KnitError.__init__(self)
+        self.filename = filename
+        self.how = how
 
 
 class NoSuchExportFormat(BzrNewError):
@@ -768,3 +819,7 @@ class UpgradeRequired(BzrNewError):
 
 class LocalRequiresBoundBranch(BzrNewError):
     """Cannot perform local-only commits on unbound branches."""
+
+
+class MissingProgressBarFinish(BzrNewError):
+    """A nested progress bar was not 'finished' correctly."""

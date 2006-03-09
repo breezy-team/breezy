@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -23,14 +23,6 @@ import shutil
 import sys
 from unittest import TestSuite
 from warnings import warn
-try:
-    import xml.sax.saxutils
-except ImportError:
-    raise ImportError("We were unable to import 'xml.sax.saxutils',"
-                      " most likely you have an xml.pyc or xml.pyo file"
-                      " lying around in your bzrlib directory."
-                      " Please remove it.")
-
 
 import bzrlib
 import bzrlib.bzrdir as bzrdir
@@ -48,6 +40,7 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
 import bzrlib.inventory as inventory
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.lockdir import LockDir
 from bzrlib.osutils import (isdir, quotefn,
                             rename, splitpath, sha_file,
                             file_kind, abspath, normpath, pathjoin,
@@ -207,7 +200,10 @@ class Branch(object):
             raise Exception("can't fetch from a branch to itself %s, %s" % 
                             (self.base, to_branch.base))
         if pb is None:
-            pb = bzrlib.ui.ui_factory.progress_bar()
+            nested_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            pb = nested_pb
+        else:
+            nested_pb = None
 
         from_branch.lock_read()
         try:
@@ -221,8 +217,10 @@ class Branch(object):
                     last_revision = NULL_REVISION
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
-                                         pb=pb)
+                                         pb=nested_pb)
         finally:
+            if nested_pb is not None:
+                nested_pb.finished()
             from_branch.unlock()
 
     def get_bound_location(self):
@@ -655,8 +653,11 @@ class BzrBranchFormat5(BranchFormat):
     This format has:
      - a revision-history file.
      - a format string
-     - a lock file.
+     - a lock dir guarding the branch itself
+     - all of this stored in a branch/ subdirectory
      - works with shared repositories.
+
+    This format is new in bzr 0.8.
     """
 
     def get_format_string(self):
@@ -665,13 +666,12 @@ class BzrBranchFormat5(BranchFormat):
         
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
-        mutter('creating branch in %s', a_bzrdir.transport.base)
+        mutter('creating branch %r in %s', self, a_bzrdir.transport.base)
         branch_transport = a_bzrdir.get_branch_transport(self)
-
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        control_files = LockableFiles(branch_transport, 'lock', TransportLock)
+        control_files = LockableFiles(branch_transport, 'lock', LockDir)
         control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
@@ -696,7 +696,7 @@ class BzrBranchFormat5(BranchFormat):
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
         transport = a_bzrdir.get_branch_transport(None)
-        control_files = LockableFiles(transport, 'lock', TransportLock)
+        control_files = LockableFiles(transport, 'lock', LockDir)
         return BzrBranch5(_format=self,
                           _control_files=control_files,
                           a_bzrdir=a_bzrdir,
@@ -961,6 +961,19 @@ class BzrBranch(Branch):
         """See Branch.set_revision_history."""
         self.control_files.put_utf8(
             'revision-history', '\n'.join(rev_history))
+        transaction = self.get_transaction()
+        history = transaction.map.find_revision_history()
+        if history is not None:
+            # update the revision history in the identity map.
+            history[:] = list(rev_history)
+            # this call is disabled because revision_history is 
+            # not really an object yet, and the transaction is for objects.
+            # transaction.register_dirty(history)
+        else:
+            transaction.map.add_revision_history(rev_history)
+            # this call is disabled because revision_history is 
+            # not really an object yet, and the transaction is for objects.
+            # transaction.register_clean(history)
 
     def get_revision_delta(self, revno):
         """Return the delta for one revision.
@@ -985,7 +998,6 @@ class BzrBranch(Branch):
     @needs_read_lock
     def revision_history(self):
         """See Branch.revision_history."""
-        # FIXME are transactions bound to control files ? RBC 20051121
         transaction = self.get_transaction()
         history = transaction.map.find_revision_history()
         if history is not None:

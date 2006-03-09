@@ -20,6 +20,7 @@ as remote (such as http or sftp).
 """
 
 import errno
+from collections import deque
 from copy import deepcopy
 from stat import *
 import sys
@@ -165,15 +166,16 @@ class Transport(object):
                         as a single parameter.
         """
         total = self._get_total(multi)
+        result = []
         count = 0
         for entry in multi:
             self._update_pb(pb, msg, count, total)
             if expand:
-                func(*entry)
+                result.append(func(*entry))
             else:
-                func(entry)
+                result.append(func(entry))
             count += 1
-        return count
+        return tuple(result)
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -203,7 +205,8 @@ class Transport(object):
         """Does the file relpath exist?
         
         Note that some transports MAY allow querying on directories, but this
-        is not part of the protocol.
+        is not part of the protocol.  In other words, the results of 
+        t.has("a_directory_name") are undefined."
         """
         raise NotImplementedError
 
@@ -243,6 +246,50 @@ class Transport(object):
         """
         raise NotImplementedError
 
+    def readv(self, relpath, offsets):
+        """Get parts of the file at the given relative path.
+
+        :offsets: A list of (offset, size) tuples.
+        :return: A list or generator of (offset, data) tuples
+        """
+        def do_combined_read(combined_offsets):
+            total_size = 0
+            for offset, size in combined_offsets:
+                total_size += size
+            mutter('readv coalesced %d reads.', len(combined_offsets))
+            offset = combined_offsets[0][0]
+            fp.seek(offset)
+            data = fp.read(total_size)
+            pos = 0
+            for offset, size in combined_offsets:
+                yield offset, data[pos:pos + size]
+                pos += size
+
+        if not len(offsets):
+            return
+        fp = self.get(relpath)
+        pending_offsets = deque(offsets)
+        combined_offsets = []
+        while len(pending_offsets):
+            offset, size = pending_offsets.popleft()
+            if not combined_offsets:
+                combined_offsets = [[offset, size]]
+            else:
+                if (len (combined_offsets) < 50 and
+                    combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
+                    # combatible offset:
+                    combined_offsets.append([offset, size])
+                else:
+                    # incompatible, or over the threshold issue a read and yield
+                    pending_offsets.appendleft((offset, size))
+                    for result in do_combined_read(combined_offsets):
+                        yield result
+                    combined_offsets = []
+        # whatever is left is a single coalesced request
+        if len(combined_offsets):
+            for result in do_combined_read(combined_offsets):
+                yield result
+
     def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
 
@@ -280,7 +327,7 @@ class Transport(object):
         """
         def put(path, f):
             self.put(path, f, mode=mode)
-        return self._iterate_over(files, put, pb, 'put', expand=True)
+        return len(self._iterate_over(files, put, pb, 'put', expand=True))
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
@@ -290,11 +337,13 @@ class Transport(object):
         """Create a group of directories"""
         def mkdir(path):
             self.mkdir(path, mode=mode)
-        return self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False)
+        return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
     def append(self, relpath, f):
         """Append the text in the file-like or string object to 
         the supplied location.
+
+        returns the length of f before the content was written to it.
         """
         raise NotImplementedError
 
@@ -336,7 +385,7 @@ class Transport(object):
         def copy_entry(path):
             other.put(path, self.get(path), mode=mode)
 
-        return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
+        return len(self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False))
 
     def copy_tree(self, from_relpath, to_relpath):
         """Copy a subtree from one relpath to another.
@@ -627,6 +676,30 @@ class TransportTestProviderAdapter(object):
                 # from running this test
                 pass
         return result
+
+
+class TransportLogger(object):
+    """Adapt a transport to get clear logging data on api calls.
+    
+    Feel free to extend to log whatever calls are of interest.
+    """
+
+    def __init__(self, adapted):
+        self._adapted = adapted
+        self._calls = []
+
+    def get(self, name):
+        self._calls.append((name,))
+        return self._adapted.get(name)
+
+    def __getattr__(self, name):
+        """Thunk all undefined access through to self._adapted."""
+        # raise AttributeError, name 
+        return getattr(self._adapted, name)
+
+    def readv(self, name, offsets):
+        self._calls.append((name, offsets))
+        return self._adapted.readv(name, offsets)
         
 
 # None is the default transport, for things with no url scheme
