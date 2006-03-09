@@ -337,6 +337,7 @@ class Merge3Merger(object):
         else:
             all_ids = set(base_tree)
             all_ids.update(other_tree)
+        working_tree.lock_write()
         self.tt = TreeTransform(working_tree, self.pb)
         try:
             for num, file_id in enumerate(all_ids):
@@ -351,12 +352,13 @@ class Merge3Merger(object):
             for line in conflicts_strings(self.cooked_conflicts):
                 warning(line)
             results = self.tt.apply()
+            self.write_modified(results)
         finally:
             try:
                 self.tt.finalize()
             except:
                 pass
-        self.write_modified(results)
+            working_tree.unlock()
 
     def write_modified(self, results):
         modified_hashes = {}
