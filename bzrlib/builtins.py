@@ -70,6 +70,19 @@ def internal_tree_files(file_list, default_branch=u'.'):
     return tree, new_list
 
 
+def get_format_type(typestring):
+    """Parse and return a format specifier."""
+    if typestring == "metadir":
+        return bzrdir.BzrDirMetaFormat1()
+    if typestring == "knit":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
+        return format
+    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
+        (typestring)
+    raise BzrCommandError(msg)
+
+
 # TODO: Make sure no commands unconditionally use the working directory as a
 # branch.  If a filename argument is used, the first of them should be used to
 # specify the branch.  (Perhaps this can be factored out into some kind of
@@ -866,7 +879,14 @@ class cmd_init(Command):
         bzr commit -m 'imported project'
     """
     takes_args = ['location?']
-    def run(self, location=None):
+    takes_options = [
+                     Option('format', 
+                            help='Create a specific format rather than the'
+                                 ' current default format. Currently this '
+                                 ' option only accepts =metadir',
+                            type=get_format_type),
+                     ]
+    def run(self, location=None, format=None):
         from bzrlib.branch import Branch
         if location is None:
             location = u'.'
@@ -878,7 +898,16 @@ class cmd_init(Command):
             # locations if the user supplies an extended path
             if not os.path.exists(location):
                 os.mkdir(location)
-        bzrdir.BzrDir.create_standalone_workingtree(location)
+        if format is None:
+            # create default
+            bzrdir.BzrDir.create_standalone_workingtree(location)
+        else:
+            new_dir = format.initialize(location)
+            new_dir.create_repository()
+            new_dir.create_branch()
+            # TODO: ask the bzrdir format for the right classs
+            import bzrlib.workingtree
+            bzrlib.workingtree.WorkingTreeFormat3().initialize(new_dir)
 
 
 class cmd_diff(Command):
@@ -1522,19 +1551,6 @@ class cmd_scan_cache(Command):
 
         if c.needs_write:
             c.write()
-
-
-def get_format_type(typestring):
-    """Parse and return a format specifier."""
-    if typestring == "metadir":
-        return bzrdir.BzrDirMetaFormat1()
-    if typestring == "knit":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
-        return format
-    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
-        (typestring)
-    raise BzrCommandError(msg)
 
 
 class cmd_upgrade(Command):

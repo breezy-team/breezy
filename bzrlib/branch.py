@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -40,6 +40,7 @@ from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
 import bzrlib.inventory as inventory
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.lockdir import LockDir
 from bzrlib.osutils import (isdir, quotefn,
                             rename, splitpath, sha_file,
                             file_kind, abspath, normpath, pathjoin,
@@ -652,8 +653,11 @@ class BzrBranchFormat5(BranchFormat):
     This format has:
      - a revision-history file.
      - a format string
-     - a lock file.
+     - a lock dir guarding the branch itself
+     - all of this stored in a branch/ subdirectory
      - works with shared repositories.
+
+    This format is new in bzr 0.8.
     """
 
     def get_format_string(self):
@@ -662,13 +666,12 @@ class BzrBranchFormat5(BranchFormat):
         
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
-        mutter('creating branch in %s', a_bzrdir.transport.base)
+        mutter('creating branch %r in %s', self, a_bzrdir.transport.base)
         branch_transport = a_bzrdir.get_branch_transport(self)
-
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        control_files = LockableFiles(branch_transport, 'lock', TransportLock)
+        control_files = LockableFiles(branch_transport, 'lock', LockDir)
         control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
@@ -693,7 +696,7 @@ class BzrBranchFormat5(BranchFormat):
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
         transport = a_bzrdir.get_branch_transport(None)
-        control_files = LockableFiles(transport, 'lock', TransportLock)
+        control_files = LockableFiles(transport, 'lock', LockDir)
         return BzrBranch5(_format=self,
                           _control_files=control_files,
                           a_bzrdir=a_bzrdir,

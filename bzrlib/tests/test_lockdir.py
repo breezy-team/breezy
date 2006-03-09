@@ -170,7 +170,8 @@ class TestLockDir(TestCaseWithTransport):
     def test_32_lock_wait_succeed(self):
         """Succeed when trying to acquire a lock that gets released
 
-        One thread holds on a lock and then releases it; another tries to lock it.
+        One thread holds on a lock and then releases it; another 
+        tries to lock it.
         """
         t = self.get_transport()
         lf1 = LockDir(t, 'test_lock')

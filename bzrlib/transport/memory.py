@@ -35,11 +35,13 @@ class MemoryStat(object):
 
     def __init__(self, size, is_dir, perms):
         self.st_size = size
-        if perms is None:
-            perms = 0644
         if not is_dir:
+            if perms is None:
+                perms = 0644
             self.st_mode = S_IFREG | perms
         else:
+            if perms is None:
+                perms = 0755
             self.st_mode = S_IFDIR | perms
 
 
