@@ -70,11 +70,8 @@ class TestBranchFormat5(TestCaseWithTransport):
         self.assertIsDirectory('.', t)
         self.assertIsDirectory('.bzr/branch', t)
         self.assertIsDirectory('.bzr/branch/lock', t)
-        # branch.lock_read()
-        # try:
-        #     self.assertIsDirectory('.bzr/branch/lock/held', t)
-        # finally:
-        #     branch.unlock()
+        branch.lock_write()
+        self.assertIsDirectory('.bzr/branch/lock/held', t)
 
 
 class SampleBranchFormat(bzrlib.branch.BranchFormat):
