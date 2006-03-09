@@ -181,8 +181,8 @@ class Weave(VersionedFile):
     __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
                  '_weave_name']
     
-    def __init__(self, weave_name=None):
-        super(Weave, self).__init__()
+    def __init__(self, weave_name=None, access_mode='w'):
+        super(Weave, self).__init__(access_mode)
         self._weave = []
         self._parents = []
         self._sha1s = []
@@ -881,14 +881,14 @@ class WeaveFile(Weave):
 
     WEAVE_SUFFIX = '.weave'
     
-    def __init__(self, name, transport, mode=None, create=False):
+    def __init__(self, name, transport, filemode=None, create=False, access_mode='w'):
         """Create a WeaveFile.
         
         :param create: If not True, only open an existing knit.
         """
-        super(WeaveFile, self).__init__(name)
+        super(WeaveFile, self).__init__(name, access_mode)
         self._transport = transport
-        self._mode = mode
+        self._filemode = filemode
         try:
             _read_weave_v5(self._transport.get(name + WeaveFile.WEAVE_SUFFIX), self)
         except errors.NoSuchFile:
@@ -908,19 +908,20 @@ class WeaveFile(Weave):
         sio = StringIO()
         write_weave_v5(self, sio)
         sio.seek(0)
-        transport.put(name + WeaveFile.WEAVE_SUFFIX, sio, self._mode)
+        transport.put(name + WeaveFile.WEAVE_SUFFIX, sio, self._filemode)
 
-    def create_empty(self, name, transport, mode=None):
-        return WeaveFile(name, transport, mode, create=True)
+    def create_empty(self, name, transport, filemode=None):
+        return WeaveFile(name, transport, filemode, create=True)
 
     def _save(self):
         """Save the weave."""
+        self._check_write_ok()
         sio = StringIO()
         write_weave_v5(self, sio)
         sio.seek(0)
         self._transport.put(self._weave_name + WeaveFile.WEAVE_SUFFIX,
                             sio,
-                            self._mode)
+                            self._filemode)
 
     @staticmethod
     def get_suffixes():

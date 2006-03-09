@@ -50,8 +50,9 @@ class VersionedFile(object):
     Texts are identified by a version-id string.
     """
 
-    def __init__(self):
+    def __init__(self, access_mode):
         self.finished = False
+        self._access_mode = access_mode
 
     def copy_to(self, name, transport):
         """Copy this versioned file to name on transport."""
@@ -86,7 +87,7 @@ class VersionedFile(object):
         Must raise RevisionNotPresent if any of the given parents are
         not present in file history.
         """
-        self._check_finished()
+        self._check_write_ok()
         self._add_lines(version_id, parents, lines)
 
     def _add_lines(self, version_id, parents, lines):
@@ -95,7 +96,7 @@ class VersionedFile(object):
 
     def add_lines_with_ghosts(self, version_id, parents, lines):
         """Add lines to the versioned file, allowing ghosts to be present."""
-        self._check_finished()
+        self._check_write_ok()
         self._add_lines_with_ghosts(version_id, parents, lines)
 
     def _add_lines_with_ghosts(self, version_id, parents, lines):
@@ -106,10 +107,12 @@ class VersionedFile(object):
         """Check the versioned file for integrity."""
         raise NotImplementedError(self.check)
 
-    def _check_finished(self):
+    def _check_write_ok(self):
         """Is the versioned file marked as 'finished' ? Raise if it is."""
         if self.finished:
             raise errors.OutSideTransaction()
+        if self._access_mode != 'w':
+            raise errors.ReadOnlyObjectDirtiedError(self)
 
     def clear_cache(self):
         """Remove any data cached in the versioned file object."""
@@ -141,7 +144,7 @@ class VersionedFile(object):
         the parents list must be a superset of the current
         list.
         """
-        self._check_finished()
+        self._check_write_ok()
         self._fix_parents(version, new_parents)
 
     def _fix_parents(self, version, new_parents):
@@ -259,7 +262,7 @@ class VersionedFile(object):
         are not present in the other files history unless ignore_missing
         is supplied when they are silently skipped.
         """
-        self._check_finished()
+        self._check_write_ok()
         return InterVersionedFile.get(other, self).join(
             pb,
             msg,

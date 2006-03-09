@@ -240,9 +240,9 @@ class KnitVersionedFile(VersionedFile):
         
         :param create: If not True, only open an existing knit.
         """
-        super(KnitVersionedFile, self).__init__()
         if access_mode is None:
             access_mode = 'w'
+        super(KnitVersionedFile, self).__init__(access_mode)
         assert access_mode in ('r', 'w'), "invalid mode specified %r" % access_mode
         assert not basis_knit or isinstance(basis_knit, KnitVersionedFile), \
             type(basis_knit)
