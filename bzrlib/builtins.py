@@ -2034,7 +2034,7 @@ class cmd_missing(Command):
         remote_branch = bzrlib.branch.Branch.open(other_branch)
         remote_branch.lock_read()
         try:
-            local_branch.lock_read()
+            local_branch.lock_write()
             try:
                 local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
                 if (log_format == None):
