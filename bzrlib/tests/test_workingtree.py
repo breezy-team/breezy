@@ -1,4 +1,4 @@
-# (C) 2005,2006 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -24,6 +24,7 @@ import bzrlib.bzrdir as bzrdir
 from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
+from bzrlib.lockdir import LockDir
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
@@ -160,7 +161,6 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         tree = workingtree.WorkingTreeFormat3().initialize(control)
         # we want:
         # format 'Bazaar-NG Working Tree format 3'
-        # lock ''
         # inventory = blank inventory
         # pending-merges = ''
         # stat-cache = ??
@@ -168,7 +168,6 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         t = control.get_workingtree_transport(None)
         self.assertEqualDiff('Bazaar-NG Working Tree format 3',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff('<inventory format="5">\n'
                              '</inventory>\n',
                              t.get('inventory').read())
@@ -179,3 +178,22 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertFalse(t.has('last-revision'))
         # TODO RBC 20060210 do a commit, check the inventory.basis is created 
         # correctly and last-revision file becomes present.
+
+    def test_uses_lockdir(self):
+        """WorkingTreeFormat3 uses its own LockDir:
+            
+            - lock is a directory
+            - when the WorkingTree is locked, LockDir can see that
+        """
+        t = self.get_transport()
+        url = self.get_url()
+        dir = bzrdir.BzrDirMetaFormat1().initialize(url)
+        repo = dir.create_repository()
+        branch = dir.create_branch()
+        tree = workingtree.WorkingTreeFormat3().initialize(dir)
+        self.assertIsDirectory('.bzr', t)
+        self.assertIsDirectory('.bzr/checkout', t)
+        self.assertIsDirectory('.bzr/checkout/lock', t)
+        our_lock = LockDir(t, '.bzr/checkout/lock')
+        self.assertEquals(our_lock.peek(), None)
+        
