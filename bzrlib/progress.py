@@ -447,6 +447,24 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_r
     return total_duration - elapsed
 
 
+class ProgressPhase(object):
+    """Update progress object with the current phase"""
+    def __init__(self, message, total, pb):
+        object.__init__(self)
+        self.pb = pb
+        self.message = message
+        self.total = total
+        self.cur_phase = None
+
+    def next_phase(self):
+        if self.cur_phase is None:
+            self.cur_phase = 0
+        else:
+            self.cur_phase += 1
+        assert self.cur_phase < self.total 
+        self.pb.update(self.message, self.cur_phase, self.total)
+
+
 def run_tests():
     import doctest
     result = doctest.testmod()
