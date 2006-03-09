@@ -37,13 +37,14 @@ from bzrlib.errors import (BzrCommandError,
 from bzrlib.merge3 import Merge3
 import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin
-from progress import DummyProgress
+from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               conflicts_strings, FinalPaths, create_by_entry,
                               unique_add)
+import bzrlib.ui
 
 # TODO: Report back as changes are merged in
 
@@ -98,6 +99,8 @@ class Merger(object):
         self.show_base = False
         self.reprocess = False
         self._pb = pb 
+        self.pp = None
+
 
     def revision_tree(self, revision_id):
         return self.this_branch.repository.revision_tree(revision_id)
@@ -203,10 +206,14 @@ class Merger(object):
         mutter("doing merge() with no base_revision specified")
         if base_revision == [None, None]:
             try:
-                self.base_rev_id = common_ancestor(self.this_basis, 
-                                                   self.other_basis, 
-                                                   self.this_branch.repository,
-                                                   self._pb)
+                pb = bzrlib.ui.ui_factory.nested_progress_bar()
+                try:
+                    this_repo = self.this_branch.repository
+                    self.base_rev_id = common_ancestor(self.this_basis, 
+                                                       self.other_basis, 
+                                                       this_repo, pb)
+                finally:
+                    pb.finished()
             except NoCommonAncestor:
                 raise UnrelatedBranches()
             self.base_tree = _get_revid_tree(self.this_branch, self.base_rev_id,
@@ -228,7 +235,8 @@ class Merger(object):
     def do_merge(self):
         kwargs = {'working_tree':self.this_tree, 'this_tree': self.this_tree, 
                   'other_tree': self.other_tree, 
-                  'interesting_ids': self.interesting_ids}
+                  'interesting_ids': self.interesting_ids,
+                  'pp': self.pp}
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
         if self.merge_type.supports_reprocess:
@@ -320,7 +328,7 @@ class Merge3Merger(object):
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
                  interesting_ids=None, reprocess=False, show_base=False,
-                 pb=DummyProgress()):
+                 pb=DummyProgress(), pp=None):
         """Initialize the merger object and perform the merge."""
         object.__init__(self)
         self.this_tree = working_tree
@@ -331,6 +339,9 @@ class Merge3Merger(object):
         self.reprocess = reprocess
         self.show_base = show_base
         self.pb = pb
+        self.pp = pp
+        if self.pp is None:
+            self.pp = ProgressPhase("Merge phase", 3, self.pb)
 
         if interesting_ids is not None:
             all_ids = interesting_ids
@@ -339,23 +350,34 @@ class Merge3Merger(object):
             all_ids.update(other_tree)
         self.tt = TreeTransform(working_tree, self.pb)
         try:
-            for num, file_id in enumerate(all_ids):
-                self.pb.update('Preparing file merge', num+1, len(all_ids))
-                self.merge_names(file_id)
-                file_status = self.merge_contents(file_id)
-                self.merge_executable(file_id, file_status)
-            self.pb.clear()
+            self.pp.next_phase()
+            child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            try:
+                for num, file_id in enumerate(all_ids):
+                    child_pb.update('Preparing file merge', num, len(all_ids))
+                    self.merge_names(file_id)
+                    file_status = self.merge_contents(file_id)
+                    self.merge_executable(file_id, file_status)
+            finally:
+                child_pb.finished()
                 
-            fs_conflicts = resolve_conflicts(self.tt, self.pb)
+            self.pp.next_phase()
+            child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            try:
+                fs_conflicts = resolve_conflicts(self.tt, child_pb)
+            finally:
+                child_pb.finished()
             self.cook_conflicts(fs_conflicts)
             for line in conflicts_strings(self.cooked_conflicts):
                 warning(line)
+            self.pp.next_phase()
             results = self.tt.apply()
         finally:
             try:
                 self.tt.finalize()
             except:
                 pass
+            self.pb.clear()
         self.write_modified(results)
 
     def write_modified(self, results):
@@ -726,13 +748,13 @@ class WeaveMerger(Merge3Merger):
     supports_show_base = False
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
-                 interesting_ids=None, pb=DummyProgress()):
+                 interesting_ids=None, pb=DummyProgress(), pp=None):
         self.this_revision_tree = self._get_revision_tree(this_tree)
         self.other_revision_tree = self._get_revision_tree(other_tree)
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
                                           interesting_ids=interesting_ids, 
-                                          pb=pb)
+                                          pb=pb, pp=pp)
 
     def _get_revision_tree(self, tree):
         """Return a revision tree releated to this tree.

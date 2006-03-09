@@ -92,10 +92,10 @@ class TestMerge(TestCaseWithTransport):
         log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(), 
                     this_tree=tree_b, ignore_zero=True)
-        lines = self._get_log().splitlines(True)[-1]
-        self.failUnless('All changes applied successfully.\n' not in lines)
+        log = self._get_log()
+        self.failUnless('All changes applied successfully.\n' not in log)
         tree_b.revert([])
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(), 
                     this_tree=tree_b, ignore_zero=False)
-        lines = self._get_log().splitlines(True)[-1]
-        self.failUnless('All changes applied successfully.\n' in lines)
+        log = self._get_log()
+        self.failUnless('All changes applied successfully.\n' in log)
