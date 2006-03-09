@@ -60,20 +60,21 @@ class TestBranchFormat5(TestCaseWithTransport):
     """Tests specific to branch format 5"""
 
     def test_branch_format_5_uses_lockdir(self):
-        # XXX: There's really got to be a better way than setting the default
-        # format!  All I want is to create a bzrdir of a specified format.
         url = self.get_url()
-        old_format = bzrdir.BzrDirFormat.get_default_format()
-        BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
-        try:
-            branch = BzrDir.create_branch_and_repo(url)
-            self.log("branch instance is %r" % branch)
-            self.assert_(isinstance(branch, BzrBranch5))
-            self.assertIsDirectory('.', self.get_transport())
-            self.assertIsDirectory('.bzr/branch', self.get_transport())
-            self.assertIsDirectory('.bzr/branch/lock', self.get_transport())
-        finally:
-            bzrdir.BzrDirFormat.set_default_format(old_format)
+        bzrdir = BzrDirMetaFormat1().initialize(url)
+        bzrdir.create_repository()
+        branch = bzrdir.create_branch()
+        t = self.get_transport()
+        self.log("branch instance is %r" % branch)
+        self.assert_(isinstance(branch, BzrBranch5))
+        self.assertIsDirectory('.', t)
+        self.assertIsDirectory('.bzr/branch', t)
+        self.assertIsDirectory('.bzr/branch/lock', t)
+        # branch.lock_read()
+        # try:
+        #     self.assertIsDirectory('.bzr/branch/lock/held', t)
+        # finally:
+        #     branch.unlock()
 
 
 class SampleBranchFormat(bzrlib.branch.BranchFormat):

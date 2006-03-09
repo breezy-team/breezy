@@ -1135,6 +1135,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def __set_repository_format(self, value):
         """Allow changint the repository format for metadir formats."""
         self._repository_format = value
+
     repository_format = property(__return_repository_format, __set_repository_format)
 
 
