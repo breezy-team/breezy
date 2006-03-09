@@ -14,6 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
+from bzrlib.tsort import topo_sort
+
+
 def max_distance(node, ancestors, distances, root_descendants):
     """Calculate the max distance to an ancestor.  
     Return None if not all possible ancestors have known distances"""
@@ -137,6 +141,21 @@ class Graph(object):
     def get_ancestors(self):
         """Return a dictionary of graph node:ancestor_list entries."""
         return dict(self._graph_ancestors.items())
+
+    def get_ancestry(self, node_id):
+        """Return the inclusive ancestors of node_id in topological order."""
+        # maybe optimise this ?
+        result = {}
+        pending = set([node_id])
+        while len(pending):
+            current = pending.pop()
+            parents = self._graph_ancestors[current]
+            parents = [parent for parent in parents if parent not in self.ghosts]
+            result[current] = parents
+            for parent in parents:
+                if parent not in result and parent not in pending:
+                    pending.add(parent)
+        return topo_sort(result.items())
 
     def get_descendants(self):
         """Return a dictionary of graph node:child_node:distance entries."""
