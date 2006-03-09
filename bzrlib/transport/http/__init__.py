@@ -78,29 +78,37 @@ class HttpTransportBase(Transport):
     implementation.
     """
 
+    # _proto: "http" or "https"
+    # _qualified_proto: may have "+pycurl", etc
+
     def __init__(self, base):
         """Set the base path where files will be stored."""
         proto_match = re.match(r'^(https?)(\+\w+)?://', base)
         if not proto_match:
             raise AssertionError("not a http url: %r" % base)
-        real_proto=proto_match.group(1)
-        impl_name=proto_match.group(2)
+        self._proto = proto_match.group(1)
+        impl_name = proto_match.group(2)
         if impl_name:
             impl_name = impl_name[1:]
+        self._impl_name = impl_name
         if base[-1] != '/':
             base = base + '/'
         super(HttpTransportBase, self).__init__(base)
         # In the future we might actually connect to the remote host
         # rather than using get_url
         # self._connection = None
-        (self._proto, self._host,
+        (apparent_proto, self._host,
             self._path, self._parameters,
             self._query, self._fragment) = urlparse.urlparse(self.base)
-        self._proto = real_proto
+        self._qualified_proto = apparent_proto
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
-        This can be supplied with a string or a list
+
+        This can be supplied with a string or a list.
+
+        This always returns "http://host" without the implementation
+        qualifier, even if one was originally given.
         """
         assert isinstance(relpath, basestring)
         if isinstance(relpath, basestring):
@@ -133,8 +141,8 @@ class HttpTransportBase(Transport):
         # I'm concerned about when it chooses to strip the last
         # portion of the path, and when it doesn't.
         path = '/'.join(basepath)
-        return urlparse.urlunparse((self._proto,
-                self._host, path, '', '', ''))
+        return urlparse.urlunparse((self._qualified_proto,
+                                    self._host, path, '', '', ''))
 
     def get(self, relpath):
         raise NotImplementedError("has() is abstract on %r" % self)
@@ -335,13 +343,16 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
 class HttpServer(Server):
     """A test server for http transports."""
 
+    # used to form the url that connects to this server
+    _url_protocol = 'http'
+
     def _http_start(self):
         httpd = None
         httpd = TestingHTTPServer(('localhost', 0),
                                   TestingHTTPRequestHandler,
                                   self)
         host, port = httpd.socket.getsockname()
-        self._http_base_url = 'http://localhost:%s/' % port
+        self._http_base_url = '%s://localhost:%s/' % (self._url_protocol, port)
         self._http_starting.release()
         httpd.socket.settimeout(0.1)
 

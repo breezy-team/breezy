@@ -54,11 +54,20 @@ class PyCurlTransport(HttpTransportBase):
         """
         return True
 
-    def has(self, relpath):
-        curl = pycurl.Curl()
+    def _real_abspath(self, relpath):
+        """Produce absolute path, adjusting protocol if needed"""
         abspath = self.abspath(relpath)
+        if abspath.startswith('http+pycurl'):
+            abspath = 'http' + abspath[11:]
+        elif abspath.startswith('https+pycurl'):
+            abspath = 'https' + abspath[12:]
         if isinstance(abspath, unicode):
             abspath = abspath.encode('ascii', 'strict')
+        return abspath
+
+    def has(self, relpath):
+        curl = pycurl.Curl()
+        abspath = self._real_abspath(relpath)
         curl.setopt(pycurl.URL, abspath)
         curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
         self._set_curl_options(curl)
@@ -76,10 +85,8 @@ class PyCurlTransport(HttpTransportBase):
         
     def get(self, relpath):
         curl = pycurl.Curl()
-        abspath = self.abspath(relpath)
+        abspath = self._real_abspath(relpath)
         sio = StringIO()
-        if isinstance(abspath, unicode):
-            abspath = abspath.encode('ascii')
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
         curl.setopt(pycurl.WRITEFUNCTION, sio.write)
@@ -120,7 +127,18 @@ class PyCurlTransport(HttpTransportBase):
                 raise NoSuchFile(curl.getinfo(pycurl.EFFECTIVE_URL), e)
 
 
+class HttpServer_PyCurl(HttpServer):
+    """Subclass of HttpServer that gives http+pycurl urls.
+
+    This is for use in testing: connections to this server will always go
+    through pycurl where possible.
+    """
+
+    # urls returned by this server should require the pycurl client impl
+    _url_protocol = 'http+pycurl'
+
+
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(PyCurlTransport, HttpServer),
+    return [(PyCurlTransport, HttpServer_PyCurl),
             ]

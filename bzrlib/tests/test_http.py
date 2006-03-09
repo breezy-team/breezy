@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -20,6 +20,7 @@
 # TODO: Should be renamed to bzrlib.transport.http.tests?
 
 import bzrlib
+import bzrlib.errors as errors
 from bzrlib.tests import TestCase
 from bzrlib.transport import Transport
 from bzrlib.transport.http import extract_auth
@@ -76,6 +77,19 @@ class TestHttpUrls(TestCase):
         eq(t.abspath('.bzr/tree-version'),
            'http://bzr.ozlabs.org/.bzr/tree-version')
 
+    def test_http_impl_urls(self):
+        """There are servers which ask for particular clients to connect"""
+        try:
+            from bzrlib.transport.http._pycurl import HttpServer_PyCurl
+            server = HttpServer_PyCurl()
+            try:
+                server.setUp()
+                url = server.get_url()
+                self.assertTrue(url.startswith('http+pycurl://'))
+            finally:
+                server.tearDown()
+        except errors.DependencyNotPresent:
+            raise TestSkipped('pycurl not present')
 
 class TestHttpConnections(TestCaseWithWebserver):
 

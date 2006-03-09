@@ -826,6 +826,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         # that have aliasing problems like symlinks should go in backend
         # specific test cases.
         transport = self.get_transport()
+        
+        # disabled because some transports might normalize urls in generating
+        # the abspath - eg http+pycurl-> just http -- mbp 20060308 
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
 
