@@ -65,6 +65,10 @@ class VersionedFile(object):
         """Return a unsorted list of versions."""
         raise NotImplementedError(self.versions)
 
+    def has_ghost(self, version_id):
+        """Returns whether version is present as a ghost."""
+        raise NotImplementedError(self.has_ghost)
+
     def has_version(self, version_id):
         """Returns whether version is present."""
         raise NotImplementedError(self.has_version)
@@ -78,6 +82,10 @@ class VersionedFile(object):
         Must raise RevisionNotPresent if any of the given parents are
         not present in file history."""
         raise NotImplementedError(self.add_lines)
+
+    def add_lines_with_ghosts(self, version_id, parents, lines):
+        """Add lines to the versioned file, allowing ghosts to be present."""
+        raise NotImplementedError(self.add_lines_with_ghosts)
 
     def check(self, progress_bar=None):
         """Check the versioned file for integrity."""
@@ -104,6 +112,16 @@ class VersionedFile(object):
         :param mode: optional file mode.
         """
         raise NotImplementedError(self.create_empty)
+
+    def fix_parents(self, version, new_parents):
+        """Fix the parents list for version.
+        
+        This is done by appending a new version to the index
+        with identical data except for the parents list.
+        the parents list must be a superset of the current
+        list.
+        """
+        raise NotImplementedError(self.fix_parents)
 
     def get_suffixes(self):
         """Return the file suffixes associated with this versioned file."""
@@ -136,12 +154,35 @@ class VersionedFile(object):
             version_ids = [version_ids]
         raise NotImplementedError(self.get_ancestry)
         
+    def get_ancestry_with_ghosts(self, version_ids):
+        """Return a list of all ancestors of given version(s). This
+        will not include the null revision.
+
+        Must raise RevisionNotPresent if any of the given versions are
+        not present in file history.
+        
+        Ghosts that are known about will be included in ancestry list,
+        but are not explicitly marked.
+        """
+        raise NotImplementedError(self.get_ancestry_with_ghosts)
+        
     def get_graph(self):
-        """Return a graph for the entire versioned file."""
+        """Return a graph for the entire versioned file.
+        
+        Ghosts are not listed or referenced in the graph.
+        """
         result = {}
         for version in self.versions():
             result[version] = self.get_parents(version)
         return result
+
+    def get_graph_with_ghosts(self):
+        """Return a graph for the entire versioned file.
+        
+        Ghosts are referenced in parents list but are not
+        explicitly listed.
+        """
+        raise NotImplementedError(self.get_graph_with_ghosts)
 
     @deprecated_method(zero_eight)
     def parent_names(self, version):
@@ -158,6 +199,17 @@ class VersionedFile(object):
         file history.
         """
         raise NotImplementedError(self.get_parents)
+
+    def get_parents_with_ghosts(self, version_id):
+        """Return version names for parents of version_id.
+
+        Will raise RevisionNotPresent if version_id is not present
+        in the history.
+
+        Ghosts that are known about will be included in the parent list,
+        but are not explicitly marked.
+        """
+        raise NotImplementedError(self.get_parents_with_ghosts)
 
     def annotate_iter(self, version_id):
         """Yield list of (version-id, line) pairs for the specified
@@ -188,6 +240,21 @@ class VersionedFile(object):
             version_ids,
             ignore_missing)
 
+    def iter_lines_added_or_present_in_versions(self, version_ids=None):
+        """Iterate over the lines in the versioned file from version_ids.
+
+        This may return lines from other versions, and does not return the
+        specific version marker at this point. The api may be changed
+        during development to include the version that the versioned file
+        thinks is relevant, but given that such hints are just guesses,
+        its better not to have it if we dont need it.
+
+        NOTES: Lines are normalised: they will all have \n terminators.
+               Lines are returned in arbitrary order.
+        """
+        raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
+
+    @deprecated_method(zero_eight)
     def walk(self, version_ids=None):
         """Walk the versioned file as a weave-like structure, for
         versions relative to version_ids.  Yields sequence of (lineno,
@@ -198,6 +265,8 @@ class VersionedFile(object):
 
         :param version_ids: the version_ids to walk with respect to. If not
                             supplied the entire weave-like structure is walked.
+
+        walk is deprecated in favour of iter_lines_added_or_present_in_versions
         """
         raise NotImplementedError(self.walk)
 
@@ -218,7 +287,7 @@ class VersionedFile(object):
         inc_b = set(self.get_ancestry([ver_b]))
         inc_c = inc_a & inc_b
 
-        for lineno, insert, deleteset, line in self.walk():
+        for lineno, insert, deleteset, line in self.walk([ver_a, ver_b]):
             if deleteset & inc_c:
                 # killed in parent; can't be in either a or b
                 # not relevant to our work
@@ -331,27 +400,34 @@ class InterVersionedFile(InterObject):
         supplied when they are silently skipped.
         """
         # the default join: 
+        # - if the target is empty, just add all the versions from 
+        #   source to target, otherwise:
         # - make a temporary versioned file of type target
         # - insert the source content into it one at a time
         # - join them
-        # Make a new target-format versioned file. 
-        temp_source = self.target.create_empty("temp", MemoryTransport())
+        if not self.target.versions():
+            target = self.target
+        else:
+            # Make a new target-format versioned file. 
+            temp_source = self.target.create_empty("temp", MemoryTransport())
+            target = temp_source
         graph = self.source.get_graph()
         order = topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, len(order))
-                temp_source.add_lines(version,
-                                      self.source.get_parents(version),
-                                      self.source.get_lines(version))
+                target.add_lines(version,
+                                 self.source.get_parents(version),
+                                 self.source.get_lines(version))
             
             # this should hit the native code path for target
-            return self.target.join(temp_source,
-                                    pb,
-                                    msg,
-                                    version_ids,
-                                    ignore_missing)
+            if target is not self.target:
+                return self.target.join(temp_source,
+                                        pb,
+                                        msg,
+                                        version_ids,
+                                        ignore_missing)
         finally:
             pb.finished()
 

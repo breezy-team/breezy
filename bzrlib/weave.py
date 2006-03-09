@@ -67,6 +67,7 @@
 # the possible relationships.
 
 
+from copy import copy
 from cStringIO import StringIO
 from difflib import SequenceMatcher
 import os
@@ -492,11 +493,31 @@ class Weave(VersionedFile):
 
     @deprecated_method(zero_eight)
     def _walk(self):
-        """_walk has become walk, a supported api."""
-        return self.walk()
+        """_walk has become visit, a supported api."""
+        return self._walk_internal()
 
+    def iter_lines_added_or_present_in_versions(self, version_ids=None):
+        """See VersionedFile.iter_lines_added_or_present_in_versions()."""
+        if version_ids is None:
+            version_ids = self.versions()
+        version_ids = set(version_ids)
+        for lineno, inserted, deletes, line in self._walk_internal(version_ids):
+            # if inserted not in version_ids then it was inserted before the
+            # versions we care about, but because weaves cannot represent ghosts
+            # properly, we do not filter down to that
+            # if inserted not in version_ids: continue
+            if line[-1] != '\n':
+                yield line + '\n'
+            else:
+                yield line
+
+    #@deprecated_method(zero_eight)
     def walk(self, version_ids=None):
         """See VersionedFile.walk."""
+        return self._walk_internal(version_ids)
+
+    def _walk_internal(self, version_ids=None):
+        """Helper method for weave actions."""
         
         istack = []
         dset = set()
@@ -705,7 +726,7 @@ class Weave(VersionedFile):
             update_text = 'checking %s' % (short_name,)
             update_text = update_text[:25]
 
-        for lineno, insert, deleteset, line in self.walk():
+        for lineno, insert, deleteset, line in self._walk_internal():
             if progress_bar:
                 progress_bar.update(update_text, lineno, nlines)
 
@@ -845,9 +866,13 @@ class Weave(VersionedFile):
         :param msg: An optional message for the progress
         """
         new_weave = _reweave(self, other, pb=pb, msg=msg)
+        self._copy_weave_content(new_weave)
+
+    def _copy_weave_content(self, otherweave):
+        """adsorb the content from otherweave."""
         for attr in self.__slots__:
             if attr != '_weave_name':
-                setattr(self, attr, getattr(new_weave, attr))
+                setattr(self, attr, copy(getattr(otherweave, attr)))
 
 
 class WeaveFile(Weave):
@@ -1232,6 +1257,10 @@ class InterWeave(InterVersionedFile):
 
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
+        if self.target.versions() == []:
+            # optimised copy
+            self.target._copy_weave_content(self.source)
+            return
         try:
             self.target._join(self.source, pb, msg, version_ids, ignore_missing)
         except errors.WeaveParentMismatch:

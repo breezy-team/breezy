@@ -224,6 +224,155 @@ class VersionedFileTestMixIn(object):
         """Open the versioned file from disk again."""
         raise NotImplementedError(self.reopen_file)
 
+    def test_iter_lines_added_or_present_in_versions(self):
+        # test that we get at least an equalset of the lines added by
+        # versions in the weave 
+        # the ordering here is to make a tree so that dumb searches have
+        # more changes to muck up.
+        vf = self.get_file()
+        # add a base to get included
+        vf.add_lines('base', [], ['base\n'])
+        # add a ancestor to be included on one side
+        vf.add_lines('lancestor', [], ['lancestor\n'])
+        # add a ancestor to be included on the other side
+        vf.add_lines('rancestor', ['base'], ['rancestor\n'])
+        # add a child of rancestor with no eofile-nl
+        vf.add_lines('child', ['rancestor'], ['base\n', 'child\n'])
+        # add a child of lancestor and base to join the two roots
+        vf.add_lines('otherchild',
+                     ['lancestor', 'base'],
+                     ['base\n', 'lancestor\n', 'otherchild\n'])
+        def iter_with_versions(versions):
+            # now we need to see what lines are returned, and how often.
+            lines = {'base\n':0,
+                     'lancestor\n':0,
+                     'rancestor\n':0,
+                     'child\n':0,
+                     'otherchild\n':0,
+                     }
+            # iterate over the lines
+            for line in vf.iter_lines_added_or_present_in_versions(versions):
+                lines[line] += 1
+            return lines
+        lines = iter_with_versions(['child', 'otherchild'])
+        # we must see child and otherchild
+        self.assertTrue(lines['child\n'] > 0)
+        self.assertTrue(lines['otherchild\n'] > 0)
+        # we dont care if we got more than that.
+        
+        # test all lines
+        lines = iter_with_versions(None)
+        # all lines must be seen at least once
+        self.assertTrue(lines['base\n'] > 0)
+        self.assertTrue(lines['lancestor\n'] > 0)
+        self.assertTrue(lines['rancestor\n'] > 0)
+        self.assertTrue(lines['child\n'] > 0)
+        self.assertTrue(lines['otherchild\n'] > 0)
+
+    def test_fix_parents(self):
+        # some versioned files allow incorrect parents to be corrected after
+        # insertion - this may not fix ancestry..
+        # if they do not supported, they just do not implement it.
+        # we test this as an interface test to ensure that those that *do*
+        # implementent it get it right.
+        vf = self.get_file()
+        vf.add_lines('notbase', [], [])
+        vf.add_lines('base', [], [])
+        try:
+            vf.fix_parents('notbase', ['base'])
+        except NotImplementedError:
+            return
+        self.assertEqual(['base'], vf.get_parents('notbase'))
+        # open again, check it stuck.
+        vf = self.get_file()
+        self.assertEqual(['base'], vf.get_parents('notbase'))
+
+    def test_fix_parents_with_ghosts(self):
+        # when fixing parents, ghosts that are listed should not be ghosts
+        # anymore.
+        vf = self.get_file()
+
+        try:
+            vf.add_lines_with_ghosts('notbase', ['base', 'stillghost'], [])
+        except NotImplementedError:
+            return
+        vf.add_lines('base', [], [])
+        vf.fix_parents('notbase', ['base', 'stillghost'])
+        self.assertEqual(['base'], vf.get_parents('notbase'))
+        # open again, check it stuck.
+        vf = self.get_file()
+        self.assertEqual(['base'], vf.get_parents('notbase'))
+        # and check the ghosts
+        self.assertEqual(['base', 'stillghost'],
+                         vf.get_parents_with_ghosts('notbase'))
+
+    def test_add_lines_with_ghosts(self):
+        # some versioned file formats allow lines to be added with parent
+        # information that is > than that in the format. Formats that do
+        # not support this need to raise NotImplementedError on the
+        # add_lines_with_ghosts api.
+        vf = self.get_file()
+        # add a revision with ghost parents
+        try:
+            vf.add_lines_with_ghosts('notbase', ['base'], [])
+        except NotImplementedError:
+            # check the other ghost apis are also not implemented
+            self.assertRaises(NotImplementedError, vf.has_ghost, 'foo')
+            self.assertRaises(NotImplementedError, vf.get_ancestry_with_ghosts, ['foo'])
+            self.assertRaises(NotImplementedError, vf.get_parents_with_ghosts, 'foo')
+            self.assertRaises(NotImplementedError, vf.get_graph_with_ghosts)
+            return
+        # test key graph related apis: getncestry, _graph, get_parents
+        # has_version
+        # - these are ghost unaware and must not be reflect ghosts
+        self.assertEqual(['notbase'], vf.get_ancestry('notbase'))
+        self.assertEqual([], vf.get_parents('notbase'))
+        self.assertEqual({'notbase':[]}, vf.get_graph())
+        self.assertFalse(vf.has_version('base'))
+        # we have _with_ghost apis to give us ghost information.
+        self.assertEqual(['base', 'notbase'], vf.get_ancestry_with_ghosts(['notbase']))
+        self.assertEqual(['base'], vf.get_parents_with_ghosts('notbase'))
+        self.assertEqual({'notbase':['base']}, vf.get_graph_with_ghosts())
+        self.assertTrue(vf.has_ghost('base'))
+        # if we add something that is a ghost of another, it should correct the
+        # results of the prior apis
+        vf.add_lines('base', [], [])
+        self.assertEqual(['base', 'notbase'], vf.get_ancestry(['notbase']))
+        self.assertEqual(['base'], vf.get_parents('notbase'))
+        self.assertEqual({'base':[],
+                          'notbase':['base'],
+                          },
+                         vf.get_graph())
+        self.assertTrue(vf.has_version('base'))
+        # we have _with_ghost apis to give us ghost information.
+        self.assertEqual(['base', 'notbase'], vf.get_ancestry_with_ghosts(['notbase']))
+        self.assertEqual(['base'], vf.get_parents_with_ghosts('notbase'))
+        self.assertEqual({'base':[],
+                          'notbase':['base'],
+                          },
+                         vf.get_graph_with_ghosts())
+        self.assertFalse(vf.has_ghost('base'))
+
+    def test_add_lines_with_ghosts_after_normal_revs(self):
+        # some versioned file formats allow lines to be added with parent
+        # information that is > than that in the format. Formats that do
+        # not support this need to raise NotImplementedError on the
+        # add_lines_with_ghosts api.
+        vf = self.get_file()
+        # probe for ghost support
+        try:
+            vf.has_ghost('hoo')
+        except NotImplementedError:
+            return
+        vf.add_lines_with_ghosts('base', [], ['line\n', 'line_b\n'])
+        vf.add_lines_with_ghosts('references_ghost',
+                                 ['base', 'a_ghost'],
+                                 ['line\n', 'line_b\n', 'line_c\n'])
+        origins = vf.annotate('references_ghost')
+        self.assertEquals(('base', 'line\n'), origins[0])
+        self.assertEquals(('base', 'line_b\n'), origins[1])
+        self.assertEquals(('references_ghost', 'line_c\n'), origins[2])
+        
 
 class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
 
@@ -364,5 +513,3 @@ class TestInterVersionedFile(TestCaseWithTransport):
             versionedfile.InterVersionedFile.unregister_optimiser(InterString)
         # now we should get the default InterVersionedFile object again.
         self.assertGetsDefaultInterVersionedFile(dummy_a, dummy_b)
-
-
