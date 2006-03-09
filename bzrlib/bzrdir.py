@@ -1582,13 +1582,13 @@ class ConvertBzrDir6ToMeta(Converter):
             if name.startswith('basis-inventory.'):
                 self.garbage_inventories.append(name)
         # create new directories for repository, working tree and branch
-        dir_mode = self.bzrdir._control_files._dir_mode
+        self.dir_mode = self.bzrdir._control_files._dir_mode
         self.file_mode = self.bzrdir._control_files._file_mode
         repository_names = [('inventory.weave', True),
                             ('revision-store', True),
                             ('weaves', True)]
         self.step('Upgrading repository  ')
-        self.bzrdir.transport.mkdir('repository', mode=dir_mode)
+        self.bzrdir.transport.mkdir('repository', mode=self.dir_mode)
         self.make_lock('repository')
         # we hard code the formats here because we are converting into
         # the meta format. The meta format upgrader can take this to a 
@@ -1598,7 +1598,7 @@ class ConvertBzrDir6ToMeta(Converter):
             self.move_entry('repository', entry)
 
         self.step('Upgrading branch      ')
-        self.bzrdir.transport.mkdir('branch', mode=dir_mode)
+        self.bzrdir.transport.mkdir('branch', mode=self.dir_mode)
         self.make_lock('branch')
         self.put_format('branch', bzrlib.branch.BzrBranchFormat5())
         branch_files = [('revision-history', True),
@@ -1608,7 +1608,7 @@ class ConvertBzrDir6ToMeta(Converter):
             self.move_entry('branch', entry)
 
         self.step('Upgrading working tree')
-        self.bzrdir.transport.mkdir('checkout', mode=dir_mode)
+        self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
         self.make_lock('checkout')
         self.put_format('checkout', bzrlib.workingtree.WorkingTreeFormat3())
         self.bzrdir.transport.delete_multi(self.garbage_inventories, self.pb)
@@ -1626,7 +1626,11 @@ class ConvertBzrDir6ToMeta(Converter):
     def make_lock(self, name):
         """Make a lock for the new control dir name."""
         self.step('Make %s lock' % name)
-        self.bzrdir.transport.put('%s/lock' % name, StringIO(), mode=self.file_mode)
+        ld = LockDir(self.bzrdir.transport, 
+                     '%s/lock' % name,
+                     file_modebits=self.file_mode,
+                     dir_modebits=self.dir_mode)
+        ld.create()
 
     def move_entry(self, new_dir, entry):
         """Move then entry name into new_dir."""
