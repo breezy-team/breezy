@@ -154,34 +154,58 @@ class KnitAnnotateFactory(_KnitFactory):
     annotated = True
 
     def parse_fulltext(self, content, version):
+        """Convert fulltext to internal representation
+
+        fulltext content is of the format
+        revid(utf8) plaintext\n
+        internal representation is of the format:
+        (revid, plaintext)
+        """
         lines = []
         for line in content:
             origin, text = line.split(' ', 1)
-            lines.append((int(origin), text))
+            lines.append((origin.decode('utf-8'), text))
         return KnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
+        """Convert a line based delta into internal representation.
+
+        line delta is in the form of:
+        intstart intend intcount
+        1..count lines:
+        revid(utf8) newline\n
+        internal represnetation is
+        (start, end, count, [1..count tuples (revid, newline)])
+        """
         while lines:
             header = lines.pop(0)
             start, end, c = [int(n) for n in header.split(',')]
             contents = []
             for i in range(c):
                 origin, text = lines.pop(0).split(' ', 1)
-                contents.append((int(origin), text))
+                contents.append((origin.decode('utf-8'), text))
             yield start, end, c, contents
 
     def parse_line_delta(self, lines, version):
         return list(self.parse_line_delta_iter(lines))
 
     def lower_fulltext(self, content):
-        return ['%d %s' % (o, t) for o, t in content._lines]
+        """convert a fulltext content record into a serializable form.
+
+        see parse_fulltext which this inverts.
+        """
+        return ['%s %s' % (o.encode('utf-8'), t) for o, t in content._lines]
 
     def lower_line_delta(self, delta):
+        """convert a delta into a serializable form.
+
+        See parse_line_delta_iter which this inverts.
+        """
         out = []
         for start, end, c, lines in delta:
             out.append('%d,%d,%d\n' % (start, end, c))
             for origin, text in lines:
-                out.append('%d %s' % (origin, text))
+                out.append('%s %s' % (origin.encode('utf-8'), text))
         return out
 
 
@@ -191,6 +215,11 @@ class KnitPlainFactory(_KnitFactory):
     annotated = False
 
     def parse_fulltext(self, content, version):
+        """This parses an unannotated fulltext.
+
+        Note that this is not a noop - the internal representation
+        has (versionid, line) - its just a constant versionid.
+        """
         return self.make(content, version)
 
     def parse_line_delta_iter(self, lines, version):
@@ -483,7 +512,7 @@ class KnitVersionedFile(VersionedFile):
                 options.append('no-eol')
                 lines[-1] = lines[-1] + '\n'
 
-        lines = self.factory.make(lines, len(self._index))
+        lines = self.factory.make(lines, version_id) #len(self._index))
         if self.factory.annotated and len(ghostless_parents) > 0:
             # Merge annotations from parent texts if so is needed.
             self._merge_annotations(lines, ghostless_parents)
@@ -587,7 +616,7 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.annotate_iter."""
         content = self._get_content(version_id)
         for origin, text in content.annotate_iter():
-            yield self._index.idx_to_name(origin), text
+            yield origin, text
 
     def get_parents(self, version_id):
         """See VersionedFile.get_parents."""
@@ -616,39 +645,6 @@ class KnitVersionedFile(VersionedFile):
             return []
         self._check_versions_present(versions)
         return self._index.get_ancestry_with_ghosts(versions)
-
-    def _reannotate_line_delta(self, other, lines, new_version_id,
-                               new_version_idx):
-        """Re-annotate line-delta and return new delta."""
-        new_delta = []
-        for start, end, count, contents \
-                in self.factory.parse_line_delta_iter(lines):
-            new_lines = []
-            for origin, line in contents:
-                old_version_id = other._index.idx_to_name(origin)
-                if old_version_id == new_version_id:
-                    idx = new_version_idx
-                else:
-                    idx = self._index.lookup(old_version_id)
-                new_lines.append((idx, line))
-            new_delta.append((start, end, count, new_lines))
-
-        return self.factory.lower_line_delta(new_delta)
-
-    def _reannotate_fulltext(self, other, lines, new_version_id,
-                             new_version_idx):
-        """Re-annotate fulltext and return new version."""
-        content = self.factory.parse_fulltext(lines, new_version_idx)
-        new_lines = []
-        for origin, line in content.annotate_iter():
-            old_version_id = other._index.idx_to_name(origin)
-            if old_version_id == new_version_id:
-                idx = new_version_idx
-            else:
-                idx = self._index.lookup(old_version_id)
-            new_lines.append((idx, line))
-
-        return self.factory.lower_fulltext(KnitContent(new_lines))
 
     #@deprecated_method(zero_eight)
     def walk(self, version_ids):
@@ -1090,19 +1086,6 @@ class InterKnit(InterVersionedFile):
                     # if source has the parent, we must hav grabbed it first.
                     assert (self.target.has_version(parent) or not
                             self.source.has_version(parent))
-    
-                if self.target.factory.annotated:
-                    # FIXME jrydberg: it should be possible to skip
-                    # re-annotating components if we know that we are
-                    # going to pull all revisions in the same order.
-                    new_version_id = version_id
-                    new_version_idx = self.target._index.num_versions()
-                    if 'fulltext' in options:
-                        lines = self.target._reannotate_fulltext(self.source, lines,
-                            new_version_id, new_version_idx)
-                    elif 'line-delta' in options:
-                        lines = self.target._reannotate_line_delta(self.source, lines,
-                            new_version_id, new_version_idx)
     
                 count = count + 1
                 pb.update("Joining knit", count, len(version_list))
