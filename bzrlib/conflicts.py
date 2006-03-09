@@ -29,8 +29,9 @@ import bzrlib.status
 from bzrlib.commands import register_command
 from bzrlib.errors import BzrCommandError, NotConflicted
 from bzrlib.option import Option
-from bzrlib.workingtree import CONFLICT_SUFFIXES, WorkingTree
 from bzrlib.osutils import rename
+from bzrlib.rio import Stanza
+from bzrlib.workingtree import CONFLICT_SUFFIXES, WorkingTree
 
 class cmd_conflicts(bzrlib.commands.Command):
     """List files with conflicts.
@@ -121,3 +122,45 @@ def restore(filename):
             raise
     if not conflicted:
         raise NotConflicted(filename)
+
+
+def conflict_stanzas(conflicts):
+    for conflict in conflicts:
+        if conflict[0] in ('text conflict', 'path conflict', 
+                           'contents conflict'):
+            s = Stanza(type=conflict[0], path=conflict[2])
+            if conflict[1] is not None:
+                s.add('file_id', conflict[1]) 
+            yield s
+        else:
+            mydict = {'type': conflict[0], 'action': conflict[1], 
+                      'path': conflict[2]}
+            if conflict[3] is not None:
+                mydict['file_id'] = conflict[3]
+            if len(conflict) > 4:
+                mydict['conflict_path'] = conflict[4]
+                if conflict[5] is not None:
+                    mydict['conflict_file_id'] = conflict[5]
+            yield Stanza(**mydict)
+
+def stanza_conflicts(stanzas):
+    for stanza in stanzas:
+        try:
+            file_id = stanza['file_id']
+        except KeyError:
+            file_id = None
+        try:
+            conflict_file_id = stanza['conflict_file_id']
+        except KeyError:
+            conflict_file_id = None
+        if stanza.get('type') in ('text conflict', 'path conflict', 
+                                  'contents conflict'):
+            yield (stanza['type'], file_id, stanza['path'])
+        else:
+            my_list = [stanza['type'], stanza['action'],
+                       stanza['path'], file_id]
+            try:
+                my_list.extend((stanza['conflict_path'], conflict_file_id))
+            except KeyError:
+                pass
+            yield tuple(my_list) 
