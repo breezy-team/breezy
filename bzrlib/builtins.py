@@ -1952,7 +1952,7 @@ class cmd_revert(Command):
         tree, file_list = tree_files(file_list)
         if revision is None:
             # FIXME should be tree.last_revision
-            rev_id = tree.branch.last_revision()
+            rev_id = tree.last_revision()
         elif len(revision) != 1:
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:
