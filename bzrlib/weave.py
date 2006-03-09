@@ -181,7 +181,8 @@ class Weave(VersionedFile):
     __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
                  '_weave_name']
     
-    def __init__(self, weave_name=None):
+    def __init__(self, weave_name=None, access_mode='w'):
+        super(Weave, self).__init__(access_mode)
         self._weave = []
         self._parents = []
         self._sha1s = []
@@ -279,7 +280,7 @@ class Weave(VersionedFile):
         """Please use Weave.clone_text now."""
         return self.clone_text(new_rev_id, old_rev_id, parents)
 
-    def add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines):
         """See VersionedFile.add_lines."""
         return self._add(version_id, lines, map(self._lookup, parents))
 
@@ -407,7 +408,7 @@ class Weave(VersionedFile):
                 offset += 2 + (j2 - j1)
         return new_version
 
-    def clone_text(self, new_version_id, old_version_id, parents):
+    def _clone_text(self, new_version_id, old_version_id, parents):
         """See VersionedFile.clone_text."""
         old_lines = self.get_text(old_version_id)
         self.add_lines(new_version_id, parents, old_lines)
@@ -880,14 +881,14 @@ class WeaveFile(Weave):
 
     WEAVE_SUFFIX = '.weave'
     
-    def __init__(self, name, transport, mode=None, create=False):
+    def __init__(self, name, transport, filemode=None, create=False, access_mode='w'):
         """Create a WeaveFile.
         
         :param create: If not True, only open an existing knit.
         """
-        super(WeaveFile, self).__init__(name)
+        super(WeaveFile, self).__init__(name, access_mode)
         self._transport = transport
-        self._mode = mode
+        self._filemode = filemode
         try:
             _read_weave_v5(self._transport.get(name + WeaveFile.WEAVE_SUFFIX), self)
         except errors.NoSuchFile:
@@ -896,10 +897,15 @@ class WeaveFile(Weave):
             # new file, save it
             self._save()
 
-    def add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines):
         """Add a version and save the weave."""
-        super(WeaveFile, self).add_lines(version_id, parents, lines)
+        super(WeaveFile, self)._add_lines(version_id, parents, lines)
         self._save()
+
+    def _clone_text(self, new_version_id, old_version_id, parents):
+        """See VersionedFile.clone_text."""
+        super(WeaveFile, self)._clone_text(new_version_id, old_version_id, parents)
+        self._save
 
     def copy_to(self, name, transport):
         """See VersionedFile.copy_to()."""
@@ -907,19 +913,20 @@ class WeaveFile(Weave):
         sio = StringIO()
         write_weave_v5(self, sio)
         sio.seek(0)
-        transport.put(name + WeaveFile.WEAVE_SUFFIX, sio, self._mode)
+        transport.put(name + WeaveFile.WEAVE_SUFFIX, sio, self._filemode)
 
-    def create_empty(self, name, transport, mode=None):
-        return WeaveFile(name, transport, mode, create=True)
+    def create_empty(self, name, transport, filemode=None):
+        return WeaveFile(name, transport, filemode, create=True)
 
     def _save(self):
         """Save the weave."""
+        self._check_write_ok()
         sio = StringIO()
         write_weave_v5(self, sio)
         sio.seek(0)
         self._transport.put(self._weave_name + WeaveFile.WEAVE_SUFFIX,
                             sio,
-                            self._mode)
+                            self._filemode)
 
     @staticmethod
     def get_suffixes():

@@ -243,6 +243,13 @@ class TestRepository(TestCaseWithRepository):
         new_signature = wt.branch.repository.get_signature_text('A')
         self.assertEqual(old_signature, new_signature)
 
+    def test_exposed_versioned_files_are_marked_dirty(self):
+        repo = self.make_repository('.')
+        repo.lock_write()
+        inv = repo.get_inventory_weave()
+        repo.unlock()
+        self.assertRaises(errors.OutSideTransaction, inv.add_lines, 'foo', [], [])
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
