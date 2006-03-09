@@ -494,15 +494,15 @@ class KnitVersionedFile(VersionedFile):
 
         Any versions not present will be converted into ghosts.
         """
-        ghostless_parents = []
+        present_parents = []
         ghosts = []
         for parent in parents:
             if not self.has_version(parent):
                 ghosts.append(parent)
             else:
-                ghostless_parents.append(parent)
+                present_parents.append(parent)
 
-        if delta and not len(ghostless_parents):
+        if delta and not len(present_parents):
             delta = False
 
         digest = sha_strings(lines)
@@ -512,17 +512,17 @@ class KnitVersionedFile(VersionedFile):
                 options.append('no-eol')
                 lines[-1] = lines[-1] + '\n'
 
-        lines = self.factory.make(lines, version_id) #len(self._index))
-        if self.factory.annotated and len(ghostless_parents) > 0:
+        lines = self.factory.make(lines, version_id)
+        if self.factory.annotated and len(present_parents) > 0:
             # Merge annotations from parent texts if so is needed.
-            self._merge_annotations(lines, ghostless_parents)
+            self._merge_annotations(lines, present_parents)
 
-        if len(ghostless_parents) and delta:
+        if len(present_parents) and delta:
             # To speed the extract of texts the delta chain is limited
             # to a fixed number of deltas.  This should minimize both
             # I/O and the time spend applying deltas.
             count = 0
-            delta_parents = ghostless_parents
+            delta_parents = present_parents
             while count < 25:
                 parent = delta_parents[0]
                 method = self._index.get_method(parent)
@@ -535,7 +535,7 @@ class KnitVersionedFile(VersionedFile):
 
         if delta:
             options.append('line-delta')
-            content = self._get_content(ghostless_parents[0])
+            content = self._get_content(present_parents[0])
             delta_hunks = content.line_delta(lines)
             store_lines = self.factory.lower_line_delta(delta_hunks)
         else:
