@@ -925,39 +925,61 @@ class _KnitData(_KnitComponentFile):
                 pass
         return self._file
 
-    def add_record(self, version_id, digest, lines):
-        """Write new text record to disk.  Returns the position in the
-        file where it was written."""
+    def _record_to_data(self, version_id, digest, lines):
+        """Convert version_id, digest, lines into a raw data block.
+        
+        :return: (len, a StringIO instance with the raw data ready to read.)
+        """
         sio = StringIO()
         data_file = GzipFile(None, mode='wb', fileobj=sio)
         print >>data_file, "version %s %d %s" % (version_id, len(lines), digest)
         data_file.writelines(lines)
         print >>data_file, "end %s\n" % version_id
         data_file.close()
+        length= sio.tell()
+        sio.seek(0)
+        return length, sio
 
+    def add_raw_record(self, raw_data):
+        """Append a prepared record to the data file."""
+        start_pos = self._transport.append(self._filename, StringIO(raw_data))
+        return start_pos, len(raw_data)
+        
+    def add_record(self, version_id, digest, lines):
+        """Write new text record to disk.  Returns the position in the
+        file where it was written."""
+        size, sio = self._record_to_data(version_id, digest, lines)
         # cache
         self._records[version_id] = (digest, lines)
-
-        content = sio.getvalue()
-        sio.seek(0)
+        # write to disk
         start_pos = self._transport.append(self._filename, sio)
-        return start_pos, len(content)
+        return start_pos, size
 
-    def _parse_record(self, version_id, data):
-        df = GzipFile(mode='rb', fileobj=StringIO(data))
+    def _parse_record_header(self, version_id, raw_data):
+        """Parse a record header for consistency.
+
+        :return: the header and the decompressor stream.
+                 as (stream, header_record)
+        """
+        df = GzipFile(mode='rb', fileobj=StringIO(raw_data))
         rec = df.readline().split()
         if len(rec) != 4:
-            raise KnitCorrupt(self._filename, 'unexpected number of records')
+            raise KnitCorrupt(self._filename, 'unexpected number of elements in record header')
         if rec[1] != version_id:
             raise KnitCorrupt(self._filename, 
                               'unexpected version, wanted %r, got %r' % (
                                 version_id, rec[1]))
+        return df, rec
+
+    def _parse_record(self, version_id, data):
+        df, rec = self._parse_record_header(version_id, data)
         lines = int(rec[2])
         record_contents = self._read_record_contents(df, lines)
         l = df.readline()
         if l != 'end %s\n' % version_id:
             raise KnitCorrupt(self._filename, 'unexpected version end line %r, wanted %r' 
                         % (l, version_id))
+        df.close()
         return record_contents, rec[3]
 
     def _read_record_contents(self, df, record_lines):
@@ -966,6 +988,42 @@ class _KnitData(_KnitComponentFile):
         for i in range(record_lines):
             r.append(df.readline())
         return r
+
+    def read_records_iter_raw(self, records):
+        """Read text records from data file and yield raw data.
+
+        This unpacks enough of the text record to validate the id is
+        as expected but thats all.
+
+        It will actively recompress currently cached records on the
+        basis that that is cheaper than I/O activity.
+        """
+        needed_records = []
+        for version_id, pos, size in records:
+            if version_id not in self._records:
+                needed_records.append((version_id, pos, size))
+
+        # setup an iterator of the external records:
+        # uses readv so nice and fast we hope.
+        if len(needed_records):
+            # grab the disk data needed.
+            raw_records = self._transport.readv(self._filename,
+                [(pos, size) for version_id, pos, size in needed_records])
+
+        for version_id, pos, size in records:
+            if version_id in self._records:
+                # compress a new version
+                size, sio = self._record_to_data(version_id,
+                                                 self._records[version_id][0],
+                                                 self._records[version_id][1])
+                yield version_id, sio.getvalue()
+            else:
+                pos, data = raw_records.next()
+                # validate the header
+                df, rec = self._parse_record_header(version_id, data)
+                df.close()
+                yield version_id, data
+
 
     def read_records_iter(self, records):
         """Read text records from data file and yield result.
@@ -1071,29 +1129,46 @@ class InterKnit(InterVersionedFile):
             version_list = [i for i in full_list if (not self.target.has_version(i)
                             and i in needed_versions)]
     
-            records = []
+            # plan the join:
+            copy_queue = []
+            copy_queue_records = []
+            copy_set = set()
             for version_id in version_list:
-                data_pos, data_size = self.source._index.get_position(version_id)
-                records.append((version_id, data_pos, data_size))
-    
-            count = 0
-            for version_id, lines, digest \
-                    in self.source._data.read_records_iter(records):
                 options = self.source._index.get_options(version_id)
                 parents = self.source._index.get_parents_with_ghosts(version_id)
-                
+                # check that its will be a consistent copy:
                 for parent in parents:
-                    # if source has the parent, we must hav grabbed it first.
-                    assert (self.target.has_version(parent) or not
-                            self.source.has_version(parent))
-    
+                    # if source has the parent, we must :
+                    # * already have it or
+                    # * have it scheduled already
+                    # otherwise we dont care
+                    assert (self.target.has_version(parent) or
+                            parent in copy_set or
+                            not self.source.has_version(parent))
+                data_pos, data_size = self.source._index.get_position(version_id)
+                copy_queue_records.append((version_id, data_pos, data_size))
+                copy_queue.append((version_id, options, parents))
+                copy_set.add(version_id)
+
+            # data suck the join:
+            count = 0
+            total = len(version_list)
+            # we want the raw gzip for bulk copying, but the record validated
+            # just enough to be sure its the right one.
+            # TODO: consider writev or write combining to reduce 
+            # death of a thousand cuts feeling.
+            for (version_id, raw_data), \
+                (version_id2, options, parents) in \
+                izip(self.source._data.read_records_iter_raw(copy_queue_records),
+                     copy_queue):
+                assert version_id == version_id2, 'logic error, inconsistent results'
                 count = count + 1
-                pb.update("Joining knit", count, len(version_list))
-    
-                pos, size = self.target._data.add_record(version_id, digest, lines)
+                pb.update("Joining knit", count, total)
+                pos, size = self.target._data.add_raw_record(raw_data)
                 self.target._index.add_version(version_id, options, pos, size, parents)
-    
+
             for version in mismatched_versions:
+                # FIXME RBC 20060309 is this needed?
                 n1 = set(self.target.get_parents_with_ghosts(version))
                 n2 = set(self.source.get_parents_with_ghosts(version))
                 # write a combined record to our history preserving the current 
