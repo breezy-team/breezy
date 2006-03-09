@@ -26,7 +26,6 @@ from bzrlib.osutils import split_lines
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.transport.local import LocalTransport
 from bzrlib.transport.memory import MemoryTransport
-from bzrlib.transactions import PassThroughTransaction
 
 
 class KnitTests(TestCaseInTempDir):

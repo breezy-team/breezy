@@ -240,6 +240,7 @@ class KnitVersionedFile(VersionedFile):
         
         :param create: If not True, only open an existing knit.
         """
+        super(KnitVersionedFile, self).__init__()
         if access_mode is None:
             access_mode = 'w'
         assert access_mode in ('r', 'w'), "invalid mode specified %r" % access_mode
@@ -271,7 +272,7 @@ class KnitVersionedFile(VersionedFile):
     def create_empty(self, name, transport, mode=None):
         return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta, create=True)
     
-    def fix_parents(self, version, new_parents):
+    def _fix_parents(self, version, new_parents):
         """Fix the parents list for version.
         
         This is done by appending a new version to the index
@@ -427,12 +428,12 @@ class KnitVersionedFile(VersionedFile):
         if version_ids:
             raise RevisionNotPresent(list(version_ids)[0], self.filename)
 
-    def add_lines_with_ghosts(self, version_id, parents, lines):
+    def _add_lines_with_ghosts(self, version_id, parents, lines):
         """See VersionedFile.add_lines_with_ghosts()."""
         self._check_add(version_id, lines)
         return self._add(version_id, lines[:], parents, self.delta)
 
-    def add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines):
         """See VersionedFile.add_lines."""
         self._check_add(version_id, lines)
         self._check_versions_present(parents)

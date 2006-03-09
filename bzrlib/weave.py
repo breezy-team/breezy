@@ -182,6 +182,7 @@ class Weave(VersionedFile):
                  '_weave_name']
     
     def __init__(self, weave_name=None):
+        super(Weave, self).__init__()
         self._weave = []
         self._parents = []
         self._sha1s = []
@@ -279,7 +280,7 @@ class Weave(VersionedFile):
         """Please use Weave.clone_text now."""
         return self.clone_text(new_rev_id, old_rev_id, parents)
 
-    def add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines):
         """See VersionedFile.add_lines."""
         return self._add(version_id, lines, map(self._lookup, parents))
 
@@ -896,9 +897,9 @@ class WeaveFile(Weave):
             # new file, save it
             self._save()
 
-    def add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines):
         """Add a version and save the weave."""
-        super(WeaveFile, self).add_lines(version_id, parents, lines)
+        super(WeaveFile, self)._add_lines(version_id, parents, lines)
         self._save()
 
     def copy_to(self, name, transport):

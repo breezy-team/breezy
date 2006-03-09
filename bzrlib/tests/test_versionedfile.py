@@ -93,6 +93,14 @@ class VersionedFileTestMixIn(object):
 
         self.assertRaises(RevisionNotPresent,
             f.get_ancestry, ['rM', 'rX'])
+
+    def test_mutate_after_finish(self):
+        f = self.get_file()
+        f.transaction_finished()
+        self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
+        self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
+        self.assertRaises(errors.OutSideTransaction, f.fix_parents, '', [])
+        self.assertRaises(errors.OutSideTransaction, f.join, '')
         
     def test_clear_cache(self):
         f = self.get_file()
