@@ -17,6 +17,7 @@
 """
 
 import os, errno
+from collections import deque
 from cStringIO import StringIO
 import urllib, urllib2
 import urlparse
@@ -74,9 +75,13 @@ class Request(urllib2.Request):
             return urllib2.Request.get_method(self)
 
 
-def get_url(url, method=None):
+def get_url(url, method=None, ranges=None):
     import urllib2
-    mutter("get_url %s", url)
+    if ranges:
+        rangestring = ranges
+    else:
+        rangestring = 'all'
+    mutter("get_url %s [%s]", url, rangestring)
     manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
     url = extract_auth(url, manager)
     auth_handler = urllib2.HTTPBasicAuthHandler(manager)
@@ -85,6 +90,8 @@ def get_url(url, method=None):
     request = Request(url)
     request.method = method
     request.add_header('User-Agent', 'bzr/%s' % bzrlib.__version__)
+    if ranges:
+        request.add_header('Range', ranges)
     response = opener.open(request)
     return response
 
@@ -190,15 +197,11 @@ class HttpTransport(Transport):
                 return False
             raise TransportError(orig_error=e)
 
-    def get(self, relpath, decode=False):
-        """Get the file at the given relative path.
-
-        :param relpath: The relative path to the file
-        """
+    def _get(self, relpath, decode=False, ranges=None):
         path = relpath
         try:
             path = self.abspath(relpath)
-            return get_url(path)
+            return get_url(path, ranges=ranges)
         except urllib2.HTTPError, e:
             mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
@@ -213,6 +216,65 @@ class HttpTransport(Transport):
             raise ConnectionError(msg = "Error retrieving %s: %s" 
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
+
+    def get(self, relpath, decode=False):
+        """Get the file at the given relative path.
+
+        :param relpath: The relative path to the file
+        """
+        return self._get(relpath, decode=decode)
+
+    def readv(self, relpath, offsets):
+        """Get parts of the file at the given relative path.
+
+        :offsets: A list of (offset, size) tuples.
+        :return: A list or generator of (offset, data) tuples
+        """
+        # this is not quite regular enough to have a single driver routine and
+        # helper method in Transport.
+        def do_combined_read(combined_offsets):
+            # read one coalesced block
+            total_size = 0
+            for offset, size in combined_offsets:
+                total_size += size
+            mutter('readv coalesced %d reads.', len(combined_offsets))
+            offset = combined_offsets[0][0]
+            ranges = 'bytes=%d-%d' % (offset, offset + total_size - 1)
+            response = self._get(relpath, ranges=ranges)
+            if response.code == 206:
+                for off, size in combined_offsets:
+                    yield off, response.read(size)
+            elif response.code == 200:
+                data = response.read(offset + total_size)[offset:offset + total_size]
+                pos = 0
+                for offset, size in combined_offsets:
+                    yield offset, data[pos:pos + size]
+                    pos += size
+                del data
+
+        if not len(offsets):
+            return
+        pending_offsets = deque(offsets)
+        combined_offsets = []
+        while len(pending_offsets):
+            offset, size = pending_offsets.popleft()
+            if not combined_offsets:
+                combined_offsets = [[offset, size]]
+            else:
+                if (len (combined_offsets) < 50 and
+                    combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
+                    # combatible offset:
+                    combined_offsets.append([offset, size])
+                else:
+                    # incompatible, or over the threshold issue a read and yield
+                    pending_offsets.appendleft((offset, size))
+                    for result in do_combined_read(combined_offsets):
+                        yield result
+                    combined_offsets = []
+        # whatever is left is a single coalesced request
+        if len(combined_offsets):
+            for result in do_combined_read(combined_offsets):
+                yield result
 
     def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.

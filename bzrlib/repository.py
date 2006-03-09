@@ -299,16 +299,6 @@ class Repository(object):
         This determines the set of revisions which are involved, and then
         finds all file ids affected by those revisions.
         """
-        # TODO: jam 20060119 This code assumes that w.inclusions will
-        #       always be correct. But because of the presence of ghosts
-        #       it is possible to be wrong.
-        #       One specific example from Robert Collins:
-        #       Two branches, with revisions ABC, and AD
-        #       C is a ghost merge of D.
-        #       Inclusions doesn't recognize D as an ancestor.
-        #       If D is ever merged in the future, the weave
-        #       won't be fixed, because AD never saw revision C
-        #       to cause a conflict which would force a reweave.
         w = self.get_inventory_weave()
         from_set = set(w.get_ancestry(from_revid))
         to_set = set(w.get_ancestry(to_revid))
@@ -360,7 +350,15 @@ class Repository(object):
         w = self.get_inventory_weave()
         file_ids = set()
 
-        for lineno, insert, deletes, line in w.walk(changes):
+        # this code needs to read every line in every inventory for the
+        # inventories [changes]. Seeing a line twice is ok. Seeing a line
+        # not pesent in one of those inventories is unnecessary and not 
+        # harmful because we are filtering by the revision id marker in the
+        # inventory lines to only select file ids altered in one of those  
+        # revisions. We dont need to see all lines in the inventory because
+        # only those added in an inventory in rev X can contain a revision=X
+        # line.
+        for line in w.iter_lines_added_or_present_in_versions(changes):
             start = line.find('file_id="')+9
             if start < 9: continue
             end = line.find('"', start)
@@ -464,7 +462,7 @@ class Repository(object):
                     # no, queue it.
                     pending.add(parent_id)
             result.add_node(revision_id, rev.parent_ids)
-            done.add(result)
+            done.add(revision_id)
         return result
 
     @needs_read_lock
@@ -489,6 +487,14 @@ class Repository(object):
         # FIXME format 4-6 cannot be shared, this is technically faulty.
         return self.control_files._transport.has('shared-storage')
 
+    @needs_write_lock
+    def reconcile(self):
+        """Reconcile this repository."""
+        from bzrlib.reconcile import RepoReconciler
+        reconciler = RepoReconciler(self)
+        reconciler.reconcile()
+        return reconciler
+    
     @needs_read_lock
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
@@ -514,7 +520,8 @@ class Repository(object):
         if not self.has_revision(revision_id):
             raise errors.NoSuchRevision(self, revision_id)
         w = self.get_inventory_weave()
-        return [None] + w.get_ancestry(revision_id)
+        candidates = w.get_ancestry(revision_id)
+        return [None] + candidates # self._eliminate_revisions_not_present(candidates)
 
     @needs_read_lock
     def print_file(self, file, revision_id):
@@ -682,6 +689,69 @@ class KnitRepository(MetaDirRepository):
         """See Repository.all_revision_ids()."""
         return self._revision_store.all_revision_ids(self.get_transaction())
 
+    @needs_read_lock
+    def get_ancestry(self, revision_id):
+        """Return a list of revision-ids integrated by a revision.
+        
+        This is topologically sorted.
+        """
+        if revision_id is None:
+            return [None]
+        vf = self._revision_store.get_revision_file(self.get_transaction())
+        try:
+            return [None] + vf.get_ancestry(revision_id)
+        except errors.RevisionNotPresent:
+            raise errors.NoSuchRevision(self, revision_id)
+
+    @needs_read_lock
+    def get_revision(self, revision_id):
+        """Return the Revision object for a named revision"""
+        return self.get_revision_reconcile(revision_id)
+
+    @needs_read_lock
+    def get_revision_graph_with_ghosts(self, revision_ids=None):
+        """Return a graph of the revisions with ghosts marked as applicable.
+
+        :param revision_ids: an iterable of revisions to graph or None for all.
+        :return: a Graph object with the graph reachable from revision_ids.
+        """
+        result = Graph()
+        vf = self._revision_store.get_revision_file(self.get_transaction())
+        versions = vf.versions()
+        if not revision_ids:
+            pending = set(self.all_revision_ids())
+            required = set([])
+        else:
+            pending = set(revision_ids)
+            required = set(revision_ids)
+        done = set([])
+        while len(pending):
+            revision_id = pending.pop()
+            if not revision_id in versions:
+                if revision_id in required:
+                    raise errors.NoSuchRevision(self, revision_id)
+                # a ghost
+                result.add_ghost(revision_id)
+                continue
+            parent_ids = vf.get_parents_with_ghosts(revision_id)
+            for parent_id in parent_ids:
+                # is this queued or done ?
+                if (parent_id not in pending and
+                    parent_id not in done):
+                    # no, queue it.
+                    pending.add(parent_id)
+            result.add_node(revision_id, parent_ids)
+            done.add(result)
+        return result
+
+    @needs_write_lock
+    def reconcile(self):
+        """Reconcile this repository."""
+        from bzrlib.reconcile import KnitReconciler
+        reconciler = KnitReconciler(self)
+        reconciler.reconcile()
+        return reconciler
+    
 
 class RepositoryFormat(object):
     """A repository format.
@@ -1186,7 +1256,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
         repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = LockableFiles(repo_transport, 'lock', LockDir)
         control_store = self._get_control_store(repo_transport, control_files)
-        transaction = bzrlib.transactions.PassThroughTransaction()
+        transaction = bzrlib.transactions.WriteTransaction()
         # trigger a write of the inventory store.
         control_store.get_weave_or_empty('inventory', transaction)
         _revision_store = self._get_revision_store(repo_transport, control_files)

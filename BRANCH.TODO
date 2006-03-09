@@ -2,9 +2,9 @@
 # It should ALWAYS be empty in the mainline or in integration branches.
 # 
 
- * test weave.walk with a version_ids list that is a subset.
-   this is for fileid_involved performance
+ * make revision store not annotate the contents
+   - ditto signature store
+ 
+ * make revision and signature stores not allow delta compression.
 
- * make knits ghost aware.
-
- * make revision store not annotate the contentsA
+ * implement a fast plan_merge for knits.
