@@ -536,11 +536,19 @@ class KnitVersionedFile(VersionedFile):
         # but we need to setup a list of records to visit.
         # we need version_id, position, length
         version_id_records = []
-        for version_id in version_ids:
+        requested_versions = list(version_ids)
+        # filter for available versions
+        for version_id in requested_versions:
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
-            data_pos, length = self._index.get_position(version_id)
-            version_id_records.append((version_id, data_pos, length))
+        # get a in-component-order queue:
+        version_ids = []
+        for version_id in self.versions():
+            if version_id in requested_versions:
+                version_ids.append(version_id)
+                data_pos, length = self._index.get_position(version_id)
+                version_id_records.append((version_id, data_pos, length))
+
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         count = 0
         total = len(version_id_records)
@@ -945,8 +953,9 @@ class _KnitData(_KnitComponentFile):
         if len(rec) != 4:
             raise KnitCorrupt(self._filename, 'unexpected number of records')
         if rec[1] != version_id:
-            raise KnitCorrupt(self.file.name, 
-                              'unexpected version, wanted %r' % version_id)
+            raise KnitCorrupt(self._filename, 
+                              'unexpected version, wanted %r, got %r' % (
+                                version_id, rec[1]))
         lines = int(rec[2])
         record_contents = self._read_record_contents(df, lines)
         l = df.readline()
@@ -981,7 +990,7 @@ class _KnitData(_KnitComponentFile):
             response = self._transport.readv(self._filename,
                 [(pos, size) for version_id, pos, size in needed_records])
 
-            for (record_id, pos, size), (pos, data) in izip(iter(records), response):
+            for (record_id, pos, size), (pos, data) in izip(iter(needed_records), response):
                 content, digest = self._parse_record(record_id, data)
                 self._records[record_id] = (digest, content)
     

@@ -102,7 +102,7 @@ class VersionedFileStore(TransportStore):
     def get_weave(self, file_id, transaction):
         weave = transaction.map.find_weave(file_id)
         if weave is not None:
-            mutter("cache hit in %s for %s", self, file_id)
+            #mutter("cache hit in %s for %s", self, file_id)
             return weave
         if transaction.writeable():
             w = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode)

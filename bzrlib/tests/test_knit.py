@@ -308,6 +308,21 @@ class KnitTests(TestCaseInTempDir):
         k1.add_lines('sub2', ['base'], ['text\n', 'text3\n'])
         # should read the first component only
         self.assertEqual([('id.knit', [(0, 87)])], instrumented_t._calls)
+        
+    def test_iter_lines_reads_in_order(self):
+        t = MemoryTransport()
+        instrumented_t = TransportLogger(t)
+        k1 = KnitVersionedFile('id', instrumented_t, create=True, delta=True)
+        self.assertEqual([('id.kndx',)], instrumented_t._calls)
+        # add texts with no required ordering
+        k1.add_lines('base', [], ['text\n'])
+        k1.add_lines('base2', [], ['text2\n'])
+        k1.clear_cache()
+        instrumented_t._calls = []
+        # request a last-first iteration
+        results = list(k1.iter_lines_added_or_present_in_versions(['base2', 'base']))
+        self.assertEqual([('id.knit', [(0, 87), (87, 89)])], instrumented_t._calls)
+        self.assertEqual(['text\n', 'text2\n'], results)
 
     def test_create_empty_annotated(self):
         k1 = self.make_test_knit(True)
