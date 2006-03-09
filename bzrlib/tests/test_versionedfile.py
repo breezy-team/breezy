@@ -93,6 +93,15 @@ class VersionedFileTestMixIn(object):
 
         self.assertRaises(RevisionNotPresent,
             f.get_ancestry, ['rM', 'rX'])
+
+    def test_mutate_after_finish(self):
+        f = self.get_file()
+        f.transaction_finished()
+        self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
+        self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
+        self.assertRaises(errors.OutSideTransaction, f.fix_parents, '', [])
+        self.assertRaises(errors.OutSideTransaction, f.join, '')
+        self.assertRaises(errors.OutSideTransaction, f.clone_text, 'base', 'bar', ['foo'])
         
     def test_clear_cache(self):
         f = self.get_file()
@@ -372,6 +381,21 @@ class VersionedFileTestMixIn(object):
         self.assertEquals(('base', 'line\n'), origins[0])
         self.assertEquals(('base', 'line_b\n'), origins[1])
         self.assertEquals(('references_ghost', 'line_c\n'), origins[2])
+
+    def test_readonly_mode(self):
+        transport = get_transport(self.get_url('.'))
+        factory = self.get_factory()
+        vf = factory('id', transport, 0777, create=True, access_mode='w')
+        vf = factory('id', transport, access_mode='r')
+        self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'base', [], [])
+        self.assertRaises(errors.ReadOnlyError,
+                          vf.add_lines_with_ghosts,
+                          'base',
+                          [],
+                          [])
+        self.assertRaises(errors.ReadOnlyError, vf.fix_parents, 'base', [])
+        self.assertRaises(errors.ReadOnlyError, vf.join, 'base')
+        self.assertRaises(errors.ReadOnlyError, vf.clone_text, 'base', 'bar', ['foo'])
         
 
 class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
@@ -422,12 +446,18 @@ class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
                           'foo',
                           get_transport(self.get_url('.')))
 
+    def get_factory(self):
+        return WeaveFile
+
 
 class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
         return KnitVersionedFile(name, get_transport(self.get_url('.')),
                                  delta=True, create=True)
+
+    def get_factory(self):
+        return KnitVersionedFile
 
     def get_file_corrupted_text(self):
         knit = self.get_file()

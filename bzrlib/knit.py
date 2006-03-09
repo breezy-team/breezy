@@ -63,6 +63,7 @@ in the deltas to provide line annotation
 # record content length ?
                   
 
+from copy import copy
 from cStringIO import StringIO
 import difflib
 from difflib import SequenceMatcher
@@ -242,6 +243,7 @@ class KnitVersionedFile(VersionedFile):
         """
         if access_mode is None:
             access_mode = 'w'
+        super(KnitVersionedFile, self).__init__(access_mode)
         assert access_mode in ('r', 'w'), "invalid mode specified %r" % access_mode
         assert not basis_knit or isinstance(basis_knit, KnitVersionedFile), \
             type(basis_knit)
@@ -258,6 +260,10 @@ class KnitVersionedFile(VersionedFile):
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
             access_mode, create=not len(self.versions()))
 
+    def clear_cache(self):
+        """Clear the data cache only."""
+        self._data.clear_cache()
+
     def copy_to(self, name, transport):
         """See VersionedFile.copy_to()."""
         # copy the current index to a temp index to avoid racing with local
@@ -271,7 +277,7 @@ class KnitVersionedFile(VersionedFile):
     def create_empty(self, name, transport, mode=None):
         return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta, create=True)
     
-    def fix_parents(self, version, new_parents):
+    def _fix_parents(self, version, new_parents):
         """Fix the parents list for version.
         
         This is done by appending a new version to the index
@@ -427,12 +433,12 @@ class KnitVersionedFile(VersionedFile):
         if version_ids:
             raise RevisionNotPresent(list(version_ids)[0], self.filename)
 
-    def add_lines_with_ghosts(self, version_id, parents, lines):
+    def _add_lines_with_ghosts(self, version_id, parents, lines):
         """See VersionedFile.add_lines_with_ghosts()."""
         self._check_add(version_id, lines)
         return self._add(version_id, lines[:], parents, self.delta)
 
-    def add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines):
         """See VersionedFile.add_lines."""
         self._check_add(version_id, lines)
         self._check_versions_present(parents)
@@ -513,7 +519,7 @@ class KnitVersionedFile(VersionedFile):
     def check(self, progress_bar=None):
         """See VersionedFile.check()."""
 
-    def clone_text(self, new_version_id, old_version_id, parents):
+    def _clone_text(self, new_version_id, old_version_id, parents):
         """See VersionedFile.clone_text()."""
         # FIXME RBC 20060228 make fast by only inserting an index with null delta.
         self.add_lines(new_version_id, parents, self.get_lines(old_version_id))
@@ -530,11 +536,19 @@ class KnitVersionedFile(VersionedFile):
         # but we need to setup a list of records to visit.
         # we need version_id, position, length
         version_id_records = []
-        for version_id in version_ids:
+        requested_versions = list(version_ids)
+        # filter for available versions
+        for version_id in requested_versions:
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
-            data_pos, length = self._index.get_position(version_id)
-            version_id_records.append((version_id, data_pos, length))
+        # get a in-component-order queue:
+        version_ids = []
+        for version_id in self.versions():
+            if version_id in requested_versions:
+                version_ids.append(version_id)
+                data_pos, length = self._index.get_position(version_id)
+                version_id_records.append((version_id, data_pos, length))
+
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         count = 0
         total = len(version_id_records)
@@ -901,6 +915,11 @@ class _KnitData(_KnitComponentFile):
         self._checked = False
         if create:
             self._transport.put(self._filename, StringIO(''))
+        self._records = {}
+
+    def clear_cache(self):
+        """Clear the record cache."""
+        self._records = {}
 
     def _open_file(self):
         if self._file is None:
@@ -920,8 +939,12 @@ class _KnitData(_KnitComponentFile):
         print >>data_file, "end %s\n" % version_id
         data_file.close()
 
+        # cache
+        self._records[version_id] = (digest, lines)
+
         content = sio.getvalue()
-        start_pos = self._transport.append(self._filename, StringIO(content))
+        sio.seek(0)
+        start_pos = self._transport.append(self._filename, sio)
         return start_pos, len(content)
 
     def _parse_record(self, version_id, data):
@@ -955,31 +978,23 @@ class _KnitData(_KnitComponentFile):
         contents, digest).
         """
 
-        class ContinuousRange:
-            def __init__(self, rec_id, pos, size):
-                self.start_pos = pos
-                self.end_pos = pos + size
-                self.versions = [(rec_id, pos, size)]
+        needed_records = []
+        for version_id, pos, size in records:
+            if version_id not in self._records:
+                needed_records.append((version_id, pos, size))
 
-            def add(self, rec_id, pos, size):
-                if self.end_pos != pos:
-                    return False
-                self.end_pos = pos + size
-                self.versions.append((rec_id, pos, size))
-                return True
+        if len(needed_records):
+            # We take it that the transport optimizes the fetching as good
+            # as possible (ie, reads continous ranges.)
+            response = self._transport.readv(self._filename,
+                [(pos, size) for version_id, pos, size in needed_records])
 
-            def split(self, fp):
-                for rec_id, pos, size in self.versions:
-                    yield rec_id, fp.read(size)
-
-        # We take it that the transport optimizes the fetching as good
-        # as possible (ie, reads continous ranges.)
-        response = self._transport.readv(self._filename,
-            [(pos, size) for version_id, pos, size in records])
-
-        for (record_id, pos, size), (pos, data) in izip(iter(records), response):
-            content, digest = self._parse_record(record_id, data)
-            yield record_id, content, digest
+            for (record_id, pos, size), (pos, data) in izip(iter(records), response):
+                content, digest = self._parse_record(record_id, data)
+                self._records[record_id] = (digest, content)
+    
+        for version_id, pos, size in records:
+            yield version_id, copy(self._records[version_id][1]), copy(self._records[version_id][0])
 
     def read_records(self, records):
         """Read records into a dictionary."""
@@ -1020,91 +1035,91 @@ class InterKnit(InterVersionedFile):
         if not version_ids:
             return 0
 
-        if pb is None:
-            from bzrlib.progress import DummyProgress
-            pb = DummyProgress()
-
-        version_ids = list(version_ids)
-        if None in version_ids:
-            version_ids.remove(None)
-
-        self.source_ancestry = set(self.source.get_ancestry(version_ids))
-        this_versions = set(self.target._index.get_versions())
-        needed_versions = self.source_ancestry - this_versions
-        cross_check_versions = self.source_ancestry.intersection(this_versions)
-        mismatched_versions = set()
-        for version in cross_check_versions:
-            # scan to include needed parents.
-            n1 = set(self.target.get_parents_with_ghosts(version))
-            n2 = set(self.source.get_parents_with_ghosts(version))
-            if n1 != n2:
-                # FIXME TEST this check for cycles being introduced works
-                # the logic is we have a cycle if in our graph we are an
-                # ancestor of any of the n2 revisions.
-                for parent in n2:
-                    if parent in n1:
-                        # safe
-                        continue
-                    else:
-                        parent_ancestors = self.source.get_ancestry(parent)
-                        if version in parent_ancestors:
-                            raise errors.GraphCycleError([parent, version])
-                # ensure this parent will be available later.
-                new_parents = n2.difference(n1)
-                needed_versions.update(new_parents.difference(this_versions))
-                mismatched_versions.add(version)
-
-        if not needed_versions and not cross_check_versions:
-            return 0
-        full_list = topo_sort(self.source.get_graph())
-
-        version_list = [i for i in full_list if (not self.target.has_version(i)
-                        and i in needed_versions)]
-
-        records = []
-        for version_id in version_list:
-            data_pos, data_size = self.source._index.get_position(version_id)
-            records.append((version_id, data_pos, data_size))
-
-        count = 0
-        for version_id, lines, digest \
-                in self.source._data.read_records_iter(records):
-            options = self.source._index.get_options(version_id)
-            parents = self.source._index.get_parents_with_ghosts(version_id)
-            
-            for parent in parents:
-                # if source has the parent, we must hav grabbed it first.
-                assert (self.target.has_version(parent) or not
-                        self.source.has_version(parent))
-
-            if self.target.factory.annotated:
-                # FIXME jrydberg: it should be possible to skip
-                # re-annotating components if we know that we are
-                # going to pull all revisions in the same order.
-                new_version_id = version_id
-                new_version_idx = self.target._index.num_versions()
-                if 'fulltext' in options:
-                    lines = self.target._reannotate_fulltext(self.source, lines,
-                        new_version_id, new_version_idx)
-                elif 'line-delta' in options:
-                    lines = self.target._reannotate_line_delta(self.source, lines,
-                        new_version_id, new_version_idx)
-
-            count = count + 1
-            pb.update("Joining knit", count, len(version_list))
-
-            pos, size = self.target._data.add_record(version_id, digest, lines)
-            self.target._index.add_version(version_id, options, pos, size, parents)
-
-        for version in mismatched_versions:
-            n1 = set(self.target.get_parents_with_ghosts(version))
-            n2 = set(self.source.get_parents_with_ghosts(version))
-            # write a combined record to our history preserving the current 
-            # parents as first in the list
-            new_parents = self.target.get_parents_with_ghosts(version) + list(n2.difference(n1))
-            self.target.fix_parents(version, new_parents)
-        pb.clear()
-        return count
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            version_ids = list(version_ids)
+            if None in version_ids:
+                version_ids.remove(None)
+    
+            self.source_ancestry = set(self.source.get_ancestry(version_ids))
+            this_versions = set(self.target._index.get_versions())
+            needed_versions = self.source_ancestry - this_versions
+            cross_check_versions = self.source_ancestry.intersection(this_versions)
+            mismatched_versions = set()
+            for version in cross_check_versions:
+                # scan to include needed parents.
+                n1 = set(self.target.get_parents_with_ghosts(version))
+                n2 = set(self.source.get_parents_with_ghosts(version))
+                if n1 != n2:
+                    # FIXME TEST this check for cycles being introduced works
+                    # the logic is we have a cycle if in our graph we are an
+                    # ancestor of any of the n2 revisions.
+                    for parent in n2:
+                        if parent in n1:
+                            # safe
+                            continue
+                        else:
+                            parent_ancestors = self.source.get_ancestry(parent)
+                            if version in parent_ancestors:
+                                raise errors.GraphCycleError([parent, version])
+                    # ensure this parent will be available later.
+                    new_parents = n2.difference(n1)
+                    needed_versions.update(new_parents.difference(this_versions))
+                    mismatched_versions.add(version)
+    
+            if not needed_versions and not cross_check_versions:
+                return 0
+            full_list = topo_sort(self.source.get_graph())
+    
+            version_list = [i for i in full_list if (not self.target.has_version(i)
+                            and i in needed_versions)]
+    
+            records = []
+            for version_id in version_list:
+                data_pos, data_size = self.source._index.get_position(version_id)
+                records.append((version_id, data_pos, data_size))
+    
+            count = 0
+            for version_id, lines, digest \
+                    in self.source._data.read_records_iter(records):
+                options = self.source._index.get_options(version_id)
+                parents = self.source._index.get_parents_with_ghosts(version_id)
+                
+                for parent in parents:
+                    # if source has the parent, we must hav grabbed it first.
+                    assert (self.target.has_version(parent) or not
+                            self.source.has_version(parent))
+    
+                if self.target.factory.annotated:
+                    # FIXME jrydberg: it should be possible to skip
+                    # re-annotating components if we know that we are
+                    # going to pull all revisions in the same order.
+                    new_version_id = version_id
+                    new_version_idx = self.target._index.num_versions()
+                    if 'fulltext' in options:
+                        lines = self.target._reannotate_fulltext(self.source, lines,
+                            new_version_id, new_version_idx)
+                    elif 'line-delta' in options:
+                        lines = self.target._reannotate_line_delta(self.source, lines,
+                            new_version_id, new_version_idx)
+    
+                count = count + 1
+                pb.update("Joining knit", count, len(version_list))
+    
+                pos, size = self.target._data.add_record(version_id, digest, lines)
+                self.target._index.add_version(version_id, options, pos, size, parents)
+    
+            for version in mismatched_versions:
+                n1 = set(self.target.get_parents_with_ghosts(version))
+                n2 = set(self.source.get_parents_with_ghosts(version))
+                # write a combined record to our history preserving the current 
+                # parents as first in the list
+                new_parents = self.target.get_parents_with_ghosts(version) + list(n2.difference(n1))
+                self.target.fix_parents(version, new_parents)
+            return count
+        finally:
+            pb.clear()
+            pb.finished()
 
 
 InterVersionedFile.register_optimiser(InterKnit)

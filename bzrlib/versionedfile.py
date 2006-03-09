@@ -28,6 +28,7 @@ from copy import deepcopy
 from unittest import TestSuite
 
 
+import bzrlib.errors as errors
 from bzrlib.inter import InterObject
 from bzrlib.symbol_versioning import *
 from bzrlib.transport.memory import MemoryTransport
@@ -48,6 +49,10 @@ class VersionedFile(object):
 
     Texts are identified by a version-id string.
     """
+
+    def __init__(self, access_mode):
+        self.finished = False
+        self._access_mode = access_mode
 
     def copy_to(self, name, transport):
         """Copy this versioned file to name on transport."""
@@ -80,16 +85,34 @@ class VersionedFile(object):
         already present in file history.
 
         Must raise RevisionNotPresent if any of the given parents are
-        not present in file history."""
+        not present in file history.
+        """
+        self._check_write_ok()
+        return self._add_lines(version_id, parents, lines)
+
+    def _add_lines(self, version_id, parents, lines):
+        """Helper to do the class specific add_lines."""
         raise NotImplementedError(self.add_lines)
 
     def add_lines_with_ghosts(self, version_id, parents, lines):
         """Add lines to the versioned file, allowing ghosts to be present."""
+        self._check_write_ok()
+        return self._add_lines_with_ghosts(version_id, parents, lines)
+
+    def _add_lines_with_ghosts(self, version_id, parents, lines):
+        """Helper to do class specific add_lines_with_ghosts."""
         raise NotImplementedError(self.add_lines_with_ghosts)
 
     def check(self, progress_bar=None):
         """Check the versioned file for integrity."""
         raise NotImplementedError(self.check)
+
+    def _check_write_ok(self):
+        """Is the versioned file marked as 'finished' ? Raise if it is."""
+        if self.finished:
+            raise errors.OutSideTransaction()
+        if self._access_mode != 'w':
+            raise errors.ReadOnlyObjectDirtiedError(self)
 
     def clear_cache(self):
         """Remove any data cached in the versioned file object."""
@@ -102,6 +125,11 @@ class VersionedFile(object):
 
         Must raise RevisionAlreadyPresent if the new version is
         already present in file history."""
+        self._check_write_ok()
+        return self._clone_text(new_version_id, old_version_id, parents)
+
+    def _clone_text(self, new_version_id, old_version_id, parents):
+        """Helper function to do the _clone_text work."""
         raise NotImplementedError(self.clone_text)
 
     def create_empty(self, name, transport, mode=None):
@@ -121,6 +149,11 @@ class VersionedFile(object):
         the parents list must be a superset of the current
         list.
         """
+        self._check_write_ok()
+        return self._fix_parents(version, new_parents)
+
+    def _fix_parents(self, version, new_parents):
+        """Helper for fix_parents."""
         raise NotImplementedError(self.fix_parents)
 
     def get_suffixes(self):
@@ -234,6 +267,7 @@ class VersionedFile(object):
         are not present in the other files history unless ignore_missing
         is supplied when they are silently skipped.
         """
+        self._check_write_ok()
         return InterVersionedFile.get(other, self).join(
             pb,
             msg,
@@ -253,6 +287,14 @@ class VersionedFile(object):
                Lines are returned in arbitrary order.
         """
         raise NotImplementedError(self.iter_lines_added_or_present_in_versions)
+
+    def transaction_finished(self):
+        """The transaction that this file was opened in has finished.
+
+        This records self.finished = True and should cause all mutating
+        operations to error.
+        """
+        self.finished = True
 
     @deprecated_method(zero_eight)
     def walk(self, version_ids=None):
