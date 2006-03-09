@@ -23,7 +23,7 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ExistingLimbo, ImmortalLimbo)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import file_kind, supports_executable, pathjoin
-from bzrlib.progress import DummyProgress
+from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, warning
 import bzrlib.ui 
 
@@ -1037,7 +1037,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
             except KeyError:
                 return tt.trans_id_tree_file_id(file_id)
 
-        pb.update("Revert phase", 0, 4)
+        pp = ProgressPhase("Revert phase", 4, pb)
+        pp.next_phase()
         sorted_interesting = [i for i in topology_sorted_ids(target_tree) if
                               interesting(i)]
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -1059,7 +1060,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
                                  trans_id_file_id, backup_this, trans_id)
         finally:
             child_pb.finished()
-        pb.update("Revert phase", 1, 4)
+        pp.next_phase()
         wt_interesting = [i for i in working_tree.inventory if interesting(i)]
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
@@ -1074,7 +1075,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
                         del merge_modified[file_id]
         finally:
             child_pb.finished()
-        pb.update("Revert phase", 2, 4)
+        pp.next_phase()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             raw_conflicts = resolve_conflicts(tt, child_pb)
@@ -1082,7 +1083,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
             child_pb.finished()
         for line in conflicts_strings(cook_conflicts(raw_conflicts, tt)):
             warning(line)
-        pb.update("Revert phase", 3, 3)
+        pp.next_phase()
         tt.apply()
         working_tree.set_merge_modified({})
     finally:
