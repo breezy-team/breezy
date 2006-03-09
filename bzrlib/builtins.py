@@ -2016,39 +2016,47 @@ class cmd_missing(Command):
                 raise BzrCommandError("No missing location known or specified.")
             print "Using last location: " + local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
-        local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
-        if (log_format == None):
-            default = bzrlib.config.BranchConfig(local_branch).log_format()
-            log_format = get_log_format(long=long, short=short, line=line, default=default)
-        lf = log_formatter(log_format, sys.stdout,
-                           show_ids=show_ids,
-                           show_timezone='original')
-        if reverse is False:
-            local_extra.reverse()
-            remote_extra.reverse()
-        if local_extra and not theirs_only:
-            print "You have %d extra revision(s):" % len(local_extra)
-            for data in iter_log_data(local_extra, local_branch.repository,
-                                      verbose):
-                lf.show(*data)
-            printed_local = True
-        else:
-            printed_local = False
-        if remote_extra and not mine_only:
-            if printed_local is True:
-                print "\n\n"
-            print "You are missing %d revision(s):" % len(remote_extra)
-            for data in iter_log_data(remote_extra, remote_branch.repository, 
-                                      verbose):
-                lf.show(*data)
-        if not remote_extra and not local_extra:
-            status_code = 0
-            print "Branches are up to date."
-        else:
-            status_code = 1
-        if parent is None and other_branch is not None:
-            local_branch.set_parent(other_branch)
-        return status_code
+        remote_branch.lock_read()
+        try:
+            local_branch.lock_read()
+            try:
+                local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
+                if (log_format == None):
+                    default = bzrlib.config.BranchConfig(local_branch).log_format()
+                    log_format = get_log_format(long=long, short=short, line=line, default=default)
+                lf = log_formatter(log_format, sys.stdout,
+                                   show_ids=show_ids,
+                                   show_timezone='original')
+                if reverse is False:
+                    local_extra.reverse()
+                    remote_extra.reverse()
+                if local_extra and not theirs_only:
+                    print "You have %d extra revision(s):" % len(local_extra)
+                    for data in iter_log_data(local_extra, local_branch.repository,
+                                              verbose):
+                        lf.show(*data)
+                    printed_local = True
+                else:
+                    printed_local = False
+                if remote_extra and not mine_only:
+                    if printed_local is True:
+                        print "\n\n"
+                    print "You are missing %d revision(s):" % len(remote_extra)
+                    for data in iter_log_data(remote_extra, remote_branch.repository, 
+                                              verbose):
+                        lf.show(*data)
+                if not remote_extra and not local_extra:
+                    status_code = 0
+                    print "Branches are up to date."
+                else:
+                    status_code = 1
+                if parent is None and other_branch is not None:
+                    local_branch.set_parent(other_branch)
+                return status_code
+            finally:
+                local_branch.unlock()
+        finally:
+            remote_branch.unlock()
 
 
 class cmd_plugins(Command):
