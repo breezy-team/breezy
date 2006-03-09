@@ -449,6 +449,13 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.failUnless(isinstance(t2, HttpTransport))
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
+    def test_is_directory(self):
+        """Test assertIsDirectory assertion"""
+        t = self.get_transport()
+        self.build_tree(['a_dir/', 'a_file'], transport=t)
+        self.assertIsDirectory('a_dir', t)
+        self.assertRaises(AssertionError, self.assertIsDirectory, 'a_file', t)
+        self.assertRaises(AssertionError, self.assertIsDirectory, 'not_here', t)
 
 class TestChrootedTest(ChrootedTestCase):
 

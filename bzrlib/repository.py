@@ -484,8 +484,7 @@ class Repository(object):
     @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
-        # FIXME format 4-6 cannot be shared, this is technically faulty.
-        return self.control_files._transport.has('shared-storage')
+        raise NotImplementedError(self.is_shared)
 
     @needs_write_lock
     def reconcile(self):
@@ -564,27 +563,11 @@ class Repository(object):
         :param new_value: True to restore the default, False to disable making
                           working trees.
         """
-        # FIXME: split out into a new class/strategy ?
-        if isinstance(self._format, (RepositoryFormat4,
-                                     RepositoryFormat5,
-                                     RepositoryFormat6)):
-            raise NotImplementedError(self.set_make_working_trees)
-        if new_value:
-            try:
-                self.control_files._transport.delete('no-working-trees')
-            except errors.NoSuchFile:
-                pass
-        else:
-            self.control_files.put_utf8('no-working-trees', '')
+        raise NotImplementedError(self.set_make_working_trees)
     
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
-        # FIXME: split out into a new class/strategy ?
-        if isinstance(self._format, (RepositoryFormat4,
-                                     RepositoryFormat5,
-                                     RepositoryFormat6)):
-            return True
-        return not self.control_files._transport.has('no-working-trees')
+        raise NotImplementedError(self.make_working_trees)
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
@@ -651,6 +634,27 @@ class AllInOneRepository(Repository):
             text_store = get_store('text-store')
         super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
 
+    @needs_read_lock
+    def is_shared(self):
+        """AllInOne repositories cannot be shared."""
+        return False
+
+    @needs_write_lock
+    def set_make_working_trees(self, new_value):
+        """Set the policy flag for making working trees when creating branches.
+
+        This only applies to branches that use this repository.
+
+        The default is 'True'.
+        :param new_value: True to restore the default, False to disable making
+                          working trees.
+        """
+        raise NotImplementedError(self.set_make_working_trees)
+    
+    def make_working_trees(self):
+        """Returns the policy for making working trees on new branches."""
+        return True
+
 
 class MetaDirRepository(Repository):
     """Repositories in the new meta-dir layout."""
@@ -680,6 +684,33 @@ class MetaDirRepository(Repository):
                 ws.enable_cache = True
             return ws
 
+    @needs_read_lock
+    def is_shared(self):
+        """Return True if this repository is flagged as a shared repository."""
+        return self.control_files._transport.has('shared-storage')
+
+    @needs_write_lock
+    def set_make_working_trees(self, new_value):
+        """Set the policy flag for making working trees when creating branches.
+
+        This only applies to branches that use this repository.
+
+        The default is 'True'.
+        :param new_value: True to restore the default, False to disable making
+                          working trees.
+        """
+        if new_value:
+            try:
+                self.control_files._transport.delete('no-working-trees')
+            except errors.NoSuchFile:
+                pass
+        else:
+            self.control_files.put_utf8('no-working-trees', '')
+    
+    def make_working_trees(self):
+        """Returns the policy for making working trees on new branches."""
+        return not self.control_files._transport.has('no-working-trees')
+
 
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
@@ -689,6 +720,31 @@ class KnitRepository(MetaDirRepository):
         """See Repository.all_revision_ids()."""
         return self._revision_store.all_revision_ids(self.get_transaction())
 
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """Find file_id(s) which are involved in the changes between revisions.
+
+        This determines the set of revisions which are involved, and then
+        finds all file ids affected by those revisions.
+        """
+        vf = self._get_revision_vf()
+        from_set = set(vf.get_ancestry(from_revid))
+        to_set = set(vf.get_ancestry(to_revid))
+        changed = to_set.difference(from_set)
+        return self._fileid_involved_by_set(changed)
+
+    def fileid_involved(self, last_revid=None):
+        """Find all file_ids modified in the ancestry of last_revid.
+
+        :param last_revid: If None, last_revision() will be used.
+        """
+        if not last_revid:
+            changed = set(self.all_revision_ids())
+        else:
+            changed = set(self.get_ancestry(last_revid))
+        if None in changed:
+            changed.remove(None)
+        return self._fileid_involved_by_set(changed)
+
     @needs_read_lock
     def get_ancestry(self, revision_id):
         """Return a list of revision-ids integrated by a revision.
@@ -697,7 +753,7 @@ class KnitRepository(MetaDirRepository):
         """
         if revision_id is None:
             return [None]
-        vf = self._revision_store.get_revision_file(self.get_transaction())
+        vf = self._get_revision_vf()
         try:
             return [None] + vf.get_ancestry(revision_id)
         except errors.RevisionNotPresent:
@@ -709,6 +765,30 @@ class KnitRepository(MetaDirRepository):
         return self.get_revision_reconcile(revision_id)
 
     @needs_read_lock
+    def get_revision_graph(self, revision_id=None):
+        """Return a dictionary containing the revision graph.
+        
+        :return: a dictionary of revision_id->revision_parents_list.
+        """
+        weave = self._get_revision_vf()
+        entire_graph = weave.get_graph()
+        if revision_id is None:
+            return weave.get_graph()
+        elif revision_id not in weave:
+            raise errors.NoSuchRevision(self, revision_id)
+        else:
+            # add what can be reached from revision_id
+            result = {}
+            pending = set([revision_id])
+            while len(pending) > 0:
+                node = pending.pop()
+                result[node] = weave.get_parents(node)
+                for revision_id in result[node]:
+                    if revision_id not in result:
+                        pending.add(revision_id)
+            return result
+
+    @needs_read_lock
     def get_revision_graph_with_ghosts(self, revision_ids=None):
         """Return a graph of the revisions with ghosts marked as applicable.
 
@@ -716,7 +796,7 @@ class KnitRepository(MetaDirRepository):
         :return: a Graph object with the graph reachable from revision_ids.
         """
         result = Graph()
-        vf = self._revision_store.get_revision_file(self.get_transaction())
+        vf = self._get_revision_vf()
         versions = vf.versions()
         if not revision_ids:
             pending = set(self.all_revision_ids())
@@ -744,6 +824,11 @@ class KnitRepository(MetaDirRepository):
             done.add(result)
         return result
 
+    def _get_revision_vf(self):
+        """helper to get the revision store versioned file."""
+        vf = self._revision_store.get_revision_file(self.get_transaction())
+        return vf
+
     @needs_write_lock
     def reconcile(self):
         """Reconcile this repository."""
@@ -752,6 +837,8 @@ class KnitRepository(MetaDirRepository):
         reconciler.reconcile()
         return reconciler
     
+    def revision_parents(self, revid):
+        return self._get_revision_vf().get_parents(rev_id)
 
 class RepositoryFormat(object):
     """A repository format.

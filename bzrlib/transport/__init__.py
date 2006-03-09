@@ -205,7 +205,8 @@ class Transport(object):
         """Does the file relpath exist?
         
         Note that some transports MAY allow querying on directories, but this
-        is not part of the protocol.
+        is not part of the protocol.  In other words, the results of 
+        t.has("a_directory_name") are undefined."
         """
         raise NotImplementedError
 

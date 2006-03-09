@@ -36,7 +36,7 @@ from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError,
 from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
-from bzrlib.progress import DummyProgress
+from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
@@ -68,6 +68,19 @@ def internal_tree_files(file_list, default_branch=u'.'):
         except errors.PathNotChild:
             raise FileInWrongBranch(tree.branch, filename)
     return tree, new_list
+
+
+def get_format_type(typestring):
+    """Parse and return a format specifier."""
+    if typestring == "metadir":
+        return bzrdir.BzrDirMetaFormat1()
+    if typestring == "knit":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
+        return format
+    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
+        (typestring)
+    raise BzrCommandError(msg)
 
 
 # TODO: Make sure no commands unconditionally use the working directory as a
@@ -866,7 +879,14 @@ class cmd_init(Command):
         bzr commit -m 'imported project'
     """
     takes_args = ['location?']
-    def run(self, location=None):
+    takes_options = [
+                     Option('format', 
+                            help='Create a specific format rather than the'
+                                 ' current default format. Currently this '
+                                 ' option only accepts =metadir',
+                            type=get_format_type),
+                     ]
+    def run(self, location=None, format=None):
         from bzrlib.branch import Branch
         if location is None:
             location = u'.'
@@ -878,7 +898,16 @@ class cmd_init(Command):
             # locations if the user supplies an extended path
             if not os.path.exists(location):
                 os.mkdir(location)
-        bzrdir.BzrDir.create_standalone_workingtree(location)
+        if format is None:
+            # create default
+            bzrdir.BzrDir.create_standalone_workingtree(location)
+        else:
+            new_dir = format.initialize(location)
+            new_dir.create_repository()
+            new_dir.create_branch()
+            # TODO: ask the bzrdir format for the right classs
+            import bzrlib.workingtree
+            bzrlib.workingtree.WorkingTreeFormat3().initialize(new_dir)
 
 
 class cmd_diff(Command):
@@ -1522,19 +1551,6 @@ class cmd_scan_cache(Command):
 
         if c.needs_write:
             c.write()
-
-
-def get_format_type(typestring):
-    """Parse and return a format specifier."""
-    if typestring == "metadir":
-        return bzrdir.BzrDirMetaFormat1()
-    if typestring == "knit":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
-        return format
-    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
-        (typestring)
-    raise BzrCommandError(msg)
 
 
 class cmd_upgrade(Command):
@@ -2365,20 +2381,26 @@ def merge(other_revision, base_revision,
                               " type. %s" % merge_type)
     if reprocess and show_base:
         raise BzrCommandError("Cannot reprocess and show base.")
-    merger = Merger(this_tree.branch, this_tree=this_tree, pb=pb)
-    merger.check_basis(check_clean)
-    merger.set_other(other_revision)
-    merger.set_base(base_revision)
-    if merger.base_rev_id == merger.other_rev_id:
-        note('Nothing to do.')
-        return 0
-    merger.backup_files = backup_files
-    merger.merge_type = merge_type 
-    merger.set_interesting_files(file_list)
-    merger.show_base = show_base 
-    merger.reprocess = reprocess
-    conflicts = merger.do_merge()
-    merger.set_pending()
+    try:
+        merger = Merger(this_tree.branch, this_tree=this_tree, pb=pb)
+        merger.pp = ProgressPhase("Merge phase", 5, pb)
+        merger.pp.next_phase()
+        merger.check_basis(check_clean)
+        merger.set_other(other_revision)
+        merger.pp.next_phase()
+        merger.set_base(base_revision)
+        if merger.base_rev_id == merger.other_rev_id:
+            note('Nothing to do.')
+            return 0
+        merger.backup_files = backup_files
+        merger.merge_type = merge_type 
+        merger.set_interesting_files(file_list)
+        merger.show_base = show_base 
+        merger.reprocess = reprocess
+        conflicts = merger.do_merge()
+        merger.set_pending()
+    finally:
+        pb.clear()
     return conflicts
 
 
