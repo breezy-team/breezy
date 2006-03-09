@@ -954,7 +954,8 @@ class _KnitData(_KnitComponentFile):
             raise KnitCorrupt(self._filename, 'unexpected number of records')
         if rec[1] != version_id:
             raise KnitCorrupt(self._filename, 
-                              'unexpected version, wanted %r' % version_id)
+                              'unexpected version, wanted %r, got %r' % (
+                                version_id, rec[1]))
         lines = int(rec[2])
         record_contents = self._read_record_contents(df, lines)
         l = df.readline()
