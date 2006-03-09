@@ -68,7 +68,7 @@ class HttpTransport(HttpTransportBase):
         """
         path = relpath
         try:
-            path = self.abspath(relpath)
+            path = self._real_abspath(relpath)
             f = self._get_url(path, 'HEAD')
             # Without the read and then close()
             # we tend to have busy sockets.
@@ -94,7 +94,7 @@ class HttpTransport(HttpTransportBase):
         """
         path = relpath
         try:
-            path = self.abspath(relpath)
+            path = self._real_abspath(relpath)
             return self._get_url(path)
         except urllib2.HTTPError, e:
             mutter('url error code: %s for has url: %r', e.code, path)
@@ -108,7 +108,7 @@ class HttpTransport(HttpTransportBase):
                 if e.errno == errno.ENOENT:
                     raise NoSuchFile(path, extra=e)
             raise ConnectionError(msg = "Error retrieving %s: %s" 
-                             % (self.abspath(relpath), str(e)),
+                             % (self._real_abspath(relpath), str(e)),
                              orig_error=e)
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
@@ -135,8 +135,19 @@ class HttpTransport(HttpTransportBase):
         """Delete the item at relpath"""
         raise TransportNotPossible('http does not support delete()')
 
+
+class HttpServer_urllib(HttpServer):
+    """Subclass of HttpServer that gives http+urllib urls.
+
+    This is for use in testing: connections to this server will always go
+    through urllib where possible.
+    """
+
+    # urls returned by this server should require the urllib client impl
+    _url_protocol = 'http+urllib'
+
+
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    # XXX: There are no HTTPS transport provider tests yet.
-    return [(HttpTransport, HttpServer),
+    return [(HttpTransport, HttpServer_urllib),
             ]

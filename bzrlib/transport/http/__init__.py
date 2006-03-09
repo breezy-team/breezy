@@ -45,8 +45,8 @@ def extract_auth(url, password_manager):
     password manager.  Return the url, minus those auth parameters (which
     confuse urllib2).
     """
+    assert re.match(r'^(https?)(\+\w+)?://', url)
     scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-    assert (scheme == 'http') or (scheme == 'https')
     
     if '@' in netloc:
         auth, netloc = netloc.split('@', 1)
@@ -107,8 +107,9 @@ class HttpTransportBase(Transport):
 
         This can be supplied with a string or a list.
 
-        This always returns "http://host" without the implementation
-        qualifier, even if one was originally given.
+        The URL returned always has the protocol scheme originally used to 
+        construct the transport, even if that includes an explicit
+        implementation qualifier.
         """
         assert isinstance(relpath, basestring)
         if isinstance(relpath, basestring):
@@ -143,6 +144,18 @@ class HttpTransportBase(Transport):
         path = '/'.join(basepath)
         return urlparse.urlunparse((self._qualified_proto,
                                     self._host, path, '', '', ''))
+
+    def _real_abspath(self, relpath):
+        """Produce absolute path, adjusting protocol if needed"""
+        abspath = self.abspath(relpath)
+        qp = self._qualified_proto
+        rp = self._proto
+        if self._qualified_proto != self._proto:
+            abspath = rp + abspath[len(qp):]
+        if not isinstance(abspath, str):
+            # escaping must be done at a higher level
+            abspath = abspath.encode('ascii')
+        return abspath
 
     def get(self, relpath):
         raise NotImplementedError("has() is abstract on %r" % self)

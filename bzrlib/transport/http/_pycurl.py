@@ -54,17 +54,6 @@ class PyCurlTransport(HttpTransportBase):
         """
         return True
 
-    def _real_abspath(self, relpath):
-        """Produce absolute path, adjusting protocol if needed"""
-        abspath = self.abspath(relpath)
-        if abspath.startswith('http+pycurl'):
-            abspath = 'http' + abspath[11:]
-        elif abspath.startswith('https+pycurl'):
-            abspath = 'https' + abspath[12:]
-        if isinstance(abspath, unicode):
-            abspath = abspath.encode('ascii', 'strict')
-        return abspath
-
     def has(self, relpath):
         curl = pycurl.Curl()
         abspath = self._real_abspath(relpath)
