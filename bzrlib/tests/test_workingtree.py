@@ -166,7 +166,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         # stat-cache = ??
         # no inventory.basis yet
         t = control.get_workingtree_transport(None)
-        self.assertEqualDiff('Bazaar-NG Working Tree format 3\n',
+        self.assertEqualDiff('Bazaar-NG Working Tree format 3',
                              t.get('format').read())
         self.assertEqualDiff('<inventory format="5">\n'
                              '</inventory>\n',

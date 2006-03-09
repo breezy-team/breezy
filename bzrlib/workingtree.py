@@ -1420,7 +1420,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
-        return "Bazaar-NG Working Tree format 3\n"
+        return "Bazaar-NG Working Tree format 3"
 
     _lock_file_name = 'lock'
     _lock_class = LockDir
