@@ -196,4 +196,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertIsDirectory('.bzr/checkout/lock', t)
         our_lock = LockDir(t, '.bzr/checkout/lock')
         self.assertEquals(our_lock.peek(), None)
-        
+        tree.lock_write()
+        self.assertTrue(our_lock.peek())
+        tree.unlock()
+        self.assertEquals(our_lock.peek(), None)
