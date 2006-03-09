@@ -777,10 +777,7 @@ class _KnitIndex(_KnitComponentFile):
                 result.append(value[1:])
             else:
                 assert isinstance(value, str)
-                try:
-                    result.append(self._history[int(value)])
-                except ValueError:
-                    import pdb;pdb.set_trace()
+                result.append(self._history[int(value)])
         return result
 
     def get_graph(self):
