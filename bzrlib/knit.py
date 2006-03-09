@@ -990,7 +990,7 @@ class _KnitData(_KnitComponentFile):
             response = self._transport.readv(self._filename,
                 [(pos, size) for version_id, pos, size in needed_records])
 
-            for (record_id, pos, size), (pos, data) in izip(iter(records), response):
+            for (record_id, pos, size), (pos, data) in izip(iter(needed_records), response):
                 content, digest = self._parse_record(record_id, data)
                 self._records[record_id] = (digest, content)
     
