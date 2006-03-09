@@ -119,6 +119,7 @@ class KnitTests(TestCaseInTempDir):
         k = KnitVersionedFile('test', LocalTransport('.'), factory=KnitPlainFactory(),
             delta=True, create=True)
         self.add_stock_one_and_one_a(k)
+        k.clear_cache()
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
 
     def test_annotate(self):
@@ -299,7 +300,7 @@ class KnitTests(TestCaseInTempDir):
         # and now read the other component
         k1.get_lines('sub')
         # should have read the second component
-        self.assertEqual([('id.knit', [(87, 92)])], instrumented_t._calls)
+        self.assertEqual([('id.knit', [(87, 93)])], instrumented_t._calls)
         instrumented_t._calls = []
 
         # clear the cache
@@ -321,7 +322,7 @@ class KnitTests(TestCaseInTempDir):
         instrumented_t._calls = []
         # request a last-first iteration
         results = list(k1.iter_lines_added_or_present_in_versions(['base2', 'base']))
-        self.assertEqual([('id.knit', [(0, 87), (87, 89)])], instrumented_t._calls)
+        self.assertEqual([('id.knit', [(0, 87), (87, 90)])], instrumented_t._calls)
         self.assertEqual(['text\n', 'text2\n'], results)
 
     def test_create_empty_annotated(self):
