@@ -84,7 +84,7 @@ from bzrlib.osutils import (
                             )
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
-from bzrlib.rio import RioReader, RioWriter, Stanza
+from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
@@ -605,14 +605,15 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_write_lock
     def set_merge_modified(self, modified_hashes):
-        my_file = StringIO()
-        my_file.write(MERGE_MODIFIED_HEADER_1 + '\n')
-        writer = RioWriter(my_file)
-        for file_id, hash in modified_hashes.iteritems():
-            s = Stanza(file_id=file_id, hash=hash)
-            writer.write_stanza(s)
-        my_file.seek(0)
-        self._control_files.put('merge-hashes', my_file)
+        def iter_stanzas():
+            for file_id, hash in modified_hashes.iteritems():
+                yield Stanza(file_id=file_id, hash=hash)
+        self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
+
+    @needs_write_lock
+    def _put_rio(self, filename, stanzas, header):
+        my_file = rio_file(stanzas, header)
+        self._control_files.put(filename, my_file)
 
     @needs_read_lock
     def merge_modified(self):
