@@ -777,7 +777,10 @@ class _KnitIndex(_KnitComponentFile):
                 result.append(value[1:])
             else:
                 assert isinstance(value, str)
-                result.append(self._history[int(value)])
+                try:
+                    result.append(self._history[int(value)])
+                except ValueError:
+                    import pdb;pdb.set_trace()
         return result
 
     def get_graph(self):
@@ -853,11 +856,12 @@ class _KnitIndex(_KnitComponentFile):
         """Add a version record to the index."""
         self._cache_version(version_id, options, pos, size, parents)
 
-        content = "%s %s %s %s %s\n" % (version_id,
+        content = "%s %s %s %s %s\n" % (version_id.encode('utf-8'),
                                         ','.join(options),
                                         pos,
                                         size,
                                         self._version_list_to_index(parents))
+        assert isinstance(content, str), 'content must be utf-8 encoded'
         self._transport.append(self._filename, StringIO(content))
 
     def has_version(self, version_id):
@@ -932,9 +936,9 @@ class _KnitData(_KnitComponentFile):
         """
         sio = StringIO()
         data_file = GzipFile(None, mode='wb', fileobj=sio)
-        print >>data_file, "version %s %d %s" % (version_id, len(lines), digest)
+        print >>data_file, "version %s %d %s" % (version_id.encode('utf-8'), len(lines), digest)
         data_file.writelines(lines)
-        print >>data_file, "end %s\n" % version_id
+        print >>data_file, "end %s\n" % version_id.encode('utf-8')
         data_file.close()
         length= sio.tell()
         sio.seek(0)
@@ -942,6 +946,7 @@ class _KnitData(_KnitComponentFile):
 
     def add_raw_record(self, raw_data):
         """Append a prepared record to the data file."""
+        assert isinstance(raw_data, str), 'data must be plain bytes'
         start_pos = self._transport.append(self._filename, StringIO(raw_data))
         return start_pos, len(raw_data)
         
@@ -965,7 +970,7 @@ class _KnitData(_KnitComponentFile):
         rec = df.readline().split()
         if len(rec) != 4:
             raise KnitCorrupt(self._filename, 'unexpected number of elements in record header')
-        if rec[1] != version_id:
+        if rec[1].decode('utf-8')!= version_id:
             raise KnitCorrupt(self._filename, 
                               'unexpected version, wanted %r, got %r' % (
                                 version_id, rec[1]))
@@ -976,7 +981,7 @@ class _KnitData(_KnitComponentFile):
         lines = int(rec[2])
         record_contents = self._read_record_contents(df, lines)
         l = df.readline()
-        if l != 'end %s\n' % version_id:
+        if l.decode('utf-8') != 'end %s\n' % version_id:
             raise KnitCorrupt(self._filename, 'unexpected version end line %r, wanted %r' 
                         % (l, version_id))
         df.close()
