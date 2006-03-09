@@ -76,7 +76,11 @@ class Request(urllib2.Request):
 
 def get_url(url, method=None, ranges=None):
     import urllib2
-    mutter("get_url %s", url)
+    if ranges:
+        rangestring = ranges
+    else:
+        rangestring = 'all'
+    mutter("get_url %s [%s]", url, rangestring)
     manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
     url = extract_auth(url, manager)
     auth_handler = urllib2.HTTPBasicAuthHandler(manager)
@@ -225,9 +229,15 @@ class HttpTransport(Transport):
         :offsets: A list of (offset, size) tuples.
         :return: A list or generator of (offset, data) tuples
         """
-        response = self._get(relpath,
-            ranges=','.join(['%d-%d' % (off, off + size - 1)
-                             for off, size in offsets]))
+        if not len(offsets):
+            return
+        ranges = ','.join(['%d-%d' % (off, off + size - 1) 
+            for off, size in offsets])
+        if len(ranges):
+            rangestring = 'bytes=' + ranges
+        else:
+            rangestring = None
+        response = self._get(relpath, ranges=rangestring)
         if response.code == 206:
             for off, size in offsets:
                 yield off, response.read(size)
