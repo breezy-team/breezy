@@ -88,7 +88,7 @@ class VersionedFile(object):
         not present in file history.
         """
         self._check_write_ok()
-        self._add_lines(version_id, parents, lines)
+        return self._add_lines(version_id, parents, lines)
 
     def _add_lines(self, version_id, parents, lines):
         """Helper to do the class specific add_lines."""
@@ -97,7 +97,7 @@ class VersionedFile(object):
     def add_lines_with_ghosts(self, version_id, parents, lines):
         """Add lines to the versioned file, allowing ghosts to be present."""
         self._check_write_ok()
-        self._add_lines_with_ghosts(version_id, parents, lines)
+        return self._add_lines_with_ghosts(version_id, parents, lines)
 
     def _add_lines_with_ghosts(self, version_id, parents, lines):
         """Helper to do class specific add_lines_with_ghosts."""
@@ -125,6 +125,11 @@ class VersionedFile(object):
 
         Must raise RevisionAlreadyPresent if the new version is
         already present in file history."""
+        self._check_write_ok()
+        return self._clone_text(new_version_id, old_version_id, parents)
+
+    def _clone_text(self, new_version_id, old_version_id, parents):
+        """Helper function to do the _clone_text work."""
         raise NotImplementedError(self.clone_text)
 
     def create_empty(self, name, transport, mode=None):
@@ -145,7 +150,7 @@ class VersionedFile(object):
         list.
         """
         self._check_write_ok()
-        self._fix_parents(version, new_parents)
+        return self._fix_parents(version, new_parents)
 
     def _fix_parents(self, version, new_parents):
         """Helper for fix_parents."""

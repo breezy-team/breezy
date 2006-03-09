@@ -101,6 +101,7 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.fix_parents, '', [])
         self.assertRaises(errors.OutSideTransaction, f.join, '')
+        self.assertRaises(errors.OutSideTransaction, f.clone_text, 'base', 'bar', ['foo'])
         
     def test_clear_cache(self):
         f = self.get_file()
@@ -394,6 +395,7 @@ class VersionedFileTestMixIn(object):
                           [])
         self.assertRaises(errors.ReadOnlyError, vf.fix_parents, 'base', [])
         self.assertRaises(errors.ReadOnlyError, vf.join, 'base')
+        self.assertRaises(errors.ReadOnlyError, vf.clone_text, 'base', 'bar', ['foo'])
         
 
 class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):

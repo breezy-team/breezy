@@ -675,6 +675,30 @@ class TransportTestProviderAdapter(object):
                 # from running this test
                 pass
         return result
+
+
+class TransportLogger(object):
+    """Adapt a transport to get clear logging data on api calls.
+    
+    Feel free to extend to log whatever calls are of interest.
+    """
+
+    def __init__(self, adapted):
+        self._adapted = adapted
+        self._calls = []
+
+    def get(self, name):
+        self._calls.append((name,))
+        return self._adapted.get(name)
+
+    def __getattr__(self, name):
+        """Thunk all undefined access through to self._adapted."""
+        # raise AttributeError, name 
+        return getattr(self._adapted, name)
+
+    def readv(self, name, offsets):
+        self._calls.append((name, offsets))
+        return self._adapted.readv(name, offsets)
         
 
 # None is the default transport, for things with no url scheme
