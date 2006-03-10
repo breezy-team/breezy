@@ -323,7 +323,7 @@ class VersionedFileTestMixIn(object):
         vf = self.get_file()
         # add a revision with ghost parents
         try:
-            vf.add_lines_with_ghosts('notbase', ['base'], [])
+            vf.add_lines_with_ghosts(u'notbxbfse', [u'b\xbfse'], [])
         except NotImplementedError:
             # check the other ghost apis are also not implemented
             self.assertRaises(NotImplementedError, vf.has_ghost, 'foo')
@@ -334,33 +334,33 @@ class VersionedFileTestMixIn(object):
         # test key graph related apis: getncestry, _graph, get_parents
         # has_version
         # - these are ghost unaware and must not be reflect ghosts
-        self.assertEqual(['notbase'], vf.get_ancestry('notbase'))
-        self.assertEqual([], vf.get_parents('notbase'))
-        self.assertEqual({'notbase':[]}, vf.get_graph())
-        self.assertFalse(vf.has_version('base'))
+        self.assertEqual([u'notbxbfse'], vf.get_ancestry(u'notbxbfse'))
+        self.assertEqual([], vf.get_parents(u'notbxbfse'))
+        self.assertEqual({u'notbxbfse':[]}, vf.get_graph())
+        self.assertFalse(vf.has_version(u'b\xbfse'))
         # we have _with_ghost apis to give us ghost information.
-        self.assertEqual(['base', 'notbase'], vf.get_ancestry_with_ghosts(['notbase']))
-        self.assertEqual(['base'], vf.get_parents_with_ghosts('notbase'))
-        self.assertEqual({'notbase':['base']}, vf.get_graph_with_ghosts())
-        self.assertTrue(vf.has_ghost('base'))
+        self.assertEqual([u'b\xbfse', u'notbxbfse'], vf.get_ancestry_with_ghosts([u'notbxbfse']))
+        self.assertEqual([u'b\xbfse'], vf.get_parents_with_ghosts(u'notbxbfse'))
+        self.assertEqual({u'notbxbfse':[u'b\xbfse']}, vf.get_graph_with_ghosts())
+        self.assertTrue(vf.has_ghost(u'b\xbfse'))
         # if we add something that is a ghost of another, it should correct the
         # results of the prior apis
-        vf.add_lines('base', [], [])
-        self.assertEqual(['base', 'notbase'], vf.get_ancestry(['notbase']))
-        self.assertEqual(['base'], vf.get_parents('notbase'))
-        self.assertEqual({'base':[],
-                          'notbase':['base'],
+        vf.add_lines(u'b\xbfse', [], [])
+        self.assertEqual([u'b\xbfse', u'notbxbfse'], vf.get_ancestry([u'notbxbfse']))
+        self.assertEqual([u'b\xbfse'], vf.get_parents(u'notbxbfse'))
+        self.assertEqual({u'b\xbfse':[],
+                          u'notbxbfse':[u'b\xbfse'],
                           },
                          vf.get_graph())
-        self.assertTrue(vf.has_version('base'))
+        self.assertTrue(vf.has_version(u'b\xbfse'))
         # we have _with_ghost apis to give us ghost information.
-        self.assertEqual(['base', 'notbase'], vf.get_ancestry_with_ghosts(['notbase']))
-        self.assertEqual(['base'], vf.get_parents_with_ghosts('notbase'))
-        self.assertEqual({'base':[],
-                          'notbase':['base'],
+        self.assertEqual([u'b\xbfse', u'notbxbfse'], vf.get_ancestry_with_ghosts([u'notbxbfse']))
+        self.assertEqual([u'b\xbfse'], vf.get_parents_with_ghosts(u'notbxbfse'))
+        self.assertEqual({u'b\xbfse':[],
+                          u'notbxbfse':[u'b\xbfse'],
                           },
                          vf.get_graph_with_ghosts())
-        self.assertFalse(vf.has_ghost('base'))
+        self.assertFalse(vf.has_ghost(u'b\xbfse'))
 
     def test_add_lines_with_ghosts_after_normal_revs(self):
         # some versioned file formats allow lines to be added with parent

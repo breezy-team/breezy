@@ -36,7 +36,7 @@ from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError,
 from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
-from bzrlib.progress import DummyProgress
+from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
@@ -1917,7 +1917,8 @@ class cmd_remerge(Command):
                     restore(tree.abspath(filename))
                 except NotConflicted:
                     pass
-            conflicts =  merge_inner(tree.branch, other_tree, base_tree, 
+            conflicts =  merge_inner(tree.branch, other_tree, base_tree,
+                                     this_tree=tree,
                                      interesting_ids = interesting_ids, 
                                      other_rev_id=pending_merges[0], 
                                      merge_type=merge_type, 
@@ -2381,20 +2382,26 @@ def merge(other_revision, base_revision,
                               " type. %s" % merge_type)
     if reprocess and show_base:
         raise BzrCommandError("Cannot reprocess and show base.")
-    merger = Merger(this_tree.branch, this_tree=this_tree, pb=pb)
-    merger.check_basis(check_clean)
-    merger.set_other(other_revision)
-    merger.set_base(base_revision)
-    if merger.base_rev_id == merger.other_rev_id:
-        note('Nothing to do.')
-        return 0
-    merger.backup_files = backup_files
-    merger.merge_type = merge_type 
-    merger.set_interesting_files(file_list)
-    merger.show_base = show_base 
-    merger.reprocess = reprocess
-    conflicts = merger.do_merge()
-    merger.set_pending()
+    try:
+        merger = Merger(this_tree.branch, this_tree=this_tree, pb=pb)
+        merger.pp = ProgressPhase("Merge phase", 5, pb)
+        merger.pp.next_phase()
+        merger.check_basis(check_clean)
+        merger.set_other(other_revision)
+        merger.pp.next_phase()
+        merger.set_base(base_revision)
+        if merger.base_rev_id == merger.other_rev_id:
+            note('Nothing to do.')
+            return 0
+        merger.backup_files = backup_files
+        merger.merge_type = merge_type 
+        merger.set_interesting_files(file_list)
+        merger.show_base = show_base 
+        merger.reprocess = reprocess
+        conflicts = merger.do_merge()
+        merger.set_pending()
+    finally:
+        pb.clear()
     return conflicts
 
 

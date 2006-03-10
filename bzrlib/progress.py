@@ -43,6 +43,7 @@ from collections import deque
 
 
 import bzrlib.errors as errors
+from bzrlib.trace import mutter 
 
 
 def _supports_progress(f):
@@ -71,8 +72,8 @@ class ProgressBarStack(object):
     def __init__(self,
                  to_file=sys.stderr,
                  show_pct=False,
-                 show_spinner=False,
-                 show_eta=True,
+                 show_spinner=True,
+                 show_eta=False,
                  show_bar=True,
                  show_count=True,
                  to_messages_file=sys.stdout,
@@ -88,17 +89,26 @@ class ProgressBarStack(object):
         self._stack = []
         self._klass = klass or TTYProgressBar
 
+    def top(self):
+        if len(self._stack) != 0:
+            return self._stack[-1]
+        else:
+            return None
+
     def get_nested(self):
         """Return a nested progress bar."""
-        # initial implementation - return a new bar each time.
-        new_bar = self._klass(to_file=self._to_file,
-                              show_pct=self._show_pct,
-                              show_spinner=self._show_spinner,
-                              show_eta=self._show_eta,
-                              show_bar=self._show_bar,
-                              show_count=self._show_count,
-                              to_messages_file=self._to_messages_file,
-                              _stack=self)
+        if len(self._stack) == 0:
+            func = self._klass
+        else:
+            func = self.top().child_progress
+        new_bar = func(to_file=self._to_file,
+                       show_pct=self._show_pct,
+                       show_spinner=self._show_spinner,
+                       show_eta=self._show_eta,
+                       show_bar=self._show_bar,
+                       show_count=self._show_count,
+                       to_messages_file=self._to_messages_file,
+                       _stack=self)
         self._stack.append(new_bar)
         return new_bar
 
@@ -145,6 +155,9 @@ class _BaseProgressBar(object):
         self.to_messages_file.write(fmt_string % args)
         self.to_messages_file.write('\n')
 
+    def child_progress(self, **kwargs):
+        return ChildProgress(**kwargs)
+
 
 class DummyProgress(_BaseProgressBar):
     """Progress-bar standin that does nothing.
@@ -157,12 +170,17 @@ class DummyProgress(_BaseProgressBar):
     def update(self, msg=None, current=None, total=None):
         pass
 
+    def child_update(self, message, current, total):
+        pass
+
     def clear(self):
         pass
         
     def note(self, fmt_string, *args, **kwargs):
         """See _BaseProgressBar.note()."""
 
+    def child_progress(self, **kwargs):
+        return DummyProgress(**kwargs)
 
 class DotsProgressBar(_BaseProgressBar):
 
@@ -188,6 +206,8 @@ class DotsProgressBar(_BaseProgressBar):
         if self.need_nl:
             self.to_file.write('\n')
         
+    def child_update(self, message, current, total):
+        self.tick()
     
 class TTYProgressBar(_BaseProgressBar):
     """Progress bar display object.
@@ -221,6 +241,7 @@ class TTYProgressBar(_BaseProgressBar):
         self.start_time = None
         self.last_update = None
         self.last_updates = deque()
+        self.child_fraction = 0
     
 
     def throttle(self):
@@ -240,12 +261,27 @@ class TTYProgressBar(_BaseProgressBar):
         
 
     def tick(self):
-        self.update(self.last_msg, self.last_cnt, self.last_total)
-                 
+        self.update(self.last_msg, self.last_cnt, self.last_total, 
+                    self.child_fraction)
+
+    def child_update(self, message, current, total):
+        if current is not None and total != 0:
+            child_fraction = float(current) / total
+            if self.last_cnt is None:
+                pass
+            elif self.last_cnt + child_fraction <= self.last_total:
+                self.child_fraction = child_fraction
+            else:
+                mutter('not updating child fraction')
+        if self.last_msg is None:
+            self.last_msg = ''
+        self.tick()
 
 
-    def update(self, msg, current_cnt=None, total_cnt=None):
+    def update(self, msg, current_cnt=None, total_cnt=None, 
+               child_fraction=0):
         """Update and redraw progress bar."""
+        self.child_fraction = child_fraction
 
         if current_cnt < 0:
             current_cnt = 0
@@ -263,8 +299,8 @@ class TTYProgressBar(_BaseProgressBar):
             return 
         
         if self.show_eta and self.start_time and total_cnt:
-            eta = get_eta(self.start_time, current_cnt, total_cnt,
-                    last_updates = self.last_updates)
+            eta = get_eta(self.start_time, current_cnt+child_fraction, 
+                    total_cnt, last_updates = self.last_updates)
             eta_str = " " + str_tdelta(eta)
         else:
             eta_str = ""
@@ -278,7 +314,7 @@ class TTYProgressBar(_BaseProgressBar):
         self.spin_pos += 1
 
         if self.show_pct and total_cnt and current_cnt:
-            pct = 100.0 * current_cnt / total_cnt
+            pct = 100.0 * ((current_cnt + child_fraction) / total_cnt)
             pct_str = ' (%5.1f%%)' % pct
         else:
             pct_str = ''
@@ -302,7 +338,8 @@ class TTYProgressBar(_BaseProgressBar):
 
             if total_cnt:
                 # number of markers highlighted in bar
-                markers = int(round(float(cols) * current_cnt / total_cnt))
+                markers = int(round(float(cols) * 
+                              (current_cnt + child_fraction) / total_cnt))
                 bar_str = '[' + ('=' * markers).ljust(cols) + '] '
             elif False:
                 # don't know total, so can't show completion.
@@ -326,7 +363,45 @@ class TTYProgressBar(_BaseProgressBar):
         self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
         #self.to_file.flush()        
 
-        
+
+class ChildProgress(_BaseProgressBar):
+    """A progress indicator that pushes its data to the parent"""
+    def __init__(self, _stack, **kwargs):
+        _BaseProgressBar.__init__(self, _stack=_stack, **kwargs)
+        self.parent = _stack.top()
+        self.current = None
+        self.total = None
+        self.child_fraction = 0
+        self.message = None
+
+    def update(self, msg, current_cnt=None, total_cnt=None):
+        self.current = current_cnt
+        self.total = total_cnt
+        self.message = msg
+        self.child_fraction = 0
+        self.tick()
+
+    def child_update(self, message, current, total):
+        if current is None or total == 0:
+            self.child_fraction = 0
+        else:
+            self.child_fraction = float(current) / total
+        self.tick()
+
+    def tick(self):
+        if self.current is None:
+            count = None
+        else:
+            count = self.current+self.child_fraction
+            if count > self.total:
+                mutter('clamping count of %d to %d' % (count, self.total))
+                count = self.total
+        self.parent.child_update(self.message, count, self.total)
+
+    def clear(self):
+        pass
+
+ 
 def str_tdelta(delt):
     if delt is None:
         return "-:--:--"
@@ -370,6 +445,24 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_r
         return (time_left + old_time_left) / 2
 
     return total_duration - elapsed
+
+
+class ProgressPhase(object):
+    """Update progress object with the current phase"""
+    def __init__(self, message, total, pb):
+        object.__init__(self)
+        self.pb = pb
+        self.message = message
+        self.total = total
+        self.cur_phase = None
+
+    def next_phase(self):
+        if self.cur_phase is None:
+            self.cur_phase = 0
+        else:
+            self.cur_phase += 1
+        assert self.cur_phase < self.total 
+        self.pb.update(self.message, self.cur_phase, self.total)
 
 
 def run_tests():
