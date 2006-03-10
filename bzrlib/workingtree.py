@@ -867,7 +867,10 @@ class WorkingTree(bzrlib.tree.Tree):
             if not self.is_ignored(subp):
                 yield subp
 
+    @deprecated_method(zero_eight)
     def iter_conflicts(self):
+        return _iter_conflicts()
+    def _iter_conflicts(self):
         conflicted = set()
         for path in (s[0] for s in self.list_files()):
             stem = get_conflicted_stem(path)
@@ -1277,7 +1280,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_read_lock
     def conflict_lines(self):
-        for conflicted in self.iter_conflicts():
+        for conflicted in self._iter_conflicts():
             text = True
             try:
                 if file_kind(self.abspath(conflicted)) != "file":

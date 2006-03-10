@@ -53,8 +53,10 @@ class cmd_conflicts(bzrlib.commands.Command):
     """
     def run(self):
         from bzrlib.workingtree import WorkingTree
-        for path in WorkingTree.open_containing(u'.')[0].iter_conflicts():
-            print path
+        from transform import conflicts_strings
+        wt = WorkingTree.open_containing(u'.')[0]
+        for conflict in conflicts_strings(wt.conflict_lines()):
+            print conflict
 
 class cmd_resolve(bzrlib.commands.Command):
     """Mark a conflict as resolved.
