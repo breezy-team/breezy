@@ -146,7 +146,7 @@ def select_conflicts(tree, paths, tree_conflicts):
         else:
             new_conflicts.append(conflict)
     for path in [p for p in paths if p not in selected_paths]:
-        if not os.path.exists(tree.abspath(filename)):
+        if not os.path.exists(tree.abspath(path)):
             print "%s does not exist" % path
         else:
             print "%s is not conflicted" % path
@@ -157,7 +157,7 @@ def remove_conflict_files(tree, conflicts):
         if stanza['type'] in ("text conflict", "contents conflict"):
             for suffix in CONFLICT_SUFFIXES:
                 try:
-                    os.unlink(stanza['path']+suffix)
+                    os.unlink(tree.abspath(stanza['path']+suffix))
                 except OSError, e:
                     if e.errno != errno.ENOENT:
                         raise
