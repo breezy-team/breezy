@@ -867,8 +867,10 @@ class WorkingTree(bzrlib.tree.Tree):
             if not self.is_ignored(subp):
                 yield subp
 
-#    @deprecated_method(zero_eight)
+    @deprecated_method(zero_eight)
     def iter_conflicts(self):
+        """List all files in the tree that have text or content conflicts.
+        DEPRECATED.  Use conflict_lines instead."""
         return self._iter_conflicts()
 
     def _iter_conflicts(self):
