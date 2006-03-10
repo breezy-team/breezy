@@ -215,3 +215,9 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         tree.set_conflict_lines(example_conflicts)
         tree2 = WorkingTree.open('.')
         self.assertEqual(list(tree2.conflict_lines()), example_conflicts)
+        tree2._control_files.put('conflicts', StringIO(''))
+        self.assertRaises(errors.ConflictFormatError, 
+                          tree2.conflict_lines)
+        tree2._control_files.put('conflicts', StringIO('a'))
+        self.assertRaises(errors.ConflictFormatError, 
+                          tree2.conflict_lines)

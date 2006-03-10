@@ -800,6 +800,10 @@ class MergeModifiedFormatError(BzrNewError):
     """Error in merge modified format"""
 
 
+class ConflictFormatError(BzrNewError):
+    """Format error in conflict listings"""
+
+
 class CorruptRepository(BzrNewError):
     """An error has been detected in the repository %(repo_path)s.
 Please run bzr reconcile on this repository."""

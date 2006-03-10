@@ -57,6 +57,7 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
+                           ConflictFormatError,
                            DivergedBranches,
                            WeaveRevisionNotPresent,
                            NotBranchError,
