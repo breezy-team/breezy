@@ -521,3 +521,32 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree2._control_files.put('conflicts', StringIO('a'))
         self.assertRaises(errors.ConflictFormatError, 
                           tree2.conflict_lines)
+
+    def make_merge_conflicts(self):
+        from bzrlib.merge import merge_inner 
+        tree = self.make_branch_and_tree('mine')
+        file('mine/bloo', 'wb').write('one')
+        tree.add('bloo')
+        tree.commit("blah", allow_pointless=False)
+        base = tree.basis_tree()
+        BzrDir.open("mine").sprout("other")
+        file('other/bloo', 'wb').write('two')
+        othertree = WorkingTree.open('other')
+        othertree.commit('blah', allow_pointless=False)
+        file('mine/bloo', 'wb').write('three')
+        tree.commit("blah", allow_pointless=False)
+        merge_inner(tree.branch, othertree, base, this_tree=tree)
+        return tree
+
+    def test_merge_conflicts(self):
+        tree = self.make_merge_conflicts()
+        self.assertEqual(len(list(tree.conflict_lines())), 1)
+
+    def test_clear_merge_conflicts(self):
+        tree = self.make_merge_conflicts()
+        self.assertEqual(len(list(tree.conflict_lines())), 1)
+        try:
+            tree.set_conflict_lines([])
+        except UnsupportedOperation:
+            raise TestSkipped
+        self.assertEqual(len(list(tree.conflict_lines())), 0)

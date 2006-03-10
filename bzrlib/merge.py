@@ -32,6 +32,7 @@ from bzrlib.errors import (BzrCommandError,
                            NotBranchError,
                            NotVersionedError,
                            UnrelatedBranches,
+                           UnsupportedOperation,
                            WorkingTreeNotRevision,
                            )
 from bzrlib.merge3 import Merge3
@@ -374,6 +375,10 @@ class Merge3Merger(object):
             self.pp.next_phase()
             results = self.tt.apply()
             self.write_modified(results)
+            try:
+                working_tree.set_conflict_lines(self.cooked_conflicts)
+            except UnsupportedOperation:
+                pass
         finally:
             try:
                 self.tt.finalize()
