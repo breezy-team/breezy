@@ -261,7 +261,7 @@ class HttpTransport(Transport):
             if not combined_offsets:
                 combined_offsets = [[offset, size]]
             else:
-                if (len (combined_offsets) < 50 and
+                if (len (combined_offsets) < 500 and
                     combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
                     # combatible offset:
                     combined_offsets.append([offset, size])
