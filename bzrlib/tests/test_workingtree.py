@@ -200,3 +200,18 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertTrue(our_lock.peek())
         tree.unlock()
         self.assertEquals(our_lock.peek(), None)
+
+    def make_tree(self):
+        t = self.get_transport()
+        url = self.get_url()
+        dir = bzrdir.BzrDirMetaFormat1().initialize(url)
+        repo = dir.create_repository()
+        branch = dir.create_branch()
+        return workingtree.WorkingTreeFormat3().initialize(dir)
+
+    def test_conflicts(self):
+        from bzrlib.tests.test_conflicts import example_conflicts
+        tree = self.make_tree()
+        tree.set_conflict_lines(example_conflicts)
+        tree2 = WorkingTree.open('.')
+        self.assertEqual(list(tree2.conflict_lines()), example_conflicts)

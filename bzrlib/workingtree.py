@@ -30,6 +30,7 @@ WorkingTree.open(dir).
 """
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
+CONFLICT_HEADER_1 = "BZR conflict list format 1"
 
 # TODO: Give the workingtree sole responsibility for the working inventory;
 # remove the variable and references to it from the branch.  This may require
@@ -49,6 +50,8 @@ import stat
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import (Branch,
                            quotefn)
+from bzrlib.conflicts import (stanza_conflicts, conflict_stanzas,
+                              CONFLICT_SUFFIXES)
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
@@ -1300,8 +1303,24 @@ class WorkingTree3(WorkingTree):
             self._control_files.put_utf8('last-revision', revision_id)
             return True
 
+    @needs_write_lock
+    def set_conflict_lines(self, lines):
+        self._put_rio('conflicts', conflict_stanzas(lines), CONFLICT_HEADER_1)
 
-CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
+    @needs_read_lock
+    def conflict_lines(self):
+        try:
+            confile = self._control_files.get('conflicts')
+        except NoSuchFile:
+            return []
+        try:
+            if confile.next() != CONFLICT_HEADER_1 + '\n':
+                raise ConflictFormatError()
+        except StopIteration:
+            raise ConflictFormatError()
+        return stanza_conflicts(RioReader(confile))
+
+
 def get_conflicted_stem(path):
     for suffix in CONFLICT_SUFFIXES:
         if path.endswith(suffix):

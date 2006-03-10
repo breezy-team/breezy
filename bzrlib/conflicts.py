@@ -31,7 +31,10 @@ from bzrlib.errors import BzrCommandError, NotConflicted
 from bzrlib.option import Option
 from bzrlib.osutils import rename
 from bzrlib.rio import Stanza
-from bzrlib.workingtree import CONFLICT_SUFFIXES, WorkingTree
+
+
+CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
+
 
 class cmd_conflicts(bzrlib.commands.Command):
     """List files with conflicts.
@@ -49,6 +52,7 @@ class cmd_conflicts(bzrlib.commands.Command):
     See also bzr resolve.
     """
     def run(self):
+        from bzrlib.workingtree import WorkingTree
         for path in WorkingTree.open_containing(u'.')[0].iter_conflicts():
             print path
 
@@ -70,6 +74,7 @@ class cmd_resolve(bzrlib.commands.Command):
     takes_args = ['file*']
     takes_options = [Option('all', help='Resolve all conflicts in this tree')]
     def run(self, file_list=None, all=False):
+        from bzrlib.workingtree import WorkingTree
         if file_list is None:
             if not all:
                 raise BzrCommandError(
