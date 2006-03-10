@@ -142,6 +142,13 @@ class _BaseProgressBar(object):
         self.show_bar = show_bar
         self.show_count = show_count
         self._stack = _stack
+        # seed throttler
+        self.MIN_PAUSE = 0.1 # seconds
+        now = time.clock()
+        # starting now
+        self.start_time = now
+        # next update should not throttle
+        self.last_update = now - self.MIN_PAUSE - 1
 
     def finished(self):
         """Return this bar to its progress stack."""
@@ -230,7 +237,6 @@ class TTYProgressBar(_BaseProgressBar):
     The output file should be in line-buffered or unbuffered mode.
     """
     SPIN_CHARS = r'/-\|'
-    MIN_PAUSE = 0.1 # seconds
 
 
     def __init__(self, **kwargs):
@@ -239,21 +245,23 @@ class TTYProgressBar(_BaseProgressBar):
         self.spin_pos = 0
         self.width = terminal_width()
         self.start_time = None
-        self.last_update = None
         self.last_updates = deque()
         self.child_fraction = 0
     
 
     def throttle(self):
         """Return True if the bar was updated too recently"""
-        now = time.time()
-        if self.start_time is None:
-            self.start_time = self.last_update = now
-            return False
-        else:
-            interval = now - self.last_update
-            if interval > 0 and interval < self.MIN_PAUSE:
-                return True
+        # time.time consistently takes 40/4000 ms = 0.01 ms.
+        # but every single update to the pb invokes it.
+        # so we use time.clock which takes 20/4000 ms = 0.005ms
+        # on the downside, time.clock() appears to have approximately
+        # 10ms granularity, so we treat a zero-time change as 'throttled.'
+        
+        now = time.clock()
+        interval = now - self.last_update
+        # if interval > 0
+        if interval < self.MIN_PAUSE:
+            return True
 
         self.last_updates.append(now - self.last_update)
         self.last_update = now
@@ -424,7 +432,7 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_r
     if current > total:
         return None                     # wtf?
 
-    elapsed = time.time() - start_time
+    elapsed = time.clock() - start_time
 
     if elapsed < 2.0:                   # not enough time to estimate
         return None
