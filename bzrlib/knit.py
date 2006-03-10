@@ -721,9 +721,11 @@ class _KnitIndex(_KnitComponentFile):
 
     def _cache_version(self, version_id, options, pos, size, parents):
         val = (version_id, options, pos, size, parents)
-        self._cache[version_id] = val
-        if not version_id in self._history:
+        # only want the _history index to reference the 1st index entry
+        # for version_id
+        if not version_id in self._cache:
             self._history.append(version_id)
+        self._cache[version_id] = val
 
     def _iter_index(self, fp):
         l = fp.readline()

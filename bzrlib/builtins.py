@@ -1917,7 +1917,8 @@ class cmd_remerge(Command):
                     restore(tree.abspath(filename))
                 except NotConflicted:
                     pass
-            conflicts =  merge_inner(tree.branch, other_tree, base_tree, 
+            conflicts =  merge_inner(tree.branch, other_tree, base_tree,
+                                     this_tree=tree,
                                      interesting_ids = interesting_ids, 
                                      other_rev_id=pending_merges[0], 
                                      merge_type=merge_type, 
@@ -1952,7 +1953,7 @@ class cmd_revert(Command):
         tree, file_list = tree_files(file_list)
         if revision is None:
             # FIXME should be tree.last_revision
-            rev_id = tree.branch.last_revision()
+            rev_id = tree.last_revision()
         elif len(revision) != 1:
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:

@@ -825,7 +825,7 @@ class KnitRepository(MetaDirRepository):
         return result
 
     def _get_revision_vf(self):
-        """helper to get the revision store versioned file."""
+        """:return: a versioned file containing the revisions."""
         vf = self._revision_store.get_revision_file(self.get_transaction())
         return vf
 

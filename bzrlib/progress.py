@@ -265,7 +265,7 @@ class TTYProgressBar(_BaseProgressBar):
                     self.child_fraction)
 
     def child_update(self, message, current, total):
-        if current is not None:
+        if current is not None and total != 0:
             child_fraction = float(current) / total
             if self.last_cnt is None:
                 pass
@@ -382,7 +382,7 @@ class ChildProgress(_BaseProgressBar):
         self.tick()
 
     def child_update(self, message, current, total):
-        if current is None:
+        if current is None or total == 0:
             self.child_fraction = 0
         else:
             self.child_fraction = float(current) / total

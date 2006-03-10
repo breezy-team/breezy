@@ -348,6 +348,7 @@ class Merge3Merger(object):
         else:
             all_ids = set(base_tree)
             all_ids.update(other_tree)
+        working_tree.lock_write()
         self.tt = TreeTransform(working_tree, self.pb)
         try:
             self.pp.next_phase()
@@ -372,13 +373,14 @@ class Merge3Merger(object):
                 warning(line)
             self.pp.next_phase()
             results = self.tt.apply()
+            self.write_modified(results)
         finally:
             try:
                 self.tt.finalize()
             except:
                 pass
+            working_tree.unlock()
             self.pb.clear()
-        self.write_modified(results)
 
     def write_modified(self, results):
         modified_hashes = {}

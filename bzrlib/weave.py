@@ -777,19 +777,11 @@ class Weave(VersionedFile):
                          version in version_ids]
         for name in topo_sort(pending_graph):
             other_idx = other._name_map[name]
-            self._check_version_consistent(other, other_idx, name)
-            sha1 = other._sha1s[other_idx]
-
+            # returns True if we have it, False if we need it.
+            if not self._check_version_consistent(other, other_idx, name):
+                names_to_join.append((other_idx, name))
             processed += 1
 
-            if name in self._name_map:
-                idx = self._lookup(name)
-                n1 = set(map(other._idx_to_name, other._parents[other_idx]))
-                n2 = set(map(self._idx_to_name, self._parents[idx]))
-                if sha1 ==  self._sha1s[idx] and n1 == n2:
-                        continue
-
-            names_to_join.append((other_idx, name))
 
         if pb and not msg:
             msg = 'weave join'
