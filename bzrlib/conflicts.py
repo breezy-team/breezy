@@ -161,8 +161,6 @@ def remove_conflict_files(tree, conflicts):
                 except OSError, e:
                     if e.errno != errno.ENOENT:
                         raise
-                    else:
-                        failures += 1
     
 
 def restore(filename):
@@ -198,6 +196,8 @@ def conflict_stanzas(conflicts):
         if conflict[0] in ('text conflict', 'path conflict', 
                            'contents conflict'):
             s = Stanza(type=conflict[0], path=conflict[2])
+            if conflict[0] == 'path conflict':
+                s.add('conflict_path', conflict[3])
             if conflict[1] is not None:
                 s.add('file_id', conflict[1]) 
             yield s
@@ -224,7 +224,10 @@ def stanza_conflicts(stanzas):
             conflict_file_id = None
         if stanza.get('type') in ('text conflict', 'path conflict', 
                                   'contents conflict'):
-            yield (stanza['type'], file_id, stanza['path'])
+            my_list = [stanza['type'], file_id, stanza['path']]
+            if stanza.get('type') == 'path conflict':
+                my_list.append(stanza['conflict_path'])
+            yield tuple(my_list)
         else:
             my_list = [stanza['type'], stanza['action'],
                        stanza['path'], file_id]

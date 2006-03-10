@@ -29,7 +29,7 @@ from bzrlib.errors import NotConflicted
 example_conflicts = [ 
     ('contents conflict', 'ida', 'patha'),
     ('text conflict', None, 'patha'),
-    ('path conflict', 'idb', 'pathb'),
+    ('path conflict', 'idb', 'pathb', 'pathc'),
     ('duplicate id', 'Unversioned existing file', 'pathc', 'idc', 'pathc2', 
      'idc'),
     ('duplicate', 'Moved existing file to',  'pathdd.moved', 'idd', 'pathd', 
