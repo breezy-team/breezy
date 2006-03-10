@@ -46,18 +46,12 @@ class HttpTransport_urllib(HttpTransportBase):
         """Set the base path where files will be stored."""
         super(HttpTransport_urllib, self).__init__(base)
 
-    def get(self, relpath):
-        """Get the file at the given relative path.
-
-        :param relpath: The relative path to the file
-        """
-        return self._get(relpath, [])
-
     def _get(self, relpath, ranges):
         path = relpath
         try:
             path = self._real_abspath(relpath)
-            return self._get_url_impl(path, method=method, ranges=ranges)
+            response = self._get_url_impl(path, method='GET', ranges=ranges)
+            return response.code, response
         except urllib2.HTTPError, e:
             mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
@@ -74,6 +68,10 @@ class HttpTransport_urllib(HttpTransportBase):
                              orig_error=e)
 
     def _get_url_impl(self, url, method, ranges):
+        """Actually pass get request into urllib
+
+        :returns: urllib Response object
+        """
         if ranges:
             range_string = ranges
         else:
@@ -85,9 +83,10 @@ class HttpTransport_urllib(HttpTransportBase):
         opener = urllib2.build_opener(auth_handler)
         request = Request(url)
         request.method = method
-        request.add_header('User-Agent', 'bzr/%s' % bzrlib.__version__)
+        request.add_header('User-Agent', 'bzr/%s (urllib)' % bzrlib.__version__)
         if ranges:
-            request.add_header('Range', ranges)
+            assert len(ranges) == 1
+            request.add_header('Range', 'bytes=%d-%d' % ranges[0])
         response = opener.open(request)
         return response
 

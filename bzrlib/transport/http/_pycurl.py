@@ -80,13 +80,21 @@ class PyCurlTransport(HttpTransportBase):
         self._set_curl_options(curl)
         curl.setopt(pycurl.WRITEFUNCTION, sio.write)
         curl.setopt(pycurl.NOBODY, 0)
+        if ranges is not None:
+            assert len(ranges) == 1
+            # multiple ranges not supported yet because we can't decode the
+            # response
+            curl.setopt(pycurl.RANGE, '%d-%d' % ranges[0])
         self._curl_perform(curl)
         code = curl.getinfo(pycurl.HTTP_CODE)
         if code == 404:
             raise NoSuchFile(abspath)
         elif code == 200:
             sio.seek(0)
-            return sio
+            return code, sio
+        elif code == 206 and (ranges is not None):
+            sio.seek(0)
+            return code, sio
         else:
             raise TransportError('http error %d acccessing %s' % 
                     (code, curl.getinfo(pycurl.EFFECTIVE_URL)))

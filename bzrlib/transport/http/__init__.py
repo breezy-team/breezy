@@ -158,9 +158,6 @@ class HttpTransportBase(Transport):
             abspath = abspath.encode('ascii')
         return abspath
 
-    def get(self, relpath):
-        raise NotImplementedError("has() is abstract on %r" % self)
-
     def has(self, relpath):
         raise NotImplementedError("has() is abstract on %r" % self)
 
@@ -169,24 +166,36 @@ class HttpTransportBase(Transport):
 
         :param relpath: The relative path to the file
         """
-        return self._get(relpath, [])
+        code, response_file = self._get(relpath, None)
+        return response_file
 
     def _get(self, relpath, ranges):
-        """GET a file over http
+        """Get a file, or part of a file.
 
-        :param relpath: URL relative to base of this Transport
-        :param ranges: None to fetch the whole resource; or a string giving the bytes
-             to fetch.
-        """   
+        :param relpath: Path relative to transport base URL
+        :param byte_range: None to get the whole file;
+            or [(start,end)] to fetch parts of a file.
+
+        :returns: (http_code, result_file)
+
+        Note that the current http implementations can only fetch one range at
+        a time through this call.
+        """
         raise NotImplementedError(self._get)
 
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
         :param offsets: A list of (offset, size) tuples.
-        :return: A list or generator of (offset, data) tuples
+        :param return: A list or generator of (offset, data) tuples
         """
-        # this is not quite regular enough to have a single driver routine and
+        # Ideally we would pass one big request asking for all the ranges in
+        # one go; however then the server will give a multipart mime response
+        # back, and we can't parse them yet.  So instead we just get one range
+        # per region, and try to coallesce the regions as much as possible.
+        #
+        # The read-coallescing code is not quite regular enough to have a
+        # single driver routine and
         # helper method in Transport.
         def do_combined_read(combined_offsets):
             # read one coalesced block
@@ -195,19 +204,20 @@ class HttpTransportBase(Transport):
                 total_size += size
             mutter('readv coalesced %d reads.', len(combined_offsets))
             offset = combined_offsets[0][0]
-            ranges = 'bytes=%d-%d' % (offset, offset + total_size - 1)
-            response = self._get(relpath, ranges=ranges)
-            if response.code == 206:
+            byte_range = (offset, offset + total_size - 1)
+            code, result_file = self._get(relpath, [byte_range])
+            if code == 206:
                 for off, size in combined_offsets:
-                    yield off, response.read(size)
-            elif response.code == 200:
-                data = response.read(offset + total_size)[offset:offset + total_size]
+                    result_bytes = result_file.read(size)
+                    assert len(result_bytes) == size
+                    yield off, result_bytes
+            elif code == 200:
+                data = result_file.read(offset + total_size)[offset:offset + total_size]
                 pos = 0
                 for offset, size in combined_offsets:
                     yield offset, data[pos:pos + size]
                     pos += size
                 del data
-
         if not len(offsets):
             return
         pending_offsets = deque(offsets)
