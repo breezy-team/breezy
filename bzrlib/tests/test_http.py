@@ -24,7 +24,7 @@ import bzrlib.errors as errors
 from bzrlib.tests import TestCase
 from bzrlib.transport import Transport
 from bzrlib.transport.http import extract_auth
-from bzrlib.transport.http._urllib import HttpTransport
+from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.http._pycurl import PyCurlTransport
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 
@@ -49,7 +49,7 @@ class TestHttpUrls(TestCase):
         
     def test_abs_url(self):
         """Construction of absolute http URLs"""
-        t = HttpTransport('http://bazaar-ng.org/bzr/bzr.dev/')
+        t = HttpTransport_urllib('http://bazaar-ng.org/bzr/bzr.dev/')
         eq = self.assertEqualDiff
         eq(t.abspath('.'),
            'http://bazaar-ng.org/bzr/bzr.dev')
@@ -62,7 +62,7 @@ class TestHttpUrls(TestCase):
 
     def test_invalid_http_urls(self):
         """Trap invalid construction of urls"""
-        t = HttpTransport('http://bazaar-ng.org/bzr/bzr.dev/')
+        t = HttpTransport_urllib('http://bazaar-ng.org/bzr/bzr.dev/')
         self.assertRaises(ValueError,
             t.abspath,
             '.bzr/')
@@ -72,7 +72,7 @@ class TestHttpUrls(TestCase):
 
     def test_http_root_urls(self):
         """Construction of URLs from server root"""
-        t = HttpTransport('http://bzr.ozlabs.org/')
+        t = HttpTransport_urllib('http://bzr.ozlabs.org/')
         eq = self.assertEqualDiff
         eq(t.abspath('.bzr/tree-version'),
            'http://bzr.ozlabs.org/.bzr/tree-version')
@@ -93,7 +93,7 @@ class TestHttpUrls(TestCase):
 
 class TestHttpConnections(TestCaseWithWebserver):
 
-    _transport = HttpTransport
+    _transport = HttpTransport_urllib
 
     def setUp(self):
         super(TestHttpConnections, self).setUp()
@@ -142,4 +142,4 @@ class TestHttpTransportRegistration(TestCase):
         # urlllib should always be present
         t = get_transport('http+urllib://bzr.google.com/')
         self.assertIsInstance(t, Transport)
-        self.assertIsInstance(t, bzrlib.transport.http._urllib.HttpTransport)
+        self.assertIsInstance(t, bzrlib.transport.http._urllib.HttpTransport_urllib)

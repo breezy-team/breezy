@@ -501,7 +501,9 @@ class SFTPTransport (Transport):
         try:
             path = self._remote_path(relpath)
             fout = self._sftp.file(path, 'ab')
+            result = fout.tell()
             self._pump(f, fout)
+            return result
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, relpath, ': unable to append')
 

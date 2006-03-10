@@ -57,13 +57,10 @@ class cmd_sign_my_commits(Command):
 
         gpg_strategy = bzrlib.gpg.GPGStrategy(config)
 
-        if not repo.revision_store.listable():
-            raise errors.BzrCommandError('cannot sign revisions on non-listable transports')
-
         count = 0
         # return in partial topological order for the sake of reproducibility
         for rev_id in repo.all_revision_ids():
-            if repo.revision_store.has_id(rev_id, suffix='sig'):
+            if repo.has_signature_for_revision_id(rev_id):
                 continue
             
             rev = repo.get_revision(rev_id)

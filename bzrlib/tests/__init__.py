@@ -21,6 +21,11 @@
 # little as possible, so this should be used rarely if it's added at all.
 # (Suggestion from j-a-meinel, 2005-11-24)
 
+# NOTE: Some classes in here use camelCaseNaming() rather than
+# underscore_naming().  That's for consistency with unittest; it's not the
+# general style of bzrlib.  Please continue that consistency when adding e.g.
+# new assertFoo() methods.
+
 import codecs
 from cStringIO import StringIO
 import difflib
@@ -84,7 +89,9 @@ def packages_to_test():
     import bzrlib.tests.branch_implementations
     import bzrlib.tests.bzrdir_implementations
     import bzrlib.tests.interrepository_implementations
+    import bzrlib.tests.interversionedfile_implementations
     import bzrlib.tests.repository_implementations
+    import bzrlib.tests.revisionstore_implementations
     import bzrlib.tests.workingtree_implementations
     return [
             bzrlib.doc,
@@ -92,7 +99,9 @@ def packages_to_test():
             bzrlib.tests.branch_implementations,
             bzrlib.tests.bzrdir_implementations,
             bzrlib.tests.interrepository_implementations,
+            bzrlib.tests.interversionedfile_implementations,
             bzrlib.tests.repository_implementations,
+            bzrlib.tests.revisionstore_implementations,
             bzrlib.tests.workingtree_implementations,
             ]
 
@@ -809,6 +818,21 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # TODO: rbc 20060208
             return WorkingTreeFormat2().initialize(bzrdir.BzrDir.open(relpath))
 
+    def assertIsDirectory(self, relpath, transport):
+        """Assert that relpath within transport is a directory.
+
+        This may not be possible on all transports; in that case it propagates
+        a TransportNotPossible.
+        """
+        try:
+            mode = transport.stat(relpath).st_mode
+        except errors.NoSuchFile:
+            self.fail("path %s is not a directory; no such file"
+                      % (relpath))
+        if not stat.S_ISDIR(mode):
+            self.fail("path %s is not a directory; has mode %#o"
+                      % (relpath, mode))
+
 
 class ChrootedTestCase(TestCaseWithTransport):
     """A support class that provides readonly urls outside the local namespace.
@@ -912,6 +936,7 @@ def test_suite():
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_inv',
+                   'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
@@ -925,12 +950,12 @@ def test_suite():
                    'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
+                   'bzrlib.tests.test_progress',
                    'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revprops',
-                   'bzrlib.tests.test_reweave',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
@@ -949,6 +974,7 @@ def test_suite():
                    'bzrlib.tests.test_ui',
                    'bzrlib.tests.test_uncommit',
                    'bzrlib.tests.test_upgrade',
+                   'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',

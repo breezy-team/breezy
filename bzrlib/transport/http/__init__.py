@@ -21,6 +21,7 @@ There are separate implementation modules for each http client implementation.
 
 import errno
 import os
+from collections import deque
 from cStringIO import StringIO
 import re
 import urlparse
@@ -40,12 +41,12 @@ from bzrlib.ui import ui_factory
 
 
 def extract_auth(url, password_manager):
-    """
-    Extract auth parameters from am HTTP/HTTPS url and add them to the given
+    """Extract auth parameters from am HTTP/HTTPS url and add them to the given
     password manager.  Return the url, minus those auth parameters (which
     confuse urllib2).
     """
-    assert re.match(r'^(https?)(\+\w+)?://', url)
+    assert re.match(r'^(https?)(\+\w+)?://', url), \
+            'invalid absolute url %r' % url
     scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
     
     if '@' in netloc:
@@ -67,7 +68,7 @@ def extract_auth(url, password_manager):
         password_manager.add_password(None, host, username, password)
     url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
     return url
-    
+
 
 class HttpTransportBase(Transport):
     """Base class for http implementations.
@@ -163,46 +164,73 @@ class HttpTransportBase(Transport):
     def has(self, relpath):
         raise NotImplementedError("has() is abstract on %r" % self)
 
-    def stat(self, relpath):
-        """Return the stat information for a file.
+    def get(self, relpath):
+        """Get the file at the given relative path.
+
+        :param relpath: The relative path to the file
         """
-        raise TransportNotPossible('http does not support stat()')
+        return self._get(relpath, [])
 
-    def lock_read(self, relpath):
-        """Lock the given file for shared (read) access.
-        :return: A lock object, which should be passed to Transport.unlock()
+    def _get(self, relpath, ranges):
+        """GET a file over http
+
+        :param relpath: URL relative to base of this Transport
+        :param ranges: None to fetch the whole resource; or a string giving the bytes
+             to fetch.
+        """   
+        raise NotImplementedError(self._get)
+
+    def readv(self, relpath, offsets):
+        """Get parts of the file at the given relative path.
+
+        :param offsets: A list of (offset, size) tuples.
+        :return: A list or generator of (offset, data) tuples
         """
-        # The old RemoteBranch ignore lock for reading, so we will
-        # continue that tradition and return a bogus lock object.
-        class BogusLock(object):
-            def __init__(self, path):
-                self.path = path
-            def unlock(self):
-                pass
-        return BogusLock(relpath)
+        # this is not quite regular enough to have a single driver routine and
+        # helper method in Transport.
+        def do_combined_read(combined_offsets):
+            # read one coalesced block
+            total_size = 0
+            for offset, size in combined_offsets:
+                total_size += size
+            mutter('readv coalesced %d reads.', len(combined_offsets))
+            offset = combined_offsets[0][0]
+            ranges = 'bytes=%d-%d' % (offset, offset + total_size - 1)
+            response = self._get(relpath, ranges=ranges)
+            if response.code == 206:
+                for off, size in combined_offsets:
+                    yield off, response.read(size)
+            elif response.code == 200:
+                data = response.read(offset + total_size)[offset:offset + total_size]
+                pos = 0
+                for offset, size in combined_offsets:
+                    yield offset, data[pos:pos + size]
+                    pos += size
+                del data
 
-    def lock_write(self, relpath):
-        """Lock the given file for exclusive (write) access.
-        WARNING: many transports do not support this, so trying avoid using it
-
-        :return: A lock object, which should be passed to Transport.unlock()
-        """
-        raise TransportNotPossible('http does not support lock_write()')
-
-    def clone(self, offset=None):
-        """Return a new HttpTransportBase with root at self.base + offset
-        For now HttpTransportBase does not actually connect, so just return
-        a new HttpTransportBase object.
-        """
-        if offset is None:
-            return self.__class__(self.base)
-        else:
-            return self.__class__(self.abspath(offset))
-
-    def listable(self):
-        """Returns false - http has no reliable way to list directories."""
-        # well, we could try DAV...
-        return False
+        if not len(offsets):
+            return
+        pending_offsets = deque(offsets)
+        combined_offsets = []
+        while len(pending_offsets):
+            offset, size = pending_offsets.popleft()
+            if not combined_offsets:
+                combined_offsets = [[offset, size]]
+            else:
+                if (len (combined_offsets) < 500 and
+                    combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
+                    # combatible offset:
+                    combined_offsets.append([offset, size])
+                else:
+                    # incompatible, or over the threshold issue a read and yield
+                    pending_offsets.appendleft((offset, size))
+                    for result in do_combined_read(combined_offsets):
+                        yield result
+                    combined_offsets = []
+        # whatever is left is a single coalesced request
+        if len(combined_offsets):
+            for result in do_combined_read(combined_offsets):
+                yield result
 
     def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
@@ -238,13 +266,14 @@ class HttpTransportBase(Transport):
         TODO: if other is LocalTransport, is it possible to
               do better than put(get())?
         """
-        # At this point HttpTransportBase might be able to check and see if
+        # At this point HttpTransport might be able to check and see if
         # the remote location is the same, and rather than download, and
         # then upload, it could just issue a remote copy_this command.
         if isinstance(other, HttpTransportBase):
             raise TransportNotPossible('http cannot be the target of copy_to()')
         else:
-            return super(HttpTransportBase, self).copy_to(relpaths, other, mode=mode, pb=pb)
+            return super(HttpTransportBase, self).\
+                    copy_to(relpaths, other, mode=mode, pb=pb)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -288,6 +317,15 @@ class HttpTransportBase(Transport):
         """
         raise TransportNotPossible('http does not support lock_write()')
 
+    def clone(self, offset=None):
+        """Return a new HttpTransportBase with root at self.base + offset
+        For now HttpTransportBase does not actually connect, so just return
+        a new HttpTransportBase object.
+        """
+        if offset is None:
+            return self.__class__(self.base)
+        else:
+            return self.__class__(self.abspath(offset))
 
 #---------------- test server facilities ----------------
 # TODO: load these only when running tests
@@ -351,7 +389,6 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
                                                 RequestHandlerClass)
         self.test_case = test_case
-
 
 class HttpServer(Server):
     """A test server for http transports."""
@@ -424,3 +461,4 @@ class HttpServer(Server):
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
         return 'http://jasldkjsalkdjalksjdkljasd'
+

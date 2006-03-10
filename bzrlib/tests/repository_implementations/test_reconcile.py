@@ -19,7 +19,7 @@
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.reconcile import reconcile, Reconciler, RepoReconciler
+from bzrlib.reconcile import reconcile, Reconciler
 from bzrlib.revision import Revision
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
@@ -80,8 +80,7 @@ class TestsNeedingReweave(TestCaseWithRepository):
         self.make_repository('empty')
         d = bzrlib.bzrdir.BzrDir.open('empty')
         # calling on a empty repository should do nothing
-        reconciler = RepoReconciler(d.find_repository())
-        reconciler.reconcile()
+        reconciler = d.find_repository().reconcile()
         # no inconsistent parents should have been found
         self.assertEqual(0, reconciler.inconsistent_parents)
         # and no garbage inventories
@@ -101,13 +100,13 @@ class TestsNeedingReweave(TestCaseWithRepository):
         repo = d.open_repository()
         backup = repo.control_weaves.get_weave('inventory.backup',
                                                repo.get_transaction())
-        self.assertTrue('missing' in backup.names())
-        self.assertRaises(errors.WeaveRevisionNotPresent,
+        self.assertTrue('missing' in backup.versions())
+        self.assertRaises(errors.RevisionNotPresent,
                           repo.get_inventory, 'missing')
 
     def test_reweave_inventory_without_revision_reconciler(self):
         # smoke test for the all in one Reconciler class,
-        # other tests use the lower level RepoReconciler.
+        # other tests use the lower level repo.reconcile()
         d = bzrlib.bzrdir.BzrDir.open('inventory_without_revision')
         reconciler = Reconciler(d)
         reconciler.reconcile()
@@ -119,25 +118,33 @@ class TestsNeedingReweave(TestCaseWithRepository):
         repo = d.open_repository()
         backup = repo.control_weaves.get_weave('inventory.backup',
                                                repo.get_transaction())
-        self.assertTrue('missing' in backup.names())
-        self.assertRaises(errors.WeaveRevisionNotPresent,
+        self.assertTrue('missing' in backup.versions())
+        self.assertRaises(errors.RevisionNotPresent,
                           repo.get_inventory, 'missing')
 
     def test_reweave_inventory_without_revision(self):
         # actual low level test.
         d = bzrlib.bzrdir.BzrDir.open('inventory_without_revision')
-        reconciler = RepoReconciler(d.open_repository())
-        reconciler.reconcile()
-        # no inconsistent parents should have been found
-        self.assertEqual(1, reconciler.inconsistent_parents)
+        repo = d.open_repository()
+        if ([None, 'missing', 'references_missing'] 
+            != repo.get_ancestry('references_missing')):
+            # the repo handles ghosts without corruption, so reconcile has
+            # nothing to do here
+            expected_inconsistent_parents = 0
+        else:
+            expected_inconsistent_parents = 1
+        reconciler = repo.reconcile()
+        # some number of inconsistent parents should have been found
+        self.assertEqual(expected_inconsistent_parents,
+                         reconciler.inconsistent_parents)
         # and one garbage inventories
         self.assertEqual(1, reconciler.garbage_inventories)
         # now the backup should have it but not the current inventory
         repo = d.open_repository()
         backup = repo.control_weaves.get_weave('inventory.backup',
                                                repo.get_transaction())
-        self.assertTrue('missing' in backup.names())
-        self.assertRaises(errors.WeaveRevisionNotPresent,
+        self.assertTrue('missing' in backup.versions())
+        self.assertRaises(errors.RevisionNotPresent,
                           repo.get_inventory, 'missing')
         # and the parent list for 'references_missing' should have that
         # revision a ghost now.
@@ -146,8 +153,7 @@ class TestsNeedingReweave(TestCaseWithRepository):
 
     def test_reweave_inventory_preserves_a_revision_with_ghosts(self):
         d = bzrlib.bzrdir.BzrDir.open('inventory_one_ghost')
-        reconciler = RepoReconciler(d.open_repository())
-        reconciler.reconcile()
+        reconciler = d.open_repository().reconcile()
         # no inconsistent parents should have been found: 
         # the lack of a parent for ghost is normal
         self.assertEqual(0, reconciler.inconsistent_parents)
@@ -161,9 +167,13 @@ class TestsNeedingReweave(TestCaseWithRepository):
     def test_reweave_inventory_fixes_ancestryfor_a_present_ghost(self):
         d = bzrlib.bzrdir.BzrDir.open('inventory_ghost_present')
         repo = d.open_repository()
-        self.assertEqual([None, 'ghost'], repo.get_ancestry('ghost'))
-        reconciler = RepoReconciler(repo)
-        reconciler.reconcile()
+        ghost_ancestry = repo.get_ancestry('ghost')
+        if ghost_ancestry == [None, 'the_ghost', 'ghost']:
+            # the repo handles ghosts without corruption, so reconcile has
+            # nothing to do
+            return
+        self.assertEqual([None, 'ghost'], ghost_ancestry)
+        reconciler = repo.reconcile()
         # one inconsistent parents should have been found : the
         # available but not reference parent for ghost.
         self.assertEqual(1, reconciler.inconsistent_parents)

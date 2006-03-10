@@ -91,8 +91,6 @@ from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID
 from bzrlib.symbol_versioning import *
-from bzrlib.weave import Weave
-from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.workingtree import WorkingTree
 
 
@@ -232,8 +230,8 @@ class Commit(object):
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
-        self.revprops = {'branch-nick': self.branch.nick}
-        if revprops:
+        self.revprops = {}
+        if revprops is not None:
             self.revprops.update(revprops)
 
         self.work_tree.lock_write()
@@ -495,7 +493,7 @@ class Commit(object):
         for path, ie in self.new_inv.iter_entries():
             previous_entries = ie.find_previous_heads(
                 self.parent_invs, 
-                self.weave_store.get_weave_prelude_or_empty(ie.file_id,
+                self.weave_store.get_weave_or_empty(ie.file_id,
                     self.branch.get_transaction()))
             if ie.revision is None:
                 change = ie.snapshot(self.rev_id, path, previous_entries,

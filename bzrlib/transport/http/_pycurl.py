@@ -72,7 +72,7 @@ class PyCurlTransport(HttpTransportBase):
             raise TransportError('http error %d probing for %s' %
                     (code, curl.getinfo(pycurl.EFFECTIVE_URL)))
         
-    def get(self, relpath):
+    def _get(self, relpath, ranges):
         curl = pycurl.Curl()
         abspath = self._real_abspath(relpath)
         sio = StringIO()

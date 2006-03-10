@@ -36,7 +36,7 @@ class Request(urllib2.Request):
             return urllib2.Request.get_method(self)
 
 
-class HttpTransport(HttpTransportBase):
+class HttpTransport_urllib(HttpTransportBase):
     """Python urllib transport for http and https.
     """
 
@@ -44,10 +44,41 @@ class HttpTransport(HttpTransportBase):
 
     def __init__(self, base):
         """Set the base path where files will be stored."""
-        super(HttpTransport, self).__init__(base)
+        super(HttpTransport_urllib, self).__init__(base)
 
-    def _get_url(self, url, method=None):
-        mutter("get_url %s" % url)
+    def get(self, relpath):
+        """Get the file at the given relative path.
+
+        :param relpath: The relative path to the file
+        """
+        return self._get(relpath, [])
+
+    def _get(self, relpath, ranges):
+        path = relpath
+        try:
+            path = self._real_abspath(relpath)
+            return self._get_url_impl(path, method=method, ranges=ranges)
+        except urllib2.HTTPError, e:
+            mutter('url error code: %s for has url: %r', e.code, path)
+            if e.code == 404:
+                raise NoSuchFile(path, extra=e)
+            raise
+        except (BzrError, IOError), e:
+            if hasattr(e, 'errno'):
+                mutter('io error: %s %s for has url: %r',
+                    e.errno, errno.errorcode.get(e.errno), path)
+                if e.errno == errno.ENOENT:
+                    raise NoSuchFile(path, extra=e)
+            raise ConnectionError(msg = "Error retrieving %s: %s" 
+                             % (self.abspath(relpath), str(e)),
+                             orig_error=e)
+
+    def _get_url_impl(self, url, method, ranges):
+        if ranges:
+            range_string = ranges
+        else:
+            range_string = 'all'
+        mutter("get_url %s [%s]" % (url, range_string))
         manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
         url = extract_auth(url, manager)
         auth_handler = urllib2.HTTPBasicAuthHandler(manager)
@@ -55,6 +86,8 @@ class HttpTransport(HttpTransportBase):
         request = Request(url)
         request.method = method
         request.add_header('User-Agent', 'bzr/%s' % bzrlib.__version__)
+        if ranges:
+            request.add_header('Range', ranges)
         response = opener.open(request)
         return response
 
@@ -66,50 +99,25 @@ class HttpTransport(HttpTransportBase):
     def has(self, relpath):
         """Does the target location exist?
         """
-        path = relpath
+        abspath = self._real_abspath(relpath)
         try:
-            path = self._real_abspath(relpath)
-            f = self._get_url(path, 'HEAD')
+            f = self._get_url_impl(abspath, 'HEAD', [])
             # Without the read and then close()
             # we tend to have busy sockets.
             f.read()
             f.close()
             return True
         except urllib2.URLError, e:
-            mutter('url error code: %s for has url: %r', e.code, path)
+            mutter('url error code: %s for has url: %r', e.code, abspath)
             if e.code == 404:
                 return False
             raise
         except IOError, e:
-            mutter('io error: %s %s for has url: %r', 
-                e.errno, errno.errorcode.get(e.errno), path)
+            mutter('io error: %s %s for has url: %r',
+                e.errno, errno.errorcode.get(e.errno), abspath)
             if e.errno == errno.ENOENT:
                 return False
             raise TransportError(orig_error=e)
-
-    def get(self, relpath):
-        """Get the file at the given relative path.
-
-        :param relpath: The relative path to the file
-        """
-        path = relpath
-        try:
-            path = self._real_abspath(relpath)
-            return self._get_url(path)
-        except urllib2.HTTPError, e:
-            mutter('url error code: %s for has url: %r', e.code, path)
-            if e.code == 404:
-                raise NoSuchFile(path, extra=e)
-            raise
-        except (BzrError, IOError), e:
-            if hasattr(e, 'errno'):
-                mutter('io error: %s %s for has url: %r', 
-                    e.errno, errno.errorcode.get(e.errno), path)
-                if e.errno == errno.ENOENT:
-                    raise NoSuchFile(path, extra=e)
-            raise ConnectionError(msg = "Error retrieving %s: %s" 
-                             % (self._real_abspath(relpath), str(e)),
-                             orig_error=e)
 
     def copy_to(self, relpaths, other, mode=None, pb=None):
         """Copy a set of entries from self into another Transport.
@@ -119,13 +127,13 @@ class HttpTransport(HttpTransportBase):
         TODO: if other is LocalTransport, is it possible to
               do better than put(get())?
         """
-        # At this point HttpTransport might be able to check and see if
+        # At this point HttpTransport_urllib might be able to check and see if
         # the remote location is the same, and rather than download, and
         # then upload, it could just issue a remote copy_this command.
-        if isinstance(other, HttpTransport):
+        if isinstance(other, HttpTransport_urllib):
             raise TransportNotPossible('http cannot be the target of copy_to()')
         else:
-            return super(HttpTransport, self).copy_to(relpaths, other, mode=mode, pb=pb)
+            return super(HttpTransport_urllib, self).copy_to(relpaths, other, mode=mode, pb=pb)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -149,5 +157,5 @@ class HttpServer_urllib(HttpServer):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(HttpTransport, HttpServer_urllib),
+    return [(HttpTransport_urllib, HttpServer_urllib),
             ]

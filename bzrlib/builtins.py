@@ -36,7 +36,7 @@ from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError,
 from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
-from bzrlib.progress import DummyProgress
+from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
@@ -68,6 +68,19 @@ def internal_tree_files(file_list, default_branch=u'.'):
         except errors.PathNotChild:
             raise FileInWrongBranch(tree.branch, filename)
     return tree, new_list
+
+
+def get_format_type(typestring):
+    """Parse and return a format specifier."""
+    if typestring == "metadir":
+        return bzrdir.BzrDirMetaFormat1()
+    if typestring == "knit":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
+        return format
+    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
+        (typestring)
+    raise BzrCommandError(msg)
 
 
 # TODO: Make sure no commands unconditionally use the working directory as a
@@ -482,7 +495,8 @@ class cmd_push(Command):
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
         try:
-            br_to = Branch.open(location)
+            dir_to = bzrlib.bzrdir.BzrDir.open(location)
+            br_to = dir_to.open_branch()
         except NotBranchError:
             # create a branch.
             transport = get_transport(location).clone('..')
@@ -507,16 +521,19 @@ class cmd_push(Command):
                         if new_transport.base == transport.base:
                             raise BzrCommandError("Could not creeate "
                                                   "path prefix.")
-            br_to = bzrlib.bzrdir.BzrDir.create_branch_convenience(location)
+            dir_to = br_from.bzrdir.clone(location)
+            br_to = dir_to.open_branch()
         old_rh = br_to.revision_history()
         try:
             try:
-                tree_to = br_to.working_tree()
-            except NoWorkingTree:
+                tree_to = dir_to.open_workingtree()
+            except errors.NotLocalUrl:
                 # TODO: This should be updated for branches which don't have a
                 # working tree, as opposed to ones where we just couldn't 
                 # update the tree.
                 warning('Unable to update the working tree of: %s' % (br_to.base,))
+                count = br_to.pull(br_from, overwrite)
+            except NoWorkingTree:
                 count = br_to.pull(br_from, overwrite)
             else:
                 count = tree_to.pull(br_from, overwrite)
@@ -862,7 +879,14 @@ class cmd_init(Command):
         bzr commit -m 'imported project'
     """
     takes_args = ['location?']
-    def run(self, location=None):
+    takes_options = [
+                     Option('format', 
+                            help='Create a specific format rather than the'
+                                 ' current default format. Currently this '
+                                 ' option only accepts =metadir',
+                            type=get_format_type),
+                     ]
+    def run(self, location=None, format=None):
         from bzrlib.branch import Branch
         if location is None:
             location = u'.'
@@ -874,7 +898,16 @@ class cmd_init(Command):
             # locations if the user supplies an extended path
             if not os.path.exists(location):
                 os.mkdir(location)
-        bzrdir.BzrDir.create_standalone_workingtree(location)
+        if format is None:
+            # create default
+            bzrdir.BzrDir.create_standalone_workingtree(location)
+        else:
+            new_dir = format.initialize(location)
+            new_dir.create_repository()
+            new_dir.create_branch()
+            # TODO: ask the bzrdir format for the right classs
+            import bzrlib.workingtree
+            bzrlib.workingtree.WorkingTreeFormat3().initialize(new_dir)
 
 
 class cmd_diff(Command):
@@ -1520,19 +1553,6 @@ class cmd_scan_cache(Command):
             c.write()
 
 
-def get_format_type(typestring):
-    """Parse and return a format specifier."""
-    if typestring == "metadir":
-        return bzrdir.BzrDirMetaFormat1()
-    if typestring == "knit":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
-        return format
-    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
-        (typestring)
-    raise BzrCommandError(msg)
-
-
 class cmd_upgrade(Command):
     """Upgrade branch storage to current format.
 
@@ -1766,10 +1786,17 @@ class cmd_merge(Command):
     will be used as a BASE, and the second one as OTHER.  Revision
     numbers are always relative to the specified branch.
 
-    By default bzr will try to merge in all new work from the other
+    By default, bzr will try to merge in all new work from the other
     branch, automatically determining an appropriate base.  If this
     fails, you may need to give an explicit base.
     
+    Merge will do its best to combine the changes in two branches, but there
+    are some kinds of problems only a human can fix.  When it encounters those,
+    it will mark a conflict.  A conflict means that you need to fix something,
+    before you should commit.
+
+    Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
+
     Examples:
 
     To merge the latest revision from bzr.dev
@@ -1817,12 +1844,16 @@ class cmd_merge(Command):
 
                 base = [branch, revision[0].in_history(b).revno]
                 other = [branch, revision[1].in_history(b).revno]
-
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            conflict_count = merge(other, base, check_clean=(not force),
-                                   merge_type=merge_type, reprocess=reprocess,
-                                   show_base=show_base, 
-                                   pb=bzrlib.ui.ui_factory.progress_bar())
+            try:
+                conflict_count = merge(other, base, check_clean=(not force),
+                                       merge_type=merge_type, 
+                                       reprocess=reprocess,
+                                       show_base=show_base, 
+                                       pb=pb)
+            finally:
+                pb.finished()
             if conflict_count != 0:
                 return 1
             else:
@@ -1886,7 +1917,8 @@ class cmd_remerge(Command):
                     restore(tree.abspath(filename))
                 except NotConflicted:
                     pass
-            conflicts =  merge_inner(tree.branch, other_tree, base_tree, 
+            conflicts =  merge_inner(tree.branch, other_tree, base_tree,
+                                     this_tree=tree,
                                      interesting_ids = interesting_ids, 
                                      other_rev_id=pending_merges[0], 
                                      merge_type=merge_type, 
@@ -1921,13 +1953,18 @@ class cmd_revert(Command):
         tree, file_list = tree_files(file_list)
         if revision is None:
             # FIXME should be tree.last_revision
-            rev_id = tree.branch.last_revision()
+            rev_id = tree.last_revision()
         elif len(revision) != 1:
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:
             rev_id = revision[0].in_history(tree.branch).rev_id
-        tree.revert(file_list, tree.branch.repository.revision_tree(rev_id),
-                    not no_backup, bzrlib.ui.ui_factory.progress_bar())
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            tree.revert(file_list, 
+                        tree.branch.repository.revision_tree(rev_id),
+                        not no_backup, pb)
+        finally:
+            pb.finished()
 
 
 class cmd_assert_fail(Command):
@@ -2012,39 +2049,47 @@ class cmd_missing(Command):
                 raise BzrCommandError("No missing location known or specified.")
             print "Using last location: " + local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
-        local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
-        if (log_format == None):
-            default = bzrlib.config.BranchConfig(local_branch).log_format()
-            log_format = get_log_format(long=long, short=short, line=line, default=default)
-        lf = log_formatter(log_format, sys.stdout,
-                           show_ids=show_ids,
-                           show_timezone='original')
-        if reverse is False:
-            local_extra.reverse()
-            remote_extra.reverse()
-        if local_extra and not theirs_only:
-            print "You have %d extra revision(s):" % len(local_extra)
-            for data in iter_log_data(local_extra, local_branch.repository,
-                                      verbose):
-                lf.show(*data)
-            printed_local = True
-        else:
-            printed_local = False
-        if remote_extra and not mine_only:
-            if printed_local is True:
-                print "\n\n"
-            print "You are missing %d revision(s):" % len(remote_extra)
-            for data in iter_log_data(remote_extra, remote_branch.repository, 
-                                      verbose):
-                lf.show(*data)
-        if not remote_extra and not local_extra:
-            status_code = 0
-            print "Branches are up to date."
-        else:
-            status_code = 1
-        if parent is None and other_branch is not None:
-            local_branch.set_parent(other_branch)
-        return status_code
+        remote_branch.lock_read()
+        try:
+            local_branch.lock_write()
+            try:
+                local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
+                if (log_format == None):
+                    default = bzrlib.config.BranchConfig(local_branch).log_format()
+                    log_format = get_log_format(long=long, short=short, line=line, default=default)
+                lf = log_formatter(log_format, sys.stdout,
+                                   show_ids=show_ids,
+                                   show_timezone='original')
+                if reverse is False:
+                    local_extra.reverse()
+                    remote_extra.reverse()
+                if local_extra and not theirs_only:
+                    print "You have %d extra revision(s):" % len(local_extra)
+                    for data in iter_log_data(local_extra, local_branch.repository,
+                                              verbose):
+                        lf.show(*data)
+                    printed_local = True
+                else:
+                    printed_local = False
+                if remote_extra and not mine_only:
+                    if printed_local is True:
+                        print "\n\n"
+                    print "You are missing %d revision(s):" % len(remote_extra)
+                    for data in iter_log_data(remote_extra, remote_branch.repository, 
+                                              verbose):
+                        lf.show(*data)
+                if not remote_extra and not local_extra:
+                    status_code = 0
+                    print "Branches are up to date."
+                else:
+                    status_code = 1
+                if parent is None and other_branch is not None:
+                    local_branch.set_parent(other_branch)
+                return status_code
+            finally:
+                local_branch.unlock()
+        finally:
+            remote_branch.unlock()
 
 
 class cmd_plugins(Command):
@@ -2337,20 +2382,26 @@ def merge(other_revision, base_revision,
                               " type. %s" % merge_type)
     if reprocess and show_base:
         raise BzrCommandError("Cannot reprocess and show base.")
-    merger = Merger(this_tree.branch, this_tree=this_tree, pb=pb)
-    merger.check_basis(check_clean)
-    merger.set_other(other_revision)
-    merger.set_base(base_revision)
-    if merger.base_rev_id == merger.other_rev_id:
-        note('Nothing to do.')
-        return 0
-    merger.backup_files = backup_files
-    merger.merge_type = merge_type 
-    merger.set_interesting_files(file_list)
-    merger.show_base = show_base 
-    merger.reprocess = reprocess
-    conflicts = merger.do_merge()
-    merger.set_pending()
+    try:
+        merger = Merger(this_tree.branch, this_tree=this_tree, pb=pb)
+        merger.pp = ProgressPhase("Merge phase", 5, pb)
+        merger.pp.next_phase()
+        merger.check_basis(check_clean)
+        merger.set_other(other_revision)
+        merger.pp.next_phase()
+        merger.set_base(base_revision)
+        if merger.base_rev_id == merger.other_rev_id:
+            note('Nothing to do.')
+            return 0
+        merger.backup_files = backup_files
+        merger.merge_type = merge_type 
+        merger.set_interesting_files(file_list)
+        merger.show_base = show_base 
+        merger.reprocess = reprocess
+        conflicts = merger.do_merge()
+        merger.set_pending()
+    finally:
+        pb.clear()
     return conflicts
 
 
