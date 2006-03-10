@@ -867,9 +867,10 @@ class WorkingTree(bzrlib.tree.Tree):
             if not self.is_ignored(subp):
                 yield subp
 
-    @deprecated_method(zero_eight)
+#    @deprecated_method(zero_eight)
     def iter_conflicts(self):
-        return _iter_conflicts()
+        return self._iter_conflicts()
+
     def _iter_conflicts(self):
         conflicted = set()
         for path in (s[0] for s in self.list_files()):

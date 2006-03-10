@@ -27,7 +27,7 @@ import errno
 
 import bzrlib.status
 from bzrlib.commands import register_command
-from bzrlib.errors import BzrCommandError, NotConflicted
+from bzrlib.errors import BzrCommandError, NotConflicted, UnsupportedOperation
 from bzrlib.option import Option
 from bzrlib.osutils import rename
 from bzrlib.rio import Stanza
@@ -81,27 +81,89 @@ class cmd_resolve(bzrlib.commands.Command):
             if not all:
                 raise BzrCommandError(
                     "command 'resolve' needs one or more FILE, or --all")
-            tree = WorkingTree.open_containing(u'.')[0]
-            file_list = list(tree.abspath(f) for f in tree.iter_conflicts())
         else:
             if all:
                 raise BzrCommandError(
                     "If --all is specified, no FILE may be provided")
-        for filename in file_list:
-            failures = 0
+        tree = WorkingTree.open_containing(u'.')[0]
+        resolve(tree, file_list)
+
+
+def resolve(tree, paths=None):
+    tree.lock_write()
+    try:
+        tree_conflicts = list(tree.conflict_lines())
+        if paths is None:
+            new_conflicts = []
+            selected_conflicts = tree_conflicts
+        else:
+            new_conflicts, selected_conflicts = \
+                select_conflicts(tree, paths, tree_conflicts)
+        try:
+            tree.set_conflict_lines(new_conflicts)
+        except UnsupportedOperation:
+            pass
+        remove_conflict_files(tree, selected_conflicts)
+    finally:
+        tree.unlock()
+
+
+def select_conflicts(tree, paths, tree_conflicts):
+    path_set = set(paths)
+    ids = {}
+    selected_paths = set()
+    new_conflicts = []
+    selected_conflicts = []
+    for path in paths:
+        file_id = tree.path2id(path)
+        if file_id is not None:
+            ids[file_id] = path
+
+    for conflict, stanza in zip(tree_conflicts, 
+        conflict_stanzas(tree_conflicts)):
+        selected = False
+        for key in ('path', 'conflict_path'):
+            try:
+                cpath = stanza[key]
+            except KeyError:
+                continue
+            if cpath in path_set:
+                selected = True
+                selected_paths.add(cpath)
+        for key in ('file_id', 'conflict_file_id'):
+            try:
+                cfile_id = stanza[key]
+            except KeyError:
+                continue
+            try:
+                cpath = ids[cfile_id]
+            except KeyError:
+                continue
+            selected = True
+            selected_paths.add(cpath)
+        if selected:
+            selected_conflicts.append(conflict)
+        else:
+            new_conflicts.append(conflict)
+    for path in [p for p in paths if p not in selected_paths]:
+        if not os.path.exists(tree.abspath(filename)):
+            print "%s does not exist" % path
+        else:
+            print "%s is not conflicted" % path
+    return new_conflicts, selected_conflicts
+
+def remove_conflict_files(tree, conflicts):
+    for stanza in conflict_stanzas(conflicts):
+        if stanza['type'] in ("text conflict", "contents conflict"):
             for suffix in CONFLICT_SUFFIXES:
                 try:
-                    os.unlink(filename+suffix)
+                    os.unlink(stanza['path']+suffix)
                 except OSError, e:
                     if e.errno != errno.ENOENT:
                         raise
                     else:
                         failures += 1
-            if failures == len(CONFLICT_SUFFIXES):
-                if not os.path.exists(filename):
-                    print "%s does not exist" % filename
-                else:
-                    print "%s is not conflicted" % filename
+    
 
 def restore(filename):
     """\
