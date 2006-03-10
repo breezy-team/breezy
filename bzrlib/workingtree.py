@@ -63,7 +63,9 @@ from bzrlib.errors import (BzrCheckError,
                            NotBranchError,
                            NoSuchFile,
                            NotVersionedError,
-                           MergeModifiedFormatError)
+                           MergeModifiedFormatError,
+                           UnsupportedOperation,
+                           )
 from bzrlib.inventory import InventoryEntry, Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
@@ -238,7 +240,8 @@ class WorkingTree(bzrlib.tree.Tree):
         if deprecated_passed(branch):
             if not _internal:
                 warn("WorkingTree(..., branch=XXX) is deprecated as of bzr 0.8."
-                     " Please use bzrdir.open_workingtree() or WorkingTree.open().",
+                     " Please use bzrdir.open_workingtree() or"
+                     " WorkingTree.open().",
                      DeprecationWarning,
                      stacklevel=2
                      )
@@ -1269,6 +1272,36 @@ class WorkingTree(bzrlib.tree.Tree):
         self._set_inventory(inv)
         mutter('wrote working inventory')
 
+    def set_conflict_lines(self, arg):
+        raise UnsupportedOperation(self.set_conflict_lines, self)
+
+    @needs_read_lock
+    def conflict_lines(self):
+        for conflicted in self.iter_conflicts():
+            text = True
+            try:
+                if file_kind(self.abspath(conflicted)) != "file":
+                    text = False
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    text = False
+                else:
+                    raise
+            if text is True:
+                for suffix in ('.THIS', '.OTHER'):
+                    try:
+                        kind = file_kind(self.abspath(conflicted+suffix))
+                    except OSError, e:
+                        if e.errno == errno.ENOENT:
+                            text = False
+                            break
+                        else:
+                            raise
+                    if kind != "file":
+                        text = False
+                        break
+            ctype = {True: 'text conflict', False: 'contents conflict'}[text]
+            yield (ctype, self.path2id(conflicted), conflicted)
 
 class WorkingTree3(WorkingTree):
     """This is the Format 3 working tree.

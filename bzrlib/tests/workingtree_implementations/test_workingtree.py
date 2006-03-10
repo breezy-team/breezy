@@ -24,7 +24,8 @@ from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
-from bzrlib.errors import NotBranchError, NotVersionedError
+from bzrlib.errors import (NotBranchError, NotVersionedError, 
+                           UnsupportedOperation)
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
@@ -503,3 +504,20 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('master')
         tree._control_files.put('merge-hashes', StringIO('asdfasdf'))
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
+
+    def test_conflict_lines(self):
+        from bzrlib.tests.test_conflicts import example_conflicts
+        tree = self.make_branch_and_tree('master')
+        try:
+            tree.set_conflict_lines(example_conflicts)
+        except UnsupportedOperation:
+            raise TestSkipped('set_conflict_lines not supported')
+            
+        tree2 = WorkingTree.open('master')
+        self.assertEqual(list(tree2.conflict_lines()), example_conflicts)
+        tree2._control_files.put('conflicts', StringIO(''))
+        self.assertRaises(errors.ConflictFormatError, 
+                          tree2.conflict_lines)
+        tree2._control_files.put('conflicts', StringIO('a'))
+        self.assertRaises(errors.ConflictFormatError, 
+                          tree2.conflict_lines)

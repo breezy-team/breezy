@@ -201,23 +201,27 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         tree.unlock()
         self.assertEquals(our_lock.peek(), None)
 
-    def make_tree(self):
-        t = self.get_transport()
-        url = self.get_url()
-        dir = bzrdir.BzrDirMetaFormat1().initialize(url)
-        repo = dir.create_repository()
-        branch = dir.create_branch()
-        return workingtree.WorkingTreeFormat3().initialize(dir)
+    def create_format2_tree(self, url):
+        return BzrDir.create_standalone_workingtree(url)
 
-    def test_conflicts(self):
-        from bzrlib.tests.test_conflicts import example_conflicts
-        tree = self.make_tree()
-        tree.set_conflict_lines(example_conflicts)
-        tree2 = WorkingTree.open('.')
-        self.assertEqual(list(tree2.conflict_lines()), example_conflicts)
-        tree2._control_files.put('conflicts', StringIO(''))
-        self.assertRaises(errors.ConflictFormatError, 
-                          tree2.conflict_lines)
-        tree2._control_files.put('conflicts', StringIO('a'))
-        self.assertRaises(errors.ConflictFormatError, 
-                          tree2.conflict_lines)
+    def test_conflict_lines_format2(self):
+        # test backwards compatability
+        tree = self.create_format2_tree('.')
+        self.assertRaises(errors.UnsupportedOperation, tree.set_conflict_lines,
+                          None)
+        file('lala.BASE', 'wb').write('labase')
+        expected = ('contents conflict', None, 'lala')
+        self.assertEqual(list(tree.conflict_lines()), [expected])
+        file('lala', 'wb').write('la')
+        tree.add('lala', 'lala-id')
+        expected = ('contents conflict', 'lala-id', 'lala')
+        self.assertEqual(list(tree.conflict_lines()), [expected])
+        file('lala.THIS', 'wb').write('lathis')
+        file('lala.OTHER', 'wb').write('laother')
+        # When "text conflict"s happen, stem, THIS and OTHER are text
+        expected = ('text conflict', 'lala-id', 'lala')
+        self.assertEqual(list(tree.conflict_lines()), [expected])
+        os.unlink('lala.OTHER')
+        os.mkdir('lala.OTHER')
+        expected = ('contents conflict', 'lala-id', 'lala')
+        self.assertEqual(list(tree.conflict_lines()), [expected])
