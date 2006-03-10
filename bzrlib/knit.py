@@ -775,10 +775,13 @@ class _KnitIndex(_KnitComponentFile):
         """
         result = []
         for value in compressed_parents:
-            if value.startswith('.'):
+            if value[-1] == '.':
                 result.append(value[1:])
             else:
-                assert isinstance(value, str)
+                # this is 15/4000ms faster than isinstance,
+                # this function is called thousands of times a 
+                # second so small variations add up.
+                assert value.__class__ is str
                 result.append(self._history[int(value)])
         return result
 
