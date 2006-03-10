@@ -393,9 +393,6 @@ class FunctionalMergeTest(TestCaseWithTransport):
                           [None, None], this_dir='b', check_clean=False,
                           merge_type=WeaveMerger)
         wtb.revert([])
-        os.unlink('b/file.THIS')
-        os.unlink('b/file.OTHER')
-        os.unlink('b/file.BASE')
         self.assertEqual(merge(['a', -1], [None, None], this_dir='b', 
                                check_clean=False, merge_type=WeaveMerger), 1)
         self.assert_(os.path.lexists('b/file'))

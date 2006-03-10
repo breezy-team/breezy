@@ -1142,7 +1142,7 @@ class WorkingTree(bzrlib.tree.Tree):
             self.set_pending_merges([])
             resolve(self)
         else:
-            resolve(self, filenames)
+            resolve(self, filenames, ignore_misses=True)
 
     @needs_write_lock
     def set_inventory(self, new_inventory_list):

@@ -19,9 +19,6 @@
 # TODO: 'bzr resolve' should accept a directory name and work from that 
 # point down
 
-# TODO: bzr revert should resolve; even when reverting the whole tree
-# or particular directories
-
 import os
 import errno
 
@@ -89,7 +86,7 @@ class cmd_resolve(bzrlib.commands.Command):
         resolve(tree, file_list)
 
 
-def resolve(tree, paths=None):
+def resolve(tree, paths=None, ignore_misses=False):
     tree.lock_write()
     try:
         tree_conflicts = list(tree.conflict_lines())
@@ -98,7 +95,7 @@ def resolve(tree, paths=None):
             selected_conflicts = tree_conflicts
         else:
             new_conflicts, selected_conflicts = \
-                select_conflicts(tree, paths, tree_conflicts)
+                select_conflicts(tree, paths, tree_conflicts, ignore_misses)
         try:
             tree.set_conflict_lines(new_conflicts)
         except UnsupportedOperation:
@@ -108,7 +105,7 @@ def resolve(tree, paths=None):
         tree.unlock()
 
 
-def select_conflicts(tree, paths, tree_conflicts):
+def select_conflicts(tree, paths, tree_conflicts, ignore_misses=False):
     path_set = set(paths)
     ids = {}
     selected_paths = set()
@@ -145,11 +142,12 @@ def select_conflicts(tree, paths, tree_conflicts):
             selected_conflicts.append(conflict)
         else:
             new_conflicts.append(conflict)
-    for path in [p for p in paths if p not in selected_paths]:
-        if not os.path.exists(tree.abspath(path)):
-            print "%s does not exist" % path
-        else:
-            print "%s is not conflicted" % path
+    if ignore_misses is not True:
+        for path in [p for p in paths if p not in selected_paths]:
+            if not os.path.exists(tree.abspath(path)):
+                print "%s does not exist" % path
+            else:
+                print "%s is not conflicted" % path
     return new_conflicts, selected_conflicts
 
 def remove_conflict_files(tree, conflicts):
