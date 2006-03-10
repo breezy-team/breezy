@@ -136,6 +136,18 @@ class TestJoin(TestCaseWithTransport):
         self.assertEqual(w1.get_lines('v3'), ['hello\n', 'cruel\n', 'world\n'])
         self.assertEqual(['v2'], w1.get_parents('v3'))
 
+    def test_join_source_has_less_parents_preserves_parents(self):
+        # when the target has a text with more parent info, join 
+        # preserves that.
+        s = self.get_source()
+        s.add_lines('base', [], [])
+        s.add_lines('text', [], [])
+        t = self.get_target()
+        t.add_lines('base', [], [])
+        t.add_lines('text', ['base'], [])
+        t.join(s)
+        self.assertEqual(['base'], t.get_parents('text'))
+
     def test_join_with_ghosts_merges_parents(self):
         """Join combined parent lists"""
         wa = self.build_weave1()
