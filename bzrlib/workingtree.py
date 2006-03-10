@@ -1134,11 +1134,15 @@ class WorkingTree(bzrlib.tree.Tree):
     def revert(self, filenames, old_tree=None, backups=True, 
                pb=DummyProgress()):
         from transform import revert
+        from conflicts import resolve
         if old_tree is None:
             old_tree = self.basis_tree()
         revert(self, old_tree, filenames, backups, pb)
         if not len(filenames):
             self.set_pending_merges([])
+            resolve(self)
+        else:
+            resolve(self, filenames)
 
     @needs_write_lock
     def set_inventory(self, new_inventory_list):

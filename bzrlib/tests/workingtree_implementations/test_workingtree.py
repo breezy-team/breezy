@@ -527,6 +527,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('mine')
         file('mine/bloo', 'wb').write('one')
         tree.add('bloo')
+        file('mine/blo', 'wb').write('on')
+        tree.add('blo')
         tree.commit("blah", allow_pointless=False)
         base = tree.basis_tree()
         BzrDir.open("mine").sprout("other")
@@ -549,4 +551,18 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             tree.set_conflict_lines([])
         except UnsupportedOperation:
             raise TestSkipped
+        self.assertEqual(len(list(tree.conflict_lines())), 0)
+
+    def test_revert_clear_conflicts(self):
+        tree = self.make_merge_conflicts()
+        self.assertEqual(len(list(tree.conflict_lines())), 1)
+        tree.revert(["blo"])
+        self.assertEqual(len(list(tree.conflict_lines())), 1)
+        tree.revert(["bloo"])
+        self.assertEqual(len(list(tree.conflict_lines())), 0)
+
+    def test_revert_clear_conflicts2(self):
+        tree = self.make_merge_conflicts()
+        self.assertEqual(len(list(tree.conflict_lines())), 1)
+        tree.revert([])
         self.assertEqual(len(list(tree.conflict_lines())), 0)
