@@ -719,22 +719,21 @@ class _KnitIndex(_KnitComponentFile):
 
     HEADER = "# bzr knit index 7\n"
 
+    # speed of knit parsing went from 280 ms to 280 ms with slots addition.
+    # __slots__ = ['_cache', '_history', '_transport', '_filename']
+
     def _cache_version(self, version_id, options, pos, size, parents):
-        val = (version_id, options, pos, size, parents)
+        """Cache a version record in the history array and index cache.
+        
+        This is inlined into __init__ for performance. KEEP IN SYNC.
+        (It saves 60ms, 25% of the __init__ overhead on local 4000 record
+         indexes).
+        """
         # only want the _history index to reference the 1st index entry
         # for version_id
-        if not version_id in self._cache:
+        if version_id not in self._cache:
             self._history.append(version_id)
-        self._cache[version_id] = val
-
-    def _iter_index(self, fp):
-        l = fp.readline()
-        while l != '':
-            yield l.split()
-            l = fp.readline()
-        #lines = fp.read()
-        #for l in lines.splitlines(False):
-        #    yield l.split()
+        self._cache[version_id] = (version_id, options, pos, size, parents)
 
     def __init__(self, transport, filename, mode, create=False):
         _KnitComponentFile.__init__(self, transport, filename, mode)
@@ -752,13 +751,50 @@ class _KnitIndex(_KnitComponentFile):
                 pb.update('read knit index', count, total)
                 fp = self._transport.get(self._filename)
                 self.check_header(fp)
-                for rec in self._iter_index(fp):
+                # readlines reads the whole file at once:
+                # bad for transports like http, good for local disk
+                # we save 60 ms doing this one change (
+                # from calling readline each time to calling
+                # readlines once.
+                # probably what we want for nice behaviour on
+                # http is a incremental readlines that yields, or
+                # a check for local vs non local indexes,
+                for l in fp.readlines():
+                    rec = l.split()
                     count += 1
                     total += 1
-                    pb.update('read knit index', count, total)
-                    parents = self._parse_parents(rec[4:])
-                    self._cache_version(rec[0], rec[1].split(','), int(rec[2]), int(rec[3]),
-                        parents)
+                    #pb.update('read knit index', count, total)
+                    # See self._parse_parents
+                    parents = []
+                    for value in rec[4:]:
+                        if '.' == value[-1]:
+                            # uncompressed reference
+                            parents.append(value[1:])
+                        else:
+                            # this is 15/4000ms faster than isinstance,
+                            # (in lsprof)
+                            # this function is called thousands of times a 
+                            # second so small variations add up.
+                            assert value.__class__ is str
+                            parents.append(self._history[int(value)])
+                    # end self._parse_parents
+                    # self._cache_version(rec[0], 
+                    #                     rec[1].split(','),
+                    #                     int(rec[2]),
+                    #                     int(rec[3]),
+                    #                     parents)
+                    # --- self._cache_version
+                    # only want the _history index to reference the 1st 
+                    # index entry for version_id
+                    version_id = rec[0]
+                    if version_id not in self._cache:
+                        self._history.append(version_id)
+                    self._cache[version_id] = (version_id,
+                                               rec[1].split(','),
+                                               int(rec[2]),
+                                               int(rec[3]),
+                                               parents)
+                    # --- self._cache_version 
             except NoSuchFile, e:
                 if mode != 'w' or not create:
                     raise
@@ -772,10 +808,15 @@ class _KnitIndex(_KnitComponentFile):
 
         ints are looked up in the index.
         .FOO values are ghosts and converted in to FOO.
+
+        NOTE: the function is retained here for clarity, and for possible
+              use in partial index reads. However bulk processing now has
+              it inlined in __init__ for inner-loop optimisation.
         """
         result = []
         for value in compressed_parents:
             if value[-1] == '.':
+                # uncompressed reference
                 result.append(value[1:])
             else:
                 # this is 15/4000ms faster than isinstance,
