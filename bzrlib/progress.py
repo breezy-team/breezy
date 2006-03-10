@@ -289,7 +289,6 @@ class TTYProgressBar(_BaseProgressBar):
     def update(self, msg, current_cnt=None, total_cnt=None, 
                child_fraction=0):
         """Update and redraw progress bar."""
-        self.child_fraction = child_fraction
 
         if current_cnt < 0:
             current_cnt = 0
@@ -297,18 +296,36 @@ class TTYProgressBar(_BaseProgressBar):
         if current_cnt > total_cnt:
             total_cnt = current_cnt
         
+        ## # optional corner case optimisation 
+        ## # currently does not seem to fire so costs more than saved.
+        ## # trivial optimal case:
+        ## # NB if callers are doing a clear and restore with
+        ## # the saved values, this will prevent that:
+        ## # in that case add a restore method that calls
+        ## # _do_update or some such
+        ## if (self.last_msg == msg and
+        ##     self.last_cnt == current_cnt and
+        ##     self.last_total == total_cnt and
+        ##     self.child_fraction == child_fraction):
+        ##     return
+
         old_msg = self.last_msg
         # save these for the tick() function
         self.last_msg = msg
         self.last_cnt = current_cnt
         self.last_total = total_cnt
-            
+        self.child_fraction = child_fraction
+
+        # each function call takes 20ms/4000 = 0.005 ms, 
+        # but multiple that by 4000 calls -> starts to cost.
+        # so anything to make this function call faster
+        # will improve base 'diff' time by up to 0.1 seconds.
         if old_msg == self.last_msg and self.throttle():
-            return 
-        
-        if self.show_eta and self.start_time and total_cnt:
-            eta = get_eta(self.start_time, current_cnt+child_fraction, 
-                    total_cnt, last_updates = self.last_updates)
+            return
+
+        if self.show_eta and self.start_time and self.last_total:
+            eta = get_eta(self.start_time, self.last_cnt + self.child_fraction, 
+                    self.last_total, last_updates = self.last_updates)
             eta_str = " " + str_tdelta(eta)
         else:
             eta_str = ""
@@ -321,33 +338,33 @@ class TTYProgressBar(_BaseProgressBar):
         # always update this; it's also used for the bar
         self.spin_pos += 1
 
-        if self.show_pct and total_cnt and current_cnt:
-            pct = 100.0 * ((current_cnt + child_fraction) / total_cnt)
+        if self.show_pct and self.last_total and self.last_cnt:
+            pct = 100.0 * ((self.last_cnt + self.child_fraction) / self.last_total)
             pct_str = ' (%5.1f%%)' % pct
         else:
             pct_str = ''
 
         if not self.show_count:
             count_str = ''
-        elif current_cnt is None:
+        elif self.last_cnt is None:
             count_str = ''
-        elif total_cnt is None:
-            count_str = ' %i' % (current_cnt)
+        elif self.last_total is None:
+            count_str = ' %i' % (self.last_cnt)
         else:
             # make both fields the same size
-            t = '%i' % (total_cnt)
-            c = '%*i' % (len(t), current_cnt)
+            t = '%i' % (self.last_total)
+            c = '%*i' % (len(t), self.last_cnt)
             count_str = ' ' + c + '/' + t 
 
         if self.show_bar:
             # progress bar, if present, soaks up all remaining space
-            cols = self.width - 1 - len(msg) - len(spin_str) - len(pct_str) \
+            cols = self.width - 1 - len(self.last_msg) - len(spin_str) - len(pct_str) \
                    - len(eta_str) - len(count_str) - 3
 
-            if total_cnt:
+            if self.last_total:
                 # number of markers highlighted in bar
                 markers = int(round(float(cols) * 
-                              (current_cnt + child_fraction) / total_cnt))
+                              (self.last_cnt + self.child_fraction) / self.last_total))
                 bar_str = '[' + ('=' * markers).ljust(cols) + '] '
             elif False:
                 # don't know total, so can't show completion.
@@ -361,7 +378,7 @@ class TTYProgressBar(_BaseProgressBar):
         else:
             bar_str = ''
 
-        m = spin_str + bar_str + msg + count_str + pct_str + eta_str
+        m = spin_str + bar_str + self.last_msg + count_str + pct_str + eta_str
 
         assert len(m) < self.width
         self.to_file.write('\r' + m.ljust(self.width - 1))
