@@ -457,6 +457,15 @@ class InterVersionedFile(InterObject):
         order = topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
         try:
+            # make a versioned file with the following content:
+            # all revisions we have been asked to join
+            # all their ancestors that are *not* in target already.
+            # the immediate parents of the above two sets, with 
+            # empty parent lists - these versions are in target already
+            # and the incorrect version data will be ignored.
+            # TODO: for all ancestors that are present in target already,
+            # check them for consistent data, this requires moving sha1 from
+            # 
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, len(order))
                 target.add_lines(version,

@@ -358,13 +358,18 @@ class KnitVersionedFile(VersionedFile):
 
     def _merge_annotations(self, content, parents):
         """Merge annotations for content.  This is done by comparing
-        the annotations based on changed to the text."""
+        the annotations based on changed to the text.
+        """
         for parent_id in parents:
             merge_content = self._get_content(parent_id)
             seq = SequenceMatcher(None, merge_content.text(), content.text())
             for i, j, n in seq.get_matching_blocks():
                 if n == 0:
                     continue
+                # this appears to copy (origin, text) pairs across to the new
+                # content for any line that matches the last-checked parent.
+                # FIXME: save the sequence control data for delta compression
+                # against the most relevant parent rather than rediffing.
                 content._lines[j:j+n] = merge_content._lines[i:i+n]
 
     def _get_components(self, version_id):
