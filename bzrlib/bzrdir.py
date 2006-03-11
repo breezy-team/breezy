@@ -43,7 +43,7 @@ from bzrlib.store.versioned import WeaveStore
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 from bzrlib.transactions import WriteTransaction
-from bzrlib.transport import get_transport
+from bzrlib.transport import get_transport, urlunescape
 from bzrlib.transport.local import LocalTransport
 from bzrlib.weave import Weave
 from bzrlib.xml4 import serializer_v4
@@ -1544,7 +1544,8 @@ class ConvertBzrDir5To6(Converter):
         for store_name in ["weaves", "revision-store"]:
             self.pb.note("adding prefixes to %s" % store_name) 
             store_transport = self.bzrdir.transport.clone(store_name)
-            for filename in store_transport.list_dir('.'):
+            for urlfilename in store_transport.list_dir('.'):
+                filename = urlunescape(urlfilename)
                 if (filename.endswith(".weave") or
                     filename.endswith(".gz") or
                     filename.endswith(".sig")):
