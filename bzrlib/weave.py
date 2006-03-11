@@ -569,6 +569,7 @@ class Weave(VersionedFile):
         included = self._inclusions(versions)
 
         istack = []
+        iset = set()
         dset = set()
 
         lineno = 0         # line of weave, 0-based
@@ -579,15 +580,43 @@ class Weave(VersionedFile):
 
         WFE = WeaveFormatError
 
+        # wow. 
+        #  449       0   4474.6820   2356.5590   bzrlib.weave:556(_extract)
+        #  +285282   0   1676.8040   1676.8040   +<isinstance>
+        # 1.6 seconds in 'isinstance'.
+        # changing the first isinstance:
+        #  449       0   2814.2660   1577.1760   bzrlib.weave:556(_extract)
+        #  +140414   0    762.8050    762.8050   +<isinstance>
+        # note that the inline time actually dropped (less function calls)
+        # and total processing time was halved.
+        # we're still spending ~1/4 of the method in isinstance though.
+        # so lets hard code the acceptable string classes we expect:
+        #  449       0   1202.9420    786.2930   bzrlib.weave:556(_extract)
+        # +71352     0    377.5560    377.5560   +<method 'append' of 'list' 
+        #                                          objects>
+        # yay, down to ~1/4 the initial extract time, and our inline time
+        # has shrunk again, with isinstance no longer dominating.
+        # tweaking the stack inclusion test to use a set gives:
+        #  449       0   1122.8030    713.0080   bzrlib.weave:556(_extract)
+        # +71352     0    354.9980    354.9980   +<method 'append' of 'list' 
+        #                                          objects>
+        # - a 5% win, or possibly just noise. However with large istacks that
+        # 'in' test could dominate, so I'm leaving this change in place -
+        # when its fast enough to consider profiling big datasets we can review.
+
+              
+             
+
         for l in self._weave:
-            if isinstance(l, tuple):
+            if l.__class__ == tuple:
                 c, v = l
                 isactive = None
                 if c == '{':
-                    assert v not in istack
+                    assert v not in iset
                     istack.append(v)
+                    iset.add(v)
                 elif c == '}':
-                    istack.pop()
+                    iset.remove(istack.pop())
                 elif c == '[':
                     if v in included:
                         assert v not in dset
@@ -598,7 +627,7 @@ class Weave(VersionedFile):
                         assert v in dset
                         dset.remove(v)
             else:
-                assert isinstance(l, basestring)
+                assert l.__class__ in (str, unicode)
                 if isactive is None:
                     isactive = (not dset) and istack and (istack[-1] in included)
                 if isactive:
