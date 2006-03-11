@@ -243,6 +243,50 @@ class BranchCreator(object):
             elif node_kind == "dir":
                 self.add_dir(copy_dest_path)
 
+    def set_ignore_glob(self, path, globs):
+        from bzrlib.atomicfile import AtomicFile
+        branch, path_branch = self._get_branch_path(path)
+
+        # Obtain list of existing ignores
+        ifn = branch.working_tree().abspath('.bzrignore')
+
+        if os.path.exists(ifn):
+            f = open(ifn, 'rt')
+            try:
+                igns = f.read().decode('utf-8').split("\n")
+                f.close()
+                os.unlink(ifn)
+            finally:
+                pass
+        else:
+            igns = []
+
+        # Figure out which elements are already there
+        for ign in igns:
+            dir = os.path.dirname(ign)
+ 
+            if dir != path_branch:
+                continue
+
+            if not ign in globs:
+                igns.remove(ign)
+            else:
+                globs.remove(ign)
+
+        # The remaining items didn't exist yet
+        igns.append(globs)
+            
+        try:
+            f = AtomicFile(ifn, 'wt')
+            f.write("\n".join(igns).encode('utf-8'))
+            f.commit()
+        finally:
+            f.close()
+
+        if not branch.working_tree().path2id('.bzrignore'):
+            branch.working_tree().add(['.bzrignore'])
+
+        self._changed[branch] = True
 
     def set_executable(self, path, executable):
         branch, path_branch = self._get_branch_path(path)
@@ -410,6 +454,10 @@ class BranchCreator(object):
                         self.set_executable(node_path, True)
                     else:
                         self.set_executable(node_path, False)
+
+                if entry.prop.has_key('svn:ignore'):
+                    self.set_ignore_glob(node_path, \
+                            entry.prop['svn:ignore'].split("\n"))
 
         if revision is not None:
             commit()
