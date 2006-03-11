@@ -67,7 +67,7 @@ from copy import copy
 from cStringIO import StringIO
 import difflib
 from difflib import SequenceMatcher
-from gzip import GzipFile
+import gzip
 from itertools import izip
 import os
 
@@ -1229,3 +1229,45 @@ class InterKnit(InterVersionedFile):
 
 
 InterVersionedFile.register_optimiser(InterKnit)
+
+
+# make GzipFile faster:
+import zlib
+class GzipFile(gzip.GzipFile):
+    """Knit tuned version of GzipFile.
+
+    This is based on the following lsprof stats:
+    python 2.4 stock GzipFile write:
+    58971      0   5644.3090   2721.4730   gzip:193(write)
+    +58971     0   1159.5530   1159.5530   +<built-in method compress>
+    +176913    0    987.0320    987.0320   +<len>
+    +58971     0    423.1450    423.1450   +<zlib.crc32>
+    +58971     0    353.1060    353.1060   +<method 'write' of 'cStringIO.
+                                            StringO' objects>
+    tuned GzipFile write:
+    58971      0   4477.2590   2103.1120   bzrlib.knit:1250(write)
+    +58971     0   1297.7620   1297.7620   +<built-in method compress>
+    +58971     0    406.2160    406.2160   +<zlib.crc32>
+    +58971     0    341.9020    341.9020   +<method 'write' of 'cStringIO.
+                                            StringO' objects>
+    +58971     0    328.2670    328.2670   +<len>
+
+
+    Yes, its only 1.6 seconds, but they add up.
+    """
+
+
+    def write(self, data):
+        if self.mode != gzip.WRITE:
+            import errno
+            raise IOError(errno.EBADF, "write() on read-only GzipFile object")
+
+        if self.fileobj is None:
+            raise ValueError, "write() on closed GzipFile object"
+        data_len = len(data)
+        if data_len > 0:
+            self.size = self.size + data_len
+            self.crc = zlib.crc32(data, self.crc)
+            self.fileobj.write( self.compress.compress(data) )
+            self.offset += data_len
+
