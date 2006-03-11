@@ -671,7 +671,7 @@ class Weave(VersionedFile):
 
     def get_lines(self, version_id):
         """See VersionedFile.get_lines()."""
-        int_index = self._lookup(version_id)
+        int_index = self._maybe_lookup(version_id)
         result = [line for (origin, lineno, line) in self._extract([int_index])]
         expected_sha1 = self._sha1s[int_index]
         measured_sha1 = sha_strings(result)
