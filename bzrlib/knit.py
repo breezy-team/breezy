@@ -1225,7 +1225,6 @@ class InterKnit(InterVersionedFile):
                 self.target.fix_parents(version, new_parents)
             return count
         finally:
-            pb.clear()
             pb.finished()
 
 
