@@ -980,6 +980,15 @@ class Inventory(object):
     def __hash__(self):
         raise ValueError('not hashable')
 
+    def _iter_file_id_parents(self, file_id):
+        """Yield the parents of file_id up to the root."""
+        while file_id != None:
+            try:
+                ie = self._byid[file_id]
+            except KeyError:
+                raise BzrError("file_id {%s} not found in inventory" % file_id)
+            yield ie
+            file_id = ie.parent_id
 
     def get_idpath(self, file_id):
         """Return a list of file_ids for the path to an entry.
@@ -990,18 +999,12 @@ class Inventory(object):
         root directory as depth 1.
         """
         p = []
-        while file_id != None:
-            try:
-                ie = self._byid[file_id]
-            except KeyError:
-                raise BzrError("file_id {%s} not found in inventory" % file_id)
-            p.insert(0, ie.file_id)
-            file_id = ie.parent_id
+        for parent in self._iter_file_id_parents(file_id):
+            p.insert(0, parent.file_id)
         return p
 
-
     def id2path(self, file_id):
-        """Return as a list the path to file_id.
+        """Return as a string the path to file_id.
         
         >>> i = Inventory()
         >>> e = i.add(InventoryDirectory('src-id', 'src', ROOT_ID))
@@ -1010,14 +1013,10 @@ class Inventory(object):
         src/foo.c
         """
         # get all names, skipping root
-        p = [self._byid[fid].name for fid in self.get_idpath(file_id)[1:]]
-        if p:
-            return pathjoin(*p)
-        else:
-            return ''
+        return '/'.join(reversed(
+            [parent.name for parent in 
+             self._iter_file_id_parents(file_id)][:-1]))
             
-
-
     def path2id(self, name):
         """Walk down through directories to return entry of last component.
 

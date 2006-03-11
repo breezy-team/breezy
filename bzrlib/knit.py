@@ -767,7 +767,7 @@ class _KnitIndex(_KnitComponentFile):
                     # See self._parse_parents
                     parents = []
                     for value in rec[4:]:
-                        if '.' == value[-1]:
+                        if '.' == value[0]:
                             # uncompressed reference
                             parents.append(value[1:])
                         else:
