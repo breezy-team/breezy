@@ -119,7 +119,8 @@ class InventoryEntry(object):
                  'revision']
 
     def _add_text_to_weave(self, new_lines, parents, weave_store, transaction):
-        versionedfile = weave_store.get_weave(self.file_id, transaction)
+        versionedfile = weave_store.get_weave_or_empty(self.file_id,
+                                                       transaction)
         versionedfile.add_lines(self.revision, parents, new_lines)
 
     def detect_changes(self, old_entry):
@@ -151,7 +152,10 @@ class InventoryEntry(object):
              output_to, reverse=False):
         """Perform a diff between two entries of the same kind."""
 
-    def find_previous_heads(self, previous_inventories, entry_weave):
+    def find_previous_heads(self, previous_inventories,
+                            versioned_file_store,
+                            transaction,
+                            entry_vf=None):
         """Return the revisions and entries that directly preceed this.
 
         Returned as a map from revision to inventory entry.
@@ -159,44 +163,79 @@ class InventoryEntry(object):
         This is a map containing the file revisions in all parents
         for which the file exists, and its revision is not a parent of
         any other. If the file is new, the set will be empty.
+
+        :param versioned_file_store: A store where ancestry data on this
+                                     file id can be queried.
+        :param transaction: The transaction that queries to the versioned 
+                            file store should be completed under.
+        :param entry_vf: The entry versioned file, if its already available.
         """
         def get_ancestors(weave, entry):
             return set(weave.get_ancestry(entry.revision))
+        # revision:ie mapping for each ie found in previous_inventories.
+        candidates = {}
+        # revision:ie mapping with one revision for each head.
         heads = {}
+        # revision: ancestor list for each head
         head_ancestors = {}
+        # identify candidate head revision ids.
         for inv in previous_inventories:
             if self.file_id in inv:
                 ie = inv[self.file_id]
                 assert ie.file_id == self.file_id
-                if ie.revision in heads:
-                    # fixup logic, there was a bug in revision updates.
-                    # with x bit support.
+                if ie.revision in candidates:
+                    # same revision value in two different inventories:
+                    # correct possible inconsistencies:
+                    #     * there was a bug in revision updates with 'x' bit 
+                    #       support.
                     try:
-                        if heads[ie.revision].executable != ie.executable:
-                            heads[ie.revision].executable = False
+                        if candidates[ie.revision].executable != ie.executable:
+                            candidates[ie.revision].executable = False
                             ie.executable = False
                     except AttributeError:
                         pass
-                    assert heads[ie.revision] == ie
+                    # must now be the same.
+                    assert candidates[ie.revision] == ie
                 else:
-                    # may want to add it.
-                    # may already be covered:
-                    already_present = 0 != len(
-                        [head for head in heads 
-                         if ie.revision in head_ancestors[head]])
-                    if already_present:
-                        # an ancestor of a known head.
-                        continue
-                    # definately a head:
-                    ancestors = get_ancestors(entry_weave, ie)
-                    # may knock something else out:
-                    check_heads = list(heads.keys())
-                    for head in check_heads:
-                        if head in ancestors:
-                            # this head is not really a head
-                            heads.pop(head)
-                    head_ancestors[ie.revision] = ancestors
-                    heads[ie.revision] = ie
+                    # add this revision as a candidate.
+                    candidates[ie.revision] = ie
+
+        # common case optimisation
+        if len(candidates) == 1:
+            # if there is only one candidate revision found
+            # then we can opening the versioned file to access ancestry:
+            # there cannot be any ancestors to eliminate when there is 
+            # only one revision available.
+            heads[ie.revision] = ie
+            return heads
+
+        # eliminate ancestors amongst the available candidates:
+        # heads are those that are not an ancestor of any other candidate
+        # - this provides convergence at a per-file level.
+        for ie in candidates.values():
+            # may be an ancestor of a known head:
+            already_present = 0 != len(
+                [head for head in heads 
+                 if ie.revision in head_ancestors[head]])
+            if already_present:
+                # an ancestor of an analyzed candidate.
+                continue
+            # not an ancestor of a known head:
+            # load the versioned file for this file id if needed
+            if entry_vf is None:
+                entry_vf = versioned_file_store.get_weave_or_empty(
+                    self.file_id, transaction)
+            ancestors = get_ancestors(entry_vf, ie)
+            # may knock something else out:
+            check_heads = list(heads.keys())
+            for head in check_heads:
+                if head in ancestors:
+                    # this previously discovered 'head' is not
+                    # really a head - its an ancestor of the newly 
+                    # found head,
+                    heads.pop(head)
+            head_ancestors[ie.revision] = ancestors
+            heads[ie.revision] = ie
         return heads
 
     def get_tar_item(self, root, dp, now, tree):

@@ -1469,7 +1469,10 @@ class ConvertBzrDir4To5(Converter):
             w = Weave(file_id)
             self.text_weaves[file_id] = w
         text_changed = False
-        previous_entries = ie.find_previous_heads(parent_invs, w)
+        previous_entries = ie.find_previous_heads(parent_invs,
+                                                  None,
+                                                  None,
+                                                  entry_vf=w)
         for old_revision in previous_entries:
                 # if this fails, its a ghost ?
                 assert old_revision in self.converted_revs 
