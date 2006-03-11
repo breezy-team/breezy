@@ -222,7 +222,7 @@ class GenericRepoFetcher(RepoFetcher):
             count = 0
             total = len(revs)
             for rev in revs:
-                rev.update('fetch revisions', count, total)
+                rev_pb.update('fetch revisions', count, total)
                 try:
                     sig_text = self.from_repository.get_signature_text(rev)
                     self.to_repository._revision_store.add_revision_signature_text(
