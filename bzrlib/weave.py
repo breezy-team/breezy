@@ -647,7 +647,7 @@ class Weave(VersionedFile):
         
         Please use get_lines now.
         """
-        return self._get_iter(self._maybe_lookup(name_or_index))
+        return iter(self.get_lines(self._maybe_lookup(name_or_index)))
 
     @deprecated_method(zero_eight)
     def maybe_lookup(self, name_or_index):
@@ -664,28 +664,6 @@ class Weave(VersionedFile):
         else:
             return self._lookup(name_or_index)
 
-    def _get_iter(self, version_id):
-        """Yield lines for the specified version."""
-        incls = [self._maybe_lookup(version_id)]
-        if len(incls) == 1:
-            index = incls[0]
-            cur_sha = sha.new()
-        else:
-            # We don't have sha1 sums for multiple entries
-            cur_sha = None
-        for origin, lineno, line in self._extract(incls):
-            if cur_sha:
-                cur_sha.update(line)
-            yield line
-        if cur_sha:
-            expected_sha1 = self._sha1s[index]
-            measured_sha1 = cur_sha.hexdigest() 
-            if measured_sha1 != expected_sha1:
-                raise errors.WeaveInvalidChecksum(
-                        'file %s, revision %s, expected: %s, measured %s' 
-                        % (self._weave_name, self._names[index],
-                           expected_sha1, measured_sha1))
-
     @deprecated_method(zero_eight)
     def get(self, version_id):
         """Please use either Weave.get_text or Weave.get_lines as desired."""
@@ -693,7 +671,16 @@ class Weave(VersionedFile):
 
     def get_lines(self, version_id):
         """See VersionedFile.get_lines()."""
-        return list(self._get_iter(version_id))
+        int_index = self._lookup(version_id)
+        result = [line for (origin, lineno, line) in self._extract([int_index])]
+        expected_sha1 = self._sha1s[int_index]
+        measured_sha1 = sha_strings(result)
+        if measured_sha1 != expected_sha1:
+            raise errors.WeaveInvalidChecksum(
+                    'file %s, revision %s, expected: %s, measured %s' 
+                    % (self._weave_name, version_id,
+                       expected_sha1, measured_sha1))
+        return result
 
     def get_sha1(self, name):
         """Get the stored sha1 sum for the given revision.
