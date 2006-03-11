@@ -1271,3 +1271,9 @@ class GzipFile(gzip.GzipFile):
             self.fileobj.write( self.compress.compress(data) )
             self.offset += data_len
 
+    def writelines(self, lines):
+        # profiling indicated a significant overhead 
+        # calling write for each line.
+        # this batch call is a lot faster :).
+        # (4 seconds to 1 seconds for the sample upgrades I was testing).
+        self.write(''.join(lines))
