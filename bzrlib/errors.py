@@ -300,6 +300,10 @@ class ReadOnlyError(LockError):
         self.obj = obj
 
 
+class OutSideTransaction(BzrNewError):
+    """A transaction related operation was attempted after the transaction finished."""
+
+
 class ObjectNotLocked(LockError):
     """%(obj)r is not locked"""
     # this can indicate that any particular object is not locked; see also

@@ -243,6 +243,13 @@ class TestRepository(TestCaseWithRepository):
         new_signature = wt.branch.repository.get_signature_text('A')
         self.assertEqual(old_signature, new_signature)
 
+    def test_exposed_versioned_files_are_marked_dirty(self):
+        repo = self.make_repository('.')
+        repo.lock_write()
+        inv = repo.get_inventory_weave()
+        repo.unlock()
+        self.assertRaises(errors.OutSideTransaction, inv.add_lines, 'foo', [], [])
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
@@ -356,8 +363,17 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         inv_weave = repo.get_inventory_weave()
         self.assertEqual(['ghost'], inv_weave.get_ancestry(['ghost']))
 
-    def test_corrupt_revision_access_asserts(self):
+    def test_corrupt_revision_access_asserts_if_reported_wrong(self):
         repo = repository.Repository.open('inventory_with_unnecessary_ghost')
+        reported_wrong = False
+        try:
+            if repo.get_ancestry('ghost') != [None, 'the_ghost', 'ghost']:
+                reported_wrong = True
+        except errors.CorruptRepository:
+            # caught the bad data:
+            return
+        if not reported_wrong:
+            return
         self.assertRaises(errors.CorruptRepository, repo.get_revision, 'ghost')
 
     def test_corrupt_revision_get_revision_reconcile(self):

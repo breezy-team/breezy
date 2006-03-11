@@ -32,11 +32,15 @@ class DummyWeave(object):
 
     def __init__(self, message):
         self._message = message
+        self.finished = False
 
     def __eq__(self, other):
         if other is None:
             return False
         return self._message == other._message
+
+    def transaction_finished(self):
+        self.finished = True
 
 
 class TestSymbols(TestCase):
@@ -69,6 +73,13 @@ class TestReadOnlyTransaction(TestCase):
 
     def test_finish_returns(self):
         self.transaction.finish()
+
+    def test_finish_does_not_tell_versioned_file_finished(self):
+        # read only transactions never write, so theres no
+        # need to inform versioned files about finishing
+        weave = DummyWeave('a weave')
+        self.transaction.finish()
+        self.assertFalse(weave.finished)
 
     def test_zero_size_cache(self):
         self.transaction.set_cache_size(0)
@@ -142,6 +153,9 @@ class TestReadOnlyTransaction(TestCase):
             self.transaction.map.find_revision_history(), precious=True)
         self.assertEqual([], self.transaction.map.find_revision_history())
 
+    def test_writable(self):
+        self.assertFalse(self.transaction.writeable())
+
 
 class TestPassThroughTransaction(TestCase):
 
@@ -170,6 +184,15 @@ class TestPassThroughTransaction(TestCase):
         transaction = transactions.PassThroughTransaction()
         transaction.finish()
 
+    def test_finish_tells_versioned_file_finished(self):
+        # pass through transactions allow writes so they
+        # need to inform versioned files about finishing
+        weave = DummyWeave('a weave')
+        transaction = transactions.PassThroughTransaction()
+        transaction.register_dirty(weave)
+        transaction.finish()
+        self.assertTrue(weave.finished)
+
     def test_cache_is_ignored(self):
         transaction = transactions.PassThroughTransaction()
         transaction.set_cache_size(100)
@@ -177,7 +200,11 @@ class TestPassThroughTransaction(TestCase):
         transaction.map.add_weave("id", weave)
         self.assertEqual(None, transaction.map.find_weave("id"))
 
+    def test_writable(self):
+        transaction = transactions.PassThroughTransaction()
+        self.assertTrue(transaction.writeable())
         
+
 class TestWriteTransaction(TestCase):
 
     def setUp(self):
@@ -200,6 +227,14 @@ class TestWriteTransaction(TestCase):
         
     def test_finish_returns(self):
         self.transaction.finish()
+
+    def test_finish_tells_versioned_file_finished(self):
+        # write transactions allow writes so they
+        # need to inform versioned files about finishing
+        weave = DummyWeave('a weave')
+        self.transaction.register_dirty(weave)
+        self.transaction.finish()
+        self.assertTrue(weave.finished)
 
     def test_zero_size_cache(self):
         self.transaction.set_cache_size(0)
@@ -277,3 +312,6 @@ class TestWriteTransaction(TestCase):
                                         precious=True)
         self.assertEqual(DummyWeave('a weave'),
                          self.transaction.map.find_weave("id"))
+
+    def test_writable(self):
+        self.assertTrue(self.transaction.writeable())

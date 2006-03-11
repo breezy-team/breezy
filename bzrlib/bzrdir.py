@@ -28,6 +28,7 @@ from unittest import TestSuite
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.lockdir import LockDir
 from bzrlib.osutils import safe_unicode
 from bzrlib.osutils import (
                             abspath,
@@ -42,7 +43,7 @@ from bzrlib.store.versioned import WeaveStore
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 from bzrlib.transactions import WriteTransaction
-from bzrlib.transport import get_transport
+from bzrlib.transport import get_transport, urlunescape
 from bzrlib.transport.local import LocalTransport
 from bzrlib.weave import Weave
 from bzrlib.xml4 import serializer_v4
@@ -65,13 +66,19 @@ class BzrDir(object):
         """Return true if this bzrdir is one whose format we can convert from."""
         return True
 
-    def _check_supported(self, format, allow_unsupported):
+    @staticmethod
+    def _check_supported(format, allow_unsupported):
         """Check whether format is a supported format.
 
         If allow_unsupported is True, this is a no-op.
         """
         if not allow_unsupported and not format.is_supported():
-            raise errors.UnsupportedFormatError(format)
+            # see open_downlevel to open legacy branches.
+            raise errors.UnsupportedFormatError(
+                    'sorry, format %s not supported' % format,
+                    ['use a different bzr version',
+                     'or remove the .bzr directory'
+                     ' and "bzr init" again'])
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         """Clone this bzrdir and its contents to url verbatim.
@@ -150,8 +157,8 @@ class BzrDir(object):
             except errors.FileExists:
                 pass
 
-    @staticmethod
-    def create(base):
+    @classmethod
+    def create(cls, base):
         """Create a new BzrDir at the url 'base'.
         
         This will call the current default formats initialize with base
@@ -160,6 +167,9 @@ class BzrDir(object):
         If you need a specific format, consider creating an instance
         of that and calling initialize().
         """
+        if cls is not BzrDir:
+            raise AssertionError("BzrDir.create always creates the default format, "
+                    "not one of %r" % cls)
         segments = base.split('/')
         if segments and segments[-1] not in ('', '.'):
             parent = '/'.join(segments[:-1])
@@ -396,13 +406,7 @@ class BzrDir(object):
         t = get_transport(base)
         mutter("trying to open %r with transport %r", base, t)
         format = BzrDirFormat.find_format(t)
-        if not _unsupported and not format.is_supported():
-            # see open_downlevel to open legacy branches.
-            raise errors.UnsupportedFormatError(
-                    'sorry, format %s not supported' % format,
-                    ['use a different bzr version',
-                     'or remove the .bzr directory'
-                     ' and "bzr init" again'])
+        BzrDir._check_supported(format, _unsupported)
         return format.open(t, _found=True)
 
     def open_branch(self, unsupported=False):
@@ -441,6 +445,7 @@ class BzrDir(object):
         while True:
             try:
                 format = BzrDirFormat.find_format(a_transport)
+                BzrDir._check_supported(format, False)
                 return format.open(a_transport), a_transport.relpath(url)
             except errors.NotBranchError, e:
                 mutter('not a branch in: %r %s', a_transport.base, e)
@@ -535,9 +540,11 @@ class BzrDirPreSplitOut(BzrDir):
     def __init__(self, _transport, _format):
         """See BzrDir.__init__."""
         super(BzrDirPreSplitOut, self).__init__(_transport, _format)
+        assert self._format._lock_class == TransportLock
+        assert self._format._lock_file_name == 'branch-lock'
         self._control_files = LockableFiles(self.get_branch_transport(None),
-                                            'branch-lock',
-                                            TransportLock)
+                                            self._format._lock_file_name,
+                                            self._format._lock_class)
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         """See BzrDir.clone()."""
@@ -704,7 +711,9 @@ class BzrDirMeta1(BzrDir):
     """A .bzr meta version 1 control object.
     
     This is the first control object where the 
-    individual formats are really split out.
+    individual aspects are really split out: there are separate repository,
+    workingtree and branch subdirectories and any subset of the three can be
+    present within a BzrDir.
     """
 
     def can_convert_format(self):
@@ -830,6 +839,11 @@ class BzrDirFormat(object):
     _formats = {}
     """The known formats."""
 
+    _lock_file_name = 'branch-lock'
+
+    # _lock_class must be set in subclasses to the lock type, typ.
+    # TransportLock or LockDir
+
     @classmethod
     def find_format(klass, transport):
         """Return the format registered for URL."""
@@ -878,14 +892,13 @@ class BzrDirFormat(object):
         del temp_control
         mutter('created control directory in ' + t.base)
         control = t.clone('.bzr')
-        lock_file = 'branch-lock'
         utf8_files = [('README', 
                        "This is a Bazaar-NG control directory.\n"
                        "Do not change any files in this directory.\n"),
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
-        control_files = LockableFiles(control, lock_file, TransportLock)
+        control_files = LockableFiles(control, self._lock_file_name, self._lock_class)
         control_files.create_lock()
         control_files.lock_write()
         try:
@@ -952,6 +965,8 @@ class BzrDirFormat4(BzrDirFormat):
     removed in format 5; write support for this format has been removed.
     """
 
+    _lock_class = TransportLock
+
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 0.0.4\n"
@@ -995,6 +1010,8 @@ class BzrDirFormat5(BzrDirFormat):
      - Format 5 repositories [always]
        Unhashed stores in the repository.
     """
+
+    _lock_class = TransportLock
 
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
@@ -1040,6 +1057,8 @@ class BzrDirFormat6(BzrDirFormat):
      - Format 4 branches [always] 
      - Format 6 repositories [always]
     """
+
+    _lock_class = TransportLock
 
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
@@ -1092,6 +1111,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
      - Format 7 repositories [optional]
     """
 
+    _lock_class = LockDir
+
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
         if format is None:
@@ -1119,6 +1140,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def __set_repository_format(self, value):
         """Allow changint the repository format for metadir formats."""
         self._repository_format = value
+
     repository_format = property(__return_repository_format, __set_repository_format)
 
 
@@ -1519,7 +1541,8 @@ class ConvertBzrDir5To6(Converter):
         for store_name in ["weaves", "revision-store"]:
             self.pb.note("adding prefixes to %s" % store_name) 
             store_transport = self.bzrdir.transport.clone(store_name)
-            for filename in store_transport.list_dir('.'):
+            for urlfilename in store_transport.list_dir('.'):
+                filename = urlunescape(urlfilename)
                 if (filename.endswith(".weave") or
                     filename.endswith(".gz") or
                     filename.endswith(".sig")):
@@ -1564,13 +1587,13 @@ class ConvertBzrDir6ToMeta(Converter):
             if name.startswith('basis-inventory.'):
                 self.garbage_inventories.append(name)
         # create new directories for repository, working tree and branch
-        dir_mode = self.bzrdir._control_files._dir_mode
+        self.dir_mode = self.bzrdir._control_files._dir_mode
         self.file_mode = self.bzrdir._control_files._file_mode
         repository_names = [('inventory.weave', True),
                             ('revision-store', True),
                             ('weaves', True)]
         self.step('Upgrading repository  ')
-        self.bzrdir.transport.mkdir('repository', mode=dir_mode)
+        self.bzrdir.transport.mkdir('repository', mode=self.dir_mode)
         self.make_lock('repository')
         # we hard code the formats here because we are converting into
         # the meta format. The meta format upgrader can take this to a 
@@ -1580,7 +1603,7 @@ class ConvertBzrDir6ToMeta(Converter):
             self.move_entry('repository', entry)
 
         self.step('Upgrading branch      ')
-        self.bzrdir.transport.mkdir('branch', mode=dir_mode)
+        self.bzrdir.transport.mkdir('branch', mode=self.dir_mode)
         self.make_lock('branch')
         self.put_format('branch', bzrlib.branch.BzrBranchFormat5())
         branch_files = [('revision-history', True),
@@ -1590,7 +1613,7 @@ class ConvertBzrDir6ToMeta(Converter):
             self.move_entry('branch', entry)
 
         self.step('Upgrading working tree')
-        self.bzrdir.transport.mkdir('checkout', mode=dir_mode)
+        self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
         self.make_lock('checkout')
         self.put_format('checkout', bzrlib.workingtree.WorkingTreeFormat3())
         self.bzrdir.transport.delete_multi(self.garbage_inventories, self.pb)
@@ -1608,7 +1631,11 @@ class ConvertBzrDir6ToMeta(Converter):
     def make_lock(self, name):
         """Make a lock for the new control dir name."""
         self.step('Make %s lock' % name)
-        self.bzrdir.transport.put('%s/lock' % name, StringIO(), mode=self.file_mode)
+        ld = LockDir(self.bzrdir.transport, 
+                     '%s/lock' % name,
+                     file_modebits=self.file_mode,
+                     dir_modebits=self.dir_mode)
+        ld.create()
 
     def move_entry(self, new_dir, entry):
         """Move then entry name into new_dir."""

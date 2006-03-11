@@ -67,6 +67,7 @@
 # the possible relationships.
 
 
+from copy import copy
 from cStringIO import StringIO
 from difflib import SequenceMatcher
 import os
@@ -180,7 +181,8 @@ class Weave(VersionedFile):
     __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
                  '_weave_name']
     
-    def __init__(self, weave_name=None):
+    def __init__(self, weave_name=None, access_mode='w'):
+        super(Weave, self).__init__(access_mode)
         self._weave = []
         self._parents = []
         self._sha1s = []
@@ -278,7 +280,7 @@ class Weave(VersionedFile):
         """Please use Weave.clone_text now."""
         return self.clone_text(new_rev_id, old_rev_id, parents)
 
-    def add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines):
         """See VersionedFile.add_lines."""
         return self._add(version_id, lines, map(self._lookup, parents))
 
@@ -406,7 +408,7 @@ class Weave(VersionedFile):
                 offset += 2 + (j2 - j1)
         return new_version
 
-    def clone_text(self, new_version_id, old_version_id, parents):
+    def _clone_text(self, new_version_id, old_version_id, parents):
         """See VersionedFile.clone_text."""
         old_lines = self.get_text(old_version_id)
         self.add_lines(new_version_id, parents, old_lines)
@@ -492,11 +494,31 @@ class Weave(VersionedFile):
 
     @deprecated_method(zero_eight)
     def _walk(self):
-        """_walk has become walk, a supported api."""
-        return self.walk()
+        """_walk has become visit, a supported api."""
+        return self._walk_internal()
 
+    def iter_lines_added_or_present_in_versions(self, version_ids=None):
+        """See VersionedFile.iter_lines_added_or_present_in_versions()."""
+        if version_ids is None:
+            version_ids = self.versions()
+        version_ids = set(version_ids)
+        for lineno, inserted, deletes, line in self._walk_internal(version_ids):
+            # if inserted not in version_ids then it was inserted before the
+            # versions we care about, but because weaves cannot represent ghosts
+            # properly, we do not filter down to that
+            # if inserted not in version_ids: continue
+            if line[-1] != '\n':
+                yield line + '\n'
+            else:
+                yield line
+
+    #@deprecated_method(zero_eight)
     def walk(self, version_ids=None):
         """See VersionedFile.walk."""
+        return self._walk_internal(version_ids)
+
+    def _walk_internal(self, version_ids=None):
+        """Helper method for weave actions."""
         
         istack = []
         dset = set()
@@ -705,7 +727,7 @@ class Weave(VersionedFile):
             update_text = 'checking %s' % (short_name,)
             update_text = update_text[:25]
 
-        for lineno, insert, deleteset, line in self.walk():
+        for lineno, insert, deleteset, line in self._walk_internal():
             if progress_bar:
                 progress_bar.update(update_text, lineno, nlines)
 
@@ -755,19 +777,11 @@ class Weave(VersionedFile):
                          version in version_ids]
         for name in topo_sort(pending_graph):
             other_idx = other._name_map[name]
-            self._check_version_consistent(other, other_idx, name)
-            sha1 = other._sha1s[other_idx]
-
+            # returns True if we have it, False if we need it.
+            if not self._check_version_consistent(other, other_idx, name):
+                names_to_join.append((other_idx, name))
             processed += 1
 
-            if name in self._name_map:
-                idx = self._lookup(name)
-                n1 = set(map(other._idx_to_name, other._parents[other_idx]))
-                n2 = set(map(self._idx_to_name, self._parents[idx]))
-                if sha1 ==  self._sha1s[idx] and n1 == n2:
-                        continue
-
-            names_to_join.append((other_idx, name))
 
         if pb and not msg:
             msg = 'weave join'
@@ -845,9 +859,13 @@ class Weave(VersionedFile):
         :param msg: An optional message for the progress
         """
         new_weave = _reweave(self, other, pb=pb, msg=msg)
+        self._copy_weave_content(new_weave)
+
+    def _copy_weave_content(self, otherweave):
+        """adsorb the content from otherweave."""
         for attr in self.__slots__:
             if attr != '_weave_name':
-                setattr(self, attr, getattr(new_weave, attr))
+                setattr(self, attr, copy(getattr(otherweave, attr)))
 
 
 class WeaveFile(Weave):
@@ -855,14 +873,14 @@ class WeaveFile(Weave):
 
     WEAVE_SUFFIX = '.weave'
     
-    def __init__(self, name, transport, mode=None, create=False):
+    def __init__(self, name, transport, filemode=None, create=False, access_mode='w'):
         """Create a WeaveFile.
         
         :param create: If not True, only open an existing knit.
         """
-        super(WeaveFile, self).__init__(name)
+        super(WeaveFile, self).__init__(name, access_mode)
         self._transport = transport
-        self._mode = mode
+        self._filemode = filemode
         try:
             _read_weave_v5(self._transport.get(name + WeaveFile.WEAVE_SUFFIX), self)
         except errors.NoSuchFile:
@@ -871,10 +889,15 @@ class WeaveFile(Weave):
             # new file, save it
             self._save()
 
-    def add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines):
         """Add a version and save the weave."""
-        super(WeaveFile, self).add_lines(version_id, parents, lines)
+        super(WeaveFile, self)._add_lines(version_id, parents, lines)
         self._save()
+
+    def _clone_text(self, new_version_id, old_version_id, parents):
+        """See VersionedFile.clone_text."""
+        super(WeaveFile, self)._clone_text(new_version_id, old_version_id, parents)
+        self._save
 
     def copy_to(self, name, transport):
         """See VersionedFile.copy_to()."""
@@ -882,19 +905,20 @@ class WeaveFile(Weave):
         sio = StringIO()
         write_weave_v5(self, sio)
         sio.seek(0)
-        transport.put(name + WeaveFile.WEAVE_SUFFIX, sio, self._mode)
+        transport.put(name + WeaveFile.WEAVE_SUFFIX, sio, self._filemode)
 
-    def create_empty(self, name, transport, mode=None):
-        return WeaveFile(name, transport, mode, create=True)
+    def create_empty(self, name, transport, filemode=None):
+        return WeaveFile(name, transport, filemode, create=True)
 
     def _save(self):
         """Save the weave."""
+        self._check_write_ok()
         sio = StringIO()
         write_weave_v5(self, sio)
         sio.seek(0)
         self._transport.put(self._weave_name + WeaveFile.WEAVE_SUFFIX,
                             sio,
-                            self._mode)
+                            self._filemode)
 
     @staticmethod
     def get_suffixes():
@@ -1232,6 +1256,10 @@ class InterWeave(InterVersionedFile):
 
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
+        if self.target.versions() == []:
+            # optimised copy
+            self.target._copy_weave_content(self.source)
+            return
         try:
             self.target._join(self.source, pb, msg, version_ids, ignore_missing)
         except errors.WeaveParentMismatch:

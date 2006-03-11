@@ -102,11 +102,20 @@ class VersionedFileStore(TransportStore):
     def get_weave(self, file_id, transaction):
         weave = transaction.map.find_weave(file_id)
         if weave is not None:
-            mutter("cache hit in %s for %s", self, file_id)
+            #mutter("cache hit in %s for %s", self, file_id)
             return weave
-        w = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode)
-        transaction.map.add_weave(file_id, w)
-        transaction.register_clean(w, precious=self._precious)
+        if transaction.writeable():
+            w = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode)
+            transaction.map.add_weave(file_id, w)
+            transaction.register_dirty(w)
+        else:
+            w = self._versionedfile_class(self.filename(file_id),
+                                          self._transport,
+                                          self._file_mode,
+                                          create=False,
+                                          access_mode='r')
+            transaction.map.add_weave(file_id, w)
+            transaction.register_clean(w, precious=self._precious)
         return w
 
     @deprecated_method(zero_eight)
@@ -123,7 +132,8 @@ class VersionedFileStore(TransportStore):
         """Make a new weave for file_id and return it."""
         weave = self._make_new_versionedfile(file_id, transaction)
         transaction.map.add_weave(file_id, weave)
-        transaction.register_clean(weave, precious=self._precious)
+        # has to be dirty - its able to mutate on its own.
+        transaction.register_dirty(weave)
         return weave
 
     def _make_new_versionedfile(self, file_id, transaction):

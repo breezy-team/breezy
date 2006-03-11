@@ -70,6 +70,19 @@ def internal_tree_files(file_list, default_branch=u'.'):
     return tree, new_list
 
 
+def get_format_type(typestring):
+    """Parse and return a format specifier."""
+    if typestring == "metadir":
+        return bzrdir.BzrDirMetaFormat1()
+    if typestring == "knit":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
+        return format
+    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
+        (typestring)
+    raise BzrCommandError(msg)
+
+
 # TODO: Make sure no commands unconditionally use the working directory as a
 # branch.  If a filename argument is used, the first of them should be used to
 # specify the branch.  (Perhaps this can be factored out into some kind of
@@ -866,7 +879,14 @@ class cmd_init(Command):
         bzr commit -m 'imported project'
     """
     takes_args = ['location?']
-    def run(self, location=None):
+    takes_options = [
+                     Option('format', 
+                            help='Create a specific format rather than the'
+                                 ' current default format. Currently this '
+                                 ' option only accepts =metadir',
+                            type=get_format_type),
+                     ]
+    def run(self, location=None, format=None):
         from bzrlib.branch import Branch
         if location is None:
             location = u'.'
@@ -878,7 +898,16 @@ class cmd_init(Command):
             # locations if the user supplies an extended path
             if not os.path.exists(location):
                 os.mkdir(location)
-        bzrdir.BzrDir.create_standalone_workingtree(location)
+        if format is None:
+            # create default
+            bzrdir.BzrDir.create_standalone_workingtree(location)
+        else:
+            new_dir = format.initialize(location)
+            new_dir.create_repository()
+            new_dir.create_branch()
+            # TODO: ask the bzrdir format for the right classs
+            import bzrlib.workingtree
+            bzrlib.workingtree.WorkingTreeFormat3().initialize(new_dir)
 
 
 class cmd_diff(Command):
@@ -1524,19 +1553,6 @@ class cmd_scan_cache(Command):
             c.write()
 
 
-def get_format_type(typestring):
-    """Parse and return a format specifier."""
-    if typestring == "metadir":
-        return bzrdir.BzrDirMetaFormat1()
-    if typestring == "knit":
-        format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
-        return format
-    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
-        (typestring)
-    raise BzrCommandError(msg)
-
-
 class cmd_upgrade(Command):
     """Upgrade branch storage to current format.
 
@@ -1901,7 +1917,8 @@ class cmd_remerge(Command):
                     restore(tree.abspath(filename))
                 except NotConflicted:
                     pass
-            conflicts =  merge_inner(tree.branch, other_tree, base_tree, 
+            conflicts =  merge_inner(tree.branch, other_tree, base_tree,
+                                     this_tree=tree,
                                      interesting_ids = interesting_ids, 
                                      other_rev_id=pending_merges[0], 
                                      merge_type=merge_type, 
@@ -1936,7 +1953,7 @@ class cmd_revert(Command):
         tree, file_list = tree_files(file_list)
         if revision is None:
             # FIXME should be tree.last_revision
-            rev_id = tree.branch.last_revision()
+            rev_id = tree.last_revision()
         elif len(revision) != 1:
             raise BzrCommandError('bzr revert --revision takes exactly 1 argument')
         else:
@@ -2032,39 +2049,47 @@ class cmd_missing(Command):
                 raise BzrCommandError("No missing location known or specified.")
             print "Using last location: " + local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
-        local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
-        if (log_format == None):
-            default = bzrlib.config.BranchConfig(local_branch).log_format()
-            log_format = get_log_format(long=long, short=short, line=line, default=default)
-        lf = log_formatter(log_format, sys.stdout,
-                           show_ids=show_ids,
-                           show_timezone='original')
-        if reverse is False:
-            local_extra.reverse()
-            remote_extra.reverse()
-        if local_extra and not theirs_only:
-            print "You have %d extra revision(s):" % len(local_extra)
-            for data in iter_log_data(local_extra, local_branch.repository,
-                                      verbose):
-                lf.show(*data)
-            printed_local = True
-        else:
-            printed_local = False
-        if remote_extra and not mine_only:
-            if printed_local is True:
-                print "\n\n"
-            print "You are missing %d revision(s):" % len(remote_extra)
-            for data in iter_log_data(remote_extra, remote_branch.repository, 
-                                      verbose):
-                lf.show(*data)
-        if not remote_extra and not local_extra:
-            status_code = 0
-            print "Branches are up to date."
-        else:
-            status_code = 1
-        if parent is None and other_branch is not None:
-            local_branch.set_parent(other_branch)
-        return status_code
+        remote_branch.lock_read()
+        try:
+            local_branch.lock_write()
+            try:
+                local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
+                if (log_format == None):
+                    default = bzrlib.config.BranchConfig(local_branch).log_format()
+                    log_format = get_log_format(long=long, short=short, line=line, default=default)
+                lf = log_formatter(log_format, sys.stdout,
+                                   show_ids=show_ids,
+                                   show_timezone='original')
+                if reverse is False:
+                    local_extra.reverse()
+                    remote_extra.reverse()
+                if local_extra and not theirs_only:
+                    print "You have %d extra revision(s):" % len(local_extra)
+                    for data in iter_log_data(local_extra, local_branch.repository,
+                                              verbose):
+                        lf.show(*data)
+                    printed_local = True
+                else:
+                    printed_local = False
+                if remote_extra and not mine_only:
+                    if printed_local is True:
+                        print "\n\n"
+                    print "You are missing %d revision(s):" % len(remote_extra)
+                    for data in iter_log_data(remote_extra, remote_branch.repository, 
+                                              verbose):
+                        lf.show(*data)
+                if not remote_extra and not local_extra:
+                    status_code = 0
+                    print "Branches are up to date."
+                else:
+                    status_code = 1
+                if parent is None and other_branch is not None:
+                    local_branch.set_parent(other_branch)
+                return status_code
+            finally:
+                local_branch.unlock()
+        finally:
+            remote_branch.unlock()
 
 
 class cmd_plugins(Command):

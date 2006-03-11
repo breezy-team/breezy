@@ -24,9 +24,9 @@ from bzrlib.errors import KnitError, RevisionAlreadyPresent
 from bzrlib.knit import KnitVersionedFile, KnitPlainFactory, KnitAnnotateFactory
 from bzrlib.osutils import split_lines
 from bzrlib.tests import TestCaseInTempDir
+from bzrlib.transport import TransportLogger
 from bzrlib.transport.local import LocalTransport
 from bzrlib.transport.memory import MemoryTransport
-from bzrlib.transactions import PassThroughTransaction
 
 
 class KnitTests(TestCaseInTempDir):
@@ -119,6 +119,7 @@ class KnitTests(TestCaseInTempDir):
         k = KnitVersionedFile('test', LocalTransport('.'), factory=KnitPlainFactory(),
             delta=True, create=True)
         self.add_stock_one_and_one_a(k)
+        k.clear_cache()
         self.assertEqualDiff(''.join(k.get_lines('text-1a')), TEXT_1A)
 
     def test_annotate(self):
@@ -258,8 +259,71 @@ class KnitTests(TestCaseInTempDir):
         self.assertEquals(lines, ['z\n', 'c\n'])
 
         origins = k1.annotate('text-c')
-        self.assertEquals(origins[0], ('text-c', 'z\n')) 
-        self.assertEquals(origins[1], ('text-b', 'c\n')) 
+        self.assertEquals(origins[0], ('text-c', 'z\n'))
+        self.assertEquals(origins[1], ('text-b', 'c\n'))
+
+    def test_extraction_reads_components_once(self):
+        t = MemoryTransport()
+        instrumented_t = TransportLogger(t)
+        k1 = KnitVersionedFile('id', instrumented_t, create=True, delta=True)
+        # should read the index
+        self.assertEqual([('id.kndx',)], instrumented_t._calls)
+        instrumented_t._calls = []
+        # add a text       
+        k1.add_lines('base', [], ['text\n'])
+        # should not have read at all
+        self.assertEqual([], instrumented_t._calls)
+
+        # add a text
+        k1.add_lines('sub', ['base'], ['text\n', 'text2\n'])
+        # should not have read at all
+        self.assertEqual([], instrumented_t._calls)
+        
+        # read a text
+        k1.get_lines('sub')
+        # should not have read at all
+        self.assertEqual([], instrumented_t._calls)
+
+        # clear the cache
+        k1.clear_cache()
+
+        # read a text
+        k1.get_lines('base')
+        # should have read a component
+        # should not have read the first component only
+        self.assertEqual([('id.knit', [(0, 87)])], instrumented_t._calls)
+        instrumented_t._calls = []
+        # read again
+        k1.get_lines('base')
+        # should not have read at all
+        self.assertEqual([], instrumented_t._calls)
+        # and now read the other component
+        k1.get_lines('sub')
+        # should have read the second component
+        self.assertEqual([('id.knit', [(87, 93)])], instrumented_t._calls)
+        instrumented_t._calls = []
+
+        # clear the cache
+        k1.clear_cache()
+        # add a text cold 
+        k1.add_lines('sub2', ['base'], ['text\n', 'text3\n'])
+        # should read the first component only
+        self.assertEqual([('id.knit', [(0, 87)])], instrumented_t._calls)
+        
+    def test_iter_lines_reads_in_order(self):
+        t = MemoryTransport()
+        instrumented_t = TransportLogger(t)
+        k1 = KnitVersionedFile('id', instrumented_t, create=True, delta=True)
+        self.assertEqual([('id.kndx',)], instrumented_t._calls)
+        # add texts with no required ordering
+        k1.add_lines('base', [], ['text\n'])
+        k1.add_lines('base2', [], ['text2\n'])
+        k1.clear_cache()
+        instrumented_t._calls = []
+        # request a last-first iteration
+        results = list(k1.iter_lines_added_or_present_in_versions(['base2', 'base']))
+        self.assertEqual([('id.knit', [(0, 87), (87, 90)])], instrumented_t._calls)
+        self.assertEqual(['text\n', 'text2\n'], results)
 
     def test_create_empty_annotated(self):
         k1 = self.make_test_knit(True)

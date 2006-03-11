@@ -109,6 +109,9 @@ class ReadOnlyTransaction(object):
             else:
                 offset += 1
 
+    def writeable(self):
+        """Read only transactions do not allow writes."""
+
 
 class WriteTransaction(ReadOnlyTransaction):
     """A write transaction
@@ -117,6 +120,13 @@ class WriteTransaction(ReadOnlyTransaction):
     - clean objects can be removed from the cache
     - dirty objects are retained.
     """
+
+    def finish(self):
+        """Clean up this transaction."""
+        for thing in self._dirty_objects:
+            callback = getattr(thing, 'transaction_finished', None)
+            if callback is not None:
+                callback()
 
     def __init__(self):
         super(WriteTransaction, self).__init__()
@@ -130,13 +140,18 @@ class WriteTransaction(ReadOnlyTransaction):
         """Register an_object as being dirty.
         
         Dirty objects are not ejected from the identity map
-        until the transaction finishes.
+        until the transaction finishes and get informed
+        when the transaction finishes.
         """
         self._dirty_objects.add(an_object)
         if self.is_clean(an_object):
             self._clean_objects.remove(an_object)
             del self._clean_queue[self._clean_queue.index(an_object)]
         self._trim()
+
+    def writeable(self):
+        """Write transactions allow writes."""
+        return True
 
         
 class PassThroughTransaction(object):
@@ -148,10 +163,15 @@ class PassThroughTransaction(object):
 
     def finish(self):
         """Clean up this transaction."""
+        for thing in self._dirty_objects:
+            callback = getattr(thing, 'transaction_finished', None)
+            if callback is not None:
+                callback()
 
     def __init__(self):
         super(PassThroughTransaction, self).__init__()
         self.map = NullIdentityMap()
+        self._dirty_objects = set()
 
     def register_clean(self, an_object, precious=False):
         """Register an_object as being clean.
@@ -161,7 +181,16 @@ class PassThroughTransaction(object):
         """
 
     def register_dirty(self, an_object):
-        """Register an_object as being dirty."""
+        """Register an_object as being dirty.
+        
+        Dirty objects get informed
+        when the transaction finishes.
+        """
+        self._dirty_objects.add(an_object)
 
     def set_cache_size(self, ignored):
         """Do nothing, we are passing through."""
+
+    def writeable(self):
+        """Pass through transactions allow writes."""
+        return True

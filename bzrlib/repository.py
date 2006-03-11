@@ -17,7 +17,6 @@
 from copy import deepcopy
 from cStringIO import StringIO
 from unittest import TestSuite
-import xml.sax.saxutils
 
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -300,16 +299,6 @@ class Repository(object):
         This determines the set of revisions which are involved, and then
         finds all file ids affected by those revisions.
         """
-        # TODO: jam 20060119 This code assumes that w.inclusions will
-        #       always be correct. But because of the presence of ghosts
-        #       it is possible to be wrong.
-        #       One specific example from Robert Collins:
-        #       Two branches, with revisions ABC, and AD
-        #       C is a ghost merge of D.
-        #       Inclusions doesn't recognize D as an ancestor.
-        #       If D is ever merged in the future, the weave
-        #       won't be fixed, because AD never saw revision C
-        #       to cause a conflict which would force a reweave.
         w = self.get_inventory_weave()
         from_set = set(w.get_ancestry(from_revid))
         to_set = set(w.get_ancestry(to_revid))
@@ -361,12 +350,20 @@ class Repository(object):
         w = self.get_inventory_weave()
         file_ids = set()
 
-        for lineno, insert, deletes, line in w.walk(changes):
+        # this code needs to read every line in every inventory for the
+        # inventories [changes]. Seeing a line twice is ok. Seeing a line
+        # not pesent in one of those inventories is unnecessary and not 
+        # harmful because we are filtering by the revision id marker in the
+        # inventory lines to only select file ids altered in one of those  
+        # revisions. We dont need to see all lines in the inventory because
+        # only those added in an inventory in rev X can contain a revision=X
+        # line.
+        for line in w.iter_lines_added_or_present_in_versions(changes):
             start = line.find('file_id="')+9
             if start < 9: continue
             end = line.find('"', start)
             assert end>= 0
-            file_id = xml.sax.saxutils.unescape(line[start:end])
+            file_id = _unescape_xml(line[start:end])
 
             # check if file_id is already present
             if file_id in file_ids: continue
@@ -375,8 +372,7 @@ class Repository(object):
             if start < 10: continue
             end = line.find('"', start)
             assert end>= 0
-            revision_id = xml.sax.saxutils.unescape(line[start:end])
-
+            revision_id = _unescape_xml(line[start:end])
             if revision_id in changes:
                 file_ids.add(file_id)
         return file_ids
@@ -466,7 +462,7 @@ class Repository(object):
                     # no, queue it.
                     pending.add(parent_id)
             result.add_node(revision_id, rev.parent_ids)
-            done.add(result)
+            done.add(revision_id)
         return result
 
     @needs_read_lock
@@ -488,9 +484,16 @@ class Repository(object):
     @needs_read_lock
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
-        # FIXME format 4-6 cannot be shared, this is technically faulty.
-        return self.control_files._transport.has('shared-storage')
+        raise NotImplementedError(self.is_shared)
 
+    @needs_write_lock
+    def reconcile(self):
+        """Reconcile this repository."""
+        from bzrlib.reconcile import RepoReconciler
+        reconciler = RepoReconciler(self)
+        reconciler.reconcile()
+        return reconciler
+    
     @needs_read_lock
     def revision_tree(self, revision_id):
         """Return Tree for a revision on this branch.
@@ -516,7 +519,8 @@ class Repository(object):
         if not self.has_revision(revision_id):
             raise errors.NoSuchRevision(self, revision_id)
         w = self.get_inventory_weave()
-        return [None] + w.get_ancestry(revision_id)
+        candidates = w.get_ancestry(revision_id)
+        return [None] + candidates # self._eliminate_revisions_not_present(candidates)
 
     @needs_read_lock
     def print_file(self, file, revision_id):
@@ -559,27 +563,11 @@ class Repository(object):
         :param new_value: True to restore the default, False to disable making
                           working trees.
         """
-        # FIXME: split out into a new class/strategy ?
-        if isinstance(self._format, (RepositoryFormat4,
-                                     RepositoryFormat5,
-                                     RepositoryFormat6)):
-            raise NotImplementedError(self.set_make_working_trees)
-        if new_value:
-            try:
-                self.control_files._transport.delete('no-working-trees')
-            except errors.NoSuchFile:
-                pass
-        else:
-            self.control_files.put_utf8('no-working-trees', '')
+        raise NotImplementedError(self.set_make_working_trees)
     
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
-        # FIXME: split out into a new class/strategy ?
-        if isinstance(self._format, (RepositoryFormat4,
-                                     RepositoryFormat5,
-                                     RepositoryFormat6)):
-            return True
-        return not self.control_files._transport.has('no-working-trees')
+        raise NotImplementedError(self.make_working_trees)
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
@@ -646,6 +634,27 @@ class AllInOneRepository(Repository):
             text_store = get_store('text-store')
         super(AllInOneRepository, self).__init__(_format, a_bzrdir, a_bzrdir._control_files, _revision_store, control_store, text_store)
 
+    @needs_read_lock
+    def is_shared(self):
+        """AllInOne repositories cannot be shared."""
+        return False
+
+    @needs_write_lock
+    def set_make_working_trees(self, new_value):
+        """Set the policy flag for making working trees when creating branches.
+
+        This only applies to branches that use this repository.
+
+        The default is 'True'.
+        :param new_value: True to restore the default, False to disable making
+                          working trees.
+        """
+        raise NotImplementedError(self.set_make_working_trees)
+    
+    def make_working_trees(self):
+        """Returns the policy for making working trees on new branches."""
+        return True
+
 
 class MetaDirRepository(Repository):
     """Repositories in the new meta-dir layout."""
@@ -675,6 +684,33 @@ class MetaDirRepository(Repository):
                 ws.enable_cache = True
             return ws
 
+    @needs_read_lock
+    def is_shared(self):
+        """Return True if this repository is flagged as a shared repository."""
+        return self.control_files._transport.has('shared-storage')
+
+    @needs_write_lock
+    def set_make_working_trees(self, new_value):
+        """Set the policy flag for making working trees when creating branches.
+
+        This only applies to branches that use this repository.
+
+        The default is 'True'.
+        :param new_value: True to restore the default, False to disable making
+                          working trees.
+        """
+        if new_value:
+            try:
+                self.control_files._transport.delete('no-working-trees')
+            except errors.NoSuchFile:
+                pass
+        else:
+            self.control_files.put_utf8('no-working-trees', '')
+    
+    def make_working_trees(self):
+        """Returns the policy for making working trees on new branches."""
+        return not self.control_files._transport.has('no-working-trees')
+
 
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
@@ -684,6 +720,125 @@ class KnitRepository(MetaDirRepository):
         """See Repository.all_revision_ids()."""
         return self._revision_store.all_revision_ids(self.get_transaction())
 
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """Find file_id(s) which are involved in the changes between revisions.
+
+        This determines the set of revisions which are involved, and then
+        finds all file ids affected by those revisions.
+        """
+        vf = self._get_revision_vf()
+        from_set = set(vf.get_ancestry(from_revid))
+        to_set = set(vf.get_ancestry(to_revid))
+        changed = to_set.difference(from_set)
+        return self._fileid_involved_by_set(changed)
+
+    def fileid_involved(self, last_revid=None):
+        """Find all file_ids modified in the ancestry of last_revid.
+
+        :param last_revid: If None, last_revision() will be used.
+        """
+        if not last_revid:
+            changed = set(self.all_revision_ids())
+        else:
+            changed = set(self.get_ancestry(last_revid))
+        if None in changed:
+            changed.remove(None)
+        return self._fileid_involved_by_set(changed)
+
+    @needs_read_lock
+    def get_ancestry(self, revision_id):
+        """Return a list of revision-ids integrated by a revision.
+        
+        This is topologically sorted.
+        """
+        if revision_id is None:
+            return [None]
+        vf = self._get_revision_vf()
+        try:
+            return [None] + vf.get_ancestry(revision_id)
+        except errors.RevisionNotPresent:
+            raise errors.NoSuchRevision(self, revision_id)
+
+    @needs_read_lock
+    def get_revision(self, revision_id):
+        """Return the Revision object for a named revision"""
+        return self.get_revision_reconcile(revision_id)
+
+    @needs_read_lock
+    def get_revision_graph(self, revision_id=None):
+        """Return a dictionary containing the revision graph.
+        
+        :return: a dictionary of revision_id->revision_parents_list.
+        """
+        weave = self._get_revision_vf()
+        entire_graph = weave.get_graph()
+        if revision_id is None:
+            return weave.get_graph()
+        elif revision_id not in weave:
+            raise errors.NoSuchRevision(self, revision_id)
+        else:
+            # add what can be reached from revision_id
+            result = {}
+            pending = set([revision_id])
+            while len(pending) > 0:
+                node = pending.pop()
+                result[node] = weave.get_parents(node)
+                for revision_id in result[node]:
+                    if revision_id not in result:
+                        pending.add(revision_id)
+            return result
+
+    @needs_read_lock
+    def get_revision_graph_with_ghosts(self, revision_ids=None):
+        """Return a graph of the revisions with ghosts marked as applicable.
+
+        :param revision_ids: an iterable of revisions to graph or None for all.
+        :return: a Graph object with the graph reachable from revision_ids.
+        """
+        result = Graph()
+        vf = self._get_revision_vf()
+        versions = vf.versions()
+        if not revision_ids:
+            pending = set(self.all_revision_ids())
+            required = set([])
+        else:
+            pending = set(revision_ids)
+            required = set(revision_ids)
+        done = set([])
+        while len(pending):
+            revision_id = pending.pop()
+            if not revision_id in versions:
+                if revision_id in required:
+                    raise errors.NoSuchRevision(self, revision_id)
+                # a ghost
+                result.add_ghost(revision_id)
+                continue
+            parent_ids = vf.get_parents_with_ghosts(revision_id)
+            for parent_id in parent_ids:
+                # is this queued or done ?
+                if (parent_id not in pending and
+                    parent_id not in done):
+                    # no, queue it.
+                    pending.add(parent_id)
+            result.add_node(revision_id, parent_ids)
+            done.add(result)
+        return result
+
+    def _get_revision_vf(self):
+        """:return: a versioned file containing the revisions."""
+        vf = self._revision_store.get_revision_file(self.get_transaction())
+        return vf
+
+    @needs_write_lock
+    def reconcile(self):
+        """Reconcile this repository."""
+        from bzrlib.reconcile import KnitReconciler
+        reconciler = KnitReconciler(self)
+        reconciler.reconcile()
+        return reconciler
+    
+    def revision_parents(self, revid):
+        return self._get_revision_vf().get_parents(rev_id)
 
 class RepositoryFormat(object):
     """A repository format.
@@ -1188,7 +1343,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
         repo_transport = a_bzrdir.get_repository_transport(None)
         control_files = LockableFiles(repo_transport, 'lock', LockDir)
         control_store = self._get_control_store(repo_transport, control_files)
-        transaction = bzrlib.transactions.PassThroughTransaction()
+        transaction = bzrlib.transactions.WriteTransaction()
         # trigger a write of the inventory store.
         control_store.get_weave_or_empty('inventory', transaction)
         _revision_store = self._get_revision_store(repo_transport, control_files)
@@ -1664,3 +1819,13 @@ class CopyConverter(object):
         """Update the pb by a step."""
         self.count +=1
         self.pb.update(message, self.count, self.total)
+
+
+# Copied from xml.sax.saxutils
+def _unescape_xml(data):
+    """Unescape &amp;, &lt;, and &gt; in a string of data.
+    """
+    data = data.replace("&lt;", "<")
+    data = data.replace("&gt;", ">")
+    # must do ampersand last
+    return data.replace("&amp;", "&")

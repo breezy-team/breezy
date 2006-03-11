@@ -136,6 +136,18 @@ class TestJoin(TestCaseWithTransport):
         self.assertEqual(w1.get_lines('v3'), ['hello\n', 'cruel\n', 'world\n'])
         self.assertEqual(['v2'], w1.get_parents('v3'))
 
+    def test_join_source_has_less_parents_preserves_parents(self):
+        # when the target has a text with more parent info, join 
+        # preserves that.
+        s = self.get_source()
+        s.add_lines('base', [], [])
+        s.add_lines('text', [], [])
+        t = self.get_target()
+        t.add_lines('base', [], [])
+        t.add_lines('text', ['base'], [])
+        t.join(s)
+        self.assertEqual(['base'], t.get_parents('text'))
+
     def test_join_with_ghosts_merges_parents(self):
         """Join combined parent lists"""
         wa = self.build_weave1()
@@ -225,3 +237,72 @@ class TestJoin(TestCaseWithTransport):
         self.assertEqual([], w1.get_parents('a'))
         self.assertEqual(['a'], w1.get_parents('b'))
         self.assertEqual(['b'], w1.get_parents('c'))
+        
+    def test_joining_ghosts(self):
+        # some versioned file formats allow lines to be added with parent
+        # information that is > than that in the format. Formats that do
+        # not support this need to raise NotImplementedError on the
+        # add_lines_with_ghosts api.
+        # files with ghost information when joined into a file which
+        # supports that must preserve it, when joined into a file which
+        # does not must discard it, and when filling a ghost for a listed
+        # ghost must reconcile it
+        source = self.get_source()
+        try:
+            source.has_ghost('a')
+            source_ghosts = True
+        except NotImplementedError:
+            source_ghosts = False
+        target = self.get_target()
+        try:
+            target.has_ghost('a')
+            target_ghosts = True
+        except NotImplementedError:
+            target_ghosts = False
+
+        if not source_ghosts and not target_ghosts:
+            # nothing to do
+            return
+        if source_ghosts and not target_ghosts:
+            # switch source and target so source is ghostless
+            t = source
+            source = target
+            target = source
+            source_ghosts = False
+            target_ghosts = True
+        # now target always supports ghosts.
+
+        # try filling target with ghosts and filling in reverse -  
+        target.add_lines_with_ghosts('notbase', ['base'], [])
+        source.join(target)
+        # legacy apis should behave
+        self.assertEqual(['notbase'], source.get_ancestry(['notbase']))
+        self.assertEqual([], source.get_parents('notbase'))
+        self.assertEqual({'notbase':[]}, source.get_graph())
+        self.assertFalse(source.has_version('base'))
+        if source_ghosts:
+            # ghost data should have been preserved
+            self.assertEqual(['base', 'notbase'], source.get_ancestry_with_ghosts(['notbase']))
+            self.assertEqual(['base'], source.get_parents_with_ghosts('notbase'))
+            self.assertEqual({'notbase':['base']}, source.get_graph_with_ghosts())
+            self.assertTrue(source.has_ghost('base'))
+
+        # if we add something that is fills out what is a ghost, then 
+        # when joining into a ghost aware join it should flesh out the ghosts.
+        source.add_lines('base', [], [])
+        target.join(source, version_ids=['base']) 
+        self.assertEqual(['base', 'notbase'], target.get_ancestry(['notbase']))
+        self.assertEqual(['base'], target.get_parents('notbase'))
+        self.assertEqual({'base':[],
+                          'notbase':['base'],
+                          },
+                         target.get_graph())
+        self.assertTrue(target.has_version('base'))
+        # we have _with_ghost apis to give us ghost information.
+        self.assertEqual(['base', 'notbase'], target.get_ancestry_with_ghosts(['notbase']))
+        self.assertEqual(['base'], target.get_parents_with_ghosts('notbase'))
+        self.assertEqual({'base':[],
+                          'notbase':['base'],
+                          },
+                         target.get_graph_with_ghosts())
+        self.assertFalse(target.has_ghost('base'))

@@ -77,7 +77,8 @@ class Easy(TestBase):
 
 class StoreText(TestBase):
     """Store and retrieve a simple text."""
-    def runTest(self):
+
+    def test_storing_text(self):
         k = Weave()
         idx = k.add_lines('text0', [], TEXT_0)
         self.assertEqual(k.get_lines(idx), TEXT_0)
