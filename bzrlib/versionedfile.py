@@ -457,6 +457,7 @@ class InterVersionedFile(InterObject):
         order = topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
         try:
+            # TODO for incremental cross-format work:
             # make a versioned file with the following content:
             # all revisions we have been asked to join
             # all their ancestors that are *not* in target already.

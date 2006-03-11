@@ -68,7 +68,7 @@ from cStringIO import StringIO
 import difflib
 from difflib import SequenceMatcher
 import gzip
-from itertools import izip
+from itertools import izip, chain
 import os
 
 
@@ -499,6 +499,18 @@ class KnitVersionedFile(VersionedFile):
 
         Any versions not present will be converted into ghosts.
         """
+        #  461    0   6546.0390     43.9100   bzrlib.knit:489(_add)
+        # +400    0    889.4890    418.9790   +bzrlib.knit:192(lower_fulltext)
+        # +461    0   1364.8070    108.8030   +bzrlib.knit:996(add_record)
+        # +461    0    193.3940     41.5720   +bzrlib.knit:898(add_version)
+        # +461    0    134.0590     18.3810   +bzrlib.osutils:361(sha_strings)
+        # +461    0     36.3420     15.4540   +bzrlib.knit:146(make)
+        # +1383   0      8.0370      8.0370   +<len>
+        # +61     0     13.5770      7.9190   +bzrlib.knit:199(lower_line_delta)
+        # +61     0    963.3470      7.8740   +bzrlib.knit:427(_get_content)
+        # +61     0    973.9950      5.2950   +bzrlib.knit:136(line_delta)
+        # +61     0   1918.1800      5.2640   +bzrlib.knit:359(_merge_annotations)
+
         present_parents = []
         ghosts = []
         for parent in parents:
@@ -984,11 +996,15 @@ class _KnitData(_KnitComponentFile):
         """
         sio = StringIO()
         data_file = GzipFile(None, mode='wb', fileobj=sio)
-        print >>data_file, "version %s %d %s" % (version_id.encode('utf-8'), len(lines), digest)
-        data_file.writelines(lines)
-        print >>data_file, "end %s\n" % version_id.encode('utf-8')
+        data_file.writelines(chain(
+            ["version %s %d %s\n" % (version_id.encode('utf-8'), 
+                                     len(lines),
+                                     digest)],
+            lines,
+            ["end %s\n\n" % version_id.encode('utf-8')]))
         data_file.close()
         length= sio.tell()
+
         sio.seek(0)
         return length, sio
 
@@ -1260,7 +1276,6 @@ class GzipFile(gzip.GzipFile):
 
     Yes, its only 1.6 seconds, but they add up.
     """
-
 
     def write(self, data):
         if self.mode != gzip.WRITE:
