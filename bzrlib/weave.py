@@ -827,7 +827,7 @@ class Weave(VersionedFile):
         new_parents = []
         for parent_idx in other._parents[other_idx]:
             parent_name = other._names[parent_idx]
-            if parent_name not in self._names:
+            if parent_name not in self._name_map:
                 # should not be possible
                 raise WeaveError("missing parent {%s} of {%s} in %r" 
                                  % (parent_name, other._name_map[other_idx], self))
