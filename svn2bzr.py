@@ -333,7 +333,6 @@ class BranchCreator(object):
             abspath = branch.__wt.abspath(path_branch)
             if not path_branch:
                 # Do we want to remove the branch or its content?
-                print branch
                 self._log.debug("Removing branch: %s" % abspath)
                 self._remove_branch(branch)
             elif os.path.exists(abspath):
@@ -562,8 +561,7 @@ class DynamicBranchCreator(BranchCreator):
             dest_abspath = os.path.join(self._root, unpref_dest_path)
             (orig_branch,revid) = self._revisions[orig_revno][unpref_orig_path]
             os.makedirs(dest_abspath)
-            orig_branch.clone(to_location=dest_abspath, revision=revid)
-            branch = Branch.open(dest_abspath)
+            branch = orig_branch.clone(to_location=dest_abspath, revision=revid)
             self._branches[unpref_dest_path] = branch
             self._new_branch(branch)
 
@@ -594,7 +592,7 @@ def svn2bzr(dump_file, output_dir, creator_class=None, prefix=None, filter=[]):
     if creator_class is None:
         creator_class = SingleBranchCreator
 
-    dump = Dump(dump_file,log=get_logger())
+    dump = Dump(dump_file,log=get_logger(),cache_interval=10)
 
     creator = creator_class(dump, output_dir, prefix)
 
