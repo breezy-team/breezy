@@ -539,7 +539,7 @@ class DynamicBranchCreator(BranchCreator):
                 branch_path = os.path.join(self._root, unpref_path)
                 os.makedirs(branch_path)
                 branch = Branch.initialize(branch_path)
-                self._branches[unpref_path] = branch
+                self._branches[unpref_path+"/"] = branch
                 self._new_branch(branch)
         else:
             BranchCreator.add_dir(self, path)
@@ -566,7 +566,7 @@ class DynamicBranchCreator(BranchCreator):
             os.makedirs(dest_abspath)
             orig_branch.clone(to_location=dest_abspath, revision=revid)
             branch = Branch.open(dest_abspath)
-            self._branches[unpref_dest_path] = branch
+            self._branches[unpref_dest_path+"/"] = branch
             self._new_branch(branch)
 
     def remove(self, path):
@@ -575,9 +575,8 @@ class DynamicBranchCreator(BranchCreator):
             abspath = os.path.join(self._root, unpref_path)
             if os.path.isdir(abspath):
                 shutil.rmtree(abspath)
-                path += "/"
                 for branch_path in self._branches.keys():
-                    if branch_path.startswith(path):
+                    if branch_path.startswith(path+"/"):
                         del self._branches[branch_path]
         else:
             BranchCreator.remove(self, path)
