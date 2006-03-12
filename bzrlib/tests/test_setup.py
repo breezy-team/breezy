@@ -8,13 +8,19 @@ import shutil
 from bzrlib.tests import TestCase
 
 
+# TODO: ideally run this in a separate directory, so as not to clobber the
+# real build directory
+
 class TestSetup(TestCase):
 
     def setUp(self):
         pass
 
     def test_build(self):
-        """ test cmd `python setup.py build` """
+        """ test cmd `python setup.py build`
+        
+        This typically catches new subdirectories which weren't added to setup.py
+        """
         # run setup.py build as subproces and catch return code
         p = subprocess.Popen([sys.executable, 'setup.py', 'build'],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -23,4 +29,5 @@ class TestSetup(TestCase):
 
     def tearDown(self):
         """ cleanup build directory """
-        shutil.rmtree(u'build')
+        if os.path.exists('build'):
+            shutil.rmtree(u'build')
