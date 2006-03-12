@@ -90,13 +90,11 @@ class TestHttpUrls(TestCase):
         except DependencyNotPresent:
             raise TestSkipped('pycurl not present')
 
-class TestHttpConnections(TestCaseWithWebserver):
+class TestHttpMixins(object):
 
-    _transport = HttpTransport_urllib
-
-    def setUp(self):
-        super(TestHttpConnections, self).setUp()
-        self.build_tree(['xxx', 'foo/', 'foo/bar'], line_endings='binary')
+    def _prep_tree(self):
+        self.build_tree(['xxx', 'foo/', 'foo/bar'], line_endings='binary',
+                        transport=self.get_transport())
 
     def test_http_has(self):
         server = self.get_readonly_server()
@@ -125,15 +123,30 @@ class TestHttpConnections(TestCaseWithWebserver):
             '"GET /foo/bar HTTP/1.1" 200 - "-" "bzr/%s' % bzrlib.__version__) > -1)
 
 
-class TestHttpConnections_pycurl(TestHttpConnections):
+class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
+    _transport = HttpTransport_urllib
 
     def setUp(self):
-        super(TestHttpConnections_pycurl, self).setUp()
+        TestCaseWithWebserver.setUp(self)
+        self._prep_tree()
+
+
+
+class TestHttpConnections_pycurl(TestCaseWithWebserver, TestHttpMixins):
+
+    def _get_pycurl_maybe(self):
         try:
             from bzrlib.transport.http._pycurl import PyCurlTransport
             self._transport = PyCurlTransport
         except DependencyNotPresent:
             raise TestSkipped('pycurl not present')
+
+    _transport = property(_get_pycurl_maybe)
+
+    def setUp(self):
+        TestCaseWithWebserver.setUp(self)
+        self._prep_tree()
+
 
 
 class TestHttpTransportRegistration(TestCase):
