@@ -280,7 +280,7 @@ class Weave(VersionedFile):
         """Please use Weave.clone_text now."""
         return self.clone_text(new_rev_id, old_rev_id, parents)
 
-    def _add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines, parent_texts):
         """See VersionedFile.add_lines."""
         return self._add(version_id, lines, map(self._lookup, parents))
 
@@ -905,10 +905,12 @@ class WeaveFile(Weave):
             # new file, save it
             self._save()
 
-    def _add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines, parent_texts):
         """Add a version and save the weave."""
-        super(WeaveFile, self)._add_lines(version_id, parents, lines)
+        result = super(WeaveFile, self)._add_lines(version_id, parents, lines,
+                                                   parent_texts)
         self._save()
+        return result
 
     def _clone_text(self, new_version_id, old_version_id, parents):
         """See VersionedFile.clone_text."""

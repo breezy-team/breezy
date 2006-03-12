@@ -66,6 +66,44 @@ class VersionedFileTestMixIn(object):
         f = self.reopen_file()
         verify_file(f)
 
+    def test_adds_with_parent_texts(self):
+        f = self.get_file()
+        parent_texts = {}
+        parent_texts['r0'] = f.add_lines('r0', [], ['a\n', 'b\n'])
+        try:
+            parent_texts['r1'] = f.add_lines_with_ghosts('r1',
+                                                         ['r0', 'ghost'], 
+                                                         ['b\n', 'c\n'],
+                                                         parent_texts=parent_texts)
+        except NotImplementedError:
+            # if the format doesn't support ghosts, just add normally.
+            parent_texts['r1'] = f.add_lines('r1',
+                                             ['r0'], 
+                                             ['b\n', 'c\n'],
+                                             parent_texts=parent_texts)
+        f.add_lines('r2', ['r1'], ['c\n', 'd\n'], parent_texts=parent_texts)
+        self.assertNotEqual(None, parent_texts['r0'])
+        self.assertNotEqual(None, parent_texts['r1'])
+        def verify_file(f):
+            versions = f.versions()
+            self.assertTrue('r0' in versions)
+            self.assertTrue('r1' in versions)
+            self.assertTrue('r2' in versions)
+            self.assertEquals(f.get_lines('r0'), ['a\n', 'b\n'])
+            self.assertEquals(f.get_lines('r1'), ['b\n', 'c\n'])
+            self.assertEquals(f.get_lines('r2'), ['c\n', 'd\n'])
+            self.assertEqual(3, f.num_versions())
+            origins = f.annotate('r1')
+            self.assertEquals(origins[0][0], 'r0')
+            self.assertEquals(origins[1][0], 'r1')
+            origins = f.annotate('r2')
+            self.assertEquals(origins[0][0], 'r1')
+            self.assertEquals(origins[1][0], 'r2')
+
+        verify_file(f)
+        f = self.reopen_file()
+        verify_file(f)
+
     def test_ancestry(self):
         f = self.get_file()
         self.assertEqual([], f.get_ancestry([]))

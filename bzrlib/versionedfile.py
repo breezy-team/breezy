@@ -78,7 +78,7 @@ class VersionedFile(object):
         """Returns whether version is present."""
         raise NotImplementedError(self.has_version)
 
-    def add_lines(self, version_id, parents, lines):
+    def add_lines(self, version_id, parents, lines, parent_texts=None):
         """Add a single text on top of the versioned file.
 
         Must raise RevisionAlreadyPresent if the new version is
@@ -86,20 +86,33 @@ class VersionedFile(object):
 
         Must raise RevisionNotPresent if any of the given parents are
         not present in file history.
+        :param parent_texts: An optional dictionary containing the opaque 
+                             representations of some or all of the parents of 
+                             version_id to allow delta optimisations. 
+                             VERY IMPORTANT: the texts must be those returned
+                             by add_lines or data corruption can be caused.
+        :return: An opaque representation of the inserted version which can be
+                 provided back to future add_lines calls in the parent_texts
+                 dictionary.
         """
         self._check_write_ok()
-        return self._add_lines(version_id, parents, lines)
+        return self._add_lines(version_id, parents, lines, parent_texts)
 
-    def _add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines, parent_texts):
         """Helper to do the class specific add_lines."""
         raise NotImplementedError(self.add_lines)
 
-    def add_lines_with_ghosts(self, version_id, parents, lines):
-        """Add lines to the versioned file, allowing ghosts to be present."""
+    def add_lines_with_ghosts(self, version_id, parents, lines,
+                              parent_texts=None):
+        """Add lines to the versioned file, allowing ghosts to be present.
+        
+        This takes the same parameters as add_lines.
+        """
         self._check_write_ok()
-        return self._add_lines_with_ghosts(version_id, parents, lines)
+        return self._add_lines_with_ghosts(version_id, parents, lines,
+                                           parent_texts)
 
-    def _add_lines_with_ghosts(self, version_id, parents, lines):
+    def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts):
         """Helper to do class specific add_lines_with_ghosts."""
         raise NotImplementedError(self.add_lines_with_ghosts)
 
@@ -456,6 +469,7 @@ class InterVersionedFile(InterObject):
         graph = self.source.get_graph()
         order = topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
+        parent_texts = {}
         try:
             # TODO for incremental cross-format work:
             # make a versioned file with the following content:
@@ -467,11 +481,15 @@ class InterVersionedFile(InterObject):
             # TODO: for all ancestors that are present in target already,
             # check them for consistent data, this requires moving sha1 from
             # 
+            # TODO: remove parent texts when they are not relevant any more for 
+            # memory pressure reduction. RBC 20060313
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, len(order))
-                target.add_lines(version,
-                                 self.source.get_parents(version),
-                                 self.source.get_lines(version))
+                parent_text = target.add_lines(version,
+                                               self.source.get_parents(version),
+                                               self.source.get_lines(version),
+                                               parent_texts=parent_texts)
+                parent_texts[version] = parent_text
             
             # this should hit the native code path for target
             if target is not self.target:

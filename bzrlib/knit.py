@@ -124,7 +124,7 @@ class KnitContent(object):
             offset = offset + (start - end) + count
 
     def line_delta_iter(self, new_lines):
-        """Generate line-based delta from new_lines to this content."""
+        """Generate line-based delta from this content to new_lines."""
         new_texts = [text for origin, text in new_lines._lines]
         old_texts = [text for origin, text in self._lines]
         s = difflib.SequenceMatcher(None, old_texts, new_texts)
@@ -356,12 +356,12 @@ class KnitVersionedFile(VersionedFile):
 
     __contains__ = has_version
 
-    def _merge_annotations(self, content, parents):
+    def _merge_annotations(self, content, parents, parent_texts={}):
         """Merge annotations for content.  This is done by comparing
         the annotations based on changed to the text.
         """
         for parent_id in parents:
-            merge_content = self._get_content(parent_id)
+            merge_content = self._get_content(parent_id, parent_texts)
             seq = SequenceMatcher(None, merge_content.text(), content.text())
             for i, j, n in seq.get_matching_blocks():
                 if n == 0:
@@ -429,11 +429,15 @@ class KnitVersionedFile(VersionedFile):
 
         return out
 
-    def _get_content(self, version_id):
+    def _get_content(self, version_id, parent_texts={}):
         """Returns a content object that makes up the specified
         version."""
         if not self.has_version(version_id):
             raise RevisionNotPresent(version_id, self.filename)
+
+        cached_version = parent_texts.get(version_id, None)
+        if cached_version is not None:
+            return cached_version
 
         if self.basis_knit and version_id in self.basis_knit:
             return self.basis_knit._get_content(version_id)
@@ -467,16 +471,16 @@ class KnitVersionedFile(VersionedFile):
         if version_ids:
             raise RevisionNotPresent(list(version_ids)[0], self.filename)
 
-    def _add_lines_with_ghosts(self, version_id, parents, lines):
+    def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts):
         """See VersionedFile.add_lines_with_ghosts()."""
         self._check_add(version_id, lines)
-        return self._add(version_id, lines[:], parents, self.delta)
+        return self._add(version_id, lines[:], parents, self.delta, parent_texts)
 
-    def _add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines, parent_texts):
         """See VersionedFile.add_lines."""
         self._check_add(version_id, lines)
         self._check_versions_present(parents)
-        return self._add(version_id, lines[:], parents, self.delta)
+        return self._add(version_id, lines[:], parents, self.delta, parent_texts)
 
     def _check_add(self, version_id, lines):
         """check that version_id and lines are safe to add."""
@@ -491,7 +495,7 @@ class KnitVersionedFile(VersionedFile):
             for l in lines:
                 assert '\n' not in l[:-1]
 
-    def _add(self, version_id, lines, parents, delta):
+    def _add(self, version_id, lines, parents, delta, parent_texts):
         """Add a set of lines on top of version specified by parents.
 
         If delta is true, compress the text as a line-delta against
@@ -513,6 +517,8 @@ class KnitVersionedFile(VersionedFile):
 
         present_parents = []
         ghosts = []
+        if parent_texts is None:
+            parent_texts = {}
         for parent in parents:
             if not self.has_version(parent):
                 ghosts.append(parent)
@@ -528,11 +534,6 @@ class KnitVersionedFile(VersionedFile):
             if lines[-1][-1] != '\n':
                 options.append('no-eol')
                 lines[-1] = lines[-1] + '\n'
-
-        lines = self.factory.make(lines, version_id)
-        if self.factory.annotated and len(present_parents) > 0:
-            # Merge annotations from parent texts if so is needed.
-            self._merge_annotations(lines, present_parents)
 
         if len(present_parents) and delta:
             # To speed the extract of texts the delta chain is limited
@@ -550,9 +551,14 @@ class KnitVersionedFile(VersionedFile):
             if method == 'line-delta':
                 delta = False
 
+        lines = self.factory.make(lines, version_id)
+        if self.factory.annotated and len(present_parents) > 0:
+            # Merge annotations from parent texts if so is needed.
+            self._merge_annotations(lines, present_parents, parent_texts)
+
         if delta:
             options.append('line-delta')
-            content = self._get_content(present_parents[0])
+            content = self._get_content(present_parents[0], parent_texts)
             delta_hunks = content.line_delta(lines)
             store_lines = self.factory.lower_line_delta(delta_hunks)
         else:
@@ -561,6 +567,7 @@ class KnitVersionedFile(VersionedFile):
 
         where, size = self._data.add_record(version_id, digest, store_lines)
         self._index.add_version(version_id, options, where, size, parents)
+        return lines
 
     def check(self, progress_bar=None):
         """See VersionedFile.check()."""
