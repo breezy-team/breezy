@@ -701,8 +701,7 @@ class _KnitComponentFile(object):
         self._mode = mode
 
     def write_header(self):
-        old_len = self._transport.append(self._filename, StringIO(self.HEADER))
-        if old_len != 0:
+        if self._transport.append(self._filename, StringIO(self.HEADER)):
             raise KnitCorrupt(self._filename, 'misaligned after writing header')
 
     def check_header(self, fp):
