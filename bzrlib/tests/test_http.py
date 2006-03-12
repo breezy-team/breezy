@@ -25,7 +25,6 @@ from bzrlib.tests import TestCase
 from bzrlib.transport import Transport
 from bzrlib.transport.http import extract_auth
 from bzrlib.transport.http._urllib import HttpTransport_urllib
-from bzrlib.transport.http._pycurl import PyCurlTransport
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 
 class FakeManager (object):
@@ -127,10 +126,14 @@ class TestHttpConnections(TestCaseWithWebserver):
 
 
 class TestHttpConnections_pycurl(TestHttpConnections):
-    _transport = PyCurlTransport
 
     def setUp(self):
         super(TestHttpConnections_pycurl, self).setUp()
+        try:
+            from bzrlib.transport.http._pycurl import PyCurlTransport
+            self._transport = PyCurlTransport
+        except errors.DependencyNotPresent:
+            raise TestSkipped('pycurl not present')
 
 
 class TestHttpTransportRegistration(TestCase):
