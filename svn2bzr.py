@@ -115,6 +115,7 @@ class BranchCreator(object):
     def _new_branch(self, branch):
         # Ugly, but let's wait until that API stabilizes. Right
         # now branch.working_tree() will open the branch again.
+        self._log.debug("Creating new branch: %s" % branch.base)
         branch.__wt = branch.working_tree()
 
     def _remove_branch(self, branch):
@@ -500,7 +501,7 @@ class DynamicBranchCreator(BranchCreator):
     def _remove_branch(self, branch):
         # Retire a branch to the attic
         rel_path = branch.base[len(self._root)+1:]
-        attic_branch = "%s-r%d" % (os.path.basename(rel_path), self._revisions.keys()[-1])
+        attic_branch = "%s-r%d" % (os.path.basename(rel_path.rstrip("/")), self._revisions.keys()[-1])
         branch_top = os.path.join(self._root, DynamicBranchCreator.ATTICDIR, os.path.dirname(rel_path))
         if not os.path.isdir(branch_top):
             os.makedirs(branch_top)
@@ -525,7 +526,7 @@ class DynamicBranchCreator(BranchCreator):
 
     def _get_branch(self, path):
         for (bp,branch) in self._branches.items():
-            if path == bp or path.startswith(bp+"/") or (path+"/") == bp:
+            if path == bp or path.startswith(bp) or (path+"/") == bp:
                 return branch
 
     def _get_all_branches(self):
@@ -585,7 +586,7 @@ class DynamicBranchCreator(BranchCreator):
 class TrunkBranchCreator(DynamicBranchCreator):
 
     def _want_branch(self, path):
-        return path not in ("tags", "branches")
+        return path not in ("", "tags", "branches")
 
 
 class DumpEntry(dict):
@@ -633,7 +634,12 @@ class Dump(object):
     COMPLETE_CACHE_INTERVAL = 100
 
     def __init__(self, file=None, log=None):
-        self._dump = []           # [entry, ... ]
+        root = DumpEntry()
+        root['node-action'] = 'add'
+        root['node-kind'] = 'dir'
+        root['node-path'] = ''
+        
+        self._dump = [root]       # [entry, ... ]
         self._revision_index = {} # {revno: dump index, ...}
         self._revision_slice = {} # {revno: dump slice, ...}
         self._revision_order = [] # [revno, ... ]
@@ -643,8 +649,8 @@ class Dump(object):
         self._tree_cache_mem = {}
         self._tree_cache_mem_order = []
 
-        self._path_id = {} # {path: id, ...}
-        self._id_path = {} # {id: path, ...}
+        self._path_id = {'': 0} # {path: id, ...}
+        self._id_path = {0: ''} # {id: path, ...}
 
         self._log = log or get_logger()
 
@@ -825,7 +831,7 @@ class Dump(object):
 
             if node_path_id not in tree:
                 raise IncrementalDumpError, \
-                      "Dump references a missing node %s with id %d" % (node_path, node_path_id)
+                      "Dump references missing node %s with id %d" % (node_path, node_path_id)
 
             tree_entry = self._dump[tree[node_path_id]]
 
@@ -856,7 +862,7 @@ class Dump(object):
         last_saved_len = 0
         copied_something = False
 
-        tree = {0:1}
+        tree = {0:0}
 
         revno = -1
 
@@ -938,7 +944,7 @@ class Dump(object):
                 self._revision_order.append(revno)
 
                 if (copied_something or
-                    (last_saved_len+Dump.COMPLETE_CACHE_INTERVAL<= len(self._revision_index))):
+                    (last_saved_len + Dump.COMPLETE_CACHE_INTERVAL <= len(self._revision_index))):
                     last_saved_len = len(self._revision_index)
                     self._save_tree(revno, tree)
                 else:
@@ -974,8 +980,6 @@ def svn2bzr(dump_file, output_dir, creator_class=None, prefix=None, filter=[]):
         creator_class = SingleBranchCreator
 
     dump = Dump(dump_file)
-
-    os.mkdir(output_dir)
 
     creator = creator_class(dump, output_dir, prefix)
 
