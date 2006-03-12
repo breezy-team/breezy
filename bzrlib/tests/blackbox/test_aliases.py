@@ -24,8 +24,8 @@ class TestAliases(TestCaseInTempDir):
             # Something is wrong in environment, 
             # we risk overwriting users config 
             self.assert_(config_filename() + "exists, abort")
-            
-        os.mkdir(config_dir())
+        
+        os.makedirs(config_dir())
         CONFIG=("[ALIASES]\n"
                 "c=cat\n"
                 "c1=cat -r 1\n"
