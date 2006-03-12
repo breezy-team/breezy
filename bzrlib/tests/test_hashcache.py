@@ -21,7 +21,7 @@ import time
 
 from bzrlib.errors import BzrError
 from bzrlib.hashcache import HashCache
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir, TestSkipped
 
 
 def sha1(t):
@@ -131,8 +131,10 @@ class TestHashCache(TestCaseInTempDir):
         ok = False
 
         # make a best effort to create a weird kind of file
-        funcs = (os.mkfifo, os.mknod)
+        funcs = (getattr(os, 'mkfifo', None), getattr(os, 'mknod', None))
         for func in funcs:
+            if func is None:
+                continue
             try:
                 func('a')
                 ok = True
@@ -143,4 +145,4 @@ class TestHashCache(TestCaseInTempDir):
         if ok:
             self.assertRaises(BzrError, hc.get_sha1, 'a')
         else:
-            raise BzrError("no weird file type could be created: extend this test case for your os")
+            raise TestSkipped('No weird file type could be created')
