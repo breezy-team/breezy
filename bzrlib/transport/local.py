@@ -138,6 +138,8 @@ class LocalTransport(Transport):
             fp = open(self.abspath(relpath), 'ab')
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
+        # win32 workaround (tell on an unwritten file returns 0)
+        fp.seek(0, 2)
         result = fp.tell()
         self._pump(f, fp)
         return result
