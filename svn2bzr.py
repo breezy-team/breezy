@@ -248,17 +248,18 @@ class BranchCreator(object):
         from bzrlib.atomicfile import AtomicFile
         branch, path_branch = self._get_branch_path(path)
 
+        if branch is None:
+            self._log.debug("Ignoring out-of-branch ignore settings on %s" % path)
+            return
+
         # Obtain list of existing ignores
         ifn = branch.working_tree().abspath('.bzrignore')
 
         if os.path.exists(ifn):
             f = open(ifn, 'rt')
-            try:
-                igns = f.read().decode('utf-8').split("\n")
-                f.close()
-                os.unlink(ifn)
-            finally:
-                pass
+            igns = f.read().decode('utf-8').split("\n")
+            f.close()
+            os.unlink(ifn)
         else:
             igns = []
 
@@ -275,14 +276,13 @@ class BranchCreator(object):
                 globs.remove(ign)
 
         # The remaining items didn't exist yet
-        igns.append(globs)
+        for ign in globs:
+            igns.append(ign)
             
-        try:
-            f = AtomicFile(ifn, 'wt')
-            f.write("\n".join(igns).encode('utf-8'))
-            f.commit()
-        finally:
-            f.close()
+        f = AtomicFile(ifn, 'wt')
+        data = "\n".join(igns)
+        f.write(data.encode('utf-8'))
+        f.commit()
 
         if not branch.working_tree().path2id('.bzrignore'):
             branch.working_tree().add(['.bzrignore'])
@@ -291,6 +291,10 @@ class BranchCreator(object):
 
     def set_executable(self, path, executable):
         branch, path_branch = self._get_branch_path(path)
+        if branch is None:
+            self._log.debug("Ignoring out-of-branch executable settings on %s" % path)
+            return
+
         abspath = branch.working_tree().abspath(path_branch)
         mode = os.stat(abspath).st_mode
         if executable:
@@ -394,7 +398,7 @@ class BranchCreator(object):
             
             if "revision-number" in entry:
 
-                if revision is not None and revno != 0:
+                if revision is not None:
                     commit()
 
                 revision = entry
@@ -805,7 +809,7 @@ class Dump(object):
 
             if node_path_id not in tree:
                 raise IncrementalDumpError, \
-                      "Dump references missing revision %s" % node_path_id
+                      "Dump references missing node %s with id %d" % (node_path, node_path_id)
 
             if building:
                 entry.change_from = self._dump[tree[node_path_id]]
@@ -822,7 +826,7 @@ class Dump(object):
 
             if node_path_id not in tree:
                 raise IncrementalDumpError, \
-                      "Dump references a missing revision %s" % node_path_id
+                      "Dump references a missing node %s with id %d" % (node_path, node_path_id)
 
             tree_entry = self._dump[tree[node_path_id]]
 
@@ -848,11 +852,12 @@ class Dump(object):
                      "node-copyfrom-rev"]:
             convert_to_int[intern(name)] = True
 
-        revision = revision_index = None
+        revision = {}
+        revision_index = 0
         last_saved_len = 0
         copied_something = False
 
-        tree = {}
+        tree = {0:1}
 
         revno = -1
 
@@ -925,26 +930,25 @@ class Dump(object):
 
             elif "revision-number" in entry:
 
-                if revision:
-                    self._log.info("Revision %d read" % entry['revision-number'])
-                    self._log.debug("Tree has %d entries" % len(tree))
+                self._log.info("Revision %d read" % entry['revision-number'])
+                self._log.debug("Tree has %d entries" % len(tree))
 
-                    self._revision_index[revno] = revision_index
-                    self._revision_slice[revno] = slice(revision_index+1,
-                                                        current_index)
-                    self._revision_order.append(revno)
+                self._revision_index[revno] = revision_index
+                self._revision_slice[revno] = slice(revision_index+1,
+                                                    current_index)
+                self._revision_order.append(revno)
 
-                    if (copied_something or
-                        (last_saved_len+Dump.COMPLETE_CACHE_INTERVAL<= len(self._revision_index))):
-                        last_saved_len = len(self._revision_index)
-                        self._save_tree(revno, tree)
-                    else:
-                        if len(self._tree_cache_mem) > 3:
-                            top = self._tree_cache_mem_order[0]
-                            del self._tree_cache_mem[top]
-                            del self._tree_cache_mem_order[0]
-                        self._tree_cache_mem[revno] = tree.copy()
-                        self._tree_cache_mem_order.append(revno)
+                if (copied_something or
+                    (last_saved_len+Dump.COMPLETE_CACHE_INTERVAL<= len(self._revision_index))):
+                    last_saved_len = len(self._revision_index)
+                    self._save_tree(revno, tree)
+                else:
+                    if len(self._tree_cache_mem) > 3:
+                        top = self._tree_cache_mem_order[0]
+                        del self._tree_cache_mem[top]
+                        del self._tree_cache_mem_order[0]
+                    self._tree_cache_mem[revno] = tree.copy()
+                    self._tree_cache_mem_order.append(revno)
 
                 revno = entry["revision-number"]
                 revision = entry
