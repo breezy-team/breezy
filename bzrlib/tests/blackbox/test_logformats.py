@@ -102,7 +102,7 @@ def setup_config():
                 # we risk overwriting users config 
                 self.assert_(config_filename() + "exists, abort")
             
-        os.mkdir(config_dir())
+        os.makedirs(config_dir())
         CONFIG=("[DEFAULT]\n"
                 "email=Joe Foo <joe@foo.com>\n"
                 "log_format=line\n")
