@@ -3,6 +3,7 @@
 # Copyright (C) 2005 by Canonical Ltd
 #
 # Written by Gustavo Niemeyer <gustavo@niemeyer.net>
+# Bugfixes and additional features by Jelmer Vernooij <jelmer@samba.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
