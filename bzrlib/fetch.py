@@ -36,10 +36,11 @@ import bzrlib.errors as errors
 from bzrlib.errors import (InstallFailed, NoSuchRevision,
                            MissingText)
 from bzrlib.trace import mutter
-from bzrlib.progress import ProgressBar
+from bzrlib.progress import ProgressBar, ProgressPhase
 from bzrlib.reconcile import RepoReconciler
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import *
+import bzrlib.ui
 
 
 # TODO: Avoid repeatedly opening weaves so many times.
@@ -124,19 +125,23 @@ class RepoFetcher(object):
         self.from_control = self.from_repository.control_weaves
         self.count_total = 0
         self.file_ids_names = {}
+        pp = ProgressPhase('fetch phase', 4, self.pb)
         try:
+            pp.next_phase()
             revs = self._revids_to_fetch()
             # nothing to do
             if revs: 
+                pp.next_phase()
                 self._fetch_weave_texts(revs)
+                pp.next_phase()
                 self._fetch_inventory_weave(revs)
+                pp.next_phase()
                 self._fetch_revision_texts(revs)
                 self.count_copied += len(revs)
         finally:
             self.pb.clear()
 
     def _revids_to_fetch(self):
-        self.pb.update('get destination history')
         mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:
             # explicit limit of no revisions needed
@@ -155,45 +160,62 @@ class RepoFetcher(object):
         file_ids = self.from_repository.fileid_involved_by_set(revs)
         count = 0
         num_file_ids = len(file_ids)
-        for file_id in file_ids:
-            self.pb.update("merge weaves", count, num_file_ids)
-            count +=1
-            to_weave = self.to_weaves.get_weave_or_empty(file_id,
-                self.to_repository.get_transaction())
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            for file_id in file_ids:
+                pb.update("merge weaves", count, num_file_ids)
+                count +=1
+                to_weave = self.to_weaves.get_weave_or_empty(file_id,
+                    self.to_repository.get_transaction())
 
-            if to_weave.num_versions() > 0:
-                # destination has contents, must merge
-                from_weave = self.from_weaves.get_weave(file_id,
-                    self.from_repository.get_transaction())
-                # we fetch all the texts, because texts do
-                # not reference anything, and its cheap enough
-                to_weave.join(from_weave)
-            else:
-                # destination is empty, just copy it.
-                # this copies all the texts, which is useful and 
-                # on per-file basis quite cheap.
-                self.to_weaves.copy_multi(self.from_weaves, [file_id], self.pb,
-                                          self.from_repository.get_transaction(),
-                                          self.to_repository.get_transaction())
-        self.pb.clear()
+                if to_weave.num_versions() > 0:
+                    # destination has contents, must merge
+                    from_weave = self.from_weaves.get_weave(file_id,
+                        self.from_repository.get_transaction())
+                    # we fetch all the texts, because texts do
+                    # not reference anything, and its cheap enough
+                    to_weave.join(from_weave)
+                else:
+                    # destination is empty, just copy it.
+                    # this copies all the texts, which is useful and 
+                    # on per-file basis quite cheap.
+                    child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+                    try:
+                        from_repo = self.from_repository
+                        from_transaction = from_repo.get_transaction()
+                        to_transaction = self.to_repository.get_transaction()
+                        self.to_weaves.copy_multi(self.from_weaves, [file_id],
+                                                  child_pb, from_transaction,
+                                                  to_transaction)
+                    finally:
+                        child_pb.finished()
+        finally:
+            pb.finished()
 
     def _fetch_inventory_weave(self, revs):
-        self.pb.update("inventory fetch", 0, 2)
-        to_weave = self.to_control.get_weave('inventory',
-                self.to_repository.get_transaction())
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            pb.update("inventory fetch", 0, 3)
+            to_weave = self.to_control.get_weave('inventory',
+                    self.to_repository.get_transaction())
 
-        # just merge, this is optimisable and its means we dont
-        # copy unreferenced data such as not-needed inventories.
-        self.pb.update("inventory fetch", 1, 2)
-        from_weave = self.from_repository.get_inventory_weave()
-        self.pb.update("inventory fetch", 2, 2)
-        # we fetch only the referenced inventories because we do not
-        # know for unselected inventories whether all their required
-        # texts are present in the other repository - it could be
-        # corrupt.
-        to_weave.join(from_weave, pb=self.pb, msg='merge inventory',
-                      version_ids=revs)
-        self.pb.clear()
+            child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            try:
+                # just merge, this is optimisable and its means we dont
+                # copy unreferenced data such as not-needed inventories.
+                pb.update("inventory fetch", 1, 3)
+                from_weave = self.from_repository.get_inventory_weave()
+                pb.update("inventory fetch", 2, 3)
+                # we fetch only the referenced inventories because we do not
+                # know for unselected inventories whether all their required
+                # texts are present in the other repository - it could be
+                # corrupt.
+                to_weave.join(from_weave, pb=child_pb, msg='merge inventory',
+                              version_ids=revs)
+            finally:
+                child_pb.finished()
+        finally:
+            pb.finished()
 
 
 class GenericRepoFetcher(RepoFetcher):
@@ -207,20 +229,25 @@ class GenericRepoFetcher(RepoFetcher):
         self.to_transaction = self.to_repository.get_transaction()
         count = 0
         total = len(revs)
-        for rev in revs:
-            self.pb.update('copying revisions', count, total)
-            try:
-                sig_text = self.from_repository.get_signature_text(rev)
-                self.to_repository._revision_store.add_revision_signature_text(
-                    rev, sig_text, self.to_transaction)
-            except errors.NoSuchRevision:
-                # not signed.
-                pass
-            self.to_repository._revision_store.add_revision(
-                self.from_repository.get_revision(rev),
-                self.to_transaction)
-            count += 1
-        self.pb.update('copying revisions', count, total)
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            for rev in revs:
+                pb.update('copying revisions', count, total)
+                try:
+                    sig_text = self.from_repository.get_signature_text(rev)
+                    store = self.to_repository._revision_store
+                    store.add_revision_signature_text(rev, sig_text,
+                                                      self.to_transaction)
+                except errors.NoSuchRevision:
+                    # not signed.
+                    pass
+                self.to_repository._revision_store.add_revision(
+                    self.from_repository.get_revision(rev),
+                    self.to_transaction)
+                count += 1
+            pb.update('copying revisions', count, total)
+        finally:
+            pb.finished()
         # fixup inventory if needed: 
         # this is expensive because we have no inverse index to current ghosts.
         # but on local disk its a few seconds and sftp push is already insane.

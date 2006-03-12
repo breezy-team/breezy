@@ -646,6 +646,13 @@ def urlescape(relpath):
     return urllib.quote(relpath)
 
 
+def urlunescape(relpath):
+    """Unescape relpath from url format."""
+    import urllib
+    return urllib.unquote(relpath)
+    # TODO de-utf8 it last. relpath = utf8relpath.decode('utf8')
+
+
 class Server(object):
     """A Transport Server.
     
