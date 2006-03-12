@@ -20,8 +20,8 @@
 # TODO: Should be renamed to bzrlib.transport.http.tests?
 
 import bzrlib
-import bzrlib.errors as errors
-from bzrlib.tests import TestCase
+from bzrlib.errors import DependencyNotPresent
+from bzrlib.tests import TestCase, TestSkipped
 from bzrlib.transport import Transport
 from bzrlib.transport.http import extract_auth
 from bzrlib.transport.http._urllib import HttpTransport_urllib
@@ -87,7 +87,7 @@ class TestHttpUrls(TestCase):
                 self.assertTrue(url.startswith('http+pycurl://'))
             finally:
                 server.tearDown()
-        except errors.DependencyNotPresent:
+        except DependencyNotPresent:
             raise TestSkipped('pycurl not present')
 
 class TestHttpConnections(TestCaseWithWebserver):
@@ -132,7 +132,7 @@ class TestHttpConnections_pycurl(TestHttpConnections):
         try:
             from bzrlib.transport.http._pycurl import PyCurlTransport
             self._transport = PyCurlTransport
-        except errors.DependencyNotPresent:
+        except DependencyNotPresent:
             raise TestSkipped('pycurl not present')
 
 

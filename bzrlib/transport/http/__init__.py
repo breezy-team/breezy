@@ -470,5 +470,7 @@ class HttpServer(Server):
         
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
-        return 'http://jasldkjsalkdjalksjdkljasd'
+        # this is chosen to try to prevent trouble with proxies, wierd dns,
+        # etc
+        return 'http://127.0.0.1:1/'
 
