@@ -356,21 +356,44 @@ class KnitVersionedFile(VersionedFile):
 
     __contains__ = has_version
 
-    def _merge_annotations(self, content, parents, parent_texts={}):
+    def _merge_annotations(self, content, parents, parent_texts={},
+                           delta=None, annotated=None):
         """Merge annotations for content.  This is done by comparing
         the annotations based on changed to the text.
         """
-        for parent_id in parents:
-            merge_content = self._get_content(parent_id, parent_texts)
-            seq = SequenceMatcher(None, merge_content.text(), content.text())
-            for i, j, n in seq.get_matching_blocks():
-                if n == 0:
+        diff_hunks = []
+        if delta:
+            reference_content = self._get_content(parents[0], parent_texts)
+            new_texts = [text for origin, text in content._lines]
+            old_texts = [text for origin, text in reference_content._lines]
+            delta_seq = difflib.SequenceMatcher(None, old_texts, new_texts)
+            for op in delta_seq.get_opcodes():
+                if op[0] == 'equal':
                     continue
-                # this appears to copy (origin, text) pairs across to the new
-                # content for any line that matches the last-checked parent.
-                # FIXME: save the sequence control data for delta compression
-                # against the most relevant parent rather than rediffing.
-                content._lines[j:j+n] = merge_content._lines[i:i+n]
+                diff_hunks.append((op[1], op[2], op[4]-op[3], content._lines[op[3]:op[4]]))
+        if annotated:
+            # reuse the delta_sequencer if possible:
+            if delta:
+                for i, j, n in delta_seq.get_matching_blocks():
+                    if n == 0:
+                        continue
+                    # this appears to copy (origin, text) pairs across to the new
+                    # content for any line that matches the last-checked parent.
+                    # FIXME: save the sequence control data for delta compression
+                    # against the most relevant parent rather than rediffing.
+                    content._lines[j:j+n] = reference_content._lines[i:i+n]
+            for parent_id in parents[1:]:
+                merge_content = self._get_content(parent_id, parent_texts)
+                seq = SequenceMatcher(None, merge_content.text(), content.text())
+                for i, j, n in seq.get_matching_blocks():
+                    if n == 0:
+                        continue
+                    # this appears to copy (origin, text) pairs across to the new
+                    # content for any line that matches the last-checked parent.
+                    # FIXME: save the sequence control data for delta compression
+                    # against the most relevant parent rather than rediffing.
+                    content._lines[j:j+n] = merge_content._lines[i:i+n]
+        return diff_hunks
 
     def _get_components(self, version_id):
         """Return a list of (version_id, method, data) tuples that
@@ -552,14 +575,13 @@ class KnitVersionedFile(VersionedFile):
                 delta = False
 
         lines = self.factory.make(lines, version_id)
-        if self.factory.annotated and len(present_parents) > 0:
+        if delta or (self.factory.annotated and len(present_parents) > 0):
             # Merge annotations from parent texts if so is needed.
-            self._merge_annotations(lines, present_parents, parent_texts)
+            delta_hunks = self._merge_annotations(lines, present_parents, parent_texts,
+                                                  delta, self.factory.annotated)
 
         if delta:
             options.append('line-delta')
-            content = self._get_content(present_parents[0], parent_texts)
-            delta_hunks = content.line_delta(lines)
             store_lines = self.factory.lower_line_delta(delta_hunks)
         else:
             options.append('fulltext')
