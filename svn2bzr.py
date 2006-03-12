@@ -869,7 +869,9 @@ class Dump(object):
 
             while line:
 
-                field, value = line.split(': ', 1)
+                field, value = line.split(':', 1)
+                if value != "":
+                    value = value[1:]
                 field = intern(field.lower())
 
                 if field in convert_to_int:
