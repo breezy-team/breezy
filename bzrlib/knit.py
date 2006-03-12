@@ -66,7 +66,6 @@ in the deltas to provide line annotation
 from copy import copy
 from cStringIO import StringIO
 import difflib
-from difflib import SequenceMatcher
 import gzip
 from itertools import izip, chain
 import os
@@ -127,7 +126,7 @@ class KnitContent(object):
         """Generate line-based delta from this content to new_lines."""
         new_texts = [text for origin, text in new_lines._lines]
         old_texts = [text for origin, text in self._lines]
-        s = difflib.SequenceMatcher(None, old_texts, new_texts)
+        s = SequenceMatcher(None, old_texts, new_texts)
         for op in s.get_opcodes():
             if op[0] == 'equal':
                 continue
@@ -366,7 +365,7 @@ class KnitVersionedFile(VersionedFile):
             reference_content = self._get_content(parents[0], parent_texts)
             new_texts = [text for origin, text in content._lines]
             old_texts = [text for origin, text in reference_content._lines]
-            delta_seq = difflib.SequenceMatcher(None, old_texts, new_texts)
+            delta_seq = SequenceMatcher(None, old_texts, new_texts)
             for op in delta_seq.get_opcodes():
                 if op[0] == 'equal':
                     continue
@@ -1325,3 +1324,138 @@ class GzipFile(gzip.GzipFile):
         # this batch call is a lot faster :).
         # (4 seconds to 1 seconds for the sample upgrades I was testing).
         self.write(''.join(lines))
+
+
+class SequenceMatcher(difflib.SequenceMatcher):
+    """Knit tuned sequence matcher.
+
+    This is based on profiling of difflib which indicated some improvements
+    for our usage pattern.
+    """
+
+    def find_longest_match(self, alo, ahi, blo, bhi):
+        """Find longest matching block in a[alo:ahi] and b[blo:bhi].
+
+        If isjunk is not defined:
+
+        Return (i,j,k) such that a[i:i+k] is equal to b[j:j+k], where
+            alo <= i <= i+k <= ahi
+            blo <= j <= j+k <= bhi
+        and for all (i',j',k') meeting those conditions,
+            k >= k'
+            i <= i'
+            and if i == i', j <= j'
+
+        In other words, of all maximal matching blocks, return one that
+        starts earliest in a, and of all those maximal matching blocks that
+        start earliest in a, return the one that starts earliest in b.
+
+        >>> s = SequenceMatcher(None, " abcd", "abcd abcd")
+        >>> s.find_longest_match(0, 5, 0, 9)
+        (0, 4, 5)
+
+        If isjunk is defined, first the longest matching block is
+        determined as above, but with the additional restriction that no
+        junk element appears in the block.  Then that block is extended as
+        far as possible by matching (only) junk elements on both sides.  So
+        the resulting block never matches on junk except as identical junk
+        happens to be adjacent to an "interesting" match.
+
+        Here's the same example as before, but considering blanks to be
+        junk.  That prevents " abcd" from matching the " abcd" at the tail
+        end of the second sequence directly.  Instead only the "abcd" can
+        match, and matches the leftmost "abcd" in the second sequence:
+
+        >>> s = SequenceMatcher(lambda x: x==" ", " abcd", "abcd abcd")
+        >>> s.find_longest_match(0, 5, 0, 9)
+        (1, 0, 4)
+
+        If no blocks match, return (alo, blo, 0).
+
+        >>> s = SequenceMatcher(None, "ab", "c")
+        >>> s.find_longest_match(0, 2, 0, 1)
+        (0, 0, 0)
+        """
+
+        # CAUTION:  stripping common prefix or suffix would be incorrect.
+        # E.g.,
+        #    ab
+        #    acab
+        # Longest matching block is "ab", but if common prefix is
+        # stripped, it's "a" (tied with "b").  UNIX(tm) diff does so
+        # strip, so ends up claiming that ab is changed to acab by
+        # inserting "ca" in the middle.  That's minimal but unintuitive:
+        # "it's obvious" that someone inserted "ac" at the front.
+        # Windiff ends up at the same place as diff, but by pairing up
+        # the unique 'b's and then matching the first two 'a's.
+
+        a, b, b2j, isbjunk = self.a, self.b, self.b2j, self.isbjunk
+        besti, bestj, bestsize = alo, blo, 0
+        # find longest junk-free match
+        # during an iteration of the loop, j2len[j] = length of longest
+        # junk-free match ending with a[i-1] and b[j]
+        j2len = {}
+        # nothing = []
+        b2jget = b2j.get
+        for i in xrange(alo, ahi):
+            # look at all instances of a[i] in b; note that because
+            # b2j has no junk keys, the loop is skipped if a[i] is junk
+            j2lenget = j2len.get
+            newj2len = {}
+            
+            # changing b2j.get(a[i], nothing) to a try:Keyerror pair produced the
+            # following improvement
+            #     704  0   4650.5320   2620.7410   bzrlib.knit:1336(find_longest_match)
+            # +326674  0   1655.1210   1655.1210   +<method 'get' of 'dict' objects>
+            #  +76519  0    374.6700    374.6700   +<method 'has_key' of 'dict' objects>
+            # to 
+            #     704  0   3733.2820   2209.6520   bzrlib.knit:1336(find_longest_match)
+            #  +211400 0   1147.3520   1147.3520   +<method 'get' of 'dict' objects>
+            #  +76519  0    376.2780    376.2780   +<method 'has_key' of 'dict' objects>
+
+            try:
+                js = b2j[a[i]]
+            except KeyError:
+                pass
+            else:
+                for j in js:
+                    # a[i] matches b[j]
+                    if j >= blo:
+                        if j >= bhi:
+                            break
+                        k = newj2len[j] = 1 + j2lenget(-1 + j, 0)
+                        if k > bestsize:
+                            besti, bestj, bestsize = 1 + i-k, 1 + j-k, k
+            j2len = newj2len
+
+        # Extend the best by non-junk elements on each end.  In particular,
+        # "popular" non-junk elements aren't in b2j, which greatly speeds
+        # the inner loop above, but also means "the best" match so far
+        # doesn't contain any junk *or* popular non-junk elements.
+        while besti > alo and bestj > blo and \
+              not isbjunk(b[bestj-1]) and \
+              a[besti-1] == b[bestj-1]:
+            besti, bestj, bestsize = besti-1, bestj-1, bestsize+1
+        while besti+bestsize < ahi and bestj+bestsize < bhi and \
+              not isbjunk(b[bestj+bestsize]) and \
+              a[besti+bestsize] == b[bestj+bestsize]:
+            bestsize += 1
+
+        # Now that we have a wholly interesting match (albeit possibly
+        # empty!), we may as well suck up the matching junk on each
+        # side of it too.  Can't think of a good reason not to, and it
+        # saves post-processing the (possibly considerable) expense of
+        # figuring out what to do with it.  In the case of an empty
+        # interesting match, this is clearly the right thing to do,
+        # because no other kind of match is possible in the regions.
+        while besti > alo and bestj > blo and \
+              isbjunk(b[bestj-1]) and \
+              a[besti-1] == b[bestj-1]:
+            besti, bestj, bestsize = besti-1, bestj-1, bestsize+1
+        while besti+bestsize < ahi and bestj+bestsize < bhi and \
+              isbjunk(b[bestj+bestsize]) and \
+              a[besti+bestsize] == b[bestj+bestsize]:
+            bestsize = bestsize + 1
+
+        return besti, bestj, bestsize
+

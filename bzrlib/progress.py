@@ -419,7 +419,8 @@ class ChildProgress(_BaseProgressBar):
         else:
             count = self.current+self.child_fraction
             if count > self.total:
-                mutter('clamping count of %d to %d' % (count, self.total))
+                if __debug__:
+                    mutter('clamping count of %d to %d' % (count, self.total))
                 count = self.total
         self.parent.child_update(self.message, count, self.total)
 
