@@ -333,6 +333,7 @@ class BranchCreator(object):
             abspath = branch.__wt.abspath(path_branch)
             if not path_branch:
                 # Do we want to remove the branch or its content?
+                print branch
                 self._log.debug("Removing branch: %s" % abspath)
                 self._remove_branch(branch)
             elif os.path.exists(abspath):
@@ -495,9 +496,10 @@ class DynamicBranchCreator(BranchCreator):
 
     def _remove_branch(self, branch):
         # Retire a branch to the attic
-        rel_path = branch.base[len(self._root)+1:]
-        attic_branch = "%s-r%d" % (os.path.basename(rel_path.rstrip("/")), self._revisions.keys()[-1])
+        rel_path = branch.base[len(self._root)+1:].rstrip("/")
+        attic_branch = "%s-r%d" % (os.path.basename(rel_path), self._revisions.keys()[-1])
         branch_top = os.path.join(self._root, DynamicBranchCreator.ATTICDIR, os.path.dirname(rel_path))
+        self._log.debug("Retiring %s to %s" % (rel_path, attic_branch))
         if not os.path.isdir(branch_top):
             os.makedirs(branch_top)
         attic_path = os.path.join(branch_top, attic_branch)
@@ -521,7 +523,7 @@ class DynamicBranchCreator(BranchCreator):
 
     def _get_branch(self, path):
         for (bp,branch) in self._branches.items():
-            if path == bp or path.startswith(bp) or (path+"/") == bp:
+            if path == bp or path.startswith(bp+"/"):
                 return branch
 
     def _get_all_branches(self):
@@ -535,7 +537,7 @@ class DynamicBranchCreator(BranchCreator):
                 branch_path = os.path.join(self._root, unpref_path)
                 os.makedirs(branch_path)
                 branch = Branch.initialize(branch_path)
-                self._branches[unpref_path+"/"] = branch
+                self._branches[unpref_path] = branch
                 self._new_branch(branch)
         else:
             BranchCreator.add_dir(self, path)
@@ -562,7 +564,7 @@ class DynamicBranchCreator(BranchCreator):
             os.makedirs(dest_abspath)
             orig_branch.clone(to_location=dest_abspath, revision=revid)
             branch = Branch.open(dest_abspath)
-            self._branches[unpref_dest_path+"/"] = branch
+            self._branches[unpref_dest_path] = branch
             self._new_branch(branch)
 
     def remove(self, path):

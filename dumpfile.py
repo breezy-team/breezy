@@ -64,7 +64,7 @@ class Dump(object):
     tries to perform reasonably, without consuming an unacceptable amount
     of memory. Basically, there's an on-disk tree cache which saves a
     complete tree state (trees are path -> dump entry mappings) each 
-    COMPLETE_CACHE_INTERVAL revisions, or whenever the tree contains copies of 
+    DEFAULT_CACHE_INTERVAL revisions, or whenever the tree contains copies of 
     previous trees. Then, whenever a tree has to be rebuilt for a given 
     revision, the largest cached tree revision before the asked revision is 
     taken, and the tree is incremented up to the asked revision. This ensures
@@ -73,9 +73,9 @@ class Dump(object):
     cached).
     """
 
-    COMPLETE_CACHE_INTERVAL = 100
+    DEFAULT_CACHE_INTERVAL = 100
 
-    def __init__(self, file=None, log=None):
+    def __init__(self, file=None, log=None, cache_interval=DEFAULT_CACHE_INTERVAL):
         root = DumpEntry()
         root['node-action'] = 'add'
         root['node-kind'] = 'dir'
@@ -86,6 +86,7 @@ class Dump(object):
         self._revision_slice = {} # {revno: dump slice, ...}
         self._revision_order = [] # [revno, ... ]
 
+        self._tree_cache_interval = cache_interval
         self._tree_cache_filename = tempfile.mktemp('-saved-trees')
         self._tree_cache = anydbm.open(self._tree_cache_filename, "c")
         self._tree_cache_mem = {}
@@ -386,7 +387,7 @@ class Dump(object):
                 self._revision_order.append(revno)
 
                 if (copied_something or
-                    (last_saved_len + Dump.COMPLETE_CACHE_INTERVAL <= len(self._revision_index))):
+                    (last_saved_len + self._tree_cache_interval <= len(self._revision_index))):
                     last_saved_len = len(self._revision_index)
                     self._save_tree(revno, tree)
                 else:
