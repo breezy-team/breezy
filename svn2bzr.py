@@ -617,15 +617,17 @@ class Dump(object):
     The mechanism used to build and store information about the whole dump
     tries to perform reasonably, without consuming an unacceptable amount
     of memory. Basically, there's an on-disk tree cache which saves a
-    complete tree state (trees are path -> dump entry mappings) each 100
-    revisions, or whenever the tree contains copies of previous trees.
-    Then, whenever a tree has to be rebuilt for a given revision, the
-    largest cached tree revision before the asked revision is taken,
-    and the tree is incremented up to the asked revision. This ensures
+    complete tree state (trees are path -> dump entry mappings) each 
+    COMPLETE_CACHE_INTERVAL revisions, or whenever the tree contains copies of 
+    previous trees. Then, whenever a tree has to be rebuilt for a given 
+    revision, the largest cached tree revision before the asked revision is 
+    taken, and the tree is incremented up to the asked revision. This ensures
     that the tree will never be incremented for more than 99 revisions, and
     will never "walk back" (since all trees that need copies are already
     cached).
     """
+
+    COMPLETE_CACHE_INTERVAL = 100
 
     def __init__(self, file=None, log=None):
         self._dump = []           # [entry, ... ]
@@ -933,7 +935,7 @@ class Dump(object):
                     self._revision_order.append(revno)
 
                     if (copied_something or
-                        (last_saved_len+100 <= len(self._revision_index))):
+                        (last_saved_len+Dump.COMPLETE_CACHE_INTERVAL<= len(self._revision_index))):
                         last_saved_len = len(self._revision_index)
                         self._save_tree(revno, tree)
                     else:
