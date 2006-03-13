@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,6 @@
 import sys
 import os
 from warnings import warn
-from inspect import getdoc
 import errno
 
 import bzrlib
@@ -252,9 +251,9 @@ class Command(object):
         """
         raise NotImplementedError()
 
-
     def help(self):
         """Return help message for this class."""
+        from inspect import getdoc
         if self.__doc__ is Command.__doc__:
             return None
         return getdoc(self)
