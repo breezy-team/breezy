@@ -249,7 +249,8 @@ class Command(object):
         shell error code if not.  It's OK for this method to allow
         an exception to raise up.
         """
-        raise NotImplementedError()
+        raise NotImplementedError('no implementation of command %r' 
+                                  % self.name())
 
     def help(self):
         """Return help message for this class."""
