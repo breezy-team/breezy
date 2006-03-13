@@ -189,6 +189,7 @@ class FtpTransport(Transport):
         We're meant to return a file-like object which bzr will
         then read from. For now we do this via the magic of StringIO
         """
+        # TODO: decode should be deprecated
         try:
             mutter("FTP get: %s" % self._abspath(relpath))
             f = self._get_FTP()
