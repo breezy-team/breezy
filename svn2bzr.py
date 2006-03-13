@@ -273,7 +273,7 @@ class BranchCreator(object):
 
         # The remaining items didn't exist yet
         for ign in globs:
-            igns.append(ign)
+            igns.append(os.path.join(path_branch, ign))
             
         f = AtomicFile(ifn, 'wt')
         data = "\n".join(igns)
@@ -449,9 +449,9 @@ class BranchCreator(object):
                         content = self._dump.get_entry_content(entry)
                         self.change_file(node_path, content)
 
-                if os.path.isfile(node_path):
+                if os.path.isfile(os.path.join(self._root, node_path)):
                     if entry.prop.has_key('svn:executable') and \
-                        entry.prop['svn:executable'] == '*':
+                        entry.prop['svn:executable'].strip() == '*':
                         self.set_executable(node_path, True)
                     else:
                         self.set_executable(node_path, False)
@@ -561,7 +561,7 @@ class DynamicBranchCreator(BranchCreator):
             dest_abspath = os.path.join(self._root, unpref_dest_path)
             (orig_branch,revid) = self._revisions[orig_revno][unpref_orig_path]
             os.makedirs(dest_abspath)
-            branch = orig_branch.clone(to_location=dest_abspath, revision=revid)
+            branch = orig_branch.bzrdir.sprout(url=dest_abspath, revision_id=revid).open_branch()
             self._branches[unpref_dest_path] = branch
             self._new_branch(branch)
 
