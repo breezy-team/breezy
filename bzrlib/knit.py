@@ -130,6 +130,7 @@ class KnitContent(object):
         for op in s.get_opcodes():
             if op[0] == 'equal':
                 continue
+            #     ofrom   oto   length        data
             yield (op[1], op[2], op[4]-op[3], new_lines._lines[op[3]:op[4]])
 
     def line_delta(self, new_lines):
@@ -321,6 +322,33 @@ class KnitVersionedFile(VersionedFile):
                                 current_values[3],
                                 new_parents)
 
+    def get_delta(self, version_id):
+        """Get a delta for constructing version from some other version."""
+        if not self.has_version(version_id):
+            raise RevisionNotPresent(version_id, self.filename)
+        
+        parents = self.get_parents(version_id)
+        if len(parents):
+            parent = parents[0]
+        else:
+            parent = None
+        data_pos, data_size = self._index.get_position(version_id)
+        data, sha1 = self._data.read_records(((version_id, data_pos, data_size),))[version_id]
+        version_idx = self._index.lookup(version_id)
+        if 'fulltext' == self._index.get_method(version_id):
+            new_content = self.factory.parse_fulltext(data, version_idx)
+            if parent is not None:
+                reference_content = self._get_content(parent)
+                old_texts = reference_content.text()
+            else:
+                old_texts = []
+            new_texts = new_content.text()
+            delta_seq = SequenceMatcher(None, old_texts, new_texts)
+            return parent, sha1, self._make_line_delta(delta_seq, new_content)
+        else:
+            delta = self.factory.parse_line_delta(data, version_idx)
+            return parent, sha1, delta
+        
     def get_graph_with_ghosts(self):
         """See VersionedFile.get_graph_with_ghosts()."""
         graph_items = self._index.get_graph()
@@ -360,30 +388,14 @@ class KnitVersionedFile(VersionedFile):
         """Merge annotations for content.  This is done by comparing
         the annotations based on changed to the text.
         """
-        diff_hunks = []
-        if delta:
-            reference_content = self._get_content(parents[0], parent_texts)
-            new_texts = [text for origin, text in content._lines]
-            old_texts = [text for origin, text in reference_content._lines]
-            delta_seq = SequenceMatcher(None, old_texts, new_texts)
-            for op in delta_seq.get_opcodes():
-                if op[0] == 'equal':
-                    continue
-                diff_hunks.append((op[1], op[2], op[4]-op[3], content._lines[op[3]:op[4]]))
         if annotated:
-            # reuse the delta_sequencer if possible:
-            if delta:
-                for i, j, n in delta_seq.get_matching_blocks():
-                    if n == 0:
-                        continue
-                    # this appears to copy (origin, text) pairs across to the new
-                    # content for any line that matches the last-checked parent.
-                    # FIXME: save the sequence control data for delta compression
-                    # against the most relevant parent rather than rediffing.
-                    content._lines[j:j+n] = reference_content._lines[i:i+n]
-            for parent_id in parents[1:]:
+            delta_seq = None
+            for parent_id in parents:
                 merge_content = self._get_content(parent_id, parent_texts)
                 seq = SequenceMatcher(None, merge_content.text(), content.text())
+                if delta_seq is None:
+                    # setup a delta seq to reuse.
+                    delta_seq = seq
                 for i, j, n in seq.get_matching_blocks():
                     if n == 0:
                         continue
@@ -392,6 +404,21 @@ class KnitVersionedFile(VersionedFile):
                     # FIXME: save the sequence control data for delta compression
                     # against the most relevant parent rather than rediffing.
                     content._lines[j:j+n] = merge_content._lines[i:i+n]
+        if delta:
+            if not annotated:
+                reference_content = self._get_content(parents[0], parent_texts)
+                new_texts = content.text()
+                old_texts = reference_content.text()
+                delta_seq = SequenceMatcher(None, old_texts, new_texts)
+            return self._make_line_delta(delta_seq, content)
+
+    def _make_line_delta(self, delta_seq, new_content):
+        """Generate a line delta from delta_seq and new_content."""
+        diff_hunks = []
+        for op in delta_seq.get_opcodes():
+            if op[0] == 'equal':
+                continue
+            diff_hunks.append((op[1], op[2], op[4]-op[3], new_content._lines[op[3]:op[4]]))
         return diff_hunks
 
     def _get_components(self, version_id):

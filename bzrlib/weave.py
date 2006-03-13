@@ -260,6 +260,48 @@ class Weave(VersionedFile):
 
     __contains__ = has_version
 
+    def get_delta(self, version_id):
+        """See VersionedFile.get_delta."""
+        if not self.has_version(version_id):
+            raise RevisionNotPresent(version_id, self)
+        sha1 = self.get_sha1(version_id)
+        parents = self.get_parents(version_id)
+        if len(parents):
+            parent = parents[0]
+            parent_inclusions = set(self.get_ancestry(parent))
+        else:
+            parent = None
+            parent_inclusions = set()
+        # we want to emit start, finish, replacement_length, replacement_lines tuples.
+        diff_hunks = []
+        current_hunk = [0, 0, 0, []] #start, finish, repl_length, repl_tuples
+        inclusions = set(self.get_ancestry(version_id))
+        parent_linenum = 0
+        for lineno, inserted, deletes, line in self._walk_internal(inclusions):
+            parent_active = inserted in parent_inclusions and not (deletes & parent_inclusions)
+            version_active = inserted in inclusions and not (deletes & inclusions)
+            if not parent_active and not version_active:
+                # unrelated line of ancestry
+                pass
+            elif parent_active and version_active:
+                # shared line
+                if current_hunk != [parent_linenum, parent_linenum, 0, []]:
+                    diff_hunks.append(tuple(current_hunk))
+                parent_linenum += 1
+                current_hunk = [parent_linenum, parent_linenum, 0, []]
+            elif parent_active and not version_active:
+                # deleted line
+                current_hunk[1] += 1
+                parent_linenum += 1
+            elif not parent_active and version_active:
+                # replacement line
+                current_hunk[2] += 1
+                current_hunk[3].append((inserted, line))
+        # flush last hunk
+        if current_hunk != [0, 0, 0, []]:
+            diff_hunks.append(tuple(current_hunk))
+        return parent, sha1, diff_hunks
+    
     def get_parents(self, version_id):
         """See VersionedFile.get_parent."""
         return map(self._idx_to_name, self._parents[self._lookup(version_id)])

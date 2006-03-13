@@ -169,6 +169,14 @@ class VersionedFile(object):
         """Helper for fix_parents."""
         raise NotImplementedError(self.fix_parents)
 
+    def get_delta(self, version):
+        """Get a delta for constructing version from some other version.
+        
+        :return: (delta_parent, sha1, delta)
+        Where delta_parent is a version id or None to indicate no parent.
+        """
+        raise NotImplementedError(self.get_delta)
+
     def get_suffixes(self):
         """Return the file suffixes associated with this versioned file."""
         raise NotImplementedError(self.get_suffixes)

@@ -104,6 +104,73 @@ class VersionedFileTestMixIn(object):
         f = self.reopen_file()
         verify_file(f)
 
+    def test_get_delta_lines(self):
+        f = self.get_file()
+        self.assertRaises(errors.RevisionNotPresent, f.get_delta, 'base')
+        # add texts that should trip the knit maximum delta chain threshold
+        # as well as doing parallel chains of data in knits.
+        # this is done by two chains of 25 insertions
+        f.add_lines('base', [], ['line\n'])
+        next_parent = 'base'
+        text_name = 'chain1-'
+        text = ['line\n']
+        sha1s = {0 :'da6d3141cb4a5e6f464bf6e0518042ddc7bfd079',
+                 1 :'45e21ea146a81ea44a821737acdb4f9791c8abe7',
+                 2 :'e1f11570edf3e2a070052366c582837a4fe4e9fa',
+                 3 :'26b4b8626da827088c514b8f9bbe4ebf181edda1',
+                 4 :'e28a5510be25ba84d31121cff00956f9970ae6f6',
+                 5 :'d63ec0ce22e11dcf65a931b69255d3ac747a318d',
+                 6 :'2c2888d288cb5e1d98009d822fedfe6019c6a4ea',
+                 7 :'95c14da9cafbf828e3e74a6f016d87926ba234ab',
+                 8 :'779e9a0b28f9f832528d4b21e17e168c67697272',
+                 9 :'1f8ff4e5c6ff78ac106fcfe6b1e8cb8740ff9a8f',
+                 10:'131a2ae712cf51ed62f143e3fbac3d4206c25a05',
+                 11:'c5a9d6f520d2515e1ec401a8f8a67e6c3c89f199',
+                 12:'31a2286267f24d8bedaa43355f8ad7129509ea85',
+                 13:'dc2a7fe80e8ec5cae920973973a8ee28b2da5e0a',
+                 14:'2c4b1736566b8ca6051e668de68650686a3922f2',
+                 15:'5912e4ecd9b0c07be4d013e7e2bdcf9323276cde',
+                 16:'b0d2e18d3559a00580f6b49804c23fea500feab3',
+                 17:'8e1d43ad72f7562d7cb8f57ee584e20eb1a69fc7',
+                 18:'5cf64a3459ae28efa60239e44b20312d25b253f3',
+                 19:'1ebed371807ba5935958ad0884595126e8c4e823',
+                 20:'2aa62a8b06fb3b3b892a3292a068ade69d5ee0d3',
+                 21:'01edc447978004f6e4e962b417a4ae1955b6fe5d',
+                 22:'d8d8dc49c4bf0bab401e0298bb5ad827768618bb',
+                 23:'c21f62b1c482862983a8ffb2b0c64b3451876e3f',
+                 24:'c0593fe795e00dff6b3c0fe857a074364d5f04fc',
+                 25:'dd1a1cf2ba9cc225c3aff729953e6364bf1d1855',
+                 }
+        for depth in range(26):
+            new_version = text_name + '%s' % depth
+            text = text + ['line\n']
+            f.add_lines(new_version, [next_parent], text)
+            next_parent = new_version
+        next_parent = 'base'
+        text_name = 'chain2-'
+        text = ['line\n']
+        for depth in range(26):
+            new_version = text_name + '%s' % depth
+            text = text + ['line\n']
+            f.add_lines(new_version, [next_parent], text)
+            next_parent = new_version
+        expected_delta = (None, '6bfa09d82ce3e898ad4641ae13dd4fdb9cf0d76b', [(0, 0, 1, [('base', 'line\n')])])
+        self.assertEqual(expected_delta, f.get_delta('base'))
+        next_parent = 'base'
+        next_name = 'chain1-'
+        for depth in range(26):
+            new_version = text_name + '%s' % depth
+            expected_delta = (next_parent, sha1s[depth], [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
+            self.assertEqual(expected_delta, f.get_delta(new_version))
+            next_parent = new_version
+        next_parent = 'base'
+        next_name = 'chain2-'
+        for depth in range(26):
+            new_version = text_name + '%s' % depth
+            expected_delta = (next_parent, sha1s[depth], [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
+            self.assertEqual(expected_delta, f.get_delta(new_version))
+            next_parent = new_version
+
     def test_ancestry(self):
         f = self.get_file()
         self.assertEqual([], f.get_ancestry([]))
