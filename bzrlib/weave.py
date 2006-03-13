@@ -277,6 +277,9 @@ class Weave(VersionedFile):
         current_hunk = [0, 0, 0, []] #start, finish, repl_length, repl_tuples
         inclusions = set(self.get_ancestry(version_id))
         parent_linenum = 0
+        noeol = False
+        parent_noeol = False
+        last_parent_line = ''
         for lineno, inserted, deletes, line in self._walk_internal(inclusions):
             parent_active = inserted in parent_inclusions and not (deletes & parent_inclusions)
             version_active = inserted in inclusions and not (deletes & inclusions)
@@ -289,18 +292,49 @@ class Weave(VersionedFile):
                     diff_hunks.append(tuple(current_hunk))
                 parent_linenum += 1
                 current_hunk = [parent_linenum, parent_linenum, 0, []]
+                if len(line) and line[-1] != '\n':
+                    noeol = True
             elif parent_active and not version_active:
                 # deleted line
                 current_hunk[1] += 1
                 parent_linenum += 1
+                last_parent_line = line
             elif not parent_active and version_active:
                 # replacement line
-                current_hunk[2] += 1
-                current_hunk[3].append((inserted, line))
+                # noeol only occurs at the end of a file because we 
+                # diff linewise. We want to show noeol changes as a
+                # empty diff unless the actual eol-less content changed.
+                if len(last_parent_line) and last_parent_line[-1] != '\n':
+                    parent_noeol = True
+                if len(line) and line[-1] != '\n':
+                    noeol = True
+                changed = False
+                if parent_noeol == noeol:
+                    # no noeol toggle, so trust the weave
+                    changed = True
+                elif parent_noeol:
+                    # parent is shorter:
+                    if last_parent_line != line[:-1]:
+                        # but changed anyway
+                        changed = True
+                elif noeol:
+                    # append a eol so that it looks like
+                    # a normalised delta
+                    line = line + '\n'
+                    # we are shorter:
+                    if last_parent_line != line:
+                        # but changed anyway
+                        changed = True
+                if changed:
+                    current_hunk[2] += 1
+                    current_hunk[3].append((inserted, line))
+                else:
+                    # last hunk last parent line is not eaten
+                    current_hunk[1] -= 1
         # flush last hunk
         if current_hunk != [0, 0, 0, []]:
             diff_hunks.append(tuple(current_hunk))
-        return parent, sha1, diff_hunks
+        return parent, sha1, noeol, diff_hunks
     
     def get_parents(self, version_id):
         """See VersionedFile.get_parent."""

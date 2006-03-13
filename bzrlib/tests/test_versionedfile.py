@@ -104,7 +104,7 @@ class VersionedFileTestMixIn(object):
         f = self.reopen_file()
         verify_file(f)
 
-    def test_get_delta_lines(self):
+    def test_get_delta(self):
         f = self.get_file()
         self.assertRaises(errors.RevisionNotPresent, f.get_delta, 'base')
         # add texts that should trip the knit maximum delta chain threshold
@@ -154,22 +154,70 @@ class VersionedFileTestMixIn(object):
             text = text + ['line\n']
             f.add_lines(new_version, [next_parent], text)
             next_parent = new_version
-        expected_delta = (None, '6bfa09d82ce3e898ad4641ae13dd4fdb9cf0d76b', [(0, 0, 1, [('base', 'line\n')])])
+        f.add_lines('noeol', ['base'], ['line'])
+        expected_delta = (None, '6bfa09d82ce3e898ad4641ae13dd4fdb9cf0d76b', False, 
+                          [(0, 0, 1, [('base', 'line\n')])])
         self.assertEqual(expected_delta, f.get_delta('base'))
         next_parent = 'base'
         next_name = 'chain1-'
         for depth in range(26):
             new_version = text_name + '%s' % depth
-            expected_delta = (next_parent, sha1s[depth], [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
+            expected_delta = (next_parent, sha1s[depth], 
+                              False,
+                              [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
             self.assertEqual(expected_delta, f.get_delta(new_version))
             next_parent = new_version
         next_parent = 'base'
         next_name = 'chain2-'
         for depth in range(26):
             new_version = text_name + '%s' % depth
-            expected_delta = (next_parent, sha1s[depth], [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
+            expected_delta = (next_parent, sha1s[depth], False,
+                              [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
             self.assertEqual(expected_delta, f.get_delta(new_version))
             next_parent = new_version
+        # smoke test for eol support
+        expected_delta = ('base', '264f39cab871e4cfd65b3a002f7255888bb5ed97', True, [])
+        self.assertEqual(['line'], f.get_lines('noeol'))
+        self.assertEqual(expected_delta, f.get_delta('noeol'))
+
+    def test_add_delta(self):
+        # tests for the add-delta facility.
+        # at this point, optimising for speed, we assume no checks when deltas are inserted.
+        # this may need to be revisited.
+        source = self.get_file('source')
+        source.add_lines('base', [], ['line\n'])
+        next_parent = 'base'
+        text_name = 'chain1-'
+        text = ['line\n']
+        for depth in range(26):
+            new_version = text_name + '%s' % depth
+            text = text + ['line\n']
+            source.add_lines(new_version, [next_parent], text)
+            next_parent = new_version
+        next_parent = 'base'
+        text_name = 'chain2-'
+        text = ['line\n']
+        for depth in range(26):
+            new_version = text_name + '%s' % depth
+            text = text + ['line\n']
+            source.add_lines(new_version, [next_parent], text)
+            next_parent = new_version
+        source.add_lines('noeol', ['base'], ['line'])
+        
+        target = self.get_file('target')
+        for version in source.versions():
+            parent, sha1, noeol, delta = source.get_delta(version)
+            target.add_delta(version,
+                             source.get_parents(version),
+                             parent,
+                             sha1,
+                             noeol,
+                             delta)
+        self.assertRaises(RevisionAlreadyPresent,
+                          target.add_delta, 'base', [], None, '', False, [])
+        for version in source.versions():
+            self.assertEqual(source.get_lines(version),
+                             target.get_lines(version))
 
     def test_ancestry(self):
         f = self.get_file()
@@ -202,6 +250,7 @@ class VersionedFileTestMixIn(object):
     def test_mutate_after_finish(self):
         f = self.get_file()
         f.transaction_finished()
+        self.assertRaises(errors.OutSideTransaction, f.add_delta, '', [], '', '', False, [])
         self.assertRaises(errors.OutSideTransaction, f.add_lines, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.add_lines_with_ghosts, '', [], [])
         self.assertRaises(errors.OutSideTransaction, f.fix_parents, '', [])
@@ -492,6 +541,7 @@ class VersionedFileTestMixIn(object):
         factory = self.get_factory()
         vf = factory('id', transport, 0777, create=True, access_mode='w')
         vf = factory('id', transport, access_mode='r')
+        self.assertRaises(errors.ReadOnlyError, vf.add_delta, '', [], '', '', False, [])
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'base', [], [])
         self.assertRaises(errors.ReadOnlyError,
                           vf.add_lines_with_ghosts,

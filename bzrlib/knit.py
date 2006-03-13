@@ -115,13 +115,6 @@ class KnitContent(object):
         """Return a list of (origin, text) tuples."""
         return list(self.annotate_iter())
 
-    def apply_delta(self, delta):
-        """Apply delta to this content."""
-        offset = 0
-        for start, end, count, lines in delta:
-            self._lines[offset+start:offset+end] = lines
-            offset = offset + (start - end) + count
-
     def line_delta_iter(self, new_lines):
         """Generate line-based delta from this content to new_lines."""
         new_texts = [text for origin, text in new_lines._lines]
@@ -289,6 +282,68 @@ class KnitVersionedFile(VersionedFile):
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
             access_mode, create=not len(self.versions()))
 
+    def _add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
+        """See VersionedFile._add_delta()."""
+        self._check_add(version_id, []) # should we check the lines ?
+        self._check_versions_present(parents)
+        present_parents = []
+        ghosts = []
+        parent_texts = {}
+        for parent in parents:
+            if not self.has_version(parent):
+                ghosts.append(parent)
+            else:
+                present_parents.append(parent)
+
+        if delta_parent is None:
+            # reconstitute as full text.
+            assert len(delta) == 1 or len(delta) == 0
+            if len(delta):
+                assert delta[0][0] == 0
+                assert delta[0][1] == 0
+            return super(KnitVersionedFile, self)._add_delta(version_id,
+                                                             parents,
+                                                             delta_parent,
+                                                             sha1,
+                                                             noeol,
+                                                             delta)
+
+        digest = sha1
+
+        options = []
+        if noeol:
+            options.append('no-eol')
+
+        if delta_parent is not None:
+            # determine the current delta chain length.
+            # To speed the extract of texts the delta chain is limited
+            # to a fixed number of deltas.  This should minimize both
+            # I/O and the time spend applying deltas.
+            count = 0
+            delta_parents = [delta_parent]
+            while count < 25:
+                parent = delta_parents[0]
+                method = self._index.get_method(parent)
+                if method == 'fulltext':
+                    break
+                delta_parents = self._index.get_parents(parent)
+                count = count + 1
+            if method == 'line-delta':
+                # did not find a fulltext in the delta limit.
+                # just do a normal insertion.
+                return super(KnitVersionedFile, self)._add_delta(version_id,
+                                                                 parents,
+                                                                 delta_parent,
+                                                                 sha1,
+                                                                 noeol,
+                                                                 delta)
+
+        options.append('line-delta')
+        store_lines = self.factory.lower_line_delta(delta)
+
+        where, size = self._data.add_record(version_id, digest, store_lines)
+        self._index.add_version(version_id, options, where, size, parents)
+
     def clear_cache(self):
         """Clear the data cache only."""
         self._data.clear_cache()
@@ -335,6 +390,7 @@ class KnitVersionedFile(VersionedFile):
         data_pos, data_size = self._index.get_position(version_id)
         data, sha1 = self._data.read_records(((version_id, data_pos, data_size),))[version_id]
         version_idx = self._index.lookup(version_id)
+        noeol = 'no-eol' in self._index.get_options(version_id)
         if 'fulltext' == self._index.get_method(version_id):
             new_content = self.factory.parse_fulltext(data, version_idx)
             if parent is not None:
@@ -344,10 +400,10 @@ class KnitVersionedFile(VersionedFile):
                 old_texts = []
             new_texts = new_content.text()
             delta_seq = SequenceMatcher(None, old_texts, new_texts)
-            return parent, sha1, self._make_line_delta(delta_seq, new_content)
+            return parent, sha1, noeol, self._make_line_delta(delta_seq, new_content)
         else:
             delta = self.factory.parse_line_delta(data, version_idx)
-            return parent, sha1, delta
+            return parent, sha1, noeol, delta
         
     def get_graph_with_ghosts(self):
         """See VersionedFile.get_graph_with_ghosts()."""
@@ -500,7 +556,7 @@ class KnitVersionedFile(VersionedFile):
                 content = self.factory.parse_fulltext(data, version_idx)
             elif method == 'line-delta':
                 delta = self.factory.parse_line_delta(data, version_idx)
-                content.apply_delta(delta)
+                content._lines = self._apply_delta(content._lines, delta)
 
         if 'no-eol' in self._index.get_options(version_id):
             line = content._lines[-1][1].rstrip('\n')

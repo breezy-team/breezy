@@ -78,6 +78,40 @@ class VersionedFile(object):
         """Returns whether version is present."""
         raise NotImplementedError(self.has_version)
 
+    def add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
+        """Add a text to the versioned file via a pregenerated delta.
+
+        :param version_id: The version id being added.
+        :param parents: The parents of the version_id.
+        :param delta_parent: The parent this delta was created against.
+        :param sha1: The sha1 of the full text.
+        :param delta: The delta instructions. See get_delta for details.
+        """
+        self._check_write_ok()
+        if self.has_version(version_id):
+            raise errors.RevisionAlreadyPresent(version_id, self)
+        return self._add_delta(version_id, parents, delta_parent, sha1, noeol, delta)
+
+    def _add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
+        """Class specific routine to add a delta.
+
+        This generic version simply applies the delta to the delta_parent and
+        then inserts it.
+        """
+        # strip annotation from delta
+        new_delta = []
+        for start, stop, delta_len, delta_lines in delta:
+            new_delta.append((start, stop, delta_len, [text for origin, text in delta_lines]))
+        if delta_parent is not None:
+            parent_full = self.get_lines(delta_parent)
+        else:
+            parent_full = []
+        new_full = self._apply_delta(parent_full, new_delta)
+        # its impossible to have noeol on an empty file
+        if noeol and new_full[-1][-1] == '\n':
+            new_full[-1] = new_full[-1][:-1]
+        self.add_lines(version_id, parents, new_full)
+
     def add_lines(self, version_id, parents, lines, parent_texts=None):
         """Add a single text on top of the versioned file.
 
@@ -276,6 +310,15 @@ class VersionedFile(object):
 
     def annotate(self, version_id):
         return list(self.annotate_iter(version_id))
+
+    def _apply_delta(self, lines, delta):
+        """Apply delta to lines."""
+        lines = list(lines)
+        offset = 0
+        for start, end, count, delta_lines in delta:
+            lines[offset+start:offset+end] = delta_lines
+            offset = offset + (start - end) + count
+        return lines
 
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
@@ -477,7 +520,6 @@ class InterVersionedFile(InterObject):
         graph = self.source.get_graph()
         order = topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
-        parent_texts = {}
         try:
             # TODO for incremental cross-format work:
             # make a versioned file with the following content:
@@ -488,16 +530,15 @@ class InterVersionedFile(InterObject):
             # and the incorrect version data will be ignored.
             # TODO: for all ancestors that are present in target already,
             # check them for consistent data, this requires moving sha1 from
-            # 
-            # TODO: remove parent texts when they are not relevant any more for 
-            # memory pressure reduction. RBC 20060313
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, len(order))
-                parent_text = target.add_lines(version,
-                                               self.source.get_parents(version),
-                                               self.source.get_lines(version),
-                                               parent_texts=parent_texts)
-                parent_texts[version] = parent_text
+                delta_parent, sha1, noeol, delta = self.source.get_delta(version)
+                target.add_delta(version,
+                                 self.source.get_parents(version),
+                                 delta_parent,
+                                 sha1,
+                                 noeol,
+                                 delta)
             
             # this should hit the native code path for target
             if target is not self.target:
