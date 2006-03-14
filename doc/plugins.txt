@@ -30,12 +30,12 @@ Once you've created a command you must register the command with
 `bzrlib.commands.register_command(cmd_foo)`.  You must register the command
 when your file is imported, otherwise bzr will not see it.
 
-By default, bzr will scan `bzrlib/plugins` and `~/.bazaar/plugins` for
-plugins.  You can override this with `BZR_PLUGIN_PATH`.  Plugins may be
+Bzr will scan **bzrlib/plugins** and **~/.bazaar/plugins** for plugins by
+default.  You can override this with **BZR_PLUGIN_PATH**.  Plugins may be
 either modules or packages.  If your plugin is a single file, you can
 structure it as a module.  If it has multiple files, or if you want to
 distribute it as a bzr branch, you should structure it as a package, i.e. a
-directory with an `__init__.py ` file.
+directory with an **__init__.py** file.
 
 Please feel free to contribute your plugin to BzrTools, if you think it
 would be useful to other people.

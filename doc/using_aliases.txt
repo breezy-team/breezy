@@ -2,13 +2,14 @@ Command aliases are an eay way to customize the behaviour of Bazaar-NG. Aliases
 are an easy way to create shortcuts for commonly-typed commands, or to set
 defaults for commands.
 
-Command aliases can be defined in the `[ALIASES]` section of your
+Command aliases can be defined in the **[ALIASES]** section of your
 **.bazaar/bazaar.conf** file. Aliases start with the alias name, then an
 equal sign, then a command fragment.  Here's an example ALIASES section:
 
 Examples
 ========
-::
+A typical example::
+
     [ALIASES]
     recentlog=log -r-3..-1
     ll=log --line -r-10..-1
@@ -19,27 +20,28 @@ Explanation of examples
 =======================
 
  * The first alias makes a new 'recentlog' command that shows the logs for the
-last three revisions
- * The `ll` alias shows the last 10 log entries in line format.
- * the `commit` alias sets the default for commit to refuse to commit if new
-files in the tree are not recognized.
- * the `diff` alias adds the coveted -p option to diff
+   last three revisions
+ * The **ll** alias shows the last 10 log entries in line format.
+ * the **commit** alias sets the default for commit to refuse to commit if new
+   files in the tree are not recognized.
+ * the **diff** alias adds the coveted -p option to diff
 
 
 Rules for Aliases
 =================
 
  * You can override parts of the options given in an alias by overriding it.
-   For example, if you run `lastlog -r-5..`, you will only get five
+   For example, if you run **lastlog -r-5..**, you will only get five
    line-based log entries instead of 10.
  * Aliases can override the standard behaviour of existing commands by giving
    an alias name that is thesame as the orignal command. For example, default
-   commit is changed with `commit=commit --strict`.
+   commit is changed with **commit=commit --strict**.
  * Aliases can not refer to other aliases. In other words making a
-   **lastlog** alias and referring to it with a ***ll*** alias will not work.
+   **lastlog** alias and referring to it with a **ll** alias will not work.
 
 This includes aliases that override standard commands
 
- * Giving the `--no-aliases` to the bzr command will tell it to ignore aliases
-for that run. For example, running `bzr --no-aliases commit` will perform a
-standard commit instead not do a `commit --strict`.
+ * Giving the **--no-aliases** to the bzr command will tell it to ignore aliases
+   for that run. For example, running **bzr --no-aliases commit** will perform a
+   standard commit instead not do a **commit --strict**.
+

@@ -5,26 +5,27 @@ can fall behind when Bazaar-NG is under heavy development.
 The documents on the wiki take precedence in the event of a discrepancy
 between what is documented here and what is documented on the wiki.
 
-README.1st::
-    You've already read this, right?
+README.1st
+    You knew to read this first. I won't insult you by telling you what
+    this is. :)
 
-tutorial.txt::
+tutorial.txt
     Explains how to use bzr. Loaded with examples.
 
-configuration.txt::
+configuration.txt
     Information on how to configure Bazaar-NG
 
-setting_up_email.txt::
+setting_up_email.txt
     The various ways that exist to tell Bazaar-NG your email address for
     commits
 
-plugins.txt::
+plugins.txt
     Information on how to use plugins in Bazaar-NG
 
-specifying_revisions.txt::
+specifying_revisions.txt
     Description of the subarguments for -r as used by commands such as
     **bzr log** and **bzr merge**
 
-using_aliases.txt::
+using_aliases.txt
     How to setup and use command aliases.
 

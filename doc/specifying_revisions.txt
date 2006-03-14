@@ -1,7 +1,8 @@
-= Revision specs and ranges =
+Revision specs and ranges
+=========================
 
-`bzr` has a very expressive way to specify a revision, or a range of revisions.
-We'll take the example of the `log` command.
+**bzr** has a very expressive way to specify a revision, or a range of revisions.
+We'll take the example of the **log** command.
 
 To specify a range of revisions, use for example::
 
@@ -15,41 +16,42 @@ You can omit one bound like::
 Note::
     Omitting the lower bound doesn't work on currently released versions.
 
-Other commands, like ```bzr cat``` take only one revision, not a range, like::
+Other commands, like **bzr cat** take only one revision, not a range, like::
 
     $ bzr cat -r 42 foo.c
 
-= Available revision specs =
+Available revision specs
+========================
 
-The revision, or the bounds of the range, can be one of::
+The revision, or the bounds of the range, can be one of
 
- +--------------------+------------------------------------+
- |  argument type     | description                        |
- +--------------------+------------------------------------+
- | ''number''         | revision number                    |
- +--------------------+------------------------------------+
- | `revno:`''number'' | positive revision number           |
- +--------------------+------------------------------------+
- | `last:`''number''  | negative revision number           |
- +--------------------+------------------------------------+
- | `revid:`''guid''   | globally unique revision id        |
- +--------------------+------------------------------------+
- | `before:`''rev''   | leftmost parent of ''rev''         |
- +--------------------+------------------------------------+
- | `date:`''value''   | first entry after a given date     |
- +--------------------+------------------------------------+
- | `ancestor:`''path''| last merged revision from a branch |
- +--------------------+------------------------------------+
- | `branch:`''path''  | latest revision on another branch  |
- +--------------------+------------------------------------+
+ +----------------------+------------------------------------+
+ |  argument type       | description                        |
+ +----------------------+------------------------------------+
+ | *number*             | revision number                    |
+ +----------------------+------------------------------------+
+ | **revno**:*number*   | positive revision number           |
+ +----------------------+------------------------------------+
+ | **last**:*number*    | negative revision number           |
+ +----------------------+------------------------------------+
+ | **revid**:*guid*     | globally unique revision id        |
+ +----------------------+------------------------------------+
+ | **before**:*rev*     | leftmost parent of ''rev''         |
+ +----------------------+------------------------------------+
+ | **date**:*value*     | first entry after a given date     |
+ +----------------------+------------------------------------+
+ | **ancestor**:*path*  | last merged revision from a branch |
+ +----------------------+------------------------------------+
+ | **branch**:*path*    | latest revision on another branch  |
+ +----------------------+------------------------------------+
 
 Numbers
 -------
 
 Positive numbers denote revision numbers in the current branch. Revision
-numbers are labelled as "revno" in the output of `bzr log`.
+numbers are labelled as "revno" in the output of **bzr log**.  To display
+the log for the first ten revisions::
 
-To display the log for the first ten revisions::
     $ bzr log -r ..10
 
 Negative numbers count from the latest revision, -1 is the last committed
@@ -62,29 +64,30 @@ To display the log for the last ten revisions::
 revno, last
 -----------
 
-`revno:`''number'' is the same as ''number'', except that negative numbers are
-not allowed.
+**revno**:*number*
+    The same as *number*, except that negative numbers are not allowed.
 
-`last:`''number'' is the same as -''number''. `last:1` means the last commited
-revision.
+**last**:*number*
+    The same as -''number''. **last:1** means the last commited revision.
 
 revid
 -----
 
-`revid` allows specifying a an internal revision ID, as show by `bzr testament` and some other commands.
+**revid** allows specifying a an internal revision ID, as show by **bzr
+testament** and some other commands.
 
 For example::
 
     $ bzr log -r revid:Matthieu.Moy@imag.fr-20051026185030-93c7cad63ee570df
 
 
-[[Anchor(before)]]
 before
 ------
 
-`before:`''rev'' specifies the leftmost parent of ''rev'', that is the revision
-that appears before ''rev'' in the revision history, or the revision that was
-current when ''rev'' what comitted.
+**before**
+    ''rev'' specifies the leftmost parent of ''rev'', that is the revision
+    that appears before ''rev'' in the revision history, or the revision that
+    was current when ''rev'' what comitted.
 
 ''rev'' can be any revision specifier.
 
@@ -98,16 +101,17 @@ For example::
 date
 ----
 
-`date:`''value'' matches the first history entry after a given date, either at
-midnight or at a specified time.
+**date**
+    ''value'' matches the first history entry after a given date, either at
+    midnight or at a specified time.
 
 Legal values are:
 
- * `yesterday`
- * `today`
- * `tomorrow`
- * A `YYYY-MM-DD` format date.
- * A `YYYY-MM-DD,HH:MM:SS` format date/time, seconds are optional (note the
+ * **yesterday**
+ * **today**
+ * **tomorrow**
+ * A **YYYY-MM-DD** format date.
+ * A **YYYY-MM-DD,HH:MM:SS** format date/time, seconds are optional (note the
    comma)
 
 The proper way of saying "give me all the log entries for today" is::
@@ -117,21 +121,27 @@ The proper way of saying "give me all the log entries for today" is::
 Ancestor
 --------
 
-`ancestor:`''path'' specifies the common ancestor between the current branch, and a different branch. This is the same ancestor that would be used for merging purposes.
+**ancestor**:*path*
+    specifies the common ancestor between the current branch,and a 
+    different branch. This is the same ancestor that would be used for
+    merging purposes.
 
-''path'' may be the URL of a remote branch, or the file path to a local branch.
+*path* may be the URL of a remote branch, or the file path to a local branch.
 
-For example, to see what changes were made on a branch since it was forked off ``../parent``: {{{
-$ bzr diff -r ancestor:../parent
-}}}
+For example, to see what changes were made on a branch since it was forked
+off **../parent**::
+
+    $ bzr diff -r ancestor:../parent
 
 Branch
 ------
 
-`branch:`''path'' specifies the latest revision in another branch.
+branch
+   ''path'' specifies the latest revision in another branch.
 
 ''path'' may be the URL of a remote branch, or the file path to a local branch.
 
-For example, to get the differences between this and another branch:{{{
-$ bzr diff -r branch:http://example.com/bzr/foo.dev
-}}}
+For example, to get the differences between this and another branch::
+
+    $ bzr diff -r branch:http://example.com/bzr/foo.dev
+

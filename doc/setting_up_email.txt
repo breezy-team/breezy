@@ -11,13 +11,13 @@ How to setup your email address
 ===============================
 Bazaar-NG will try to guess an email address based on your username and the
 hostname if none is set.  This will probably not be what you want, so three
-ways exist to tell Bazaar-NG what email to use::
+ways exist to tell Bazaar-NG what email to use
 
  * You can set your email in the default ini file,
  * You can set emails per-branch in the branch specific ini file,
  * Or your email can be set by an environmental variable.
 
-The order of precedence is::
+The order of precedence is
 
  1. If the `$BZREMAIL` env variable is set, use it.
  2. If an email is set for your current branch in the `branches.conf` ini file.
