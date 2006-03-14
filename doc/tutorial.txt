@@ -1,0 +1,605 @@
+.. This file is in Python ReStructuredText format - it can be formatted
+.. into HTML or text.  In the future we plan to extract the example commands
+.. and automatically test them.
+
+.. This text was previously on the wiki at
+.. http://bazaar.canonical.com/IntroductionToBzr but has been moved into the
+.. source tree so it can be kept in sync with
+.. the source and possibly automatically checked.
+
+==================
+Bazaar-NG Tutorial
+==================
+
+Current for bzr-0.7pre, 2006-01-06.
+
+
+Introduction
+============
+
+If you are already familiar with decentralized revision control, then
+please feel free to skip ahead to "Introducing Yourself to Bazaar-NG". If,
+on the other hand, you are familiar with revision control but not
+decentralized revision control, then please start at "How DRCS is
+different." Otherwise, get some coffee or tea, get comfortable and get
+ready to catch up. 
+
+The Purposes of Revision Control
+================================
+
+Odds are that you have worked on some sort of textual data -- the sources
+to a program, web sites or the config files that Unix system administrators
+have to deal with in /etc. The chances are also good that you have made
+some sort of mistake that you deeply regretted. Perhaps you deleted the
+configuration file for your mailserver or perhaps mauled the source code
+for a pet project. Whatever happened, you have just deleted important
+information that you would desperately like to get back. If this has ever
+happened to you, then you are probably ready for Bazaar-NG.
+
+Revision control systems (which I'll henceforth call RCS) such as Bazaar-NG
+give you the ability to track changes for a directory by turning it into
+something slightly more complicated than a directory that we call a
+**branch**. The branch not only stores how the directory looks right now,
+but also how it looked at various points in the past. Then, when you do
+something you wish you hadn't, you can restore the directory to the way it
+looked at some point in the past.
+
+Revision control systems give users the ability to save changes to a branch
+by "committing a **revision**". The revision created is essentially a
+summary of the changes that were made since the last time the tree was
+saved. 
+
+These revisions have other uses as well. For example, one can comment
+revisions to record what the recent set of changes meant by providing an
+optional log message. Real life log messages include things like "Fixed the
+web template to close the table" and "Added sftp suppport. Fixes #595"
+	
+We keep these logs so that if later there is some sort of problem with
+sftp, we can figure out when the problem probably happened. 
+
+How DRCS is Different
+---------------------
+
+Many Revision Control Systems (RCS) are stored on servers. If one wants to
+work on the code stored within an RCS, then one needs to connect to the
+server and "checkout" the code. Doing so gives one a directory in which a
+person can make changes and then commit. The RCS client then connects to
+the RCS server and stores the changes. This method is known as the
+centralized model. 
+
+The centralized model can have some drawbacks. A centralized RCS requires
+that one is able to connect to the server whenever one wants to do version
+control work. This can be a bit of a problem if your server on some other
+machine on the internet and you are not. Or, worse yet, you ''are'' on the
+internet but the server is missing!
+
+Decentralized Revision Control Systems (which I'll call DRCS after this
+point) deal with this problem by keeping branches on the same machine as
+the client. In Bazaar-NG's case, the branch is kept in the same place as
+the code that is being version controlled. This allows the user to save his
+changes (**commit**) whenever he wants -- even if he is offline. The user
+only needs internet access when he wants to access the changes in someone
+else's branch that are somewhere else.
+
+ 
+A common requirement that many people have is the need to keep track of the
+changes for a directory such as file and subdirectory changes. Performing
+this tracking by hand is a awkward process that over time becomes unwieldy.
+That is, until one considers version control tools such as Bazaar-NG. These
+tools automate the process of storing data by creating a **revision** of
+the directory tree whenever the user asks. 
+
+Revision control software such as Bazaar-NG can do much more than just
+storage and performing undo.  For example, with Bazaar-NG developer can
+take the modifications in one branch of software and apply them to another,
+related, branch -- even if those changes exist in a branch owned by
+somebody else. This allows developers to cooperate without giving write
+access to repository.
+
+Bazaar-NG remembers the ''ancestry'' of a revision: the previous revisions
+that it is based upon.  A single revision may have more than one direct
+descendant, each with different changes, representing a divergence in the
+evolution of the tree. By branching, Bazaar-NG allows multiple people to
+cooperate on the evolution of a project, without all needing to work in
+strict lock-step.  Branching can be useful even for a single developer.
+
+Introducing yourself to Bazaar-NG
+=================================
+
+Bazaar-NG installs a single new command, **bzr**.  Everything else is a
+subcommand of this.  You can get some help with `bzr help`.  There will be
+more in the future.
+
+One function of a version control system is to keep track of who changed
+what.  In a decentralized system, that requires an identifier for each
+author that is globally unique.  Most people already have one of these: an
+email address. Bzr is smart enough to automatically generate an email
+address by looking up your username and hostname. If you don't like the
+guess that Bazaar-NG makes, then three options exist:
+
+ 1. (**Bazaar-NG 0.6 and later**). Setting the email address in the
+ ``~/.bazaar/bazaar.conf`` by adding the following lines. Please note that
+ ``[DEFAULT]`` is case sensitive::
+
+    [DEFAULT]
+    email= Your Name <email@isp.com>
+ 
+ 1. (**Bazaar-NG 0.6 and later**) Override the previous setting on a
+ branch by branch basis by creating a branch section in
+ ``~/.bazaar/branches.conf`` by adding the following lines::
+
+    [/the/directory/to/the/branch]
+    email=Your Name <email@isp.com>
+ 
+ 1. Overriding the two previous options by setting the global environment
+    variable ``$BZREMAIL`` or ``$EMAIL`` (``$BZREMAIL`` will take precedence)
+    to your full email address.
+
+Creating a branch
+=================
+
+History is by default stored in the .bzr directory of the branch. There
+will be a facility to store it in a separate repository, which may be
+remote.  We create a new branch by running **bzr init** in an existing
+directory::
+
+    % mkdir tutorial
+    % cd tutorial
+    % ls -a
+    ./  ../
+    % pwd
+    /home/mbp/work/bzr.test/tutorial
+    %
+    % bzr init
+    % ls -aF
+    ./  ../  .bzr/
+    %
+
+As for CVS, there are three classes of file: unknown, ignored, and
+versioned.  The **add** command makes a file versioned: that is, changes to
+it will be recorded by the system::
+
+    % echo 'hello world' > hello.txt
+    % bzr status
+    unknown:
+      hello.txt
+    % bzr unknowns
+    hello.txt
+    % bzr add hello.txt
+    added hello.txt
+    % bzr unknowns
+
+
+If you add the wrong file, simply use **bzr remove** to make it unversioned
+again.  This does not delete the working copy.
+
+Branch locations
+================
+
+All history is stored in a branch, which is just an on-disk directory
+containing control files.  There is no repository or database as used in
+svn or svk.
+
+You'll usually refer to branches on your computer's filesystem just by
+giving the name of the directory containing the branch.  bzr also supports
+accessing branches over http, for example::
+
+    % bzr log http://bazaar-ng.org/bzr/bzr.dev/
+
+By installing bzr plugins you can also access branches over the sftp or
+rsync protocols.
+
+Reviewing changes
+=================
+
+Once you have completed some work, you will want to **commit** it to the
+version history.  It is good to commit fairly often: whenever you get a new
+feature working, fix a bug, or improve some code or documentation.  It's
+also a good practice to make sure that the code compiles and passes its
+test suite before committing, to make sure that every revision is a
+known-good state.  You can also review your changes, to make sure you're
+committing what you intend to, and as a chance to rethink your work before
+you permanently record it. 
+
+Two bzr commands are particularly useful here: **status** and **diff**.  
+
+bzr status
+----------
+
+The **status** command tells you what changes have been made to the
+working directory since the last revision::
+
+    % bzr status
+    modified:
+       foo
+
+By default **bzr status** hides "boring" files that are either unchanged or
+ignored.  To see them too, use the --all option.  The status command can
+optionally be given the name of some files or directories to check.
+
+bzr diff
+--------
+
+The **diff** command shows the full text of changes to all files as a
+standard unified diff.  This can be piped through many programs such as
+''patch'', ''diffstat'', ''filterdiff'' and ''colordiff''::
+
+    % bzr diff
+    *** added file 'hello.txt'
+    --- /dev/null 
+    +++ hello.txt 
+    @@ -1,0 +1,1 @@
+    +hello world
+
+
+With the ''-r'' option, the tree is compared to an earlier revision, or
+the differences between two versions are shown::
+
+    % bzr diff -r 1000..          # everything since r1000
+    % bzr diff -r 1000..1100      # changes from 1000 to 1100
+
+The --diff-options option causes bzr to run the external diff program,
+passing options.  For example::
+
+    % bzr diff --diff-options --side-by-side foo
+
+Committing changes
+==================
+
+When the working tree state is satisfactory, it can be **committed** to the
+branch, creating a new revision holding a snapshot of that state.  
+
+bzr commit
+----------
+
+The **commit** command takes a message describing the changes in the
+revision.  It also records your userid, the current time and timezone, and
+the inventory and contents of the tree.  The commit message is specified by
+the ''-m'' or ''--message'' option. You can enter a multi-line commit
+message; in most shells you can enter this just by leaving the quotes open
+at the end of the line.
+
+::
+
+    % bzr commit -m "added my first file"
+
+You can also use the -F option to take the message from a file.  Some
+people like to make notes for a commit message while they work, then review
+the diff to make sure they did what they said they did.  (This file can
+also be useful when you pick up your work after a break.)
+
+Message from an editor
+======================
+
+If you use neither the `-m` nor the `-F` option then bzr will open an
+editor for you to enter a message.  The editor to run is controlled by your
+`$EDITOR` environment variable or (Post Bazaar-NG 0.6) email setting in .
+If you quit the editor without making any changes, the commit will be
+cancelled.
+
+Selective commit
+----------------
+
+If you give file or directory names on the commit command line then only
+the changes to those files will be committed.  For example::
+
+    % bzr commit -m "documentation fix" commit.py
+
+By default bzr always commits all changes to the tree, even if run from a
+subdirectory.  To commit from only the current directory down, use::
+
+    % bzr commit .
+
+
+Removing uncommitted changes
+============================
+
+If you've made some changes and don't want to keep them, use the **revert**
+command to go back to the previous head version.  It's a good idea to use
+**bzr diff** first to see what will be removed. By default the revert
+command reverts the whole tree; if file or directory names are given then
+only those ones will be affected. **revert** also clears the list of
+pending merges revisions.
+
+Ignoring files
+==============
+
+Many source trees contain some files that do not need to be versioned, such
+as editor backups, object or bytecode files, and built programs.  You can
+simply not add them, but then they'll always crop up as unknown files.  You
+can also tell bzr to ignore these files by adding them to a file called
+''.bzrignore'' at the top of the tree.
+
+This file contains a list of file wildcards (or "globs"), one per line.
+Typical contents are like this::
+
+    *.o
+    *~
+    *.tmp
+    *.py[co]
+
+If a glob contains a slash, it is matched against the whole path from the
+top of the tree; otherwise it is matched against only the filename.  So
+the previous example ignores files with extension ``.o`` in all
+subdirectories, but this example ignores only config.h at the top level
+and HTML files in ``doc/``::
+
+    ./config.h
+    doc/*.html
+
+To get a list of which files are ignored and what pattern they matched, use
+''bzr ignored''::
+
+    % bzr ignored
+    config.h                 ./config.h
+    configure.in~            *~
+
+It is OK to have either an ignore pattern match a versioned file, or to add
+an ignored file.  Ignore patterns have no effect on versioned files; they
+only determine whether unversioned files are reported as unknown or
+ignored.
+
+The ''.bzrignore'' file should normally be versioned, so that new copies of
+the branch see the same patterns::
+
+    % bzr add .bzrignore
+    % bzr commit -m "Add ignore patterns"
+
+
+Examining history
+=================
+
+bzr log
+-------
+
+The **bzr log** command shows a list of previous revisions. The **bzr log
+--forward** command does the same in chronological order to get most recent
+revisions printed at last.
+
+As with bzr diff, bzr log supports the -r argument::
+
+    % bzr log -r 1000..          # Revision 1000 and everything after it
+    % bzr log -r ..1000          # Everything up to and including revision % 1000
+    % bzr log -r 1000..1100      # changes from 1000 to 1100
+    % bzr log -r 1000            # The changes in only revision 1000
+
+
+Branch statistics
+=================
+
+The **bzr info** command shows some summary information about the working
+tree and the branch history.  
+
+
+Versioning directories
+======================
+
+bzr versions files and directories in a way that can keep track of renames
+and intelligently merge them::
+
+    % mkdir src
+    % echo 'int main() {}' > src/simple.c
+    % bzr add src
+    % bzr status
+    A       src/
+    ?       src/simple.c
+    % bzr add src/simple.c
+    % bzr status
+    A       src/
+    A       src/simple.c
+
+
+Deleting and removing files
+===========================
+You can delete files or directories by just deleting them from the working
+directory.  This is a bit different to CVS, which requires that you also do
+**cvs remove**.
+
+**bzr remove** makes the file un-versioned, but does not delete the working
+copy.  This is useful when you add the wrong file, or decide that a file
+should actually not be versioned. 
+
+::
+
+    % rm -r src
+    % bzr remove -v hello.txt
+    ?       hello.txt
+    % bzr status
+    ?       hello.txt
+    D       src/
+    D       src/simple.c
+
+If you remove the wrong file by accident, you can use **bzr revert** to restore it.
+
+Branching
+=========
+
+Often rather than starting your own project, you will want to submit a
+change to an existing project.  You can get a copy of an existing branch by
+copying its directory, expanding a tarball, or by a remote copy using
+something like rsync.  You can also use bzr to fetch a copy.  Because this
+new copy is potentially a new branch, the command is called *branch*::
+
+    % bzr branch http://bazaar-ng.org/bzr/bzr.dev 
+    % cd bzr.dev
+
+This copies down the complete history of this branch, so we can do all
+operations on it locally: log, annotate, making and merging branches.
+There will be an option to get only part of the history if you wish.
+
+Checkouts
+=========
+
+Another thing that gives you files to edit is a checkout. A checkout is
+always associated with another branch. One of the purposes of checkouts is
+to get multiple working trees for a branch. Another reason for checkouts is
+to get access to the files in a branch without keeping a full copy of the
+branch available locally. Getting a checkout looks like this::
+
+    % bzr checkout http://bazaar-ng.org/bzr/bzr.dev
+    % cd bzr.dev
+
+Checkouts have several advantages and drawbacks. A checkout does not have
+any RCS history as the history is stored in the branch for which a checkout
+is assocated with. This behaviour results in two general rules:
+
+ 1. checkouts take much less space than a full branch
+ 2. checkouts are much faster if the branch is on a local filesystem.
+
+
+Following upstream changes
+==========================
+
+You can stay up-to-date with the parent branch by "pulling" in their changes
+::
+
+    % bzr pull
+
+After this change, the local directory will be a mirror of the source.
+
+This command only works if your local (destination) branch includes only
+changes from the parent branch and no commits of its own.  Otherwise, the
+branches are said to have ''diverged'', and they must be merged instead.
+
+Merging from related branches
+=============================
+
+If two branches have diverged (both have unique changes) then **bzr merge**
+is the appropriate command to use. Merge will automatically calculate the
+changes that exist in the branch you're merging from that are not in your
+branch and attempt to apply them in your branch.  ::
+
+  % bzr merge URL
+
+
+Conflicts during merge
+======================
+
+Sometimes two branches modify the same lines in the same files at the same
+time. The result of this collision is called a "conflict". These conflicts
+must be resolved by hand as Bazaar-NG can not tell which change you would
+prefer to keep. You are, however, provided with some information which
+makes the job easier for you to deal with.
+
+The first thing that Bazaar-NG does is to merge in the parts that it can.
+The parts that can not be merged are put into the file for you to decide
+what to do with.
+
+The second thing that Bazaar-NG does is to provide you with three extra
+files for each file that is conflicted. The names of these files are the
+same as the original filename with ".BASE", ".THIS" and ".OTHER" appended.
+Each of these files serves a different purpose:
+
++------------------+-----------------------------------------------------+
+| filename.BASE   | filename as it looked back when filename was         |
+|                 | identical in both branches.                          |
++-----------------+------------------------------------------------------+
+| filename.THIS   | The version of filename for this branch. All of the  |
+|                 | parts of the merge with the other branch that can be |
+|                 | merged from the other branch without conflicts are   |
+|                 | accepted. The parts which conflict are thrown away   |
++-----------------+------------------------------------------------------+
+| filename.OTHER  | The version of filename for the other branch. All of |
+|                 | parts of the merge from this branch that can be      |
+|                 | successfully merged are accepted. The parts of the   |
+|                 | merge which conflict are thrown away                 |
++-----------------+------------------------------------------------------+
+
+
+For example, imagine that you and another developer were working on on a
+simple branch that only contained hello.c. Both of you agree that saying 
+"Yo" to users is a little _too_ informal. Both of you also decide to fix
+the problem at the same time, but take slightly different approaches. You
+decide upon saying "Hi", while your compatriot decides upon a slightly more
+formal "Hello". You both make the respective change and commit. Then, you
+merge his change. The result would look something like this:
+
++----------------------+------------------------+
+|  hello.c.THIS        |    hello.c.THAT        |
++----------------------+------------------------+
+| | #include <stdio.h> | | #include <stdio.h>   |
+| | int                | | int                  |
+| | main()             | | main()               |
+| | {                  | | {                    |
+| |  printf("Hi");     | |   printf("Hello");   |
+| | }                  | | }                    |
+|                      |                        |
++----------------------+------------------------+
+|    hello.c.BASE      |       hello.c          |
++----------------------+------------------------+
+| | #include <stdio.h> | | #include <stdio.h>   |
+| | int                | | int                  |
+| | main()             | | main()               |
+| | {                  | | {                    |
+| |   printf("Yo");    | | <<<<<<< TREE         |
+| | }                  | |   printf("Hi");      |
+|                      | | =======              |
+|                      | |   printf("Hello");   |
+|                      | | <<<<<<< MERGE-SOURCE |
+|                      | | }                    |
+|                      |                        |
++----------------------+------------------------+
+
+Your job as a developer is to decide which better. A multitude of options
+exist for how to solve the conflict. Two of them are:
+
+  1. Decide whether you'd like hello.c.THIS, hello.c.THAT or hello.c.BASE.
+  Copy that one to hello.c.
+
+  1. edit hello.c and decide which part you wish to keep. Your solution
+  will be between the lines that say "<<<<<<< TREE" and "=======". His
+  solution will be between "=======" and "<<<<<<< MERGE-SOURCE").  Do not
+  forget to delete the markers too!
+
+Bazaar also tracks which files conflicted during merge to prevent you from
+accidentally committing the conflict markers to your branch. To tell
+Bazaar-NG that you have fixed one of the conflicted files, run::
+
+ % bzr resolve hello.c
+
+Using a program such as kdiff3, you can now comfortably merge them into one
+file. To commit you have to rename it to the original basename and delete
+the other two files. As long as there exist files with .BASE, .THIS or
+.OTHER the commit command will complain.
+
+
+Publishing your branch
+======================
+
+You do not need a special server to publish a bzr branch. Generally
+speaking, one can push a branch via sftp to a directory that is served via
+apache. Bazaar-NG supports a variety of methods for reading and writing
+branches.
+
+Bazaar-NG can push branches via these methods::
+  1. sftp via ssh (the most common)
+  2. standard FTP
+  3. Any filesystem mounted via remote filesystem tools like NFS and Samba
+  4. The Canonical.com branch hosting service (via scoming soon)
+  5. Rsync (requires bzrtools plugin from http://bazaar-vcs.org/BzrTools)
+
+Bazaar-NG can also read branches via a variety of methods::
+
+  1. Standard http, (E.g. Apache)
+  2. rsync 
+  3. FTP 
+  3. SFTP
+
+The most common approach is to push a branch via sftp to a place that is
+served via SFTP. This usually looks something like::
+
+ * You have a branch in ~/somebranch
+ * You have a directory on /home/yourname/public_html on BigServer that
+   shows up as http://BigServer/~yourname
+
+In cases such as this, you'll usually perform the following commands to
+initially push your branch via rsync (which requires the bzrtools plugin)::
+
+ % cd somebranch/
+ % bzr push yourname@BigServer:public_html/somebranch/
+
+Other people can then access for your branch by doing the following::
+
+ % cd anotherbranch/
+ % bzr merge http://BigServer/~yourname/somebranch
+

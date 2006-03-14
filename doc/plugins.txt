@@ -1,0 +1,65 @@
+What is a Plugin
+================
+A plugin is an external component for Bazaar-NG that is typically made by
+third parties. A plugin is capable of augmenting Bazaar-NG by adding or
+replacing new or current functionality in Bazaar-NG. Plugins often work as
+a way for developers to test new features for Bazaar-NG prior to inclusion
+in the official codebase. Plugins can do a variety of things, including
+overriding commands, adding new commands, providing additional network
+transports, customizing log output. The sky is the limit for the
+customization that can be done through plugins.
+
+Where to find Plugins 
+=====================
+We keep our list of plugins on the http://bazaar-vcs.org/PluginRegistry page.
+
+Writing a plugin
+================
+Plugins are very similar to bzr core functionality.  They can import
+anything in bzrlib.  A plugin may simply override standard functionality,
+but most plugins supply new commands.
+
+To create a command, make a new object that derives from
+`bzrlib.commands.Command`, and name it cmd_foo, where foo is the name of
+your command.  If you create a command whose name contains an underscore,
+it will appear in the UI with the underscore turned into a hyphen.  For
+example, "cmd_baz_import" will appear as "baz-import".  For examples of how
+to write commands, please see builtins.py.
+
+Once you've created a command you must register the command with
+`bzrlib.commands.register_command(cmd_foo)`.  You must register the command
+when your file is imported, otherwise bzr will not see it.
+
+By default, bzr will scan `bzrlib/plugins` and `~/.bazaar/plugins` for
+plugins.  You can override this with `BZR_PLUGIN_PATH`.  Plugins may be
+either modules or packages.  If your plugin is a single file, you can
+structure it as a module.  If it has multiple files, or if you want to
+distribute it as a bzr branch, you should structure it as a package, i.e. a
+directory with an `__init__.py ` file.
+
+Please feel free to contribute your plugin to BzrTools, if you think it
+would be useful to other people.
+
+How to Install a plugin 
+=======================
+Installing a plugin is very easy! One can either install a plugin
+systemwide or on a user by user basis. Both methods involve create a
+"plugins" directory. Within this directory one can place plugins in
+subdirectories. For example, "plugins/bzrtools/".
+
+Two locations are currently checked; the bzrlib/plugins directory
+(typically found in /usr/lib/python2.4/site-packages/bzrlib/plugins/) and
+$HOME/.bazaar/plugins/.
+
+One can additionally override the home plugins by setting the environment
+variable BZR_PLUGIN_PATH to a directory that contains plugins. The
+installation of a plugin can be checked by running **bzr plugins** at
+any time. New commands can be seen by running **bzr help commands**.
+
+Plugins work particularly well with Bazaar-NG branches. For example, to
+install the bzrtools plugins for your main user account, one can perform
+the following:: 
+
+    bzr branch http://panoramicfeedback.com/opensource/bzr/bzrtools
+    ~/.bazaar/plugins/bzrtools
+

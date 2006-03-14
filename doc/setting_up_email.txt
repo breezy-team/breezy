@@ -1,0 +1,76 @@
+Why set up an email address with Bazaar-NG?
+===========================================
+Bazaar-NG stores the claimed email address in revisions when they're
+created, so that people can tell who commited which revisions.  Of course,
+people can change the email address claimed, so you have to trust the
+people involved.  Additionally, the email address in a revision gives
+others a way to contact the author of a revision for credit and/or blame.
+:)
+
+How to setup your email address 
+===============================
+Bazaar-NG will try to guess an email address based on your username and the
+hostname if none is set.  This will probably not be what you want, so three
+ways exist to tell Bazaar-NG what email to use::
+
+ * You can set your email in the default ini file,
+ * You can set emails per-branch in the branch specific ini file,
+ * Or your email can be set by an environmental variable.
+
+The order of precedence is::
+
+ 1. If the `$BZREMAIL` env variable is set, use it.
+ 2. If an email is set for your current branch in the `branches.conf` ini file.
+ 3. If an email is set in the `bazaar.conf` default ini file.
+ 4. If the `$EMAIL` env variable is set.
+ 5. Bazaar-NG will try to guess based on your username and the hostname.
+
+To check on what Bazaar-NG thinks your current email is, use the '''whoami'''
+("who am i?") command::
+
+    % bzr whoami
+    Joe Cool <joe@example.com>
+
+Setting email via default ini file
+==================================
+The first method is using the default ini file.  To use the default ini
+method, create the file `$HOME/.bazaar/bazaar.conf` (on Windows this is
+`%APPDATA%\bazaar\2.0\bazaar.conf`) and set an email address as shown
+below.  Please note that the word DEFAULT is case sensitive, and must be in
+upper-case.::
+
+    [DEFAULT]
+    email=Your Name <name@isp.com>
+
+
+For more information on the ini file format, see ConfiguringBzr.
+
+Setting email on a per-branch basis
+===================================
+
+The second approach is to set email on a branch by branch basis by using the
+`$HOME/.bazaar/branches.conf` ini file, thusly::
+
+    [/some/branch/location]
+    email=Your Name <name@other-isp.com>
+
+This will set your email address in the branch at `/some/branch/location`,
+overriding the default specified in the `bazaar.conf` above.
+
+Setting email via environment
+-----------------------------
+The final method Bazaar-NG will use is checking for the `$BZREMAIL` and
+`$EMAIL` environment variables.  Generally, one would use this method to
+override the email in a script context.  If you would like to set a general
+default, then please see the ini methods above.
+
+
+Concerns for spam
+=================
+Some people want to avoid sharing their email address so as not to get
+spam.  Bazaar-NG will never disclose your email address, unless you publish
+a branch or changeset in a public location.  It's recommended that you
+''do'' use a real address, so that people can contact you about your work,
+but it's not required.  You can use an address which is obfuscated, which
+bounces, or which goes through an anti-spam service such as
+`spamgourmet.com`.
