@@ -106,11 +106,120 @@ class VersionedFileTestMixIn(object):
 
     def test_get_delta(self):
         f = self.get_file()
+        sha1s = self._setup_for_deltas(f)
+        expected_delta = (None, '6bfa09d82ce3e898ad4641ae13dd4fdb9cf0d76b', False, 
+                          [(0, 0, 1, [('base', 'line\n')])])
+        self.assertEqual(expected_delta, f.get_delta('base'))
+        next_parent = 'base'
+        text_name = 'chain1-'
+        for depth in range(26):
+            new_version = text_name + '%s' % depth
+            expected_delta = (next_parent, sha1s[depth], 
+                              False,
+                              [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
+            self.assertEqual(expected_delta, f.get_delta(new_version))
+            next_parent = new_version
+        next_parent = 'base'
+        text_name = 'chain2-'
+        for depth in range(26):
+            new_version = text_name + '%s' % depth
+            expected_delta = (next_parent, sha1s[depth], False,
+                              [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
+            self.assertEqual(expected_delta, f.get_delta(new_version))
+            next_parent = new_version
+        # smoke test for eol support
+        expected_delta = ('base', '264f39cab871e4cfd65b3a002f7255888bb5ed97', True, [])
+        self.assertEqual(['line'], f.get_lines('noeol'))
+        self.assertEqual(expected_delta, f.get_delta('noeol'))
+
+    def test_get_deltas(self):
+        f = self.get_file()
+        sha1s = self._setup_for_deltas(f)
+        deltas = f.get_deltas(f.versions())
+        expected_delta = (None, '6bfa09d82ce3e898ad4641ae13dd4fdb9cf0d76b', False, 
+                          [(0, 0, 1, [('base', 'line\n')])])
+        self.assertEqual(expected_delta, deltas['base'])
+        next_parent = 'base'
+        text_name = 'chain1-'
+        for depth in range(26):
+            new_version = text_name + '%s' % depth
+            expected_delta = (next_parent, sha1s[depth], 
+                              False,
+                              [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
+            self.assertEqual(expected_delta, deltas[new_version])
+            next_parent = new_version
+        next_parent = 'base'
+        text_name = 'chain2-'
+        for depth in range(26):
+            new_version = text_name + '%s' % depth
+            expected_delta = (next_parent, sha1s[depth], False,
+                              [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
+            self.assertEqual(expected_delta, deltas[new_version])
+            next_parent = new_version
+        # smoke tests for eol support
+        expected_delta = ('base', '264f39cab871e4cfd65b3a002f7255888bb5ed97', True, [])
+        self.assertEqual(['line'], f.get_lines('noeol'))
+        self.assertEqual(expected_delta, deltas['noeol'])
+        # smoke tests for eol support - two noeol in a row same content
+        expected_deltas = (('noeol', '3ad7ee82dbd8f29ecba073f96e43e414b3f70a4d', True, 
+                          [(0, 1, 2, [(u'noeolsecond', 'line\n'), (u'noeolsecond', 'line\n')])]),
+                          ('noeol', '3ad7ee82dbd8f29ecba073f96e43e414b3f70a4d', True, 
+                           [(0, 0, 1, [('noeolsecond', 'line\n')]), (1, 1, 0, [])]))
+        self.assertEqual(['line\n', 'line'], f.get_lines('noeolsecond'))
+        self.assertTrue(deltas['noeolsecond'] in expected_deltas)
+        # two no-eol in a row, different content
+        expected_delta = ('noeolsecond', '8bb553a84e019ef1149db082d65f3133b195223b', True, 
+                          [(1, 2, 1, [(u'noeolnotshared', 'phone\n')])])
+        self.assertEqual(['line\n', 'phone'], f.get_lines('noeolnotshared'))
+        self.assertEqual(expected_delta, deltas['noeolnotshared'])
+        # eol folling a no-eol with content change
+        expected_delta = ('noeol', 'a61f6fb6cfc4596e8d88c34a308d1e724caf8977', False, 
+                          [(0, 1, 1, [(u'eol', 'phone\n')])])
+        self.assertEqual(['phone\n'], f.get_lines('eol'))
+        self.assertEqual(expected_delta, deltas['eol'])
+        # eol folling a no-eol with content change
+        expected_delta = ('noeol', '6bfa09d82ce3e898ad4641ae13dd4fdb9cf0d76b', False, 
+                          [(0, 1, 1, [(u'eolline', 'line\n')])])
+        self.assertEqual(['line\n'], f.get_lines('eolline'))
+        self.assertEqual(expected_delta, deltas['eolline'])
+        # eol with no parents
+        expected_delta = (None, '264f39cab871e4cfd65b3a002f7255888bb5ed97', True, 
+                          [(0, 0, 1, [(u'noeolbase', 'line\n')])])
+        self.assertEqual(['line'], f.get_lines('noeolbase'))
+        self.assertEqual(expected_delta, deltas['noeolbase'])
+        # eol with two parents, in inverse insertion order
+        expected_deltas = (('noeolbase', '264f39cab871e4cfd65b3a002f7255888bb5ed97', True,
+                            [(0, 1, 1, [(u'eolbeforefirstparent', 'line\n')])]),
+                           ('noeolbase', '264f39cab871e4cfd65b3a002f7255888bb5ed97', True,
+                            [(0, 1, 1, [(u'eolbeforefirstparent', 'line\n')])]))
+        self.assertEqual(['line'], f.get_lines('eolbeforefirstparent'))
+        #self.assertTrue(deltas['eolbeforefirstparent'] in expected_deltas)
+
+    def _setup_for_deltas(self, f):
         self.assertRaises(errors.RevisionNotPresent, f.get_delta, 'base')
         # add texts that should trip the knit maximum delta chain threshold
         # as well as doing parallel chains of data in knits.
         # this is done by two chains of 25 insertions
         f.add_lines('base', [], ['line\n'])
+        f.add_lines('noeol', ['base'], ['line'])
+        # detailed eol tests:
+        # shared last line with parent no-eol
+        f.add_lines('noeolsecond', ['noeol'], ['line\n', 'line'])
+        # differing last line with parent, both no-eol
+        f.add_lines('noeolnotshared', ['noeolsecond'], ['line\n', 'phone'])
+        # add eol following a noneol parent, change content
+        f.add_lines('eol', ['noeol'], ['phone\n'])
+        # add eol following a noneol parent, no change content
+        f.add_lines('eolline', ['noeol'], ['line\n'])
+        # noeol with no parents:
+        f.add_lines('noeolbase', [], ['line'])
+        # noeol preceeding its leftmost parent in the output:
+        # this is done by making it a merge of two parents with no common
+        # anestry: noeolbase and noeol with the 
+        # later-inserted parent the leftmost.
+        f.add_lines('eolbeforefirstparent', ['noeolbase', 'noeol'], ['line'])
+        # two identical eol texts
+        f.add_lines('noeoldup', ['noeol'], ['line'])
         next_parent = 'base'
         text_name = 'chain1-'
         text = ['line\n']
@@ -154,31 +263,7 @@ class VersionedFileTestMixIn(object):
             text = text + ['line\n']
             f.add_lines(new_version, [next_parent], text)
             next_parent = new_version
-        f.add_lines('noeol', ['base'], ['line'])
-        expected_delta = (None, '6bfa09d82ce3e898ad4641ae13dd4fdb9cf0d76b', False, 
-                          [(0, 0, 1, [('base', 'line\n')])])
-        self.assertEqual(expected_delta, f.get_delta('base'))
-        next_parent = 'base'
-        next_name = 'chain1-'
-        for depth in range(26):
-            new_version = text_name + '%s' % depth
-            expected_delta = (next_parent, sha1s[depth], 
-                              False,
-                              [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
-            self.assertEqual(expected_delta, f.get_delta(new_version))
-            next_parent = new_version
-        next_parent = 'base'
-        next_name = 'chain2-'
-        for depth in range(26):
-            new_version = text_name + '%s' % depth
-            expected_delta = (next_parent, sha1s[depth], False,
-                              [(depth + 1, depth + 1, 1, [(new_version, 'line\n')])])
-            self.assertEqual(expected_delta, f.get_delta(new_version))
-            next_parent = new_version
-        # smoke test for eol support
-        expected_delta = ('base', '264f39cab871e4cfd65b3a002f7255888bb5ed97', True, [])
-        self.assertEqual(['line'], f.get_lines('noeol'))
-        self.assertEqual(expected_delta, f.get_delta('noeol'))
+        return sha1s
 
     def test_add_delta(self):
         # tests for the add-delta facility.

@@ -206,10 +206,22 @@ class VersionedFile(object):
     def get_delta(self, version):
         """Get a delta for constructing version from some other version.
         
-        :return: (delta_parent, sha1, delta)
+        :return: (delta_parent, sha1, noeol, delta)
         Where delta_parent is a version id or None to indicate no parent.
         """
         raise NotImplementedError(self.get_delta)
+
+    def get_deltas(self, versions):
+        """Get multiple deltas at once for constructing versions.
+        
+        :return: dict(version_id:(delta_parent, sha1, noeol, delta))
+        Where delta_parent is a version id or None to indicate no parent, and
+        version_id is the version_id created by that delta.
+        """
+        result = {}
+        for version in versions:
+            result[version] = self.get_delta(version)
+        return result
 
     def get_suffixes(self):
         """Return the file suffixes associated with this versioned file."""
@@ -520,6 +532,7 @@ class InterVersionedFile(InterObject):
         graph = self.source.get_graph()
         order = topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
+        parent_texts = {}
         try:
             # TODO for incremental cross-format work:
             # make a versioned file with the following content:
@@ -530,15 +543,26 @@ class InterVersionedFile(InterObject):
             # and the incorrect version data will be ignored.
             # TODO: for all ancestors that are present in target already,
             # check them for consistent data, this requires moving sha1 from
+            # 
+            # TODO: remove parent texts when they are not relevant any more for 
+            # memory pressure reduction. RBC 20060313
+            # pb.update('Converting versioned data', 0, len(order))
+            # deltas = self.source.get_deltas(order)
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, len(order))
-                delta_parent, sha1, noeol, delta = self.source.get_delta(version)
-                target.add_delta(version,
-                                 self.source.get_parents(version),
-                                 delta_parent,
-                                 sha1,
-                                 noeol,
-                                 delta)
+                parent_text = target.add_lines(version,
+                                               self.source.get_parents(version),
+                                               self.source.get_lines(version),
+                                               parent_texts=parent_texts)
+                parent_texts[version] = parent_text
+                #delta_parent, sha1, noeol, delta = deltas[version]
+                #target.add_delta(version,
+                #                 self.source.get_parents(version),
+                #                 delta_parent,
+                #                 sha1,
+                #                 noeol,
+                #                 delta)
+                #target.get_lines(version)
             
             # this should hit the native code path for target
             if target is not self.target:

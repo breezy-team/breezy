@@ -262,80 +262,160 @@ class Weave(VersionedFile):
 
     def get_delta(self, version_id):
         """See VersionedFile.get_delta."""
-        if not self.has_version(version_id):
-            raise RevisionNotPresent(version_id, self)
-        sha1 = self.get_sha1(version_id)
-        parents = self.get_parents(version_id)
-        if len(parents):
-            parent = parents[0]
-            parent_inclusions = set(self.get_ancestry(parent))
-        else:
-            parent = None
-            parent_inclusions = set()
-        # we want to emit start, finish, replacement_length, replacement_lines tuples.
-        diff_hunks = []
-        current_hunk = [0, 0, 0, []] #start, finish, repl_length, repl_tuples
-        inclusions = set(self.get_ancestry(version_id))
-        parent_linenum = 0
-        noeol = False
-        parent_noeol = False
-        last_parent_line = ''
-        for lineno, inserted, deletes, line in self._walk_internal(inclusions):
-            parent_active = inserted in parent_inclusions and not (deletes & parent_inclusions)
-            version_active = inserted in inclusions and not (deletes & inclusions)
-            if not parent_active and not version_active:
-                # unrelated line of ancestry
-                pass
-            elif parent_active and version_active:
-                # shared line
-                if current_hunk != [parent_linenum, parent_linenum, 0, []]:
-                    diff_hunks.append(tuple(current_hunk))
-                parent_linenum += 1
-                current_hunk = [parent_linenum, parent_linenum, 0, []]
-                if len(line) and line[-1] != '\n':
-                    noeol = True
-            elif parent_active and not version_active:
-                # deleted line
-                current_hunk[1] += 1
-                parent_linenum += 1
-                last_parent_line = line
-            elif not parent_active and version_active:
-                # replacement line
-                # noeol only occurs at the end of a file because we 
-                # diff linewise. We want to show noeol changes as a
-                # empty diff unless the actual eol-less content changed.
-                if len(last_parent_line) and last_parent_line[-1] != '\n':
-                    parent_noeol = True
-                if len(line) and line[-1] != '\n':
-                    noeol = True
-                changed = False
-                if parent_noeol == noeol:
-                    # no noeol toggle, so trust the weave
-                    changed = True
-                elif parent_noeol:
-                    # parent is shorter:
-                    if last_parent_line != line[:-1]:
-                        # but changed anyway
-                        changed = True
-                elif noeol:
-                    # append a eol so that it looks like
-                    # a normalised delta
-                    line = line + '\n'
-                    # we are shorter:
-                    if last_parent_line != line:
-                        # but changed anyway
-                        changed = True
-                if changed:
-                    current_hunk[2] += 1
-                    current_hunk[3].append((inserted, line))
-                else:
-                    # last hunk last parent line is not eaten
-                    current_hunk[1] -= 1
+        return self.get_deltas([version_id])[version_id]
+
+    def get_deltas(self, version_ids):
+        """See VersionedFile.get_deltas."""
+        version_ids = self.get_ancestry(version_ids)
+        for version_id in version_ids:
+            if not self.has_version(version_id):
+                raise RevisionNotPresent(version_id, self)
+        # try extracting all versions; parallel extraction is used
+        nv = self.num_versions()
+        sha1s = {}
+        deltas = {}
+        texts = {}
+        inclusions = {}
+        noeols = {}
+        last_parent_lines = {}
+        parents = {}
+        parent_inclusions = {}
+        parent_linenums = {}
+        parent_noeols = {}
+        current_hunks = {}
+        diff_hunks = {}
+        # its simplest to generate a full set of prepared variables.
+        for i in range(nv):
+            name = self._names[i]
+            sha1s[name] = self.get_sha1(name)
+            parents_list = self.get_parents(name)
+            try:
+                parent = parents_list[0]
+                parents[name] = parent
+                parent_inclusions[name] = inclusions[parent]
+            except IndexError:
+                parents[name] = None
+                parent_inclusions[name] = set()
+            # we want to emit start, finish, replacement_length, replacement_lines tuples.
+            diff_hunks[name] = []
+            current_hunks[name] = [0, 0, 0, []] # #start, finish, repl_length, repl_tuples
+            parent_linenums[name] = 0
+            noeols[name] = False
+            parent_noeols[name] = False
+            last_parent_lines[name] = None
+            new_inc = set([name])
+            for p in self._parents[i]:
+                new_inc.update(inclusions[self._idx_to_name(p)])
+            # debug only, known good so far.
+            #assert set(new_inc) == set(self.get_ancestry(name)), \
+            #    'failed %s != %s' % (set(new_inc), set(self.get_ancestry(name)))
+            inclusions[name] = new_inc
+
+        nlines = len(self._weave)
+
+        for lineno, inserted, deletes, line in self._walk_internal():
+            # a line is active in a version if:
+            # insert is in the versions inclusions
+            # and
+            # deleteset & the versions inclusions is an empty set.
+            # so - if we have a included by mapping - version is included by
+            # children, we get a list of children to examine for deletes affect
+            # ing them, which is less than the entire set of children.
+            for version_id in version_ids:  
+                # The active inclusion must be an ancestor,
+                # and no ancestors must have deleted this line,
+                # because we don't support resurrection.
+                parent_inclusion = parent_inclusions[version_id]
+                inclusion = inclusions[version_id]
+                parent_active = inserted in parent_inclusion and not (deletes & parent_inclusion)
+                version_active = inserted in inclusion and not (deletes & inclusion)
+                if not parent_active and not version_active:
+                    # unrelated line of ancestry
+                    continue
+                elif parent_active and version_active:
+                    # shared line
+                    parent_linenum = parent_linenums[version_id]
+                    if current_hunks[version_id] != [parent_linenum, parent_linenum, 0, []]:
+                        diff_hunks[version_id].append(tuple(current_hunks[version_id]))
+                    parent_linenum += 1
+                    current_hunks[version_id] = [parent_linenum, parent_linenum, 0, []]
+                    parent_linenums[version_id] = parent_linenum
+                    try:
+                        if line[-1] != '\n':
+                            noeols[version_id] = True
+                    except IndexError:
+                        pass
+                elif parent_active and not version_active:
+                    # deleted line
+                    current_hunks[version_id][1] += 1
+                    parent_linenums[version_id] += 1
+                    last_parent_lines[version_id] = line
+                elif not parent_active and version_active:
+                    # replacement line
+                    # noeol only occurs at the end of a file because we 
+                    # diff linewise. We want to show noeol changes as a
+                    # empty diff unless the actual eol-less content changed.
+                    theline = line
+                    try:
+                        if last_parent_lines[version_id][-1] != '\n':
+                            parent_noeols[version_id] = True
+                    except (TypeError, IndexError):
+                        pass
+                    try:
+                        if theline[-1] != '\n':
+                            noeols[version_id] = True
+                    except IndexError:
+                        pass
+                    new_line = False
+                    parent_should_go = False
+
+                    if parent_noeols[version_id] == noeols[version_id]:
+                        # no noeol toggle, so trust the weaves statement
+                        # that this line is changed.
+                        new_line = True
+                        if parent_noeols[version_id]:
+                            theline = theline + '\n'
+                    elif parent_noeols[version_id]:
+                        # parent has no eol, we do:
+                        # our line is new, report as such..
+                        new_line = True
+                    elif noeols[version_id]:
+                        # append a eol so that it looks like
+                        # a normalised delta
+                        theline = theline + '\n'
+                        if parents[version_id] is not None:
+                        #if last_parent_lines[version_id] is not None:
+                            parent_should_go = True
+                        if last_parent_lines[version_id] != theline:
+                            # but changed anyway
+                            new_line = True
+                            #parent_should_go = False
+                    if new_line:
+                        current_hunks[version_id][2] += 1
+                        current_hunks[version_id][3].append((inserted, theline))
+                    if parent_should_go:
+                        # last hunk last parent line is not eaten
+                        current_hunks[version_id][1] -= 1
+                    if current_hunks[version_id][1] < 0:
+                        current_hunks[version_id][1] = 0
+                        # import pdb;pdb.set_trace()
+                    # assert current_hunks[version_id][1] >= 0
+
         # flush last hunk
-        if current_hunk != [0, 0, 0, []]:
-            diff_hunks.append(tuple(current_hunk))
-        return parent, sha1, noeol, diff_hunks
-    
+        for i in range(nv):
+            version = self._idx_to_name(i)
+            if current_hunks[version] != [0, 0, 0, []]:
+                diff_hunks[version].append(tuple(current_hunks[version]))
+        result = {}
+        for version_id in version_ids:
+            result[version_id] = (
+                                  parents[version_id],
+                                  sha1s[version_id],
+                                  noeols[version_id],
+                                  diff_hunks[version_id],
+                                  )
+        return result
+
     def get_parents(self, version_id):
         """See VersionedFile.get_parent."""
         return map(self._idx_to_name, self._parents[self._lookup(version_id)])
@@ -602,24 +682,24 @@ class Weave(VersionedFile):
         lineno = 0         # line of weave, 0-based
 
         for l in self._weave:
-            if isinstance(l, tuple):
+            if l.__class__ == tuple:
                 c, v = l
                 isactive = None
                 if c == '{':
-                    istack.append(self._idx_to_name(v))
+                    istack.append(self._names[v])
                 elif c == '}':
                     istack.pop()
                 elif c == '[':
-                    assert self._idx_to_name(v) not in dset
-                    dset.add(self._idx_to_name(v))
+                    assert self._names[v] not in dset
+                    dset.add(self._names[v])
                 elif c == ']':
-                    dset.remove(self._idx_to_name(v))
+                    dset.remove(self._names[v])
                 else:
                     raise WeaveFormatError('unexpected instruction %r' % v)
             else:
-                assert isinstance(l, basestring)
+                assert l.__class__ in (str, unicode)
                 assert istack
-                yield lineno, istack[-1], dset.copy(), l
+                yield lineno, istack[-1], frozenset(dset), l
             lineno += 1
 
         if istack:

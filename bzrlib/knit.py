@@ -300,7 +300,7 @@ class KnitVersionedFile(VersionedFile):
             assert len(delta) == 1 or len(delta) == 0
             if len(delta):
                 assert delta[0][0] == 0
-                assert delta[0][1] == 0
+                assert delta[0][1] == 0, delta[0][1]
             return super(KnitVersionedFile, self)._add_delta(version_id,
                                                              parents,
                                                              delta_parent,
@@ -563,7 +563,8 @@ class KnitVersionedFile(VersionedFile):
             content._lines[-1] = (content._lines[-1][0], line)
 
         if sha_strings(content.text()) != digest:
-            raise KnitCorrupt(self.filename, 'sha-1 does not match')
+            import pdb;pdb.set_trace()
+            raise KnitCorrupt(self.filename, 'sha-1 does not match %s' % version_id)
 
         return content
 
