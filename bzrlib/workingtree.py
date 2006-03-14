@@ -82,7 +82,7 @@ from bzrlib.osutils import (
                             rename,
                             supports_executable,
                             )
-from bzrlib.progress import DummyProgress
+from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import NULL_REVISION
 from bzrlib.rio import RioReader, RioWriter, Stanza
 from bzrlib.symbol_versioning import *
@@ -871,13 +871,17 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None):
+        top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         source.lock_read()
         try:
+            pp = ProgressPhase("Pull phase", 2, top_pb)
+            pp.next_phase()
             old_revision_history = self.branch.revision_history()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision)
             new_revision_history = self.branch.revision_history()
             if new_revision_history != old_revision_history:
+                pp.next_phase()
                 if len(old_revision_history):
                     other_revision = old_revision_history[-1]
                 else:
@@ -896,6 +900,7 @@ class WorkingTree(bzrlib.tree.Tree):
             return count
         finally:
             source.unlock()
+            top_pb.finished()
 
     def extras(self):
         """Yield all unknown files in this WorkingTree.
