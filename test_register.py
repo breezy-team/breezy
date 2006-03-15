@@ -22,5 +22,10 @@ class TestBranchRegistration(TestCase):
         self.assertContainsRe(out, r'Register a branch')
 
     def test_register_no_url(self):
-        pass
+        self.run_bzr('register-branch', retcode=3)
+
+    def test_register_cmd_simple_branch(self):
+        """Register a well-known branch to fake server"""
+        self.run_bzr('register-branch',
+                     'http://bazaar-vcs.org/bzr/bzr.dev/')
 

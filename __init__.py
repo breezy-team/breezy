@@ -33,8 +33,20 @@ class cmd_register_branch(Command):
     
     Before using this command you must register the project to which the
     branch belongs, and create an account for yourself on launchpad.net.
+
+    arguments:
+        branch_url: The publicly visible url for the branch.
+                    This must be an http or https url, not a local file
+                    path.
+
+    example:
+        bzr register-branch http://foo.com/bzr/fooproject.mine \
+                --project fooproject
     """
-    takes_args = ['url']
+    takes_args = ['branch_url']
+
+    def run(self, branch_url):
+        pass
 
 
 register_command(cmd_register_branch)
