@@ -24,8 +24,8 @@ in your ~/.bazaar/plugins/ directory.
 
 from bzrlib.commands import Command, Option, register_command
 
-class cmd_lp_register(Command):
-    """Register an branch with launchpad.net.
+class cmd_register_branch(Command):
+    """Register a branch with launchpad.net.
 
     This command lists a bzr branch in the directory of branches on
     launchpad.net.  Registration allows the bug to be associated with
@@ -37,7 +37,7 @@ class cmd_lp_register(Command):
     takes_args = ['url']
 
 
-register_command(cmd_lp_register)
+register_command(cmd_register_branch)
 
 def test_suite():
     """Called by bzrlib to fetch tests for this plugin"""

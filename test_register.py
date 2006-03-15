@@ -18,5 +18,9 @@ from bzrlib.tests import TestCase
 
 class TestBranchRegistration(TestCase):
     def test_register_help(self):
-        out, err = self.run_bzr('lp-register', '--help')
+        out, err = self.run_bzr('register-branch', '--help')
+        self.assertContainsRe(out, r'Register a branch')
+
+    def test_register_no_url(self):
+        pass
 
