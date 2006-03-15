@@ -24,6 +24,8 @@ in your ~/.bazaar/plugins/ directory.
 
 from bzrlib.commands import Command, Option, register_command
 
+
+
 class cmd_register_branch(Command):
     """Register a branch with launchpad.net.
 
@@ -46,8 +48,8 @@ class cmd_register_branch(Command):
     takes_args = ['branch_url']
 
     def run(self, branch_url):
-        pass
-
+        from lp_registration import BranchRegistrationRequest
+        BranchRegistrationRequest(branch_url)
 
 register_command(cmd_register_branch)
 

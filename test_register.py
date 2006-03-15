@@ -17,6 +17,8 @@
 from bzrlib.tests import TestCase
 
 class TestBranchRegistration(TestCase):
+    SAMPLE_URL = 'http://bazaar-vcs.org/bzr/bzr.dev/'
+
     def test_register_help(self):
         out, err = self.run_bzr('register-branch', '--help')
         self.assertContainsRe(out, r'Register a branch')
@@ -26,6 +28,28 @@ class TestBranchRegistration(TestCase):
 
     def test_register_cmd_simple_branch(self):
         """Register a well-known branch to fake server"""
-        self.run_bzr('register-branch',
-                     'http://bazaar-vcs.org/bzr/bzr.dev/')
+        self.run_bzr('register-branch', self.SAMPLE_URL)
+
+    def test_make_branch_registration(self):
+        from lp_registration import BranchRegistrationRequest
+        rego = BranchRegistrationRequest(self.SAMPLE_URL)
+
+    def test_request_xml(self):
+        from lp_registration import BranchRegistrationRequest
+        rego = BranchRegistrationRequest(self.SAMPLE_URL)
+        req_xml = rego._request_xml()
+        # other representations are possible; this is a bit hardcoded to
+        # python's xmlrpclib
+        self.assertEqualDiff(req_xml,
+r'''<?xml version='1.0'?>
+<methodCall>
+<methodName>register_branch</methodName>
+<params>
+<param>
+<value><string>%s</string></value>
+</param>
+</params>
+</methodCall>
+''' % self.SAMPLE_URL)
+
 
