@@ -18,21 +18,34 @@
 import xmlrpclib
 ## from twisted.web import xmlrpc
 
+
+# TODO: use last component of path as default id?
+
 class BranchRegistrationRequest(object):
     """Request to tell Launchpad about a bzr branch."""
 
-    def __init__(self, branch_url):
+    _methodname = 'register_branch'
+
+    def __init__(self, branch_url, branch_id):
         self.branch_url = branch_url
+        self.branch_id = branch_id
+        self.branch_description = None
+        self.owner_email = None
 
     def _request_xml(self):
         """Return the string form of the xmlrpc request."""
         return xmlrpclib.dumps(self._request_params(),
-                               methodname='register_branch',
+                               methodname=self._methodname,
                                allow_none=True)
 
     def _request_params(self):
         """Return xmlrpc request parameters"""
+        # This must match the parameter tuple expected by Launchpad for this
+        # method
         return (self.branch_url,
+                self.branch_id,
+                self.branch_description,
+                self.owner_email,
                )
 
 

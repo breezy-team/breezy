@@ -23,6 +23,8 @@ from lp_registration import BranchRegistrationRequest
 
 class TestBranchRegistration(TestCase):
     SAMPLE_URL = 'http://bazaar-vcs.org/bzr/bzr.dev/'
+    SAMPLE_OWNER = 'jhacker@foo.com'
+    SAMPLE_BRANCH_ID = 'bzr.dev'
 
     def test_register_help(self):
         out, err = self.run_bzr('register-branch', '--help')
@@ -35,12 +37,8 @@ class TestBranchRegistration(TestCase):
         """Register a well-known branch to fake server"""
         self.run_bzr('register-branch', self.SAMPLE_URL)
 
-    def test_make_branch_registration(self):
-        from lp_registration import BranchRegistrationRequest
-        rego = BranchRegistrationRequest(self.SAMPLE_URL)
-
     def test_request_xml(self):
-        rego = BranchRegistrationRequest(self.SAMPLE_URL)
+        rego = BranchRegistrationRequest(self.SAMPLE_URL, self.SAMPLE_BRANCH_ID)
         req_xml = rego._request_xml()
         # other representations are possible; this is a bit hardcoded to
         # python's xmlrpclib
@@ -52,14 +50,22 @@ r'''<?xml version='1.0'?>
 <param>
 <value><string>%s</string></value>
 </param>
+<param>
+<value><string>bzr.dev</string></value>
+</param>
+<param>
+<value><nil/></value></param>
+<param>
+<value><nil/></value></param>
 </params>
 </methodCall>
 ''' % self.SAMPLE_URL)
 
     def test_request_roundtrip(self):
         """Check the request can be parsed and meets the interface spec"""
-        rego = BranchRegistrationRequest(self.SAMPLE_URL)
+        rego = BranchRegistrationRequest(self.SAMPLE_URL, self.SAMPLE_BRANCH_ID)
         req_xml = rego._request_xml()
         unpacked, method = xmlrpclib.loads(req_xml)
-        self.assertEquals(unpacked, (self.SAMPLE_URL, ))
+        self.assertEquals(unpacked,
+                          (self.SAMPLE_URL, self.SAMPLE_BRANCH_ID, None, None))
         self.assertEquals(method, 'register_branch')

@@ -49,7 +49,11 @@ class cmd_register_branch(Command):
 
     def run(self, branch_url):
         from lp_registration import BranchRegistrationRequest
-        BranchRegistrationRequest(branch_url)
+        def _find_default_branch_id(branch_url):
+            i = branch_url.rfind('/')
+            return branch_url[i+1:]
+        branch_id = _find_default_branch_id(branch_url)
+        BranchRegistrationRequest(branch_url, branch_id)
 
 register_command(cmd_register_branch)
 
