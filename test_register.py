@@ -14,7 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import xmlrpclib
+
 from bzrlib.tests import TestCase
+
+# local import
+from lp_registration import BranchRegistrationRequest
 
 class TestBranchRegistration(TestCase):
     SAMPLE_URL = 'http://bazaar-vcs.org/bzr/bzr.dev/'
@@ -35,7 +40,6 @@ class TestBranchRegistration(TestCase):
         rego = BranchRegistrationRequest(self.SAMPLE_URL)
 
     def test_request_xml(self):
-        from lp_registration import BranchRegistrationRequest
         rego = BranchRegistrationRequest(self.SAMPLE_URL)
         req_xml = rego._request_xml()
         # other representations are possible; this is a bit hardcoded to
@@ -52,4 +56,10 @@ r'''<?xml version='1.0'?>
 </methodCall>
 ''' % self.SAMPLE_URL)
 
-
+    def test_request_roundtrip(self):
+        """Check the request can be parsed and meets the interface spec"""
+        rego = BranchRegistrationRequest(self.SAMPLE_URL)
+        req_xml = rego._request_xml()
+        unpacked, method = xmlrpclib.loads(req_xml)
+        self.assertEquals(unpacked, (self.SAMPLE_URL, ))
+        self.assertEquals(method, 'register_branch')
