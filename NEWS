@@ -60,6 +60,8 @@ bzr development version
       what storage format is created or produced.  (Robert Collins, 
       Martin Pool)
 
+    * Add parent location to 'bzr info', if there is one.  (Olaf Conradi)
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now

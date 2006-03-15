@@ -166,3 +166,9 @@ def show_tree_info(working):
 #     print '  %8d inventories' % c
 #     print '  %8d kB' % (t/1024)
 
+    loc = b.get_parent()
+    if loc is not None:
+        print
+        print 'parent location:'
+        print '  %s' % loc
+
