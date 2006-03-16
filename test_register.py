@@ -42,13 +42,13 @@ class InstrumentedXMLRPCConnection(object):
         return StringIO('''\
 <?xml version="1.0" ?>
 <methodResponse>
-<params>
-<param>
-<value>
-<string>victoria dock</string>
-</value>
-</param>
-</params>
+    <params>
+        <param>
+            <value>
+                <string>victoria dock</string>
+            </value>
+        </param>
+    </params>
 </methodResponse>''')
 
 
@@ -116,4 +116,12 @@ class TestBranchRegistration(TestCase):
         rego.submit(transport=transport)
         self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
         self.assertEquals(len(transport.sent_params), 4)
+        # string branch_url,
+        # string branch_id,
+        # unicode branch_description,
+        # string owner_email,
+        self.assertEquals(transport.sent_params,
+                ('http://test-server.com/bzr/branch',
+                 'branch-id',
+                 '', ''))
         self.assertTrue(transport.got_request)
