@@ -22,6 +22,8 @@ To install this file, put the 'bzr_lp' directory, or a symlink to it,
 in your ~/.bazaar/plugins/ directory.
 """
 
+# see http://bazaar-vcs.org/Specs/BranchRegistrationTool
+
 from bzrlib.commands import Command, Option, register_command
 
 

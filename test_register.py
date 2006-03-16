@@ -88,6 +88,9 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
         unpacked, method = xmlrpclib.loads(request_body)
         test = self.testcase
         test.assertEquals(len(unpacked), 4)
+        # standard xmlrpc doesn't permit None to be passed
+        test.assertFalse(None in unpacked, \
+                "xmlrpc result %r shouldn't contain None" % (unpacked,))
         self.got_body = True
 
 
@@ -108,39 +111,6 @@ class TestBranchRegistration(TestCase):
         # disabled until we can set a different transport within the command
         # command
         ## self.run_bzr('register-branch', self.SAMPLE_URL)
-
-    def test_30_request_xml(self):
-        rego = BranchRegistrationRequest(self.SAMPLE_URL, self.SAMPLE_BRANCH_ID)
-        req_xml = rego._request_xml()
-        # other representations are possible; this is a bit hardcoded to
-        # python's xmlrpclib
-        self.assertEqualDiff(req_xml,
-r'''<?xml version='1.0'?>
-<methodCall>
-<methodName>register_branch</methodName>
-<params>
-<param>
-<value><string>%s</string></value>
-</param>
-<param>
-<value><string>bzr.dev</string></value>
-</param>
-<param>
-<value><nil/></value></param>
-<param>
-<value><nil/></value></param>
-</params>
-</methodCall>
-''' % self.SAMPLE_URL)
-
-    def test_35_request_roundtrip(self):
-        """Check the request can be parsed and meets the interface spec"""
-        rego = BranchRegistrationRequest(self.SAMPLE_URL, self.SAMPLE_BRANCH_ID)
-        req_xml = rego._request_xml()
-        unpacked, method = xmlrpclib.loads(req_xml)
-        self.assertEquals(unpacked,
-                          (self.SAMPLE_URL, self.SAMPLE_BRANCH_ID, None, None))
-        self.assertEquals(method, 'register_branch')
 
     def test_40_onto_transport(self):
         """Test how the request is sent by transmitting across a mock Transport"""

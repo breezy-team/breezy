@@ -35,17 +35,11 @@ class BranchRegistrationRequest(object):
     def __init__(self, branch_url, branch_id):
         self.branch_url = branch_url
         self.branch_id = branch_id
-        self.branch_description = None
-        self.owner_email = None
+        self.branch_description = ''
+        self.owner_email = ''
         self.service_url = self.DEFAULT_SERVICE_URL
         self.registrant = 'testuser@launchpad.net'
         self.password = 'testpassword'
-
-    def _request_xml(self):
-        """Return the string form of the xmlrpc request."""
-        return xmlrpclib.dumps(self._request_params(),
-                               methodname=self._methodname,
-                               allow_none=True)
 
     def _request_params(self):
         """Return xmlrpc request parameters"""
@@ -74,7 +68,6 @@ class BranchRegistrationRequest(object):
                                  quote(self.password),
                                  hostinfo)
         url = urlunsplit((scheme, hostinfo, path, '', ''))
-        proxy = xmlrpclib.ServerProxy(url, allow_none=True,
-                                      transport=transport)
+        proxy = xmlrpclib.ServerProxy(url, transport=transport)
         proxy.register_branch(*self._request_params())
 
