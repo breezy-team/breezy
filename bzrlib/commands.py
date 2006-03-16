@@ -1,15 +1,15 @@
-# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
-
+# Copyright (C) 2006 by Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -18,11 +18,12 @@
 # TODO: probably should say which arguments are candidates for glob
 # expansion on windows and do that at the command level.
 
-# TODO: Help messages for options.
-
 # TODO: Define arguments by objects, rather than just using names.
 # Those objects can specify the expected type of the argument, which
-# would help with validation and shell completion.
+# would help with validation and shell completion.  They could also provide
+# help/explanation for that argument in a structured way.
+
+# TODO: Specific "examples" property on commands for consistent formatting.
 
 # TODO: "--profile=cum", to change sort order.  Is there any value in leaving
 # the profile output behind so it can be interactively examined?
