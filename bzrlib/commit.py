@@ -131,7 +131,7 @@ class ReportCommitToLog(NullCommitReporter):
         note("%s %s", change, path)
 
     def completed(self, revno, rev_id):
-        note('committed r%d {%s}', revno, rev_id)
+        note('Committed revision %d.', revno)
     
     def deleted(self, file_id):
         note('deleted %s', file_id)
@@ -179,7 +179,9 @@ class Commit(object):
                verbose=False,
                revprops=None,
                working_tree=None,
-               local=False):
+               local=False,
+               reporter=None,
+               config=None):
         """Commit working copy as a new revision.
 
         branch -- the deprecated branch to commit to. New callers should pass in 
@@ -233,6 +235,11 @@ class Commit(object):
         self.revprops = {}
         if revprops is not None:
             self.revprops.update(revprops)
+
+        if reporter is None and self.reporter is None:
+            self.reporter = NullCommitReporter()
+        else:
+            self.reporter = reporter
 
         self.work_tree.lock_write()
         try:
@@ -331,7 +338,7 @@ class Commit(object):
             self.work_tree.set_last_revision(self.rev_id, precursor)
             # now the work tree is up to date with the branch
             
-            self.reporter.completed(self.branch.revno()+1, self.rev_id)
+            self.reporter.completed(self.branch.revno(), self.rev_id)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
                 # this would be nicer with twisted.python.reflect.namedAny

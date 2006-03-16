@@ -1459,6 +1459,7 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False, strict=False, local=False):
+        from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
         from bzrlib.msgeditor import edit_commit_message, \
@@ -1492,10 +1493,16 @@ class cmd_commit(Command):
 
         if message == "":
                 raise BzrCommandError("empty commit message specified")
-            
+        
+        if verbose:
+            reporter = ReportCommitToLog()
+        else:
+            reporter = NullCommitReporter()
+        
         try:
             tree.commit(message, specific_files=selected_list,
-                        allow_pointless=unchanged, strict=strict, local=local)
+                        allow_pointless=unchanged, strict=strict, local=local,
+                        reporter=reporter)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
@@ -1511,8 +1518,6 @@ class cmd_commit(Command):
             raise BzrCommandError(str(e)
                                   + ' Either unbind, update, or'
                                     ' pass --local to commit.')
-
-        note('Committed revision %d.' % (tree.branch.revno(),))
 
 
 class cmd_check(Command):
