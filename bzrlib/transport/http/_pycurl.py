@@ -18,6 +18,7 @@
 
 # TODO: test reporting of http errors
 
+import os
 from StringIO import StringIO
 
 import bzrlib
@@ -68,9 +69,10 @@ class PyCurlTransport(HttpTransportBase):
             return False
         elif code in (200, 302): # "ok", "found"
             return True
+        elif code == 0:
+            self._raise_curl_connection_error(curl)
         else:
-            raise TransportError('http error %d probing for %s' %
-                    (code, curl.getinfo(pycurl.EFFECTIVE_URL)))
+            self._raise_curl_http_error(curl)
         
     def _get(self, relpath, ranges):
         curl = pycurl.Curl()
@@ -95,9 +97,22 @@ class PyCurlTransport(HttpTransportBase):
         elif code == 206 and (ranges is not None):
             sio.seek(0)
             return code, sio
+        elif code == 0:
+            self._raise_curl_connection_error(curl)
         else:
-            raise TransportError('http error %d acccessing %s' % 
-                    (code, curl.getinfo(pycurl.EFFECTIVE_URL)))
+            self._raise_curl_http_error(curl)
+
+    def _raise_curl_connection_error(self, curl):
+        curl_errno = curl.getinfo(pycurl.OS_ERRNO)
+        url = curl.getinfo(pycurl.EFFECTIVE_URL)
+        raise ConnectionError('curl connection error (%s) on %s'
+                              % (os.strerror(curl_errno), url))
+
+    def _raise_curl_http_error(self, curl):
+        code = curl.getinfo(pycurl.HTTP_CODE)
+        url = curl.getinfo(pycurl.EFFECTIVE_URL)
+        raise TransportError('http error %d probing for %s' %
+                             (code, url))
 
     def _set_curl_options(self, curl):
         """Set options for all requests"""
