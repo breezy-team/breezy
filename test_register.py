@@ -61,14 +61,13 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
     def make_connection(self, host):
         host, http_headers, x509 = self.get_host_info(host)
         test = self.testcase
-        test.assertEquals(host, 'xmlrpc.launchpad.net')
+        self.connected_host = host
         auth_hdrs = [v for k,v in http_headers if k == 'Authorization']
         assert len(auth_hdrs) == 1
         authinfo = auth_hdrs[0]
         expected_auth = 'testuser@launchpad.net:testpassword'
         test.assertEquals(authinfo,
                 'Basic ' + base64.encodestring(expected_auth).strip())
-        self.got_connection = True
         return InstrumentedXMLRPCConnection(test)
 
     def send_request(self, connection, handler_path, request_body):
@@ -86,12 +85,9 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
 
     def send_content(self, conn, request_body):
         unpacked, method = xmlrpclib.loads(request_body)
-        test = self.testcase
-        test.assertEquals(len(unpacked), 4)
-        # standard xmlrpc doesn't permit None to be passed
-        test.assertFalse(None in unpacked, \
-                "xmlrpc result %r shouldn't contain None" % (unpacked,))
-        self.got_body = True
+        assert None not in unpacked, \
+                "xmlrpc result %r shouldn't contain None" % (unpacked,)
+        self.sent_params = unpacked
 
 
 class TestBranchRegistration(TestCase):
@@ -118,6 +114,6 @@ class TestBranchRegistration(TestCase):
         rego = BranchRegistrationRequest('http://test-server.com/bzr/branch',
                 'branch-id')
         rego.submit(transport=transport)
-        self.assertTrue(transport.got_connection)
+        self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
+        self.assertEquals(len(transport.sent_params), 4)
         self.assertTrue(transport.got_request)
-        self.assertTrue(transport.got_body)
