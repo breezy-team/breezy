@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import xmlrpclib
 import base64
+from StringIO import StringIO
+import xmlrpclib
 
 from bzrlib.tests import TestCase
 
@@ -23,9 +24,36 @@ from bzrlib.tests import TestCase
 from lp_registration import BranchRegistrationRequest
 
 
-class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
+class InstrumentedXMLRPCConnection(object):
+    """Stands in place of an http connection for the purposes of testing"""
 
-    _dummy_connection = ['dummy_connection']
+    def __init__(self, testcase):
+        self.testcase = testcase
+
+    def getreply(self):
+        """Fake the http reply.
+
+        :returns: (errcode, errmsg, headers)
+        """
+        return (200, 'OK', [])
+
+    def getfile(self):
+        """Return a fake file containing the response content."""
+        return StringIO('''\
+<?xml version="1.0" ?>
+<methodResponse>
+<params>
+<param>
+<value>
+<string>victoria dock</string>
+</value>
+</param>
+</params>
+</methodResponse>''')
+
+
+
+class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
 
     def __init__(self, testcase):
         self.testcase = testcase
@@ -41,11 +69,10 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
         test.assertEquals(authinfo,
                 'Basic ' + base64.encodestring(expected_auth).strip())
         self.got_connection = True
-        return self._dummy_connection
+        return InstrumentedXMLRPCConnection(test)
 
     def send_request(self, connection, handler_path, request_body):
         test = self.testcase
-        test.assertEquals(connection, self._dummy_connection)
         test.assertEquals(handler_path, '/branch/')
         self.got_request = True
 
@@ -59,6 +86,8 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
 
     def send_content(self, conn, request_body):
         unpacked, method = xmlrpclib.loads(request_body)
+        test = self.testcase
+        test.assertEquals(len(unpacked), 4)
         self.got_body = True
 
 
@@ -115,11 +144,10 @@ r'''<?xml version='1.0'?>
 
     def test_40_onto_transport(self):
         """Test how the request is sent by transmitting across a mock Transport"""
-        return ########################## BROKEN
         transport = InstrumentedXMLRPCTransport(self)
         rego = BranchRegistrationRequest('http://test-server.com/bzr/branch',
                 'branch-id')
         rego.submit(transport=transport)
-        self.assertTrue(rego.got_connection)
-        self.assertTrue(rego.got_request)
-        self.assertTrue(rego.got_body)
+        self.assertTrue(transport.got_connection)
+        self.assertTrue(transport.got_request)
+        self.assertTrue(transport.got_body)
