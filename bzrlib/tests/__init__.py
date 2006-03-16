@@ -879,9 +879,14 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     # This is still a little bogus, 
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
+    test_root = TestCaseInTempDir.TEST_ROOT
     if result.wasSuccessful() or not keep_output:
-        if TestCaseInTempDir.TEST_ROOT is not None:
-            shutil.rmtree(TestCaseInTempDir.TEST_ROOT) 
+        if test_root is not None:
+            print 'Deleting test root %s...' % test_root
+            try:
+                shutil.rmtree(test_root)
+            finally:
+                print
     else:
         print "Failed tests working directories are in '%s'\n" % TestCaseInTempDir.TEST_ROOT
     return result.wasSuccessful()
