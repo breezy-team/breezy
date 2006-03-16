@@ -53,7 +53,8 @@ class cmd_register_branch(Command):
             i = branch_url.rfind('/')
             return branch_url[i+1:]
         branch_id = _find_default_branch_id(branch_url)
-        BranchRegistrationRequest(branch_url, branch_id)
+        rego = BranchRegistrationRequest(branch_url, branch_id)
+        rego.submit()
 
 register_command(cmd_register_branch)
 

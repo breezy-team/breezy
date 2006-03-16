@@ -15,6 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+from urlparse import urlsplit, urlunsplit
+from urllib import unquote, quote
 import xmlrpclib
 ## from twisted.web import xmlrpc
 
@@ -26,11 +28,18 @@ class BranchRegistrationRequest(object):
 
     _methodname = 'register_branch'
 
+    # NB this should always end in a slash to avoid xmlrpclib appending
+    # '/RPC2'
+    DEFAULT_SERVICE_URL = 'http://xmlrpc.launchpad.net/branch/'
+
     def __init__(self, branch_url, branch_id):
         self.branch_url = branch_url
         self.branch_id = branch_id
         self.branch_description = None
         self.owner_email = None
+        self.service_url = self.DEFAULT_SERVICE_URL
+        self.registrant = 'testuser@launchpad.net'
+        self.password = 'testpassword'
 
     def _request_xml(self):
         """Return the string form of the xmlrpc request."""
@@ -48,5 +57,24 @@ class BranchRegistrationRequest(object):
                 self.owner_email,
                )
 
+    def submit(self, transport=None):
+        """Submit registration request to the server.
+        
+        The particular server to use is set in self.service_url; this 
+        should only need to be changed for testing.
 
+        :param transport: If non-null, use a special xmlrpclib.Transport
+            to send the request.  This has no connection to bzrlib
+            Transports.
+        """
+        # auth info must be in url
+        scheme, hostinfo, path = urlsplit(self.service_url)[:3]
+        assert '@' not in hostinfo
+        hostinfo = '%s:%s@%s' % (quote(self.registrant),
+                                 quote(self.password),
+                                 hostinfo)
+        url = urlunsplit((scheme, hostinfo, path, '', ''))
+        proxy = xmlrpclib.ServerProxy(url, allow_none=True,
+                                      transport=transport)
+        proxy.register_branch(*self._request_params())
 
