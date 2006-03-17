@@ -910,6 +910,19 @@ class cmd_init(Command):
             bzrlib.workingtree.WorkingTreeFormat3().initialize(new_dir)
 
 
+class cmd_make_repository(Command):
+    """Create a shared repository to keep branches in."""
+    takes_args = ["location"]
+    aliases = ["make-repo"]
+    def run(self, location):
+        from bzrlib.bzrdir import BzrDirMetaFormat1
+        from bzrlib.transport import get_transport
+        get_transport(location).mkdir('')
+        newdir = BzrDirMetaFormat1().initialize(location)
+        repo = newdir.create_repository()
+        repo.set_make_working_trees(False)
+
+
 class cmd_diff(Command):
     """Show differences in working tree.
     
