@@ -149,7 +149,8 @@ class RepoReconciler(object):
             self._reweave_step('adding inventories')
             # ugly but needed, weaves are just way tooooo slow else.
             if isinstance(new_inventory, WeaveFile):
-                Weave.add_lines(new_inventory, rev_id, parents, self.inventory.get_lines(rev_id))
+                new_inventory._check_write_ok()
+                Weave._add_lines(new_inventory, rev_id, parents, self.inventory.get_lines(rev_id))
             else:
                 new_inventory.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
 
