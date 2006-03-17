@@ -33,3 +33,10 @@ class TestSharedRepo(TestCaseInTempDir):
         self.assertIs(os.path.exists("a/.bzr/repository"), True)
         self.assertIs(os.path.exists("a/b/.bzr/branch/revision-history"), True)
         self.assertIs(os.path.exists("a/b/.bzr/repository"), False)
+
+    def test_branch(self):
+        self.run_bzr("make-repo", "a")
+        self.run_bzr("init", "--format=metadir", "a/b")
+        self.run_bzr('branch', 'a/b', 'a/c')
+        self.assertIs(os.path.exists("a/c/.bzr/branch/revision-history"), True)
+        self.assertIs(os.path.exists("a/c/.bzr/repository"), False)
