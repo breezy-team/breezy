@@ -919,7 +919,7 @@ class cmd_make_repository(Command):
         from bzrlib.transport import get_transport
         get_transport(location).mkdir('')
         newdir = BzrDirMetaFormat1().initialize(location)
-        repo = newdir.create_repository()
+        repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(False)
 
 
