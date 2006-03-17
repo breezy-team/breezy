@@ -898,16 +898,7 @@ class cmd_init(Command):
             # locations if the user supplies an extended path
             if not os.path.exists(location):
                 os.mkdir(location)
-        if format is None:
-            # create default
-            bzrdir.BzrDir.create_standalone_workingtree(location)
-        else:
-            new_dir = format.initialize(location)
-            new_dir.create_repository()
-            new_dir.create_branch()
-            # TODO: ask the bzrdir format for the right classs
-            import bzrlib.workingtree
-            bzrlib.workingtree.WorkingTreeFormat3().initialize(new_dir)
+        bzrdir.BzrDir.create_branch_convenience(location, format=format)
 
 
 class cmd_make_repository(Command):
