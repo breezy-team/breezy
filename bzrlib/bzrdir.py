@@ -535,7 +535,8 @@ class BzrDir(object):
             source_branch.sprout(result, revision_id=revision_id)
         else:
             result.create_branch()
-        result.create_workingtree()
+        if result_repo.make_working_trees():
+            result.create_workingtree()
         return result
 
 

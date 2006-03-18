@@ -40,3 +40,4 @@ class TestSharedRepo(TestCaseInTempDir):
         self.run_bzr('branch', 'a/b', 'a/c')
         self.assertIs(os.path.exists("a/c/.bzr/branch/revision-history"), True)
         self.assertIs(os.path.exists("a/c/.bzr/repository"), False)
+        self.assertIs(os.path.exists("a/c/.bzr/checkout"), False)
