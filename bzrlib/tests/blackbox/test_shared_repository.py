@@ -22,20 +22,20 @@ from bzrlib.tests import TestCaseInTempDir
 
 class TestSharedRepo(TestCaseInTempDir):
     def test_make_repository(self):
-        self.run_bzr("make-repository", "a")
+        self.run_bzr("init-repository", "a")
         self.assertIs(os.path.exists("a/.bzr/repository"), True)
         self.assertIs(os.path.exists("a/.bzr/branch"), False)
         self.assertIs(os.path.exists("a/.bzr/checkout"), False)
 
     def test_init(self):
-        self.run_bzr("make-repo", "a")
+        self.run_bzr("init-repo", "a")
         self.run_bzr("init", "--format=metadir", "a/b")
         self.assertIs(os.path.exists("a/.bzr/repository"), True)
         self.assertIs(os.path.exists("a/b/.bzr/branch/revision-history"), True)
         self.assertIs(os.path.exists("a/b/.bzr/repository"), False)
 
     def test_branch(self):
-        self.run_bzr("make-repo", "a")
+        self.run_bzr("init-repo", "a")
         self.run_bzr("init", "--format=metadir", "a/b")
         self.run_bzr('branch', 'a/b', 'a/c')
         self.assertIs(os.path.exists("a/c/.bzr/branch/revision-history"), True)
