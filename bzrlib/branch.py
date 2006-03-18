@@ -197,8 +197,7 @@ class Branch(object):
         (copied, failures).
         """
         if self.base == from_branch.base:
-            raise Exception("can't fetch from a branch to itself %s, %s" % 
-                            (self.base, to_branch.base))
+            return (0, [])
         if pb is None:
             nested_pb = bzrlib.ui.ui_factory.nested_progress_bar()
             pb = nested_pb

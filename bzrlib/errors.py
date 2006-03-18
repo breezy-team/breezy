@@ -823,3 +823,11 @@ class LocalRequiresBoundBranch(BzrNewError):
 
 class MissingProgressBarFinish(BzrNewError):
     """A nested progress bar was not 'finished' correctly."""
+
+
+class CantFetchSelf(BzrNewError):
+    """Cannot fetch from a branch at %(base)s to itself."""
+    def __init__(self, branch):
+        BzrNewError.__init__(self)
+        self.branch = branch
+        self.base = branch.base

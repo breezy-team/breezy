@@ -23,6 +23,13 @@ class TestMerge(TestCaseWithTransport):
         merge([u'.', -1], [None, None])
         self.assertEquals(len(wt.pending_merges()), 0)
 
+    def test_undo(self):
+        wt = self.make_branch_and_tree('.')
+        wt.commit("lala!")
+        wt.commit("haha!")
+        wt.commit("blabla!")
+        merge([u'.', 2], [u'.', 1])
+
     def test_nocommits(self):
         self.test_pending()
         wt2 = self.make_branch_and_tree('branch2')
