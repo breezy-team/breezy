@@ -95,6 +95,12 @@ class ProgressBarStack(object):
         else:
             return None
 
+    def bottom(self):
+        if len(self._stack) != 0:
+            return self._stack[0]
+        else:
+            return None
+
     def get_nested(self):
         """Return a nested progress bar."""
         if len(self._stack) == 0:
