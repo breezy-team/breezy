@@ -62,6 +62,9 @@ bzr development version
 
     * Add parent location to 'bzr info', if there is one.  (Olaf Conradi)
 
+    * 'merge' accepts --remember option to store parent location. (Olaf
+      Conradi)
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now

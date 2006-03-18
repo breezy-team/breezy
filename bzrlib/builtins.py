@@ -1779,6 +1779,10 @@ class cmd_find_merge_base(Command):
 
 class cmd_merge(Command):
     """Perform a three-way merge.
+
+    If there is no default location set, the first merge will set it. After
+    that, you can omit the location to use the default.  To change the
+    default, use --remember.
     
     The branch is the branch you will merge from.  By default, it will
     merge the latest revision.  If you specify a revision, that
@@ -1812,16 +1816,17 @@ class cmd_merge(Command):
     --force is given.
     """
     takes_args = ['branch?']
-    takes_options = ['revision', 'force', 'merge-type', 'reprocess',
+    takes_options = ['remember', 'revision', 'force', 'merge-type', 'reprocess',
                      Option('show-base', help="Show base revision text in "
                             "conflicts")]
 
-    def run(self, branch=None, revision=None, force=False, merge_type=None,
+    def run(self, branch=None, remember=False, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False):
+        tree = WorkingTree.open_containing(u'.')[0]
         if merge_type is None:
             merge_type = Merge3Merger
         if branch is None:
-            branch = WorkingTree.open_containing(u'.')[0].branch.get_parent()
+            branch = tree.branch.get_parent()
             if branch is None:
                 raise BzrCommandError("No merge location known or specified.")
             else:
@@ -1857,6 +1862,8 @@ class cmd_merge(Command):
             if conflict_count != 0:
                 return 1
             else:
+                if tree.branch.get_parent() is None or remember:
+                    tree.branch.set_parent(branch)
                 return 0
         except bzrlib.errors.AmbiguousBase, e:
             m = ("sorry, bzr can't determine the right merge base yet\n"
