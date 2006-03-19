@@ -19,25 +19,37 @@
 import os
 
 from bzrlib.tests import TestCaseInTempDir
+import bzrlib.bzrdir
+import bzrlib.errors as errors
 
 class TestSharedRepo(TestCaseInTempDir):
+
     def test_make_repository(self):
-        self.run_bzr("init-repository", "a")
-        self.assertIs(os.path.exists("a/.bzr/repository"), True)
-        self.assertIs(os.path.exists("a/.bzr/branch"), False)
-        self.assertIs(os.path.exists("a/.bzr/checkout"), False)
+        out, err = self.run_bzr("init-repository", "a")
+        self.assertEqual(out, "")
+        self.assertEqual(err, "")
+        dir = bzrlib.bzrdir.BzrDir.open('a')
+        self.assertIs(dir.open_repository().is_shared(), True)
+        self.assertRaises(errors.NotBranchError, dir.open_branch)
+        self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)        
 
     def test_init(self):
         self.run_bzr("init-repo", "a")
         self.run_bzr("init", "--format=metadir", "a/b")
-        self.assertIs(os.path.exists("a/.bzr/repository"), True)
-        self.assertIs(os.path.exists("a/b/.bzr/branch/revision-history"), True)
-        self.assertIs(os.path.exists("a/b/.bzr/repository"), False)
+        dir = bzrlib.bzrdir.BzrDir.open('a')
+        self.assertIs(dir.open_repository().is_shared(), True)
+        self.assertRaises(errors.NotBranchError, dir.open_branch)
+        self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
+        bdir = bzrlib.bzrdir.BzrDir.open('a/b')
+        bdir.open_branch()
+        self.assertRaises(errors.NoRepositoryPresent, bdir.open_repository)
+        self.assertRaises(errors.NoWorkingTree, bdir.open_workingtree)
 
     def test_branch(self):
         self.run_bzr("init-repo", "a")
         self.run_bzr("init", "--format=metadir", "a/b")
         self.run_bzr('branch', 'a/b', 'a/c')
-        self.assertIs(os.path.exists("a/c/.bzr/branch/revision-history"), True)
-        self.assertIs(os.path.exists("a/c/.bzr/repository"), False)
-        self.assertIs(os.path.exists("a/c/.bzr/checkout"), False)
+        cdir = bzrlib.bzrdir.BzrDir.open('a/c')
+        cdir.open_branch()
+        self.assertRaises(errors.NoRepositoryPresent, cdir.open_repository)
+        self.assertRaises(errors.NoWorkingTree, cdir.open_workingtree)
