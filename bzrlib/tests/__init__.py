@@ -599,7 +599,7 @@ class TestCaseInTempDir(TestCase):
         self._make_test_root()
         _currentdir = os.getcwdu()
         short_id = self.id().replace('bzrlib.tests.', '') \
-                   .replace('__main__.', '')
+                .replace('__main__.', '')[-100:]
         self.test_dir = osutils.pathjoin(self.TEST_ROOT, short_id)
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
