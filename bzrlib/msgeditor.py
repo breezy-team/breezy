@@ -67,9 +67,13 @@ def _run_editor(filename):
             break
     raise BzrError("Could not start any editor. "
                    "Please specify $EDITOR or use ~/.bzr.conf/editor")
-                          
 
-def edit_commit_message(infotext, ignoreline=None):
+
+DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \
+    { 'bar' : '-' * 14, 'msg' : 'This line and the following will be ignored' }
+
+
+def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
     """Let the user edit a commit message in a temp file.
 
     This is run if they don't give a message or
@@ -81,10 +85,7 @@ def edit_commit_message(infotext, ignoreline=None):
         'bzr status'.
     """
     import tempfile
-    
-    if ignoreline is None:
-        ignoreline = "-- This line and the following will be ignored --"
-        
+
     try:
         tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
         msgfile = os.close(tmp_fileno)
