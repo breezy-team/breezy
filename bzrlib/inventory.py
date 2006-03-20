@@ -328,6 +328,14 @@ class InventoryEntry(object):
 
         This is a template method, override _check for kind specific
         tests.
+
+        :param checker: Check object providing context for the checks; 
+             can be used to find out what parts of the repository have already
+             been checked.
+        :param rev_id: Revision id from which this InventoryEntry was loaded.
+             Not necessarily the last-changed revision for this file.
+        :param inv: Inventory from which the entry was loaded.
+        :param tree: RevisionTree for this entry.
         """
         if self.parent_id != None:
             if not inv.has_id(self.parent_id):
@@ -511,15 +519,14 @@ class InventoryDirectory(InventoryEntry):
 class InventoryFile(InventoryEntry):
     """A file in an inventory."""
 
-    def _check(self, checker, rev_id, tree):
+    def _check(self, checker, tree_revision_id, tree):
         """See InventoryEntry._check"""
-        revision = self.revision
-        t = (self.file_id, revision)
+        t = (self.file_id, self.revision)
         if t in checker.checked_texts:
-            prev_sha = checker.checked_texts[t] 
+            prev_sha = checker.checked_texts[t]
             if prev_sha != self.text_sha1:
                 raise BzrCheckError('mismatched sha1 on {%s} in {%s}' %
-                                    (self.file_id, rev_id))
+                                    (self.file_id, tree_revision_id))
             else:
                 checker.repeated_text_cnt += 1
                 return
@@ -535,7 +542,7 @@ class InventoryFile(InventoryEntry):
         else:
             w = tree.get_weave(self.file_id)
 
-        mutter('check version {%s} of {%s}', rev_id, self.file_id)
+        mutter('check version {%s} of {%s}', tree_revision_id, self.file_id)
         checker.checked_text_cnt += 1 
         # We can't check the length, because Weave doesn't store that
         # information, and the whole point of looking at the weave's
