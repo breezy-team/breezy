@@ -1763,7 +1763,7 @@ class CopyConverter(object):
         """
         self.pb = pb
         self.count = 0
-        self.total = 3
+        self.total = 4
         # this is only useful with metadir layouts - separated repo content.
         # trigger an assertion if not such
         repo._format.get_format_string()

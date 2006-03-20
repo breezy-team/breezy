@@ -260,6 +260,162 @@ class Weave(VersionedFile):
 
     __contains__ = has_version
 
+    def get_delta(self, version_id):
+        """See VersionedFile.get_delta."""
+        return self.get_deltas([version_id])[version_id]
+
+    def get_deltas(self, version_ids):
+        """See VersionedFile.get_deltas."""
+        version_ids = self.get_ancestry(version_ids)
+        for version_id in version_ids:
+            if not self.has_version(version_id):
+                raise RevisionNotPresent(version_id, self)
+        # try extracting all versions; parallel extraction is used
+        nv = self.num_versions()
+        sha1s = {}
+        deltas = {}
+        texts = {}
+        inclusions = {}
+        noeols = {}
+        last_parent_lines = {}
+        parents = {}
+        parent_inclusions = {}
+        parent_linenums = {}
+        parent_noeols = {}
+        current_hunks = {}
+        diff_hunks = {}
+        # its simplest to generate a full set of prepared variables.
+        for i in range(nv):
+            name = self._names[i]
+            sha1s[name] = self.get_sha1(name)
+            parents_list = self.get_parents(name)
+            try:
+                parent = parents_list[0]
+                parents[name] = parent
+                parent_inclusions[name] = inclusions[parent]
+            except IndexError:
+                parents[name] = None
+                parent_inclusions[name] = set()
+            # we want to emit start, finish, replacement_length, replacement_lines tuples.
+            diff_hunks[name] = []
+            current_hunks[name] = [0, 0, 0, []] # #start, finish, repl_length, repl_tuples
+            parent_linenums[name] = 0
+            noeols[name] = False
+            parent_noeols[name] = False
+            last_parent_lines[name] = None
+            new_inc = set([name])
+            for p in self._parents[i]:
+                new_inc.update(inclusions[self._idx_to_name(p)])
+            # debug only, known good so far.
+            #assert set(new_inc) == set(self.get_ancestry(name)), \
+            #    'failed %s != %s' % (set(new_inc), set(self.get_ancestry(name)))
+            inclusions[name] = new_inc
+
+        nlines = len(self._weave)
+
+        for lineno, inserted, deletes, line in self._walk_internal():
+            # a line is active in a version if:
+            # insert is in the versions inclusions
+            # and
+            # deleteset & the versions inclusions is an empty set.
+            # so - if we have a included by mapping - version is included by
+            # children, we get a list of children to examine for deletes affect
+            # ing them, which is less than the entire set of children.
+            for version_id in version_ids:  
+                # The active inclusion must be an ancestor,
+                # and no ancestors must have deleted this line,
+                # because we don't support resurrection.
+                parent_inclusion = parent_inclusions[version_id]
+                inclusion = inclusions[version_id]
+                parent_active = inserted in parent_inclusion and not (deletes & parent_inclusion)
+                version_active = inserted in inclusion and not (deletes & inclusion)
+                if not parent_active and not version_active:
+                    # unrelated line of ancestry
+                    continue
+                elif parent_active and version_active:
+                    # shared line
+                    parent_linenum = parent_linenums[version_id]
+                    if current_hunks[version_id] != [parent_linenum, parent_linenum, 0, []]:
+                        diff_hunks[version_id].append(tuple(current_hunks[version_id]))
+                    parent_linenum += 1
+                    current_hunks[version_id] = [parent_linenum, parent_linenum, 0, []]
+                    parent_linenums[version_id] = parent_linenum
+                    try:
+                        if line[-1] != '\n':
+                            noeols[version_id] = True
+                    except IndexError:
+                        pass
+                elif parent_active and not version_active:
+                    # deleted line
+                    current_hunks[version_id][1] += 1
+                    parent_linenums[version_id] += 1
+                    last_parent_lines[version_id] = line
+                elif not parent_active and version_active:
+                    # replacement line
+                    # noeol only occurs at the end of a file because we 
+                    # diff linewise. We want to show noeol changes as a
+                    # empty diff unless the actual eol-less content changed.
+                    theline = line
+                    try:
+                        if last_parent_lines[version_id][-1] != '\n':
+                            parent_noeols[version_id] = True
+                    except (TypeError, IndexError):
+                        pass
+                    try:
+                        if theline[-1] != '\n':
+                            noeols[version_id] = True
+                    except IndexError:
+                        pass
+                    new_line = False
+                    parent_should_go = False
+
+                    if parent_noeols[version_id] == noeols[version_id]:
+                        # no noeol toggle, so trust the weaves statement
+                        # that this line is changed.
+                        new_line = True
+                        if parent_noeols[version_id]:
+                            theline = theline + '\n'
+                    elif parent_noeols[version_id]:
+                        # parent has no eol, we do:
+                        # our line is new, report as such..
+                        new_line = True
+                    elif noeols[version_id]:
+                        # append a eol so that it looks like
+                        # a normalised delta
+                        theline = theline + '\n'
+                        if parents[version_id] is not None:
+                        #if last_parent_lines[version_id] is not None:
+                            parent_should_go = True
+                        if last_parent_lines[version_id] != theline:
+                            # but changed anyway
+                            new_line = True
+                            #parent_should_go = False
+                    if new_line:
+                        current_hunks[version_id][2] += 1
+                        current_hunks[version_id][3].append((inserted, theline))
+                    if parent_should_go:
+                        # last hunk last parent line is not eaten
+                        current_hunks[version_id][1] -= 1
+                    if current_hunks[version_id][1] < 0:
+                        current_hunks[version_id][1] = 0
+                        # import pdb;pdb.set_trace()
+                    # assert current_hunks[version_id][1] >= 0
+
+        # flush last hunk
+        for i in range(nv):
+            version = self._idx_to_name(i)
+            if current_hunks[version] != [0, 0, 0, []]:
+                diff_hunks[version].append(tuple(current_hunks[version]))
+        result = {}
+        for version_id in version_ids:
+            result[version_id] = (
+                                  parents[version_id],
+                                  sha1s[version_id],
+                                  noeols[version_id],
+                                  diff_hunks[version_id],
+                                  )
+        return result
+
     def get_parents(self, version_id):
         """See VersionedFile.get_parent."""
         return map(self._idx_to_name, self._parents[self._lookup(version_id)])
@@ -280,7 +436,7 @@ class Weave(VersionedFile):
         """Please use Weave.clone_text now."""
         return self.clone_text(new_rev_id, old_rev_id, parents)
 
-    def _add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines, parent_texts):
         """See VersionedFile.add_lines."""
         return self._add(version_id, lines, map(self._lookup, parents))
 
@@ -526,24 +682,24 @@ class Weave(VersionedFile):
         lineno = 0         # line of weave, 0-based
 
         for l in self._weave:
-            if isinstance(l, tuple):
+            if l.__class__ == tuple:
                 c, v = l
                 isactive = None
                 if c == '{':
-                    istack.append(self._idx_to_name(v))
+                    istack.append(self._names[v])
                 elif c == '}':
                     istack.pop()
                 elif c == '[':
-                    assert self._idx_to_name(v) not in dset
-                    dset.add(self._idx_to_name(v))
+                    assert self._names[v] not in dset
+                    dset.add(self._names[v])
                 elif c == ']':
-                    dset.remove(self._idx_to_name(v))
+                    dset.remove(self._names[v])
                 else:
                     raise WeaveFormatError('unexpected instruction %r' % v)
             else:
-                assert isinstance(l, basestring)
+                assert l.__class__ in (str, unicode)
                 assert istack
-                yield lineno, istack[-1], dset.copy(), l
+                yield lineno, istack[-1], frozenset(dset), l
             lineno += 1
 
         if istack:
@@ -569,6 +725,7 @@ class Weave(VersionedFile):
         included = self._inclusions(versions)
 
         istack = []
+        iset = set()
         dset = set()
 
         lineno = 0         # line of weave, 0-based
@@ -579,15 +736,43 @@ class Weave(VersionedFile):
 
         WFE = WeaveFormatError
 
+        # wow. 
+        #  449       0   4474.6820   2356.5590   bzrlib.weave:556(_extract)
+        #  +285282   0   1676.8040   1676.8040   +<isinstance>
+        # 1.6 seconds in 'isinstance'.
+        # changing the first isinstance:
+        #  449       0   2814.2660   1577.1760   bzrlib.weave:556(_extract)
+        #  +140414   0    762.8050    762.8050   +<isinstance>
+        # note that the inline time actually dropped (less function calls)
+        # and total processing time was halved.
+        # we're still spending ~1/4 of the method in isinstance though.
+        # so lets hard code the acceptable string classes we expect:
+        #  449       0   1202.9420    786.2930   bzrlib.weave:556(_extract)
+        # +71352     0    377.5560    377.5560   +<method 'append' of 'list' 
+        #                                          objects>
+        # yay, down to ~1/4 the initial extract time, and our inline time
+        # has shrunk again, with isinstance no longer dominating.
+        # tweaking the stack inclusion test to use a set gives:
+        #  449       0   1122.8030    713.0080   bzrlib.weave:556(_extract)
+        # +71352     0    354.9980    354.9980   +<method 'append' of 'list' 
+        #                                          objects>
+        # - a 5% win, or possibly just noise. However with large istacks that
+        # 'in' test could dominate, so I'm leaving this change in place -
+        # when its fast enough to consider profiling big datasets we can review.
+
+              
+             
+
         for l in self._weave:
-            if isinstance(l, tuple):
+            if l.__class__ == tuple:
                 c, v = l
                 isactive = None
                 if c == '{':
-                    assert v not in istack
+                    assert v not in iset
                     istack.append(v)
+                    iset.add(v)
                 elif c == '}':
-                    istack.pop()
+                    iset.remove(istack.pop())
                 elif c == '[':
                     if v in included:
                         assert v not in dset
@@ -598,7 +783,7 @@ class Weave(VersionedFile):
                         assert v in dset
                         dset.remove(v)
             else:
-                assert isinstance(l, basestring)
+                assert l.__class__ in (str, unicode)
                 if isactive is None:
                     isactive = (not dset) and istack and (istack[-1] in included)
                 if isactive:
@@ -618,7 +803,7 @@ class Weave(VersionedFile):
         
         Please use get_lines now.
         """
-        return self._get_iter(self._maybe_lookup(name_or_index))
+        return iter(self.get_lines(self._maybe_lookup(name_or_index)))
 
     @deprecated_method(zero_eight)
     def maybe_lookup(self, name_or_index):
@@ -635,28 +820,6 @@ class Weave(VersionedFile):
         else:
             return self._lookup(name_or_index)
 
-    def _get_iter(self, version_id):
-        """Yield lines for the specified version."""
-        incls = [self._maybe_lookup(version_id)]
-        if len(incls) == 1:
-            index = incls[0]
-            cur_sha = sha.new()
-        else:
-            # We don't have sha1 sums for multiple entries
-            cur_sha = None
-        for origin, lineno, line in self._extract(incls):
-            if cur_sha:
-                cur_sha.update(line)
-            yield line
-        if cur_sha:
-            expected_sha1 = self._sha1s[index]
-            measured_sha1 = cur_sha.hexdigest() 
-            if measured_sha1 != expected_sha1:
-                raise errors.WeaveInvalidChecksum(
-                        'file %s, revision %s, expected: %s, measured %s' 
-                        % (self._weave_name, self._names[index],
-                           expected_sha1, measured_sha1))
-
     @deprecated_method(zero_eight)
     def get(self, version_id):
         """Please use either Weave.get_text or Weave.get_lines as desired."""
@@ -664,7 +827,16 @@ class Weave(VersionedFile):
 
     def get_lines(self, version_id):
         """See VersionedFile.get_lines()."""
-        return list(self._get_iter(version_id))
+        int_index = self._maybe_lookup(version_id)
+        result = [line for (origin, lineno, line) in self._extract([int_index])]
+        expected_sha1 = self._sha1s[int_index]
+        measured_sha1 = sha_strings(result)
+        if measured_sha1 != expected_sha1:
+            raise errors.WeaveInvalidChecksum(
+                    'file %s, revision %s, expected: %s, measured %s' 
+                    % (self._weave_name, version_id,
+                       expected_sha1, measured_sha1))
+        return result
 
     def get_sha1(self, name):
         """Get the stored sha1 sum for the given revision.
@@ -811,7 +983,7 @@ class Weave(VersionedFile):
         new_parents = []
         for parent_idx in other._parents[other_idx]:
             parent_name = other._names[parent_idx]
-            if parent_name not in self._names:
+            if parent_name not in self._name_map:
                 # should not be possible
                 raise WeaveError("missing parent {%s} of {%s} in %r" 
                                  % (parent_name, other._name_map[other_idx], self))
@@ -889,10 +1061,12 @@ class WeaveFile(Weave):
             # new file, save it
             self._save()
 
-    def _add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines, parent_texts):
         """Add a version and save the weave."""
-        super(WeaveFile, self)._add_lines(version_id, parents, lines)
+        result = super(WeaveFile, self)._add_lines(version_id, parents, lines,
+                                                   parent_texts)
         self._save()
+        return result
 
     def _clone_text(self, new_version_id, old_version_id, parents):
         """See VersionedFile.clone_text."""
