@@ -128,6 +128,8 @@ class NullCommitReporter(object):
 class ReportCommitToLog(NullCommitReporter):
 
     def snapshot_change(self, change, path):
+        if change == 'unchanged':
+            return
         note("%s %s", change, path)
 
     def completed(self, revno, rev_id):
@@ -499,7 +501,7 @@ class Commit(object):
         # mark-merge.  
         for path, ie in self.new_inv.iter_entries():
             previous_entries = ie.find_previous_heads(
-                self.parent_invs, 
+                self.parent_invs,
                 self.weave_store,
                 self.branch.repository.get_transaction())
             if ie.revision is None:

@@ -62,16 +62,18 @@ class TestCommit(ExternalBase):
                          'Committed revision 1.\n',
                          err)
 
-#   def test_16_verbose_commit_with_unchanged(self):
-#       """Unchanged files should not be listed by default in verbose output"""
-#       self.runbzr("init")
-#       self.build_tree(['hello.txt', 'extra.txt'])
-#       self.runbzr("add hello.txt")
-#       out,err = self.run_bzr("commit", "-m", "added")
-#       self.assertEqual('', out)
-#       self.assertEqual('added hello.txt\n'
-#                        'Committed revision 1.\n',
-#                        err)
+    def test_16_verbose_commit_with_unchanged(self):
+        """Unchanged files should not be listed by default in verbose output"""
+        self.runbzr("init")
+        self.build_tree(['hello.txt', 'unchanged.txt'])
+        self.runbzr('add unchanged.txt')
+        self.runbzr('commit -m unchanged unchanged.txt')
+        self.runbzr("add hello.txt")
+        out,err = self.run_bzr("commit", "-m", "added")
+        self.assertEqual('', out)
+        self.assertEqual('added hello.txt\n'
+                         'Committed revision 2.\n',
+                         err)
 
     def test_empty_commit_message(self):
         self.runbzr("init")

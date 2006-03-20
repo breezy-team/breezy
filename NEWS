@@ -62,6 +62,11 @@ bzr development version
 
     * Add parent location to 'bzr info', if there is one.  (Olaf Conradi)
 
+  CHANGES:
+
+    * Commit is now verbose by default, and shows changed filenames and the 
+      new revision number.  (Robert Collins, Martin Pool)
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now
