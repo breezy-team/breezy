@@ -238,7 +238,7 @@ class Commit(object):
 
         if reporter is None and self.reporter is None:
             self.reporter = NullCommitReporter()
-        else:
+        elif reporter is not None:
             self.reporter = reporter
 
         self.work_tree.lock_write()

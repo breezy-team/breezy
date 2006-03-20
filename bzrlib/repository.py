@@ -595,20 +595,6 @@ class AllInOneRepository(Repository):
         dir_mode = a_bzrdir._control_files._dir_mode
         file_mode = a_bzrdir._control_files._file_mode
 
-        def get_weave(name, prefixed=False):
-            if name:
-                name = safe_unicode(name)
-            else:
-                name = ''
-            relpath = a_bzrdir._control_files._escape(name)
-            weave_transport = a_bzrdir._control_files._transport.clone(relpath)
-            ws = WeaveStore(weave_transport, prefixed=prefixed,
-                            dir_mode=dir_mode,
-                            file_mode=file_mode)
-            if a_bzrdir._control_files._transport.should_cache():
-                ws.enable_cache = True
-            return ws
-
         def get_store(name, compressed=True, prefixed=False):
             # FIXME: This approach of assuming stores are all entirely compressed
             # or entirely uncompressed is tidy, but breaks upgrade from 
@@ -669,20 +655,6 @@ class MetaDirRepository(Repository):
 
         dir_mode = self.control_files._dir_mode
         file_mode = self.control_files._file_mode
-
-        def get_weave(name, prefixed=False):
-            if name:
-                name = safe_unicode(name)
-            else:
-                name = ''
-            relpath = self.control_files._escape(name)
-            weave_transport = self.control_files._transport.clone(relpath)
-            ws = WeaveStore(weave_transport, prefixed=prefixed,
-                            dir_mode=dir_mode,
-                            file_mode=file_mode)
-            if self.control_files._transport.should_cache():
-                ws.enable_cache = True
-            return ws
 
     @needs_read_lock
     def is_shared(self):
