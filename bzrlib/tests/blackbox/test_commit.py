@@ -38,7 +38,11 @@ class TestCommit(ExternalBase):
         self.build_tree(['hello.txt'])
         self.runbzr("commit -m empty", retcode=3)
         self.runbzr("add hello.txt")
-        self.runbzr("commit -m added")       
+        out,err = self.run_bzr("commit", "-m", "added")
+        self.assertEqual('', out)
+        self.assertEqual('added hello.txt\n'
+                         'Committed revision 1.\n',
+                         err)
 
     def test_empty_commit_message(self):
         self.runbzr("init")

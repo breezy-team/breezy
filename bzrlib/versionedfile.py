@@ -121,10 +121,10 @@ class VersionedFile(object):
         Must raise RevisionNotPresent if any of the given parents are
         not present in file history.
         :param parent_texts: An optional dictionary containing the opaque 
-                             representations of some or all of the parents of 
-                             version_id to allow delta optimisations. 
-                             VERY IMPORTANT: the texts must be those returned
-                             by add_lines or data corruption can be caused.
+             representations of some or all of the parents of 
+             version_id to allow delta optimisations. 
+             VERY IMPORTANT: the texts must be those returned
+             by add_lines or data corruption can be caused.
         :return: An opaque representation of the inserted version which can be
                  provided back to future add_lines calls in the parent_texts
                  dictionary.
