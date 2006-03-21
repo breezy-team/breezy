@@ -81,7 +81,7 @@ class bzr_build(build):
 ########################
 
 setup(name='bzr',
-      version='0.7pre',
+      version='0.8pre',
       author='Martin Pool',
       author_email='mbp@sourcefrog.net',
       url='http://www.bazaar-ng.org/',

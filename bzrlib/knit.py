@@ -66,9 +66,8 @@ in the deltas to provide line annotation
 from copy import copy
 from cStringIO import StringIO
 import difflib
-from difflib import SequenceMatcher
-from gzip import GzipFile
-from itertools import izip
+import gzip
+from itertools import izip, chain
 import os
 
 
@@ -116,21 +115,15 @@ class KnitContent(object):
         """Return a list of (origin, text) tuples."""
         return list(self.annotate_iter())
 
-    def apply_delta(self, delta):
-        """Apply delta to this content."""
-        offset = 0
-        for start, end, count, lines in delta:
-            self._lines[offset+start:offset+end] = lines
-            offset = offset + (start - end) + count
-
     def line_delta_iter(self, new_lines):
-        """Generate line-based delta from new_lines to this content."""
+        """Generate line-based delta from this content to new_lines."""
         new_texts = [text for origin, text in new_lines._lines]
         old_texts = [text for origin, text in self._lines]
-        s = difflib.SequenceMatcher(None, old_texts, new_texts)
+        s = SequenceMatcher(None, old_texts, new_texts)
         for op in s.get_opcodes():
             if op[0] == 'equal':
                 continue
+            #     ofrom   oto   length        data
             yield (op[1], op[2], op[4]-op[3], new_lines._lines[op[3]:op[4]])
 
     def line_delta(self, new_lines):
@@ -289,6 +282,68 @@ class KnitVersionedFile(VersionedFile):
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
             access_mode, create=not len(self.versions()))
 
+    def _add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
+        """See VersionedFile._add_delta()."""
+        self._check_add(version_id, []) # should we check the lines ?
+        self._check_versions_present(parents)
+        present_parents = []
+        ghosts = []
+        parent_texts = {}
+        for parent in parents:
+            if not self.has_version(parent):
+                ghosts.append(parent)
+            else:
+                present_parents.append(parent)
+
+        if delta_parent is None:
+            # reconstitute as full text.
+            assert len(delta) == 1 or len(delta) == 0
+            if len(delta):
+                assert delta[0][0] == 0
+                assert delta[0][1] == 0, delta[0][1]
+            return super(KnitVersionedFile, self)._add_delta(version_id,
+                                                             parents,
+                                                             delta_parent,
+                                                             sha1,
+                                                             noeol,
+                                                             delta)
+
+        digest = sha1
+
+        options = []
+        if noeol:
+            options.append('no-eol')
+
+        if delta_parent is not None:
+            # determine the current delta chain length.
+            # To speed the extract of texts the delta chain is limited
+            # to a fixed number of deltas.  This should minimize both
+            # I/O and the time spend applying deltas.
+            count = 0
+            delta_parents = [delta_parent]
+            while count < 25:
+                parent = delta_parents[0]
+                method = self._index.get_method(parent)
+                if method == 'fulltext':
+                    break
+                delta_parents = self._index.get_parents(parent)
+                count = count + 1
+            if method == 'line-delta':
+                # did not find a fulltext in the delta limit.
+                # just do a normal insertion.
+                return super(KnitVersionedFile, self)._add_delta(version_id,
+                                                                 parents,
+                                                                 delta_parent,
+                                                                 sha1,
+                                                                 noeol,
+                                                                 delta)
+
+        options.append('line-delta')
+        store_lines = self.factory.lower_line_delta(delta)
+
+        where, size = self._data.add_record(version_id, digest, store_lines)
+        self._index.add_version(version_id, options, where, size, parents)
+
     def clear_cache(self):
         """Clear the data cache only."""
         self._data.clear_cache()
@@ -322,6 +377,34 @@ class KnitVersionedFile(VersionedFile):
                                 current_values[3],
                                 new_parents)
 
+    def get_delta(self, version_id):
+        """Get a delta for constructing version from some other version."""
+        if not self.has_version(version_id):
+            raise RevisionNotPresent(version_id, self.filename)
+        
+        parents = self.get_parents(version_id)
+        if len(parents):
+            parent = parents[0]
+        else:
+            parent = None
+        data_pos, data_size = self._index.get_position(version_id)
+        data, sha1 = self._data.read_records(((version_id, data_pos, data_size),))[version_id]
+        version_idx = self._index.lookup(version_id)
+        noeol = 'no-eol' in self._index.get_options(version_id)
+        if 'fulltext' == self._index.get_method(version_id):
+            new_content = self.factory.parse_fulltext(data, version_idx)
+            if parent is not None:
+                reference_content = self._get_content(parent)
+                old_texts = reference_content.text()
+            else:
+                old_texts = []
+            new_texts = new_content.text()
+            delta_seq = SequenceMatcher(None, old_texts, new_texts)
+            return parent, sha1, noeol, self._make_line_delta(delta_seq, new_content)
+        else:
+            delta = self.factory.parse_line_delta(data, version_idx)
+            return parent, sha1, noeol, delta
+        
     def get_graph_with_ghosts(self):
         """See VersionedFile.get_graph_with_ghosts()."""
         graph_items = self._index.get_graph()
@@ -356,16 +439,43 @@ class KnitVersionedFile(VersionedFile):
 
     __contains__ = has_version
 
-    def _merge_annotations(self, content, parents):
+    def _merge_annotations(self, content, parents, parent_texts={},
+                           delta=None, annotated=None):
         """Merge annotations for content.  This is done by comparing
-        the annotations based on changed to the text."""
-        for parent_id in parents:
-            merge_content = self._get_content(parent_id)
-            seq = SequenceMatcher(None, merge_content.text(), content.text())
-            for i, j, n in seq.get_matching_blocks():
-                if n == 0:
-                    continue
-                content._lines[j:j+n] = merge_content._lines[i:i+n]
+        the annotations based on changed to the text.
+        """
+        if annotated:
+            delta_seq = None
+            for parent_id in parents:
+                merge_content = self._get_content(parent_id, parent_texts)
+                seq = SequenceMatcher(None, merge_content.text(), content.text())
+                if delta_seq is None:
+                    # setup a delta seq to reuse.
+                    delta_seq = seq
+                for i, j, n in seq.get_matching_blocks():
+                    if n == 0:
+                        continue
+                    # this appears to copy (origin, text) pairs across to the new
+                    # content for any line that matches the last-checked parent.
+                    # FIXME: save the sequence control data for delta compression
+                    # against the most relevant parent rather than rediffing.
+                    content._lines[j:j+n] = merge_content._lines[i:i+n]
+        if delta:
+            if not annotated:
+                reference_content = self._get_content(parents[0], parent_texts)
+                new_texts = content.text()
+                old_texts = reference_content.text()
+                delta_seq = SequenceMatcher(None, old_texts, new_texts)
+            return self._make_line_delta(delta_seq, content)
+
+    def _make_line_delta(self, delta_seq, new_content):
+        """Generate a line delta from delta_seq and new_content."""
+        diff_hunks = []
+        for op in delta_seq.get_opcodes():
+            if op[0] == 'equal':
+                continue
+            diff_hunks.append((op[1], op[2], op[4]-op[3], new_content._lines[op[3]:op[4]]))
+        return diff_hunks
 
     def _get_components(self, version_id):
         """Return a list of (version_id, method, data) tuples that
@@ -424,11 +534,15 @@ class KnitVersionedFile(VersionedFile):
 
         return out
 
-    def _get_content(self, version_id):
+    def _get_content(self, version_id, parent_texts={}):
         """Returns a content object that makes up the specified
         version."""
         if not self.has_version(version_id):
             raise RevisionNotPresent(version_id, self.filename)
+
+        cached_version = parent_texts.get(version_id, None)
+        if cached_version is not None:
+            return cached_version
 
         if self.basis_knit and version_id in self.basis_knit:
             return self.basis_knit._get_content(version_id)
@@ -442,14 +556,15 @@ class KnitVersionedFile(VersionedFile):
                 content = self.factory.parse_fulltext(data, version_idx)
             elif method == 'line-delta':
                 delta = self.factory.parse_line_delta(data, version_idx)
-                content.apply_delta(delta)
+                content._lines = self._apply_delta(content._lines, delta)
 
         if 'no-eol' in self._index.get_options(version_id):
             line = content._lines[-1][1].rstrip('\n')
             content._lines[-1] = (content._lines[-1][0], line)
 
         if sha_strings(content.text()) != digest:
-            raise KnitCorrupt(self.filename, 'sha-1 does not match')
+            import pdb;pdb.set_trace()
+            raise KnitCorrupt(self.filename, 'sha-1 does not match %s' % version_id)
 
         return content
 
@@ -462,16 +577,16 @@ class KnitVersionedFile(VersionedFile):
         if version_ids:
             raise RevisionNotPresent(list(version_ids)[0], self.filename)
 
-    def _add_lines_with_ghosts(self, version_id, parents, lines):
+    def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts):
         """See VersionedFile.add_lines_with_ghosts()."""
         self._check_add(version_id, lines)
-        return self._add(version_id, lines[:], parents, self.delta)
+        return self._add(version_id, lines[:], parents, self.delta, parent_texts)
 
-    def _add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines, parent_texts):
         """See VersionedFile.add_lines."""
         self._check_add(version_id, lines)
         self._check_versions_present(parents)
-        return self._add(version_id, lines[:], parents, self.delta)
+        return self._add(version_id, lines[:], parents, self.delta, parent_texts)
 
     def _check_add(self, version_id, lines):
         """check that version_id and lines are safe to add."""
@@ -486,7 +601,7 @@ class KnitVersionedFile(VersionedFile):
             for l in lines:
                 assert '\n' not in l[:-1]
 
-    def _add(self, version_id, lines, parents, delta):
+    def _add(self, version_id, lines, parents, delta, parent_texts):
         """Add a set of lines on top of version specified by parents.
 
         If delta is true, compress the text as a line-delta against
@@ -494,8 +609,22 @@ class KnitVersionedFile(VersionedFile):
 
         Any versions not present will be converted into ghosts.
         """
+        #  461    0   6546.0390     43.9100   bzrlib.knit:489(_add)
+        # +400    0    889.4890    418.9790   +bzrlib.knit:192(lower_fulltext)
+        # +461    0   1364.8070    108.8030   +bzrlib.knit:996(add_record)
+        # +461    0    193.3940     41.5720   +bzrlib.knit:898(add_version)
+        # +461    0    134.0590     18.3810   +bzrlib.osutils:361(sha_strings)
+        # +461    0     36.3420     15.4540   +bzrlib.knit:146(make)
+        # +1383   0      8.0370      8.0370   +<len>
+        # +61     0     13.5770      7.9190   +bzrlib.knit:199(lower_line_delta)
+        # +61     0    963.3470      7.8740   +bzrlib.knit:427(_get_content)
+        # +61     0    973.9950      5.2950   +bzrlib.knit:136(line_delta)
+        # +61     0   1918.1800      5.2640   +bzrlib.knit:359(_merge_annotations)
+
         present_parents = []
         ghosts = []
+        if parent_texts is None:
+            parent_texts = {}
         for parent in parents:
             if not self.has_version(parent):
                 ghosts.append(parent)
@@ -511,11 +640,6 @@ class KnitVersionedFile(VersionedFile):
             if lines[-1][-1] != '\n':
                 options.append('no-eol')
                 lines[-1] = lines[-1] + '\n'
-
-        lines = self.factory.make(lines, version_id)
-        if self.factory.annotated and len(present_parents) > 0:
-            # Merge annotations from parent texts if so is needed.
-            self._merge_annotations(lines, present_parents)
 
         if len(present_parents) and delta:
             # To speed the extract of texts the delta chain is limited
@@ -533,10 +657,14 @@ class KnitVersionedFile(VersionedFile):
             if method == 'line-delta':
                 delta = False
 
+        lines = self.factory.make(lines, version_id)
+        if delta or (self.factory.annotated and len(present_parents) > 0):
+            # Merge annotations from parent texts if so is needed.
+            delta_hunks = self._merge_annotations(lines, present_parents, parent_texts,
+                                                  delta, self.factory.annotated)
+
         if delta:
             options.append('line-delta')
-            content = self._get_content(present_parents[0])
-            delta_hunks = content.line_delta(lines)
             store_lines = self.factory.lower_line_delta(delta_hunks)
         else:
             options.append('fulltext')
@@ -544,6 +672,7 @@ class KnitVersionedFile(VersionedFile):
 
         where, size = self._data.add_record(version_id, digest, store_lines)
         self._index.add_version(version_id, options, where, size, parents)
+        return lines
 
     def check(self, progress_bar=None):
         """See VersionedFile.check()."""
@@ -677,8 +806,7 @@ class _KnitComponentFile(object):
         self._mode = mode
 
     def write_header(self):
-        old_len = self._transport.append(self._filename, StringIO(self.HEADER))
-        if old_len != 0:
+        if self._transport.append(self._filename, StringIO(self.HEADER)):
             raise KnitCorrupt(self._filename, 'misaligned after writing header')
 
     def check_header(self, fp):
@@ -719,20 +847,21 @@ class _KnitIndex(_KnitComponentFile):
 
     HEADER = "# bzr knit index 7\n"
 
-    def _cache_version(self, version_id, options, pos, size, parents):
-        val = (version_id, options, pos, size, parents)
-        self._cache[version_id] = val
-        if not version_id in self._history:
-            self._history.append(version_id)
+    # speed of knit parsing went from 280 ms to 280 ms with slots addition.
+    # __slots__ = ['_cache', '_history', '_transport', '_filename']
 
-    def _iter_index(self, fp):
-        l = fp.readline()
-        while l != '':
-            yield l.split()
-            l = fp.readline()
-        #lines = fp.read()
-        #for l in lines.splitlines(False):
-        #    yield l.split()
+    def _cache_version(self, version_id, options, pos, size, parents):
+        """Cache a version record in the history array and index cache.
+        
+        This is inlined into __init__ for performance. KEEP IN SYNC.
+        (It saves 60ms, 25% of the __init__ overhead on local 4000 record
+         indexes).
+        """
+        # only want the _history index to reference the 1st index entry
+        # for version_id
+        if version_id not in self._cache:
+            self._history.append(version_id)
+        self._cache[version_id] = (version_id, options, pos, size, parents)
 
     def __init__(self, transport, filename, mode, create=False):
         _KnitComponentFile.__init__(self, transport, filename, mode)
@@ -750,13 +879,50 @@ class _KnitIndex(_KnitComponentFile):
                 pb.update('read knit index', count, total)
                 fp = self._transport.get(self._filename)
                 self.check_header(fp)
-                for rec in self._iter_index(fp):
+                # readlines reads the whole file at once:
+                # bad for transports like http, good for local disk
+                # we save 60 ms doing this one change (
+                # from calling readline each time to calling
+                # readlines once.
+                # probably what we want for nice behaviour on
+                # http is a incremental readlines that yields, or
+                # a check for local vs non local indexes,
+                for l in fp.readlines():
+                    rec = l.split()
                     count += 1
                     total += 1
-                    pb.update('read knit index', count, total)
-                    parents = self._parse_parents(rec[4:])
-                    self._cache_version(rec[0], rec[1].split(','), int(rec[2]), int(rec[3]),
-                        parents)
+                    #pb.update('read knit index', count, total)
+                    # See self._parse_parents
+                    parents = []
+                    for value in rec[4:]:
+                        if '.' == value[0]:
+                            # uncompressed reference
+                            parents.append(value[1:])
+                        else:
+                            # this is 15/4000ms faster than isinstance,
+                            # (in lsprof)
+                            # this function is called thousands of times a 
+                            # second so small variations add up.
+                            assert value.__class__ is str
+                            parents.append(self._history[int(value)])
+                    # end self._parse_parents
+                    # self._cache_version(rec[0], 
+                    #                     rec[1].split(','),
+                    #                     int(rec[2]),
+                    #                     int(rec[3]),
+                    #                     parents)
+                    # --- self._cache_version
+                    # only want the _history index to reference the 1st 
+                    # index entry for version_id
+                    version_id = rec[0]
+                    if version_id not in self._cache:
+                        self._history.append(version_id)
+                    self._cache[version_id] = (version_id,
+                                               rec[1].split(','),
+                                               int(rec[2]),
+                                               int(rec[3]),
+                                               parents)
+                    # --- self._cache_version 
             except NoSuchFile, e:
                 if mode != 'w' or not create:
                     raise
@@ -770,13 +936,21 @@ class _KnitIndex(_KnitComponentFile):
 
         ints are looked up in the index.
         .FOO values are ghosts and converted in to FOO.
+
+        NOTE: the function is retained here for clarity, and for possible
+              use in partial index reads. However bulk processing now has
+              it inlined in __init__ for inner-loop optimisation.
         """
         result = []
         for value in compressed_parents:
-            if value.startswith('.'):
+            if value[-1] == '.':
+                # uncompressed reference
                 result.append(value[1:])
             else:
-                assert isinstance(value, str)
+                # this is 15/4000ms faster than isinstance,
+                # this function is called thousands of times a 
+                # second so small variations add up.
+                assert value.__class__ is str
                 result.append(self._history[int(value)])
         return result
 
@@ -933,11 +1107,15 @@ class _KnitData(_KnitComponentFile):
         """
         sio = StringIO()
         data_file = GzipFile(None, mode='wb', fileobj=sio)
-        print >>data_file, "version %s %d %s" % (version_id.encode('utf-8'), len(lines), digest)
-        data_file.writelines(lines)
-        print >>data_file, "end %s\n" % version_id.encode('utf-8')
+        data_file.writelines(chain(
+            ["version %s %d %s\n" % (version_id.encode('utf-8'), 
+                                     len(lines),
+                                     digest)],
+            lines,
+            ["end %s\n\n" % version_id.encode('utf-8')]))
         data_file.close()
         length= sio.tell()
+
         sio.seek(0)
         return length, sio
 
@@ -1179,8 +1357,189 @@ class InterKnit(InterVersionedFile):
                 self.target.fix_parents(version, new_parents)
             return count
         finally:
-            pb.clear()
             pb.finished()
 
 
 InterVersionedFile.register_optimiser(InterKnit)
+
+
+# make GzipFile faster:
+import zlib
+class GzipFile(gzip.GzipFile):
+    """Knit tuned version of GzipFile.
+
+    This is based on the following lsprof stats:
+    python 2.4 stock GzipFile write:
+    58971      0   5644.3090   2721.4730   gzip:193(write)
+    +58971     0   1159.5530   1159.5530   +<built-in method compress>
+    +176913    0    987.0320    987.0320   +<len>
+    +58971     0    423.1450    423.1450   +<zlib.crc32>
+    +58971     0    353.1060    353.1060   +<method 'write' of 'cStringIO.
+                                            StringO' objects>
+    tuned GzipFile write:
+    58971      0   4477.2590   2103.1120   bzrlib.knit:1250(write)
+    +58971     0   1297.7620   1297.7620   +<built-in method compress>
+    +58971     0    406.2160    406.2160   +<zlib.crc32>
+    +58971     0    341.9020    341.9020   +<method 'write' of 'cStringIO.
+                                            StringO' objects>
+    +58971     0    328.2670    328.2670   +<len>
+
+
+    Yes, its only 1.6 seconds, but they add up.
+    """
+
+    def write(self, data):
+        if self.mode != gzip.WRITE:
+            import errno
+            raise IOError(errno.EBADF, "write() on read-only GzipFile object")
+
+        if self.fileobj is None:
+            raise ValueError, "write() on closed GzipFile object"
+        data_len = len(data)
+        if data_len > 0:
+            self.size = self.size + data_len
+            self.crc = zlib.crc32(data, self.crc)
+            self.fileobj.write( self.compress.compress(data) )
+            self.offset += data_len
+
+    def writelines(self, lines):
+        # profiling indicated a significant overhead 
+        # calling write for each line.
+        # this batch call is a lot faster :).
+        # (4 seconds to 1 seconds for the sample upgrades I was testing).
+        self.write(''.join(lines))
+
+
+class SequenceMatcher(difflib.SequenceMatcher):
+    """Knit tuned sequence matcher.
+
+    This is based on profiling of difflib which indicated some improvements
+    for our usage pattern.
+    """
+
+    def find_longest_match(self, alo, ahi, blo, bhi):
+        """Find longest matching block in a[alo:ahi] and b[blo:bhi].
+
+        If isjunk is not defined:
+
+        Return (i,j,k) such that a[i:i+k] is equal to b[j:j+k], where
+            alo <= i <= i+k <= ahi
+            blo <= j <= j+k <= bhi
+        and for all (i',j',k') meeting those conditions,
+            k >= k'
+            i <= i'
+            and if i == i', j <= j'
+
+        In other words, of all maximal matching blocks, return one that
+        starts earliest in a, and of all those maximal matching blocks that
+        start earliest in a, return the one that starts earliest in b.
+
+        >>> s = SequenceMatcher(None, " abcd", "abcd abcd")
+        >>> s.find_longest_match(0, 5, 0, 9)
+        (0, 4, 5)
+
+        If isjunk is defined, first the longest matching block is
+        determined as above, but with the additional restriction that no
+        junk element appears in the block.  Then that block is extended as
+        far as possible by matching (only) junk elements on both sides.  So
+        the resulting block never matches on junk except as identical junk
+        happens to be adjacent to an "interesting" match.
+
+        Here's the same example as before, but considering blanks to be
+        junk.  That prevents " abcd" from matching the " abcd" at the tail
+        end of the second sequence directly.  Instead only the "abcd" can
+        match, and matches the leftmost "abcd" in the second sequence:
+
+        >>> s = SequenceMatcher(lambda x: x==" ", " abcd", "abcd abcd")
+        >>> s.find_longest_match(0, 5, 0, 9)
+        (1, 0, 4)
+
+        If no blocks match, return (alo, blo, 0).
+
+        >>> s = SequenceMatcher(None, "ab", "c")
+        >>> s.find_longest_match(0, 2, 0, 1)
+        (0, 0, 0)
+        """
+
+        # CAUTION:  stripping common prefix or suffix would be incorrect.
+        # E.g.,
+        #    ab
+        #    acab
+        # Longest matching block is "ab", but if common prefix is
+        # stripped, it's "a" (tied with "b").  UNIX(tm) diff does so
+        # strip, so ends up claiming that ab is changed to acab by
+        # inserting "ca" in the middle.  That's minimal but unintuitive:
+        # "it's obvious" that someone inserted "ac" at the front.
+        # Windiff ends up at the same place as diff, but by pairing up
+        # the unique 'b's and then matching the first two 'a's.
+
+        a, b, b2j, isbjunk = self.a, self.b, self.b2j, self.isbjunk
+        besti, bestj, bestsize = alo, blo, 0
+        # find longest junk-free match
+        # during an iteration of the loop, j2len[j] = length of longest
+        # junk-free match ending with a[i-1] and b[j]
+        j2len = {}
+        # nothing = []
+        b2jget = b2j.get
+        for i in xrange(alo, ahi):
+            # look at all instances of a[i] in b; note that because
+            # b2j has no junk keys, the loop is skipped if a[i] is junk
+            j2lenget = j2len.get
+            newj2len = {}
+            
+            # changing b2j.get(a[i], nothing) to a try:Keyerror pair produced the
+            # following improvement
+            #     704  0   4650.5320   2620.7410   bzrlib.knit:1336(find_longest_match)
+            # +326674  0   1655.1210   1655.1210   +<method 'get' of 'dict' objects>
+            #  +76519  0    374.6700    374.6700   +<method 'has_key' of 'dict' objects>
+            # to 
+            #     704  0   3733.2820   2209.6520   bzrlib.knit:1336(find_longest_match)
+            #  +211400 0   1147.3520   1147.3520   +<method 'get' of 'dict' objects>
+            #  +76519  0    376.2780    376.2780   +<method 'has_key' of 'dict' objects>
+
+            try:
+                js = b2j[a[i]]
+            except KeyError:
+                pass
+            else:
+                for j in js:
+                    # a[i] matches b[j]
+                    if j >= blo:
+                        if j >= bhi:
+                            break
+                        k = newj2len[j] = 1 + j2lenget(-1 + j, 0)
+                        if k > bestsize:
+                            besti, bestj, bestsize = 1 + i-k, 1 + j-k, k
+            j2len = newj2len
+
+        # Extend the best by non-junk elements on each end.  In particular,
+        # "popular" non-junk elements aren't in b2j, which greatly speeds
+        # the inner loop above, but also means "the best" match so far
+        # doesn't contain any junk *or* popular non-junk elements.
+        while besti > alo and bestj > blo and \
+              not isbjunk(b[bestj-1]) and \
+              a[besti-1] == b[bestj-1]:
+            besti, bestj, bestsize = besti-1, bestj-1, bestsize+1
+        while besti+bestsize < ahi and bestj+bestsize < bhi and \
+              not isbjunk(b[bestj+bestsize]) and \
+              a[besti+bestsize] == b[bestj+bestsize]:
+            bestsize += 1
+
+        # Now that we have a wholly interesting match (albeit possibly
+        # empty!), we may as well suck up the matching junk on each
+        # side of it too.  Can't think of a good reason not to, and it
+        # saves post-processing the (possibly considerable) expense of
+        # figuring out what to do with it.  In the case of an empty
+        # interesting match, this is clearly the right thing to do,
+        # because no other kind of match is possible in the regions.
+        while besti > alo and bestj > blo and \
+              isbjunk(b[bestj-1]) and \
+              a[besti-1] == b[bestj-1]:
+            besti, bestj, bestsize = besti-1, bestj-1, bestsize+1
+        while besti+bestsize < ahi and bestj+bestsize < bhi and \
+              isbjunk(b[bestj+bestsize]) and \
+              a[besti+bestsize] == b[bestj+bestsize]:
+            bestsize = bestsize + 1
+
+        return besti, bestj, bestsize
+
