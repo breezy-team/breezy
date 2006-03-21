@@ -2413,6 +2413,8 @@ def merge(other_revision, base_revision,
 # these get imported and then picked up by the scan for cmd_*
 # TODO: Some more consistent way to split command definitions across files;
 # we do need to load at least some information about them to know of 
-# aliases.
+# aliases.  ideally we would avoid loading the implementation until the
+# details were needed.
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.sign_my_commits import cmd_sign_my_commits
+from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join

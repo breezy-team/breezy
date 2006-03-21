@@ -543,7 +543,7 @@ class InventoryFile(InventoryEntry):
             w = tree.get_weave(self.file_id)
 
         mutter('check version {%s} of {%s}', tree_revision_id, self.file_id)
-        checker.checked_text_cnt += 1 
+        checker.checked_text_cnt += 1
         # We can't check the length, because Weave doesn't store that
         # information, and the whole point of looking at the weave's
         # sha1sum is that we don't have to extract the text.

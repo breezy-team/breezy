@@ -1367,13 +1367,12 @@ def main(argv):
         w = readit()
         p = w.plan_merge(int(argv[3]), int(argv[4]))
         sys.stdout.writelines(w.weave_merge(p))
-            
     else:
         raise ValueError('unknown command %r' % cmd)
     
 
 
-def profile_main(argv): 
+def profile_main(argv):
     import tempfile, hotshot, hotshot.stats
 
     prof_f = tempfile.NamedTemporaryFile()
