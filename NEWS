@@ -69,6 +69,8 @@ bzr development version
     * Commit is now verbose by default, and shows changed filenames and the 
       new revision number.  (Robert Collins, Martin Pool)
 
+    * Unify 'mv', 'move', 'rename'.  (#5379, Matthew Fuller)
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now

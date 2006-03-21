@@ -326,42 +326,6 @@ class cmd_inventory(Command):
                 print path
 
 
-class cmd_move(Command):
-    """Move files to a different directory.
-
-    examples:
-        bzr move *.txt doc
-
-    The destination must be a versioned directory in the same branch.
-    """
-    takes_args = ['source$', 'dest']
-    def run(self, source_list, dest):
-        tree, source_list = tree_files(source_list)
-        # TODO: glob expansion on windows?
-        tree.move(source_list, tree.relpath(dest))
-
-
-class cmd_rename(Command):
-    """Change the name of an entry.
-
-    examples:
-      bzr rename frob.c frobber.c
-      bzr rename src/frob.c lib/frob.c
-
-    It is an error if the destination name exists.
-
-    See also the 'move' command, which moves files into a different
-    directory without changing their name.
-    """
-    # TODO: Some way to rename multiple files without invoking 
-    # bzr for each one?"""
-    takes_args = ['from_name', 'to_name']
-    
-    def run(self, from_name, to_name):
-        tree, (from_name, to_name) = tree_files((from_name, to_name))
-        tree.rename_one(from_name, to_name)
-
-
 class cmd_mv(Command):
     """Move or rename a file.
 
@@ -376,6 +340,8 @@ class cmd_mv(Command):
     Files cannot be moved between branches.
     """
     takes_args = ['names*']
+    aliases = ['move', 'rename']
+
     def run(self, names_list):
         if len(names_list) < 2:
             raise BzrCommandError("missing file argument")
