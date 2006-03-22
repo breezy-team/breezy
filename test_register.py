@@ -31,7 +31,7 @@ from lp_registration import BranchRegistrationRequest
 # validate that its OK - may not be necessary.
 
 # TODO: Add test for (and implement) other command-line options to set
-# project, owner, description.
+# project, author_email, description.
 
 # TODO: project_id is not properly handled -- must be passed in rpc or path.
 
@@ -123,16 +123,19 @@ class TestBranchRegistration(TestCase):
         transport = InstrumentedXMLRPCTransport(self)
         rego = BranchRegistrationRequest('http://test-server.com/bzr/branch',
                 'branch-id')
+        rego.branch_title = 'short description'
         rego.submit(transport=transport)
         self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
-        self.assertEquals(len(transport.sent_params), 5)
+        self.assertEquals(len(transport.sent_params), 6)
         # string branch_url,
         # string branch_id,
+        # string branch_title
         # unicode branch_description,
         # string owner_email,
         self.assertEquals(transport.sent_params,
                 ('http://test-server.com/bzr/branch',
                  'branch-id',
+                 'short description',
                  '', 
                  '', 
                  ''))

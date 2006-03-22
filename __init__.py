@@ -50,13 +50,8 @@ class cmd_register_branch(Command):
     takes_args = ['branch_url']
 
     def run(self, branch_url):
-        from lp_registration import BranchRegistrationRequest
-        def _find_default_branch_id(branch_url):
-            i = branch_url.rfind('/')
-            return branch_url[i+1:]
-        branch_id = _find_default_branch_id(branch_url)
-        rego = BranchRegistrationRequest(branch_url, branch_id)
-        rego.submit()
+        from lp_registration import register_interactive
+        register_interactive(branch_url)
 
 register_command(cmd_register_branch)
 

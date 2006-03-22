@@ -15,10 +15,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+from getpass import getpass
 from urlparse import urlsplit, urlunsplit
 from urllib import unquote, quote
 import xmlrpclib
 
+import bzrlib.config
 
 # TODO: use last component of the branch's url as the default id?
 
@@ -38,14 +40,19 @@ class BranchRegistrationRequest(object):
     # want.  But it might be useful for testing.
 
     def __init__(self, branch_url, branch_id):
+        assert branch_url
         self.branch_url = branch_url
-        self.branch_id = branch_id
+        if branch_id:
+            self.branch_id = branch_id
+        else:
+            self.branch_id = self._find_default_branch_id(self.branch_url)
+        self.branch_title = ''
         self.branch_description = ''
-        self.owner_email = ''
+        self.author_email = ''
         self.product_name = ''
         self.service_url = self.DEFAULT_SERVICE_URL
-        self.registrant = 'testuser@launchpad.net'
-        self.password = 'testpassword'
+        self.registrant_email = 'testuser@launchpad.net'
+        self.registrant_password = 'testpassword'
 
     def _request_params(self):
         """Return xmlrpc request parameters"""
@@ -53,8 +60,9 @@ class BranchRegistrationRequest(object):
         # method
         return (self.branch_url,
                 self.branch_id,
+                self.branch_title,
                 self.branch_description,
-                self.owner_email,
+                self.author_email,
                 self.product_name,
                )
 
@@ -71,10 +79,23 @@ class BranchRegistrationRequest(object):
         # auth info must be in url
         scheme, hostinfo, path = urlsplit(self.service_url)[:3]
         assert '@' not in hostinfo
-        hostinfo = '%s:%s@%s' % (quote(self.registrant),
-                                 quote(self.password),
+        hostinfo = '%s:%s@%s' % (quote(self.registrant_email),
+                                 quote(self.registrant_password),
                                  hostinfo)
         url = urlunsplit((scheme, hostinfo, path, '', ''))
         proxy = xmlrpclib.ServerProxy(url, transport=transport)
         proxy.register_branch(*self._request_params())
 
+    def _find_default_branch_id(self, branch_url):
+        i = branch_url.rfind('/')
+        return branch_url[i+1:]
+
+def register_interactive(branch_url):
+    """Register a branch, prompting for a password if needed."""
+    rego = BranchRegistrationRequest(branch_url, '')
+    config = bzrlib.config.GlobalConfig()
+    rego.registrant_email = config.user_email()
+    prompt = 'launchpad.net password for %s: ' % \
+            rego.registrant_email
+    rego.registrant_password = getpass(prompt)
+    rego.submit()
