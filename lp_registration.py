@@ -16,6 +16,7 @@
 
 
 from getpass import getpass
+import os
 from urlparse import urlsplit, urlunsplit
 from urllib import unquote, quote
 import xmlrpclib
@@ -34,8 +35,7 @@ class BranchRegistrationRequest(object):
 
     # NB: this should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
-    # DEFAULT_SERVICE_URL = 'http://xmlrpc.launchpad.net/bazaar/'
-    DEFAULT_SERVICE_URL = 'http://10.65.252.255:8081/'
+    DEFAULT_SERVICE_URL = 'http://xmlrpc.launchpad.net/bazaar/'
 
     # None means to use the xmlrpc default, which is almost always what you
     # want.  But it might be useful for testing.
@@ -58,7 +58,6 @@ class BranchRegistrationRequest(object):
         self.author_email = author_email
         self.product_name = product_name
         # XXX: these should perhaps be in the registration method
-        self.service_url = self.DEFAULT_SERVICE_URL
         self.registrant_email = 'testuser@launchpad.net'
         self.registrant_password = 'testpassword'
 
@@ -73,6 +72,19 @@ class BranchRegistrationRequest(object):
                 self.author_email,
                 self.product_name,
                )
+
+    def _get_service_url(self):
+        """Return the http or https url for the xmlrpc server.
+
+        This does not include the username/password credentials.
+        """
+        key = 'BZR_LP_XMLRPC_URL'
+        if key in os.environ:
+            return os.environ[key]
+        else:
+            return self.DEFAULT_SERVICE_URL
+
+    service_url = property(_get_service_url)
 
     def submit(self, transport=None):
         """Submit registration request to the server.

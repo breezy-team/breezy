@@ -22,6 +22,9 @@ To install this file, put the 'bzr_lp' directory, or a symlink to it,
 in your ~/.bazaar/plugins/ directory.
 """
 
+# The XMLRPC server address can be overridden by setting the environment
+# variable $BZR_LP_XMLRPL_URL
+
 # see http://bazaar-vcs.org/Specs/BranchRegistrationTool
 
 from bzrlib.commands import Command, Option, register_command
