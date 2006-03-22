@@ -128,6 +128,8 @@ class NullCommitReporter(object):
 class ReportCommitToLog(NullCommitReporter):
 
     def snapshot_change(self, change, path):
+        if change == 'unchanged':
+            return
         note("%s %s", change, path)
 
     def completed(self, revno, rev_id):
@@ -229,6 +231,7 @@ class Commit(object):
         self.bound_branch = None
         self.local = local
         self.master_branch = None
+        self.master_locked = False
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
@@ -391,6 +394,7 @@ class Commit(object):
         # so grab the lock
         self.bound_branch = self.branch
         self.master_branch.lock_write()
+        self.master_locked = True
 ####        
 ####        # Check to see if we have any pending merges. If we do
 ####        # those need to be pushed into the master branch
@@ -409,7 +413,8 @@ class Commit(object):
         """
         if not self.bound_branch:
             return
-        self.master_branch.unlock()
+        if self.master_locked:
+            self.master_branch.unlock()
 
     def _escape_commit_message(self):
         """Replace xml-incompatible control characters."""
@@ -499,7 +504,7 @@ class Commit(object):
         # mark-merge.  
         for path, ie in self.new_inv.iter_entries():
             previous_entries = ie.find_previous_heads(
-                self.parent_invs, 
+                self.parent_invs,
                 self.weave_store,
                 self.branch.repository.get_transaction())
             if ie.revision is None:

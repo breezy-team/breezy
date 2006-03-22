@@ -18,6 +18,11 @@
 
 # TODO: test reporting of http errors
 
+# TODO: Transport option to control caching of particular requests; broadly we
+# would want to offer "caching allowed" or "must revalidate", depending on
+# whether we expect a particular file will be modified after it's committed.
+# It's probably safer to just always revalidate.  mbp 20060321
+
 import os
 from StringIO import StringIO
 
@@ -119,11 +124,11 @@ class PyCurlTransport(HttpTransportBase):
         # There's no way in http/1.0 to say "must revalidate"; we don't want
         # to force it to always retrieve.  so just turn off the default Pragma
         # provided by Curl.
-        headers = ['Cache-control: must-revalidate',
-                   'Pragma:']
+        headers = ['Cache-control: max-age=0',
+                   'Pragma: no-cache']
         ## curl.setopt(pycurl.VERBOSE, 1)
-        # TODO: maybe show a summary of the pycurl version
-        ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__) 
+        # TODO: maybe include a summary of the pycurl version
+        ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__)
         curl.setopt(pycurl.USERAGENT, ua_str)
         curl.setopt(pycurl.HTTPHEADER, headers)
         curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses

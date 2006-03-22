@@ -216,7 +216,8 @@ class BzrDir(object):
             return self.create_repository()
         
     @staticmethod
-    def create_branch_convenience(base, force_new_repo=False, force_new_tree=None):
+    def create_branch_convenience(base, force_new_repo=False,
+                                  force_new_tree=None, format=None):
         """Create a new BzrDir, Branch and Repository at the url 'base'.
 
         This is a convenience function - it will use an existing repository
@@ -238,13 +239,17 @@ class BzrDir(object):
         :param force_new_repo: If True a new repository is always created.
         :param force_new_tree: If True or False force creation of a tree or 
                                prevent such creation respectively.
+        :param format: Override for the for the bzrdir format to create
         """
         if force_new_tree:
             # check for non local urls
             t = get_transport(safe_unicode(base))
             if not isinstance(t, LocalTransport):
                 raise errors.NotLocalUrl(base)
-        bzrdir = BzrDir.create(base)
+        if format is None:
+            bzrdir = BzrDir.create(base)
+        else:
+            bzrdir = format.initialize(base)
         repo = bzrdir._find_or_create_repository(force_new_repo)
         result = bzrdir.create_branch()
         if force_new_tree or (repo.make_working_trees() and 
@@ -530,7 +535,8 @@ class BzrDir(object):
             source_branch.sprout(result, revision_id=revision_id)
         else:
             result.create_branch()
-        result.create_workingtree()
+        if result_repo is None or result_repo.make_working_trees():
+            result.create_workingtree()
         return result
 
 

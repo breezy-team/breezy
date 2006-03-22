@@ -54,13 +54,25 @@ bzr development version
 
     * New 'reconcile' command will check branch consistency and repair indexes
       that can become out of sync in pre 0.8 formats. (Robert Collins,
-      Aaron Bentley)
+      Daniel Silverstone)
 
     * New 'bzr init --format' and 'bzr upgrade --format' option to control 
       what storage format is created or produced.  (Robert Collins, 
       Martin Pool)
 
     * Add parent location to 'bzr info', if there is one.  (Olaf Conradi)
+
+    * New developer commands 'weave-list' and 'weave-join'.  (Martin Pool)
+
+    * New 'init-repository' command, plus support for repositories in 'init'
+      and 'branch'
+
+  CHANGES:
+
+    * Commit is now verbose by default, and shows changed filenames and the 
+      new revision number.  (Robert Collins, Martin Pool)
+
+    * Unify 'mv', 'move', 'rename'.  (#5379, Matthew Fuller)
 
   INTERNALS:
   
