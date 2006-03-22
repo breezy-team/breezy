@@ -150,6 +150,8 @@ class RepoReconciler(object):
             if isinstance(new_inventory_vf, WeaveFile):
                 # It's really a WeaveFile, but we call straight into the
                 # Weave's add method to disable the auto-write-out behaviour.
+                # This is done to avoid a revision_count * time-to-write additional overhead on 
+                # reconcile.
                 new_inventory_vf._check_write_ok()
                 Weave._add_lines(new_inventory_vf, rev_id, parents, self.inventory.get_lines(rev_id),
                                  None)

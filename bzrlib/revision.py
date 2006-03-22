@@ -250,9 +250,20 @@ def common_ancestor(revision_a, revision_b, revision_source,
             for root in graph.roots:
                 descendants[NULL_REVISION][root] = 1
                 ancestors[root].append(NULL_REVISION)
-            if len(graph.roots) == 0:
-                # no reachable roots - not handled yet.
-                raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+            for ghost in graph.ghosts:
+                # ghosts act as roots for the purpose of finding 
+                # the longest paths from the root: any ghost *might*
+                # be directly attached to the root, so we treat them
+                # as being such.
+                # ghost now descends from NULL
+                descendants[NULL_REVISION][ghost] = 1
+                # that is it has an ancestor of NULL
+                ancestors[ghost] = [NULL_REVISION]
+                # ghost is common if any of ghosts descendants are common:
+                for ghost_descendant in descendants[ghost]:
+                    if ghost_descendant in common:
+                        common.add(ghost)
+                
             root = NULL_REVISION
             common.add(NULL_REVISION)
         except bzrlib.errors.NoCommonRoot:
