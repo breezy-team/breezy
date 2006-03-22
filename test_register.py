@@ -24,6 +24,16 @@ from bzrlib.tests import TestCase
 from lp_registration import BranchRegistrationRequest
 
 
+# TODO: Test that the command-line client, making sure that it'll pass the
+# request through to a dummy transport, and that the transport will validate
+# the results passed in.  Not sure how to get the transport object back out to
+# validate that its OK - may not be necessary.
+
+# TODO: Add test for (and implement) other command-line options to set
+# project, owner, description.
+
+# TODO: project_id is not properly handled -- must be passed in rpc or path.
+
 class InstrumentedXMLRPCConnection(object):
     """Stands in place of an http connection for the purposes of testing"""
 
