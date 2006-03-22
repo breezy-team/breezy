@@ -38,9 +38,9 @@ bzr development version
     * Upgrade can now upgrade over the network. (Robert Collins)
 
     * Two new commands 'bzr checkout' and 'bzr update' allow for CVS/SVN-alike
-      behaviour. They use the existing serverless-mode and store no data
-      locally. As such they are not suitable for use except in high bandwidth
-      low latency environments like LAN's or local disk. (Robert Collins)
+      behaviour.  By default they will cache history in the checkout, but
+      with --lightweight almost all data is kept in the master branch.
+      (Robert Collins)
 
     * 'revert' unversions newly-versioned files, instead of deleting them.
 
