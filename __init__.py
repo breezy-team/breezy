@@ -35,7 +35,7 @@ class cmd_register_branch(Command):
     launchpad.net.  Registration allows the bug to be associated with
     bugs or specifications.
     
-    Before using this command you must register the project to which the
+    Before using this command you must register the product to which the
     branch belongs, and create an account for yourself on launchpad.net.
 
     arguments:
@@ -44,14 +44,46 @@ class cmd_register_branch(Command):
                     path.
 
     example:
-        bzr register-branch http://foo.com/bzr/fooproject.mine \
-                --project fooproject
+        bzr register-branch http://foo.com/bzr/fooproduct.mine \\
+                --product fooproduct
     """
     takes_args = ['branch_url']
+    takes_options = \
+        [Option('product', 
+                'launchpad product short name to associate with the branch',
+                unicode),
+         Option('branch-name',
+                'short name for the branch; '
+                'by default taken from the last component of the url',
+                unicode),
+         Option('branch-title',
+                'one-sentence description of the branch',
+                unicode),
+         Option('branch-description',
+                'longer description of the purpose or contents of the branch',
+                unicode),
+         Option('dry-run',
+                'prepare the request but don\'t actually send it')
+        ]
 
-    def run(self, branch_url):
-        from lp_registration import register_interactive
-        register_interactive(branch_url)
+
+    def run(self, 
+            branch_url, 
+            product='', 
+            branch_name='',
+            branch_title='',
+            branch_description='',
+            dry_run=False):
+        from lp_registration import BranchRegistrationRequest
+        if dry_run:
+            raise NotImplementedError('--dry-run for register-branch')
+        rego = BranchRegistrationRequest(branch_url=branch_url, 
+                                         branch_name=branch_name,
+                                         branch_title=branch_title,
+                                         branch_description=branch_description,
+                                         product_name=product,
+                                         )
+        rego.register_interactive()
 
 register_command(cmd_register_branch)
 

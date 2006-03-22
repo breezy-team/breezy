@@ -39,17 +39,24 @@ class BranchRegistrationRequest(object):
     # None means to use the xmlrpc default, which is almost always what you
     # want.  But it might be useful for testing.
 
-    def __init__(self, branch_url, branch_id):
+    def __init__(self, branch_url, 
+                 branch_name='',
+                 branch_title='',
+                 branch_description='',
+                 product_name='',
+                 author_email='',
+                 ):
         assert branch_url
         self.branch_url = branch_url
-        if branch_id:
-            self.branch_id = branch_id
+        if branch_name:
+            self.branch_name = branch_name
         else:
-            self.branch_id = self._find_default_branch_id(self.branch_url)
-        self.branch_title = ''
-        self.branch_description = ''
-        self.author_email = ''
-        self.product_name = ''
+            self.branch_name = self._find_default_branch_name(self.branch_url)
+        self.branch_title = branch_title
+        self.branch_description = branch_description
+        self.author_email = author_email
+        self.product_name = product_name
+        # XXX: these should perhaps be in the registration method
         self.service_url = self.DEFAULT_SERVICE_URL
         self.registrant_email = 'testuser@launchpad.net'
         self.registrant_password = 'testpassword'
@@ -59,7 +66,7 @@ class BranchRegistrationRequest(object):
         # This must match the parameter tuple expected by Launchpad for this
         # method
         return (self.branch_url,
-                self.branch_id,
+                self.branch_name,
                 self.branch_title,
                 self.branch_description,
                 self.author_email,
@@ -86,16 +93,15 @@ class BranchRegistrationRequest(object):
         proxy = xmlrpclib.ServerProxy(url, transport=transport)
         proxy.register_branch(*self._request_params())
 
-    def _find_default_branch_id(self, branch_url):
+    def _find_default_branch_name(self, branch_url):
         i = branch_url.rfind('/')
         return branch_url[i+1:]
 
-def register_interactive(branch_url):
-    """Register a branch, prompting for a password if needed."""
-    rego = BranchRegistrationRequest(branch_url, '')
-    config = bzrlib.config.GlobalConfig()
-    rego.registrant_email = config.user_email()
-    prompt = 'launchpad.net password for %s: ' % \
-            rego.registrant_email
-    rego.registrant_password = getpass(prompt)
-    rego.submit()
+    def register_interactive(self):
+        """Register a branch, prompting for a password if needed."""
+        config = bzrlib.config.GlobalConfig()
+        self.registrant_email = config.user_email()
+        prompt = 'launchpad.net password for %s: ' % \
+                self.registrant_email
+        self.registrant_password = getpass(prompt)
+        self.submit()
