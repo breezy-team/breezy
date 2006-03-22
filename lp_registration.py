@@ -23,10 +23,6 @@ import xmlrpclib
 
 import bzrlib.config
 
-# TODO: use last component of the branch's url as the default id?
-
-# TODO: Allow server url to be overridden by an environment variable for
-# testing; similarly for user email and password.
 
 class BranchRegistrationRequest(object):
     """Request to tell Launchpad about a bzr branch."""
