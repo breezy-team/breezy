@@ -326,42 +326,6 @@ class cmd_inventory(Command):
                 print path
 
 
-class cmd_move(Command):
-    """Move files to a different directory.
-
-    examples:
-        bzr move *.txt doc
-
-    The destination must be a versioned directory in the same branch.
-    """
-    takes_args = ['source$', 'dest']
-    def run(self, source_list, dest):
-        tree, source_list = tree_files(source_list)
-        # TODO: glob expansion on windows?
-        tree.move(source_list, tree.relpath(dest))
-
-
-class cmd_rename(Command):
-    """Change the name of an entry.
-
-    examples:
-      bzr rename frob.c frobber.c
-      bzr rename src/frob.c lib/frob.c
-
-    It is an error if the destination name exists.
-
-    See also the 'move' command, which moves files into a different
-    directory without changing their name.
-    """
-    # TODO: Some way to rename multiple files without invoking 
-    # bzr for each one?"""
-    takes_args = ['from_name', 'to_name']
-    
-    def run(self, from_name, to_name):
-        tree, (from_name, to_name) = tree_files((from_name, to_name))
-        tree.rename_one(from_name, to_name)
-
-
 class cmd_mv(Command):
     """Move or rename a file.
 
@@ -376,6 +340,8 @@ class cmd_mv(Command):
     Files cannot be moved between branches.
     """
     takes_args = ['names*']
+    aliases = ['move', 'rename']
+
     def run(self, names_list):
         if len(names_list) < 2:
             raise BzrCommandError("missing file argument")
@@ -1477,6 +1443,7 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=True, selected_list=None,
             unchanged=False, strict=False, local=False):
+        from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
         from bzrlib.errors import (PointlessCommit, ConflictsInTree,
                 StrictCommitFailed)
         from bzrlib.msgeditor import edit_commit_message, \
@@ -1510,10 +1477,16 @@ class cmd_commit(Command):
 
         if message == "":
                 raise BzrCommandError("empty commit message specified")
-            
+        
+        if verbose:
+            reporter = ReportCommitToLog()
+        else:
+            reporter = NullCommitReporter()
+        
         try:
             tree.commit(message, specific_files=selected_list,
-                        allow_pointless=unchanged, strict=strict, local=local)
+                        allow_pointless=unchanged, strict=strict, local=local,
+                        reporter=reporter)
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
@@ -1529,8 +1502,6 @@ class cmd_commit(Command):
             raise BzrCommandError(str(e)
                                   + ' Either unbind, update, or'
                                     ' pass --local to commit.')
-
-        note('Committed revision %d.' % (tree.branch.revno(),))
 
 
 class cmd_check(Command):
@@ -2426,6 +2397,8 @@ def merge(other_revision, base_revision,
 # these get imported and then picked up by the scan for cmd_*
 # TODO: Some more consistent way to split command definitions across files;
 # we do need to load at least some information about them to know of 
-# aliases.
+# aliases.  ideally we would avoid loading the implementation until the
+# details were needed.
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.sign_my_commits import cmd_sign_my_commits
+from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join

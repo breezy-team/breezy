@@ -863,7 +863,8 @@ class Weave(VersionedFile):
 
     def check(self, progress_bar=None):
         # TODO evaluate performance hit of using string sets in this routine.
-        # check no circular inclusions
+        # TODO: check no circular inclusions
+        # TODO: create a nested progress bar
         for version in range(self.num_versions()):
             inclusions = list(self._parents[version])
             if inclusions:
@@ -1366,13 +1367,12 @@ def main(argv):
         w = readit()
         p = w.plan_merge(int(argv[3]), int(argv[4]))
         sys.stdout.writelines(w.weave_merge(p))
-            
     else:
         raise ValueError('unknown command %r' % cmd)
     
 
 
-def profile_main(argv): 
+def profile_main(argv):
     import tempfile, hotshot, hotshot.stats
 
     prof_f = tempfile.NamedTemporaryFile()
