@@ -83,6 +83,8 @@ class HttpTransport_urllib(HttpTransportBase):
         opener = urllib2.build_opener(auth_handler)
         request = Request(url)
         request.method = method
+        request.add_header('Pragma', 'no-cache')
+        request.add_header('Cache-control', 'max-age=0')
         request.add_header('User-Agent', 'bzr/%s (urllib)' % bzrlib.__version__)
         if ranges:
             assert len(ranges) == 1
