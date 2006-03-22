@@ -18,25 +18,31 @@
 from urlparse import urlsplit, urlunsplit
 from urllib import unquote, quote
 import xmlrpclib
-## from twisted.web import xmlrpc
 
 
-# TODO: use last component of path as default id?
+# TODO: use last component of the branch's url as the default id?
+
+# TODO: Allow server url to be overridden by an environment variable for
+# testing; similarly for user email and password.
 
 class BranchRegistrationRequest(object):
     """Request to tell Launchpad about a bzr branch."""
 
     _methodname = 'register_branch'
 
-    # NB this should always end in a slash to avoid xmlrpclib appending
+    # NB: this should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
-    DEFAULT_SERVICE_URL = 'http://xmlrpc.launchpad.net/branch/'
+    DEFAULT_SERVICE_URL = 'http://xmlrpc.launchpad.net/bazaar/'
+
+    # None means to use the xmlrpc default, which is almost always what you
+    # want.  But it might be useful for testing.
 
     def __init__(self, branch_url, branch_id):
         self.branch_url = branch_url
         self.branch_id = branch_id
         self.branch_description = ''
         self.owner_email = ''
+        self.product_name = ''
         self.service_url = self.DEFAULT_SERVICE_URL
         self.registrant = 'testuser@launchpad.net'
         self.password = 'testpassword'
@@ -49,6 +55,7 @@ class BranchRegistrationRequest(object):
                 self.branch_id,
                 self.branch_description,
                 self.owner_email,
+                self.product_name,
                )
 
     def submit(self, transport=None):

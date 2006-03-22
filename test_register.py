@@ -15,10 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import base64
+import os
 from StringIO import StringIO
 import xmlrpclib
 
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestSkipped
 
 # local import
 from lp_registration import BranchRegistrationRequest
@@ -82,7 +83,6 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
 
     def send_request(self, connection, handler_path, request_body):
         test = self.testcase
-        test.assertEquals(handler_path, '/branch/')
         self.got_request = True
 
     def send_host(self, conn, host):
@@ -125,7 +125,7 @@ class TestBranchRegistration(TestCase):
                 'branch-id')
         rego.submit(transport=transport)
         self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
-        self.assertEquals(len(transport.sent_params), 4)
+        self.assertEquals(len(transport.sent_params), 5)
         # string branch_url,
         # string branch_id,
         # unicode branch_description,
@@ -133,5 +133,21 @@ class TestBranchRegistration(TestCase):
         self.assertEquals(transport.sent_params,
                 ('http://test-server.com/bzr/branch',
                  'branch-id',
-                 '', ''))
+                 '', 
+                 '', 
+                 ''))
         self.assertTrue(transport.got_request)
+
+    def test_bjorns_server(self):
+        """Test against a server running at the London sprint.
+
+        This is not useful in the long term :-)
+        """
+        raise TestSkipped('xmlrpc server not available yet')
+        ## os.environ['BZR_LP_XMLRPC_URL'] = 'http://10.65.252.255:8081/'
+        ## try:
+        ##     rego = BranchRegistrationRequest('http://test-server.com/bzr/branch',
+        ##         'branch-id')
+        ##     rego.submit()
+        ## finally:
+        ##     del os.environ['BZR_LP_XMLRPC_URL']
