@@ -34,7 +34,8 @@ class BranchRegistrationRequest(object):
 
     # NB: this should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
-    DEFAULT_SERVICE_URL = 'http://xmlrpc.launchpad.net/bazaar/'
+    # DEFAULT_SERVICE_URL = 'http://xmlrpc.launchpad.net/bazaar/'
+    DEFAULT_SERVICE_URL = 'http://10.65.252.255:8081/'
 
     # None means to use the xmlrpc default, which is almost always what you
     # want.  But it might be useful for testing.
@@ -91,17 +92,22 @@ class BranchRegistrationRequest(object):
                                  hostinfo)
         url = urlunsplit((scheme, hostinfo, path, '', ''))
         proxy = xmlrpclib.ServerProxy(url, transport=transport)
-        proxy.register_branch(*self._request_params())
+        result = proxy.register_branch(*self._request_params())
+        return result
 
     def _find_default_branch_name(self, branch_url):
         i = branch_url.rfind('/')
         return branch_url[i+1:]
 
     def register_interactive(self):
-        """Register a branch, prompting for a password if needed."""
+        """Register a branch, prompting for a password if needed.
+        
+        The result of registration is printed to stdout.
+        """
         config = bzrlib.config.GlobalConfig()
         self.registrant_email = config.user_email()
         prompt = 'launchpad.net password for %s: ' % \
                 self.registrant_email
         self.registrant_password = getpass(prompt)
-        self.submit()
+        result = self.submit()
+        print result

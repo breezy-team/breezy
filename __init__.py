@@ -62,6 +62,9 @@ class cmd_register_branch(Command):
          Option('branch-description',
                 'longer description of the purpose or contents of the branch',
                 unicode),
+         Option('author', 
+                'email of the branch\'s author, if not yourself',
+                unicode),
          Option('dry-run',
                 'prepare the request but don\'t actually send it')
         ]
@@ -73,17 +76,18 @@ class cmd_register_branch(Command):
             branch_name='',
             branch_title='',
             branch_description='',
+            author='',
             dry_run=False):
         from lp_registration import BranchRegistrationRequest
-        if dry_run:
-            raise NotImplementedError('--dry-run for register-branch')
         rego = BranchRegistrationRequest(branch_url=branch_url, 
                                          branch_name=branch_name,
                                          branch_title=branch_title,
                                          branch_description=branch_description,
                                          product_name=product,
+                                         author_email=author,
                                          )
-        rego.register_interactive()
+        if not dry_run:
+            rego.register_interactive()
 
 register_command(cmd_register_branch)
 
