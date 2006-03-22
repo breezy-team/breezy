@@ -74,6 +74,8 @@ bzr development version
 
     * Unify 'mv', 'move', 'rename'.  (#5379, Matthew Fuller)
 
+    * 'bzr -h' shows help.  (#35940, Martin Pool, Ian Bicking)
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now

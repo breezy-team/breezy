@@ -568,7 +568,7 @@ def run_bzr(argv):
         i += 1
 
     argv = argv_copy
-    if (not argv) or (argv[0] == '--help'):
+    if (not argv) or (argv[0] == '--help') or (argv[0] == '-h'):
         from bzrlib.help import help
         if len(argv) > 1:
             help(argv[1])

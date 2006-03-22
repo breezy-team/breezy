@@ -1,5 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +28,9 @@ class TestHelp(ExternalBase):
         dash_help = self.runbzr('--help')[0]
         just_help = self.runbzr('help')[0]
         quest_mk  = self.runbzr('?')[0]
+        # see https://launchpad.net/products/bzr/+bug/35940, -h doesn't work
+        dash_h = self.runbzr('-h')[0]
+        self.assertEquals(dash_help, dash_h)
         self.assertEquals(dash_help, just_help)
         self.assertEquals(dash_help, quest_mk)
 
