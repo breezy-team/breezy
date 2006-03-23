@@ -25,14 +25,12 @@ from bzrlib.tests.blackbox import ExternalBase
 class TestHelp(ExternalBase):
 
     def test_help_basic(self):
-        dash_help = self.runbzr('--help')[0]
-        just_help = self.runbzr('help')[0]
-        quest_mk  = self.runbzr('?')[0]
+        for cmd in ['--help', 'help', '-h', '-?']:
+            output = self.runbzr(cmd)[0]
+            line1 = output.split('\n')[0]
+            if not line1.startswith('Bazaar-NG'):
+                self.fail("bad output from bzr %s:\n%r" % (cmd, output))
         # see https://launchpad.net/products/bzr/+bug/35940, -h doesn't work
-        dash_h = self.runbzr('-h')[0]
-        self.assertEquals(dash_help, dash_h)
-        self.assertEquals(dash_help, just_help)
-        self.assertEquals(dash_help, quest_mk)
 
     def test_help_commands(self):
         dash_help  = self.runbzr('--help commands')[0]

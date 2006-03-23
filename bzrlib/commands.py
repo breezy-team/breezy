@@ -34,7 +34,7 @@ from warnings import warn
 import errno
 
 import bzrlib
-from bzrlib.errors import (BzrError, 
+from bzrlib.errors import (BzrError,
                            BzrCheckError,
                            BzrCommandError,
                            BzrOptionError,
@@ -568,12 +568,9 @@ def run_bzr(argv):
         i += 1
 
     argv = argv_copy
-    if (not argv) or (argv[0] == '--help') or (argv[0] == '-h'):
-        from bzrlib.help import help
-        if len(argv) > 1:
-            help(argv[1])
-        else:
-            help()
+    if (not argv):
+        from bzrlib.builtins import cmd_help
+        cmd_help().run_argv([])
         return 0
 
     if argv[0] == '--version':

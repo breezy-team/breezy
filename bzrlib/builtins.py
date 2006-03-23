@@ -1969,7 +1969,7 @@ class cmd_help(Command):
     For a list of all available commands, say 'bzr help commands'."""
     takes_options = [Option('long', 'show help on all commands')]
     takes_args = ['topic?']
-    aliases = ['?']
+    aliases = ['?', '--help', '-?', '-h']
     
     @display_command
     def run(self, topic=None, long=False):
