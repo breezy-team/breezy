@@ -65,6 +65,10 @@ class LaunchpadService(object):
                                  quote(self.registrant_password),
                                  hostinfo)
         url = urlunsplit((scheme, hostinfo, path, '', ''))
+        if self.transport is None:
+            self.transport = xmlrpclib.Transport()
+            self.transport.user_agent = 'bzr/%s (xmlrpclib/%s)' \
+                    % (bzrlib.__version__, xmlrpclib.__version__)
         return xmlrpclib.ServerProxy(url, transport=self.transport)
 
     def gather_user_credentials(self):
