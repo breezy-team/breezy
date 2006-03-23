@@ -7,8 +7,7 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
@@ -23,18 +22,83 @@ import xmlrpclib
 
 import bzrlib.config
 
-
-class BranchRegistrationRequest(object):
-    """Request to tell Launchpad about a bzr branch."""
-
-    _methodname = 'register_branch'
+class LaunchpadService(object):
+    """A service to talk to Launchpad via XMLRPC."""
 
     # NB: this should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
     DEFAULT_SERVICE_URL = 'http://xmlrpc.launchpad.net/bazaar/'
 
-    # None means to use the xmlrpc default, which is almost always what you
-    # want.  But it might be useful for testing.
+    transport = None
+    registrant_email = None
+    registrant_password = None
+
+    @property
+    def service_url(self):
+        """Return the http or https url for the xmlrpc server.
+
+        This does not include the username/password credentials.
+        """
+        key = 'BZR_LP_XMLRPC_URL'
+        if key in os.environ:
+            return os.environ[key]
+        else:
+            return self.DEFAULT_SERVICE_URL
+
+
+    def get_proxy(self):
+        """Return the proxy for XMLRPC requests."""
+        # auth info must be in url
+        scheme, hostinfo, path = urlsplit(self.service_url)[:3]
+        assert '@' not in hostinfo
+        assert self.registrant_email is not None
+        assert self.registrant_password is not None
+        hostinfo = '%s:%s@%s' % (quote(self.registrant_email),
+                                 quote(self.registrant_password),
+                                 hostinfo)
+        url = urlunsplit((scheme, hostinfo, path, '', ''))
+        return xmlrpclib.ServerProxy(url, transport=self.transport)
+
+    def gather_user_credentials(self):
+        """Get the password from the user."""
+        config = bzrlib.config.GlobalConfig()
+        self.registrant_email = config.user_email()
+        if self.registrant_password is None:
+            prompt = 'launchpad.net password for %s: ' % \
+                    self.registrant_email
+            self.registrant_password = getpass(prompt)
+
+class BaseRequest(object):
+    """Base request for talking to a XMLRPC server."""
+
+    # Set this to the XMLRPC method name.
+    _methodname = None
+
+    def _request_params(self):
+        """Return the arguments to pass to the method"""
+        raise NotImplementedError(self._request_params)
+
+    def submit(self, service):
+        """Submit registration request to the server.
+
+        The particular server to use is set in self.service_url; this 
+        should only need to be changed for testing.
+
+        :param transport: If non-null, use a special xmlrpclib.Transport
+            to send the request.  This has no connection to bzrlib
+            Transports.
+        """
+        proxy = service.get_proxy()
+        assert self._methodname
+        method = getattr(proxy, self._methodname)
+        result = method(*self._request_params())
+        return result
+
+
+class BranchRegistrationRequest(BaseRequest):
+    """Request to tell Launchpad about a bzr branch."""
+
+    _methodname = 'register_branch'
 
     def __init__(self, branch_url, 
                  branch_name='',
@@ -53,9 +117,6 @@ class BranchRegistrationRequest(object):
         self.branch_description = branch_description
         self.author_email = author_email
         self.product_name = product_name
-        # XXX: these should perhaps be in the registration method
-        self.registrant_email = 'testuser@launchpad.net'
-        self.registrant_password = 'testpassword'
 
     def _request_params(self):
         """Return xmlrpc request parameters"""
@@ -69,53 +130,23 @@ class BranchRegistrationRequest(object):
                 self.product_name,
                )
 
-    def _get_service_url(self):
-        """Return the http or https url for the xmlrpc server.
-
-        This does not include the username/password credentials.
-        """
-        key = 'BZR_LP_XMLRPC_URL'
-        if key in os.environ:
-            return os.environ[key]
-        else:
-            return self.DEFAULT_SERVICE_URL
-
-    service_url = property(_get_service_url)
-
-    def submit(self, transport=None):
-        """Submit registration request to the server.
-        
-        The particular server to use is set in self.service_url; this 
-        should only need to be changed for testing.
-
-        :param transport: If non-null, use a special xmlrpclib.Transport
-            to send the request.  This has no connection to bzrlib
-            Transports.
-        """
-        # auth info must be in url
-        scheme, hostinfo, path = urlsplit(self.service_url)[:3]
-        assert '@' not in hostinfo
-        hostinfo = '%s:%s@%s' % (quote(self.registrant_email),
-                                 quote(self.registrant_password),
-                                 hostinfo)
-        url = urlunsplit((scheme, hostinfo, path, '', ''))
-        proxy = xmlrpclib.ServerProxy(url, transport=transport)
-        result = proxy.register_branch(*self._request_params())
-        return result
-
     def _find_default_branch_name(self, branch_url):
         i = branch_url.rfind('/')
         return branch_url[i+1:]
 
-    def register_interactive(self):
-        """Register a branch, prompting for a password if needed.
-        
-        The result of registration is printed to stdout.
-        """
-        config = bzrlib.config.GlobalConfig()
-        self.registrant_email = config.user_email()
-        prompt = 'launchpad.net password for %s: ' % \
-                self.registrant_email
-        self.registrant_password = getpass(prompt)
-        result = self.submit()
-        print result
+
+class BranchBugLinkRequest(BaseRequest):
+    """Request to link a bzr branch in Launchpad to a bug."""
+
+    _methodname = 'link_branch_to_bug'
+
+    def __init__(self, branch_url, bug_id):
+        assert branch_url
+        self.bug_id = str(bug_id)
+        self.branch_url = branch_url
+
+    def _request_params(self):
+        """Return xmlrpc request parameters"""
+        # This must match the parameter tuple expected by Launchpad for this
+        # method
+        return (self.branch_url, self.bug_id, '')

@@ -68,6 +68,9 @@ class cmd_register_branch(Command):
          Option('author', 
                 'email of the branch\'s author, if not yourself',
                 unicode),
+         Option('link-bug',
+                'the bug this branch fixes',
+                int),
          Option('dry-run',
                 'prepare the request but don\'t actually send it')
         ]
@@ -80,8 +83,10 @@ class cmd_register_branch(Command):
             branch_title='',
             branch_description='',
             author='',
+            link_bug=None,
             dry_run=False):
-        from lp_registration import BranchRegistrationRequest
+        from lp_registration import (
+            LaunchpadService, BranchRegistrationRequest, BranchBugLinkRequest)
         rego = BranchRegistrationRequest(branch_url=branch_url, 
                                          branch_name=branch_name,
                                          branch_title=branch_title,
@@ -89,8 +94,14 @@ class cmd_register_branch(Command):
                                          product_name=product,
                                          author_email=author,
                                          )
+        linko = BranchBugLinkRequest(branch_url=branch_url,
+                                     bug_id=link_bug)
+        service = LaunchpadService()
+        service.gather_user_credentials()
         if not dry_run:
-            rego.register_interactive()
+            print rego.submit(service)
+            if link_bug:
+                print linko.submit(service)
 
 register_command(cmd_register_branch)
 
