@@ -17,7 +17,7 @@
 from getpass import getpass
 import os
 from urlparse import urlsplit, urlunsplit
-from urllib import unquote, quote
+import urllib
 import xmlrpclib
 
 import bzrlib.config
@@ -36,9 +36,19 @@ class LaunchpadService(object):
     registrant_email = None
     registrant_password = None
 
-    def __init__(self):
+
+    def __init__(self, transport=None):
         """Construct a new service talking to the launchpad rpc server"""
-        pass
+        if transport is None:
+            uri_type = urllib.splittype(self.service_url)[0]
+            if uri_type == 'https':
+                transport = xmlrpclib.SafeTransport()
+            else:
+                transport = xmlrpclib.Transport()
+            transport.user_agent = 'bzr/%s (xmlrpclib/%s)' \
+                    % (bzrlib.__version__, xmlrpclib.__version__)
+        self.transport = transport
+
 
     @property
     def service_url(self):
@@ -61,14 +71,10 @@ class LaunchpadService(object):
         assert '@' not in hostinfo
         assert self.registrant_email is not None
         assert self.registrant_password is not None
-        hostinfo = '%s:%s@%s' % (quote(self.registrant_email),
-                                 quote(self.registrant_password),
+        hostinfo = '%s:%s@%s' % (urllib.quote(self.registrant_email),
+                                 urllib.quote(self.registrant_password),
                                  hostinfo)
         url = urlunsplit((scheme, hostinfo, path, '', ''))
-        if self.transport is None:
-            self.transport = xmlrpclib.Transport()
-            self.transport.user_agent = 'bzr/%s (xmlrpclib/%s)' \
-                    % (bzrlib.__version__, xmlrpclib.__version__)
         return xmlrpclib.ServerProxy(url, transport=self.transport)
 
     def gather_user_credentials(self):

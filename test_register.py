@@ -142,11 +142,10 @@ class TestBranchRegistration(TestCase):
     def test_onto_transport(self):
         """Test how the request is sent by transmitting across a mock Transport"""
         # use a real transport, but intercept at the http/xml layer
-        service = LaunchpadService()
         service.registrant_email = 'testuser@launchpad.net'
         service.registrant_password = 'testpassword'
         transport = InstrumentedXMLRPCTransport(self)
-        service.transport = transport
+        service = LaunchpadService(transport)
         rego = BranchRegistrationRequest('http://test-server.com/bzr/branch',
                 'branch-id',
                 'my test branch',
