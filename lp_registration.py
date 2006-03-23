@@ -23,7 +23,10 @@ import xmlrpclib
 import bzrlib.config
 
 class LaunchpadService(object):
-    """A service to talk to Launchpad via XMLRPC."""
+    """A service to talk to Launchpad via XMLRPC.
+    
+    See http://bazaar-vcs.org/Specs/LaunchpadRpc for the methods we can call.
+    """
 
     # NB: this should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
