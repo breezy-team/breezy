@@ -1,7 +1,8 @@
 from bzrlib.tests import TestCase
-from bzrlib.graph import node_distances, nodes_by_distance
+from bzrlib.graph import node_distances, nodes_by_distance, Graph
 
 class TestBase(TestCase):
+
     def edge_add(self, *args):
         for start, end in zip(args[:-1], args[1:]):
             if start not in self.graph:
@@ -47,3 +48,16 @@ class TestBase(TestCase):
         distances = node_distances(self.graph, descendants, 'A')
         self.assertEqual(distances['C'], 3)
 
+
+class TestGraph(TestCase):
+
+    def test_get_descendants(self):
+        # Graph objects let you get a descendants graph in 
+        # node: {direct-children:distance} which contains
+        # known children, including ghost children
+        graph = Graph()
+        graph.add_ghost('ghost')
+        graph.add_node('rev1', ['ghost'])
+        # check the result contains ghosts:
+        self.assertEqual({'ghost': {'rev1': 1}, 'rev1': {}},
+                         graph.get_descendants())

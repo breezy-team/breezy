@@ -62,8 +62,17 @@ bzr development version
 
     * Add parent location to 'bzr info', if there is one.  (Olaf Conradi)
 
+    * New developer commands 'weave-list' and 'weave-join'.  (Martin Pool)
+
     * New 'init-repository' command, plus support for repositories in 'init'
       and 'branch'
+
+  CHANGES:
+
+    * Commit is now verbose by default, and shows changed filenames and the 
+      new revision number.  (Robert Collins, Martin Pool)
+
+    * Unify 'mv', 'move', 'rename'.  (#5379, Matthew Fuller)
 
   INTERNALS:
   

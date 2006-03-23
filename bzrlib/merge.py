@@ -797,7 +797,7 @@ class WeaveMerger(Merge3Merger):
         and a conflict will be noted.
         """
         self._check_file(file_id)
-        lines = self._merged_lines(file_id)
+        lines = list(self._merged_lines(file_id))
         conflicts = '<<<<<<< TREE\n' in lines
         self.tt.create_file(lines, trans_id)
         if conflicts:
