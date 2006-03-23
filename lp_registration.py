@@ -68,6 +68,14 @@ class LaunchpadService(object):
                     self.registrant_email
             self.registrant_password = getpass(prompt)
 
+    def send_request(self, method_name, method_params):
+        proxy = self.get_proxy()
+        assert method_name
+        method = getattr(proxy, method_name)
+        result = method(*method_params)
+        return result
+
+
 class BaseRequest(object):
     """Base request for talking to a XMLRPC server."""
 
@@ -79,20 +87,12 @@ class BaseRequest(object):
         raise NotImplementedError(self._request_params)
 
     def submit(self, service):
-        """Submit registration request to the server.
+        """Submit request to Launchpad XMLRPC server.
 
-        The particular server to use is set in self.service_url; this 
-        should only need to be changed for testing.
-
-        :param transport: If non-null, use a special xmlrpclib.Transport
-            to send the request.  This has no connection to bzrlib
-            Transports.
+        :param service: LaunchpadService indicating where to send
+            the request and the authentication credentials.
         """
-        proxy = service.get_proxy()
-        assert self._methodname
-        method = getattr(proxy, self._methodname)
-        result = method(*self._request_params())
-        return result
+        return service.send_request(self._methodname, self._request_params())
 
 
 class BranchRegistrationRequest(BaseRequest):
