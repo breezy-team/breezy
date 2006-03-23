@@ -23,8 +23,11 @@ from bzrlib.tests import TestCase, TestSkipped
 
 # local import
 from lp_registration import (
-        BranchRegistrationRequest, LaunchpadService,
-        BaseRequest)
+        BaseRequest,
+        BranchBugLinkRequest,
+        BranchRegistrationRequest,
+        LaunchpadService,
+        )
 
 
 # TODO: Test that the command-line client, making sure that it'll pass the
@@ -205,3 +208,17 @@ class TestBranchRegistration(TestCase):
         rego = BranchRegistrationRequest('http://server/branch')
         result = rego.submit(service)
         self.assertEquals(result, 'result')
+
+    def test_mock_bug_branch_link(self):
+        """Send bug-branch link to mock server"""
+        test_case = self
+        class MockService(MockLaunchpadService):
+            def send_request(self, method_name, method_params):
+                test_case.assertEquals(method_name, "link_branch_to_bug")
+                test_case.assertEquals(list(method_params),
+                        ['http://server/branch', 1234, ''])
+                return 'http://launchpad.net/bug/1234'
+        service = MockService()
+        rego = BranchBugLinkRequest('http://server/branch', 1234)
+        result = rego.submit(service)
+        self.assertEquals(result, 'http://launchpad.net/bug/1234')

@@ -147,7 +147,7 @@ class BranchBugLinkRequest(BaseRequest):
 
     def __init__(self, branch_url, bug_id):
         assert branch_url
-        self.bug_id = str(bug_id)
+        self.bug_id = bug_id
         self.branch_url = branch_url
 
     def _request_params(self):
