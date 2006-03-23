@@ -191,3 +191,17 @@ class TestBranchRegistration(TestCase):
                         'description', 'email', 'name')
         result = rego.submit(service)
         self.assertEquals(result, 'result')
+
+    def test_mock_server_registration_with_defaults(self):
+        """Send registration to mock server"""
+        test_case = self
+        class MockRegistrationService(MockLaunchpadService):
+            def send_request(self, method_name, method_params):
+                test_case.assertEquals(method_name, "register_branch")
+                test_case.assertEquals(list(method_params),
+                        ['http://server/branch', 'branch', '', '', '', ''])
+                return 'result'
+        service = MockRegistrationService()
+        rego = BranchRegistrationRequest('http://server/branch')
+        result = rego.submit(service)
+        self.assertEquals(result, 'result')
