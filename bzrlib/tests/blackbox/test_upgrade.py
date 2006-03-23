@@ -147,5 +147,5 @@ finished
                                    repository.RepositoryFormatKnit1))
 
     def test_upgrade_repo(self):
-        self.run_bzr('init-repository', 'repo')
+        self.run_bzr('init-repository', '--format=metadir', 'repo')
         self.run_bzr('upgrade', '--format=knit', 'repo')
