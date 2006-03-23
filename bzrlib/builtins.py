@@ -504,7 +504,8 @@ class cmd_push(Command):
                 # TODO: This should be updated for branches which don't have a
                 # working tree, as opposed to ones where we just couldn't 
                 # update the tree.
-                warning('Unable to update the working tree of: %s' % (br_to.base,))
+                warning('This transport does not update the working '
+                        'tree of: %s' % (br_to.base,))
                 count = br_to.pull(br_from, overwrite)
             except NoWorkingTree:
                 count = br_to.pull(br_from, overwrite)
