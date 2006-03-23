@@ -120,11 +120,14 @@ class TestBranchRegistration(TestCase):
 
     def test_40_onto_transport(self):
         """Test how the request is sent by transmitting across a mock Transport"""
-        transport = InstrumentedXMLRPCTransport(self)
+        transport = 
+        service = LaunchpadService()
+        service.transport = InstrumentedXMLRPCTransport(self)
+
         rego = BranchRegistrationRequest('http://test-server.com/bzr/branch',
                 'branch-id')
         rego.branch_title = 'short description'
-        rego.submit(transport=transport)
+        rego.submit(service)
         self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
         self.assertEquals(len(transport.sent_params), 6)
         # string branch_url,
