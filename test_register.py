@@ -153,11 +153,6 @@ class TestBranchRegistration(TestCase):
         rego.submit(service)
         self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
         self.assertEquals(len(transport.sent_params), 6)
-        # string branch_url,
-        # string branch_id,
-        # string branch_title
-        # unicode branch_description,
-        # string owner_email,
         self.assertEquals(transport.sent_params,
                 ('http://test-server.com/bzr/branch',  # branch_url
                  'branch-id',                          # branch_name
@@ -166,15 +161,6 @@ class TestBranchRegistration(TestCase):
                  'author@launchpad.net',
                  'product'))
         self.assertTrue(transport.got_request)
-
-    def test_against_mock_server(self):
-        """Send registration to mock server"""
-        return ############################ broken
-        service = MockLaunchpadService()
-        rego = BranchRegistrationRequest('http://test-server.com/bzr/branch',
-                'branch-id')
-        rego.branch_title = 'short description'
-        rego.submit(service)
 
     def test_subclass_request(self):
         """Define a new type of xmlrpc request"""
@@ -191,3 +177,17 @@ class TestBranchRegistration(TestCase):
         self.assertEquals(service.called_method_name, 'dummy_request')
         self.assertEquals(service.called_method_params, (42,))
 
+    def test_mock_server_registration(self):
+        """Send registration to mock server"""
+        test_case = self
+        class MockRegistrationService(MockLaunchpadService):
+            def send_request(self, method_name, method_params):
+                test_case.assertEquals(method_name, "register_branch")
+                test_case.assertEquals(list(method_params),
+                        ['url', 'name', 'title', 'description', 'email', 'name'])
+                return 'result'
+        service = MockRegistrationService()
+        rego = BranchRegistrationRequest('url', 'name', 'title',
+                        'description', 'email', 'name')
+        result = rego.submit(service)
+        self.assertEquals(result, 'result')
