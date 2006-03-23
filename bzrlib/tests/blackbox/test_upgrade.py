@@ -145,3 +145,7 @@ finished
                                    bzrdir.BzrDirMetaFormat1))
         self.assertTrue(isinstance(converted_dir.open_repository()._format,
                                    repository.RepositoryFormatKnit1))
+
+    def test_upgrade_repo(self):
+        self.run_bzr('init-repository', '--format=metadir', 'repo')
+        self.run_bzr('upgrade', '--format=knit', 'repo')
