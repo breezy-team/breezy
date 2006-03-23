@@ -115,6 +115,12 @@ class TestBranchRegistration(TestCase):
     SAMPLE_OWNER = 'jhacker@foo.com'
     SAMPLE_BRANCH_ID = 'bzr.dev'
 
+    def setUp(self):
+        super(TestBranchRegistration, self).setUp()
+        # make sure we have a reproducible standard environment
+        if 'BZR_LP_XMLRPC_URL' in os.environ:
+            del os.environ['BZR_LP_XMLRPC_URL']
+
     def test_register_help(self):
         """register-branch accepts --help"""
         out, err = self.run_bzr('register-branch', '--help')
@@ -130,15 +136,20 @@ class TestBranchRegistration(TestCase):
         # command
         ## self.run_bzr('register-branch', self.SAMPLE_URL)
 
-    def test_40_onto_transport(self):
+    def test_onto_transport(self):
         """Test how the request is sent by transmitting across a mock Transport"""
-        return ###########disabled
-        service = MockLaunchpadService()
-        service.transport = InstrumentedXMLRPCTransport(self)
-
+        # use a real transport, but intercept at the http/xml layer
+        service = LaunchpadService()
+        service.registrant_email = 'testuser@launchpad.net'
+        service.registrant_password = 'testpassword'
+        transport = InstrumentedXMLRPCTransport(self)
+        service.transport = transport
         rego = BranchRegistrationRequest('http://test-server.com/bzr/branch',
-                'branch-id')
-        rego.branch_title = 'short description'
+                'branch-id',
+                'my test branch',
+                'description',
+                'author@launchpad.net',
+                'product')
         rego.submit(service)
         self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
         self.assertEquals(len(transport.sent_params), 6)
@@ -148,12 +159,12 @@ class TestBranchRegistration(TestCase):
         # unicode branch_description,
         # string owner_email,
         self.assertEquals(transport.sent_params,
-                ('http://test-server.com/bzr/branch',
-                 'branch-id',
-                 'short description',
-                 '',
-                 '' 
-                 ''))
+                ('http://test-server.com/bzr/branch',  # branch_url
+                 'branch-id',                          # branch_name
+                 'my test branch',                     # branch_title
+                 'description',
+                 'author@launchpad.net',
+                 'product'))
         self.assertTrue(transport.got_request)
 
     def test_against_mock_server(self):

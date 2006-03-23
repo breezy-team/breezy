@@ -33,6 +33,10 @@ class LaunchpadService(object):
     registrant_email = None
     registrant_password = None
 
+    def __init__(self):
+        """Construct a new service talking to the launchpad rpc server"""
+        pass
+
     @property
     def service_url(self):
         """Return the http or https url for the xmlrpc server.
@@ -45,10 +49,11 @@ class LaunchpadService(object):
         else:
             return self.DEFAULT_SERVICE_URL
 
-
     def get_proxy(self):
         """Return the proxy for XMLRPC requests."""
         # auth info must be in url
+        # TODO: if there's no registrant email perhaps we should just connect
+        # anonymously?
         scheme, hostinfo, path = urlsplit(self.service_url)[:3]
         assert '@' not in hostinfo
         assert self.registrant_email is not None
@@ -100,12 +105,12 @@ class BranchRegistrationRequest(BaseRequest):
 
     _methodname = 'register_branch'
 
-    def __init__(self, branch_url, 
+    def __init__(self, branch_url,
                  branch_name='',
                  branch_title='',
                  branch_description='',
-                 product_name='',
                  author_email='',
+                 product_name='',
                  ):
         assert branch_url
         self.branch_url = branch_url
