@@ -1780,7 +1780,7 @@ class cmd_find_merge_base(Command):
 class cmd_merge(Command):
     """Perform a three-way merge.
     
-    The location is the branch you will merge from.  By default, it will
+    The branch is the branch you will merge from.  By default, it will
     merge the latest revision.  If you specify a revision, that
     revision will be merged.  If you specify two revisions, the first
     will be used as a BASE, and the second one as OTHER.  Revision
@@ -1797,8 +1797,8 @@ class cmd_merge(Command):
 
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
-    If there is no default location set, the first merge will set it. After
-    that, you can omit the location to use the default.  To change the
+    If there is no default branch set, the first merge will set it. After
+    that, you can omit the branch to use the default.  To change the
     default, use --remember.
 
     Examples:
@@ -1815,43 +1815,43 @@ class cmd_merge(Command):
     merge refuses to run if there are any uncommitted changes, unless
     --force is given.
     """
-    takes_args = ['location?']
+    takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
                      Option('show-base', help="Show base revision text in "
                             "conflicts")]
 
-    def run(self, location=None, revision=None, force=False, merge_type=None,
+    def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False):
         if merge_type is None:
             merge_type = Merge3Merger
 
         tree = WorkingTree.open_containing(u'.')[0]
         stored_loc = tree.branch.get_parent()
-        if location is None:
+        if branch is None:
             if stored_loc is None:
-                raise BzrCommandError("No merge location known or specified.")
+                raise BzrCommandError("No merge branch known or specified.")
             else:
-                print "Using saved location: %s" % stored_loc
-                location = stored_loc
+                print "Using saved branch: %s" % stored_loc
+                branch = stored_loc
 
         if revision is None or len(revision) < 1:
             base = [None, None]
-            other = [location, -1]
+            other = [branch, -1]
         else:
             if len(revision) == 1:
                 base = [None, None]
-                other_branch = Branch.open_containing(location)[0]
+                other_branch = Branch.open_containing(branch)[0]
                 revno = revision[0].in_history(other_branch).revno
-                other = [location, revno]
+                other = [branch, revno]
             else:
                 assert len(revision) == 2
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                other_branch = Branch.open_containing(location)[0]
+                other_branch = Branch.open_containing(branch)[0]
 
-                base = [location, revision[0].in_history(other_branch).revno]
-                other = [location, revision[1].in_history(other_branch).revno]
+                base = [branch, revision[0].in_history(other_branch).revno]
+                other = [branch, revision[1].in_history(other_branch).revno]
 
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
@@ -1865,7 +1865,7 @@ class cmd_merge(Command):
                 pb.finished()
 
             if tree.branch.get_parent() is None or remember:
-                tree.branch.set_parent(location)
+                tree.branch.set_parent(branch)
 
             if conflict_count != 0:
                 return 1
