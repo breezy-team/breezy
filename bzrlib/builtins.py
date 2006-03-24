@@ -2401,4 +2401,5 @@ def merge(other_revision, base_revision,
 # details were needed.
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join
+from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join, \
+        cmd_weave_plan_merge, cmd_weave_merge_text
