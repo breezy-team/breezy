@@ -492,7 +492,7 @@ class cmd_push(Command):
                         needed.append((new_transport,
                                        new_transport.relpath(transport.base)))
                         if new_transport.base == transport.base:
-                            raise BzrCommandError("Could not creeate "
+                            raise BzrCommandError("Could not create "
                                                   "path prefix.")
             dir_to = br_from.bzrdir.clone(location)
             br_to = dir_to.open_branch()
