@@ -448,8 +448,12 @@ class VersionedFile(object):
         # 
         # TODO: Show some version information (e.g. author, date) on 
         # conflicted regions.
+        
+        # We previously considered either 'unchanged' or 'killed-both' lines
+        # to be possible places to resynchronize.  However, assuming agreement
+        # on killed-both lines may be too agressive. -- mbp 20060324
         for state, line in plan:
-            if state == 'unchanged' or state == 'killed-both':
+            if state == 'unchanged':
                 # resync and flush queued conflicts changes if any
                 if not lines_a and not lines_b:
                     pass

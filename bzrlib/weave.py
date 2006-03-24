@@ -66,6 +66,7 @@
 # be done fairly efficiently because the sequence numbers constrain
 # the possible relationships.
 
+# FIXME: the conflict markers should be *7* characters
 
 from copy import copy
 from cStringIO import StringIO
