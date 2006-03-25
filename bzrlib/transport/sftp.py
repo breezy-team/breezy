@@ -184,6 +184,14 @@ BZR_HOSTKEYS = {}
 # X seconds. But that requires a lot more fanciness.
 _connected_hosts = weakref.WeakValueDictionary()
 
+def clear_connection_cache():
+    """Remove all hosts from the SFTP connection cache.
+
+    Primarily useful for test cases wanting to force garbage collection.
+    """
+    while _connected_hosts:
+        _connected_hosts.popitem()
+
 
 def load_host_keys():
     """
