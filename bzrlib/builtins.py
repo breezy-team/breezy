@@ -2040,7 +2040,7 @@ class cmd_missing(Command):
         remote_branch = bzrlib.branch.Branch.open(other_branch)
         remote_branch.lock_read()
         try:
-            local_branch.lock_write()
+            local_branch.lock_read()
             try:
                 local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
                 if (log_format == None):
@@ -2072,11 +2072,16 @@ class cmd_missing(Command):
                     print "Branches are up to date."
                 else:
                     status_code = 1
-                if parent is None and other_branch is not None:
-                    local_branch.set_parent(other_branch)
-                return status_code
             finally:
                 local_branch.unlock()
+            if parent is None and other_branch is not None:
+                local_branch.lock_write()
+                try:
+                    if local_branch.get_parent() is not None:
+                        local_branch.set_parent(other_branch)
+                finally:
+                    local_branch.unlock()
+            return status_code
         finally:
             remote_branch.unlock()
 
