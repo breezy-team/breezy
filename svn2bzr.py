@@ -95,7 +95,9 @@ class BranchCreator(object):
 
     def _do_now(self, branch, action, paths):
         if action == "add":
-            branch.__wt.add(paths)
+            for i in paths:
+                if branch.__wt.file_class(i) == '?':
+                    branch.__wt.add(i)
         elif action == "remove":
             for i in paths:
                 if os.path.exists(i):
