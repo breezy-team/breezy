@@ -97,7 +97,9 @@ class BranchCreator(object):
         if action == "add":
             branch.__wt.add(paths)
         elif action == "remove":
-            branch.__wt.remove(paths)
+            for i in paths:
+                if os.path.exists(i):
+                    os.remove(i)
         else:
             raise RuntimeError, "Unknown action: %r" % action
 
@@ -317,10 +319,12 @@ class BranchCreator(object):
             self._process_do_cache(orig_branch)
             orig_abspath = orig_branch.__wt.abspath(orig_path_branch)
             if not os.path.exists(orig_abspath):
+                from bzrlib.transform import revert
                 # Was previously removed, as usual in svn.
-                orig_branch.__wt.revert([orig_abspath])
-                # Revert is currently broken. It invalidates the inventory.
-                orig_branch.__wt = orig_branch.working_tree()
+                revert(orig_branch.__wt,
+                        orig_branch.repository.revision_tree(orig_branch.last_revision()),
+                        [orig_path_branch],
+                        backups=False)
             self._log.debug("Moving: %s to %s" %
                             (orig_abspath,
                              dest_branch.__wt.abspath(dest_path_branch)))
