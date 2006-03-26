@@ -732,11 +732,16 @@ class cmd_update(Command):
 class cmd_info(Command):
     """Show statistical information about a branch."""
     takes_args = ['branch?']
-    
+    takes_options = [
+                     Option('debug', 
+                            help='Temporary option for debugging only'),
+                     ]
+
     @display_command
-    def run(self, branch=None):
+    def run(self, branch=None, debug=False):
         import bzrlib.info
-        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0])
+        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0],
+                debug)
 
 
 class cmd_remove(Command):

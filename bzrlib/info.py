@@ -44,27 +44,54 @@ def plural(n, base='', pl=None):
         return 's'
 
 
+def _get_format_string(object):
+    """Return format string of object, where object is of type
+    bzrlib.workingtree, bzrlib.branch or bzrlib.repository.
+    """
+    try:
+        return object._format.get_format_string().rstrip()
+    except NotImplementedError:
+        return object.bzrdir._format    # Use rstrip to be safe?
+
+
 @deprecated_function(zero_eight)
 def show_info(b):
     """Please see show_bzrdir_info."""
     return show_bzrdir_info(b.bzrdir)
 
 
-def show_bzrdir_info(a_bzrdir):
+def show_bzrdir_info(a_bzrdir, debug):
     """Output to stdout the 'info' for a_bzrdir."""
 
     working = a_bzrdir.open_workingtree()
     working.lock_read()
     try:
-        show_tree_info(working)
+        show_tree_info(working, debug)
     finally:
         working.unlock()
 
 
-def show_tree_info(working):
+def show_tree_info(working, debug):
     """Output to stdout the 'info' for working."""
 
     b = working.branch
+    repository = b.repository
+    working_format = _get_format_string(working)
+    branch_format = _get_format_string(b)
+    repository_format = _get_format_string(repository)
+
+    if debug:
+        print '   working.bzrdir = %s' % working.bzrdir.root_transport.base
+        print '    branch.bzrdir = %s' % b.bzrdir.root_transport.base
+        print 'repository.bzrdir = %s' % repository.bzrdir.root_transport.base
+        print '    branch.parent = %s' % (b.get_parent() or '')
+        print '    branch.push   = %s' % (b.get_push_location() or '')
+        print '    branch.bound  = %s' % (b.get_bound_location() or '')
+        print '   working.format = %s' % working_format
+        print '    branch.format = %s' % branch_format
+        print 'repository.format = %s' % repository_format
+        print 'repository.shared = %s' % repository.is_shared()
+        return
     
     if working.bzrdir != b.bzrdir:
         print 'working tree format:', working._format
