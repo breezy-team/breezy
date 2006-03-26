@@ -257,31 +257,31 @@ class BranchCreator(object):
 
         if os.path.exists(ifn):
             f = open(ifn, 'rt')
-            igns = f.read().decode('utf-8').split("\n")
+            existing = f.read().decode('utf-8').splitlines()
             f.close()
             os.unlink(ifn)
         else:
-            igns = []
+            existing = []
+
+        igns = list(existing)
 
         # Figure out which elements are already there
-        for ign in igns:
-            dir = os.path.dirname(ign)
- 
-            if dir != path_branch:
-                continue
-
-            if not ign in globs:
-                igns.remove(ign)
-            else:
-                globs.remove(ign)
+        for ign in existing:
+            if os.path.dirname(ign) == path_branch:
+                if os.path.basename(ign) in globs:
+                    globs.remove(ign)
+                else:
+                    igns.remove(ign)
 
         # The remaining items didn't exist yet
         for ign in globs:
-            igns.append(os.path.join(path_branch, ign))
+            if ign.strip() != "":
+               igns.append(os.path.join(path_branch, ign))
             
         f = AtomicFile(ifn, 'wt')
-        data = "\n".join(igns)
-        f.write(data.encode('utf-8'))
+        igns.sort()
+        for i in igns:
+            f.write("%s\n" % i.encode('utf-8'))
         f.commit()
 
         if not branch.working_tree().path2id('.bzrignore'):
@@ -346,6 +346,7 @@ class BranchCreator(object):
                 if os.path.isdir(abspath):
                     self._log.debug("Removing dir: %s" % abspath)
                     shutil.rmtree(abspath)
+                    self.set_ignore_glob(abspath, [])
                     # If the directory parent is filtered, no one is
                     # taking care of it, so remove it as well.
                     abspath = os.path.dirname(abspath)
@@ -464,7 +465,7 @@ class BranchCreator(object):
 
                 if entry.prop.has_key('svn:ignore'):
                     self.set_ignore_glob(node_path, \
-                            entry.prop['svn:ignore'].split("\n"))
+                            entry.prop['svn:ignore'].splitlines())
 
         if revision is not None:
             commit()
