@@ -66,4 +66,5 @@ class TestSharedRepo(TestCaseInTempDir):
         cdir.open_branch()
         self.assertRaises(errors.NoRepositoryPresent, cdir.open_repository)
         self.assert_(os.path.exists('a/c/hello'))
+        cdir.open_workingtree()
 
