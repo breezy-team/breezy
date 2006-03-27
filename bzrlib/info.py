@@ -25,6 +25,7 @@ import bzrlib.diff as diff
 from bzrlib.missing import find_unmerged
 from bzrlib.osutils import format_date
 from bzrlib.symbol_versioning import *
+from bzrlib.trace import warning
 
 
 def _countiter(it):
@@ -54,6 +55,28 @@ def _get_format_string(object):
         return object.bzrdir._format    # Use rstrip to be safe?
 
 
+def _print_other_locations(branch):
+    """Output to stdout the parent, bound and push locations of branch,
+    if not None.
+    """
+    if branch.get_parent():
+        print '        Parent branch: %s' % branch.get_parent()
+    if branch.get_bound_location():
+        print '      Bound to branch: %s' % branch.get_bound_location()
+    if branch.get_push_location():
+        print '       Push to branch: %s' % branch.get_push_location()
+
+
+def _print_formats(working_format, branch_format, repository_format):
+    """Output to stdout the formats given, if not None."""
+    if working_format:
+        print '  Working tree format: %s' % working_format
+    if branch_format:
+        print '        Branch format: %s' % branch_format
+    if repository_format:
+        print '    Repository format: %s' % repository_format
+
+
 @deprecated_function(zero_eight)
 def show_info(b):
     """Please see show_bzrdir_info."""
@@ -74,50 +97,102 @@ def show_bzrdir_info(a_bzrdir, debug):
 def show_tree_info(working, debug):
     """Output to stdout the 'info' for working."""
 
-    b = working.branch
-    repository = b.repository
+    branch = working.branch
+    repository = branch.repository
     working_format = _get_format_string(working)
-    branch_format = _get_format_string(b)
+    branch_format = _get_format_string(branch)
     repository_format = _get_format_string(repository)
+    # TODO Is it possible to get metadir format?
 
     if debug:
         print '   working.bzrdir = %s' % working.bzrdir.root_transport.base
-        print '    branch.bzrdir = %s' % b.bzrdir.root_transport.base
+        print '    branch.bzrdir = %s' % branch.bzrdir.root_transport.base
         print 'repository.bzrdir = %s' % repository.bzrdir.root_transport.base
-        print '    branch.parent = %s' % (b.get_parent() or '')
-        print '    branch.push   = %s' % (b.get_push_location() or '')
-        print '    branch.bound  = %s' % (b.get_bound_location() or '')
+        print '    branch.parent = %s' % (branch.get_parent() or '')
+        print '    branch.push   = %s' % (branch.get_push_location() or '')
+        print '    branch.bound  = %s' % (branch.get_bound_location() or '')
         print '   working.format = %s' % working_format
         print '    branch.format = %s' % branch_format
         print 'repository.format = %s' % repository_format
         print 'repository.shared = %s' % repository.is_shared()
         return
-    
-    if working.bzrdir != b.bzrdir:
-        print 'working tree format:', working._format
-        print 'branch location:', b.bzrdir.root_transport.base
-    try:
-        b._format.get_format_string()
-        format = b._format
-    except NotImplementedError:
-        format = b.bzrdir._format
-    print 'branch format:', format
 
-    if b.get_bound_location():
-        print 'bound to branch:',  b.get_bound_location()
+    if working.bzrdir == branch.bzrdir:
+        if working.bzrdir == repository.bzrdir:
+            if working_format == branch_format == repository_format:
+                # standalone branch
+                print '          Branch root: %s' \
+                        % branch.bzrdir.root_transport.base
+                _print_other_locations(branch)
+                print
+                _print_formats(None, branch_format, None)
+            else:
+                # checkout (bound branch)
+                print '        Checkout root: %s' \
+                        % branch.bzrdir.root_transport.base
+                _print_other_locations(branch)
+                print
+                _print_formats(working_format, branch_format,
+                               repository_format)
+        else:
+            # working tree inside branch of shared repository
+            print '        Checkout root: %s' \
+                    % branch.bzrdir.root_transport.base
+            if repository.is_shared():
+                print '    Shared repository: %s' \
+                        % repository.bzrdir.root_transport.base
+            else:
+                print '           Repository: %s' \
+                        % repository.bzrdir.root_transport.base
+            _print_other_locations(branch)
+            print
+            _print_formats(working_format, branch_format, repository_format)
+    else:
+        if working.bzrdir == repository.bzrdir:
+            # strange variation of lightweight checkout
+            # Working has the same location as repository, but not branch.
+            # FIXME This UI needs review, just show all values for now.
+            warning('User interface for this construct needs to be tuned.')
+            print '         Working tree: %s' \
+                    % working.bzrdir.root_transport.base
+            print '   Checkout of branch: %s' \
+                    % branch.bzrdir.root_transport.base
+            if repository.is_shared():
+                print '    Shared repository: %s' \
+                        % repository.bzrdir.root_transport.base
+            else:
+                print '           Repository: %s' \
+                        % repository.bzrdir.root_transport.base
+        else:
+            # lightweight checkout (could be of standalone branch)
+            print '         Working tree: %s' \
+                    % working.bzrdir.root_transport.base
+            print '   Checkout of branch: %s' \
+                    % branch.bzrdir.root_transport.base
+            if branch.bzrdir != repository.bzrdir:
+                # lightweight checkout
+                if repository.is_shared():
+                    print '    Shared repository: %s' \
+                            % repository.bzrdir.root_transport.base
+                else:
+                    print '           Repository: %s' \
+                            % repository.bzrdir.root_transport.base
+            _print_other_locations(branch)
+            print
+            _print_formats(working_format, branch_format, repository_format)
 
     count_version_dirs = 0
 
     basis = working.basis_tree()
     work_inv = working.inventory
     delta = diff.compare_trees(basis, working, want_unchanged=True)
-    history = b.revision_history()
+    history = branch.revision_history()
     
     print
     # Try with inaccessible branch ?
-    master = b.get_master_branch()
+    master = branch.get_master_branch()
     if master:
-        local_extra, remote_extra = find_unmerged(b, b.get_master_branch())
+        local_extra, remote_extra = find_unmerged(branch, master)
         if remote_extra:
             print 'Branch is out of date: missing %d revision%s.' % (
                 len(remote_extra), plural(len(remote_extra)))
@@ -161,41 +236,33 @@ def show_tree_info(working, debug):
     print '  %8d revision%s' % (revno, plural(revno))
     committers = {}
     for rev in history:
-        committers[b.repository.get_revision(rev).committer] = True
+        committers[branch.repository.get_revision(rev).committer] = True
     print '  %8d committer%s' % (len(committers), plural(len(committers)))
     if revno > 0:
-        firstrev = b.repository.get_revision(history[0])
+        firstrev = branch.repository.get_revision(history[0])
         age = int((time.time() - firstrev.timestamp) / 3600 / 24)
         print '  %8d day%s old' % (age, plural(age))
         print '   first revision: %s' % format_date(firstrev.timestamp,
                                                     firstrev.timezone)
 
-        lastrev = b.repository.get_revision(history[-1])
+        lastrev = branch.repository.get_revision(history[-1])
         print '  latest revision: %s' % format_date(lastrev.timestamp,
                                                     lastrev.timezone)
 
 #     print
 #     print 'text store:'
-#     c, t = b.text_store.total_size()
+#     c, t = branch.text_store.total_size()
 #     print '  %8d file texts' % c
 #     print '  %8d kB' % (t/1024)
 
     print
     print 'revision store:'
-    c, t = b.repository._revision_store.total_size(b.repository.get_transaction())
+    c, t = branch.repository._revision_store.total_size(branch.repository.get_transaction())
     print '  %8d revision%s' % (c, plural(c))
     print '  %8d kB' % (t/1024)
 
-
 #     print
 #     print 'inventory store:'
-#     c, t = b.inventory_store.total_size()
+#     c, t = branch.inventory_store.total_size()
 #     print '  %8d inventories' % c
 #     print '  %8d kB' % (t/1024)
-
-    loc = b.get_parent()
-    if loc is not None:
-        print
-        print 'parent location:'
-        print '  %s' % loc
-
