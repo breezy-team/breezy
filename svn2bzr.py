@@ -67,8 +67,9 @@ class Error(Exception): pass
 
 class BranchCreator(object):
 
-    def __init__(self, dump, root=None, prefix=None, log=None):
+    def __init__(self, dump, root=None, prefix=None, log=None, check=False):
         self._dump = dump
+        self._check = check
         self._root = os.path.realpath(root)
         if prefix:
             self._prefix = prefix.strip("/")
@@ -81,35 +82,6 @@ class BranchCreator(object):
         self._changed = {}
         self._filter = []
         self._log = log or get_logger()
-
-        self._do_cache = {}
-
-    def _do(self, branch, action, path):
-        last = self._do_cache.get(branch)
-        if last and action == last[0]:
-            last[1].append(path)
-        else:
-            if last:
-                self._do_now(branch, *last)
-            self._do_cache[branch] = (action, [path])
-
-    def _do_now(self, branch, action, paths):
-        if action == "add":
-            for i in paths:
-                if branch.__wt.file_class(i) == '?':
-                    branch.__wt.add(i)
-        elif action == "remove":
-            for i in paths:
-                if os.path.exists(i):
-                    os.remove(i)
-        else:
-            raise RuntimeError, "Unknown action: %r" % action
-
-    def _process_do_cache(self, branch):
-        last = self._do_cache.get(branch)
-        if last:
-            self._do_now(branch, *last)
-            del self._do_cache[branch]
 
     def _new_branch(self, branch):
         # Ugly, but let's wait until that API stabilizes. Right
@@ -154,14 +126,13 @@ class BranchCreator(object):
         else:
             return None
 
-
     def add_file(self, path, content):
         branch, path_branch = self._get_branch_path(path)
         if branch:
             abspath = branch.__wt.abspath(path_branch)
             self._log.debug("Adding file: %s" % abspath)
             open(abspath, "w").write(content)
-            self._do(branch, "add", path_branch)
+            branch.__wt.add(path_branch)
             self._changed[branch] = True
 
     def change_file(self, path, content):
@@ -181,7 +152,7 @@ class BranchCreator(object):
             self._log.debug("Copying file: %s at %d to %s" %
                             (orig_path, orig_revno, abspath))
             open(abspath, "w").write(orig_content)
-            self._do(dest_branch, "add", dest_path_branch)
+            dest_branch.__wt.add(dest_path_branch)
             self._changed[dest_branch] = True
 
     def add_dir(self, path):
@@ -197,7 +168,7 @@ class BranchCreator(object):
             self._log.debug("Adding dir: %s" % abspath)
             if os.path.isdir(os.path.dirname(abspath)):
                 os.mkdir(abspath)
-                self._do(branch, "add", path_branch)
+                branch.__wt.add(path_branch)
             else:
                 path_parts = path_branch.split('/')
                 dir = branch.base
@@ -205,8 +176,7 @@ class BranchCreator(object):
                     dir = "%s/%s" % (dir, part)
                     if not os.path.isdir(dir):
                         os.mkdir(dir)
-                        self._do(branch, "add",
-                                 branch.__wt.relpath(dir))
+                        branch.__wt.add(branch.__wt.relpath(dir))
             self._changed[branch] = True
 
     def copy_dir(self, orig_path, orig_revno, dest_path):
@@ -253,7 +223,7 @@ class BranchCreator(object):
             return
 
         # Obtain list of existing ignores
-        ifn = branch.working_tree().abspath('.bzrignore')
+        ifn = branch.__wt.abspath('.bzrignore')
 
         if os.path.exists(ifn):
             f = open(ifn, 'rt')
@@ -271,12 +241,15 @@ class BranchCreator(object):
                 if os.path.basename(ign) in globs:
                     globs.remove(os.path.basename(ign))
                 else:
+                    self._log.debug("Removing ignore entry '%s'" % ign)
                     igns.remove(ign)
 
         # The remaining items didn't exist yet
         for ign in globs:
             if ign.strip() != "":
-               igns.append(os.path.join(path_branch, ign))
+               entry = os.path.join(path_branch, ign)
+               self._log.debug("Adding ignore entry '%s'" % entry)
+               igns.append(entry)
             
         f = AtomicFile(ifn, 'wt')
         igns.sort()
@@ -284,8 +257,8 @@ class BranchCreator(object):
             f.write("%s\n" % i.encode('utf-8'))
         f.commit()
 
-        if not branch.working_tree().path2id('.bzrignore'):
-            branch.working_tree().add(['.bzrignore'])
+        if not branch.__wt.path2id('.bzrignore'):
+            branch.__wt.add('.bzrignore')
 
         self._changed[branch] = True
 
@@ -295,7 +268,7 @@ class BranchCreator(object):
             self._log.debug("Ignoring out-of-branch executable settings on %s" % path)
             return
 
-        abspath = branch.working_tree().abspath(path_branch)
+        abspath = branch.__wt.abspath(path_branch)
         mode = os.stat(abspath).st_mode
         if executable:
             mode = mode | 0111
@@ -318,15 +291,12 @@ class BranchCreator(object):
             self.remove(orig_path)
             self.copy(orig_path, orig_revno, dest_path)
         else:
-            self._process_do_cache(orig_branch)
             orig_abspath = orig_branch.__wt.abspath(orig_path_branch)
             if not os.path.exists(orig_abspath):
                 from bzrlib.transform import revert
                 # Was previously removed, as usual in svn.
-                revert(orig_branch.__wt,
-                        orig_branch.repository.revision_tree(orig_branch.last_revision()),
-                        [orig_path_branch],
-                        backups=False)
+                orig_branch.__wt.revert([orig_path_branch], backups=False)
+
             self._log.debug("Moving: %s to %s" %
                             (orig_abspath,
                              dest_branch.__wt.abspath(dest_path_branch)))
@@ -342,7 +312,6 @@ class BranchCreator(object):
                 self._log.debug("Removing branch: %s" % abspath)
                 self._remove_branch(branch)
             elif os.path.exists(abspath):
-                self._do(branch, "remove", path_branch)
                 if os.path.isdir(abspath):
                     self._log.debug("Removing dir: %s" % abspath)
                     shutil.rmtree(abspath)
@@ -356,21 +325,32 @@ class BranchCreator(object):
                             break
                         try:
                             os.rmdir(abspath)
-                            self._do(branch, "remove", relpath)
                         except OSError:
                             break
                 elif os.path.isfile(abspath):
                     self._log.debug("Removing file: %s" % abspath)
                     os.unlink(abspath)
+                branch.__wt.remove(path_branch)
                 self._changed[branch] = True
+
+    def check_uncommitted(self,branch):
+        from bzrlib.delta import compare_trees
+
+        delta = compare_trees(branch.__wt.basis_tree(), branch.__wt)
+
+        assert(delta.modified == [])
+        assert(delta.added == [])
+        assert(delta.removed == [])
+        assert(delta.renamed == [])
 
     def commit(self, revno, message, committer, timestamp):
         if self._changed:
             self._log.info("Committing revision %d" % revno)
             for branch in self._changed:
-                self._process_do_cache(branch)
                 branch.__wt.commit(message, committer=committer,
                                    timestamp=timestamp, verbose=False)
+                if self._check:
+                    self.check_uncommitted(branch)
         else:
             self._log.info("Nothing changed in revision %d" % revno)
         self._revisions[revno] = revs = {}
@@ -479,8 +459,8 @@ class BranchCreator(object):
 
 class SingleBranchCreator(BranchCreator):
 
-    def __init__(self, dump, root, prefix=None, log=None):
-        BranchCreator.__init__(self, dump, root, prefix, log)
+    def __init__(self, dump, root, prefix=None, log=None, check=False):
+        BranchCreator.__init__(self, dump, root, prefix, log, check)
         self._branch = None
 
     def _remove_branch(self, branch):
@@ -503,8 +483,8 @@ class SingleBranchCreator(BranchCreator):
 class DynamicBranchCreator(BranchCreator):
     ATTICDIR = "attic"
 
-    def __init__(self, dump, root, prefix=None, log=None):
-        BranchCreator.__init__(self, dump, root, prefix, log)
+    def __init__(self, dump, root, prefix=None, log=None, check=False):
+        BranchCreator.__init__(self, dump, root, prefix, log, check)
 
     def _remove_branch(self, branch):
         # Retire a branch to the attic
@@ -597,7 +577,7 @@ class TrunkBranchCreator(DynamicBranchCreator):
         return path not in ("", "tags", "branches")
 
 
-def svn2bzr(dump_file, output_dir, creator_class=None, prefix=None, filter=[]):
+def svn2bzr(dump_file, output_dir, creator_class=None, prefix=None, filter=[], consistency_check=False):
 
     if os.path.exists(output_dir):
         raise Error, "%s already exists" % output_dir
@@ -607,7 +587,7 @@ def svn2bzr(dump_file, output_dir, creator_class=None, prefix=None, filter=[]):
 
     dump = Dump(dump_file,log=get_logger(),cache_interval=10)
 
-    creator = creator_class(dump, output_dir, prefix)
+    creator = creator_class(dump, output_dir, prefix, check=consistency_check)
 
     for include, regexp in filter:
         creator.add_filter(include, regexp)
@@ -643,6 +623,8 @@ def parse_options():
                       help="Subversion repository scheme (single or trunk, "
                            "default is single)",
                       default="single")
+    parser.add_option("--check", action="store_true",
+                      help="Enable extra consistency checks (slower)")
     parser.add_option("--log", metavar="LEVEL",
                       help="set logging level to LEVEL (debug, info, "
                            "warning, error)", default="info")
@@ -679,7 +661,7 @@ def main():
 
     try:
         svn2bzr(dump_file, opts.args[1], creator_class,
-                opts.prefix, opts.filter)
+                opts.prefix, opts.filter, opts.check)
     except Error, e:
         sys.exit("error: %s" % e)
     except KeyboardInterrupt:
