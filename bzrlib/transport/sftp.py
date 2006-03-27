@@ -189,8 +189,7 @@ def clear_connection_cache():
 
     Primarily useful for test cases wanting to force garbage collection.
     """
-    while _connected_hosts:
-        _connected_hosts.popitem()
+    _connected_hosts.clear()
 
 
 def load_host_keys():
