@@ -1834,6 +1834,9 @@ class cmd_merge(Command):
                 print "Using saved branch: %s" % stored_loc
                 branch = stored_loc
 
+        if tree.branch.get_parent() is None or remember:
+            tree.branch.set_parent(branch)
+
         if revision is None or len(revision) < 1:
             base = [None, None]
             other = [branch, -1]
@@ -1863,10 +1866,6 @@ class cmd_merge(Command):
                                        pb=pb)
             finally:
                 pb.finished()
-
-            if tree.branch.get_parent() is None or remember:
-                tree.branch.set_parent(branch)
-
             if conflict_count != 0:
                 return 1
             else:
