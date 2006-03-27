@@ -151,8 +151,8 @@ def show_tree_info(working, debug):
         if working.bzrdir == repository.bzrdir:
             # strange variation of lightweight checkout
             # Working has the same location as repository, but not branch.
-            # FIXME This UI needs review, just show all values for now.
-            warning('User interface for this construct needs to be tuned.')
+            # FIXME This UI needs review, just show all locations for now.
+            warning('User interface for this construct needs to be refined.')
             print '         Working tree: %s' \
                     % working.bzrdir.root_transport.base
             print '   Checkout of branch: %s' \
@@ -163,6 +163,9 @@ def show_tree_info(working, debug):
             else:
                 print '           Repository: %s' \
                         % repository.bzrdir.root_transport.base
+            _print_other_locations(branch)
+            print
+            _print_formats(working_format, branch_format, repository_format)
         else:
             # lightweight checkout (could be of standalone branch)
             print '         Working tree: %s' \
