@@ -880,8 +880,10 @@ class cmd_init_repository(Command):
     takes_args = ["location"] 
     takes_options = [Option('format', 
                             help='Use a specific format rather than the'
-                            ' current default format. Currently this '
-                            ' option only accepts "metadir" and "knit"',
+                            ' current default format. Currently this'
+                            ' option only accepts "metadir" and "knit"'
+                            ' WARNING: the knit format is currently unstable'
+                            ' and only for experimental use.',
                             type=get_format_type)]
     aliases = ["init-repo"]
     def run(self, location, format=None):
@@ -1554,8 +1556,10 @@ class cmd_upgrade(Command):
     takes_options = [
                      Option('format', 
                             help='Upgrade to a specific format rather than the'
-                                 ' current default format. Currently this '
-                                 ' option only accepts =metadir',
+                                 ' current default format. Currently this'
+                                 ' option only accepts -metadir and -knit'
+                                 ' WARNING: the knit format is currently'
+                                 ' unstable and only for experimental use.',
                             type=get_format_type),
                     ]
 
