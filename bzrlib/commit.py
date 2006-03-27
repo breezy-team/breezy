@@ -263,7 +263,7 @@ class Commit(object):
             if timestamp is None:
                 self.timestamp = time.time()
             else:
-                self.timestamp = long(timestamp)
+                self.timestamp = timestamp
                 
             if self.config is None:
                 self.config = bzrlib.config.BranchConfig(self.branch)
