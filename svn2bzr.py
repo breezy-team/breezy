@@ -422,6 +422,8 @@ class BranchCreator(object):
                 assert node_kind in (None, "file", "dir")
                 assert node_action in ("add", "delete", "change", "replace")
 
+                content = None
+
                 if node_action == "delete":
                     self.remove(node_path)
                     deleted[node_path] = True
@@ -437,8 +439,10 @@ class BranchCreator(object):
 
                         if copy_path in deleted and copy_revno == revno-1:
                             self.move(copy_path, copy_revno, node_path)
+                            content = self._dump.get_entry_content(entry)
                         elif node_kind == "file":
                             self.copy_file(copy_path, copy_revno, node_path)
+                            content = self._dump.get_entry_content(entry)
                         else:
                             self.copy_dir(copy_path, copy_revno, node_path)
 
@@ -454,7 +458,9 @@ class BranchCreator(object):
                     if (node_kind == "file" and
                         entry.content_pos != entry.change_from.content_pos):
                         content = self._dump.get_entry_content(entry)
-                        self.change_file(node_path, content)
+
+                if content:
+                    self.change_file(node_path, content)
 
                 if os.path.isfile(os.path.join(self._root, node_path)):
                     if entry.prop.has_key('svn:executable') and \

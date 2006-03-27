@@ -1,0 +1,92 @@
+SVN-fs-dump-format-version: 2
+
+UUID: 48558b1a-f90f-0410-8d7c-829351447e99
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-03-27T12:27:53.455194Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 116
+Content-length: 116
+
+K 7
+svn:log
+V 15
+Initial commit
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-03-27T12:28:20.403398Z
+PROPS-END
+
+Node-path: oldfile
+Node-kind: file
+Node-action: add
+Prop-content-length: 10
+Text-content-length: 2
+Text-content-md5: b026324c6904b2a9cb4b88d6d61c81d1
+Content-length: 12
+
+PROPS-END
+1
+
+
+Revision-number: 2
+Prop-content-length: 130
+Content-length: 130
+
+K 7
+svn:log
+V 29
+Do some operations (copies!)
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-03-27T12:28:48.104525Z
+PROPS-END
+
+Node-path: newfile1
+Node-kind: file
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: oldfile
+Text-content-length: 2
+Text-content-md5: 60b725f10c9c85c70d97880dfe8191b3
+Content-length: 2
+
+a
+
+
+Node-path: newfile2
+Node-kind: file
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: oldfile
+Text-content-length: 2
+Text-content-md5: 3b5d5c3712955042212316173ccf37be
+Content-length: 2
+
+b
+
+
+Node-path: oldfile
+Node-action: delete
+
+
