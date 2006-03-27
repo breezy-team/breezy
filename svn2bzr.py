@@ -269,7 +269,7 @@ class BranchCreator(object):
         for ign in existing:
             if os.path.dirname(ign) == path_branch:
                 if os.path.basename(ign) in globs:
-                    globs.remove(ign)
+                    globs.remove(os.path.basename(ign))
                 else:
                     igns.remove(ign)
 

@@ -223,3 +223,42 @@ filex
 PROPS-END
 
 
+Revision-number: 8
+Prop-content-length: 122
+Content-length: 122
+
+K 7
+svn:log
+V 21
+Add duplicate ignore
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-03-26T21:15:52.389622Z
+PROPS-END
+
+Node-path: 
+Node-kind: dir
+Node-action: change
+Prop-content-length: 69
+Content-length: 69
+
+K 10
+svn:ignore
+V 37
+filex
+*glob
+filex
+filex
+filex
+filex
+
+
+PROPS-END
+
+
