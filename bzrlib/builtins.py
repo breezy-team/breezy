@@ -1858,26 +1858,17 @@ class cmd_merge(Command):
 
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            try:
-                conflict_count = merge(other, base, check_clean=(not force),
-                                       merge_type=merge_type, 
-                                       reprocess=reprocess,
-                                       show_base=show_base, 
-                                       pb=pb)
-            finally:
-                pb.finished()
-            if conflict_count != 0:
-                return 1
-            else:
-                return 0
-        except bzrlib.errors.AmbiguousBase, e:
-            m = ("sorry, bzr can't determine the right merge base yet\n"
-                 "candidates are:\n  "
-                 + "\n  ".join(e.bases)
-                 + "\n"
-                 "please specify an explicit base with -r,\n"
-                 "and (if you want) report this to the bzr developers\n")
-            log_error(m)
+            conflict_count = merge(other, base, check_clean=(not force),
+                                   merge_type=merge_type, 
+                                   reprocess=reprocess,
+                                   show_base=show_base, 
+                                   pb=pb)
+        finally:
+            pb.finished()
+        if conflict_count != 0:
+            return 1
+        else:
+            return 0
 
 
 class cmd_remerge(Command):

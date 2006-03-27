@@ -434,14 +434,6 @@ class InstallFailed(BzrError):
         self.revisions = revisions
 
 
-class AmbiguousBase(BzrError):
-    def __init__(self, bases):
-        msg = "The correct base is unclear, becase %s are all equally close" %\
-            ", ".join(bases)
-        BzrError.__init__(self, msg)
-        self.bases = bases
-
-
 class NoCommits(BzrError):
     def __init__(self, branch):
         msg = "Branch %s has no commits." % branch
