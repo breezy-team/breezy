@@ -2325,10 +2325,8 @@ class cmd_break_lock(Command):
                                  "don't break it"),
                     ]
     def run(self, location, show=False):
-        d = bzrdir.BzrDir.open(location)
-        repo = d.open_repository()
-        if not repo.is_locked():
-            raise errors.ObjectNotLocked(repo)
+        raise NotImplementedError("sorry, break-lock is not complete yet; "
+                "you can remove the 'held' directory manually to break the lock")
 
 
 # command-line interpretation helper for merge-related commands
