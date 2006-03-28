@@ -492,7 +492,7 @@ class cmd_push(Command):
                         needed.append((new_transport,
                                        new_transport.relpath(transport.base)))
                         if new_transport.base == transport.base:
-                            raise BzrCommandError("Could not creeate "
+                            raise BzrCommandError("Could not create "
                                                   "path prefix.")
             dir_to = br_from.bzrdir.clone(location)
             br_to = dir_to.open_branch()
@@ -1974,7 +1974,7 @@ class cmd_help(Command):
     For a list of all available commands, say 'bzr help commands'."""
     takes_options = [Option('long', 'show help on all commands')]
     takes_args = ['topic?']
-    aliases = ['?']
+    aliases = ['?', '--help', '-?', '-h']
     
     @display_command
     def run(self, topic=None, long=False):
@@ -2406,4 +2406,5 @@ def merge(other_revision, base_revision,
 # details were needed.
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join
+from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join, \
+        cmd_weave_plan_merge, cmd_weave_merge_text
