@@ -417,6 +417,7 @@ class cmd_pull(Command):
     def run(self, location=None, remember=False, overwrite=False, revision=None, verbose=False):
         # FIXME: too much stuff is in the command class        
         tree_to = WorkingTree.open_containing(u'.')[0]
+        br_to = tree_to.branch
         stored_loc = tree_to.branch.get_parent()
         if location is None:
             if stored_loc is None:
@@ -425,8 +426,10 @@ class cmd_pull(Command):
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
 
+        if br_to.get_parent() is None or remember:
+            br_to.set_parent(location)
+
         br_from = Branch.open(location)
-        br_to = tree_to.branch
 
         if revision is None:
             rev_id = None
@@ -437,9 +440,6 @@ class cmd_pull(Command):
 
         old_rh = br_to.revision_history()
         count = tree_to.pull(br_from, overwrite, rev_id)
-
-        if br_to.get_parent() is None or remember:
-            br_to.set_parent(location)
         note('%d revision(s) pulled.' % (count,))
 
         if verbose:

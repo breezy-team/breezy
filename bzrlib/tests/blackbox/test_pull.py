@@ -24,6 +24,8 @@ import sys
 
 from bzrlib.branch import Branch
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.osutils import abspath
+
 
 class TestPull(ExternalBase):
 
@@ -222,4 +224,39 @@ class TestPull(ExternalBase):
 
         self.assertEqual(rev_history_b, rev_history_a)
 
+    def test_pull_remember(self):
+        """Pull changes from one branch to another and test parent location."""
+        os.mkdir('a')
+        os.chdir('a')
 
+        self.example_branch()
+        self.runbzr('branch . ../b')
+        self.runbzr('branch . ../c')
+        file('bottles', 'wt').write('99 bottles of beer on the wall')
+        self.runbzr('add bottles')
+        self.runbzr('commit -m 99_bottles')
+        os.chdir('../b')
+        b = Branch.open('')
+        parent = b.get_parent()
+        # reset parent
+        b.set_parent(None)
+        self.assertEqual(None, b.get_parent())
+        # test pull for failure without parent set
+        out = self.runbzr('pull', retcode=3)
+        self.assertEquals(out,
+                ('','bzr: ERROR: No pull location known or specified.\n'))
+        # test implicit --remember when no parent set, this pull conflicts
+        file('bottles', 'wt').write('98 bottles of beer on the wall')
+        self.runbzr('add bottles')
+        self.runbzr('commit -m 98_bottles')
+        out = self.runbzr('pull ../a', retcode=3)
+        self.assertEquals(out,
+                ('','bzr: ERROR: These branches have diverged.  Try merge.\n'))
+        self.assertEquals(abspath(b.get_parent()), abspath(parent))
+        # test implicit --remember after resolving previous failure
+        self.runbzr('uncommit --force')
+        self.runbzr('pull')
+        self.assertEquals(abspath(b.get_parent()), abspath(parent))
+        # test explicit --remember
+        self.runbzr('pull ../c --remember')
+        self.assertEquals(abspath(b.get_parent()), abspath('../c'))
