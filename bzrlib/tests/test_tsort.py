@@ -88,11 +88,16 @@ class TopoSortTests(TestCase):
 
 class MergeSortTests(TestCase):
 
-    def assertSortAndIterate(self, graph, branch_tip, result_list):
+    def assertSortAndIterate(self, graph, branch_tip, result_list,
+            mainline_revisions=None):
         """Check that merge based sorting and iter_topo_order on graph works."""
-        self.assertEquals(result_list, merge_sort(graph, branch_tip))
+        self.assertEquals(result_list,
+            merge_sort(graph, branch_tip, mainline_revisions=mainline_revisions))
         self.assertEqual(result_list,
-                         list(MergeSorter(graph, branch_tip).iter_topo_order()))
+            list(MergeSorter(
+                graph,
+                branch_tip,
+                mainline_revisions=mainline_revisions).iter_topo_order()))
 
     def test_merge_sort_empty(self):
         # sorting of an emptygraph does not error
@@ -219,3 +224,58 @@ class MergeSortTests(TestCase):
              (7, 'H', 0, True),
              ]
             )
+
+    def test_mainline_revs_partial(self):
+        # when a mainline_revisions list is passed this must
+        # override the graphs idea of mainline, and must also
+        # truncate the output to the specified range, if needed.
+        # so we test both at once: a mainline_revisions list that
+        # disagrees with the graph about which revs are 'mainline'
+        # and also truncates the output.
+        # graph:
+        # A 0 [E, B]
+        # B 1 [D, C]
+        # C 2 [D]
+        # D 1 [E]
+        # E 0
+        # with a mainline of NONE,E,A (the inferred one) this will show the merge
+        # depths above.
+        # with a overriden mainline of NONE,E,D,B,A it should show:
+        # A 0
+        # B 0
+        # C 1
+        # D 0
+        # E 0
+        # and thus when truncated to D,B,A it should show
+        # A 0
+        # B 0
+        # C 1 
+        # because C is brought in by B in this view and D
+        # is the terminating revision id
+        self.assertSortAndIterate(
+            {'A': ['E', 'B'],
+             'B': ['D', 'C'],
+             'C': ['D'],
+             'D': ['E'],
+             'E': []
+             },
+            'A',
+            [(0, 'A', 0, False),
+             (1, 'B', 0, False),
+             (2, 'C', 1, True),
+             ],
+            mainline_revisions=['D', 'B', 'A']
+            )
+
+    def test_mainline_revs_with_none(self):
+        # a simple test to ensure that a mainline_revs
+        # list which goes all the way to None works
+        self.assertSortAndIterate(
+            {'A': [],
+             },
+            'A',
+            [(0, 'A', 0, True),
+             ],
+            mainline_revisions=[None, 'A']
+            )
+

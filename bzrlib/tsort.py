@@ -159,25 +159,33 @@ class TopoSorter(object):
         return node_name
 
 
-def merge_sort(graph, branch_tip):
+def merge_sort(graph, branch_tip, mainline_revisions=None):
     """Topological sort a graph which groups merges.
 
     :param graph: sequence of pairs of node->parents_list.
     :param branch_tip: the tip of the branch to graph. Revisions not 
                        reachable from branch_tip are not included in the
                        output.
+    :param mainline_revisions: If not None this forces a mainline to be
+                               used rather than synthesised from the graph.
+                               This must be a valid path through some part
+                               of the graph. If the mainline does not cover all
+                               the revisions, output stops at the start of the
+                               old revision listed in the mainline revisions
+                               list.
+                               The order for this parameter is oldest-first.
 
     The result is a list of node names, such that all parents come before
     their children.
 
     node identifiers can be any hashable object, and are typically strings.
     """
-    return MergeSorter(graph, branch_tip).sorted()
+    return MergeSorter(graph, branch_tip, mainline_revisions).sorted()
 
 
 class MergeSorter(object):
 
-    def __init__(self, graph, branch_tip):
+    def __init__(self, graph, branch_tip, mainline_revisions=None):
         """Merge-aware topological sorting of a graph.
     
         :param graph: sequence of pairs of node_name->parent_names_list.
@@ -185,6 +193,18 @@ class MergeSorter(object):
                       For this input the output from the sort or
                       iter_topo_order routines will be:
                       'A', 'B', 'C'
+        :param branch_tip: the tip of the branch to graph. Revisions not 
+                       reachable from branch_tip are not included in the
+                       output.
+        :param mainline_revisions: If not None this forces a mainline to be
+                               used rather than synthesised from the graph.
+                               This must be a valid path through some part
+                               of the graph. If the mainline does not cover all
+                               the revisions, output stops at the start of the
+                               old revision listed in the mainline revisions
+                               list.
+                               The order for this parameter is oldest-first.
+
         
         node identifiers can be any hashable object, and are typically strings.
 
@@ -267,10 +287,34 @@ class MergeSorter(object):
         """
         # a dict of the graph.
         self._graph = dict(graph)
+        # if there is an explicit mainline, alter the graph to match. This is
+        # easier than checking at every merge whether we are on the mainline and
+        # if so which path to take.
+        if mainline_revisions is None:
+            self._mainline_revisions = []
+            self._stop_revision = None
+        else:
+            self._mainline_revisions = list(mainline_revisions)
+            self._stop_revision = self._mainline_revisions[0]
+        # skip the first revision, its what we reach and its parents are 
+        # therefore irrelevant
+        for index, revision in enumerate(self._mainline_revisions[1:]):
+            # NB: index 0 means self._mainline_revisions[1]
+            # if the mainline matches the graph, nothing to do.
+            parent = self._mainline_revisions[index]
+            if parent is None:
+                # end of mainline_revisions history
+                continue
+            if self._graph[revision][0] == parent:
+                continue
+            # remove it from its prior spot
+            self._graph[revision].remove(parent)
+            # insert it into the start of the mainline
+            self._graph[revision].insert(0, parent)
         # we need to do a check late in the process to detect end-of-merges
         # which requires the parents to be accessible: its easier for now
         # to just keep the original graph around.
-        self._original_graph = dict(graph)
+        self._original_graph = dict(self._graph.items())
         
         # this is a stack storing the depth first search into the graph.
         self._node_name_stack = []
@@ -376,6 +420,8 @@ class MergeSorter(object):
         sequence_number = 0
         while self._scheduled_nodes:
             node_name, merge_depth = self._scheduled_nodes.pop()
+            if node_name == self._stop_revision:
+                return
             if not len(self._scheduled_nodes):
                 end_of_merge = True
             elif self._scheduled_nodes[-1][1] < merge_depth:
