@@ -78,8 +78,17 @@ class QuietFormatter(logging.Formatter):
 
 _bzr_logger = logging.getLogger('bzr')
 
-info = note = _bzr_logger.info
-warning =   _bzr_logger.warning
+def note(*args, **kwargs):
+    import bzrlib.ui
+    bzrlib.ui.ui_factory.clear_term()
+    _bzr_logger.info(*args, **kwargs)
+
+def warning(*args, **kwargs):
+    import bzrlib.ui
+    bzrlib.ui.ui_factory.clear_term()
+    _bzr_logger.warning(*args, **kwargs)
+
+info = note
 log_error = _bzr_logger.error
 error =     _bzr_logger.error
 
