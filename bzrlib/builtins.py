@@ -883,11 +883,11 @@ class cmd_init_repository(Command):
                             ' current default format. Currently this '
                             ' option only accepts "metadir" and "knit"',
                             type=get_format_type),
-                     Option('tree',
+                     Option('trees',
                              help='Allows branches in repository to have'
                              ' a working tree')]
     aliases = ["init-repo"]
-    def run(self, location, format=None, tree=False):
+    def run(self, location, format=None, trees=False):
         from bzrlib.bzrdir import BzrDirMetaFormat1
         from bzrlib.transport import get_transport
         if format is None:
@@ -895,7 +895,7 @@ class cmd_init_repository(Command):
         get_transport(location).mkdir('')
         newdir = format.initialize(location)
         repo = newdir.create_repository(shared=True)
-        repo.set_make_working_trees(tree)
+        repo.set_make_working_trees(trees)
 
 
 class cmd_diff(Command):
