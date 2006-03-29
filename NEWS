@@ -62,8 +62,13 @@ bzr development version
 
     * Add parent location to 'bzr info', if there is one.  (Olaf Conradi)
 
-    * 'merge' accepts --remember option to store parent location. (Olaf
-      Conradi)
+    * 'merge' accepts --remember option to store parent location, like 'pull'.
+      (Olaf Conradi)
+
+  BUG FIXES
+
+    * Make 'pull' and 'push' remember location on failure using --remember.
+      (Olaf Conradi)
 
   INTERNALS:
   
@@ -103,6 +108,9 @@ bzr development version
     * Progress bars are now nested - see
       bzrlib.ui.ui_factory.nested_progress_bar. (Robert Collins, Robey Pointer)
 
+    * Changed branch.set_parent() to accept None to remove parent.
+      (Olaf Conradi)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
@@ -119,6 +127,7 @@ bzr development version
       by this class (when its not being used as part of implementation
       contract testing). (Robert Collins)
 
+    * Move test case for uncommit to blackbox tests.  (Olaf Conradi)
 
 bzr 0.7rc1 2006-01-09
 
