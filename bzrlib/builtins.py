@@ -494,6 +494,8 @@ class cmd_push(Command):
             else:
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
+        if br_from.get_push_location() is None or remember:
+            br_from.set_push_location(location)
         try:
             dir_to = bzrlib.bzrdir.BzrDir.open(location)
             br_to = dir_to.open_branch()
@@ -540,8 +542,6 @@ class cmd_push(Command):
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try a merge then push with overwrite.")
-        if br_from.get_push_location() is None or remember:
-            br_from.set_push_location(location)
         note('%d revision(s) pushed.' % (count,))
 
         if verbose:
