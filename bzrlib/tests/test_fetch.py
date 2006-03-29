@@ -103,6 +103,10 @@ class TestFetch(TestCaseWithTransport):
         br_a, br_b = make_branches(self)
         fetch_steps(self, br_a, br_b, br_a)
 
+    def test_fetch_self(self):
+        wt = self.make_branch_and_tree('br')
+        self.assertEqual(wt.branch.fetch(wt.branch), (0, []))
+
 
 class TestMergeFetch(TestCaseWithTransport):
 

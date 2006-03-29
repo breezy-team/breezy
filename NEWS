@@ -38,9 +38,9 @@ bzr development version
     * Upgrade can now upgrade over the network. (Robert Collins)
 
     * Two new commands 'bzr checkout' and 'bzr update' allow for CVS/SVN-alike
-      behaviour. They use the existing serverless-mode and store no data
-      locally. As such they are not suitable for use except in high bandwidth
-      low latency environments like LAN's or local disk. (Robert Collins)
+      behaviour.  By default they will cache history in the checkout, but
+      with --lightweight almost all data is kept in the master branch.
+      (Robert Collins)
 
     * 'revert' unversions newly-versioned files, instead of deleting them.
 
@@ -54,7 +54,7 @@ bzr development version
 
     * New 'reconcile' command will check branch consistency and repair indexes
       that can become out of sync in pre 0.8 formats. (Robert Collins,
-      Aaron Bentley)
+      Daniel Silverstone)
 
     * New 'bzr init --format' and 'bzr upgrade --format' option to control 
       what storage format is created or produced.  (Robert Collins, 
@@ -62,10 +62,22 @@ bzr development version
 
     * Add parent location to 'bzr info', if there is one.  (Olaf Conradi)
 
-    * 'merge' accepts --remember option to store parent location, like 'pull'.
-      (Olaf Conradi)
+    * New developer commands 'weave-list' and 'weave-join'.  (Martin Pool)
 
-  BUG FIXES
+    * New 'init-repository' command, plus support for repositories in 'init'
+      and 'branch'
+
+    * 'merge' accepts --remember option to store parent location, like 'push'
+      and 'pull'. (Olaf Conradi)
+
+  CHANGES:
+
+    * Commit is now verbose by default, and shows changed filenames and the 
+      new revision number.  (Robert Collins, Martin Pool)
+
+    * Unify 'mv', 'move', 'rename'.  (#5379, Matthew Fuller)
+
+    * 'bzr -h' shows help.  (#35940, Martin Pool, Ian Bicking)
 
     * Make 'pull' and 'push' remember location on failure using --remember.
       (Olaf Conradi)

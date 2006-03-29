@@ -34,7 +34,7 @@ from warnings import warn
 import errno
 
 import bzrlib
-from bzrlib.errors import (BzrError, 
+from bzrlib.errors import (BzrError,
                            BzrCheckError,
                            BzrCommandError,
                            BzrOptionError,
@@ -49,7 +49,13 @@ plugin_cmds = {}
 
 
 def register_command(cmd, decorate=False):
-    "Utility function to help register a command"
+    """Utility function to help register a command
+
+    :param cmd: Command subclass to register
+    :param decorate: If true, allow overriding an existing command
+        of the same name; the old command is returned by this function.
+        Otherwise it is an error to try to override an existing command.
+    """
     global plugin_cmds
     k = cmd.__name__
     if k.startswith("cmd_"):
@@ -58,7 +64,7 @@ def register_command(cmd, decorate=False):
         k_unsquished = k
     if not plugin_cmds.has_key(k_unsquished):
         plugin_cmds[k_unsquished] = cmd
-        mutter('registered plugin command %s', k_unsquished)      
+        mutter('registered plugin command %s', k_unsquished)
         if decorate and k_unsquished in builtin_command_names():
             return _builtin_commands()[k_unsquished]
     elif decorate:
@@ -85,10 +91,9 @@ def _builtin_commands():
     builtins = bzrlib.builtins.__dict__
     for name in builtins:
         if name.startswith("cmd_"):
-            real_name = _unsquish_command_name(name)        
+            real_name = _unsquish_command_name(name)
             r[real_name] = builtins[name]
     return r
-
             
 
 def builtin_command_names():
@@ -563,12 +568,9 @@ def run_bzr(argv):
         i += 1
 
     argv = argv_copy
-    if (not argv) or (argv[0] == '--help'):
-        from bzrlib.help import help
-        if len(argv) > 1:
-            help(argv[1])
-        else:
-            help()
+    if (not argv):
+        from bzrlib.builtins import cmd_help
+        cmd_help().run_argv([])
         return 0
 
     if argv[0] == '--version':

@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -216,9 +216,12 @@ class HashCache(object):
                 for fld in c[1]:
                     print >>outf, "%d" % fld,
                 print >>outf
-
             outf.commit()
             self.needs_write = False
+            mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
+                   self.cache_file_name(), self.hit_count, self.miss_count,
+                   self.stat_count,
+                   self.danger_count, self.update_count)
         finally:
             if not outf.closed:
                 outf.abort()
