@@ -860,8 +860,16 @@ class _KnitIndex(_KnitComponentFile):
         # only want the _history index to reference the 1st index entry
         # for version_id
         if version_id not in self._cache:
+            index = len(self._history)
             self._history.append(version_id)
-        self._cache[version_id] = (version_id, options, pos, size, parents)
+        else:
+            index = self._cache[version_id][5]
+        self._cache[version_id] = (version_id, 
+                                   options,
+                                   pos,
+                                   size,
+                                   parents,
+                                   index)
 
     def __init__(self, transport, filename, mode, create=False):
         _KnitComponentFile.__init__(self, transport, filename, mode)
@@ -916,12 +924,16 @@ class _KnitIndex(_KnitComponentFile):
                     # index entry for version_id
                     version_id = rec[0]
                     if version_id not in self._cache:
+                        index = len(self._history)
                         self._history.append(version_id)
+                    else:
+                        index = self._cache[version_id][5]
                     self._cache[version_id] = (version_id,
                                                rec[1].split(','),
                                                int(rec[2]),
                                                int(rec[3]),
-                                               parents)
+                                               parents,
+                                               index)
                     # --- self._cache_version 
             except NoSuchFile, e:
                 if mode != 'w' or not create:
@@ -1012,13 +1024,15 @@ class _KnitIndex(_KnitComponentFile):
 
     def lookup(self, version_id):
         assert version_id in self._cache
-        return self._history.index(version_id)
+        return self._cache[version_id][5]
 
     def _version_list_to_index(self, versions):
         result_list = []
         for version in versions:
             if version in self._cache:
-                result_list.append(str(self._history.index(version)))
+                # -- inlined lookup() --
+                result_list.append(str(self._cache[version][5]))
+                # -- end lookup () --
             else:
                 result_list.append('.' + version.encode('utf-8'))
         return ' '.join(result_list)
