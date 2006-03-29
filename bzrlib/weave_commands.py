@@ -23,6 +23,7 @@ of interest in debugging or data recovery.
 import sys
 
 from bzrlib.commands import Command
+from bzrlib.trace import mutter, warning
 
 class cmd_weave_list(Command):
     """List the revision ids present in a weave, in alphabetical order"""
@@ -55,3 +56,35 @@ class cmd_weave_join(Command):
         w2 = read_weave(file(weave2, 'rb'))
         w1.join(w2)
         write_weave(w1, sys.stdout)
+
+
+class cmd_weave_plan_merge(Command):
+    """Show the plan for merging two versions within a weave"""
+    hidden = True
+    takes_args = ['weave_file', 'revision_a', 'revision_b']
+
+    def run(self, weave_file, revision_a, revision_b):
+        from bzrlib.weavefile import read_weave, write_weave
+        w = read_weave(file(weave_file, 'rb'))
+        for state, line in w.plan_merge(revision_a, revision_b):
+            # make sure to print every line with a newline, even if it doesn't
+            # really have one
+            if not line:
+                continue
+            if line[-1] != '\n':
+                state += '!eol'
+                line += '\n'
+            if '\n' in line[:-1]:
+                warning("line in weave contains embedded newline: %r" % line)
+            print '%15s | %s' % (state, line),
+
+class cmd_weave_merge_text(Command):
+    """Debugging command to merge two texts of a weave"""
+    hidden = True
+    takes_args = ['weave_file', 'revision_a', 'revision_b']
+
+    def run(self, weave_file, revision_a, revision_b):
+        from bzrlib.weavefile import read_weave, write_weave
+        w = read_weave(file(weave_file, 'rb'))
+        p = w.plan_merge(revision_a, revision_b)
+        sys.stdout.writelines(w.weave_merge(p))

@@ -492,7 +492,7 @@ class cmd_push(Command):
                         needed.append((new_transport,
                                        new_transport.relpath(transport.base)))
                         if new_transport.base == transport.base:
-                            raise BzrCommandError("Could not creeate "
+                            raise BzrCommandError("Could not create "
                                                   "path prefix.")
             dir_to = br_from.bzrdir.clone(location)
             br_to = dir_to.open_branch()
@@ -880,8 +880,10 @@ class cmd_init_repository(Command):
     takes_args = ["location"] 
     takes_options = [Option('format', 
                             help='Use a specific format rather than the'
-                            ' current default format. Currently this '
-                            ' option only accepts "metadir" and "knit"',
+                            ' current default format. Currently this'
+                            ' option only accepts "metadir" and "knit"'
+                            ' WARNING: the knit format is currently unstable'
+                            ' and only for experimental use.',
                             type=get_format_type)]
     aliases = ["init-repo"]
     def run(self, location, format=None):
@@ -1554,8 +1556,10 @@ class cmd_upgrade(Command):
     takes_options = [
                      Option('format', 
                             help='Upgrade to a specific format rather than the'
-                                 ' current default format. Currently this '
-                                 ' option only accepts =metadir',
+                                 ' current default format. Currently this'
+                                 ' option only accepts -metadir and -knit'
+                                 ' WARNING: the knit format is currently'
+                                 ' unstable and only for experimental use.',
                             type=get_format_type),
                     ]
 
@@ -1970,7 +1974,7 @@ class cmd_help(Command):
     For a list of all available commands, say 'bzr help commands'."""
     takes_options = [Option('long', 'show help on all commands')]
     takes_args = ['topic?']
-    aliases = ['?']
+    aliases = ['?', '--help', '-?', '-h']
     
     @display_command
     def run(self, topic=None, long=False):
@@ -2321,10 +2325,8 @@ class cmd_break_lock(Command):
                                  "don't break it"),
                     ]
     def run(self, location, show=False):
-        d = bzrdir.BzrDir.open(location)
-        repo = d.open_repository()
-        if not repo.is_locked():
-            raise errors.ObjectNotLocked(repo)
+        raise NotImplementedError("sorry, break-lock is not complete yet; "
+                "you can remove the 'held' directory manually to break the lock")
 
 
 # command-line interpretation helper for merge-related commands
@@ -2402,4 +2404,5 @@ def merge(other_revision, base_revision,
 # details were needed.
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join
+from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join, \
+        cmd_weave_plan_merge, cmd_weave_merge_text
