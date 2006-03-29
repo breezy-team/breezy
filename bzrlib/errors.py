@@ -53,6 +53,8 @@ Exception strings should start with a capital letter and not have a final
 fullstop.
 """
 
+from warnings import warn
+
 # based on Scott James Remnant's hct error classes
 
 # TODO: is there any value in providing the .args field used by standard
@@ -432,6 +434,16 @@ class InstallFailed(BzrError):
         msg = "Could not install revisions:\n%s" % " ,".join(revisions)
         BzrError.__init__(self, msg)
         self.revisions = revisions
+
+
+class AmbiguousBase(BzrError):
+    def __init__(self, bases):
+        warn("BzrError AmbiguousBase has been deprecated as of bzrlib 0.8.",
+                DeprecationWarning)
+        msg = "The correct base is unclear, becase %s are all equally close" %\
+            ", ".join(bases)
+        BzrError.__init__(self, msg)
+        self.bases = bases
 
 
 class NoCommits(BzrError):
