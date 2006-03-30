@@ -1,7 +1,7 @@
 The Transport API in bzrlib provides URL based access to network resources.
 
    >>> import os
-   >>> from bzrlib.osutils import getcwd
+   >>> from bzrlib.osutils import getcwd, dirname
    >>> import bzrlib.transport as transport
    >>> root = transport.get_transport("file:///")
    >>>
@@ -15,5 +15,5 @@ Each Transport instance represents a single logical directory.
 You can change directories via the clone method:
 
    >>> parent = dir.clone('..')
-   >>> parent.base == os.path.dirname(getcwd()) + '/'
+   >>> parent.base == (dirname(getcwd()).rstrip('/') + '/')
    True
