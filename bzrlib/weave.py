@@ -66,6 +66,7 @@
 # be done fairly efficiently because the sequence numbers constrain
 # the possible relationships.
 
+# FIXME: the conflict markers should be *7* characters
 
 from copy import copy
 from cStringIO import StringIO
@@ -1358,12 +1359,13 @@ def main(argv):
         print ' '.join(map(str, w._parents[int(argv[3])]))
 
     elif cmd == 'plan-merge':
+        # replaced by 'bzr weave-plan-merge'
         w = readit()
         for state, line in w.plan_merge(int(argv[3]), int(argv[4])):
             if line:
                 print '%14s | %s' % (state, line),
-
     elif cmd == 'merge':
+        # replaced by 'bzr weave-merge-text'
         w = readit()
         p = w.plan_merge(int(argv[3]), int(argv[4]))
         sys.stdout.writelines(w.weave_merge(p))
