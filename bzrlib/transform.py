@@ -605,8 +605,14 @@ class TreeTransform(object):
                 if name == last_name:
                     conflicts.append(('duplicate', last_trans_id, trans_id,
                     name))
-                last_name = name
-                last_trans_id = trans_id
+                try:
+                    kind = self.final_kind(trans_id)
+                except NoSuchFile:
+                    kind = None
+                file_id = self.final_file_id(trans_id)
+                if kind is not None or file_id is not None:
+                    last_name = name
+                    last_trans_id = trans_id
         return conflicts
 
     def _duplicate_ids(self):
