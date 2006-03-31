@@ -25,7 +25,7 @@ from bzrlib.errors import InvalidRevisionId
 import bzrlib.gpg as gpg
 from bzrlib.graph import Graph
 from bzrlib.inter import InterObject
-from bzrlib.knit import KnitVersionedFile
+from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import safe_unicode
@@ -1279,7 +1279,8 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
             file_mode = control_files._file_mode,
             prefixed=False,
             precious=True,
-            versionedfile_class=KnitVersionedFile)
+            versionedfile_class=KnitVersionedFile,
+            versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory()})
         return KnitRevisionStore(versioned_file_store)
 
     def _get_text_store(self, transport, control_files):
