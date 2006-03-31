@@ -95,40 +95,42 @@ def show_tree_info(working, debug):
         print 'repository.shared = %s' % repository.is_shared()
         return
 
+    print 'location:'
     if working.bzrdir != branch.bzrdir:
         # Lightweight checkout
-        print '        Checkout root: %s' \
+        print '        checkout root: %s' \
                 % working.bzrdir.root_transport.base
-        print '   Checkout of branch: %s' \
+        print '   checkout of branch: %s' \
                 % branch.bzrdir.root_transport.base
     else:
         # Standalone or bound branch (normal checkout)
-        print '          Branch root: %s' \
+        print '          branch root: %s' \
                 % branch.bzrdir.root_transport.base
         if branch.get_bound_location():
-            print '      Bound to branch: %s' % branch.get_bound_location()
+            print '      bound to branch: %s' % branch.get_bound_location()
 
     if repository.bzrdir != branch.bzrdir:
         if repository.is_shared():
-            print '    Shared repository: %s' \
+            print '    shared repository: %s' \
                     % repository.bzrdir.root_transport.base
         else:
-            print '           Repository: %s' \
+            print '           repository: %s' \
                     % repository.bzrdir.root_transport.base
 
     if branch.get_parent():
-        print '        Parent branch: %s' % branch.get_parent()
+        print '        parent branch: %s' % branch.get_parent()
     if branch.get_push_location():
-        print '       Push to branch: %s' % branch.get_push_location()
+        print '       push to branch: %s' % branch.get_push_location()
 
     print
+    print 'format:'
     if working_format == branch_format == repository_format:
-        print '        Branch format: %s' % branch_format
+        print '        branch format: %s' % branch_format
     else:
-        # TODO print 'Meta directory format: %s' % metadir_format
-        print '  Working tree format: %s' % working_format
-        print '        Branch format: %s' % branch_format
-        print '    Repository format: %s' % repository_format
+        # TODO print 'meta directory format: %s' % metadir_format
+        print '  working tree format: %s' % working_format
+        print '        branch format: %s' % branch_format
+        print '    repository format: %s' % repository_format
 
     count_version_dirs = 0
 
