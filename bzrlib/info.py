@@ -52,29 +52,7 @@ def _get_format_string(object):
     try:
         return object._format.get_format_string().rstrip()
     except NotImplementedError:
-        return object.bzrdir._format    # Use rstrip to be safe?
-
-
-def _print_other_locations(branch):
-    """Output to stdout the parent, bound and push locations of branch,
-    if not None.
-    """
-    if branch.get_parent():
-        print '        Parent branch: %s' % branch.get_parent()
-    if branch.get_bound_location():
-        print '      Bound to branch: %s' % branch.get_bound_location()
-    if branch.get_push_location():
-        print '       Push to branch: %s' % branch.get_push_location()
-
-
-def _print_formats(working_format, branch_format, repository_format):
-    """Output to stdout the formats given, if not None."""
-    if working_format:
-        print '  Working tree format: %s' % working_format
-    if branch_format:
-        print '        Branch format: %s' % branch_format
-    if repository_format:
-        print '    Repository format: %s' % repository_format
+        return object.bzrdir._format    # FIXME Use rstrip to be safe?
 
 
 @deprecated_function(zero_eight)
@@ -102,7 +80,7 @@ def show_tree_info(working, debug):
     working_format = _get_format_string(working)
     branch_format = _get_format_string(branch)
     repository_format = _get_format_string(repository)
-    # TODO Is it possible to get metadir format?
+    # TODO metadir_format = ...
 
     if debug:
         print '   working.bzrdir = %s' % working.bzrdir.root_transport.base
@@ -117,72 +95,38 @@ def show_tree_info(working, debug):
         print 'repository.shared = %s' % repository.is_shared()
         return
 
-    if working.bzrdir == branch.bzrdir:
-        if working.bzrdir == repository.bzrdir:
-            if working_format == branch_format == repository_format:
-                # standalone branch
-                print '          Branch root: %s' \
-                        % branch.bzrdir.root_transport.base
-                _print_other_locations(branch)
-                print
-                _print_formats(None, branch_format, None)
-            else:
-                # checkout (bound branch)
-                print '        Checkout root: %s' \
-                        % branch.bzrdir.root_transport.base
-                _print_other_locations(branch)
-                print
-                _print_formats(working_format, branch_format,
-                               repository_format)
-        else:
-            # working tree inside branch of shared repository
-            print '        Checkout root: %s' \
-                    % branch.bzrdir.root_transport.base
-            if repository.is_shared():
-                print '    Shared repository: %s' \
-                        % repository.bzrdir.root_transport.base
-            else:
-                print '           Repository: %s' \
-                        % repository.bzrdir.root_transport.base
-            _print_other_locations(branch)
-            print
-            _print_formats(working_format, branch_format, repository_format)
+    if working.bzrdir != branch.bzrdir:
+        print '         Working tree: %s' \
+                % working.bzrdir.root_transport.base
+        print '      Bound to branch: %s' \
+                % branch.bzrdir.root_transport.base
     else:
-        if working.bzrdir == repository.bzrdir:
-            # strange variation of lightweight checkout
-            # Working has the same location as repository, but not branch.
-            # FIXME This UI needs review, just show all locations for now.
-            warning('User interface for this construct needs to be refined.')
-            print '         Working tree: %s' \
-                    % working.bzrdir.root_transport.base
-            print '   Checkout of branch: %s' \
-                    % branch.bzrdir.root_transport.base
-            if repository.is_shared():
-                print '    Shared repository: %s' \
-                        % repository.bzrdir.root_transport.base
-            else:
-                print '           Repository: %s' \
-                        % repository.bzrdir.root_transport.base
-            _print_other_locations(branch)
-            print
-            _print_formats(working_format, branch_format, repository_format)
+        print '          Branch root: %s' \
+                % branch.bzrdir.root_transport.base
+        if branch.get_bound_location():
+            print '      Bound to branch: %s' % branch.get_bound_location()
+
+    if repository.bzrdir != branch.bzrdir:
+        if repository.is_shared():
+            print '    Shared repository: %s' \
+                    % repository.bzrdir.root_transport.base
         else:
-            # lightweight checkout (could be of standalone branch)
-            print '         Working tree: %s' \
-                    % working.bzrdir.root_transport.base
-            print '   Checkout of branch: %s' \
-                    % branch.bzrdir.root_transport.base
-            if branch.bzrdir != repository.bzrdir:
-                # lightweight checkout
-                if repository.is_shared():
-                    print '    Shared repository: %s' \
-                            % repository.bzrdir.root_transport.base
-                else:
-                    print '           Repository: %s' \
-                            % repository.bzrdir.root_transport.base
-            _print_other_locations(branch)
-            print
-            _print_formats(working_format, branch_format, repository_format)
+            print '           Repository: %s' \
+                    % repository.bzrdir.root_transport.base
+
+    if branch.get_parent():
+        print '        Parent branch: %s' % branch.get_parent()
+    if branch.get_push_location():
+        print '       Push to branch: %s' % branch.get_push_location()
+
+    print
+    if working_format == branch_format == repository_format:
+        print '        Branch format: %s' % branch_format
+    else:
+        # TODO print 'Meta directory format: %s' % metadir_format
+        print '  Working tree format: %s' % working_format
+        print '        Branch format: %s' % branch_format
+        print '    Repository format: %s' % repository_format
 
     count_version_dirs = 0
 
