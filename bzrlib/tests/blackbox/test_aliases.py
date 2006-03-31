@@ -6,7 +6,7 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.trace import mutter
-from bzrlib.config import (config_dir, config_filename)
+from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
 class TestAliases(TestCaseInTempDir):
@@ -24,8 +24,8 @@ class TestAliases(TestCaseInTempDir):
             # Something is wrong in environment, 
             # we risk overwriting users config 
             self.assert_(config_filename() + "exists, abort")
-            
-        os.mkdir(config_dir())
+        
+        ensure_config_dir_exists()
         CONFIG=("[ALIASES]\n"
                 "c=cat\n"
                 "c1=cat -r 1\n"

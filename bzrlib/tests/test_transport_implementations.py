@@ -132,7 +132,7 @@ class TestTransportImplementation(TestCaseInTempDir):
                     'contents of e\n',
                     'contents of g\n',
                     ]
-        self.build_tree(files, transport=t)
+        self.build_tree(files, transport=t, line_endings='binary')
         self.check_transport_contents('contents of a\n', t, 'a')
         content_f = t.get_multi(files)
         for content, f in zip(contents, content_f):
@@ -712,7 +712,7 @@ class TestTransportImplementation(TestCaseInTempDir):
 
         paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e']
         sizes = [14, 0, 16, 0, 18] 
-        self.build_tree(paths, transport=t)
+        self.build_tree(paths, transport=t, line_endings='binary')
 
         for path, size in zip(paths, sizes):
             st = t.stat(path)

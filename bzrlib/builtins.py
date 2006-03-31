@@ -2043,9 +2043,11 @@ class cmd_missing(Command):
                 raise BzrCommandError("No missing location known or specified.")
             print "Using last location: " + local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
-        remote_branch.lock_read()
+        local_branch.lock_write()
+        if remote_branch.base == local_branch.base:
+            remote_branch = local_branch
         try:
-            local_branch.lock_write()
+            remote_branch.lock_read()
             try:
                 local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
                 if (log_format == None):
@@ -2275,11 +2277,12 @@ class cmd_uncommit(bzrlib.commands.Command):
         if location is None:
             location = u'.'
         control, relpath = bzrdir.BzrDir.open_containing(location)
-        b = control.open_branch()
         try:
             tree = control.open_workingtree()
+            b = tree.branch
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             tree = None
+            b = control.open_branch()
 
         if revision is None:
             revno = b.revno()
