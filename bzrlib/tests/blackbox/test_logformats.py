@@ -5,7 +5,7 @@ import os
 
 from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseInTempDir
-from bzrlib.config import (config_dir, config_filename)
+from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
 class TestLogFormats(TestCaseInTempDir):
@@ -102,7 +102,7 @@ def setup_config():
                 # we risk overwriting users config 
                 self.assert_(config_filename() + "exists, abort")
             
-        os.mkdir(config_dir())
+        ensure_config_dir_exists()
         CONFIG=("[DEFAULT]\n"
                 "email=Joe Foo <joe@foo.com>\n"
                 "log_format=line\n")

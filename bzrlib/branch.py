@@ -197,8 +197,7 @@ class Branch(object):
         (copied, failures).
         """
         if self.base == from_branch.base:
-            raise Exception("can't fetch from a branch to itself %s, %s" % 
-                            (self.base, to_branch.base))
+            return (0, [])
         if pb is None:
             nested_pb = bzrlib.ui.ui_factory.nested_progress_bar()
             pb = nested_pb
@@ -224,7 +223,7 @@ class Branch(object):
             from_branch.unlock()
 
     def get_bound_location(self):
-        """Return the URL of the rbanch we are bound to.
+        """Return the URL of the branch we are bound to.
 
         Older format branches cannot bind, please be sure to use a metadir
         branch.
@@ -601,6 +600,9 @@ class BranchFormat(object):
         assert klass._formats[format.get_format_string()] is format
         del klass._formats[format.get_format_string()]
 
+    def __str__(self):
+        return self.get_format_string().rstrip()
+
 
 class BzrBranchFormat4(BranchFormat):
     """Bzr branch format 4.
@@ -645,6 +647,9 @@ class BzrBranchFormat4(BranchFormat):
                          _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
                          _repository=a_bzrdir.open_repository())
+
+    def __str__(self):
+        return "Bazaar-NG branch format 4"
 
 
 class BzrBranchFormat5(BranchFormat):

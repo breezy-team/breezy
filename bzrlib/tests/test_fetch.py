@@ -103,6 +103,10 @@ class TestFetch(TestCaseWithTransport):
         br_a, br_b = make_branches(self)
         fetch_steps(self, br_a, br_b, br_a)
 
+    def test_fetch_self(self):
+        wt = self.make_branch_and_tree('br')
+        self.assertEqual(wt.branch.fetch(wt.branch), (0, []))
+
 
 class TestMergeFetch(TestCaseWithTransport):
 
@@ -186,6 +190,18 @@ class TestHttpFetch(TestCaseWithWebserver):
         br_rem_a = Branch.open(self.get_readonly_url('branch1'))
         fetch_steps(self, br_rem_a, br_b, br_a)
 
+    def _count_log_matches(self, target, logs):
+        """Count the number of times the target file pattern was fetched in an http log"""
+        log_pattern = '%s HTTP/1.1" 200 - "-" "bzr/%s' % \
+            (target, bzrlib.__version__)
+        c = 0
+        for line in logs:
+            # TODO: perhaps use a regexp instead so we can match more
+            # precisely?
+            if line.find(log_pattern) > -1:
+                c += 1
+        return c
+
     def test_weaves_are_retrieved_once(self):
         self.build_tree(("source/", "source/file", "target/"))
         wt = self.make_branch_and_tree('source')
@@ -197,28 +213,27 @@ class TestHttpFetch(TestCaseWithWebserver):
         target = BzrDir.create_branch_and_repo("target/")
         source = Branch.open(self.get_readonly_url("source/"))
         self.assertEqual(target.fetch(source), (2, []))
-        log_pattern = '%%s HTTP/1.1" 200 - "-" "bzr/%s"' % bzrlib.__version__
+        log_pattern = '%%s HTTP/1.1" 200 - "-" "bzr/%s' % bzrlib.__version__
         # this is the path to the literal file. As format changes 
         # occur it needs to be updated. FIXME: ask the store for the
         # path.
-        weave_suffix = log_pattern % 'weaves/ce/id.weave'
-        self.assertEqual(1,
-            len([log for log in self.get_readonly_server().logs if log.endswith(weave_suffix)]))
-        inventory_weave_suffix = log_pattern % 'inventory.weave'
-        self.assertEqual(1,
-            len([log for log in self.get_readonly_server().logs if log.endswith(
-                inventory_weave_suffix)]))
+        self.log("web server logs are:")
+        http_logs = self.get_readonly_server().logs
+        self.log('\n'.join(http_logs))
+        self.assertEqual(1, self._count_log_matches('weaves/ce/id.weave', http_logs))
+        self.assertEqual(1, self._count_log_matches('inventory.weave', http_logs))
         # this r-h check test will prevent regressions, but it currently already 
         # passes, before the patch to cache-rh is applied :[
-        revision_history_suffix = log_pattern % 'revision-history'
-        self.assertEqual(1,
-            len([log for log in self.get_readonly_server().logs if log.endswith(
-                revision_history_suffix)]))
+        self.assertEqual(1, self._count_log_matches('revision-history', http_logs))
         # FIXME naughty poking in there.
         self.get_readonly_server().logs = []
         # check there is nothing more to fetch
         source = Branch.open(self.get_readonly_url("source/"))
         self.assertEqual(target.fetch(source), (0, []))
-        self.failUnless(self.get_readonly_server().logs[0].endswith(log_pattern % 'branch-format'))
-        self.failUnless(self.get_readonly_server().logs[1].endswith(log_pattern % 'revision-history'))
-        self.assertEqual(2, len(self.get_readonly_server().logs))
+        # should make just two requests
+        http_logs = self.get_readonly_server().logs
+        self.log("web server logs are:")
+        self.log('\n'.join(http_logs))
+        self.assertEqual(1, self._count_log_matches('branch-format', http_logs[0:1]))
+        self.assertEqual(1, self._count_log_matches('revision-history', http_logs[1:2]))
+        self.assertEqual(2, len(http_logs))

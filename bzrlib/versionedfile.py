@@ -78,7 +78,41 @@ class VersionedFile(object):
         """Returns whether version is present."""
         raise NotImplementedError(self.has_version)
 
-    def add_lines(self, version_id, parents, lines):
+    def add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
+        """Add a text to the versioned file via a pregenerated delta.
+
+        :param version_id: The version id being added.
+        :param parents: The parents of the version_id.
+        :param delta_parent: The parent this delta was created against.
+        :param sha1: The sha1 of the full text.
+        :param delta: The delta instructions. See get_delta for details.
+        """
+        self._check_write_ok()
+        if self.has_version(version_id):
+            raise errors.RevisionAlreadyPresent(version_id, self)
+        return self._add_delta(version_id, parents, delta_parent, sha1, noeol, delta)
+
+    def _add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
+        """Class specific routine to add a delta.
+
+        This generic version simply applies the delta to the delta_parent and
+        then inserts it.
+        """
+        # strip annotation from delta
+        new_delta = []
+        for start, stop, delta_len, delta_lines in delta:
+            new_delta.append((start, stop, delta_len, [text for origin, text in delta_lines]))
+        if delta_parent is not None:
+            parent_full = self.get_lines(delta_parent)
+        else:
+            parent_full = []
+        new_full = self._apply_delta(parent_full, new_delta)
+        # its impossible to have noeol on an empty file
+        if noeol and new_full[-1][-1] == '\n':
+            new_full[-1] = new_full[-1][:-1]
+        self.add_lines(version_id, parents, new_full)
+
+    def add_lines(self, version_id, parents, lines, parent_texts=None):
         """Add a single text on top of the versioned file.
 
         Must raise RevisionAlreadyPresent if the new version is
@@ -86,20 +120,33 @@ class VersionedFile(object):
 
         Must raise RevisionNotPresent if any of the given parents are
         not present in file history.
+        :param parent_texts: An optional dictionary containing the opaque 
+             representations of some or all of the parents of 
+             version_id to allow delta optimisations. 
+             VERY IMPORTANT: the texts must be those returned
+             by add_lines or data corruption can be caused.
+        :return: An opaque representation of the inserted version which can be
+                 provided back to future add_lines calls in the parent_texts
+                 dictionary.
         """
         self._check_write_ok()
-        return self._add_lines(version_id, parents, lines)
+        return self._add_lines(version_id, parents, lines, parent_texts)
 
-    def _add_lines(self, version_id, parents, lines):
+    def _add_lines(self, version_id, parents, lines, parent_texts):
         """Helper to do the class specific add_lines."""
         raise NotImplementedError(self.add_lines)
 
-    def add_lines_with_ghosts(self, version_id, parents, lines):
-        """Add lines to the versioned file, allowing ghosts to be present."""
+    def add_lines_with_ghosts(self, version_id, parents, lines,
+                              parent_texts=None):
+        """Add lines to the versioned file, allowing ghosts to be present.
+        
+        This takes the same parameters as add_lines.
+        """
         self._check_write_ok()
-        return self._add_lines_with_ghosts(version_id, parents, lines)
+        return self._add_lines_with_ghosts(version_id, parents, lines,
+                                           parent_texts)
 
-    def _add_lines_with_ghosts(self, version_id, parents, lines):
+    def _add_lines_with_ghosts(self, version_id, parents, lines, parent_texts):
         """Helper to do class specific add_lines_with_ghosts."""
         raise NotImplementedError(self.add_lines_with_ghosts)
 
@@ -155,6 +202,26 @@ class VersionedFile(object):
     def _fix_parents(self, version, new_parents):
         """Helper for fix_parents."""
         raise NotImplementedError(self.fix_parents)
+
+    def get_delta(self, version):
+        """Get a delta for constructing version from some other version.
+        
+        :return: (delta_parent, sha1, noeol, delta)
+        Where delta_parent is a version id or None to indicate no parent.
+        """
+        raise NotImplementedError(self.get_delta)
+
+    def get_deltas(self, versions):
+        """Get multiple deltas at once for constructing versions.
+        
+        :return: dict(version_id:(delta_parent, sha1, noeol, delta))
+        Where delta_parent is a version id or None to indicate no parent, and
+        version_id is the version_id created by that delta.
+        """
+        result = {}
+        for version in versions:
+            result[version] = self.get_delta(version)
+        return result
 
     def get_suffixes(self):
         """Return the file suffixes associated with this versioned file."""
@@ -255,6 +322,15 @@ class VersionedFile(object):
 
     def annotate(self, version_id):
         return list(self.annotate_iter(version_id))
+
+    def _apply_delta(self, lines, delta):
+        """Apply delta to lines."""
+        lines = list(lines)
+        offset = 0
+        for start, end, count, delta_lines in delta:
+            lines[offset+start:offset+end] = delta_lines
+            offset = offset + (start - end) + count
+        return lines
 
     def join(self, other, pb=None, msg=None, version_ids=None,
              ignore_missing=False):
@@ -372,8 +448,12 @@ class VersionedFile(object):
         # 
         # TODO: Show some version information (e.g. author, date) on 
         # conflicted regions.
+        
+        # We previously considered either 'unchanged' or 'killed-both' lines
+        # to be possible places to resynchronize.  However, assuming agreement
+        # on killed-both lines may be too agressive. -- mbp 20060324
         for state, line in plan:
-            if state == 'unchanged' or state == 'killed-both':
+            if state == 'unchanged':
                 # resync and flush queued conflicts changes if any
                 if not lines_a and not lines_b:
                     pass
@@ -456,12 +536,37 @@ class InterVersionedFile(InterObject):
         graph = self.source.get_graph()
         order = topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
+        parent_texts = {}
         try:
+            # TODO for incremental cross-format work:
+            # make a versioned file with the following content:
+            # all revisions we have been asked to join
+            # all their ancestors that are *not* in target already.
+            # the immediate parents of the above two sets, with 
+            # empty parent lists - these versions are in target already
+            # and the incorrect version data will be ignored.
+            # TODO: for all ancestors that are present in target already,
+            # check them for consistent data, this requires moving sha1 from
+            # 
+            # TODO: remove parent texts when they are not relevant any more for 
+            # memory pressure reduction. RBC 20060313
+            # pb.update('Converting versioned data', 0, len(order))
+            # deltas = self.source.get_deltas(order)
             for index, version in enumerate(order):
                 pb.update('Converting versioned data', index, len(order))
-                target.add_lines(version,
-                                 self.source.get_parents(version),
-                                 self.source.get_lines(version))
+                parent_text = target.add_lines(version,
+                                               self.source.get_parents(version),
+                                               self.source.get_lines(version),
+                                               parent_texts=parent_texts)
+                parent_texts[version] = parent_text
+                #delta_parent, sha1, noeol, delta = deltas[version]
+                #target.add_delta(version,
+                #                 self.source.get_parents(version),
+                #                 delta_parent,
+                #                 sha1,
+                #                 noeol,
+                #                 delta)
+                #target.get_lines(version)
             
             # this should hit the native code path for target
             if target is not self.target:

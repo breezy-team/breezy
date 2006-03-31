@@ -80,11 +80,14 @@ class TestTransportImplementation(TestCaseInTempDir):
 
     def get_transport(self):
         """Return a connected transport to the local directory."""
-        t = bzrlib.transport.get_transport(self._server.get_url())
-        self.failUnless(isinstance(t, self.transport_class), 
-                        "Got the wrong class from get_transport"
-                        "(%r, expected %r)" % (t.__class__, 
-                                               self.transport_class))
+        base_url = self._server.get_url()
+        t = bzrlib.transport.get_transport(base_url)
+        if not isinstance(t, self.transport_class):
+            # we want to make sure to construct one particular class, even if
+            # there are several available implementations of this transport;
+            # therefore construct it by hand rather than through the regular
+            # get_transport method
+            t = self.transport_class(base_url)
         return t
 
     def assertListRaises(self, excClass, func, *args, **kwargs):
@@ -129,7 +132,7 @@ class TestTransportImplementation(TestCaseInTempDir):
                     'contents of e\n',
                     'contents of g\n',
                     ]
-        self.build_tree(files, transport=t)
+        self.build_tree(files, transport=t, line_endings='binary')
         self.check_transport_contents('contents of a\n', t, 'a')
         content_f = t.get_multi(files)
         for content, f in zip(contents, content_f):
@@ -709,7 +712,7 @@ class TestTransportImplementation(TestCaseInTempDir):
 
         paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e']
         sizes = [14, 0, 16, 0, 18] 
-        self.build_tree(paths, transport=t)
+        self.build_tree(paths, transport=t, line_endings='binary')
 
         for path, size in zip(paths, sizes):
             st = t.stat(path)
@@ -827,6 +830,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         # that have aliasing problems like symlinks should go in backend
         # specific test cases.
         transport = self.get_transport()
+        
+        # disabled because some transports might normalize urls in generating
+        # the abspath - eg http+pycurl-> just http -- mbp 20060308 
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
 

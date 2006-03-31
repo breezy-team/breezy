@@ -138,6 +138,8 @@ class LocalTransport(Transport):
             fp = open(self.abspath(relpath), 'ab')
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
+        # win32 workaround (tell on an unwritten file returns 0)
+        fp.seek(0, 2)
         result = fp.tell()
         self._pump(f, fp)
         return result
@@ -225,7 +227,7 @@ class LocalTransport(Transport):
         path = self.abspath(relpath)
         try:
             return [urllib.quote(entry) for entry in os.listdir(path)]
-        except (IOError, OSError),e:
+        except (IOError, OSError), e:
             self._translate_error(e, path)
 
     def stat(self, relpath):
