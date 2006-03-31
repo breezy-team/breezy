@@ -1439,7 +1439,6 @@ class GzipFile(gzip.GzipFile):
         # various optimisations:
         # reduces lsprof count from 2500 to 
         # 8337 calls in 1272, 365 internal
-        """
         if self.fileobj is None:
             raise EOFError, "Reached EOF"
 
