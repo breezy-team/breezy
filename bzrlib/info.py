@@ -96,11 +96,13 @@ def show_tree_info(working, debug):
         return
 
     if working.bzrdir != branch.bzrdir:
-        print '         Working tree: %s' \
+        # Lightweight checkout
+        print '        Checkout root: %s' \
                 % working.bzrdir.root_transport.base
-        print '      Bound to branch: %s' \
+        print '   Checkout of branch: %s' \
                 % branch.bzrdir.root_transport.base
     else:
+        # Standalone or bound branch (normal checkout)
         print '          Branch root: %s' \
                 % branch.bzrdir.root_transport.base
         if branch.get_bound_location():
