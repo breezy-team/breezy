@@ -28,6 +28,7 @@ from bzrlib.bzrdir import (BzrDir,
                            BzrDirFormat6,
                            BzrDirMetaFormat1,
                            )
+from bzrlib.osutils import getcwd
 from bzrlib.workingtree import WorkingTree
 
 
@@ -50,14 +51,14 @@ class TestLegacyFormats(TestCaseWithTransport):
         out,err = self.run_bzr('bind', '../master', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('bzr: ERROR: To use this feature you must '
-                         'upgrade your branch at %s/.\n' % os.getcwdu(), err)
+                         'upgrade your branch at %s/.\n' % getcwd(), err)
     
     def test_unbind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
         out,err = self.run_bzr('unbind', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('bzr: ERROR: To use this feature you must '
-                         'upgrade your branch at %s/.\n' % os.getcwdu(), err)
+                         'upgrade your branch at %s/.\n' % getcwd(), err)
 
 
 class TestBoundBranches(TestCaseWithTransport):

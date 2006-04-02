@@ -223,7 +223,7 @@ class Branch(object):
             from_branch.unlock()
 
     def get_bound_location(self):
-        """Return the URL of the rbanch we are bound to.
+        """Return the URL of the branch we are bound to.
 
         Older format branches cannot bind, please be sure to use a metadir
         branch.
