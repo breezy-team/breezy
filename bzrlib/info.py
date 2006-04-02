@@ -25,7 +25,6 @@ import bzrlib.diff as diff
 from bzrlib.missing import find_unmerged
 from bzrlib.osutils import format_date
 from bzrlib.symbol_versioning import *
-from bzrlib.trace import warning
 
 
 def _countiter(it):
@@ -64,18 +63,18 @@ def show_info(b):
     return show_bzrdir_info(b.bzrdir)
 
 
-def show_bzrdir_info(a_bzrdir, debug):
+def show_bzrdir_info(a_bzrdir):
     """Output to stdout the 'info' for a_bzrdir."""
 
     working = a_bzrdir.open_workingtree()
     working.lock_read()
     try:
-        show_tree_info(working, debug)
+        show_tree_info(working)
     finally:
         working.unlock()
 
 
-def show_tree_info(working, debug):
+def show_tree_info(working):
     """Output to stdout the 'info' for working."""
 
     branch = working.branch
@@ -84,19 +83,6 @@ def show_tree_info(working, debug):
     branch_format = _get_format_string(branch)
     repository_format = _get_format_string(repository)
     # TODO: metadir_format = ...
-
-    if debug:
-        print '   working.bzrdir = %s' % working.bzrdir.root_transport.base
-        print '    branch.bzrdir = %s' % branch.bzrdir.root_transport.base
-        print 'repository.bzrdir = %s' % repository.bzrdir.root_transport.base
-        print '    branch.parent = %s' % (branch.get_parent() or '')
-        print '    branch.push   = %s' % (branch.get_push_location() or '')
-        print '    branch.bound  = %s' % (branch.get_bound_location() or '')
-        print '   working.format = %s' % working_format
-        print '    branch.format = %s' % branch_format
-        print 'repository.format = %s' % repository_format
-        print 'repository.shared = %s' % repository.is_shared()
-        return
 
     print 'Location:'
     if working.bzrdir != branch.bzrdir:
