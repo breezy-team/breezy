@@ -19,6 +19,10 @@
 """Tests for the info command of bzr."""
 
 
+import os
+
+
+from bzrlib.bzrdir import BzrDir
 from bzrlib.osutils import format_date
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
@@ -26,43 +30,61 @@ from bzrlib.tests.blackbox import ExternalBase
 
 class TestInfo(ExternalBase):
 
-    def test_info_standalone_trivial(self):
-        self.runbzr("init")
+    def test_info_standalone(self):
+        # Create initial standalone branch
+        self.runbzr('init standalone')
+        os.chdir('standalone')
+        file('hello', 'wt').write('hello world')
+        self.runbzr('add hello')
+        branch1 = BzrDir.open('.').open_branch()
         out, err = self.runbzr('info')
         self.assertEqualDiff(
-"""branch format: Bazaar-NG branch, format 6
+"""Location:
+          branch root: %s
 
-in the working tree:
+Format:
+        branch format: Bazaar-NG branch, format 6
+
+In the working tree:
          0 unchanged
          0 modified
-         0 added
+         1 added
          0 removed
          0 renamed
          0 unknown
          0 ignored
          0 versioned subdirectories
 
-branch history:
+Branch history:
          0 revisions
          0 committers
 
-revision store:
+Revision store:
          0 revisions
          0 kB
-""",
-        out)
+""" % branch1.bzrdir.root_transport.base, out)
         self.assertEqual('', err)
+        self.runbzr('commit -m one')
+        rev = branch1.repository.get_revision(branch1.revision_history()[0])
+        datestring_first = format_date(rev.timestamp, rev.timezone)
+        os.chdir('..')
 
-    def test_info_up_to_date_checkout(self):
-        a_branch = self.make_branch_and_tree('branch')
-        self.runbzr('checkout branch checkout')
-        out, err = self.runbzr('info checkout')
+        # Branch with push location
+        self.runbzr('branch standalone branch')
+        branch2 = BzrDir.open('branch').open_branch()
+        branch2.set_push_location(branch1.bzrdir.root_transport.base)
+        out, err = self.runbzr('info branch')
         self.assertEqualDiff(
-"""branch format: Bazaar-NG Metadir branch format 5
-bound to branch: %s
+"""Location:
+          branch root: %s
+        parent branch: %s
+       push to branch: %s
 
-in the working tree:
-         0 unchanged
+Format:
+        branch format: Bazaar-NG branch, format 6
+
+In the working tree:
+         1 unchanged
          0 modified
          0 added
          0 removed
@@ -71,183 +93,330 @@ in the working tree:
          0 ignored
          0 versioned subdirectories
 
-branch history:
-         0 revisions
-         0 committers
-
-revision store:
-         0 revisions
-         0 kB
-""" % a_branch.bzrdir.root_transport.base,
-        out)
-        self.assertEqual('', err)
-
-    def test_info_up_to_date_light_checkout(self):
-        a_branch = self.make_branch_and_tree('branch')
-        self.runbzr('checkout --lightweight branch checkout')
-        out, err = self.runbzr('info checkout')
-        self.assertEqualDiff(
-"""working tree format: Bazaar-NG Working Tree format 3
-branch location: %s
-branch format: Bazaar-NG branch, format 6
-
-in the working tree:
-         0 unchanged
-         0 modified
-         0 added
-         0 removed
-         0 renamed
-         0 unknown
-         0 ignored
-         0 versioned subdirectories
-
-branch history:
-         0 revisions
-         0 committers
-
-revision store:
-         0 revisions
-         0 kB
-""" % a_branch.bzrdir.root_transport.base,
-        out)
-        self.assertEqual('', err)
-
-    def test_info_out_of_date_standalone_tree(self):
-        # FIXME the default format has to change for this to pass
-        # because it currently uses the branch last-revision marker.
-        raise TestSkipped('default format too old')
-        self.make_branch_and_tree('branch')
-        # make a checkout
-        self.runbzr('checkout branch checkout')
-        self.build_tree(['checkout/file'])
-        self.runbzr('add checkout/file')
-        self.runbzr('commit -m add-file checkout')
-        # now branch should be out of date
-        out,err = self.runbzr('update branch')
-        self.assertEqualDiff(
-"""branch format: Bazaar-NG branch, format 6
-
-Working tree is out of date: missing 1 revision.
-in the working tree:
-         0 unchanged
-         0 modified
-         0 added
-         0 removed
-         0 renamed
-         0 unknown
-         0 ignored
-         0 versioned subdirectories
-
-branch history:
-         0 revisions
-         0 committers
-
-revision store:
-         0 revisions
-         0 kB
-""" % a_branch.bzrdir.root_transport.base,
-        out)
-        self.assertEqual('', err)
-
-    def test_info_out_of_date_checkout(self):
-        # note this deliberately uses a checkout at 'None' to 
-        # test the out of date message with a revision notin the 
-        # revision history.
-        a_branch = self.make_branch('branch')
-        # make two checkouts
-        self.runbzr('checkout branch checkout')
-        self.runbzr('checkout branch checkout2')
-        self.build_tree(['checkout/file'])
-        self.runbzr('add checkout/file')
-        self.runbzr('commit -m add-file checkout')
-        # now checkout2 should be out of date
-        out,err = self.runbzr('info checkout2')
-        rev = a_branch.repository.get_revision(a_branch.revision_history()[0])
-        datestring = format_date(rev.timestamp, rev.timezone)
-        self.assertEqualDiff(
-"""branch format: Bazaar-NG Metadir branch format 5
-bound to branch: %s
-
-Branch is out of date: missing 1 revision.
-in the working tree:
-         0 unchanged
-         0 modified
-         0 added
-         0 removed
-         0 renamed
-         0 unknown
-         0 ignored
-         0 versioned subdirectories
-
-branch history:
-         0 revisions
-         0 committers
-
-revision store:
-         0 revisions
-         0 kB
-""" % (a_branch.bzrdir.root_transport.base,
-       ),
-            out)
-        self.assertEqual('', err)
-
-    def test_info_out_of_date_light_checkout(self):
-        # note this deliberately uses a checkout at 'None' to 
-        # test the out of date message with a revision notin the 
-        # revision history.
-        a_branch = self.make_branch('branch')
-        # make two checkouts
-        self.runbzr('checkout --lightweight branch checkout')
-        self.runbzr('checkout --lightweight branch checkout2')
-        self.build_tree(['checkout/file'])
-        self.runbzr('add checkout/file')
-        self.runbzr('commit -m add-file checkout')
-        # now checkout2 should be out of date
-        out,err = self.runbzr('info checkout2')
-        rev = a_branch.repository.get_revision(a_branch.revision_history()[0])
-        datestring = format_date(rev.timestamp, rev.timezone)
-        self.assertEqualDiff(
-"""working tree format: Bazaar-NG Working Tree format 3
-branch location: %s
-branch format: Bazaar-NG branch, format 6
-
-Working tree is out of date: missing 1 revision.
-in the working tree:
-         0 unchanged
-         0 modified
-         0 added
-         0 removed
-         0 renamed
-         0 unknown
-         0 ignored
-         0 versioned subdirectories
-
-branch history:
+Branch history:
          1 revision
          1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
-revision store:
+Revision store:
          1 revision
          0 kB
-""" % (a_branch.bzrdir.root_transport.base,
-       datestring,
-       datestring,
-       ),
-            out)
+""" % (branch2.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_first), out)
         self.assertEqual('', err)
 
-    def test_info_parent(self):
-        b = self.make_branch('.')
-        url = 'http://bazaar-vcs.org/bzr/bzr.dev/'
-        b.set_parent(url)
-        out,err = self.runbzr('info')
+        # Branch, upgrade to metadir (creates backup as unknown) and bind
+        self.runbzr('branch standalone bound')
+        branch3 = BzrDir.open('bound').open_branch()
+        os.chdir('bound')
+        self.runbzr('upgrade --format=metadir')
+        self.runbzr('bind ../standalone')
+        os.chdir('..')
+        out, err = self.runbzr('info bound')
         self.assertEqualDiff(
-"""branch format: Bazaar-NG branch, format 6
+"""Location:
+          branch root: %s
+      bound to branch: %s
+        parent branch: %s
 
-in the working tree:
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+In the working tree:
+         1 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         1 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         1 revision
+         1 committer
+         0 days old
+   first revision: %s
+  latest revision: %s
+
+Revision store:
+         1 revision
+         0 kB
+""" % (branch3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_first), out)
+        self.assertEqual('', err)
+
+        # Checkout (same as above, but does not have parent set)
+        self.runbzr('checkout standalone checkout')
+        branch4 = BzrDir.open('checkout').open_branch()
+        out, err = self.runbzr('info checkout')
+        self.assertEqualDiff(
+"""Location:
+          branch root: %s
+      bound to branch: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+In the working tree:
+         1 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         1 revision
+         1 committer
+         0 days old
+   first revision: %s
+  latest revision: %s
+
+Revision store:
+         1 revision
+         0 kB
+""" % (branch4.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_first), out)
+        self.assertEqual('', err)
+
+        # Lightweight checkout (same as above, different branch and repository)
+        self.runbzr('checkout --lightweight standalone lightcheckout')
+        branch5 = BzrDir.open('lightcheckout').open_workingtree()
+        out, err = self.runbzr('info lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+        checkout root: %s
+   checkout of branch: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch, format 6
+    repository format: Bazaar-NG branch, format 6
+
+In the working tree:
+         1 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         1 revision
+         1 committer
+         0 days old
+   first revision: %s
+  latest revision: %s
+
+Revision store:
+         1 revision
+         0 kB
+""" % (branch5.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_first), out)
+        self.assertEqual('', err)
+
+        # Update initial standalone branch
+        os.chdir('standalone')
+        file('bye', 'wt').write('goodbye')
+        self.runbzr('add bye')
+        self.runbzr('commit -m two')
+        rev = branch1.repository.get_revision(branch1.revision_history()[-1])
+        datestring_last = format_date(rev.timestamp, rev.timezone)
+        os.chdir('..')
+
+        # Out of date branched standalone branch will not be detected
+        out, err = self.runbzr('info branch')
+        self.assertEqualDiff(
+"""Location:
+          branch root: %s
+        parent branch: %s
+       push to branch: %s
+
+Format:
+        branch format: Bazaar-NG branch, format 6
+
+In the working tree:
+         1 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         1 revision
+         1 committer
+         0 days old
+   first revision: %s
+  latest revision: %s
+
+Revision store:
+         1 revision
+         0 kB
+""" % (branch2.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_first), out)
+        self.assertEqual('', err)
+
+        # Out of date bound branch
+        out, err = self.runbzr('info bound')
+        self.assertEqualDiff(
+"""Location:
+          branch root: %s
+      bound to branch: %s
+        parent branch: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+Branch is out of date: missing 1 revision.
+
+In the working tree:
+         1 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         1 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         1 revision
+         1 committer
+         0 days old
+   first revision: %s
+  latest revision: %s
+
+Revision store:
+         1 revision
+         0 kB
+""" % (branch3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_first), out)
+        self.assertEqual('', err)
+
+        # Out of date checkout
+        out, err = self.runbzr('info checkout')
+        self.assertEqualDiff(
+"""Location:
+          branch root: %s
+      bound to branch: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+Branch is out of date: missing 1 revision.
+
+In the working tree:
+         1 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         1 revision
+         1 committer
+         0 days old
+   first revision: %s
+  latest revision: %s
+
+Revision store:
+         1 revision
+         0 kB
+""" % (branch4.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_first), out)
+        self.assertEqual('', err)
+
+        # Out of date lightweight checkout
+        out, err = self.runbzr('info lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+        checkout root: %s
+   checkout of branch: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch, format 6
+    repository format: Bazaar-NG branch, format 6
+
+Working tree is out of date: missing 1 revision.
+
+In the working tree:
+         1 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         2 revisions
+         1 committer
+         0 days old
+   first revision: %s
+  latest revision: %s
+
+Revision store:
+         2 revisions
+         0 kB
+""" % (branch5.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_last), out)
+        self.assertEqual('', err)
+
+    def test_info_shared_repository(self):
+        # Create shared repository
+        self.runbzr('init-repository repo')
+        os.chdir('repo')
+        self.runbzr('init --format=metadir branch')
+        os.chdir('..')
+
+        # Create lightweight checkout
+        os.mkdir('tree')
+        os.chdir('tree')
+        self.runbzr('checkout --lightweight ../repo/branch lightcheckout')
+        bzrdir1 = BzrDir.open('lightcheckout')
+        work1 = bzrdir1.open_workingtree()
+        branch1 = bzrdir1.open_branch()
+        repo = branch1.repository
+        out, err = self.runbzr('info lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+        checkout root: %s
+   checkout of branch: %s
+    shared repository: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+In the working tree:
          0 unchanged
          0 modified
          0 added
@@ -257,16 +426,384 @@ in the working tree:
          0 ignored
          0 versioned subdirectories
 
-branch history:
+Branch history:
          0 revisions
          0 committers
 
-revision store:
+Revision store:
          0 revisions
          0 kB
-
-parent location:
-  http://bazaar-vcs.org/bzr/bzr.dev/
-""", out)
+""" % (work1.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
+       repo.bzrdir.root_transport.base), out)
         self.assertEqual('', err)
 
+        # Create normal checkout
+        self.runbzr('checkout ../repo/branch checkout')
+        bzrdir2 = BzrDir.open('checkout')
+        work2 = bzrdir2.open_workingtree()
+        branch2 = bzrdir2.open_branch()
+        out, err = self.runbzr('info checkout')
+        self.assertEqualDiff(
+"""Location:
+          branch root: %s
+      bound to branch: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+         0 committers
+
+Revision store:
+         0 revisions
+         0 kB
+""" % (work2.bzrdir.root_transport.base,
+       branch2.get_bound_location()), out)
+        self.assertEqual('', err)
+
+        # Update lightweight checkout
+        os.chdir('lightcheckout')
+        file('hello', 'wt').write('hello world')
+        self.runbzr('add hello')
+        self.runbzr('commit -m one')
+        rev = repo.get_revision(branch1.revision_history()[0])
+        datestring_first = format_date(rev.timestamp, rev.timezone)
+        os.chdir('..')
+        out, err = self.runbzr('info lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+        checkout root: %s
+   checkout of branch: %s
+    shared repository: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+In the working tree:
+         1 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         1 revision
+         1 committer
+         0 days old
+   first revision: %s
+  latest revision: %s
+
+Revision store:
+         1 revision
+         0 kB
+""" % (work1.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
+       repo.bzrdir.root_transport.base,
+       datestring_first, datestring_first), out)
+        self.assertEqual('', err)
+
+        # Out of date checkout
+        out, err = self.runbzr('info checkout')
+        self.assertEqualDiff(
+"""Location:
+          branch root: %s
+      bound to branch: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+Branch is out of date: missing 1 revision.
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+         0 committers
+
+Revision store:
+         0 revisions
+         0 kB
+""" % (work2.bzrdir.root_transport.base,
+       branch2.get_bound_location()), out)
+        self.assertEqual('', err)
+
+        # Update checkout
+        os.chdir('checkout')
+        self.runbzr('update')
+        file('bye', 'wt').write('goodbye')
+        self.runbzr('add bye')
+        out, err = self.runbzr('info')
+        self.assertEqualDiff(
+"""Location:
+          branch root: %s
+      bound to branch: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+In the working tree:
+         1 unchanged
+         0 modified
+         1 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         1 revision
+         1 committer
+         0 days old
+   first revision: %s
+  latest revision: %s
+
+Revision store:
+         1 revision
+         0 kB
+""" % (work2.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_first), out)
+        self.assertEqual('', err)
+        self.runbzr('commit -m two')
+        os.chdir('..')
+
+        # Out of date lightweight checkout
+        rev = repo.get_revision(branch1.revision_history()[0])
+	datestring_last = format_date(rev.timestamp, rev.timezone)
+        out, err = self.runbzr('info lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+        checkout root: %s
+   checkout of branch: %s
+    shared repository: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+Working tree is out of date: missing 1 revision.
+
+In the working tree:
+         1 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         2 revisions
+         1 committer
+         0 days old
+   first revision: %s
+  latest revision: %s
+
+Revision store:
+         2 revisions
+         0 kB
+""" % (work1.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
+       repo.bzrdir.root_transport.base,
+       datestring_first, datestring_last), out)
+        self.assertEqual('', err)
+
+    def test_info_shared_repository_with_trees(self):
+        # TODO: Do the same with checkouts inside this repository
+        # XXX: Replace with --trees option when it's in mainline bzr.dev
+        # Create shared repository
+        self.runbzr('init-repository repotree')
+        # self.runbzr('init-repository --trees repotree')
+        os.unlink('repotree/.bzr/repository/no-working-trees')
+        os.chdir('repotree')
+        self.runbzr('init --format=metadir branch1')
+        self.runbzr('branch branch1 branch2')
+
+        # Empty first branch
+        bzrdir1 = BzrDir.open('branch1')
+        branch1 = bzrdir1.open_branch()
+        repo = branch1.repository
+        out, err = self.runbzr('info branch1')
+        self.assertEqualDiff(
+"""Location:
+          branch root: %s
+    shared repository: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+         0 committers
+
+Revision store:
+         0 revisions
+         0 kB
+""" % (branch1.bzrdir.root_transport.base,
+       repo.bzrdir.root_transport.base), out)
+        self.assertEqual('', err)
+
+        # Update first branch
+        os.chdir('branch1')
+        file('hello', 'wt').write('hello world')
+        self.runbzr('add hello')
+        self.runbzr('commit -m one')
+        os.chdir('..')
+        rev = repo.get_revision(branch1.revision_history()[0])
+        datestring_first = format_date(rev.timestamp, rev.timezone)
+        out, err = self.runbzr('info branch1')
+        self.assertEqualDiff(
+"""Location:
+          branch root: %s
+    shared repository: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+In the working tree:
+         1 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         1 revision
+         1 committer
+         0 days old
+   first revision: %s
+  latest revision: %s
+
+Revision store:
+         1 revision
+         0 kB
+""" % (branch1.bzrdir.root_transport.base, repo.bzrdir.root_transport.base,
+       datestring_first, datestring_first), out)
+        self.assertEqual('', err)
+
+        # Out of date second branch
+        bzrdir2 = BzrDir.open('branch2')
+        branch2 = bzrdir2.open_branch()
+        out, err = self.runbzr('info branch2')
+        self.assertEqualDiff(
+"""Location:
+          branch root: %s
+    shared repository: %s
+        parent branch: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+         0 committers
+
+Revision store:
+         1 revision
+         0 kB
+""" % (branch2.bzrdir.root_transport.base, repo.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base), out)
+        self.assertEqual('', err)
+
+        # Update second branch
+        os.chdir('branch2')
+        self.runbzr('pull')
+        out, err = self.runbzr('info')
+        self.assertEqualDiff(
+"""Location:
+          branch root: %s
+    shared repository: %s
+        parent branch: %s
+
+Format:
+  working tree format: Bazaar-NG Working Tree format 3
+        branch format: Bazaar-NG branch format 5
+    repository format: Bazaar-NG Repository format 7
+
+In the working tree:
+         1 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         1 revision
+         1 committer
+         0 days old
+   first revision: %s
+  latest revision: %s
+
+Revision store:
+         1 revision
+         0 kB
+""" % (branch2.bzrdir.root_transport.base,
+       repo.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_first), out)
+        self.assertEqual('', err)
