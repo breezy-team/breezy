@@ -1261,11 +1261,13 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
-        return self._get_versioned_file_store('',
-                                              repo_transport,
-                                              control_files,
-                                              prefixed=False,
-                                              versionedfile_class=KnitVersionedFile)
+        return VersionedFileStore(
+            repo_transport,
+            prefixed=False,
+            file_mode=control_files._file_mode,
+            versionedfile_class=KnitVersionedFile,
+            versionedfile_kwargs={'factory':KnitPlainFactory()},
+            )
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
