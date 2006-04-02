@@ -599,8 +599,8 @@ Revision store:
         os.chdir('..')
 
         # Out of date lightweight checkout
-        rev = repo.get_revision(branch1.revision_history()[0])
-	datestring_last = format_date(rev.timestamp, rev.timezone)
+        rev = repo.get_revision(branch1.revision_history()[-1])
+        datestring_last = format_date(rev.timestamp, rev.timezone)
         out, err = self.runbzr('info lightcheckout')
         self.assertEqualDiff(
 """Location:
