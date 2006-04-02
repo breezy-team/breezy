@@ -191,16 +191,16 @@ def show_tree_info(working):
 #     print 'Text store:'
 #     c, t = branch.text_store.total_size()
 #     print '  %8d file texts' % c
-#     print '  %8d kB' % (t/1024)
+#     print '  %8d KiB' % (t/1024)
 
     print
     print 'Revision store:'
     c, t = branch.repository._revision_store.total_size(branch.repository.get_transaction())
     print '  %8d revision%s' % (c, plural(c))
-    print '  %8d kB' % (t/1024)
+    print '  %8d KiB' % (t/1024)
 
 #     print
 #     print 'Inventory store:'
 #     c, t = branch.inventory_store.total_size()
 #     print '  %8d inventories' % c
-#     print '  %8d kB' % (t/1024)
+#     print '  %8d KiB' % (t/1024)

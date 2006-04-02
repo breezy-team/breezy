@@ -61,7 +61,7 @@ Branch history:
 
 Revision store:
          0 revisions
-         0 kB
+         0 KiB
 """ % branch1.bzrdir.root_transport.base, out)
         self.assertEqual('', err)
         self.runbzr('commit -m one')
@@ -102,7 +102,7 @@ Branch history:
 
 Revision store:
          1 revision
-         0 kB
+         0 KiB
 """ % (branch2.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
@@ -146,7 +146,7 @@ Branch history:
 
 Revision store:
          1 revision
-         0 kB
+         0 KiB
 """ % (branch3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
@@ -185,7 +185,7 @@ Branch history:
 
 Revision store:
          1 revision
-         0 kB
+         0 KiB
 """ % (branch4.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
@@ -223,7 +223,7 @@ Branch history:
 
 Revision store:
          1 revision
-         0 kB
+         0 KiB
 """ % (branch5.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
@@ -267,7 +267,7 @@ Branch history:
 
 Revision store:
          1 revision
-         0 kB
+         0 KiB
 """ % (branch2.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
@@ -307,7 +307,7 @@ Branch history:
 
 Revision store:
          1 revision
-         0 kB
+         0 KiB
 """ % (branch3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
@@ -346,7 +346,7 @@ Branch history:
 
 Revision store:
          1 revision
-         0 kB
+         0 KiB
 """ % (branch4.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
@@ -384,7 +384,7 @@ Branch history:
 
 Revision store:
          2 revisions
-         0 kB
+         0 KiB
 """ % (branch5.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        datestring_first, datestring_last), out)
         self.assertEqual('', err)
@@ -432,7 +432,7 @@ Branch history:
 
 Revision store:
          0 revisions
-         0 kB
+         0 KiB
 """ % (work1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base), out)
@@ -470,7 +470,7 @@ Branch history:
 
 Revision store:
          0 revisions
-         0 kB
+         0 KiB
 """ % (work2.bzrdir.root_transport.base,
        branch2.get_bound_location()), out)
         self.assertEqual('', err)
@@ -514,7 +514,7 @@ Branch history:
 
 Revision store:
          1 revision
-         0 kB
+         0 KiB
 """ % (work1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
@@ -551,7 +551,7 @@ Branch history:
 
 Revision store:
          0 revisions
-         0 kB
+         0 KiB
 """ % (work2.bzrdir.root_transport.base,
        branch2.get_bound_location()), out)
         self.assertEqual('', err)
@@ -591,7 +591,7 @@ Branch history:
 
 Revision store:
          1 revision
-         0 kB
+         0 KiB
 """ % (work2.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
@@ -634,7 +634,7 @@ Branch history:
 
 Revision store:
          2 revisions
-         0 kB
+         0 KiB
 """ % (work1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
@@ -683,7 +683,7 @@ Branch history:
 
 Revision store:
          0 revisions
-         0 kB
+         0 KiB
 """ % (branch1.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base), out)
         self.assertEqual('', err)
@@ -726,7 +726,7 @@ Branch history:
 
 Revision store:
          1 revision
-         0 kB
+         0 KiB
 """ % (branch1.bzrdir.root_transport.base, repo.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
@@ -762,7 +762,7 @@ Branch history:
 
 Revision store:
          1 revision
-         0 kB
+         0 KiB
 """ % (branch2.bzrdir.root_transport.base, repo.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base), out)
         self.assertEqual('', err)
@@ -801,7 +801,7 @@ Branch history:
 
 Revision store:
          1 revision
-         0 kB
+         0 KiB
 """ % (branch2.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
