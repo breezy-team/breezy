@@ -135,8 +135,6 @@ def show_tree_info(working, debug):
         print '        branch format: %s' % branch_format
         print '    repository format: %s' % repository_format
 
-    count_version_dirs = 0
-
     basis = working.basis_tree()
     work_inv = working.inventory
     delta = diff.compare_trees(basis, working, want_unchanged=True)
