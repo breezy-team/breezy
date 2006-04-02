@@ -98,7 +98,7 @@ def show_tree_info(working, debug):
         print 'repository.shared = %s' % repository.is_shared()
         return
 
-    print 'location:'
+    print 'Location:'
     if working.bzrdir != branch.bzrdir:
         # Lightweight checkout
         print '        checkout root: %s' % (
@@ -126,7 +126,7 @@ def show_tree_info(working, debug):
         print '       push to branch: %s' % branch.get_push_location()
 
     print
-    print 'format:'
+    print 'Format:'
     if working_format == branch_format == repository_format:
         print '        branch format: %s' % branch_format
     else:
@@ -150,6 +150,7 @@ def show_tree_info(working, debug):
         if remote_extra:
             print 'Branch is out of date: missing %d revision%s.' % (
                 len(remote_extra), plural(len(remote_extra)))
+            print
 
     if len(history) and working.last_revision() != history[-1]:
         try:
@@ -159,7 +160,9 @@ def show_tree_info(working, debug):
             missing_count = len(history)
         print 'Working tree is out of date: missing %d revision%s.' % (
             missing_count, plural(missing_count))
-    print 'in the working tree:'
+        print
+
+    print 'In the working tree:'
     print '  %8s unchanged' % len(delta.unchanged)
     print '  %8d modified' % len(delta.modified)
     print '  %8d added' % len(delta.added)
@@ -184,7 +187,7 @@ def show_tree_info(working, debug):
              plural(dir_cnt, 'subdirectory', 'subdirectories'))
 
     print
-    print 'branch history:'
+    print 'Branch history:'
     revno = len(history)
     print '  %8d revision%s' % (revno, plural(revno))
     committers = {}
@@ -203,19 +206,19 @@ def show_tree_info(working, debug):
                                                     lastrev.timezone)
 
 #     print
-#     print 'text store:'
+#     print 'Text store:'
 #     c, t = branch.text_store.total_size()
 #     print '  %8d file texts' % c
 #     print '  %8d kB' % (t/1024)
 
     print
-    print 'revision store:'
+    print 'Revision store:'
     c, t = branch.repository._revision_store.total_size(branch.repository.get_transaction())
     print '  %8d revision%s' % (c, plural(c))
     print '  %8d kB' % (t/1024)
 
 #     print
-#     print 'inventory store:'
+#     print 'Inventory store:'
 #     c, t = branch.inventory_store.total_size()
 #     print '  %8d inventories' % c
 #     print '  %8d kB' % (t/1024)
