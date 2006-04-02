@@ -150,12 +150,10 @@ def show_tree_info(working, debug):
                 len(remote_extra), plural(len(remote_extra)))
             print
 
-    if len(history) and working.last_revision() != history[-1]:
-        try:
-            missing_count = len(history) - history.index(working.last_revision())
-        except ValueError:
-            # consider it all out of date
-            missing_count = len(history)
+    tree_last_id = working.last_revision()
+    if len(history) and tree_last_id != history[-1]:
+        tree_last_revno = branch.revision_id_to_revno(tree_last_id)
+        missing_count = len(history) - tree_last_revno
         print 'Working tree is out of date: missing %d revision%s.' % (
             missing_count, plural(missing_count))
         print
