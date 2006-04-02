@@ -67,6 +67,10 @@ bzr development version
     * New 'init-repository' command, plus support for repositories in 'init'
       and 'branch'
 
+    * Improve output of 'init' command. Show all relevant locations related to
+      the working tree. Use kibibytes for binary quantities. Fix off-by-one
+      error in missing revisions of working tree.  (Olaf Conradi)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
