@@ -28,9 +28,9 @@ from stat import *
 from cStringIO import StringIO
 
 from bzrlib.trace import mutter
-from bzrlib.errors import (TransportError, NoSuchFile, FileExists, LockError,
-                           ResourceBusy)
+from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
 from bzrlib.transport import Transport, register_transport, Server
+
 
 class MemoryStat(object):
 
@@ -234,19 +234,6 @@ class MemoryTransport(Transport):
         return self._cwd + relpath
 
 
-class FakeNFSTransport(MemoryTransport):
-    """A transport that behaves like NFS, for testing"""
-    def rename(self, rel_from, rel_to):
-        try:
-            MemoryTransport.rename(self, rel_from, rel_to)
-        except FileExists, e:
-            abs_to = self._abspath(rel_to)
-            if abs_to in self._dirs:
-                raise ResourceBusy(rel_to)
-            else:
-                raise
-
-
 class _MemoryLock(object):
     """This makes a lock."""
 
@@ -272,19 +259,14 @@ class _MemoryLock(object):
 class MemoryServer(Server):
     """Server for the MemoryTransport for testing with."""
 
-    def setUp(self, scheme=None, transport_class=None):
+    def setUp(self):
         """See bzrlib.transport.Server.setUp."""
         self._dirs = {}
         self._files = {}
         self._locks = {}
-        if scheme is not None:
-            self._scheme = scheme
-        else:            
-            self._scheme = "memory+%s:" % id(self)
-        if transport_class is None:
-            transport_class = MemoryTransport
+        self._scheme = "memory+%s:" % id(self)
         def memory_factory(url):
-            result = transport_class(url)
+            result = MemoryTransport(url)
             result._dirs = self._dirs
             result._files = self._files
             result._locks = self._locks
@@ -300,13 +282,7 @@ class MemoryServer(Server):
         return self._scheme
 
 
-class FakeNFSServer(MemoryServer):
-    """A fake NFS server to use with the fake transport"""
-    def setUp(self):
-        MemoryServer.setUp(self, "fnfs+%s:" % id(self), FakeNFSTransport)
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(MemoryTransport, MemoryServer), (FakeNFSTransport, FakeNFSServer),
+    return [(MemoryTransport, MemoryServer),
             ]

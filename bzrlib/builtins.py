@@ -1635,7 +1635,7 @@ class cmd_selftest(Command):
             from bzrlib.transport.memory import MemoryServer
             return MemoryServer
         if typestring == "fakenfs":
-            from bzrlib.transport.memory import FakeNFSServer
+            from bzrlib.transport.fakenfs import FakeNFSServer
             return FakeNFSServer
         msg = "No known transport type %s. Supported types are: sftp\n" %\
             (typestring)
