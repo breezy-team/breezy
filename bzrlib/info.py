@@ -174,16 +174,16 @@ def show_tree_info(working):
     print '  %8d revision%s' % (revno, plural(revno))
     committers = {}
     for rev in history:
-        committers[branch.repository.get_revision(rev).committer] = True
+        committers[repository.get_revision(rev).committer] = True
     print '  %8d committer%s' % (len(committers), plural(len(committers)))
     if revno > 0:
-        firstrev = branch.repository.get_revision(history[0])
+        firstrev = repository.get_revision(history[0])
         age = int((time.time() - firstrev.timestamp) / 3600 / 24)
         print '  %8d day%s old' % (age, plural(age))
         print '   first revision: %s' % format_date(firstrev.timestamp,
                                                     firstrev.timezone)
 
-        lastrev = branch.repository.get_revision(history[-1])
+        lastrev = repository.get_revision(history[-1])
         print '  latest revision: %s' % format_date(lastrev.timestamp,
                                                     lastrev.timezone)
 
@@ -195,7 +195,7 @@ def show_tree_info(working):
 
     print
     print 'Revision store:'
-    c, t = branch.repository._revision_store.total_size(branch.repository.get_transaction())
+    c, t = repository._revision_store.total_size(repository.get_transaction())
     print '  %8d revision%s' % (c, plural(c))
     print '  %8d KiB' % (t/1024)
 
