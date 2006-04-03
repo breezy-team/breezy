@@ -401,7 +401,7 @@ class LocationConfig(IniBasedConfig):
         elif location + '/' in self._get_parser():
             location = location + '/'
         self._get_parser()[location][option]=value
-        self._get_parser().write()
+        self._get_parser().write(file(self._get_filename(), 'wb'))
 
 
 class BranchConfig(Config):

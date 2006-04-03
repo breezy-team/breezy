@@ -93,7 +93,7 @@ class InstrumentedConfigObj(object):
     def __setitem__(self, key, value):
         self._calls.append(('__setitem__', key, value))
 
-    def write(self):
+    def write(self, arg):
         self._calls.append(('write',))
 
 
