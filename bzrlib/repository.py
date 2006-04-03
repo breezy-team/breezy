@@ -769,7 +769,7 @@ class KnitRepository(MetaDirRepository):
         """
         result = Graph()
         vf = self._get_revision_vf()
-        versions = vf.versions()
+        versions = set(vf.versions())
         if not revision_ids:
             pending = set(self.all_revision_ids())
             required = set([])
@@ -784,6 +784,8 @@ class KnitRepository(MetaDirRepository):
                     raise errors.NoSuchRevision(self, revision_id)
                 # a ghost
                 result.add_ghost(revision_id)
+                # mark it as done so we dont try for it again.
+                done.add(revision_id)
                 continue
             parent_ids = vf.get_parents_with_ghosts(revision_id)
             for parent_id in parent_ids:
@@ -793,7 +795,7 @@ class KnitRepository(MetaDirRepository):
                     # no, queue it.
                     pending.add(parent_id)
             result.add_node(revision_id, parent_ids)
-            done.add(result)
+            done.add(revision_id)
         return result
 
     def _get_revision_vf(self):
