@@ -19,14 +19,14 @@
 import errno
 import getpass
 import os
+import random
 import re
 import stat
+import subprocess
 import sys
+import time
 import urllib
 import urlparse
-import time
-import random
-import subprocess
 import weakref
 
 from bzrlib.config import config_dir, ensure_config_dir_exists
@@ -53,7 +53,13 @@ else:
     from paramiko.sftp_file import SFTPFile
     from paramiko.sftp_client import SFTPClient
 
-if 'sftp' not in urlparse.uses_netloc: urlparse.uses_netloc.append('sftp')
+if 'sftp' not in urlparse.uses_netloc:
+    urlparse.uses_netloc.append('sftp')
+
+# don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
+_default_do_prefetch = False
+if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 2):
+    _default_do_prefetch = True
 
 
 _close_fds = True
@@ -62,6 +68,7 @@ if sys.platform == 'win32':
     _close_fds = False
 
 _ssh_vendor = None
+
 def _get_ssh_vendor():
     """Find out what version of SSH is on the system."""
     global _ssh_vendor
@@ -69,6 +76,12 @@ def _get_ssh_vendor():
         return _ssh_vendor
 
     _ssh_vendor = 'none'
+
+    if 'BZR_SSH' in os.environ:
+        _ssh_vendor = os.environ['BZR_SSH']
+        if _ssh_vendor == 'paramiko':
+            _ssh_vendor = 'none'
+        return _ssh_vendor
 
     try:
         p = subprocess.Popen(['ssh', '-V'],
@@ -243,12 +256,11 @@ class SFTPLock(object):
             # What specific errors should we catch here?
             pass
 
-
 class SFTPTransport (Transport):
     """
     Transport implementation for SFTP access.
     """
-    _do_prefetch = False # Right now Paramiko's prefetch support causes things to hang
+    _do_prefetch = _default_do_prefetch
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
@@ -344,7 +356,7 @@ class SFTPTransport (Transport):
         except IOError:
             return False
 
-    def get(self, relpath, decode=False):
+    def get(self, relpath):
         """
         Get the file at the given relative path.
 
@@ -353,7 +365,7 @@ class SFTPTransport (Transport):
         try:
             path = self._remote_path(relpath)
             f = self._sftp.file(path, mode='rb')
-            if self._do_prefetch and hasattr(f, 'prefetch'):
+            if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
                 f.prefetch()
             return f
         except (IOError, paramiko.SSHException), e:
@@ -405,7 +417,7 @@ class SFTPTransport (Transport):
                 self._sftp.chmod(tmp_abspath, mode)
             fout.close()
             closed = True
-            self._rename(tmp_abspath, abspath)
+            self._rename_and_overwrite(tmp_abspath, abspath)
         except Exception, e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception
@@ -489,11 +501,22 @@ class SFTPTransport (Transport):
         try:
             path = self._remote_path(relpath)
             fout = self._sftp.file(path, 'ab')
+            result = fout.tell()
             self._pump(f, fout)
+            return result
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, relpath, ': unable to append')
 
-    def _rename(self, abs_from, abs_to):
+    def rename(self, rel_from, rel_to):
+        """Rename without special overwriting"""
+        try:
+            self._sftp.rename(self._remote_path(rel_from),
+                              self._remote_path(rel_to))
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, rel_from,
+                    ': unable to rename to %r' % (rel_to))
+
+    def _rename_and_overwrite(self, abs_from, abs_to):
         """Do a fancy rename on the remote server.
         
         Using the implementation provided by osutils.
@@ -509,7 +532,7 @@ class SFTPTransport (Transport):
         """Move the item at rel_from to the location at rel_to"""
         path_from = self._remote_path(rel_from)
         path_to = self._remote_path(rel_to)
-        self._rename(path_from, path_to)
+        self._rename_and_overwrite(path_from, path_to)
 
     def delete(self, relpath):
         """Delete the item at relpath"""

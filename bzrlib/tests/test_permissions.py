@@ -37,7 +37,7 @@ from StringIO import StringIO
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
@@ -157,31 +157,31 @@ class TestPermissions(TestCaseWithTransport):
         try:
             transport = get_transport(self.get_url())
             transport.put('my-lock', StringIO(''))
-            lockable = LockableFiles(transport, 'my-lock')
+            lockable = LockableFiles(transport, 'my-lock', TransportLock)
             self.assertNotEqual(None, lockable._dir_mode)
             self.assertNotEqual(None, lockable._file_mode)
 
             LockableFiles._set_dir_mode = False
             transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock')
+            lockable = LockableFiles(transport, 'my-lock', TransportLock)
             self.assertEqual(None, lockable._dir_mode)
             self.assertNotEqual(None, lockable._file_mode)
 
             LockableFiles._set_file_mode = False
             transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock')
+            lockable = LockableFiles(transport, 'my-lock', TransportLock)
             self.assertEqual(None, lockable._dir_mode)
             self.assertEqual(None, lockable._file_mode)
 
             LockableFiles._set_dir_mode = True
             transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock')
+            lockable = LockableFiles(transport, 'my-lock', TransportLock)
             self.assertNotEqual(None, lockable._dir_mode)
             self.assertEqual(None, lockable._file_mode)
 
             LockableFiles._set_file_mode = True
             transport = get_transport('.')
-            lockable = LockableFiles(transport, 'my-lock')
+            lockable = LockableFiles(transport, 'my-lock', TransportLock)
             self.assertNotEqual(None, lockable._dir_mode)
             self.assertNotEqual(None, lockable._file_mode)
         finally:
@@ -213,7 +213,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         check_mode_r(self, 'local/.bzr', 0644, 0755)
 
         t = WorkingTree.open('local')
-        b = t.branch
+        b_local = t.branch
         self.assertEqualMode(0755, b_local.control_files._dir_mode)
         self.assertEqualMode(0644, b_local.control_files._file_mode)
 

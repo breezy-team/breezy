@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ class LocalTransport(Transport):
     def __init__(self, base):
         """Set the base path where files will be stored."""
         if base.startswith('file://'):
-            base = base[7:]
+            base = base[len('file://'):]
         # realpath is incompatible with symlinks. When we traverse
         # up we might be able to normpath stuff. RBC 20051003
         base = normpath(abspath(base))
@@ -111,7 +111,7 @@ class LocalTransport(Transport):
         """Iter the relative paths of files in the transports sub-tree."""
         queue = list(self.list_dir(u'.'))
         while queue:
-            relpath = urllib.quote(queue.pop(0))
+            relpath = queue.pop(0)
             st = self.stat(relpath)
             if S_ISDIR(st[ST_MODE]):
                 for i, basename in enumerate(self.list_dir(relpath)):
@@ -138,7 +138,11 @@ class LocalTransport(Transport):
             fp = open(self.abspath(relpath), 'ab')
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
+        # win32 workaround (tell on an unwritten file returns 0)
+        fp.seek(0, 2)
+        result = fp.tell()
         self._pump(f, fp)
+        return result
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
@@ -151,12 +155,23 @@ class LocalTransport(Transport):
             # TODO: What about path_to?
             self._translate_error(e, path_from)
 
+    def rename(self, rel_from, rel_to):
+        path_from = self.abspath(rel_from)
+        try:
+            # *don't* call bzrlib.osutils.rename, because we want to 
+            # detect errors on rename
+            os.rename(path_from, self.abspath(rel_to))
+        except (IOError, OSError),e:
+            # TODO: What about path_to?
+            self._translate_error(e, path_from)
+
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         path_from = self.abspath(rel_from)
         path_to = self.abspath(rel_to)
 
         try:
+            # this version will delete the destination if necessary
             rename(path_from, path_to)
         except (IOError, OSError),e:
             # TODO: What about path_to?
@@ -209,11 +224,10 @@ class LocalTransport(Transport):
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
-        path = relpath
+        path = self.abspath(relpath)
         try:
-            path = self.abspath(relpath)
-            return os.listdir(path)
-        except (IOError, OSError),e:
+            return [urllib.quote(entry) for entry in os.listdir(path)]
+        except (IOError, OSError), e:
             self._translate_error(e, path)
 
     def stat(self, relpath):
@@ -255,6 +269,7 @@ class LocalTransport(Transport):
             os.rmdir(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
+
 
 class ScratchTransport(LocalTransport):
     """A transport that works in a temporary dir and cleans up after itself.

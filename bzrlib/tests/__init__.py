@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,11 @@
 # little as possible, so this should be used rarely if it's added at all.
 # (Suggestion from j-a-meinel, 2005-11-24)
 
+# NOTE: Some classes in here use camelCaseNaming() rather than
+# underscore_naming().  That's for consistency with unittest; it's not the
+# general style of bzrlib.  Please continue that consistency when adding e.g.
+# new assertFoo() methods.
+
 import codecs
 from cStringIO import StringIO
 import difflib
@@ -42,13 +47,14 @@ import bzrlib.commands
 import bzrlib.errors as errors
 import bzrlib.inventory
 import bzrlib.iterablefile
+import bzrlib.lockdir
 import bzrlib.merge3
 import bzrlib.osutils
 import bzrlib.osutils as osutils
 import bzrlib.plugin
 import bzrlib.store
 import bzrlib.trace
-from bzrlib.transport import urlescape
+from bzrlib.transport import urlescape, get_transport
 import bzrlib.transport
 from bzrlib.transport.local import LocalRelpathServer
 from bzrlib.transport.readonly import ReadonlyServer
@@ -66,6 +72,7 @@ MODULES_TO_DOCTEST = [
                       bzrlib.errors,
                       bzrlib.inventory,
                       bzrlib.iterablefile,
+                      bzrlib.lockdir,
                       bzrlib.merge3,
                       bzrlib.option,
                       bzrlib.osutils,
@@ -81,14 +88,20 @@ def packages_to_test():
     import bzrlib.tests.blackbox
     import bzrlib.tests.branch_implementations
     import bzrlib.tests.bzrdir_implementations
+    import bzrlib.tests.interrepository_implementations
+    import bzrlib.tests.interversionedfile_implementations
     import bzrlib.tests.repository_implementations
+    import bzrlib.tests.revisionstore_implementations
     import bzrlib.tests.workingtree_implementations
     return [
             bzrlib.doc,
             bzrlib.tests.blackbox,
             bzrlib.tests.branch_implementations,
             bzrlib.tests.bzrdir_implementations,
+            bzrlib.tests.interrepository_implementations,
+            bzrlib.tests.interversionedfile_implementations,
             bzrlib.tests.repository_implementations,
+            bzrlib.tests.revisionstore_implementations,
             bzrlib.tests.workingtree_implementations,
             ]
 
@@ -297,7 +310,7 @@ class TestCase(unittest.TestCase):
             raise AssertionError('pattern "%s" not found in "%s"'
                     % (needle_re, haystack))
 
-    def AssertSubset(self, sublist, superlist):
+    def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
         missing = []
         for entry in sublist:
@@ -322,6 +335,11 @@ class TestCase(unittest.TestCase):
         actual_mode = stat.S_IMODE(path_stat.st_mode)
         self.assertEqual(mode, actual_mode,
             'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
+
+    def assertIsInstance(self, obj, kls):
+        """Fail if obj is not an instance of kls"""
+        if not isinstance(obj, kls):
+            self.fail("%r is not an instance of %s" % (obj, kls))
 
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
@@ -579,7 +597,7 @@ class TestCaseInTempDir(TestCase):
             break
         # make a fake bzr directory there to prevent any tests propagating
         # up onto the source directory's real branch
-        os.mkdir(osutils.pathjoin(TestCaseInTempDir.TEST_ROOT, '.bzr'))
+        bzrdir.BzrDir.create_standalone_workingtree(TestCaseInTempDir.TEST_ROOT)
 
     def setUp(self):
         super(TestCaseInTempDir, self).setUp()
@@ -587,9 +605,22 @@ class TestCaseInTempDir(TestCase):
         _currentdir = os.getcwdu()
         short_id = self.id().replace('bzrlib.tests.', '') \
                    .replace('__main__.', '')
-        self.test_dir = osutils.pathjoin(self.TEST_ROOT, short_id)
-        os.mkdir(self.test_dir)
-        os.chdir(self.test_dir)
+        # it's possible the same test class is run several times for
+        # parameterized tests, so make sure the names don't collide.  
+        i = 0
+        while True:
+            if i > 0:
+                candidate_dir = '%s/%s.%d' % (self.TEST_ROOT, short_id, i)
+            else:
+                candidate_dir = '%s/%s' % (self.TEST_ROOT, short_id)
+            if os.path.exists(candidate_dir):
+                i = i + 1
+                continue
+            else:
+                self.test_dir = candidate_dir
+                os.mkdir(self.test_dir)
+                os.chdir(self.test_dir)
+                break
         os.environ['HOME'] = self.test_dir
         os.environ['APPDATA'] = self.test_dir
         def _leaveDirectory():
@@ -614,7 +645,7 @@ class TestCaseInTempDir(TestCase):
         """
         # XXX: It's OK to just create them using forward slashes on windows?
         if transport is None or transport.is_readonly():
-            transport = bzrlib.transport.get_transport(".")
+            transport = get_transport(".")
         for name in shape:
             self.assert_(isinstance(name, basestring))
             if name[-1] == '/':
@@ -727,6 +758,22 @@ class TestCaseWithTransport(TestCaseInTempDir):
             base = base + relpath
         return base
 
+    def get_transport(self):
+        """Return a writeable transport for the test scratch space"""
+        t = get_transport(self.get_url())
+        self.assertFalse(t.is_readonly())
+        return t
+
+    def get_readonly_transport(self):
+        """Return a readonly transport for the test scratch space
+        
+        This can be used to test that operations which should only need
+        readonly access in fact do not try to write.
+        """
+        t = get_transport(self.get_readonly_url())
+        self.assertTrue(t.is_readonly())
+        return t
+
     def make_branch(self, relpath):
         """Create a branch on the transport at relpath."""
         repo = self.make_repository(relpath)
@@ -735,10 +782,10 @@ class TestCaseWithTransport(TestCaseInTempDir):
     def make_bzrdir(self, relpath):
         try:
             url = self.get_url(relpath)
-            segments = url.split('/')
+            segments = relpath.split('/')
             if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = bzrlib.transport.get_transport(parent)
+                parent = self.get_url('/'.join(segments[:-1]))
+                t = get_transport(parent)
                 try:
                     t.mkdir(segments[-1])
                 except errors.FileExists:
@@ -747,10 +794,10 @@ class TestCaseWithTransport(TestCaseInTempDir):
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
-    def make_repository(self, relpath):
+    def make_repository(self, relpath, shared=False):
         """Create a repository on our default transport at relpath."""
         made_control = self.make_bzrdir(relpath)
-        return made_control.create_repository()
+        return made_control.create_repository(shared=shared)
 
     def make_branch_and_tree(self, relpath):
         """Create a branch on the transport and a tree locally.
@@ -770,6 +817,21 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # old formats at that point - raise TestSkipped.
             # TODO: rbc 20060208
             return WorkingTreeFormat2().initialize(bzrdir.BzrDir.open(relpath))
+
+    def assertIsDirectory(self, relpath, transport):
+        """Assert that relpath within transport is a directory.
+
+        This may not be possible on all transports; in that case it propagates
+        a TransportNotPossible.
+        """
+        try:
+            mode = transport.stat(relpath).st_mode
+        except errors.NoSuchFile:
+            self.fail("path %s is not a directory; no such file"
+                      % (relpath))
+        if not stat.S_ISDIR(mode):
+            self.fail("path %s is not a directory; has mode %#o"
+                      % (relpath, mode))
 
 
 class ChrootedTestCase(TestCaseWithTransport):
@@ -817,9 +879,14 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     # This is still a little bogus, 
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
+    test_root = TestCaseInTempDir.TEST_ROOT
     if result.wasSuccessful() or not keep_output:
-        if TestCaseInTempDir.TEST_ROOT is not None:
-            shutil.rmtree(TestCaseInTempDir.TEST_ROOT) 
+        if test_root is not None:
+            print 'Deleting test root %s...' % test_root
+            try:
+                shutil.rmtree(test_root)
+            finally:
+                print
     else:
         print "Failed tests working directories are in '%s'\n" % TestCaseInTempDir.TEST_ROOT
     return result.wasSuccessful()
@@ -874,6 +941,8 @@ def test_suite():
                    'bzrlib.tests.test_http',
                    'bzrlib.tests.test_identitymap',
                    'bzrlib.tests.test_inv',
+                   'bzrlib.tests.test_knit',
+                   'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_log',
                    'bzrlib.tests.test_merge',
@@ -886,11 +955,12 @@ def test_suite():
                    'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
+                   'bzrlib.tests.test_progress',
+                   'bzrlib.tests.test_reconcile',
                    'bzrlib.tests.test_repository',
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revprops',
-                   'bzrlib.tests.test_reweave',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
@@ -903,11 +973,13 @@ def test_suite():
                    'bzrlib.tests.test_testament',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
+                   'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_tsort',
                    'bzrlib.tests.test_ui',
                    'bzrlib.tests.test_uncommit',
                    'bzrlib.tests.test_upgrade',
+                   'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_workingtree',

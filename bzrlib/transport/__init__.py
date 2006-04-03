@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,39 +13,79 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 """Transport is an abstraction layer to handle file access.
 
 The abstraction is to allow access from the local filesystem, as well
 as remote (such as http or sftp).
+
+Transports are constructed from a string, being a URL or (as a degenerate
+case) a local filesystem path.  This is typically the top directory of
+a bzrdir, repository, or similar object we are interested in working with.
+The Transport returned has methods to read, write and manipulate files within
+it.
 """
 
 import errno
+from collections import deque
 from copy import deepcopy
 from stat import *
 import sys
 from unittest import TestSuite
+import urllib
 
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 import bzrlib.errors as errors
+from bzrlib.errors import DependencyNotPresent
+from bzrlib.symbol_versioning import *
 
+# {prefix: [transport_classes]}
+# Transports are inserted onto the list LIFO and tried in order; as a result
+# transports provided by plugins are tried first, which is usually what we
+# want.
 _protocol_handlers = {
 }
 
-def register_transport(prefix, klass, override=True):
+def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
+    """Register a transport that can be used to open URLs
+
+    Normally you should use register_lazy_transport, which defers loading the
+    implementation until it's actually used, and so avoids pulling in possibly
+    large implementation libraries.
+    """
+    # Note that this code runs very early in library setup -- trace may not be
+    # working, etc.
     global _protocol_handlers
-    # trace messages commented out because they're typically 
-    # run during import before trace is set up
-    if _protocol_handlers.has_key(prefix):
-        if override:
-            ## mutter('overriding transport: %s => %s' % (prefix, klass.__name__))
-            _protocol_handlers[prefix] = klass
-    else:
-        ## mutter('registering transport: %s => %s' % (prefix, klass.__name__))
-        _protocol_handlers[prefix] = klass
+    if deprecated_passed(override):
+        warn("register_transport(override) is deprecated")
+    _protocol_handlers.setdefault(prefix, []).insert(0, klass)
+
+
+def register_lazy_transport(scheme, module, classname):
+    """Register lazy-loaded transport class.
+
+    When opening a URL with the given scheme, load the module and then
+    instantiate the particular class.  
+
+    If the module raises DependencyNotPresent when it's imported, it is
+    skipped and another implementation of the protocol is tried.  This is
+    intended to be used when the implementation depends on an external
+    implementation that may not be present.  If any other error is raised, it
+    propagates up and the attempt to open the url fails.
+    """
+    # TODO: If no implementation of a protocol is available because of missing
+    # dependencies, we should perhaps show the message about what dependency
+    # was missing.
+    def _loader(base):
+        mod = __import__(module, globals(), locals(), [classname])
+        klass = getattr(mod, classname)
+        return klass(base)
+    _loader.module = module
+    register_transport(scheme, _loader)
 
 
 def _get_protocol_handlers():
-    """Return a dictionary of prefix:transport-factories."""
+    """Return a dictionary of {urlprefix: [factory]}"""
     return _protocol_handlers
 
 
@@ -58,16 +98,22 @@ def _set_protocol_handlers(new_handlers):
     _protocol_handlers = new_handlers
 
 
+def _clear_protocol_handlers():
+    global _protocol_handlers
+    _protocol_handlers = {}
+
+
 def _get_transport_modules():
     """Return a list of the modules providing transports."""
     modules = set()
-    for prefix, factory in _protocol_handlers.items():
-        if factory.__module__ == "bzrlib.transport":
-            # this is a lazy load transport, because no real ones
-            # are directlry in bzrlib.transport
-            modules.add(factory.module)
-        else:
-            modules.add(factory.__module__)
+    for prefix, factory_list in _protocol_handlers.items():
+        for factory in factory_list:
+            if factory.__module__ == "bzrlib.transport":
+                # this is a lazy load transport, because no real ones
+                # are directlry in bzrlib.transport
+                modules.add(factory.module)
+            else:
+                modules.add(factory.__module__)
     result = list(modules)
     result.sort()
     return result
@@ -107,6 +153,8 @@ class Transport(object):
                 raise errors.FileExists(path, extra=e)
             if e.errno == errno.EACCES:
                 raise errors.PermissionDenied(path, extra=e)
+            if e.errno == errno.ENOTEMPTY:
+                raise errors.DirectoryNotEmpty(path, extra=e)
         if raise_generic:
             raise errors.TransportError(orig_error=e)
 
@@ -115,7 +163,7 @@ class Transport(object):
         using a subdirectory or parent directory. This allows connections 
         to be pooled, rather than a new one needed for each subdir.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.clone)
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -163,15 +211,16 @@ class Transport(object):
                         as a single parameter.
         """
         total = self._get_total(multi)
+        result = []
         count = 0
         for entry in multi:
             self._update_pb(pb, msg, count, total)
             if expand:
-                func(*entry)
+                result.append(func(*entry))
             else:
-                func(entry)
+                result.append(func(entry))
             count += 1
-        return count
+        return tuple(result)
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
@@ -180,7 +229,7 @@ class Transport(object):
         XXX: Robert Collins 20051016 - is this really needed in the public
              interface ?
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.abspath)
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
@@ -201,9 +250,10 @@ class Transport(object):
         """Does the file relpath exist?
         
         Note that some transports MAY allow querying on directories, but this
-        is not part of the protocol.
+        is not part of the protocol.  In other words, the results of 
+        t.has("a_directory_name") are undefined."
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.has)
 
     def has_multi(self, relpaths, pb=None):
         """Return True/False for each entry in relpaths"""
@@ -223,6 +273,8 @@ class Transport(object):
 
     def iter_files_recursive(self):
         """Iter the relative paths of files in the transports sub-tree.
+
+        *NOTE*: This only lists *files*, not subdirectories!
         
         As with other listing functions, only some transports implement this,.
         you may check via is_listable to determine if it will.
@@ -237,7 +289,51 @@ class Transport(object):
 
         :param relpath: The relative path to the file
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.get)
+
+    def readv(self, relpath, offsets):
+        """Get parts of the file at the given relative path.
+
+        :offsets: A list of (offset, size) tuples.
+        :return: A list or generator of (offset, data) tuples
+        """
+        def do_combined_read(combined_offsets):
+            total_size = 0
+            for offset, size in combined_offsets:
+                total_size += size
+            mutter('readv coalesced %d reads.', len(combined_offsets))
+            offset = combined_offsets[0][0]
+            fp.seek(offset)
+            data = fp.read(total_size)
+            pos = 0
+            for offset, size in combined_offsets:
+                yield offset, data[pos:pos + size]
+                pos += size
+
+        if not len(offsets):
+            return
+        fp = self.get(relpath)
+        pending_offsets = deque(offsets)
+        combined_offsets = []
+        while len(pending_offsets):
+            offset, size = pending_offsets.popleft()
+            if not combined_offsets:
+                combined_offsets = [[offset, size]]
+            else:
+                if (len (combined_offsets) < 50 and
+                    combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
+                    # combatible offset:
+                    combined_offsets.append([offset, size])
+                else:
+                    # incompatible, or over the threshold issue a read and yield
+                    pending_offsets.appendleft((offset, size))
+                    for result in do_combined_read(combined_offsets):
+                        yield result
+                    combined_offsets = []
+        # whatever is left is a single coalesced request
+        if len(combined_offsets):
+            for result in do_combined_read(combined_offsets):
+                yield result
 
     def get_multi(self, relpaths, pb=None):
         """Get a list of file-like objects, one for each entry in relpaths.
@@ -264,7 +360,7 @@ class Transport(object):
         :param mode: The mode for the newly created file, 
                      None means just use the default
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.put)
 
     def put_multi(self, files, mode=None, pb=None):
         """Put a set of files into the location.
@@ -276,23 +372,25 @@ class Transport(object):
         """
         def put(path, f):
             self.put(path, f, mode=mode)
-        return self._iterate_over(files, put, pb, 'put', expand=True)
+        return len(self._iterate_over(files, put, pb, 'put', expand=True))
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
-        raise NotImplementedError
+        raise NotImplementedError(self.mkdir)
 
     def mkdir_multi(self, relpaths, mode=None, pb=None):
         """Create a group of directories"""
         def mkdir(path):
             self.mkdir(path, mode=mode)
-        return self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False)
+        return len(self._iterate_over(relpaths, mkdir, pb, 'mkdir', expand=False))
 
     def append(self, relpath, f):
         """Append the text in the file-like or string object to 
         the supplied location.
+
+        returns the length of f before the content was written to it.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.append)
 
     def append_multi(self, files, pb=None):
         """Append the text in each file-like or string object to
@@ -332,7 +430,7 @@ class Transport(object):
         def copy_entry(path):
             other.put(path, self.get(path), mode=mode)
 
-        return self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False)
+        return len(self._iterate_over(relpaths, copy_entry, pb, 'copy_to', expand=False))
 
     def copy_tree(self, from_relpath, to_relpath):
         """Copy a subtree from one relpath to another.
@@ -358,8 +456,30 @@ class Transport(object):
                     files.append(path)
         source.copy_to(files, target)
 
+    def rename(self, rel_from, rel_to):
+        """Rename a file or directory.
+
+        This *must* fail if the destination is a nonempty directory - it must
+        not automatically remove it.  It should raise DirectoryNotEmpty, or
+        some other PathError if the case can't be specifically detected.
+
+        If the destination is an empty directory or a file this function may
+        either fail or succeed, depending on the underlying transport.  It
+        should not attempt to remove the destination if overwriting is not the
+        native transport behaviour.  If at all possible the transport should
+        ensure that the rename either completes or not, without leaving the
+        destination deleted and the new file not moved in place.
+
+        This is intended mainly for use in implementing LockDir.
+        """
+        # transports may need to override this
+        raise NotImplementedError(self.rename)
+
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to.
+
+        The destination is deleted if possible, even if it's a non-empty
+        directory tree.
         
         If a transport can directly implement this it is suggested that
         it do so for efficiency.
@@ -388,11 +508,11 @@ class Transport(object):
         """
         # This is not implemented, because you need to do special tricks to
         # extract the basename, and add it to rel_to
-        raise NotImplementedError
+        raise NotImplementedError(self.move_multi_to)
 
     def delete(self, relpath):
         """Delete the item at relpath"""
-        raise NotImplementedError
+        raise NotImplementedError(self.delete)
 
     def delete_multi(self, relpaths, pb=None):
         """Queue up a bunch of deletes to be done.
@@ -422,6 +542,9 @@ class Transport(object):
             subtree.rmdir(dir)
         self.rmdir(relpath)
 
+    def __repr__(self):
+        return "<%s.%s url=%s>" % (self.__module__, self.__class__.__name__, self.base)
+
     def stat(self, relpath):
         """Return the stat information for a file.
         WARNING: This may not be implementable for all protocols, so use
@@ -432,7 +555,7 @@ class Transport(object):
         ALSO NOTE: Stats of directories may not be supported on some 
         transports.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.stat)
 
     def rmdir(self, relpath):
         """Remove a directory at the given path."""
@@ -452,7 +575,7 @@ class Transport(object):
 
     def listable(self):
         """Return True if this store supports listing."""
-        raise NotImplementedError
+        raise NotImplementedError(self.listable)
 
     def list_dir(self, relpath):
         """Return a list of all files at the given location.
@@ -470,7 +593,7 @@ class Transport(object):
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.lock_read)
 
     def lock_write(self, relpath):
         """Lock the given file for exclusive (write) access.
@@ -478,7 +601,7 @@ class Transport(object):
 
         :return: A lock object, which should contain an unlock() function.
         """
-        raise NotImplementedError
+        raise NotImplementedError(self.lock_write)
 
     def is_readonly(self):
         """Return true if this connection cannot be written to."""
@@ -490,38 +613,43 @@ def get_transport(base):
 
     base is either a URL or a directory name.  
     """
+    # TODO: give a better error if base looks like a url but there's no
+    # handler for the scheme?
     global _protocol_handlers
     if base is None:
         base = u'.'
     else:
         base = unicode(base)
-    for proto, klass in _protocol_handlers.iteritems():
+    for proto, factory_list in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
-            return klass(base)
-    # The default handler is the filesystem handler
-    # which has a lookup of None
-    return _protocol_handlers[None](base)
+            t = _try_transport_factories(base, factory_list)
+            if t:
+                return t
+    # The default handler is the filesystem handler, stored as protocol None
+    return _try_transport_factories(base, _protocol_handlers[None])
 
 
-def register_lazy_transport(scheme, module, classname):
-    """Register lazy-loaded transport class.
-
-    When opening a URL with the given scheme, load the module and then
-    instantiate the particular class.  
-    """
-    def _loader(base):
-        mod = __import__(module, globals(), locals(), [classname])
-        klass = getattr(mod, classname)
-        return klass(base)
-    _loader.module = module
-    register_transport(scheme, _loader)
+def _try_transport_factories(base, factory_list):
+    for factory in factory_list:
+        try:
+            return factory(base)
+        except DependencyNotPresent, e:
+            mutter("failed to instantiate transport %r for %r: %r" %
+                    (factory, base, e))
+            continue
+    return None
 
 
 def urlescape(relpath):
     """Escape relpath to be a valid url."""
     # TODO utf8 it first. utf8relpath = relpath.encode('utf8')
-    import urllib
     return urllib.quote(relpath)
+
+
+def urlunescape(relpath):
+    """Unescape relpath from url format."""
+    return urllib.unquote(relpath)
+    # TODO de-utf8 it last. relpath = utf8relpath.decode('utf8')
 
 
 class Server(object):
@@ -583,6 +711,10 @@ class TransportTestProviderAdapter(object):
 
     def get_transport_test_permutations(self, module):
         """Get the permutations module wants to have tested."""
+        if not hasattr(module, 'get_test_permutations'):
+            warning("transport module %s doesn't provide get_test_permutations()"
+                    % module.__name__)
+            return []
         return module.get_test_permutations()
 
     def _test_permutations(self):
@@ -598,14 +730,50 @@ class TransportTestProviderAdapter(object):
                 # from running this test
                 pass
         return result
+
+
+class TransportLogger(object):
+    """Adapt a transport to get clear logging data on api calls.
+    
+    Feel free to extend to log whatever calls are of interest.
+    """
+
+    def __init__(self, adapted):
+        self._adapted = adapted
+        self._calls = []
+
+    def get(self, name):
+        self._calls.append((name,))
+        return self._adapted.get(name)
+
+    def __getattr__(self, name):
+        """Thunk all undefined access through to self._adapted."""
+        # raise AttributeError, name 
+        return getattr(self._adapted, name)
+
+    def readv(self, name, offsets):
+        self._calls.append((name, offsets))
+        return self._adapted.readv(name, offsets)
         
 
 # None is the default transport, for things with no url scheme
 register_lazy_transport(None, 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('file://', 'bzrlib.transport.local', 'LocalTransport')
 register_lazy_transport('sftp://', 'bzrlib.transport.sftp', 'SFTPTransport')
-register_lazy_transport('http://', 'bzrlib.transport.http', 'HttpTransport')
-register_lazy_transport('https://', 'bzrlib.transport.http', 'HttpTransport')
+register_lazy_transport('http+urllib://', 'bzrlib.transport.http._urllib',
+                        'HttpTransport_urllib')
+register_lazy_transport('https+urllib://', 'bzrlib.transport.http._urllib',
+                        'HttpTransport_urllib')
+register_lazy_transport('http+pycurl://', 'bzrlib.transport.http._pycurl',
+                        'PyCurlTransport')
+register_lazy_transport('https+pycurl://', 'bzrlib.transport.http._pycurl',
+                        'PyCurlTransport')
+register_lazy_transport('http://', 'bzrlib.transport.http._urllib',
+                        'HttpTransport_urllib')
+register_lazy_transport('https://', 'bzrlib.transport.http._urllib',
+                        'HttpTransport_urllib')
+register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
+register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('memory:/', 'bzrlib.transport.memory', 'MemoryTransport')

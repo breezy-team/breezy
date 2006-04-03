@@ -26,37 +26,12 @@ from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import TestSkipped
+from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
 import bzrlib.workingtree as workingtree
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
-
-
-class TestCaseWithWorkingTree(TestCaseWithTransport):
-
-    def make_bzrdir(self, relpath):
-        # todo factor out into bzrdir-using-implementations-tests-base-class
-        try:
-            url = self.get_url(relpath)
-            segments = url.split('/')
-            if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
-                try:
-                    t.mkdir(segments[-1])
-                except errors.FileExists:
-                    pass
-            return self.bzrdir_format.initialize(url)
-        except errors.UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
-
-    def make_branch_and_tree(self, relpath):
-        made_control = self.make_bzrdir(relpath)
-        made_control.create_repository()
-        made_control.create_branch()
-        return self.workingtree_format.initialize(made_control)
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):
@@ -105,29 +80,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.unlock()
         self.assertEqual(None, tree.branch.peek_lock_mode())
  
-    def get_pullable_trees(self):
-        self.build_tree(['from/', 'from/file', 'to/'])
-        tree = self.make_branch_and_tree('from')
-        tree.add('file')
-        tree.commit('foo', rev_id='A')
-        tree_b = self.make_branch_and_tree('to')
-        return tree, tree_b
- 
-    def test_pull(self):
-        tree_a, tree_b = self.get_pullable_trees()
-        tree_b.pull(tree_a.branch)
-        self.failUnless(tree_b.branch.repository.has_revision('A'))
-        self.assertEqual('A', tree_b.last_revision())
-
-    def test_pull_overwrites(self):
-        tree_a, tree_b = self.get_pullable_trees()
-        tree_b.commit('foo', rev_id='B')
-        self.assertEqual(['B'], tree_b.branch.revision_history())
-        tree_b.pull(tree_a.branch, overwrite=True)
-        self.failUnless(tree_b.branch.repository.has_revision('A'))
-        self.failUnless(tree_b.branch.repository.has_revision('B'))
-        self.assertEqual('A', tree_b.last_revision())
-
     def test_revert(self):
         """Test selected-file revert"""
         tree = self.make_branch_and_tree('.')
@@ -170,7 +122,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         pause()
         sha = tree.get_file_sha1(tree.path2id('hello.txt'))
         self.assertEqual(1, tree._hashcache.miss_count)
-        tree2 = WorkingTree.open('.', tree.branch)
+        tree2 = WorkingTree.open('.')
         sha2 = tree2.get_file_sha1(tree2.path2id('hello.txt'))
         self.assertEqual(0, tree2._hashcache.miss_count)
         self.assertEqual(1, tree2._hashcache.hit_count)
@@ -375,6 +327,50 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.commit('foo', rev_id='foo', allow_pointless=True)
         self.assertEqual('foo', tree.last_revision())
 
+    def test_commit_local_unbound(self):
+        # using the library api to do a local commit on unbound branches is 
+        # also an error
+        tree = self.make_branch_and_tree('tree')
+        self.assertRaises(errors.LocalRequiresBoundBranch,
+                          tree.commit,
+                          'foo',
+                          local=True)
+ 
+    def test_local_commit_ignores_master(self):
+        # a --local commit does not require access to the master branch
+        # at all, or even for it to exist.
+        # we test this by setting up a bound branch and then corrupting
+        # the master.
+        master = self.make_branch('master')
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.branch.bind(master)
+        except errors.UpgradeRequired:
+            # older format.
+            return
+        master.bzrdir.transport.put('branch-format', StringIO('garbage'))
+        del master
+        # check its corrupted.
+        self.assertRaises(errors.UnknownFormatError,
+                          bzrdir.BzrDir.open,
+                          'master')
+        tree.commit('foo', rev_id='foo', local=True)
+ 
+    def test_local_commit_does_not_push_to_master(self):
+        # a --local commit does not require access to the master branch
+        # at all, or even for it to exist.
+        # we test that even when its available it does not push to it.
+        master = self.make_branch('master')
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.branch.bind(master)
+        except errors.UpgradeRequired:
+            # older format.
+            return
+        tree.commit('foo', rev_id='foo', local=True)
+        self.failIf(master.repository.has_revision('foo'))
+        self.assertEqual(None, master.last_revision())
+        
     def test_update_sets_last_revision(self):
         # working tree formats from the meta-dir format and newer support
         # setting the last revision on a tree independently of that on the 
@@ -439,3 +435,71 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(1, old_tree.update())
         self.assertEqual('A', old_tree.last_revision())
 
+    def test_merge_revert(self):
+        from bzrlib.merge import merge_inner
+        this = self.make_branch_and_tree('b1')
+        open('b1/a', 'wb').write('a test\n')
+        this.add('a')
+        open('b1/b', 'wb').write('b test\n')
+        this.add('b')
+        this.commit(message='')
+        base = this.bzrdir.clone('b2').open_workingtree()
+        open('b2/a', 'wb').write('b test\n')
+        other = this.bzrdir.clone('b3').open_workingtree()
+        open('b3/a', 'wb').write('c test\n')
+        open('b3/c', 'wb').write('c test\n')
+        other.add('c')
+
+        open('b1/b', 'wb').write('q test\n')
+        open('b1/d', 'wb').write('d test\n')
+        merge_inner(this.branch, other, base, this_tree=this)
+        self.assertNotEqual(open('b1/a', 'rb').read(), 'a test\n')
+        this.revert([])
+        self.assertEqual(open('b1/a', 'rb').read(), 'a test\n')
+        self.assertIs(os.path.exists('b1/b~'), True)
+        self.assertIs(os.path.exists('b1/c'), False)
+        self.assertIs(os.path.exists('b1/a~'), False)
+        self.assertIs(os.path.exists('b1/d'), True)
+
+    def test_update_updates_bound_branch_no_local_commits(self):
+        # doing an update in a tree updates the branch its bound to too.
+        master_tree = self.make_branch_and_tree('master')
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.branch.bind(master_tree.branch)
+        except errors.UpgradeRequired:
+            # legacy branches cannot bind
+            return
+        master_tree.commit('foo', rev_id='foo', allow_pointless=True)
+        tree.update()
+        self.assertEqual('foo', tree.last_revision())
+        self.assertEqual('foo', tree.branch.last_revision())
+
+    def test_update_turns_local_commit_into_merge(self):
+        # doing an update with a few local commits and no master commits
+        # makes pending-merges. 
+        # this is done so that 'bzr update; bzr revert' will always produce
+        # an exact copy of the 'logical branch' - the referenced branch for
+        # a checkout, and the master for a bound branch.
+        # its possible that we should instead have 'bzr update' when there
+        # is nothing new on the master leave the current commits intact and
+        # alter 'revert' to revert to the master always. But for now, its
+        # good.
+        master_tree = self.make_branch_and_tree('master')
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.branch.bind(master_tree.branch)
+        except errors.UpgradeRequired:
+            # legacy branches cannot bind
+            return
+        tree.commit('foo', rev_id='foo', allow_pointless=True, local=True)
+        tree.commit('bar', rev_id='bar', allow_pointless=True, local=True)
+        tree.update()
+        self.assertEqual(None, tree.last_revision())
+        self.assertEqual([], tree.branch.revision_history())
+        self.assertEqual(['bar'], tree.pending_merges())
+
+    def test_merge_modified(self):
+        tree = self.make_branch_and_tree('master')
+        tree._control_files.put('merge-hashes', StringIO('asdfasdf'))
+        self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)

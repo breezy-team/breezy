@@ -52,13 +52,6 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCommands(ExternalBase):
 
-    def test_help_commands(self):
-        self.runbzr('--help')
-        self.runbzr('help')
-        self.runbzr('help commands')
-        self.runbzr('help help')
-        self.runbzr('commit -h')
-
     def test_init_branch(self):
         self.runbzr(['init'])
 
@@ -207,22 +200,6 @@ class TestCommands(ExternalBase):
         os.chdir('revertdir')
         self.runbzr('revert')
         os.chdir('..')
-
-    def test_status(self):
-        self.runbzr("init")
-        self.build_tree(['hello.txt'])
-        result = self.runbzr("status")
-        self.assert_("unknown:\n  hello.txt\n" in result, result)
-        self.runbzr("add hello.txt")
-        result = self.runbzr("status")
-        self.assert_("added:\n  hello.txt\n" in result, result)
-        self.runbzr("commit -m added")
-        result = self.runbzr("status -r 0..1")
-        self.assert_("added:\n  hello.txt\n" in result, result)
-        self.build_tree(['world.txt'])
-        result = self.runbzr("status -r 0")
-        self.assert_("added:\n  hello.txt\n" \
-                     "unknown:\n  world.txt\n" in result, result)
 
     def test_mv_modes(self):
         """Test two modes of operation for mv"""
@@ -748,8 +725,11 @@ class TestCommands(ExternalBase):
         assert '|||||||' not in conflict_text
         assert 'hi world' not in conflict_text
         os.unlink('hello.OTHER')
+        os.unlink('question.OTHER')
+        self.runbzr('remerge jello --merge-type weave', retcode=3)
         self.runbzr('remerge hello --merge-type weave', retcode=1)
         assert os.path.exists('hello.OTHER')
+        self.assertIs(False, os.path.exists('question.OTHER'))
         file_id = self.runbzr('file-id hello')
         file_id = self.runbzr('file-id hello.THIS', retcode=3)
         self.runbzr('remerge --merge-type weave', retcode=1)
@@ -811,51 +791,6 @@ class TestCommands(ExternalBase):
         self.runbzr('commit -m conflicts')
         self.assertEquals(result, "")
 
-    def test_resign(self):
-        """Test re signing of data."""
-        import bzrlib.gpg
-        oldstrategy = bzrlib.gpg.GPGStrategy
-        wt = self.make_branch_and_tree('.')
-        branch = wt.branch
-        wt.commit("base", allow_pointless=True, rev_id='A')
-        try:
-            # monkey patch gpg signing mechanism
-            from bzrlib.testament import Testament
-            bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            self.runbzr('re-sign -r revid:A')
-            self.assertEqual(Testament.from_revision(branch.repository,
-                             'A').as_short_text(),
-                             branch.repository.revision_store.get('A', 
-                             'sig').read())
-        finally:
-            bzrlib.gpg.GPGStrategy = oldstrategy
-            
-    def test_resign_range(self):
-        import bzrlib.gpg
-        oldstrategy = bzrlib.gpg.GPGStrategy
-        wt = self.make_branch_and_tree('.')
-        branch = wt.branch
-        wt.commit("base", allow_pointless=True, rev_id='A')
-        wt.commit("base", allow_pointless=True, rev_id='B')
-        wt.commit("base", allow_pointless=True, rev_id='C')
-        try:
-            # monkey patch gpg signing mechanism
-            from bzrlib.testament import Testament
-            bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-            self.runbzr('re-sign -r 1..')
-            self.assertEqual(
-                Testament.from_revision(branch.repository,'A').as_short_text(),
-                branch.repository.revision_store.get('A', 'sig').read())
-            self.assertEqual(
-                Testament.from_revision(branch.repository,'B').as_short_text(),
-                branch.repository.revision_store.get('B', 'sig').read())
-            self.assertEqual(Testament.from_revision(branch.repository,
-                             'C').as_short_text(),
-                             branch.repository.revision_store.get('C', 
-                             'sig').read())
-        finally:
-            bzrlib.gpg.GPGStrategy = oldstrategy
-
     def test_push(self):
         # create a source branch
         os.mkdir('my-branch')
@@ -902,19 +837,17 @@ class TestCommands(ExternalBase):
         self.runbzr('missing ../missing/new-branch')
 
     def test_external_command(self):
-        """test that external commands can be run by setting the path"""
+        """Test that external commands can be run by setting the path
+        """
+        # We don't at present run bzr in a subprocess for blackbox tests, and so 
+        # don't really capture stdout, only the internal python stream.
+        # Therefore we don't use a subcommand that produces any output or does
+        # anything -- we just check that it can be run successfully.  
         cmd_name = 'test-command'
-        output = 'Hello from test-command'
         if sys.platform == 'win32':
             cmd_name += '.bat'
-            output += '\r\n'
-        else:
-            output += '\n'
-
         oldpath = os.environ.get('BZRPATH', None)
-
         bzr = self.capture
-
         try:
             if os.environ.has_key('BZRPATH'):
                 del os.environ['BZRPATH']
@@ -924,7 +857,7 @@ class TestCommands(ExternalBase):
                 f.write('@echo off\n')
             else:
                 f.write('#!/bin/sh\n')
-            f.write('echo Hello from test-command')
+            # f.write('echo Hello from test-command')
             f.close()
             os.chmod(cmd_name, 0755)
 
@@ -936,11 +869,6 @@ class TestCommands(ExternalBase):
             os.environ['BZRPATH'] = '.'
 
             bzr(cmd_name)
-            # The test suite does not capture stdout for external commands
-            # this is because you have to have a real file object
-            # to pass to Popen(stdout=FOO), and StringIO is not one of those.
-            # (just replacing sys.stdout does not change a spawned objects stdout)
-            #self.assertEquals(bzr(cmd_name), output)
 
             # Make sure empty path elements are ignored
             os.environ['BZRPATH'] = os.pathsep
@@ -1263,6 +1191,18 @@ class RemoteTests(object):
         url = self.get_readonly_url('branch/')
         self.run_bzr('check', url)
     
+    def test_push(self):
+        # create a source branch
+        os.mkdir('my-branch')
+        os.chdir('my-branch')
+        self.run_bzr('init')
+        file('hello', 'wt').write('foo')
+        self.run_bzr('add', 'hello')
+        self.run_bzr('commit', '-m', 'setup')
+
+        # with an explicit target work
+        self.run_bzr('push', self.get_url('output-branch'))
+
     
 class HTTPTests(TestCaseWithWebserver, RemoteTests):
     """Test various commands against a HTTP server."""

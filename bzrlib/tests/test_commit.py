@@ -20,10 +20,12 @@ import os
 import bzrlib
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 from bzrlib.workingtree import WorkingTree
 from bzrlib.commit import Commit
 from bzrlib.config import BranchConfig
-from bzrlib.errors import PointlessCommit, BzrError, SigningFailed
+from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed, 
+                           LockContention)
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -308,7 +310,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.repository.revision_store.has_id('A', 'sig'))
+        self.failIf(branch.repository.has_signature_for_revision_id('A'))
         try:
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
@@ -319,8 +321,7 @@ class TestCommit(TestCaseWithTransport):
                                                       working_tree=wt)
             self.assertEqual(Testament.from_revision(branch.repository,
                              'B').as_short_text(),
-                             branch.repository.revision_store.get('B', 
-                                                               'sig').read())
+                             branch.repository.get_signature_text('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
 
@@ -331,7 +332,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.repository.revision_store.has_id('A', 'sig'))
+        self.failIf(branch.repository.has_signature_for_revision_id('A'))
         try:
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
@@ -345,7 +346,7 @@ class TestCommit(TestCaseWithTransport):
                               working_tree=wt)
             branch = Branch.open(self.get_url('.'))
             self.assertEqual(branch.revision_history(), ['A'])
-            self.failIf(branch.repository.revision_store.has_id('B'))
+            self.failIf(branch.repository.has_revision('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
 
@@ -366,3 +367,25 @@ class TestCommit(TestCaseWithTransport):
             self.assertEqual(['called', 'called'], calls)
         finally:
             del bzrlib.ahook
+
+    def test_commit_object_doesnt_set_nick(self):
+        # using the Commit object directly does not set the branch nick.
+        wt = self.make_branch_and_tree('.')
+        c = Commit()
+        c.commit(working_tree=wt, message='empty tree', allow_pointless=True)
+        self.assertEquals(wt.branch.revno(), 1)
+        self.assertEqual({},
+                         wt.branch.repository.get_revision(
+                            wt.branch.last_revision()).properties)
+
+    def test_safe_master_lock(self):
+        os.mkdir('master')
+        master = BzrDirMetaFormat1().initialize('master')
+        master.create_repository()
+        master_branch = master.create_branch()
+        master.create_workingtree()
+        bound = master.sprout('bound')
+        wt = bound.open_workingtree()
+        wt.branch.set_bound_location(os.path.realpath('master'))
+        master_branch.lock_write()
+        self.assertRaises(LockContention, wt.commit, 'silly')

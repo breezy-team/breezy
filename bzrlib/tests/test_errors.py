@@ -29,3 +29,18 @@ class TestErrors(TestCaseWithTransport):
         error = errors.NoRepositoryPresent(dir)
         self.assertNotEqual(-1, str(error).find(repr(dir.transport.clone('..').base)))
         self.assertEqual(-1, str(error).find(repr(dir.transport.base)))
+
+    def test_up_to_date(self):
+        error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
+        self.assertEqualDiff("The branch format Bazaar-NG branch, "
+                             "format 0.0.4 is already at the most "
+                             "recent format.",
+                             str(error))
+
+    def test_corrupt_repository(self):
+        repo = self.make_repository('.')
+        error = errors.CorruptRepository(repo)
+        self.assertEqualDiff("An error has been detected in the repository %s.\n"
+                             "Please run bzr reconcile on this repository." %
+                             repo.bzrdir.root_transport.base,
+                             str(error))

@@ -1,5 +1,4 @@
-# Copyright (C) 2004, 2005 by Martin Pool
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +27,11 @@
 # TODO: Get every revision in the revision-store even if they're not
 # referenced by history and make sure they're all valid.
 
+# TODO: Perhaps have a way to record errors other than by raising exceptions;
+# would perhaps be enough to accumulate exception objects in a list without
+# raising them.  If there's more than one exception it'd be good to see them
+# all.
+
 import bzrlib.ui
 from bzrlib.trace import note, warning
 from bzrlib.osutils import rename, sha_string, fingerprint_file
@@ -39,6 +43,8 @@ from bzrlib.inventory import ROOT_ID
 class Check(object):
     """Check a branch"""
 
+    # The Check object interacts with InventoryEntry.check, etc.
+
     def __init__(self, branch):
         self.branch = branch
         self.repository = branch.repository
@@ -49,13 +55,13 @@ class Check(object):
         self.missing_parent_links = {}
         self.missing_inventory_sha_cnt = 0
         self.missing_revision_cnt = 0
-        # maps (file-id, version) -> sha1
+        # maps (file-id, version) -> sha1; used by InventoryFile._check
         self.checked_texts = {}
         self.checked_weaves = {}
 
     def check(self):
         self.branch.lock_read()
-        self.progress = bzrlib.ui.ui_factory.progress_bar()
+        self.progress = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             self.progress.update('retrieving inventory', 0, 0)
             # do not put in init, as it should be done with progess,
@@ -75,22 +81,14 @@ class Check(object):
                 revno += 1
                 self.check_one_rev(rev_id)
         finally:
-            self.progress.clear()
+            self.progress.finished()
             self.branch.unlock()
 
     def plan_revisions(self):
         repository = self.branch.repository
-        if not repository.revision_store.listable():
-            self.planned_revisions = repository.get_ancestry(self.history[-1])
-            self.planned_revisions.remove(None)
-            # FIXME progress bars should support this more nicely.
-            self.progress.clear()
-            print ("Checking reachable history -"
-                   " for a complete check use a local branch.")
-            return
-        
-        self.planned_revisions = set(repository.revision_store)
-        inventoried = set(self.inventory_weave.names())
+        self.planned_revisions = set(repository.all_revision_ids())
+        self.progress.clear()
+        inventoried = set(self.inventory_weave.versions())
         awol = self.planned_revisions - inventoried
         if len(awol) > 0:
             raise BzrCheckError('Stored revisions missing from inventory'
@@ -169,7 +167,7 @@ class Check(object):
                     self.missing_parent_links[parent] = missing_links
                     # list based so somewhat slow,
                     # TODO have a planned_revisions list and set.
-                    if self.branch.has_revision(parent):
+                    if self.branch.repository.has_revision(parent):
                         missing_ancestry = self.repository.get_ancestry(parent)
                         for missing in missing_ancestry:
                             if (missing is not None 

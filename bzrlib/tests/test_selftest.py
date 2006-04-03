@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 2 as published by
@@ -127,107 +127,24 @@ class TestTransportProviderAdapter(TestCase):
                          len(list(iter(adapter.adapt(input_test)))))
 
     def test_adapter_sets_transport_class(self):
-        # when the adapter adapts a test it needs to 
-        # place one of the permutations from the transport
-        # providers in each test case copy. This checks
-        # that it does not just use the same one all the time.
-        # and that the id is set correctly so that debugging is
-        # easy.
-        # 
-        # An instance of this test is actually used as the input
-        # for adapting it to all the available transports
-        # (or i think so - ??? mbp)
-        from bzrlib.transport.local import (LocalTransport,
-                                            LocalRelpathServer,
-                                            LocalAbspathServer,
-                                            LocalURLServer
-                                            )
-        try:
-            from bzrlib.transport.sftp import (SFTPTransport,
-                                               SFTPAbsoluteServer,
-                                               SFTPHomeDirServer,
-                                               SFTPSiblingAbsoluteServer,
-                                               )
-        except errors.ParamikoNotPresent, e:
-            warnings.warn(str(e))
-            has_paramiko = False
-        else:
-            has_paramiko = True
-        from bzrlib.transport.http import (HttpTransport,
-                                           HttpServer
-                                           )
-        from bzrlib.transport.ftp import FtpTransport
-        from bzrlib.transport.memory import (MemoryTransport,
-                                             MemoryServer
-                                             )
-        from bzrlib.transport import TransportTestProviderAdapter
-        # FIXME. What we want is a factory for the things
-        # needed to test the implementation. I.e. for transport we want:
-        # the class that connections should get; a local server factory
-        # so we would want the following permutations:
-        # LocalTransport relpath-factory
-        # LocalTransport abspath-factory
-        # LocalTransport file://-factory
-        # SFTPTransport homedir-factory
-        # SFTPTransport abssolute-factory
-        # HTTPTransport http-factory
-        # HTTPTransport https-factory
-        # etc, but we are currently lacking in this, so print out that
-        # this should be fixed.
+        # Check that the test adapter inserts a transport and server into the
+        # generated test.
+        #
+        # This test used to know about all the possible transports and the
+        # order they were returned but that seems overly brittle (mbp
+        # 20060307)
         input_test = TestTransportProviderAdapter(
             "test_adapter_sets_transport_class")
+        from bzrlib.transport import TransportTestProviderAdapter
         suite = TransportTestProviderAdapter().adapt(input_test)
-        # tests are generated in collation order. 
-        # XXX: but i'm not sure the order should really be part of the 
-        # contract of the adapter, should it -- mbp 20060201
-        test_iter = iter(suite)
-        http_test = test_iter.next()
-        local_relpath_test = test_iter.next()
-        local_abspath_test = test_iter.next()
-        local_urlpath_test = test_iter.next()
-        memory_test = test_iter.next()
-        readonly_test = test_iter.next()
-        if has_paramiko:
-            sftp_abs_test = test_iter.next()
-            sftp_homedir_test = test_iter.next()
-            sftp_sibling_abs_test = test_iter.next()
-        # ftp_test = test_iter.next()
-        # should now be at the end of the test
-        self.assertRaises(StopIteration, test_iter.next)
-        self.assertEqual(LocalTransport, local_relpath_test.transport_class)
-        self.assertEqual(LocalRelpathServer, local_relpath_test.transport_server)
-        
-        self.assertEqual(LocalTransport, local_abspath_test.transport_class)
-        self.assertEqual(LocalAbspathServer, local_abspath_test.transport_server)
-
-        self.assertEqual(LocalTransport, local_urlpath_test.transport_class)
-        self.assertEqual(LocalURLServer, local_urlpath_test.transport_server)
-
-        if has_paramiko:
-            self.assertEqual(SFTPTransport, sftp_abs_test.transport_class)
-            self.assertEqual(SFTPAbsoluteServer, sftp_abs_test.transport_server)
-            self.assertEqual(SFTPTransport, sftp_homedir_test.transport_class)
-            self.assertEqual(SFTPHomeDirServer, sftp_homedir_test.transport_server)
-            self.assertEqual(SFTPTransport, sftp_sibling_abs_test.transport_class)
-            self.assertEqual(SFTPSiblingAbsoluteServer,
-                             sftp_sibling_abs_test.transport_server)
-
-        self.assertEqual(HttpTransport, http_test.transport_class)
-        self.assertEqual(HttpServer, http_test.transport_server)
-        # self.assertEqual(FtpTransport, ftp_test.transport_class)
-
-        self.assertEqual(MemoryTransport, memory_test.transport_class)
-        self.assertEqual(MemoryServer, memory_test.transport_server)
-        
-        # we could test all of them for .id, but two is probably sufficient.
-        self.assertEqual("bzrlib.tests.test_selftest."
-                         "TestTransportProviderAdapter."
-                         "test_adapter_sets_transport_class(MemoryServer)",
-                         memory_test.id())
-        self.assertEqual("bzrlib.tests.test_selftest."
-                         "TestTransportProviderAdapter."
-                         "test_adapter_sets_transport_class(LocalRelpathServer)",
-                         local_relpath_test.id())
+        tests = list(iter(suite))
+        self.assertTrue(len(tests) > 6)
+        # there are at least that many builtin transports
+        one_test = tests[0]
+        self.assertTrue(issubclass(one_test.transport_class, 
+                                   bzrlib.transport.Transport))
+        self.assertTrue(issubclass(one_test.transport_server, 
+                                   bzrlib.transport.Server))
 
 
 class TestBranchProviderAdapter(TestCase):
@@ -306,6 +223,89 @@ class TestRepositoryProviderAdapter(TestCase):
         self.assertEqual(tests[1].transport_readonly_server, server2)
 
 
+class TestInterRepositoryProviderAdapter(TestCase):
+    """A group of tests that test the InterRepository test adapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        from bzrlib.repository import InterRepositoryTestProviderAdapter
+        input_test = TestInterRepositoryProviderAdapter(
+            "test_adapted_tests")
+        server1 = "a"
+        server2 = "b"
+        formats = [(str, "C1", "C2"), (int, "D1", "D2")]
+        adapter = InterRepositoryTestProviderAdapter(server1, server2, formats)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].interrepo_class, formats[0][0])
+        self.assertEqual(tests[0].repository_format, formats[0][1])
+        self.assertEqual(tests[0].repository_format_to, formats[0][2])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].interrepo_class, formats[1][0])
+        self.assertEqual(tests[1].repository_format, formats[1][1])
+        self.assertEqual(tests[1].repository_format_to, formats[1][2])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+
+
+class TestInterVersionedFileProviderAdapter(TestCase):
+    """A group of tests that test the InterVersionedFile test adapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        from bzrlib.versionedfile import InterVersionedFileTestProviderAdapter
+        input_test = TestInterRepositoryProviderAdapter(
+            "test_adapted_tests")
+        server1 = "a"
+        server2 = "b"
+        formats = [(str, "C1", "C2"), (int, "D1", "D2")]
+        adapter = InterVersionedFileTestProviderAdapter(server1, server2, formats)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].interversionedfile_class, formats[0][0])
+        self.assertEqual(tests[0].versionedfile_factory, formats[0][1])
+        self.assertEqual(tests[0].versionedfile_factory_to, formats[0][2])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].interversionedfile_class, formats[1][0])
+        self.assertEqual(tests[1].versionedfile_factory, formats[1][1])
+        self.assertEqual(tests[1].versionedfile_factory_to, formats[1][2])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+
+
+class TestRevisionStoreProviderAdapter(TestCase):
+    """A group of tests that test the RevisionStore test adapter."""
+
+    def test_adapted_tests(self):
+        # check that constructor parameters are passed through to the adapted
+        # test.
+        from bzrlib.store.revision import RevisionStoreTestProviderAdapter
+        input_test = TestRevisionStoreProviderAdapter(
+            "test_adapted_tests")
+        # revision stores need a store factory - i.e. RevisionKnit
+        #, a readonly and rw transport 
+        # transport servers:
+        server1 = "a"
+        server2 = "b"
+        store_factories = ["c", "d"]
+        adapter = RevisionStoreTestProviderAdapter(server1, server2, store_factories)
+        suite = adapter.adapt(input_test)
+        tests = list(iter(suite))
+        self.assertEqual(2, len(tests))
+        self.assertEqual(tests[0].store_factory, store_factories[0][0])
+        self.assertEqual(tests[0].transport_server, server1)
+        self.assertEqual(tests[0].transport_readonly_server, server2)
+        self.assertEqual(tests[1].store_factory, store_factories[1][0])
+        self.assertEqual(tests[1].transport_server, server1)
+        self.assertEqual(tests[1].transport_readonly_server, server2)
+
+
 class TestWorkingTreeProviderAdapter(TestCase):
     """A group of tests that test the workingtree implementation test adapter."""
 
@@ -354,18 +354,26 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
     def test_get_readonly_url_http(self):
         from bzrlib.transport import get_transport
         from bzrlib.transport.local import LocalRelpathServer
-        from bzrlib.transport.http import HttpServer, HttpTransport
+        from bzrlib.transport.http import HttpServer, HttpTransportBase
         self.transport_server = LocalRelpathServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
         url = self.get_readonly_url()
         url2 = self.get_readonly_url('foo/bar')
+        # the transport returned may be any HttpTransportBase subclass
         t = get_transport(url)
         t2 = get_transport(url2)
-        self.failUnless(isinstance(t, HttpTransport))
-        self.failUnless(isinstance(t2, HttpTransport))
+        self.failUnless(isinstance(t, HttpTransportBase))
+        self.failUnless(isinstance(t2, HttpTransportBase))
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
+    def test_is_directory(self):
+        """Test assertIsDirectory assertion"""
+        t = self.get_transport()
+        self.build_tree(['a_dir/', 'a_file'], transport=t)
+        self.assertIsDirectory('a_dir', t)
+        self.assertRaises(AssertionError, self.assertIsDirectory, 'a_file', t)
+        self.assertRaises(AssertionError, self.assertIsDirectory, 'not_here', t)
 
 class TestChrootedTest(ChrootedTestCase):
 
@@ -374,3 +382,13 @@ class TestChrootedTest(ChrootedTestCase):
         t = get_transport(self.get_readonly_url())
         url = t.base
         self.assertEqual(url, t.clone('..').base)
+
+
+class TestExtraAssertions(TestCase):
+    """Tests for new test assertions in bzrlib test suite"""
+
+    def test_assert_isinstance(self):
+        self.assertIsInstance(2, int)
+        self.assertIsInstance(u'', basestring)
+        self.assertRaises(AssertionError, self.assertIsInstance, None, int)
+        self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)

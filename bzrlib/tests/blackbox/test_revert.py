@@ -61,3 +61,14 @@ class TestRevert(ExternalBase):
         # test case for bug #29424:
         # revert to specific revision for file in subdir does not work
         self.helper('-r 1')
+
+    def test_revert_in_checkout(self):
+        os.mkdir('brach')
+        os.chdir('brach')
+        self._prepare_tree()
+        self.runbzr('checkout --lightweight . ../sprach')
+        self.runbzr('commit -m more')
+        os.chdir('../sprach')
+        self.assertEqual('', self.capture('status'))
+        self.runbzr('revert')
+        self.assertEqual('', self.capture('status'))

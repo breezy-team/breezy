@@ -123,7 +123,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
 
         mutter("smart add of %r, abs=%r", f, af)
         
-        if is_control_file(af):
+        if tree.is_control_filename(af):
             raise ForbiddenFileError('cannot add control file %s' % f)
             
         versioned = (inv.path2id(rf) != None)
@@ -152,7 +152,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
         if kind == 'directory' and recurse and not sub_tree:
             for subf in os.listdir(af):
                 subp = bzrlib.osutils.pathjoin(rf, subf)
-                if subf == bzrlib.BZRDIR:
+                if tree.is_control_filename(subp):
                     mutter("skip control directory %r", subp)
                 else:
                     ignore_glob = tree.is_ignored(subp)

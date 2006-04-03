@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,11 +13,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-"""Implementation of Transport that uses memory for its storage."""
+
+"""Implementation of Transport that uses memory for its storage.
+
+The contents of the transport will be lost when the object is discarded,
+so this is primarily useful for testing.
+"""
 
 from copy import copy
 import os
 import errno
+import re
 from stat import *
 from cStringIO import StringIO
 
@@ -29,11 +35,13 @@ class MemoryStat(object):
 
     def __init__(self, size, is_dir, perms):
         self.st_size = size
-        if perms is None:
-            perms = 0644
         if not is_dir:
+            if perms is None:
+                perms = 0644
             self.st_mode = S_IFREG | perms
         else:
+            if perms is None:
+                perms = 0755
             self.st_mode = S_IFDIR | perms
 
 
@@ -48,6 +56,7 @@ class MemoryTransport(Transport):
             url = url + '/'
         super(MemoryTransport, self).__init__(url)
         self._cwd = url[url.find(':') + 1:]
+        # dictionaries from absolute path to file mode
         self._dirs = {}
         self._files = {}
         self._locks = {}
@@ -84,6 +93,7 @@ class MemoryTransport(Transport):
         self._check_parent(_abspath)
         orig_content, orig_mode = self._files.get(_abspath, ("", None))
         self._files[_abspath] = (orig_content + f.read(), orig_mode)
+        return len(orig_content)
 
     def _check_parent(self, _abspath):
         dir = os.path.dirname(_abspath)
@@ -151,6 +161,27 @@ class MemoryTransport(Transport):
                 path[len(_abspath)] == '/'):
                 result.append(path[len(_abspath) + 1:])
         return result
+
+    def rename(self, rel_from, rel_to):
+        """Rename a file or directory; fail if the destination exists"""
+        abs_from = self._abspath(rel_from)
+        abs_to = self._abspath(rel_to)
+        def replace(x):
+            if x == abs_from:
+                x = abs_to
+            elif x.startswith(abs_from + '/'):
+                x = abs_to + x[len(abs_from):]
+            return x
+        def do_renames(container):
+            for path in container:
+                new_path = replace(path)
+                if new_path != path:
+                    if new_path in container:
+                        raise FileExists(new_path)
+                    container[new_path] = container[path]
+                    del container[path]
+        do_renames(self._files)
+        do_renames(self._dirs)
     
     def rmdir(self, relpath):
         """See Transport.rmdir."""
@@ -159,10 +190,11 @@ class MemoryTransport(Transport):
             self._translate_error(IOError(errno.ENOTDIR, relpath), relpath)
         for path in self._files:
             if path.startswith(_abspath):
-                self._translate_error(IOError(errno.EBUSY, relpath), relpath)
+                self._translate_error(IOError(errno.ENOTEMPTY, relpath),
+                                      relpath)
         for path in self._dirs:
             if path.startswith(_abspath) and path != _abspath:
-                self._translate_error(IOError(errno.EBUSY, relpath), relpath)
+                self._translate_error(IOError(errno.ENOTEMPTY, relpath), relpath)
         if not _abspath in self._dirs:
             raise NoSuchFile(relpath)
         del self._dirs[_abspath]

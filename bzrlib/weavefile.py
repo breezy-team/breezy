@@ -92,39 +92,64 @@ def write_weave_v5(weave, f):
 
 
 
-def read_weave(f,prelude=False):
-    return read_weave_v5(f,prelude=prelude)
-
-
-def read_weave_v5(f,prelude=False):
-    from weave import Weave, WeaveFormatError
+def read_weave(f):
+    # FIXME: detect the weave type and dispatch
+    from bzrlib.trace import mutter
+    from weave import Weave
     w = Weave(getattr(f, 'name', None))
+    _read_weave_v5(f, w)
+    return w
 
-    l = f.readline()
+
+def _read_weave_v5(f, w):
+    """Private helper routine to read a weave format 5 file into memory.
+    
+    This is only to be used by read_weave and WeaveFile.__init__.
+    """
+    #  200   0   2075.5080   1084.0360   bzrlib.weavefile:104(_read_weave_v5)
+    # +60412 0    366.5900    366.5900   +<method 'readline' of 'file' objects>
+    # +59982 0    320.5280    320.5280   +<method 'startswith' of 'str' objects>
+    # +59363 0    297.8080    297.8080   +<method 'append' of 'list' objects>
+    # replace readline call with iter over all lines ->
+    # safe because we already suck on memory.
+    #  200   0   1492.7170    802.6220   bzrlib.weavefile:104(_read_weave_v5)
+    # +59982 0    329.9100    329.9100   +<method 'startswith' of 'str' objects>
+    # +59363 0    320.2980    320.2980   +<method 'append' of 'list' objects>
+    # replaced startswith with slice lookups:
+    #  200   0    851.7250    501.1120   bzrlib.weavefile:104(_read_weave_v5)
+    # +59363 0    311.8780    311.8780   +<method 'append' of 'list' objects>
+    # +200   0     30.2500     30.2500   +<method 'readlines' of 'file' objects>
+                  
+    from weave import WeaveFormatError
+
+    lines = iter(f.readlines())
+    
+    l = lines.next()
     if l != FORMAT_1:
         raise WeaveFormatError('invalid weave file header: %r' % l)
 
     ver = 0
+    # read weave header.
     while True:
-        l = f.readline()
+        l = lines.next()
         if l[0] == 'i':
             if len(l) > 2:
                 w._parents.append(map(int, l[2:].split(' ')))
             else:
                 w._parents.append([])
 
-            l = f.readline()[:-1]
-            assert l.startswith('1 ')
+            l = lines.next()[:-1]
+            assert '1 ' == l[0:2]
             w._sha1s.append(l[2:])
                 
-            l = f.readline()
-            assert l.startswith('n ')
+            l = lines.next()
+            assert 'n ' == l[0:2]
             name = l[2:-1]
             assert name not in w._name_map
             w._names.append(name)
             w._name_map[name] = ver
                 
-            l = f.readline()
+            l = lines.next()
             assert l == '\n'
 
             ver += 1
@@ -133,16 +158,14 @@ def read_weave_v5(f,prelude=False):
         else:
             raise WeaveFormatError('unexpected line %r' % l)
 
-    if prelude:
-        return w
-
+    # read weave body
     while True:
-        l = f.readline()
+        l = lines.next()
         if l == 'W\n':
             break
-        elif l.startswith('. '):
+        elif '. ' == l[0:2]:
             w._weave.append(l[2:])  # include newline
-        elif l.startswith(', '):
+        elif ', ' == l[0:2]:
             w._weave.append(l[2:-1])        # exclude newline
         elif l == '}\n':
             w._weave.append(('}', None))

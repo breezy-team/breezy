@@ -41,6 +41,7 @@ from bzrlib.transport.memory import MemoryServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
 
+
 # TODO: Make a branch using basis branch, and check that it 
 # doesn't request any files that could have been avoided, by 
 # hooking into the Transport.
@@ -66,7 +67,7 @@ class TestCaseWithBranch(TestCaseWithTransport):
         except errors.UninitializableFormat:
             raise TestSkipped('Uninitializable branch format')
 
-    def make_repository(self, relpath):
+    def make_repository(self, relpath, shared=False):
         try:
             url = self.get_url(relpath)
             segments = url.split('/')
@@ -78,7 +79,7 @@ class TestCaseWithBranch(TestCaseWithTransport):
                 except FileExists:
                     pass
             made_control = self.bzrdir_format.initialize(url)
-            return made_control.create_repository()
+            return made_control.create_repository(shared=shared)
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
@@ -95,7 +96,6 @@ class TestBranch(TestCaseWithBranch):
 
     def test_fetch_revisions(self):
         """Test fetch-revision operation."""
-        from bzrlib.fetch import Fetcher
         get_transport(self.get_url()).mkdir('b1')
         get_transport(self.get_url()).mkdir('b2')
         wt = self.make_branch_and_tree('b1')
@@ -106,14 +106,11 @@ class TestBranch(TestCaseWithBranch):
         wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
 
         mutter('start fetch')
-        f = Fetcher(from_branch=b1, to_branch=b2)
-        eq = self.assertEquals
-        eq(f.count_copied, 1)
-        eq(f._last_revision, 'revision-1')
+        self.assertEqual((1, []), b2.fetch(b1))
 
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')
-        eq(tree.get_file_text('foo-id'), 'hello')
+        self.assertEqual(tree.get_file_text('foo-id'), 'hello')
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
@@ -245,16 +242,19 @@ class TestBranch(TestCaseWithBranch):
         branch.repository.sign_revision('A', strategy)
         self.assertEqual(Testament.from_revision(branch.repository, 
                          'A').as_short_text(),
-                         branch.repository.revision_store.get('A', 
-                         'sig').read())
+                         branch.repository.get_signature_text('A'))
 
     def test_store_signature(self):
-        branch = self.get_branch()
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
         branch.repository.store_revision_signature(
             bzrlib.gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+        self.assertRaises(errors.NoSuchRevision,
+                          branch.repository.has_signature_for_revision_id,
+                          'A')
+        wt.commit("base", allow_pointless=True, rev_id='A')
         self.assertEqual('FOO', 
-                         branch.repository.revision_store.get('A', 
-                         'sig').read())
+                         branch.repository.get_signature_text('A'))
 
     def test_branch_keeps_signatures(self):
         wt = self.make_branch_and_tree('source')
@@ -265,24 +265,8 @@ class TestBranch(TestCaseWithBranch):
         # wt.clone should work to disks.
         self.build_tree(['target/'])
         d2 = wt.bzrdir.clone('target')
-        self.assertEqual(wt.branch.repository.revision_store.get('A', 
-                            'sig').read(),
-                         d2.open_repository().revision_store.get('A', 
-                            'sig').read())
-
-    def test_upgrade_preserves_signatures(self):
-        # this is in the current test format
-        wt = self.make_branch_and_tree('source')
-        wt.commit('A', allow_pointless=True, rev_id='A')
-        wt.branch.repository.sign_revision('A',
-            bzrlib.gpg.LoopbackGPGStrategy(None))
-        old_signature = wt.branch.repository.revision_store.get('A',
-            'sig').read()
-        upgrade(wt.basedir)
-        wt = WorkingTree.open(wt.basedir)
-        new_signature = wt.branch.repository.revision_store.get('A',
-            'sig').read()
-        self.assertEqual(old_signature, new_signature)
+        self.assertEqual(wt.branch.repository.get_signature_text('A'),
+                         d2.open_repository().get_signature_text('A'))
 
     def test_nicks(self):
         """Branch nicknames"""
@@ -319,6 +303,24 @@ class TestBranch(TestCaseWithBranch):
         committed = branch.repository.get_revision(branch.last_revision())
         self.assertEqual(committed.properties["branch-nick"], 
                          "My happy branch")
+
+    def test_create_open_branch_uses_repository(self):
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        repo.bzrdir.root_transport.mkdir('child')
+        child_dir = self.bzrdir_format.initialize('child')
+        try:
+            child_branch = self.branch_format.initialize(child_dir)
+        except errors.UninitializableFormat:
+            # branch references are not default init'able.
+            return
+        self.assertEqual(repo.bzrdir.root_transport.base,
+                         child_branch.repository.bzrdir.root_transport.base)
+        child_branch = bzrlib.branch.Branch.open(self.get_url('child'))
+        self.assertEqual(repo.bzrdir.root_transport.base,
+                         child_branch.repository.bzrdir.root_transport.base)
 
 
 class ChrootedTests(TestCaseWithBranch):
@@ -468,11 +470,11 @@ class TestBranchTransaction(TestCaseWithBranch):
                                    transactions.ReadOnlyTransaction))
         self.get_branch().unlock()
         
-    def test_lock_write_acquires_passthrough_transaction(self):
+    def test_lock_write_acquires_write_transaction(self):
         self.get_branch().lock_write()
         # cannot use get_transaction as its magic
         self.failUnless(isinstance(self.get_branch().control_files._transaction,
-                                   transactions.PassThroughTransaction))
+                                   transactions.WriteTransaction))
         self.get_branch().unlock()
 
 

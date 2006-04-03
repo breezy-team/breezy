@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ rio itself works in Unicode strings.  It is typically encoded to UTF-8,
 but this depends on the transport.
 """
 
+import cStringIO
 import os
 import sys
 from tempfile import TemporaryFile
@@ -63,6 +64,12 @@ class TestRio(TestCase):
         self.assertEquals(list(s.to_lines()),
                 ['name: fred\n',
                  'number: 42\n'])
+
+    def test_as_dict(self):
+        """Convert rio Stanza to dictionary"""
+        s = Stanza(number='42', name='fred')
+        sd = s.as_dict()
+        self.assertEquals(sd, dict(number='42', name='fred'))
 
     def test_to_file(self):
         """Write rio to file"""
@@ -280,3 +287,26 @@ s: both\\\"
         """Write empty stanza"""
         l = list(Stanza().to_lines())
         self.assertEquals(l, [])
+
+    def test_rio_raises_type_error(self):
+        """TypeError on adding invalid type to Stanza"""
+        s = Stanza()
+        self.assertRaises(TypeError, s.add, 'foo', {})
+
+    def test_rio_raises_type_error_key(self):
+        """TypeError on adding invalid type to Stanza"""
+        s = Stanza()
+        self.assertRaises(TypeError, s.add, 10, {})
+
+    def test_rio_unicode(self):
+        # intentionally use cStringIO which doesn't accomodate unencoded unicode objects
+        sio = cStringIO.StringIO()
+        uni_data = u'\N{KATAKANA LETTER O}'
+        s = Stanza(foo=uni_data)
+        self.assertEquals(s.get('foo'), uni_data)
+        raw_lines = s.to_lines()
+        self.assertEquals(raw_lines,
+                ['foo: ' + uni_data.encode('utf-8') + '\n'])
+        new_s = read_stanza(raw_lines)
+        self.assertEquals(new_s.get('foo'), uni_data)
+

@@ -1,5 +1,4 @@
 # Copyright (C) 2005, 2006 by Canonical Ltd
-# -*- coding: utf-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,18 +32,54 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCommit(ExternalBase):
 
-    def test_empty_commit(self):
+    def test_05_empty_commit(self):
+        """Commit of tree with no versioned files should fail"""
+        # If forced, it should succeed, but this is not tested here.
         self.runbzr("init")
         self.build_tree(['hello.txt'])
         self.runbzr("commit -m empty", retcode=3)
+
+    def test_10_verbose_commit(self):
+        """Add one file and examine verbose commit output"""
+        self.runbzr("init")
+        self.build_tree(['hello.txt'])
         self.runbzr("add hello.txt")
-        self.runbzr("commit -m added")       
+        out,err = self.run_bzr("commit", "-m", "added")
+        self.assertEqual('', out)
+        self.assertEqual('added hello.txt\n'
+                         'Committed revision 1.\n',
+                         err)
+
+    def test_15_verbose_commit_with_unknown(self):
+        """Unknown files should not be listed by default in verbose output"""
+        # Is that really the best policy?
+        self.runbzr("init")
+        self.build_tree(['hello.txt', 'extra.txt'])
+        self.runbzr("add hello.txt")
+        out,err = self.run_bzr("commit", "-m", "added")
+        self.assertEqual('', out)
+        self.assertEqual('added hello.txt\n'
+                         'Committed revision 1.\n',
+                         err)
+
+    def test_16_verbose_commit_with_unchanged(self):
+        """Unchanged files should not be listed by default in verbose output"""
+        self.runbzr("init")
+        self.build_tree(['hello.txt', 'unchanged.txt'])
+        self.runbzr('add unchanged.txt')
+        self.runbzr('commit -m unchanged unchanged.txt')
+        self.runbzr("add hello.txt")
+        out,err = self.run_bzr("commit", "-m", "added")
+        self.assertEqual('', out)
+        self.assertEqual('added hello.txt\n'
+                         'Committed revision 2.\n',
+                         err)
 
     def test_empty_commit_message(self):
         self.runbzr("init")
         file('foo.c', 'wt').write('int main() {}')
         self.runbzr(['add', 'foo.c'])
-        self.runbzr(["commit", "-m", ""] , retcode=3) 
+        self.runbzr(["commit", "-m", ""] , retcode=3)
 
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
@@ -71,7 +106,7 @@ class TestCommit(ExternalBase):
         # of date checkout
         self.make_branch_and_tree('branch')
         # make a checkout
-        self.runbzr('checkout branch checkout')
+        self.runbzr('checkout --lightweight branch checkout')
         # commit to the original branch to make the checkout out of date
         self.runbzr('commit --unchanged -m message branch')
         # now commit to the checkout should emit
@@ -82,3 +117,11 @@ class TestCommit(ExternalBase):
                          ('',
                           "bzr: ERROR: Working tree is out of date, please run "
                           "'bzr update'.\n"))
+
+    def test_local_commit_unbound(self):
+        # a --local commit on an unbound branch is an error
+        self.make_branch_and_tree('.')
+        out, err = self.run_bzr('commit', '--local', retcode=3)
+        self.assertEqualDiff('', out)
+        self.assertEqualDiff('bzr: ERROR: Cannot perform local-only commits '
+                             'on unbound branches.\n', err)

@@ -19,14 +19,13 @@ import os
 from bzrlib.add import smart_add
 from bzrlib.builtins import merge
 from bzrlib.delta import compare_trees
-from bzrlib.fetch import greedy_fetch
 from bzrlib.merge import merge_inner
 from bzrlib.revision import common_ancestor
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.workingtree import WorkingTree
 
 
-class TestFileIdInvolved(TestCaseWithRepository):
+class FileIdInvolvedBase(TestCaseWithRepository):
 
     def touch(self,filename):
         f = file(filename,"a")
@@ -35,8 +34,7 @@ class TestFileIdInvolved(TestCaseWithRepository):
 
     def merge(self, branch_from, wt_to):
         # minimal ui-less merge.
-        greedy_fetch(to_branch=wt_to.branch, from_branch=branch_from,
-                     revision=branch_from.last_revision())
+        wt_to.branch.fetch(branch_from)
         base_rev = common_ancestor(branch_from.last_revision(),
                                     wt_to.branch.last_revision(),
                                     wt_to.branch.repository)
@@ -44,6 +42,21 @@ class TestFileIdInvolved(TestCaseWithRepository):
                     wt_to.branch.repository.revision_tree(base_rev),
                     this_tree=wt_to)
         wt_to.add_pending_merge(branch_from.last_revision())
+
+    def compare_tree_fileids(self, branch, old_rev, new_rev):
+        old_tree = self.branch.repository.revision_tree(old_rev)
+        new_tree = self.branch.repository.revision_tree(new_rev)
+        delta = compare_trees(old_tree, new_tree)
+
+        l2 = [id for path, id, kind in delta.added] + \
+             [id for oldpath, newpath, id, kind, text_modified, \
+                meta_modified in delta.renamed] + \
+             [id for path, id, kind, text_modified, meta_modified in \
+                delta.modified]
+        return set(l2)
+
+    
+class TestFileIdInvolved(FileIdInvolvedBase):
 
     def setUp(self):
         super(TestFileIdInvolved, self).setUp()
@@ -160,28 +173,55 @@ class TestFileIdInvolved(TestCaseWithRepository):
         self.assertEquals( l1, l2 )
 
     def test_fileid_involved_full_compare(self):
-        from bzrlib.tsort import topo_sort
         pp=[]
         history = self.branch.revision_history( )
 
         if len(history) < 2: return
 
         for start in range(0,len(history)-1):
+            start_id = history[start]
             for end in range(start+1,len(history)):
-
+                end_id = history[end]
                 l1 = self.branch.repository.fileid_involved_between_revs(
-                    history[start], history[end])
-
-                old_tree = self.branch.repository.revision_tree(history[start])
-                new_tree = self.branch.repository.revision_tree(history[end])
-                delta = compare_trees(old_tree, new_tree )
-
-                l2 = [id for path, id, kind in delta.added] + \
-                     [id for oldpath, newpath, id, kind, text_modified, \
-                        meta_modified in delta.renamed] + \
-                     [id for path, id, kind, text_modified, meta_modified in \
-                        delta.modified]
-
-                self.assertEquals(l1, set(l2))
+                    start_id, end_id)
+                l2 = self.compare_tree_fileids(self.branch, start_id, end_id)
+                self.assertEquals(l1, l2)
 
 
+class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
+
+    def setUp(self):
+        super(TestFileIdInvolvedSuperset, self).setUp()
+
+        main_wt = self.make_branch_and_tree('main')
+        main_branch = main_wt.branch
+        self.build_tree(["main/a","main/b","main/c"])
+
+        main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
+                                 'b-file-id-2006-01-01-defg',
+                                 'c-funky<file-id> quiji%bo'])
+        main_wt.commit("Commit one", rev_id="rev-A")
+
+        branch2_bzrdir = main_branch.bzrdir.sprout("branch2")
+        branch2_branch = branch2_bzrdir.open_branch()
+        branch2_wt = branch2_bzrdir.open_workingtree()
+        os.chmod("branch2/b",0770)
+        branch2_wt.commit("branch2, Commit one", rev_id="rev-J")
+
+        self.merge(branch2_branch, main_wt)
+        os.chmod("main/b",0660)
+        main_wt.commit("merge branch1, rev-22",  rev_id="rev-G")
+
+        # end G
+        self.branch = main_branch
+
+    def test_fileid_involved_full_compare2(self):
+        history = self.branch.revision_history()
+        old_rev = history[0]
+        new_rev = history[1]
+
+        l1 = self.branch.repository.fileid_involved_between_revs(old_rev, new_rev)
+
+        l2 = self.compare_tree_fileids(self.branch, old_rev, new_rev)
+        self.assertNotEqual(l2, l1)
+        self.assertSubset(l2, l1)
