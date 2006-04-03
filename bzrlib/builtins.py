@@ -609,6 +609,11 @@ class cmd_branch(Command):
 class cmd_checkout(Command):
     """Create a new checkout of an existing branch.
 
+    If BRANCH_LOCATION is omitted, checkout will reconstitute a working tree for
+    the branch found in '.'. This is useful if you have removed the working tree
+    or if it was never created - i.e. if you pushed the branch to its current
+    location using SFTP.
+    
     If the TO_LOCATION is omitted, the last component of the BRANCH_LOCATION will
     be used.  In other words, "checkout ../foo/bar" will attempt to create ./bar.
 
@@ -621,7 +626,7 @@ class cmd_checkout(Command):
     uses the inventory and file contents from the basis branch in preference to the
     branch being checked out. [Not implemented yet.]
     """
-    takes_args = ['branch_location', 'to_location?']
+    takes_args = ['branch_location?', 'to_location?']
     takes_options = ['revision', # , 'basis']
                      Option('lightweight',
                             help="perform a lightweight checkout. Lightweight "
@@ -632,13 +637,16 @@ class cmd_checkout(Command):
                             ),
                      ]
 
-    def run(self, branch_location, to_location=None, revision=None, basis=None,
+    def run(self, branch_location=None, to_location=None, revision=None, basis=None,
             lightweight=False):
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
             raise BzrCommandError(
                 'bzr checkout --revision takes exactly 1 revision value')
+        if branch_location is None:
+            branch_location = bzrlib.osutils.getcwd()
+            to_location = branch_location
         source = Branch.open(branch_location)
         if len(revision) == 1 and revision[0] is not None:
             revision_id = revision[0].in_history(source)[1]
@@ -646,6 +654,16 @@ class cmd_checkout(Command):
             revision_id = None
         if to_location is None:
             to_location = os.path.basename(branch_location.rstrip("/\\"))
+        # if the source and to_location are the same, 
+        # and there is no working tree,
+        # then reconstitute a branch
+        if (bzrlib.osutils.abspath(to_location) == 
+            bzrlib.osutils.abspath(branch_location)):
+            try:
+                source.bzrdir.open_workingtree()
+            except errors.NoWorkingTree:
+                source.bzrdir.create_workingtree()
+                return
         try:
             os.mkdir(to_location)
         except OSError, e:
