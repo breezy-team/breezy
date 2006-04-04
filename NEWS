@@ -65,7 +65,7 @@ bzr development version
     * New developer commands 'weave-list' and 'weave-join'.  (Martin Pool)
 
     * New 'init-repository' command, plus support for repositories in 'init'
-      and 'branch'
+      and 'branch' (Aaron Bentley, Erik Bågfors)
 
   CHANGES:
 
