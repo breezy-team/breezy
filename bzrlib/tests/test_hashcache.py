@@ -21,7 +21,7 @@ import time
 
 from bzrlib.errors import BzrError
 from bzrlib.hashcache import HashCache
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseInTempDir, TestSkipped
 
 
 def sha1(t):
@@ -99,15 +99,12 @@ class TestHashCache(TestCaseInTempDir):
 
         self.assertEquals(hc.get_sha1('subdir'), None)
 
-        # it's likely neither are cached at the moment because they 
-        # changed recently, but we can't be sure
+        # pause briefly to make sure they're not treated as new uncacheable
+        # files
         pause()
 
-        # should now be safe to cache it if we reread them
         self.assertEquals(hc.get_sha1('foo'), sha1('g00dbye'))
-        self.assertEquals(len(hc._cache), 1)
         self.assertEquals(hc.get_sha1('foo2'), sha1('new content'))
-        self.assertEquals(len(hc._cache), 2)
 
         # write out, read back in and check that we don't need to
         # re-read any files
@@ -131,8 +128,10 @@ class TestHashCache(TestCaseInTempDir):
         ok = False
 
         # make a best effort to create a weird kind of file
-        funcs = (os.mkfifo, os.mknod)
+        funcs = (getattr(os, 'mkfifo', None), getattr(os, 'mknod', None))
         for func in funcs:
+            if func is None:
+                continue
             try:
                 func('a')
                 ok = True
@@ -143,4 +142,4 @@ class TestHashCache(TestCaseInTempDir):
         if ok:
             self.assertRaises(BzrError, hc.get_sha1, 'a')
         else:
-            raise BzrError("no weird file type could be created: extend this test case for your os")
+            raise TestSkipped('No weird file type could be created')

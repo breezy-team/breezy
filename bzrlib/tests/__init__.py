@@ -336,6 +336,11 @@ class TestCase(unittest.TestCase):
         self.assertEqual(mode, actual_mode,
             'mode of %r incorrect (%o != %o)' % (path, mode, actual_mode))
 
+    def assertIsInstance(self, obj, kls):
+        """Fail if obj is not an instance of kls"""
+        if not isinstance(obj, kls):
+            self.fail("%r is not an instance of %s" % (obj, kls))
+
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
 
@@ -600,9 +605,22 @@ class TestCaseInTempDir(TestCase):
         _currentdir = os.getcwdu()
         short_id = self.id().replace('bzrlib.tests.', '') \
                    .replace('__main__.', '')
-        self.test_dir = osutils.pathjoin(self.TEST_ROOT, short_id)
-        os.mkdir(self.test_dir)
-        os.chdir(self.test_dir)
+        # it's possible the same test class is run several times for
+        # parameterized tests, so make sure the names don't collide.  
+        i = 0
+        while True:
+            if i > 0:
+                candidate_dir = '%s/%s.%d' % (self.TEST_ROOT, short_id, i)
+            else:
+                candidate_dir = '%s/%s' % (self.TEST_ROOT, short_id)
+            if os.path.exists(candidate_dir):
+                i = i + 1
+                continue
+            else:
+                self.test_dir = candidate_dir
+                os.mkdir(self.test_dir)
+                os.chdir(self.test_dir)
+                break
         os.environ['HOME'] = self.test_dir
         os.environ['APPDATA'] = self.test_dir
         def _leaveDirectory():
@@ -861,9 +879,14 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     # This is still a little bogus, 
     # but only a little. Folk not using our testrunner will
     # have to delete their temp directories themselves.
+    test_root = TestCaseInTempDir.TEST_ROOT
     if result.wasSuccessful() or not keep_output:
-        if TestCaseInTempDir.TEST_ROOT is not None:
-            shutil.rmtree(TestCaseInTempDir.TEST_ROOT) 
+        if test_root is not None:
+            print 'Deleting test root %s...' % test_root
+            try:
+                shutil.rmtree(test_root)
+            finally:
+                print
     else:
         print "Failed tests working directories are in '%s'\n" % TestCaseInTempDir.TEST_ROOT
     return result.wasSuccessful()

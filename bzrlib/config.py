@@ -401,7 +401,7 @@ class LocationConfig(IniBasedConfig):
         elif location + '/' in self._get_parser():
             location = location + '/'
         self._get_parser()[location][option]=value
-        self._get_parser().write()
+        self._get_parser().write(file(self._get_filename(), 'wb'))
 
 
 class BranchConfig(Config):
@@ -524,8 +524,15 @@ def _auto_user_id():
         import pwd
         uid = os.getuid()
         w = pwd.getpwuid(uid)
-        gecos = w.pw_gecos.decode(bzrlib.user_encoding)
-        username = w.pw_name.decode(bzrlib.user_encoding)
+
+        try:
+            gecos = w.pw_gecos.decode(bzrlib.user_encoding)
+            username = w.pw_name.decode(bzrlib.user_encoding)
+        except UnicodeDecodeError:
+            # We're using pwd, therefore we're on Unix, so /etc/passwd is ok.
+            raise errors.BzrError("Can't decode username in " \
+                    "/etc/passwd as %s." % bzrlib.user_encoding)
+
         comma = gecos.find(',')
         if comma == -1:
             realname = gecos
@@ -536,7 +543,11 @@ def _auto_user_id():
 
     except ImportError:
         import getpass
-        realname = username = getpass.getuser().decode(bzrlib.user_encoding)
+        try:
+            realname = username = getpass.getuser().decode(bzrlib.user_encoding)
+        except UnicodeDecodeError:
+            raise errors.BzrError("Can't decode username as %s." % \
+                    bzrlib.user_encoding)
 
     return realname, (username + '@' + socket.gethostname())
 

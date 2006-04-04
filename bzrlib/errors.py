@@ -193,6 +193,10 @@ class DirectoryNotEmpty(PathError):
     """Directory not empty: %(path)r%(extra)s"""
 
 
+class ResourceBusy(PathError):
+    """Device or resource busy: %(path)r%(extra)s"""
+
+
 class PermissionDenied(PathError):
     """Permission denied: %(path)r%(extra)s"""
 
@@ -743,7 +747,7 @@ class BzrBadParameterMissing(BzrBadParameter):
 
 
 class DependencyNotPresent(BzrNewError):
-    """Unable to import library: %(library)s, %(error)s"""
+    """Unable to import library "%(library)s": %(error)s"""
 
     def __init__(self, library, error):
         BzrNewError.__init__(self, library=library, error=error)

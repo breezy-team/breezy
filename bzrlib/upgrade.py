@@ -40,11 +40,15 @@ class Convert(object):
             self.pb.finished()
 
     def convert(self):
-        branch = self.bzrdir.open_branch()
-        if branch.bzrdir.root_transport.base != self.bzrdir.root_transport.base:
-            self.pb.note("This is a checkout. The branch (%s) needs to be "
-                         "upgraded separately.",
-                         branch.bzrdir.root_transport.base)
+        try:
+            branch = self.bzrdir.open_branch()
+            if branch.bzrdir.root_transport.base != \
+                self.bzrdir.root_transport.base:
+                self.pb.note("This is a checkout. The branch (%s) needs to be "
+                             "upgraded separately.",
+                             branch.bzrdir.root_transport.base)
+        except errors.NotBranchError:
+            pass
         if not self.bzrdir.needs_format_conversion(self.format):
             raise errors.UpToDateFormat(self.bzrdir._format)
         if not self.bzrdir.can_convert_format():

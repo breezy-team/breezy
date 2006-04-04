@@ -20,7 +20,9 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
 from bzrlib.commit import commit
+from bzrlib.graph import Graph
 from bzrlib.revision import (find_present_ancestors, combined_graph,
+                             common_ancestor,
                              is_ancestor, MultipleRevisionSources)
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
@@ -31,9 +33,7 @@ def make_branches(self):
     """Create two branches
 
     branch 1 has 6 commits, branch 2 has 3 commits
-    commit 10 was a psuedo merge from branch 1
-    but has been disabled until ghost support is
-    implemented.
+    commit 10 is a ghosted merge merge from branch 1
 
     the object graph is
     B:     A:
@@ -208,12 +208,26 @@ class TestIntermediateRevisions(TestCaseWithTransport):
                           'c@u-0-6', self.br2.revision_history())
 
 
+class MockRevisionSource(object):
+    """A RevisionSource that takes a pregenerated graph.
+
+    This is useful for testing revision graph algorithms where
+    the actual branch existing is irrelevant.
+    """
+
+    def __init__(self, full_graph):
+        self._full_graph = full_graph
+
+    def get_revision_graph_with_ghosts(self, revision_ids):
+        # This is mocked out to just return a constant graph.
+        return self._full_graph
+
+
 class TestCommonAncestor(TestCaseWithTransport):
     """Test checking whether a revision is an ancestor of another revision"""
 
     def test_common_ancestor(self):
         """Pick a reasonable merge base"""
-        from bzrlib.revision import common_ancestor
         br1, br2 = make_branches(self)
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
@@ -281,6 +295,21 @@ class TestCommonAncestor(TestCaseWithTransport):
         rev = tree.branch.repository.get_revision('3')
         history = rev.get_history(tree.branch.repository)
         self.assertEqual([None, '1', '2' ,'3'], history)
+
+    def test_common_ancestor_rootless_graph(self):
+        # common_ancestor on a graph with no reachable roots - only
+        # ghosts - should still return a useful value.
+        graph = Graph()
+        # add a ghost node which would be a root if it wasn't a ghost.
+        graph.add_ghost('a_ghost')
+        # add a normal commit on top of that
+        graph.add_node('rev1', ['a_ghost'])
+        # add a left-branch revision
+        graph.add_node('left', ['rev1'])
+        # add a right-branch revision
+        graph.add_node('right', ['rev1'])
+        source = MockRevisionSource(graph)
+        self.assertEqual('rev1', common_ancestor('left', 'right', source))
 
 
 class TestMultipleRevisionSources(TestCaseWithTransport):
