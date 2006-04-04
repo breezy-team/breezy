@@ -26,7 +26,7 @@ import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 import bzrlib.workingtree as workingtree
@@ -190,7 +190,10 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         dir = bzrdir.BzrDirMetaFormat1().initialize(url)
         repo = dir.create_repository()
         branch = dir.create_branch()
-        tree = workingtree.WorkingTreeFormat3().initialize(dir)
+        try:
+            tree = workingtree.WorkingTreeFormat3().initialize(dir)
+        except errors.NotLocalUrl:
+            raise TestSkipped('Not a local URL')
         self.assertIsDirectory('.bzr', t)
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)

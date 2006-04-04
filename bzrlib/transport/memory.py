@@ -31,6 +31,7 @@ from bzrlib.trace import mutter
 from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
 from bzrlib.transport import Transport, register_transport, Server
 
+
 class MemoryStat(object):
 
     def __init__(self, size, is_dir, perms):
