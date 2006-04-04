@@ -33,7 +33,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.store.versioned import VersionedFileStore, WeaveStore
 from bzrlib.store.text import TextStore
 from bzrlib.symbol_versioning import *
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, note
 from bzrlib.tree import RevisionTree
 from bzrlib.tsort import topo_sort
 from bzrlib.testament import Testament
@@ -96,7 +96,7 @@ class Repository(object):
             else:
                 # yes, this is not suitable for adding with ghosts.
                 self.add_inventory(rev_id, inv, rev.parent_ids)
-        self._revision_store.add_revision(rev, self.get_transaction())   
+        self._revision_store.add_revision(rev, self.get_transaction())
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -143,7 +143,7 @@ class Repository(object):
         getting file texts, inventories and revisions, then
         this construct will accept instances of those things.
         """
-        object.__init__(self)
+        super(Repository, self).__init__()
         self._format = _format
         # the following are part of the public API for Repository:
         self.bzrdir = a_bzrdir
@@ -156,6 +156,8 @@ class Repository(object):
         # 
         self.control_store = control_store
         self.control_weaves = control_store
+        # TODO: make sure to construct the right store classes, etc, depending
+        # on whether escaping is required.
 
     def lock_write(self):
         self.control_files.lock_write()
@@ -225,6 +227,20 @@ class Repository(object):
             result = self._format.initialize(a_bzrdir, shared=self.is_shared())
         self.copy_content_into(result, revision_id, basis)
         return result
+
+    # XXX: Is this actually called?
+    @needs_read_lock
+    def copy(self, destination):
+        raise NotImplementedError("Repository.copy() no longer required?")
+        destination.lock_write()
+        try:
+            copy_all(self.weave_store, destination.weave_store)
+            note('copying inventories')
+            destination.control_weaves.copy_multi(self.control_weaves,
+                ['inventory'])
+            copy_all(self.revision_store, destination.revision_store)
+        finally:
+            destination.unlock()
 
     @needs_read_lock
     def has_revision(self, revision_id):

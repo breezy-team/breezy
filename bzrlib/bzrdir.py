@@ -1536,11 +1536,12 @@ class ConvertBzrDir5To6(Converter):
         return BzrDir.open(self.bzrdir.root_transport.base)
 
     def _convert_to_prefixed(self):
-        from bzrlib.store import hash_prefix
+        from bzrlib.store import TransportStore
         self.bzrdir.transport.delete('branch-format')
         for store_name in ["weaves", "revision-store"]:
-            self.pb.note("adding prefixes to %s" % store_name) 
+            self.pb.note("adding prefixes to %s" % store_name)
             store_transport = self.bzrdir.transport.clone(store_name)
+            store = TransportStore(store_transport, prefixed=True)
             for filename in store_transport.list_dir('.'):
                 if (filename.endswith(".weave") or
                     filename.endswith(".gz") or
@@ -1548,7 +1549,7 @@ class ConvertBzrDir5To6(Converter):
                     file_id = os.path.splitext(filename)[0]
                 else:
                     file_id = filename
-                prefix_dir = hash_prefix(file_id)
+                prefix_dir = store.hash_prefix(file_id)
                 # FIXME keep track of the dirs made RBC 20060121
                 try:
                     store_transport.move(filename, prefix_dir + '/' + filename)

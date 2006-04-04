@@ -24,6 +24,7 @@ from collections import deque
 from copy import deepcopy
 from stat import *
 import sys
+import urllib
 from unittest import TestSuite
 
 from bzrlib.trace import mutter
@@ -597,8 +598,8 @@ def register_lazy_transport(scheme, module, classname):
 
 def urlescape(relpath):
     """Escape relpath to be a valid url."""
-    # TODO utf8 it first. utf8relpath = relpath.encode('utf8')
-    import urllib
+    if isinstance(relpath, unicode):
+        relpath = relpath.encode('utf-8')
     return urllib.quote(relpath)
 
 
