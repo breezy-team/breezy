@@ -212,25 +212,72 @@ def conflict_stanzas(conflicts):
 
 def stanza_conflicts(stanzas):
     for stanza in stanzas:
+        yield Conflict.from_stanza(stanza)
+
+
+class Conflict(object):
+    """Base class for all types of conflict"""
+    typestring = None
+    def __init__(self, type, path, file_id=None):
+        self.path = path
+        self.file_id = file_id
+        assert type == self.typestring
+
+    @staticmethod
+    def from_stanza(stanza):
+        global ctype
         try:
             file_id = stanza['file_id']
         except KeyError:
             file_id = None
-        try:
-            conflict_file_id = stanza['conflict_file_id']
-        except KeyError:
-            conflict_file_id = None
-        if stanza.get('type') in ('text conflict', 'path conflict', 
-                                  'contents conflict'):
-            my_list = [stanza['type'], file_id, stanza['path']]
-            if stanza.get('type') == 'path conflict':
-                my_list.append(stanza['conflict_path'])
-            yield tuple(my_list)
-        else:
-            my_list = [stanza['type'], stanza['action'],
-                       stanza['path'], file_id]
-            try:
-                my_list.extend((stanza['conflict_path'], conflict_file_id))
-            except KeyError:
-                pass
-            yield tuple(my_list) 
+        return ctype[stanza['type']](**stanza.as_dict())
+
+class ContentsConflict(Conflict):
+    typestring = 'contents conflict'
+
+class TextConflict(ContentsConflict):
+    typestring = 'text conflict'
+
+class PathConflict(Conflict):
+    typestring = 'path conflict'
+    def __init__(self, type, path, conflict_path, file_id=None):
+        Conflict.__init__(self, type, path, file_id)
+        self.conflict_path = conflict_path
+
+class HandledConflict(Conflict):
+    def __init__(self, type, action, path, file_id=None):
+        Conflict.__init__(self, type, path, file_id)
+        self.action = action
+
+class HandledPathConflict(HandledConflict):
+    def __init__(self, type, action, path, conflict_path, file_id=None,
+                 conflict_file_id=None):
+        HandledConflict.__init__(self, type, action, path, file_id)
+        self.conflict_path = conflict_path 
+        self.conflict_file_id = conflict_file_id
+        
+    
+class DuplicateID(HandledPathConflict):
+    typestring = 'duplicate id'
+
+class DuplicateEntry(HandledPathConflict):
+    typestring = 'duplicate'
+
+class ParentLoop(HandledPathConflict):
+    typestring = 'parent loop'
+
+class UnversionedParent(HandledConflict):
+    typestring = 'unversioned parent'
+
+class MissingParent(HandledConflict):
+    typestring = 'missing parent'
+
+ctype = {}
+def register_types(*conflict_types):
+    """Register a Conflict subclass for serialization purposes"""
+    global ctype
+    for conflict_type in conflict_types:
+        ctype[conflict_type.typestring] = conflict_type
+
+register_types(ContentsConflict, TextConflict, PathConflict, DuplicateID,
+               DuplicateEntry, ParentLoop, UnversionedParent, MissingParent)
