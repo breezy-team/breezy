@@ -51,7 +51,7 @@ class cmd_conflicts(bzrlib.commands.Command):
     def run(self):
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing(u'.')[0]
-        for conflict in conflicts_to_strings(wt.conflicts()):
+        for conflict in wt.conflicts():
             print conflict
 
 class cmd_resolve(bzrlib.commands.Command):
@@ -99,7 +99,7 @@ def resolve(tree, paths=None, ignore_misses=False):
             tree.set_conflicts(ConflictList(new_conflicts))
         except UnsupportedOperation:
             pass
-        remove_conflict_files(tree, selected_conflicts)
+        selected_conflicts.remove_files(tree)
     finally:
         tree.unlock()
 
@@ -146,17 +146,8 @@ def select_conflicts(tree, paths, tree_conflicts, ignore_misses=False):
                 print "%s does not exist" % path
             else:
                 print "%s is not conflicted" % path
-    return new_conflicts, selected_conflicts
+    return ConflictList(new_conflicts), ConflictList(selected_conflicts)
 
-def remove_conflict_files(tree, conflicts):
-    for stanza in conflicts.to_stanzas():
-        if stanza['type'] in ("text conflict", "contents conflict"):
-            for suffix in CONFLICT_SUFFIXES:
-                try:
-                    os.unlink(tree.abspath(stanza['path']+suffix))
-                except OSError, e:
-                    if e.errno != errno.ENOENT:
-                        raise
     
 
 def restore(filename):
@@ -233,15 +224,28 @@ class ConflictList(object):
         for conflict in self:
             yield conflict.as_stanza()
             
+    def to_strings(self):
+        """Generate strings for the provided conflicts"""
+        for conflict in self:
+            yield str(conflict)
 
-def conflicts_to_strings(conflicts):
-    """Generate strings for the provided conflicts"""
-    for conflict in conflicts:
-        yield str(conflict)
 
+    def remove_files(self, tree):
+        for conflict in self:
+            if not conflict.has_files:
+                continue
+            for suffix in CONFLICT_SUFFIXES:
+                try:
+                    os.unlink(tree.abspath(conflict.path+suffix))
+                except OSError, e:
+                    if e.errno != errno.ENOENT:
+                        raise
 
 class Conflict(object):
     """Base class for all types of conflict"""
+
+    has_files = False
+
     def __init__(self, path, file_id=None):
         self.path = path
         self.file_id = file_id
@@ -302,6 +306,8 @@ class PathConflict(Conflict):
 class ContentsConflict(PathConflict):
     """The files are of different types, or not present"""
 
+    has_files = True
+
     typestring = 'contents conflict'
 
     format = 'Contents conflict in %(path)s'
@@ -309,6 +315,8 @@ class ContentsConflict(PathConflict):
 
 class TextConflict(PathConflict):
     """The merge algorithm could not resolve all differences encountered."""
+
+    has_files = True
 
     typestring = 'text conflict'
 

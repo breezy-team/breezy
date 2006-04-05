@@ -17,9 +17,8 @@
 import os
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.conflicts import (conflicts_to_strings, DuplicateEntry,
-                              DuplicateID, MissingParent, UnversionedParent,
-                              ParentLoop)
+from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
+                              UnversionedParent, ParentLoop)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot, NotVersionedError,
                            ExistingLimbo, ImmortalLimbo, LockError)
@@ -418,7 +417,7 @@ class TestTreeTransform(TestCaseInTempDir):
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
         tt.finalize()
-        conflicts_s = list(conflicts_to_strings(cooked_conflicts))
+        conflicts_s = [str(c) for c in cooked_conflicts]
         self.assertEqual(len(cooked_conflicts), len(conflicts_s))
         self.assertEqual(conflicts_s[0], 'Conflict adding file dorothy.  '
                                          'Moved existing file to '
