@@ -16,12 +16,12 @@
 
 import sys
 
+from bzrlib.conflicts import conflicts_to_strings
 from bzrlib.delta import compare_trees
 from bzrlib.errors import NoSuchRevision
 from bzrlib.log import line_log
 from bzrlib.osutils import is_inside_any
 from bzrlib.symbol_versioning import *
-from bzrlib.transform import conflicts_strings
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
@@ -138,7 +138,7 @@ def show_tree_status(wt, show_unchanged=False,
         if new_is_working_tree:
             list_paths('unknown', new.unknowns(), specific_files, to_file)
             conflict_title = False
-            for conflict in conflicts_strings(wt.conflict_lines()):
+            for conflict in conflicts_to_strings(wt.conflict_lines()):
                 if conflict_title is False:
                     print >> to_file, "conflicts:"
                     conflict_title = True

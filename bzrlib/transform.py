@@ -18,6 +18,7 @@ import os
 import errno
 from stat import S_ISREG
 
+from bzrlib.conflicts import conflicts_to_strings
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo)
@@ -1081,7 +1082,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
             raw_conflicts = resolve_conflicts(tt, child_pb)
         finally:
             child_pb.finished()
-        for line in conflicts_strings(cook_conflicts(raw_conflicts, tt)):
+        for line in conflicts_to_strings(cook_conflicts(raw_conflicts, tt)):
             warning(line)
         pp.next_phase()
         tt.apply()
@@ -1180,9 +1181,3 @@ def iter_cook_conflicts(raw_conflicts, tt):
                                    file_id=modified_id, 
                                    conflict_path=conflicting_path,
                                    conflict_file_id=conflicting_id)
-
-
-def conflicts_strings(conflicts):
-    """Generate strings for the provided conflicts"""
-    for conflict in conflicts:
-        yield str(conflict)

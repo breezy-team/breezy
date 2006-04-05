@@ -17,6 +17,9 @@
 import os
 
 from bzrlib.bzrdir import BzrDir
+from bzrlib.conflicts import (conflicts_to_strings, DuplicateEntry,
+                              DuplicateID, MissingParent, UnversionedParent,
+                              ParentLoop)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot, NotVersionedError,
                            ExistingLimbo, ImmortalLimbo, LockError)
@@ -25,7 +28,7 @@ from bzrlib.merge import Merge3Merger
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
-                              conflicts_strings, find_interesting, build_tree)
+                              find_interesting, build_tree)
 
 class TestTreeTransform(TestCaseInTempDir):
     def setUp(self):
@@ -389,9 +392,6 @@ class TestTreeTransform(TestCaseInTempDir):
         conflicts.apply()
 
     def test_cook_conflicts(self):
-        from bzrlib.conflicts import (DuplicateEntry, DuplicateID, 
-                                      MissingParent, UnversionedParent,
-                                      ParentLoop)
         tt, emerald, oz, old_dorothy, new_dorothy = self.get_conflicted()
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
@@ -418,7 +418,7 @@ class TestTreeTransform(TestCaseInTempDir):
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
         tt.finalize()
-        conflicts_s = list(conflicts_strings(cooked_conflicts))
+        conflicts_s = list(conflicts_to_strings(cooked_conflicts))
         self.assertEqual(len(cooked_conflicts), len(conflicts_s))
         self.assertEqual(conflicts_s[0], 'Conflict adding file dorothy.  '
                                          'Moved existing file to '

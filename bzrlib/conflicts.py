@@ -22,7 +22,7 @@
 import os
 import errno
 
-import bzrlib.status
+import bzrlib
 from bzrlib.commands import register_command
 from bzrlib.errors import BzrCommandError, NotConflicted, UnsupportedOperation
 from bzrlib.option import Option
@@ -50,9 +50,8 @@ class cmd_conflicts(bzrlib.commands.Command):
     """
     def run(self):
         from bzrlib.workingtree import WorkingTree
-        from transform import conflicts_strings
         wt = WorkingTree.open_containing(u'.')[0]
-        for conflict in conflicts_strings(wt.conflict_lines()):
+        for conflict in conflicts_to_strings(wt.conflict_lines()):
             print conflict
 
 class cmd_resolve(bzrlib.commands.Command):
@@ -117,7 +116,7 @@ def select_conflicts(tree, paths, tree_conflicts, ignore_misses=False):
             ids[file_id] = path
 
     for conflict, stanza in zip(tree_conflicts, 
-        conflict_stanzas(tree_conflicts)):
+        conflicts_to_stanzas(tree_conflicts)):
         selected = False
         for key in ('path', 'conflict_path'):
             try:
@@ -151,7 +150,7 @@ def select_conflicts(tree, paths, tree_conflicts, ignore_misses=False):
     return new_conflicts, selected_conflicts
 
 def remove_conflict_files(tree, conflicts):
-    for stanza in conflict_stanzas(conflicts):
+    for stanza in conflicts_to_stanzas(conflicts):
         if stanza['type'] in ("text conflict", "contents conflict"):
             for suffix in CONFLICT_SUFFIXES:
                 try:
@@ -189,13 +188,19 @@ def restore(filename):
         raise NotConflicted(filename)
 
 
-def conflict_stanzas(conflicts):
+def conflicts_to_stanzas(conflicts):
     for conflict in conflicts:
         yield conflict.as_stanza()
 
-def stanza_conflicts(stanzas):
+def stanzas_to_conflicts(stanzas):
     for stanza in stanzas:
         yield Conflict.factory(**stanza.as_dict())
+
+
+def conflicts_to_strings(conflicts):
+    """Generate strings for the provided conflicts"""
+    for conflict in conflicts:
+        yield str(conflict)
 
 
 class Conflict(object):

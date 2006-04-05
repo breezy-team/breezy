@@ -67,12 +67,13 @@ class TestConflicts(TestCaseWithTransport):
 
 class TestConflictStanzas(TestCase):
     def test_stanza_roundtrip(self):
-        processed = list(stanza_conflicts(conflict_stanzas(example_conflicts)))
+        stanza_iter = conflicts_to_stanzas(example_conflicts)
+        processed = list(stanzas_to_conflicts(stanza_iter))
         for o,p in zip(processed, example_conflicts):
             self.assertEqual(o, p)
 
     def test_stanzification(self):
-        for stanza in conflict_stanzas(example_conflicts):
+        for stanza in conflicts_to_stanzas(example_conflicts):
             try:
                 self.assertStartsWith(stanza['file_id'], 'id')
             except KeyError:

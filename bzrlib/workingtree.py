@@ -50,7 +50,7 @@ import stat
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import (Branch,
                            quotefn)
-from bzrlib.conflicts import (stanza_conflicts, conflict_stanzas, Conflict,
+from bzrlib.conflicts import (stanzas_to_conflicts, conflicts_to_stanzas, Conflict,
                               CONFLICT_SUFFIXES)
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -1355,7 +1355,8 @@ class WorkingTree3(WorkingTree):
 
     @needs_write_lock
     def set_conflict_lines(self, lines):
-        self._put_rio('conflicts', conflict_stanzas(lines), CONFLICT_HEADER_1)
+        self._put_rio('conflicts', conflicts_to_stanzas(lines), 
+                      CONFLICT_HEADER_1)
 
     @needs_read_lock
     def conflict_lines(self):
@@ -1368,7 +1369,7 @@ class WorkingTree3(WorkingTree):
                 raise ConflictFormatError()
         except StopIteration:
             raise ConflictFormatError()
-        return stanza_conflicts(RioReader(confile))
+        return stanzas_to_conflicts(RioReader(confile))
 
 
 def get_conflicted_stem(path):
