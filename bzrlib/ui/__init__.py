@@ -69,6 +69,13 @@ class UIFactory(object):
         """
         raise NotImplementedError(self.nested_progress_bar)
 
+    def clear_term(self):
+        """Prepare the terminal for output.
+
+        This will, for example, clear text progress bars, and leave the
+        cursor at the leftmost position."""
+        raise NotImplementedError(self.clear_term)
+
 
 class SilentUIFactory(UIFactory):
     """A UI Factory which never prints anything.
@@ -89,6 +96,15 @@ class SilentUIFactory(UIFactory):
             self._progress_bar_stack = bzrlib.progress.ProgressBarStack(
                 klass=bzrlib.progress.DummyProgress)
         return self._progress_bar_stack.get_nested()
+
+    def clear_term(self):
+        pass
+
+
+def clear_decorator(func, *args, **kwargs):
+    """Decorator that clears the term"""
+    ui_factory.clear_term()
+    func(*args, **kwargs)
 
 
 ui_factory = SilentUIFactory()

@@ -238,3 +238,35 @@ revision store:
        ),
             out)
         self.assertEqual('', err)
+
+    def test_info_parent(self):
+        b = self.make_branch('.')
+        url = 'http://bazaar-vcs.org/bzr/bzr.dev/'
+        b.set_parent(url)
+        out,err = self.runbzr('info')
+        self.assertEqualDiff(
+"""branch format: Bazaar-NG branch, format 6
+
+in the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+branch history:
+         0 revisions
+         0 committers
+
+revision store:
+         0 revisions
+         0 kB
+
+parent location:
+  http://bazaar-vcs.org/bzr/bzr.dev/
+""", out)
+        self.assertEqual('', err)
+

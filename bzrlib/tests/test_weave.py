@@ -781,6 +781,141 @@ class MergeCases(TestBase):
                      ['aaa', 'ccc'],
                      ['<<<<<<<< ', 'aaa', '=======', '>>>>>>> ', 'ccc'])
 
+    def _test_merge_from_strings(self, base, a, b, expected):
+        w = Weave()
+        w.add_lines('text0', [], base.splitlines(True))
+        w.add_lines('text1', ['text0'], a.splitlines(True))
+        w.add_lines('text2', ['text0'], b.splitlines(True))
+        self.log('merge plan:')
+        p = list(w.plan_merge('text1', 'text2'))
+        for state, line in p:
+            if line:
+                self.log('%12s | %s' % (state, line[:-1]))
+        self.log('merge result:')
+        result_text = ''.join(w.weave_merge(p))
+        self.log(result_text)
+        self.assertEqualDiff(result_text, expected)
+
+    def test_deletion_extended(self):
+        """One side deletes, the other deletes more.
+        """
+        base = """\
+            line 1
+            line 2
+            line 3
+            """
+        a = """\
+            line 1
+            line 2
+            """
+        b = """\
+            line 1
+            """
+        result = """\
+            line 1
+            """
+        self._test_merge_from_strings(base, a, b, result)
+
+    def test_deletion_overlap(self):
+        """Delete overlapping regions with no other conflict.
+
+        Arguably it'd be better to treat these as agreement, rather than 
+        conflict, but for now conflict is safer.
+        """
+        base = """\
+            start context
+            int a() {}
+            int b() {}
+            int c() {}
+            end context
+            """
+        a = """\
+            start context
+            int a() {}
+            end context
+            """
+        b = """\
+            start context
+            int c() {}
+            end context
+            """
+        result = """\
+            start context
+<<<<<<< 
+            int a() {}
+=======
+            int c() {}
+>>>>>>> 
+            end context
+            """
+        self._test_merge_from_strings(base, a, b, result)
+
+    def test_agreement_deletion(self):
+        """Agree to delete some lines, without conflicts."""
+        base = """\
+            start context
+            base line 1
+            base line 2
+            end context
+            """
+        a = """\
+            start context
+            base line 1
+            end context
+            """
+        b = """\
+            start context
+            base line 1
+            end context
+            """
+        result = """\
+            start context
+            base line 1
+            end context
+            """
+        self._test_merge_from_strings(base, a, b, result)
+
+    def test_sync_on_deletion(self):
+        """Specific case of merge where we can synchronize incorrectly.
+        
+        A previous version of the weave merge concluded that the two versions
+        agreed on deleting line 2, and this could be a synchronization point.
+        Line 1 was then considered in isolation, and thought to be deleted on 
+        both sides.
+
+        It's better to consider the whole thing as a disagreement region.
+        """
+        base = """\
+            start context
+            base line 1
+            base line 2
+            end context
+            """
+        a = """\
+            start context
+            base line 1
+            a's replacement line 2
+            end context
+            """
+        b = """\
+            start context
+            b replaces
+            both lines
+            end context
+            """
+        result = """\
+            start context
+<<<<<<< 
+            base line 1
+            a's replacement line 2
+=======
+            b replaces
+            both lines
+>>>>>>> 
+            end context
+            """
+        self._test_merge_from_strings(base, a, b, result)
+
 
 class JoinWeavesTests(TestBase):
     def setUp(self):
@@ -974,7 +1109,7 @@ class JoinOptimization(TestCase):
         w2.join(w1) # extract 3b to add txt1 
 
 
-class TestNeedsRweave(TestCase):
+class TestNeedsReweave(TestCase):
     """Internal corner cases for when reweave is needed."""
 
     def test_compatible_parents(self):
@@ -990,5 +1125,3 @@ class TestNeedsRweave(TestCase):
         self.assertFalse(w1._compatible_parents(set(), set([1])))
         self.assertFalse(w1._compatible_parents(my_parents, set([1, 2, 3, 4])))
         self.assertFalse(w1._compatible_parents(my_parents, set([4])))
-        
-

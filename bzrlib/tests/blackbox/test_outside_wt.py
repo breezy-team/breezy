@@ -19,16 +19,18 @@
 """Black-box tests for running bzr outside of a working tree."""
 
 import os
+import tempfile
 
 from bzrlib.tests import ChrootedTestCase
+from bzrlib.osutils import getcwd
 
 
 class TestOutsideWT(ChrootedTestCase):
     """Test that bzr gives proper errors outside of a working tree."""
 
     def test_cwd_log(self):
-        os.chdir('/tmp')
-        cwd = os.getcwdu()
+        os.chdir(tempfile.mkdtemp())
+        cwd = getcwd()
         out, err = self.run_bzr('log', retcode=3)
 
         self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (cwd,),

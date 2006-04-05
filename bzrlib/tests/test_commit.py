@@ -20,10 +20,12 @@ import os
 import bzrlib
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 from bzrlib.workingtree import WorkingTree
 from bzrlib.commit import Commit
 from bzrlib.config import BranchConfig
-from bzrlib.errors import PointlessCommit, BzrError, SigningFailed
+from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed, 
+                           LockContention)
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -376,4 +378,14 @@ class TestCommit(TestCaseWithTransport):
                          wt.branch.repository.get_revision(
                             wt.branch.last_revision()).properties)
 
-
+    def test_safe_master_lock(self):
+        os.mkdir('master')
+        master = BzrDirMetaFormat1().initialize('master')
+        master.create_repository()
+        master_branch = master.create_branch()
+        master.create_workingtree()
+        bound = master.sprout('bound')
+        wt = bound.open_workingtree()
+        wt.branch.set_bound_location(os.path.realpath('master'))
+        master_branch.lock_write()
+        self.assertRaises(LockContention, wt.commit, 'silly')

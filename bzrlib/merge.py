@@ -228,7 +228,8 @@ class Merger(object):
                 self.base_rev_id = None
             else:
                 self.base_rev_id = base_branch.get_rev_id(base_revision[1])
-            self.this_branch.fetch(base_branch)
+            if self.this_branch.base != base_branch.base:
+                self.this_branch.fetch(base_branch)
             self.base_is_ancestor = is_ancestor(self.this_basis, 
                                                 self.base_rev_id,
                                                 self.this_branch)
@@ -801,7 +802,7 @@ class WeaveMerger(Merge3Merger):
         and a conflict will be noted.
         """
         self._check_file(file_id)
-        lines = self._merged_lines(file_id)
+        lines = list(self._merged_lines(file_id))
         conflicts = '<<<<<<< TREE\n' in lines
         self.tt.create_file(lines, trans_id)
         if conflicts:

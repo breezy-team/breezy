@@ -1,5 +1,4 @@
-# Copyright (C) 2004, 2005 by Martin Pool
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +27,11 @@
 # TODO: Get every revision in the revision-store even if they're not
 # referenced by history and make sure they're all valid.
 
+# TODO: Perhaps have a way to record errors other than by raising exceptions;
+# would perhaps be enough to accumulate exception objects in a list without
+# raising them.  If there's more than one exception it'd be good to see them
+# all.
+
 import bzrlib.ui
 from bzrlib.trace import note, warning
 from bzrlib.osutils import rename, sha_string, fingerprint_file
@@ -39,6 +43,8 @@ from bzrlib.inventory import ROOT_ID
 class Check(object):
     """Check a branch"""
 
+    # The Check object interacts with InventoryEntry.check, etc.
+
     def __init__(self, branch):
         self.branch = branch
         self.repository = branch.repository
@@ -49,7 +55,7 @@ class Check(object):
         self.missing_parent_links = {}
         self.missing_inventory_sha_cnt = 0
         self.missing_revision_cnt = 0
-        # maps (file-id, version) -> sha1
+        # maps (file-id, version) -> sha1; used by InventoryFile._check
         self.checked_texts = {}
         self.checked_weaves = {}
 

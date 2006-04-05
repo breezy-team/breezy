@@ -35,7 +35,7 @@ class LocalTransport(Transport):
     def __init__(self, base):
         """Set the base path where files will be stored."""
         if base.startswith('file://'):
-            base = base[7:]
+            base = base[len('file://'):]
         # realpath is incompatible with symlinks. When we traverse
         # up we might be able to normpath stuff. RBC 20051003
         base = normpath(abspath(base))
@@ -111,7 +111,7 @@ class LocalTransport(Transport):
         """Iter the relative paths of files in the transports sub-tree."""
         queue = list(self.list_dir(u'.'))
         while queue:
-            relpath = urllib.quote(queue.pop(0))
+            relpath = queue.pop(0)
             st = self.stat(relpath)
             if S_ISDIR(st[ST_MODE]):
                 for i, basename in enumerate(self.list_dir(relpath)):
@@ -138,6 +138,8 @@ class LocalTransport(Transport):
             fp = open(self.abspath(relpath), 'ab')
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
+        # win32 workaround (tell on an unwritten file returns 0)
+        fp.seek(0, 2)
         result = fp.tell()
         self._pump(f, fp)
         return result
@@ -222,11 +224,10 @@ class LocalTransport(Transport):
         WARNING: many transports do not support this, so trying avoid using
         it if at all possible.
         """
-        path = relpath
+        path = self.abspath(relpath)
         try:
-            path = self.abspath(relpath)
-            return os.listdir(path)
-        except (IOError, OSError),e:
+            return [urllib.quote(entry) for entry in os.listdir(path)]
+        except (IOError, OSError), e:
             self._translate_error(e, path)
 
     def stat(self, relpath):

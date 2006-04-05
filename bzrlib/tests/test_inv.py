@@ -352,10 +352,13 @@ class TestPreviousHeads(TestCaseWithTransport):
         self.inv_D = self.branch.repository.get_inventory('D')
         self.file_active = self.wt.inventory['fileid']
         self.weave = self.branch.repository.weave_store.get_weave('fileid',
-            self.branch.get_transaction())
+            self.branch.repository.get_transaction())
         
     def get_previous_heads(self, inventories):
-        return self.file_active.find_previous_heads(inventories, self.weave)
+        return self.file_active.find_previous_heads(
+            inventories, 
+            self.branch.repository.weave_store,
+            self.branch.repository.get_transaction())
         
     def test_fileid_in_no_inventory(self):
         self.assertEqual({}, self.get_previous_heads([self.inv_A]))

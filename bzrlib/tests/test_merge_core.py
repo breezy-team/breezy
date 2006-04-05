@@ -260,9 +260,14 @@ class MergeTest(TestCase):
         builder.add_file("3", "TREE_ROOT", "name5", "text3", True)
         builder.add_file("4", "TREE_ROOT", "name6", "text4", True)
         builder.remove_file("4", base=True)
-        builder.merge()
+        builder.add_file("5", "TREE_ROOT", "name7", "a\nb\nc\nd\ne\nf\n", True)
+        builder.change_contents("5", other="a\nz\nc\nd\ne\nf\n", 
+                                     this="a\nb\nc\nd\ne\nz\n")
+        builder.merge(merge_factory)
         self.assertEqual(builder.this.get_file("1").read(), "text4" )
         self.assertEqual(builder.this.get_file("2").read(), "text2" )
+        self.assertEqual(builder.this.get_file("5").read(), 
+                         "a\nz\nc\nd\ne\nz\n")
         self.assertIs(builder.this.is_executable("1"), True)
         self.assertIs(builder.this.is_executable("2"), False)
         self.assertIs(builder.this.is_executable("3"), True)
