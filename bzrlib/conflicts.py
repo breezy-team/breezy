@@ -51,7 +51,7 @@ class cmd_conflicts(bzrlib.commands.Command):
     def run(self):
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing(u'.')[0]
-        for conflict in conflicts_to_strings(wt.conflict_lines()):
+        for conflict in conflicts_to_strings(wt.conflicts()):
             print conflict
 
 class cmd_resolve(bzrlib.commands.Command):
@@ -88,7 +88,7 @@ class cmd_resolve(bzrlib.commands.Command):
 def resolve(tree, paths=None, ignore_misses=False):
     tree.lock_write()
     try:
-        tree_conflicts = list(tree.conflict_lines())
+        tree_conflicts = list(tree.conflicts())
         if paths is None:
             new_conflicts = []
             selected_conflicts = tree_conflicts
@@ -96,7 +96,7 @@ def resolve(tree, paths=None, ignore_misses=False):
             new_conflicts, selected_conflicts = \
                 select_conflicts(tree, paths, tree_conflicts, ignore_misses)
         try:
-            tree.set_conflict_lines(new_conflicts)
+            tree.set_conflicts(ConflictList(new_conflicts))
         except UnsupportedOperation:
             pass
         remove_conflict_files(tree, selected_conflicts)
@@ -188,13 +188,61 @@ def restore(filename):
         raise NotConflicted(filename)
 
 
+class ConflictList(object):
+    """List of conflicts
+    Can be instantiated from stanzas or from Conflict subclasses.
+    """
+
+    def __init__(self, conflicts=None):
+        object.__init__(self)
+        if conflicts is None:
+            self.__list = []
+        else:
+            self.__list = conflicts
+
+    def __len__(self):
+        return len(self.__list)
+
+    def __iter__(self):
+        return iter(self.__list)
+
+    def __getitem__(self, key):
+        return self.__list[key]
+
+    def append(self, conflict):
+        return self.__list.append(conflict)
+
+    def __eq__(self, other_list):
+        return list(self) == list(other_list)
+
+    def __ne__(self, other_list):
+        return not (self == other_list)
+
+    def __repr__(self):
+        return "ConflictList(%r)" % self.__list
+
+    @staticmethod
+    def from_stanzas(stanzas):
+        """Produce a new ConflictList from an iterable of stanzas"""
+        conflicts = ConflictList()
+        for stanza in stanzas:
+            conflicts.append(Conflict.factory(**stanza.as_dict()))
+        return conflicts
+
+    def to_stanzas(self):
+        """Generator of stanzas"""
+        for conflict in self:
+            yield conflict.as_stanza()
+            
+
 def conflicts_to_stanzas(conflicts):
-    for conflict in conflicts:
-        yield conflict.as_stanza()
+    for stanza in ConflictList(conflicts).to_stanzas():
+        yield stanza
+
 
 def stanzas_to_conflicts(stanzas):
-    for stanza in stanzas:
-        yield Conflict.factory(**stanza.as_dict())
+    for conflict in ConflictList.from_stanzas(stanzas):
+        yield conflict
 
 
 def conflicts_to_strings(conflicts):
@@ -215,14 +263,13 @@ class Conflict(object):
             s.add('file_id', self.file_id)
         return s
 
+    def _cmp_list(self):
+        return [type(self), self.path, self.file_id]
+
     def __cmp__(self, other):
-        result = cmp(type(self), type(other))
-        if result != 0:
-            return result
-        result = cmp(self.path, other.path)
-        if result != 0:
-            return result
-        return cmp(self.file_id, other.file_id)
+        if getattr(other, "_cmp_list", None) is None:
+            return -1
+        return cmp(self._cmp_list(), other._cmp_list())
 
     def __eq__(self, other):
         return self.__cmp__(other) == 0
@@ -233,6 +280,11 @@ class Conflict(object):
     def __str__(self):
         return self.format % self.__dict__
 
+    def __repr__(self):
+        rdict = dict(self.__dict__)
+        rdict['class'] = self.__class__.__name__
+        return self.rformat % rdict
+
     @staticmethod
     def factory(type, **kwargs):
         global ctype
@@ -240,8 +292,13 @@ class Conflict(object):
 
 
 class PathConflict(Conflict):
+    """A conflict was encountered merging file paths"""
+
     typestring = 'path conflict'
+
     format = 'Path conflict: %(path)s / %(conflict_path)s'
+
+    rformat = '%(class)s(%(path)r, %(conflict_path)r, %(file_id)r)'
     def __init__(self, path, conflict_path=None, file_id=None):
         Conflict.__init__(self, path, file_id)
         self.conflict_path = conflict_path
@@ -254,19 +311,34 @@ class PathConflict(Conflict):
 
 
 class ContentsConflict(PathConflict):
+    """The files are of different types, or not present"""
+
     typestring = 'contents conflict'
+
     format = 'Contents conflict in %(path)s'
 
 
 class TextConflict(PathConflict):
+    """The merge algorithm could not resolve all differences encountered."""
+
     typestring = 'text conflict'
+
     format = 'Text conflict in %(path)s'
 
 
 class HandledConflict(Conflict):
+    """A path problem that has been provisionally resolved.
+    This is intended to be a base class.
+    """
+
+    rformat = "%(class)s(%(action)r, %(path)r, %(file_id)r)"
+    
     def __init__(self, action, path, file_id=None):
         Conflict.__init__(self, path, file_id)
         self.action = action
+
+    def _cmp_list(self):
+        return Conflict._cmp_list(self) + [self.action]
 
     def as_stanza(self):
         s = Conflict.as_stanza(self)
@@ -275,12 +347,23 @@ class HandledConflict(Conflict):
 
 
 class HandledPathConflict(HandledConflict):
+    """A provisionally-resolved path problem involving two paths.
+    This is intended to be a base class.
+    """
+
+    rformat = "%(class)s(%(action)r, %(path)r, %(conflict_path)r,"\
+        " %(file_id)r, %(conflict_file_id)r)"
+
     def __init__(self, action, path, conflict_path, file_id=None,
                  conflict_file_id=None):
         HandledConflict.__init__(self, action, path, file_id)
         self.conflict_path = conflict_path 
         self.conflict_file_id = conflict_file_id
         
+    def _cmp_list(self):
+        return HandledConflict._cmp_list(self) + [self.conflict_path, 
+                                                  self.conflict_file_id]
+
     def as_stanza(self):
         s = HandledConflict.as_stanza(self)
         s.add('conflict_path', self.conflict_path)
@@ -291,27 +374,56 @@ class HandledPathConflict(HandledConflict):
 
 
 class DuplicateID(HandledPathConflict):
+    """Two files want the same file_id."""
+
     typestring = 'duplicate id'
+
     format = 'Conflict adding id to %(conflict_path)s.  %(action)s %(path)s.'
 
 
 class DuplicateEntry(HandledPathConflict):
+    """Two directory entries want to have the same name."""
+
     typestring = 'duplicate'
+
     format = 'Conflict adding file %(conflict_path)s.  %(action)s %(path)s.'
 
 
 class ParentLoop(HandledPathConflict):
+    """An attempt to create an infinitely-looping directory structure.
+    This is rare, but can be produced like so:
+
+    tree A:
+      mv foo/bar
+    tree B:
+      mv bar/foo
+    merge A and B
+    """
+
     typestring = 'parent loop'
+
     format = 'Conflict moving %(conflict_path)s into %(path)s.  %(action)s.'
 
 
 class UnversionedParent(HandledConflict):
+    """An attempt to version an file whose parent directory is not versioned.
+    Typically, the result of a merge where one tree unversioned the directory
+    and the other added a versioned file to it.
+    """
+
     typestring = 'unversioned parent'
+
     format = 'Conflict adding versioned files to %(path)s.  %(action)s.'
 
 
 class MissingParent(HandledConflict):
+    """An attempt to add files to a directory that is not present.
+    Typically, the result of a merge where one tree deleted the directory and
+    the other added a file to it.
+    """
+
     typestring = 'missing parent'
+
     format = 'Conflict adding files to %(path)s.  %(action)s.'
 
 

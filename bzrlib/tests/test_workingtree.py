@@ -208,24 +208,24 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
     def create_format2_tree(self, url):
         return BzrDir.create_standalone_workingtree(url)
 
-    def test_conflict_lines_format2(self):
+    def test_conflicts_format2(self):
         # test backwards compatability
         tree = self.create_format2_tree('.')
-        self.assertRaises(errors.UnsupportedOperation, tree.set_conflict_lines,
+        self.assertRaises(errors.UnsupportedOperation, tree.set_conflicts,
                           None)
         file('lala.BASE', 'wb').write('labase')
         expected = ContentsConflict('lala')
-        self.assertEqual(list(tree.conflict_lines()), [expected])
+        self.assertEqual(list(tree.conflicts()), [expected])
         file('lala', 'wb').write('la')
         tree.add('lala', 'lala-id')
         expected = ContentsConflict('lala', file_id='lala-id')
-        self.assertEqual(list(tree.conflict_lines()), [expected])
+        self.assertEqual(list(tree.conflicts()), [expected])
         file('lala.THIS', 'wb').write('lathis')
         file('lala.OTHER', 'wb').write('laother')
         # When "text conflict"s happen, stem, THIS and OTHER are text
         expected = TextConflict('lala', file_id='lala-id')
-        self.assertEqual(list(tree.conflict_lines()), [expected])
+        self.assertEqual(list(tree.conflicts()), [expected])
         os.unlink('lala.OTHER')
         os.mkdir('lala.OTHER')
         expected = ContentsConflict('lala', file_id='lala-id')
-        self.assertEqual(list(tree.conflict_lines()), [expected])
+        self.assertEqual(list(tree.conflicts()), [expected])

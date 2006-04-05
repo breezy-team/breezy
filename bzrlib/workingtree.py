@@ -50,8 +50,7 @@ import stat
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import (Branch,
                            quotefn)
-from bzrlib.conflicts import (stanzas_to_conflicts, conflicts_to_stanzas, Conflict,
-                              CONFLICT_SUFFIXES)
+from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
@@ -870,7 +869,7 @@ class WorkingTree(bzrlib.tree.Tree):
     @deprecated_method(zero_eight)
     def iter_conflicts(self):
         """List all files in the tree that have text or content conflicts.
-        DEPRECATED.  Use conflict_lines instead."""
+        DEPRECATED.  Use conflicts instead."""
         return self._iter_conflicts()
 
     def _iter_conflicts(self):
@@ -1287,11 +1286,12 @@ class WorkingTree(bzrlib.tree.Tree):
         self._set_inventory(inv)
         mutter('wrote working inventory')
 
-    def set_conflict_lines(self, arg):
-        raise UnsupportedOperation(self.set_conflict_lines, self)
+    def set_conflicts(self, arg):
+        raise UnsupportedOperation(self.set_conflicts, self)
 
     @needs_read_lock
-    def conflict_lines(self):
+    def conflicts(self):
+        conflicts = ConflictList()
         for conflicted in self._iter_conflicts():
             text = True
             try:
@@ -1316,8 +1316,10 @@ class WorkingTree(bzrlib.tree.Tree):
                         text = False
                         break
             ctype = {True: 'text conflict', False: 'contents conflict'}[text]
-            yield Conflict.factory(ctype, path=conflicted, 
-                                   file_id=self.path2id(conflicted))
+            conflicts.append(Conflict.factory(ctype, path=conflicted,
+                             file_id=self.path2id(conflicted)))
+        return conflicts
+
 
 class WorkingTree3(WorkingTree):
     """This is the Format 3 working tree.
@@ -1354,22 +1356,22 @@ class WorkingTree3(WorkingTree):
             return True
 
     @needs_write_lock
-    def set_conflict_lines(self, lines):
-        self._put_rio('conflicts', conflicts_to_stanzas(lines), 
+    def set_conflicts(self, conflicts):
+        self._put_rio('conflicts', conflicts.to_stanzas(), 
                       CONFLICT_HEADER_1)
 
     @needs_read_lock
-    def conflict_lines(self):
+    def conflicts(self):
         try:
             confile = self._control_files.get('conflicts')
         except NoSuchFile:
-            return []
+            return ConflictList()
         try:
             if confile.next() != CONFLICT_HEADER_1 + '\n':
                 raise ConflictFormatError()
         except StopIteration:
             raise ConflictFormatError()
-        return stanzas_to_conflicts(RioReader(confile))
+        return ConflictList.from_stanzas(RioReader(confile))
 
 
 def get_conflicted_stem(path):

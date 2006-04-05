@@ -26,7 +26,7 @@ from bzrlib.errors import NotConflicted
 # TODO: Test commit with some added, and added-but-missing files
 # RBC 20060124 is that not tested in test_commit.py ?
 
-example_conflicts = [ 
+example_conflicts = ConflictList([ 
     ContentsConflict('patha', 'ida'), 
     TextConflict('patha'),
     PathConflict('pathb', 'pathc', 'idb'),
@@ -36,7 +36,7 @@ example_conflicts = [
     ParentLoop('Cancelled move', 'pathe', 'path2e', None, 'id2e'),
     UnversionedParent('Versioned directory', 'pathf', 'idf'),
     MissingParent('Not deleting', 'pathg', 'idg'),
-]
+])
 
 
 class TestConflicts(TestCaseWithTransport):
@@ -52,13 +52,13 @@ class TestConflicts(TestCaseWithTransport):
         file('hello.sploo.BASE', 'w').write('yellow world')
         file('hello.sploo.OTHER', 'w').write('yellow world2')
         self.assertEqual(len(list(tree.list_files())), 6)
-        conflicts = list(tree.conflict_lines())
+        conflicts = tree.conflicts()
         self.assertEqual(len(conflicts), 2)
         self.assert_('hello' in conflicts[0].path)
         self.assert_('hello.sploo' in conflicts[1].path)
         restore('hello')
         restore('hello.sploo')
-        self.assertEqual(len(list(tree.conflict_lines())), 0)
+        self.assertEqual(len(tree.conflicts()), 0)
         self.assertFileEqual('hello world2', 'hello')
         assert not os.path.lexists('hello.sploo')
         self.assertRaises(NotConflicted, restore, 'hello')

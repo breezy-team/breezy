@@ -22,7 +22,7 @@ from tempfile import mkdtemp
 
 import bzrlib
 from bzrlib.branch import Branch
-from bzrlib.conflicts import conflicts_to_strings
+from bzrlib.conflicts import conflicts_to_strings, ConflictList
 from bzrlib.delta import compare_trees
 from bzrlib.errors import (BzrCommandError,
                            BzrError,
@@ -377,7 +377,7 @@ class Merge3Merger(object):
             results = self.tt.apply()
             self.write_modified(results)
             try:
-                working_tree.set_conflict_lines(self.cooked_conflicts)
+                working_tree.set_conflicts(ConflictList(self.cooked_conflicts))
             except UnsupportedOperation:
                 pass
         finally:

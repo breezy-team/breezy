@@ -505,22 +505,22 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree._control_files.put('merge-hashes', StringIO('asdfasdf'))
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
 
-    def test_conflict_lines(self):
+    def test_conflicts(self):
         from bzrlib.tests.test_conflicts import example_conflicts
         tree = self.make_branch_and_tree('master')
         try:
-            tree.set_conflict_lines(example_conflicts)
+            tree.set_conflicts(example_conflicts)
         except UnsupportedOperation:
-            raise TestSkipped('set_conflict_lines not supported')
+            raise TestSkipped('set_conflicts not supported')
             
         tree2 = WorkingTree.open('master')
-        self.assertEqual(list(tree2.conflict_lines()), example_conflicts)
+        self.assertEqual(tree2.conflicts(), example_conflicts)
         tree2._control_files.put('conflicts', StringIO(''))
         self.assertRaises(errors.ConflictFormatError, 
-                          tree2.conflict_lines)
+                          tree2.conflicts)
         tree2._control_files.put('conflicts', StringIO('a'))
         self.assertRaises(errors.ConflictFormatError, 
-                          tree2.conflict_lines)
+                          tree2.conflicts)
 
     def make_merge_conflicts(self):
         from bzrlib.merge import merge_inner 
@@ -542,27 +542,28 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_merge_conflicts(self):
         tree = self.make_merge_conflicts()
-        self.assertEqual(len(list(tree.conflict_lines())), 1)
+        self.assertEqual(len(tree.conflicts()), 1)
 
     def test_clear_merge_conflicts(self):
+        from bzrlib.conflicts import ConflictList
         tree = self.make_merge_conflicts()
-        self.assertEqual(len(list(tree.conflict_lines())), 1)
+        self.assertEqual(len(tree.conflicts()), 1)
         try:
-            tree.set_conflict_lines([])
+            tree.set_conflicts(ConflictList())
         except UnsupportedOperation:
             raise TestSkipped
-        self.assertEqual(len(list(tree.conflict_lines())), 0)
+        self.assertEqual(tree.conflicts(), ConflictList())
 
     def test_revert_clear_conflicts(self):
         tree = self.make_merge_conflicts()
-        self.assertEqual(len(list(tree.conflict_lines())), 1)
+        self.assertEqual(len(tree.conflicts()), 1)
         tree.revert(["blo"])
-        self.assertEqual(len(list(tree.conflict_lines())), 1)
+        self.assertEqual(len(tree.conflicts()), 1)
         tree.revert(["bloo"])
-        self.assertEqual(len(list(tree.conflict_lines())), 0)
+        self.assertEqual(len(tree.conflicts()), 0)
 
     def test_revert_clear_conflicts2(self):
         tree = self.make_merge_conflicts()
-        self.assertEqual(len(list(tree.conflict_lines())), 1)
+        self.assertEqual(len(tree.conflicts()), 1)
         tree.revert([])
-        self.assertEqual(len(list(tree.conflict_lines())), 0)
+        self.assertEqual(len(tree.conflicts()), 0)

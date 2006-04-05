@@ -138,7 +138,7 @@ def show_tree_status(wt, show_unchanged=False,
         if new_is_working_tree:
             list_paths('unknown', new.unknowns(), specific_files, to_file)
             conflict_title = False
-            for conflict in conflicts_to_strings(wt.conflict_lines()):
+            for conflict in conflicts_to_strings(wt.conflicts()):
                 if conflict_title is False:
                     print >> to_file, "conflicts:"
                     conflict_title = True
