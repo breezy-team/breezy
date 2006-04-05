@@ -19,7 +19,7 @@ import os
 
 from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.branch import Branch
-from bzrlib.conflicts import restore, stanza_conflicts, conflict_stanzas
+from bzrlib.conflicts import *
 from bzrlib.errors import NotConflicted
 
 
@@ -27,16 +27,15 @@ from bzrlib.errors import NotConflicted
 # RBC 20060124 is that not tested in test_commit.py ?
 
 example_conflicts = [ 
-    ('contents conflict', 'ida', 'patha'),
-    ('text conflict', None, 'patha'),
-    ('path conflict', 'idb', 'pathb', 'pathc'),
-    ('duplicate id', 'Unversioned existing file', 'pathc', 'idc', 'pathc2', 
-     'idc'),
-    ('duplicate', 'Moved existing file to',  'pathdd.moved', 'idd', 'pathd', 
-     None),
-    ('parent loop', 'Cancelled move', 'pathe', None, 'path2e', 'id2e'),
-    ('unversioned parent', 'Versioned directory', 'pathf', 'idf'),
-    ('missing parent', 'Not deleting', 'pathg', 'idg'),
+    ContentsConflict('patha', 'ida'), 
+    TextConflict('patha'),
+    PathConflict('pathb', 'pathc', 'idb'),
+    DuplicateID('Unversioned existing file', 'pathc', 'pathc2', 'idc', 'idc'),
+    DuplicateEntry('Moved existing file to',  'pathdd.moved', 'pathd', 'idd', 
+                   None),
+    ParentLoop('Cancelled move', 'pathe', 'path2e', None, 'id2e'),
+    UnversionedParent('Versioned directory', 'pathf', 'idf'),
+    MissingParent('Not deleting', 'pathg', 'idg'),
 ]
 
 

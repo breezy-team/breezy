@@ -697,6 +697,7 @@ class Merge3Merger(object):
 
     def cook_conflicts(self, fs_conflicts):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
+        from conflicts import Conflict
         name_conflicts = {}
         self.cooked_conflicts.extend(cook_conflicts(fs_conflicts, self.tt))
         fp = FinalPaths(self.tt)
@@ -719,12 +720,14 @@ class Merge3Merger(object):
                     if path.endswith(suffix):
                         path = path[:-len(suffix)]
                         break
-                self.cooked_conflicts.append((conflict_type, file_id, path))
+                c = Conflict.factory(conflict_type, path=path, file_id=file_id)
+                self.cooked_conflicts.append(c)
             if conflict_type == 'text conflict':
                 trans_id = conflict[1]
                 path = fp.get_path(trans_id)
                 file_id = self.tt.final_file_id(trans_id)
-                self.cooked_conflicts.append((conflict_type, file_id, path))
+                c = Conflict.factory(conflict_type, path=path, file_id=file_id)
+                self.cooked_conflicts.append(c)
 
         for trans_id, conflicts in name_conflicts.iteritems():
             try:
@@ -746,8 +749,9 @@ class Merge3Merger(object):
             else:
                 this_path = "<deleted>"
             file_id = self.tt.final_file_id(trans_id)
-            self.cooked_conflicts.append(('path conflict', file_id, this_path, 
-                                         other_path))
+            c = Conflict.factory(conflict_type, path=this_path,
+                                 conflict_path=other_path, file_id=file_id)
+            self.cooked_conflicts.append(c)
 
 
 class WeaveMerger(Merge3Merger):

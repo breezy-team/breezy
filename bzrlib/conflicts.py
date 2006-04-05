@@ -191,46 +191,44 @@ def restore(filename):
 
 def conflict_stanzas(conflicts):
     for conflict in conflicts:
-        if conflict[0] in ('text conflict', 'path conflict', 
-                           'contents conflict'):
-            s = Stanza(type=conflict[0], path=conflict[2])
-            if conflict[0] == 'path conflict':
-                s.add('conflict_path', conflict[3])
-            if conflict[1] is not None:
-                s.add('file_id', conflict[1]) 
-            yield s
-        else:
-            mydict = {'type': conflict[0], 'action': conflict[1], 
-                      'path': conflict[2]}
-            if conflict[3] is not None:
-                mydict['file_id'] = conflict[3]
-            if len(conflict) > 4:
-                mydict['conflict_path'] = conflict[4]
-                if conflict[5] is not None:
-                    mydict['conflict_file_id'] = conflict[5]
-            yield Stanza(**mydict)
+        yield conflict.as_stanza()
 
 def stanza_conflicts(stanzas):
     for stanza in stanzas:
-        yield Conflict.from_stanza(stanza)
+        yield Conflict.factory(**stanza.as_dict())
 
 
 class Conflict(object):
     """Base class for all types of conflict"""
-    typestring = None
-    def __init__(self, type, path, file_id=None):
+    def __init__(self, path, file_id=None):
         self.path = path
         self.file_id = file_id
-        assert type == self.typestring
+
+    def as_stanza(self):
+        s = Stanza(type=self.typestring, path=self.path)
+        if self.file_id is not None:
+            s.add('file_id', self.file_id)
+        return s
+
+    def __cmp__(self, other):
+        result = cmp(type(self), type(other))
+        if result != 0:
+            return result
+        result = cmp(self.path, other.path)
+        if result != 0:
+            return result
+        return cmp(self.file_id, other.file_id)
+
+    def __eq__(self, other):
+        return self.__cmp__(other) == 0
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     @staticmethod
-    def from_stanza(stanza):
+    def factory(type, **kwargs):
         global ctype
-        try:
-            file_id = stanza['file_id']
-        except KeyError:
-            file_id = None
-        return ctype[stanza['type']](**stanza.as_dict())
+        return ctype[type](**kwargs)
 
 class ContentsConflict(Conflict):
     typestring = 'contents conflict'
@@ -240,22 +238,39 @@ class TextConflict(ContentsConflict):
 
 class PathConflict(Conflict):
     typestring = 'path conflict'
-    def __init__(self, type, path, conflict_path, file_id=None):
-        Conflict.__init__(self, type, path, file_id)
+    def __init__(self, path, conflict_path, file_id=None):
+        Conflict.__init__(self, path, file_id)
         self.conflict_path = conflict_path
 
+    def as_stanza(self):
+        s = Conflict.as_stanza(self)
+        s.add('conflict_path', self.conflict_path)
+        return s
+
 class HandledConflict(Conflict):
-    def __init__(self, type, action, path, file_id=None):
-        Conflict.__init__(self, type, path, file_id)
+    def __init__(self, action, path, file_id=None):
+        Conflict.__init__(self, path, file_id)
         self.action = action
 
+    def as_stanza(self):
+        s = Conflict.as_stanza(self)
+        s.add('action', self.action)
+        return s
+
 class HandledPathConflict(HandledConflict):
-    def __init__(self, type, action, path, conflict_path, file_id=None,
+    def __init__(self, action, path, conflict_path, file_id=None,
                  conflict_file_id=None):
-        HandledConflict.__init__(self, type, action, path, file_id)
+        HandledConflict.__init__(self, action, path, file_id)
         self.conflict_path = conflict_path 
         self.conflict_file_id = conflict_file_id
         
+    def as_stanza(self):
+        s = HandledConflict.as_stanza(self)
+        s.add('conflict_path', self.conflict_path)
+        if self.conflict_file_id is not None:
+            s.add('conflict_file_id', self.conflict_file_id)
+            
+        return s
     
 class DuplicateID(HandledPathConflict):
     typestring = 'duplicate id'

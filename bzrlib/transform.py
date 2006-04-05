@@ -1161,6 +1161,7 @@ def cook_conflicts(raw_conflicts, tt):
     return sorted(list(iter_cook_conflicts(raw_conflicts, tt)), key=key)
 
 def iter_cook_conflicts(raw_conflicts, tt):
+    from bzrlib.conflicts import Conflict
     cooked_conflicts = []
     fp = FinalPaths(tt)
     for conflict in raw_conflicts:
@@ -1169,12 +1170,16 @@ def iter_cook_conflicts(raw_conflicts, tt):
         modified_path = fp.get_path(conflict[2])
         modified_id = tt.final_file_id(conflict[2])
         if len(conflict) == 3:
-            yield c_type, action, modified_path, modified_id
+            yield Conflict.factory(c_type, action=action, path=modified_path,
+                                     file_id=modified_id)
+             
         else:
             conflicting_path = fp.get_path(conflict[3])
             conflicting_id = tt.final_file_id(conflict[3])
-            yield (c_type, action, modified_path, modified_id, 
-                   conflicting_path, conflicting_id)
+            yield Conflict.factory(c_type, action=action, path=modified_path,
+                                   file_id=modified_id, 
+                                   conflict_path=conflicting_path,
+                                   conflict_file_id=conflicting_id)
 
 
 def conflicts_strings(conflicts):
