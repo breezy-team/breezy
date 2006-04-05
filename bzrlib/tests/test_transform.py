@@ -389,22 +389,26 @@ class TestTreeTransform(TestCaseInTempDir):
         conflicts.apply()
 
     def test_cook_conflicts(self):
+        from bzrlib.conflicts import (DuplicateEntry, DuplicateID, 
+                                      MissingParent, UnversionedParent,
+                                      ParentLoop)
         tt, emerald, oz, old_dorothy, new_dorothy = self.get_conflicted()
         raw_conflicts = resolve_conflicts(tt)
         cooked_conflicts = cook_conflicts(raw_conflicts, tt)
-        duplicate = ('duplicate', 'Moved existing file to', 'dorothy.moved', 
-                     None, 'dorothy', 'dorothy-id')
+        duplicate = DuplicateEntry('Moved existing file to', 'dorothy.moved', 
+                                   'dorothy', None, 'dorothy-id')
         self.assertEqual(cooked_conflicts[0], duplicate)
-        duplicate_id = ('duplicate id', 'Unversioned existing file', 
-                        'dorothy.moved', None, 'dorothy', 'dorothy-id')
+        duplicate_id = DuplicateID('Unversioned existing file', 
+                                   'dorothy.moved', 'dorothy', None,
+                                   'dorothy-id')
         self.assertEqual(cooked_conflicts[1], duplicate_id)
-        missing_parent = ('missing parent', 'Not deleting', 'oz', 'oz-id')
+        missing_parent = MissingParent('Not deleting', 'oz', 'oz-id')
         self.assertEqual(cooked_conflicts[2], missing_parent)
-        unversioned_parent = ('unversioned parent', 
-                              'Versioned directory', 'oz', 'oz-id')
+        unversioned_parent = UnversionedParent('Versioned directory', 'oz',
+                                               'oz-id')
         self.assertEqual(cooked_conflicts[3], unversioned_parent)
-        parent_loop = ('parent loop', 'Cancelled move', 'oz/emeraldcity', 
-                       'emerald-id', 'oz/emeraldcity', 'emerald-id')
+        parent_loop = ParentLoop('Cancelled move', 'oz/emeraldcity', 
+                                 'oz/emeraldcity', 'emerald-id', 'emerald-id')
         self.assertEqual(cooked_conflicts[4], parent_loop)
         self.assertEqual(len(cooked_conflicts), 5)
         tt.finalize()

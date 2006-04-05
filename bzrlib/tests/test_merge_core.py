@@ -6,6 +6,7 @@ import sys
 import bzrlib
 from bzrlib.add import smart_add_tree
 from bzrlib.builtins import merge
+from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
 from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError, NoDiff3)
 from bzrlib.inventory import RootEntry
@@ -191,7 +192,7 @@ class MergeTest(TestCase):
         builder.add_file("1", "TREE_ROOT", "name1", "hello1", False)
         builder.change_name("1", other="name2", this="name3")
         conflicts = builder.merge()
-        self.assertEqual(conflicts, [('path conflict', '1', 'name3', 'name2')])
+        self.assertEqual(conflicts, [PathConflict('name3', 'name2', '1')])
         builder.cleanup()
 
     def test_merge_one(self):
@@ -227,7 +228,7 @@ class MergeTest(TestCase):
         conflicts = builder.merge()
         path2 = pathjoin('dir2', 'file1')
         path3 = pathjoin('dir3', 'file1')
-        self.assertEqual(conflicts, [('path conflict', '4', path3, path2)])
+        self.assertEqual(conflicts, [PathConflict(path3, path2, '4')])
         builder.cleanup()
 
     def test_contents_merge(self):
@@ -278,7 +279,7 @@ class MergeTest(TestCase):
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.change_contents("1", other="text4", this="text3")
         conflicts = builder.merge(merge_factory)
-        self.assertEqual(conflicts, [('text conflict', '1', 'name1')])
+        self.assertEqual(conflicts, [TextConflict('name1', file_id='1')])
         builder.cleanup()
 
     def test_symlink_conflicts(self):
@@ -287,7 +288,8 @@ class MergeTest(TestCase):
             builder.add_symlink("2", "TREE_ROOT", "name2", "target1")
             builder.change_target("2", other="target4", base="text3")
             conflicts = builder.merge()
-            self.assertEqual(conflicts, [('contents conflict', '2', 'name2')])
+            self.assertEqual(conflicts, [ContentsConflict('name2', 
+                                                          file_id='2')])
             builder.cleanup()
 
     def test_symlink_merge(self):

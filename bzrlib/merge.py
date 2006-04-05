@@ -749,7 +749,7 @@ class Merge3Merger(object):
             else:
                 this_path = "<deleted>"
             file_id = self.tt.final_file_id(trans_id)
-            c = Conflict.factory(conflict_type, path=this_path,
+            c = Conflict.factory('path conflict', path=this_path,
                                  conflict_path=other_path, file_id=file_id)
             self.cooked_conflicts.append(c)
 

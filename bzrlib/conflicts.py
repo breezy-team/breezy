@@ -225,27 +225,38 @@ class Conflict(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+    def __str__(self):
+        return self.format % self.__dict__
+
     @staticmethod
     def factory(type, **kwargs):
         global ctype
         return ctype[type](**kwargs)
 
-class ContentsConflict(Conflict):
-    typestring = 'contents conflict'
-
-class TextConflict(ContentsConflict):
-    typestring = 'text conflict'
 
 class PathConflict(Conflict):
     typestring = 'path conflict'
-    def __init__(self, path, conflict_path, file_id=None):
+    format = 'Path conflict: %(path)s / %(conflict_path)s'
+    def __init__(self, path, conflict_path=None, file_id=None):
         Conflict.__init__(self, path, file_id)
         self.conflict_path = conflict_path
 
     def as_stanza(self):
         s = Conflict.as_stanza(self)
-        s.add('conflict_path', self.conflict_path)
+        if self.conflict_path is not None:
+            s.add('conflict_path', self.conflict_path)
         return s
+
+
+class ContentsConflict(PathConflict):
+    typestring = 'contents conflict'
+    format = 'Contents conflict in %(path)s'
+
+
+class TextConflict(PathConflict):
+    typestring = 'text conflict'
+    format = 'Text conflict in %(path)s'
+
 
 class HandledConflict(Conflict):
     def __init__(self, action, path, file_id=None):
@@ -256,6 +267,7 @@ class HandledConflict(Conflict):
         s = Conflict.as_stanza(self)
         s.add('action', self.action)
         return s
+
 
 class HandledPathConflict(HandledConflict):
     def __init__(self, action, path, conflict_path, file_id=None,
@@ -271,28 +283,43 @@ class HandledPathConflict(HandledConflict):
             s.add('conflict_file_id', self.conflict_file_id)
             
         return s
-    
+
+
 class DuplicateID(HandledPathConflict):
     typestring = 'duplicate id'
+    format = 'Conflict adding id to %(conflict_path)s.  %(action)s %(path)s.'
+
 
 class DuplicateEntry(HandledPathConflict):
     typestring = 'duplicate'
+    format = 'Conflict adding file %(conflict_path)s.  %(action)s %(path)s.'
+
 
 class ParentLoop(HandledPathConflict):
     typestring = 'parent loop'
+    format = 'Conflict moving %(conflict_path)s into %(path)s.  %(action)s.'
+
 
 class UnversionedParent(HandledConflict):
     typestring = 'unversioned parent'
+    format = 'Conflict adding versioned files to %(path)s.  %(action)s.'
+
 
 class MissingParent(HandledConflict):
     typestring = 'missing parent'
+    format = 'Conflict adding files to %(path)s.  %(action)s.'
+
+
 
 ctype = {}
+
+
 def register_types(*conflict_types):
     """Register a Conflict subclass for serialization purposes"""
     global ctype
     for conflict_type in conflict_types:
         ctype[conflict_type.typestring] = conflict_type
 
+
 register_types(ContentsConflict, TextConflict, PathConflict, DuplicateID,
-               DuplicateEntry, ParentLoop, UnversionedParent, MissingParent)
+               DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,)

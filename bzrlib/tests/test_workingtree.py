@@ -22,6 +22,7 @@ import bzrlib
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.bzrdir import BzrDir
+from bzrlib.conflicts import *
 import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.lockdir import LockDir
@@ -213,18 +214,18 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertRaises(errors.UnsupportedOperation, tree.set_conflict_lines,
                           None)
         file('lala.BASE', 'wb').write('labase')
-        expected = ('contents conflict', None, 'lala')
+        expected = ContentsConflict('lala')
         self.assertEqual(list(tree.conflict_lines()), [expected])
         file('lala', 'wb').write('la')
         tree.add('lala', 'lala-id')
-        expected = ('contents conflict', 'lala-id', 'lala')
+        expected = ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflict_lines()), [expected])
         file('lala.THIS', 'wb').write('lathis')
         file('lala.OTHER', 'wb').write('laother')
         # When "text conflict"s happen, stem, THIS and OTHER are text
-        expected = ('text conflict', 'lala-id', 'lala')
+        expected = TextConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflict_lines()), [expected])
         os.unlink('lala.OTHER')
         os.mkdir('lala.OTHER')
-        expected = ('contents conflict', 'lala-id', 'lala')
+        expected = ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflict_lines()), [expected])

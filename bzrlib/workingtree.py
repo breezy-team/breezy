@@ -50,7 +50,7 @@ import stat
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import (Branch,
                            quotefn)
-from bzrlib.conflicts import (stanza_conflicts, conflict_stanzas,
+from bzrlib.conflicts import (stanza_conflicts, conflict_stanzas, Conflict,
                               CONFLICT_SUFFIXES)
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -1316,7 +1316,8 @@ class WorkingTree(bzrlib.tree.Tree):
                         text = False
                         break
             ctype = {True: 'text conflict', False: 'contents conflict'}[text]
-            yield (ctype, self.path2id(conflicted), conflicted)
+            yield Conflict.factory(ctype, path=conflicted, 
+                                   file_id=self.path2id(conflicted))
 
 class WorkingTree3(WorkingTree):
     """This is the Format 3 working tree.

@@ -1151,12 +1151,12 @@ def conflict_pass(tt, conflicts):
 def cook_conflicts(raw_conflicts, tt):
     """Generate a list of cooked conflicts, sorted by file path"""
     def key(conflict):
-        if conflict[2] is not None:
-            return conflict[2], conflict[0]
-        elif len(conflict) == 6:
-            return conflict[4], conflict[0]
+        if conflict.path is not None:
+            return conflict.path, conflict.typestring
+        elif getattr(conflict, "conflict_path", None) is not None:
+            return conflict.conflict_path, conflict.typestring
         else:
-            return None, conflict[0]
+            return None, conflict.typestring
 
     return sorted(list(iter_cook_conflicts(raw_conflicts, tt)), key=key)
 
@@ -1185,25 +1185,4 @@ def iter_cook_conflicts(raw_conflicts, tt):
 def conflicts_strings(conflicts):
     """Generate strings for the provided conflicts"""
     for conflict in conflicts:
-        conflict_type = conflict[0]
-        if conflict_type == 'text conflict':
-            yield 'Text conflict in %s' % conflict[2]
-        elif conflict_type == 'contents conflict':
-            yield 'Contents conflict in %s' % conflict[2]
-        elif conflict_type == 'path conflict':
-            yield 'Path conflict: %s / %s' % conflict[2:]
-        elif conflict_type == 'duplicate id':
-            vals = (conflict[4], conflict[1], conflict[2])
-            yield 'Conflict adding id to %s.  %s %s.' % vals
-        elif conflict_type == 'duplicate':
-            vals = (conflict[4], conflict[1], conflict[2])
-            yield 'Conflict adding file %s.  %s %s.' % vals
-        elif conflict_type == 'parent loop':
-            vals = (conflict[4], conflict[2], conflict[1])
-            yield 'Conflict moving %s into %s.  %s.' % vals
-        elif conflict_type == 'unversioned parent':
-            vals = (conflict[2], conflict[1])
-            yield 'Conflict adding versioned files to %s.  %s.' % vals
-        elif conflict_type == 'missing parent':
-            vals = (conflict[2], conflict[1])
-            yield 'Conflict adding files to %s.  %s.' % vals
+        yield str(conflict)
