@@ -88,7 +88,7 @@ class cmd_resolve(bzrlib.commands.Command):
 def resolve(tree, paths=None, ignore_misses=False):
     tree.lock_write()
     try:
-        tree_conflicts = list(tree.conflicts())
+        tree_conflicts = tree.conflicts()
         if paths is None:
             new_conflicts = []
             selected_conflicts = tree_conflicts
@@ -109,14 +109,13 @@ def select_conflicts(tree, paths, tree_conflicts, ignore_misses=False):
     ids = {}
     selected_paths = set()
     new_conflicts = []
-    selected_conflicts = []
+    selected_conflicts = ConflictList()
     for path in paths:
         file_id = tree.path2id(path)
         if file_id is not None:
             ids[file_id] = path
 
-    for conflict, stanza in zip(tree_conflicts, 
-        conflicts_to_stanzas(tree_conflicts)):
+    for conflict, stanza in zip(tree_conflicts, tree_conflicts.to_stanzas()):
         selected = False
         for key in ('path', 'conflict_path'):
             try:
@@ -150,7 +149,7 @@ def select_conflicts(tree, paths, tree_conflicts, ignore_misses=False):
     return new_conflicts, selected_conflicts
 
 def remove_conflict_files(tree, conflicts):
-    for stanza in conflicts_to_stanzas(conflicts):
+    for stanza in conflicts.to_stanzas():
         if stanza['type'] in ("text conflict", "contents conflict"):
             for suffix in CONFLICT_SUFFIXES:
                 try:
@@ -234,16 +233,6 @@ class ConflictList(object):
         for conflict in self:
             yield conflict.as_stanza()
             
-
-def conflicts_to_stanzas(conflicts):
-    for stanza in ConflictList(conflicts).to_stanzas():
-        yield stanza
-
-
-def stanzas_to_conflicts(stanzas):
-    for conflict in ConflictList.from_stanzas(stanzas):
-        yield conflict
-
 
 def conflicts_to_strings(conflicts):
     """Generate strings for the provided conflicts"""
