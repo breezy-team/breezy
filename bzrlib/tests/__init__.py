@@ -598,6 +598,7 @@ class TestCaseInTempDir(TestCase):
         super(TestCaseInTempDir, self).setUp()
         self._make_test_root()
         _currentdir = os.getcwdu()
+        # shorten the name, to avoid test failures due to path length
         short_id = self.id().replace('bzrlib.tests.', '') \
                 .replace('__main__.', '')[-100:]
         self.test_dir = osutils.pathjoin(self.TEST_ROOT, short_id)
