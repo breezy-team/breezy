@@ -109,6 +109,7 @@ from bzrlib.errors import (
         LockError,
         LockNotHeld,
         NoSuchFile,
+        ResourceBusy,
         UnlockableTransport,
         )
 from bzrlib.transport import Transport
@@ -201,7 +202,7 @@ class LockDir(object):
             self._lock_held = True
             self.confirm()
             return
-        except (DirectoryNotEmpty, FileExists), e:
+        except (DirectoryNotEmpty, FileExists, ResourceBusy), e:
             pass
         # fall through to here on contention
         raise LockContention(self)

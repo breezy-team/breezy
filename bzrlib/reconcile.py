@@ -134,7 +134,7 @@ class RepoReconciler(object):
         self.repo.control_weaves.copy(self.inventory, 'inventory.backup', self.repo.get_transaction())
         self.pb.note('Backup Inventory created.')
         # asking for '' should never return a non-empty weave
-        new_inventory = self.repo.control_weaves.get_empty('inventory.new',
+        new_inventory_vf = self.repo.control_weaves.get_empty('inventory.new',
             self.repo.get_transaction())
 
         # we have topological order of revisions and non ghost parents ready.
@@ -142,24 +142,29 @@ class RepoReconciler(object):
         for rev_id in TopoSorter(self._rev_graph.items()).iter_topo_order():
             parents = self._rev_graph[rev_id]
             # double check this really is in topological order.
-            unavailable = [p for p in parents if p not in new_inventory]
+            unavailable = [p for p in parents if p not in new_inventory_vf]
             assert len(unavailable) == 0
             # this entry has all the non ghost parents in the inventory
             # file already.
             self._reweave_step('adding inventories')
-            # ugly but needed, weaves are just way tooooo slow else.
-            if isinstance(new_inventory, WeaveFile):
-                Weave.add_lines(new_inventory, rev_id, parents, self.inventory.get_lines(rev_id))
+            if isinstance(new_inventory_vf, WeaveFile):
+                # It's really a WeaveFile, but we call straight into the
+                # Weave's add method to disable the auto-write-out behaviour.
+                # This is done to avoid a revision_count * time-to-write additional overhead on 
+                # reconcile.
+                new_inventory_vf._check_write_ok()
+                Weave._add_lines(new_inventory_vf, rev_id, parents, self.inventory.get_lines(rev_id),
+                                 None)
             else:
-                new_inventory.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
+                new_inventory_vf.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
 
-        if isinstance(new_inventory, WeaveFile):
-            new_inventory._save()
-        # if this worked, the set of new_inventory.names should equal
+        if isinstance(new_inventory_vf, WeaveFile):
+            new_inventory_vf._save()
+        # if this worked, the set of new_inventory_vf.names should equal
         # self.pending
-        assert set(new_inventory.versions()) == self.pending
+        assert set(new_inventory_vf.versions()) == self.pending
         self.pb.update('Writing weave')
-        self.repo.control_weaves.copy(new_inventory, 'inventory', self.repo.get_transaction())
+        self.repo.control_weaves.copy(new_inventory_vf, 'inventory', self.repo.get_transaction())
         self.repo.control_weaves.delete('inventory.new', self.repo.get_transaction())
         self.inventory = None
         self.pb.note('Inventory regenerated.')
@@ -258,7 +263,7 @@ class KnitReconciler(RepoReconciler):
         self.repo.control_weaves.copy(self.inventory, 'inventory.backup', self.transaction)
         self.pb.note('Backup Inventory created.')
         # asking for '' should never return a non-empty weave
-        new_inventory = self.repo.control_weaves.get_empty('inventory.new',
+        new_inventory_vf = self.repo.control_weaves.get_empty('inventory.new',
             self.transaction)
 
         # we have topological order of revisions and non ghost parents ready.
@@ -266,19 +271,19 @@ class KnitReconciler(RepoReconciler):
         for rev_id in TopoSorter(self.revisions.get_graph().items()).iter_topo_order():
             parents = self.revisions.get_parents(rev_id)
             # double check this really is in topological order.
-            unavailable = [p for p in parents if p not in new_inventory]
+            unavailable = [p for p in parents if p not in new_inventory_vf]
             assert len(unavailable) == 0
             # this entry has all the non ghost parents in the inventory
             # file already.
             self._reweave_step('adding inventories')
             # ugly but needed, weaves are just way tooooo slow else.
-            new_inventory.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
+            new_inventory_vf.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
 
-        # if this worked, the set of new_inventory.names should equal
+        # if this worked, the set of new_inventory_vf.names should equal
         # self.pending
-        assert set(new_inventory.versions()) == set(self.revisions.versions())
+        assert set(new_inventory_vf.versions()) == set(self.revisions.versions())
         self.pb.update('Writing weave')
-        self.repo.control_weaves.copy(new_inventory, 'inventory', self.transaction)
+        self.repo.control_weaves.copy(new_inventory_vf, 'inventory', self.transaction)
         self.repo.control_weaves.delete('inventory.new', self.transaction)
         self.inventory = None
         self.pb.note('Inventory regenerated.')

@@ -227,7 +227,7 @@ class LocalTransport(Transport):
         path = self.abspath(relpath)
         try:
             return [urllib.quote(entry) for entry in os.listdir(path)]
-        except (IOError, OSError),e:
+        except (IOError, OSError), e:
             self._translate_error(e, path)
 
     def stat(self, relpath):

@@ -62,3 +62,14 @@ class TextUIFactory(UIFactory):
         if self._progress_bar_stack is None:
             self._progress_bar_stack = bzrlib.progress.ProgressBarStack()
         return self._progress_bar_stack.get_nested()
+
+    def clear_term(self):
+        """Prepare the terminal for output.
+
+        This will, clear any progress bars, and leave the cursor at the
+        leftmost position."""
+        if self._progress_bar_stack is None:
+            return
+        overall_pb = self._progress_bar_stack.bottom()
+        if overall_pb is not None:
+            overall_pb.clear()

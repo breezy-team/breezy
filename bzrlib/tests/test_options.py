@@ -1,9 +1,11 @@
-# (C) 2005 Canonical
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 from bzrlib.tests import TestCase
 from bzrlib.commands import Command, parse_args
 from bzrlib.builtins import cmd_commit, cmd_log, cmd_status
 
+# TODO: might be nice to just parse them into a structured form and test
+# against that, rather than running the whole command.
 
 class OptionTests(TestCase):
     """Command-line option tests"""
