@@ -31,7 +31,7 @@ from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError,
                            DependencyNotPresent)
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport
+from bzrlib.transport import ensure_netloc
 from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
 
 try:
@@ -39,6 +39,9 @@ try:
 except ImportError, e:
     mutter("failed to import pycurl: %s", e)
     raise DependencyNotPresent('pycurl', e)
+
+
+ensure_netloc('http+pycurl')
 
 
 class PyCurlTransport(HttpTransportBase):

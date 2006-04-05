@@ -38,7 +38,7 @@ from bzrlib.errors import (ConnectionError,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename
 from bzrlib.trace import mutter, warning, error
-from bzrlib.transport import Transport, Server, urlescape
+from bzrlib.transport import Transport, Server, urlescape, ensure_netloc
 import bzrlib.ui
 
 try:
@@ -53,8 +53,9 @@ else:
     from paramiko.sftp_file import SFTPFile
     from paramiko.sftp_client import SFTPClient
 
-if 'sftp' not in urlparse.uses_netloc:
-    urlparse.uses_netloc.append('sftp')
+
+ensure_netloc('sftp')
+
 
 # don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
 _default_do_prefetch = False
@@ -267,7 +268,7 @@ class SFTPTransport (Transport):
         self._parse_url(base)
         base = self._unparse_url()
         if base[-1] != '/':
-            base = base + '/'
+            base += '/'
         super(SFTPTransport, self).__init__(base)
         if clone_from is None:
             self._sftp_connect()
@@ -611,7 +612,6 @@ class SFTPTransport (Transport):
             netloc = '%s@%s' % (urllib.quote(self._username), netloc)
         if self._port is not None:
             netloc = '%s:%d' % (netloc, self._port)
-
         return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
 
     def _split_url(self, url):
