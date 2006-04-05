@@ -90,65 +90,19 @@ def resolve(tree, paths=None, ignore_misses=False):
     try:
         tree_conflicts = tree.conflicts()
         if paths is None:
-            new_conflicts = []
+            new_conflicts = ConflictList()
             selected_conflicts = tree_conflicts
         else:
             new_conflicts, selected_conflicts = \
-                select_conflicts(tree, paths, tree_conflicts, ignore_misses)
+                tree_conflicts.select_conflicts(tree, paths, ignore_misses)
         try:
-            tree.set_conflicts(ConflictList(new_conflicts))
+            tree.set_conflicts(new_conflicts)
         except UnsupportedOperation:
             pass
         selected_conflicts.remove_files(tree)
     finally:
         tree.unlock()
 
-
-def select_conflicts(tree, paths, tree_conflicts, ignore_misses=False):
-    path_set = set(paths)
-    ids = {}
-    selected_paths = set()
-    new_conflicts = []
-    selected_conflicts = ConflictList()
-    for path in paths:
-        file_id = tree.path2id(path)
-        if file_id is not None:
-            ids[file_id] = path
-
-    for conflict, stanza in zip(tree_conflicts, tree_conflicts.to_stanzas()):
-        selected = False
-        for key in ('path', 'conflict_path'):
-            try:
-                cpath = stanza[key]
-            except KeyError:
-                continue
-            if cpath in path_set:
-                selected = True
-                selected_paths.add(cpath)
-        for key in ('file_id', 'conflict_file_id'):
-            try:
-                cfile_id = stanza[key]
-            except KeyError:
-                continue
-            try:
-                cpath = ids[cfile_id]
-            except KeyError:
-                continue
-            selected = True
-            selected_paths.add(cpath)
-        if selected:
-            selected_conflicts.append(conflict)
-        else:
-            new_conflicts.append(conflict)
-    if ignore_misses is not True:
-        for path in [p for p in paths if p not in selected_paths]:
-            if not os.path.exists(tree.abspath(path)):
-                print "%s does not exist" % path
-            else:
-                print "%s is not conflicted" % path
-    return ConflictList(new_conflicts), ConflictList(selected_conflicts)
-
-    
 
 def restore(filename):
     """\
@@ -229,8 +183,8 @@ class ConflictList(object):
         for conflict in self:
             yield str(conflict)
 
-
     def remove_files(self, tree):
+        """Remove the THIS, BASE and OTHER files for listed conflicts"""
         for conflict in self:
             if not conflict.has_files:
                 continue
@@ -241,6 +195,53 @@ class ConflictList(object):
                     if e.errno != errno.ENOENT:
                         raise
 
+    def select_conflicts(self, tree, paths, ignore_misses=False):
+        """Select the conflicts associated with paths in a tree.
+        
+        File-ids are also used for this.
+        """
+        path_set = set(paths)
+        ids = {}
+        selected_paths = set()
+        new_conflicts = ConflictList()
+        selected_conflicts = ConflictList()
+        for path in paths:
+            file_id = tree.path2id(path)
+            if file_id is not None:
+                ids[file_id] = path
+
+        for conflict in self:
+            selected = False
+            for key in ('path', 'conflict_path'):
+                cpath = getattr(conflict, key, None)
+                if cpath is None:
+                    continue
+                if cpath in path_set:
+                    selected = True
+                    selected_paths.add(cpath)
+            for key in ('file_id', 'conflict_file_id'):
+                cfile_id = getattr(conflict, key, None)
+                if cfile_id is None:
+                    continue
+                try:
+                    cpath = ids[cfile_id]
+                except KeyError:
+                    continue
+                selected = True
+                selected_paths.add(cpath)
+            if selected:
+                selected_conflicts.append(conflict)
+            else:
+                new_conflicts.append(conflict)
+        if ignore_misses is not True:
+            for path in [p for p in paths if p not in selected_paths]:
+                if not os.path.exists(tree.abspath(path)):
+                    print "%s does not exist" % path
+                else:
+                    print "%s is not conflicted" % path
+        return new_conflicts, selected_conflicts
+
+ 
 class Conflict(object):
     """Base class for all types of conflict"""
 
