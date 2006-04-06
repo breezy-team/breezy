@@ -732,7 +732,7 @@ class cmd_update(Command):
 class cmd_info(Command):
     """Show statistical information about a branch."""
     takes_args = ['branch?']
-
+    
     @display_command
     def run(self, branch=None):
         import bzrlib.info

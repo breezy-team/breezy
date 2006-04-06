@@ -19,10 +19,9 @@
 """Tests for the info command of bzr."""
 
 
-import os
+import bzrlib
 
 
-from bzrlib.bzrdir import BzrDir
 from bzrlib.osutils import format_date
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
@@ -31,13 +30,17 @@ from bzrlib.tests.blackbox import ExternalBase
 class TestInfo(ExternalBase):
 
     def test_info_standalone(self):
+        transport = self.get_transport()
+
         # Create initial standalone branch
-        self.runbzr('init standalone')
-        os.chdir('standalone')
-        file('hello', 'wt').write('hello world')
-        self.runbzr('add hello')
-        branch1 = BzrDir.open('.').open_branch()
-        out, err = self.runbzr('info')
+        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirFormat6())
+        tree1 = self.make_branch_and_tree('standalone')
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
+        self.build_tree(['standalone/a'])
+        tree1.add('a')
+        branch1 = tree1.branch
+        out, err = self.runbzr('info standalone')
         self.assertEqualDiff(
 """Location:
           branch root: %s
@@ -64,14 +67,12 @@ Revision store:
          0 KiB
 """ % branch1.bzrdir.root_transport.base, out)
         self.assertEqual('', err)
-        self.runbzr('commit -m one')
+        tree1.commit('commit one')
         rev = branch1.repository.get_revision(branch1.revision_history()[0])
         datestring_first = format_date(rev.timestamp, rev.timezone)
-        os.chdir('..')
 
-        # Branch with push location
-        self.runbzr('branch standalone branch')
-        branch2 = BzrDir.open('branch').open_branch()
+        # Branch standalone with push location
+        branch2 = branch1.bzrdir.sprout('branch').open_branch()
         branch2.set_push_location(branch1.bzrdir.root_transport.base)
         out, err = self.runbzr('info branch')
         self.assertEqualDiff(
@@ -108,13 +109,15 @@ Revision store:
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
 
-        # Branch, upgrade to metadir (creates backup as unknown) and bind
+        # Branch and bind to standalone, needs upgrade to metadir
+        # (creates backup as unknown)
+        # XXX: I can't get this to work through API
         self.runbzr('branch standalone bound')
-        branch3 = BzrDir.open('bound').open_branch()
-        os.chdir('bound')
-        self.runbzr('upgrade --format=metadir')
-        self.runbzr('bind ../standalone')
-        os.chdir('..')
+        #branch3 = branch1.bzrdir.sprout('bound').open_branch()
+        self.runbzr('upgrade --format=metadir bound')
+        #bzrlib.upgrade.upgrade('bound', 'metadir')
+        branch3 = bzrlib.bzrdir.BzrDir.open('bound').open_branch()
+        branch3.bind(branch1)
         out, err = self.runbzr('info bound')
         self.assertEqualDiff(
 """Location:
@@ -152,9 +155,13 @@ Revision store:
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
 
-        # Checkout (same as above, but does not have parent set)
-        self.runbzr('checkout standalone checkout')
-        branch4 = BzrDir.open('checkout').open_branch()
+        # Checkout standalone (same as above, but does not have parent set)
+        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirMetaFormat1())
+        branch4 = bzrlib.bzrdir.BzrDir.create_branch_convenience('checkout')
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
+        branch4.bind(branch1)
+        branch4.bzrdir.open_workingtree().update()
         out, err = self.runbzr('info checkout')
         self.assertEqualDiff(
 """Location:
@@ -191,8 +198,15 @@ Revision store:
         self.assertEqual('', err)
 
         # Lightweight checkout (same as above, different branch and repository)
-        self.runbzr('checkout --lightweight standalone lightcheckout')
-        branch5 = BzrDir.open('lightcheckout').open_workingtree()
+        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirMetaFormat1())
+        transport.mkdir('lightcheckout')
+        dir5 = bzrlib.bzrdir.BzrDirMetaFormat1().initialize('lightcheckout')
+        bzrlib.branch.BranchReferenceFormat().initialize(dir5, branch1)
+        dir5.create_workingtree()
+        tree5 = dir5.open_workingtree()
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
+        branch5 = tree5.branch
         out, err = self.runbzr('info lightcheckout')
         self.assertEqualDiff(
 """Location:
@@ -224,18 +238,16 @@ Branch history:
 Revision store:
          1 revision
          0 KiB
-""" % (branch5.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+""" % (tree5.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
 
         # Update initial standalone branch
-        os.chdir('standalone')
-        file('bye', 'wt').write('goodbye')
-        self.runbzr('add bye')
-        self.runbzr('commit -m two')
+        self.build_tree(['standalone/b'])
+        tree1.add('b')
+        tree1.commit('commit two')
         rev = branch1.repository.get_revision(branch1.revision_history()[-1])
         datestring_last = format_date(rev.timestamp, rev.timezone)
-        os.chdir('..')
 
         # Out of date branched standalone branch will not be detected
         out, err = self.runbzr('info branch')
@@ -385,26 +397,29 @@ Branch history:
 Revision store:
          2 revisions
          0 KiB
-""" % (branch5.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+""" % (tree5.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        datestring_first, datestring_last), out)
         self.assertEqual('', err)
 
     def test_info_shared_repository(self):
+        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirMetaFormat1())
+        transport = self.get_transport()
         # Create shared repository
-        self.runbzr('init-repository repo')
-        os.chdir('repo')
-        self.runbzr('init --format=metadir branch')
-        os.chdir('..')
+        repo = self.make_repository('repo', shared=True)
+        repo.set_make_working_trees(False)
+        repo.bzrdir.root_transport.mkdir('branch')
+        branch1 = repo.bzrdir.create_branch_convenience('repo/branch')
 
         # Create lightweight checkout
-        os.mkdir('tree')
-        os.chdir('tree')
-        self.runbzr('checkout --lightweight ../repo/branch lightcheckout')
-        bzrdir1 = BzrDir.open('lightcheckout')
-        work1 = bzrdir1.open_workingtree()
-        branch1 = bzrdir1.open_branch()
-        repo = branch1.repository
-        out, err = self.runbzr('info lightcheckout')
+        transport.mkdir('tree')
+        transport.mkdir('tree/lightcheckout')
+        dir2 = bzrlib.bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
+        bzrlib.branch.BranchReferenceFormat().initialize(dir2, branch1)
+        dir2.create_workingtree()
+        tree2 = dir2.open_workingtree()
+        branch2 = tree2.branch
+        out, err = self.runbzr('info tree/lightcheckout')
         self.assertEqualDiff(
 """Location:
         checkout root: %s
@@ -433,17 +448,17 @@ Branch history:
 Revision store:
          0 revisions
          0 KiB
-""" % (work1.bzrdir.root_transport.base,
+""" % (tree2.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base), out)
         self.assertEqual('', err)
 
         # Create normal checkout
-        self.runbzr('checkout ../repo/branch checkout')
-        bzrdir2 = BzrDir.open('checkout')
-        work2 = bzrdir2.open_workingtree()
-        branch2 = bzrdir2.open_branch()
-        out, err = self.runbzr('info checkout')
+        branch3 = bzrlib.bzrdir.BzrDir.create_branch_convenience('tree/checkout')
+        branch3.bind(branch1)
+        tree3 = branch3.bzrdir.open_workingtree()
+        tree3.update()
+        out, err = self.runbzr('info tree/checkout')
         self.assertEqualDiff(
 """Location:
           branch root: %s
@@ -471,19 +486,17 @@ Branch history:
 Revision store:
          0 revisions
          0 KiB
-""" % (work2.bzrdir.root_transport.base,
-       branch2.get_bound_location()), out)
+""" % (branch3.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base), out)
         self.assertEqual('', err)
 
         # Update lightweight checkout
-        os.chdir('lightcheckout')
-        file('hello', 'wt').write('hello world')
-        self.runbzr('add hello')
-        self.runbzr('commit -m one')
-        rev = repo.get_revision(branch1.revision_history()[0])
+        self.build_tree(['tree/lightcheckout/a'])
+        tree2.add('a')
+        tree2.commit('commit one')
+        rev = repo.get_revision(branch2.revision_history()[0])
         datestring_first = format_date(rev.timestamp, rev.timezone)
-        os.chdir('..')
-        out, err = self.runbzr('info lightcheckout')
+        out, err = self.runbzr('info tree/lightcheckout')
         self.assertEqualDiff(
 """Location:
         checkout root: %s
@@ -515,14 +528,14 @@ Branch history:
 Revision store:
          1 revision
          0 KiB
-""" % (work1.bzrdir.root_transport.base,
+""" % (tree2.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
 
         # Out of date checkout
-        out, err = self.runbzr('info checkout')
+        out, err = self.runbzr('info tree/checkout')
         self.assertEqualDiff(
 """Location:
           branch root: %s
@@ -552,16 +565,15 @@ Branch history:
 Revision store:
          0 revisions
          0 KiB
-""" % (work2.bzrdir.root_transport.base,
-       branch2.get_bound_location()), out)
+""" % (tree3.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base), out)
         self.assertEqual('', err)
 
         # Update checkout
-        os.chdir('checkout')
-        self.runbzr('update')
-        file('bye', 'wt').write('goodbye')
-        self.runbzr('add bye')
-        out, err = self.runbzr('info')
+        tree3.update()
+        self.build_tree(['tree/checkout/b'])
+        tree3.add('b')
+        out, err = self.runbzr('info tree/checkout')
         self.assertEqualDiff(
 """Location:
           branch root: %s
@@ -592,16 +604,15 @@ Branch history:
 Revision store:
          1 revision
          0 KiB
-""" % (work2.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+""" % (tree3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
-        self.runbzr('commit -m two')
-        os.chdir('..')
+        tree3.commit('commit two')
 
         # Out of date lightweight checkout
         rev = repo.get_revision(branch1.revision_history()[-1])
         datestring_last = format_date(rev.timestamp, rev.timezone)
-        out, err = self.runbzr('info lightcheckout')
+        out, err = self.runbzr('info tree/lightcheckout')
         self.assertEqualDiff(
 """Location:
         checkout root: %s
@@ -635,28 +646,28 @@ Branch history:
 Revision store:
          2 revisions
          0 KiB
-""" % (work1.bzrdir.root_transport.base,
+""" % (tree2.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
        datestring_first, datestring_last), out)
         self.assertEqual('', err)
 
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
+
     def test_info_shared_repository_with_trees(self):
-        # TODO: Do the same with checkouts inside this repository
-        # XXX: Replace with --trees option when it's in mainline bzr.dev
-        # Create shared repository
-        self.runbzr('init-repository repotree')
-        # self.runbzr('init-repository --trees repotree')
-        os.unlink('repotree/.bzr/repository/no-working-trees')
-        os.chdir('repotree')
-        self.runbzr('init --format=metadir branch1')
-        self.runbzr('branch branch1 branch2')
+        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirMetaFormat1())
+        transport = self.get_transport()
+
+        # Create shared repository containing two branches with working trees
+        repo = self.make_repository('repo', shared=True)
+        repo.set_make_working_trees(True)
+        repo.bzrdir.root_transport.mkdir('branch1')
+        branch1 = repo.bzrdir.create_branch_convenience('repo/branch1')
+        branch2 = branch1.bzrdir.sprout('repo/branch2').open_branch()
 
         # Empty first branch
-        bzrdir1 = BzrDir.open('branch1')
-        branch1 = bzrdir1.open_branch()
-        repo = branch1.repository
-        out, err = self.runbzr('info branch1')
+        out, err = self.runbzr('info repo/branch1')
         self.assertEqualDiff(
 """Location:
           branch root: %s
@@ -689,14 +700,13 @@ Revision store:
         self.assertEqual('', err)
 
         # Update first branch
-        os.chdir('branch1')
-        file('hello', 'wt').write('hello world')
-        self.runbzr('add hello')
-        self.runbzr('commit -m one')
-        os.chdir('..')
+        self.build_tree(['repo/branch1/a'])
+        tree1 = branch1.bzrdir.open_workingtree()
+        tree1.add('a')
+        tree1.commit('commit one')
         rev = repo.get_revision(branch1.revision_history()[0])
         datestring_first = format_date(rev.timestamp, rev.timezone)
-        out, err = self.runbzr('info branch1')
+        out, err = self.runbzr('info repo/branch1')
         self.assertEqualDiff(
 """Location:
           branch root: %s
@@ -732,9 +742,7 @@ Revision store:
         self.assertEqual('', err)
 
         # Out of date second branch
-        bzrdir2 = BzrDir.open('branch2')
-        branch2 = bzrdir2.open_branch()
-        out, err = self.runbzr('info branch2')
+        out, err = self.runbzr('info repo/branch2')
         self.assertEqualDiff(
 """Location:
           branch root: %s
@@ -768,9 +776,9 @@ Revision store:
         self.assertEqual('', err)
 
         # Update second branch
-        os.chdir('branch2')
-        self.runbzr('pull')
-        out, err = self.runbzr('info')
+        tree2 = branch2.bzrdir.open_workingtree()
+        tree2.pull(branch1)
+        out, err = self.runbzr('info repo/branch2')
         self.assertEqualDiff(
 """Location:
           branch root: %s
@@ -807,3 +815,5 @@ Revision store:
        branch1.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
+
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
