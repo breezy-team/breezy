@@ -38,7 +38,12 @@ from bzrlib.errors import (ConnectionError,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename
 from bzrlib.trace import mutter, warning, error
-from bzrlib.transport import Transport, Server, urlescape, ensure_netloc
+from bzrlib.transport import (
+    register_urlparse_netloc_protocol,
+    Server,
+    Transport,
+    urlescape,
+    )
 import bzrlib.ui
 
 try:
@@ -54,7 +59,7 @@ else:
     from paramiko.sftp_client import SFTPClient
 
 
-ensure_netloc('sftp')
+register_urlparse_netloc_protocol('sftp')
 
 
 # don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)

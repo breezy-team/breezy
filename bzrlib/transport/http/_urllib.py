@@ -19,13 +19,13 @@ import urllib, urllib2
 import bzrlib  # for the version
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
-from bzrlib.transport import ensure_netloc
+from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError)
 
 
-ensure_netloc('http+urllib')
+register_urlparse_netloc_protocol('http+urllib')
 
 
 class Request(urllib2.Request):

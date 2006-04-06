@@ -120,7 +120,7 @@ def _get_transport_modules():
     return result
 
 
-def ensure_netloc(protocol):
+def register_urlparse_netloc_protocol(protocol):
     """Ensure that protocol is setup to be used with urlparse netloc parsing."""
     if protocol not in urlparse.uses_netloc:
         urlparse.uses_netloc.append(protocol)
