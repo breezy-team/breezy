@@ -8,14 +8,16 @@ Support for foreign branches (Subversion)
 import sys
 import os.path
 import branch
+import transport
+import format
 
 sys.path.append(os.path.dirname(__file__))
 
-try:
-    from bzrlib.branch import register_branch_type
-    register_branch_type(svnbranch.SvnBranch)
-except ImportError:
-    pass
+from bzrlib.transport import register_transport
+register_transport('svn', transport.SvnTransport)
+
+from bzrlib.bzrdir import BzrDirFormat
+BzrDirFormat.register_format(format.SvnFormat())
 
 def test_suite():
     from unittest import TestSuite, TestLoader

@@ -1,10 +1,20 @@
-class SvnBranch(ForeignBranch):
+class SvnTransport(Transport):
+ - svn://
+ - svn+http://
+ - svn+https://
+ - svn+ssh://
 
+
+register_transport('svn', SvnTransport)
+
+class SvnBranch(ForeignBranch):
 
 class SvnRepository(ForeignRepository):
 
-
 class SvnWorkingTree(WorkingTree):
+
+class SvnDirFormat(BzrDirFormat):
+
 	
 
 - svnpull
@@ -18,3 +28,6 @@ class SvnWorkingTree(WorkingTree):
  - for all local revisions that don't have svn:revision set:
   - send to remote server
   - set bzr:revision as SVN revision property
+
+
+Register:
