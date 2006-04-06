@@ -62,14 +62,20 @@ class UITests(TestCase):
     def test_progress_note(self):
         stderr = StringIO()
         stdout = StringIO()
-        pb = TTYProgressBar(to_file=stderr, to_messages_file=stdout)
-        result = pb.note('t')
-        self.assertEqual(None, result)
-        self.assertEqual("t\n", stdout.getvalue())
-        # the exact contents will depend on the terminal width and we don't
-        # care about that right now - but you're probably running it on at
-        # least a 10-character wide terminal :)
-        self.assertContainsRe(stderr.getvalue(), r'^\r {10,}\r$')
+        ui_factory = TextUIFactory()
+        pb = ui_factory.nested_progress_bar()
+        try:
+            pb.to_messages_file = stdout
+            ui_factory._progress_bar_stack.bottom().to_file = stderr
+            result = pb.note('t')
+            self.assertEqual(None, result)
+            self.assertEqual("t\n", stdout.getvalue())
+            # the exact contents will depend on the terminal width and we don't
+            # care about that right now - but you're probably running it on at
+            # least a 10-character wide terminal :)
+            self.assertContainsRe(stderr.getvalue(), r'^\r {10,}\r$')
+        finally:
+            pb.finished()
 
     def test_progress_nested(self):
         # test factory based nested and popping.

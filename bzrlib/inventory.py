@@ -779,7 +779,7 @@ class Inventory(object):
     >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
     InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678')
     """
-    def __init__(self, root_id=ROOT_ID):
+    def __init__(self, root_id=ROOT_ID, revision_id=None):
         """Create or read an inventory.
 
         If a working directory is specified, the inventory is read
@@ -794,10 +794,12 @@ class Inventory(object):
         #if root_id is None:
         #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
         self.root = RootEntry(root_id)
+        self.revision_id = revision_id
         self._byid = {self.root.file_id: self.root}
 
 
     def copy(self):
+        # TODO: jam 20051218 Should copy also copy the revision_id?
         other = Inventory(self.root.file_id)
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
