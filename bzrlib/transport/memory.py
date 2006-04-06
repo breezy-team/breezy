@@ -64,7 +64,7 @@ class MemoryTransport(Transport):
 
     def clone(self, offset=None):
         """See Transport.clone()."""
-        if offset is None:
+        if offset is None or offset == '':
             return copy(self)
         segments = offset.split('/')
         cwdsegments = self._cwd.split('/')[:-1]
@@ -86,7 +86,14 @@ class MemoryTransport(Transport):
 
     def abspath(self, relpath):
         """See Transport.abspath()."""
-        return self.base[:-1] + self._abspath(relpath)[len(self._cwd) - 1:]
+        # while a little slow, this is sufficiently fast to not matter in our
+        # current environment - XXX RBC 20060404 move the clone '..' handling
+        # into here and call abspath from clone
+        temp_t = self.clone(relpath)
+        if temp_t.base.count('/') == 1:
+            return temp_t.base
+        else:
+            return temp_t.base[:-1]
 
     def append(self, relpath, f):
         """See Transport.append()."""
