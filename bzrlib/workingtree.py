@@ -1372,6 +1372,10 @@ class WorkingTreeFormat(object):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
 
+    def get_format_description(self):
+        """Return the short description for this format."""
+        raise NotImplementedError(self.get_format_description)
+
     def is_supported(self):
         """Is this format supported?
 
@@ -1401,6 +1405,10 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     This format modified the hash cache from the format 1 hash cache.
     """
+
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 2"
 
     def initialize(self, a_bzrdir, revision_id=None):
         """See WorkingTreeFormat.initialize()."""
@@ -1469,6 +1477,10 @@ class WorkingTreeFormat3(WorkingTreeFormat):
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar-NG Working Tree format 3"
+
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 3"
 
     _lock_file_name = 'lock'
     _lock_class = LockDir

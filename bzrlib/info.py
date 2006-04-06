@@ -44,19 +44,6 @@ def plural(n, base='', pl=None):
         return 's'
 
 
-def _get_format_string(target):
-    """Return format string of target.
-    
-    Target must be of type bzrlib.workingtree, bzrlib.branch or
-    bzrlib.repository.
-
-    """
-    try:
-        return target._format.get_format_string().rstrip()
-    except NotImplementedError:
-        return target.bzrdir._format    # XXX: Use rstrip to be safe?
-
-
 @deprecated_function(zero_eight)
 def show_info(b):
     """Please see show_bzrdir_info."""
@@ -79,47 +66,44 @@ def show_tree_info(working):
 
     branch = working.branch
     repository = branch.repository
-    working_format = _get_format_string(working)
-    branch_format = _get_format_string(branch)
-    repository_format = _get_format_string(repository)
-    # TODO: metadir_format = ...
+    control_format = working.bzrdir._format.get_format_description()
+    working_format = working._format.get_format_description()
+    branch_format = branch._format.get_format_description()
+    repository_format = repository._format.get_format_description()
 
     print 'Location:'
     if working.bzrdir != branch.bzrdir:
         # Lightweight checkout
-        print '        checkout root: %s' % (
+        print '       checkout root: %s' % (
             working.bzrdir.root_transport.base)
-        print '   checkout of branch: %s' % (
+        print '  checkout of branch: %s' % (
             branch.bzrdir.root_transport.base)
     else:
         # Standalone or bound branch (normal checkout)
-        print '          branch root: %s' % (
+        print '         branch root: %s' % (
             branch.bzrdir.root_transport.base)
         if branch.get_bound_location():
-            print '      bound to branch: %s' % branch.get_bound_location()
+            print '     bound to branch: %s' % branch.get_bound_location()
 
     if repository.bzrdir != branch.bzrdir:
         if repository.is_shared():
-            print '    shared repository: %s' % (
+            print '   shared repository: %s' % (
                 repository.bzrdir.root_transport.base)
         else:
-            print '           repository: %s' % (
+            print '          repository: %s' % (
                 repository.bzrdir.root_transport.base)
 
     if branch.get_parent():
-        print '        parent branch: %s' % branch.get_parent()
+        print '       parent branch: %s' % branch.get_parent()
     if branch.get_push_location():
-        print '       push to branch: %s' % branch.get_push_location()
+        print '      push to branch: %s' % branch.get_push_location()
 
     print
     print 'Format:'
-    if working_format == branch_format == repository_format:
-        print '        branch format: %s' % branch_format
-    else:
-        # TODO: print 'meta directory format: %s' % metadir_format
-        print '  working tree format: %s' % working_format
-        print '        branch format: %s' % branch_format
-        print '    repository format: %s' % repository_format
+    print '       control: %s' % control_format
+    print '  working tree: %s' % working_format
+    print '        branch: %s' % branch_format
+    print '    repository: %s' % repository_format
 
     basis = working.basis_tree()
     work_inv = working.inventory

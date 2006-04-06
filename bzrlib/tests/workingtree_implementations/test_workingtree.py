@@ -503,3 +503,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('master')
         tree._control_files.put('merge-hashes', StringIO('asdfasdf'))
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
+
+    def test_format_description(self):
+        tree = self.make_branch_and_tree('tree')
+        text = tree._format.get_format_description()
+        self.failUnless(len(text))
+

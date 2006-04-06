@@ -43,10 +43,13 @@ class TestInfo(ExternalBase):
         out, err = self.runbzr('info standalone')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
+         branch root: %s
 
 Format:
-        branch format: Bazaar-NG branch, format 6
+       control: All-in-one format 6
+  working tree: Working tree format 2
+        branch: Branch format 4
+    repository: Weave repository format 6
 
 In the working tree:
          0 unchanged
@@ -77,12 +80,15 @@ Revision store:
         out, err = self.runbzr('info branch')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-        parent branch: %s
-       push to branch: %s
+         branch root: %s
+       parent branch: %s
+      push to branch: %s
 
 Format:
-        branch format: Bazaar-NG branch, format 6
+       control: All-in-one format 6
+  working tree: Working tree format 2
+        branch: Branch format 4
+    repository: Weave repository format 6
 
 In the working tree:
          1 unchanged
@@ -121,14 +127,15 @@ Revision store:
         out, err = self.runbzr('info bound')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-      bound to branch: %s
-        parent branch: %s
+         branch root: %s
+     bound to branch: %s
+       parent branch: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 In the working tree:
          1 unchanged
@@ -165,13 +172,14 @@ Revision store:
         out, err = self.runbzr('info checkout')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-      bound to branch: %s
+         branch root: %s
+     bound to branch: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 In the working tree:
          1 unchanged
@@ -210,13 +218,14 @@ Revision store:
         out, err = self.runbzr('info lightcheckout')
         self.assertEqualDiff(
 """Location:
-        checkout root: %s
-   checkout of branch: %s
+       checkout root: %s
+  checkout of branch: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch, format 6
-    repository format: Bazaar-NG branch, format 6
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 4
+    repository: Weave repository format 6
 
 In the working tree:
          1 unchanged
@@ -253,12 +262,15 @@ Revision store:
         out, err = self.runbzr('info branch')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-        parent branch: %s
-       push to branch: %s
+         branch root: %s
+       parent branch: %s
+      push to branch: %s
 
 Format:
-        branch format: Bazaar-NG branch, format 6
+       control: All-in-one format 6
+  working tree: Working tree format 2
+        branch: Branch format 4
+    repository: Weave repository format 6
 
 In the working tree:
          1 unchanged
@@ -289,14 +301,15 @@ Revision store:
         out, err = self.runbzr('info bound')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-      bound to branch: %s
-        parent branch: %s
+         branch root: %s
+     bound to branch: %s
+       parent branch: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 Branch is out of date: missing 1 revision.
 
@@ -329,13 +342,14 @@ Revision store:
         out, err = self.runbzr('info checkout')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-      bound to branch: %s
+         branch root: %s
+     bound to branch: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 Branch is out of date: missing 1 revision.
 
@@ -367,13 +381,14 @@ Revision store:
         out, err = self.runbzr('info lightcheckout')
         self.assertEqualDiff(
 """Location:
-        checkout root: %s
-   checkout of branch: %s
+       checkout root: %s
+  checkout of branch: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch, format 6
-    repository format: Bazaar-NG branch, format 6
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 4
+    repository: Weave repository format 6
 
 Working tree is out of date: missing 1 revision.
 
@@ -422,14 +437,15 @@ Revision store:
         out, err = self.runbzr('info tree/lightcheckout')
         self.assertEqualDiff(
 """Location:
-        checkout root: %s
-   checkout of branch: %s
-    shared repository: %s
+       checkout root: %s
+  checkout of branch: %s
+   shared repository: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 In the working tree:
          0 unchanged
@@ -461,13 +477,14 @@ Revision store:
         out, err = self.runbzr('info tree/checkout')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-      bound to branch: %s
+         branch root: %s
+     bound to branch: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 In the working tree:
          0 unchanged
@@ -499,14 +516,15 @@ Revision store:
         out, err = self.runbzr('info tree/lightcheckout')
         self.assertEqualDiff(
 """Location:
-        checkout root: %s
-   checkout of branch: %s
-    shared repository: %s
+       checkout root: %s
+  checkout of branch: %s
+   shared repository: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 In the working tree:
          1 unchanged
@@ -538,13 +556,14 @@ Revision store:
         out, err = self.runbzr('info tree/checkout')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-      bound to branch: %s
+         branch root: %s
+     bound to branch: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 Branch is out of date: missing 1 revision.
 
@@ -576,13 +595,14 @@ Revision store:
         out, err = self.runbzr('info tree/checkout')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-      bound to branch: %s
+         branch root: %s
+     bound to branch: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 In the working tree:
          1 unchanged
@@ -615,14 +635,15 @@ Revision store:
         out, err = self.runbzr('info tree/lightcheckout')
         self.assertEqualDiff(
 """Location:
-        checkout root: %s
-   checkout of branch: %s
-    shared repository: %s
+       checkout root: %s
+  checkout of branch: %s
+   shared repository: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 Working tree is out of date: missing 1 revision.
 
@@ -670,13 +691,14 @@ Revision store:
         out, err = self.runbzr('info repo/branch1')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-    shared repository: %s
+         branch root: %s
+   shared repository: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 In the working tree:
          0 unchanged
@@ -709,13 +731,14 @@ Revision store:
         out, err = self.runbzr('info repo/branch1')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-    shared repository: %s
+         branch root: %s
+   shared repository: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 In the working tree:
          1 unchanged
@@ -745,14 +768,15 @@ Revision store:
         out, err = self.runbzr('info repo/branch2')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-    shared repository: %s
-        parent branch: %s
+         branch root: %s
+   shared repository: %s
+       parent branch: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 In the working tree:
          0 unchanged
@@ -781,14 +805,15 @@ Revision store:
         out, err = self.runbzr('info repo/branch2')
         self.assertEqualDiff(
 """Location:
-          branch root: %s
-    shared repository: %s
-        parent branch: %s
+         branch root: %s
+   shared repository: %s
+       parent branch: %s
 
 Format:
-  working tree format: Bazaar-NG Working Tree format 3
-        branch format: Bazaar-NG branch format 5
-    repository format: Bazaar-NG Repository format 7
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
 
 In the working tree:
          1 unchanged

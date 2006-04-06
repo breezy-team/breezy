@@ -118,6 +118,9 @@ bzr development version
     * Progress bars are now nested - see
       bzrlib.ui.ui_factory.nested_progress_bar. (Robert Collins, Robey Pointer)
 
+    * New API call get_format_description() for each type of format.
+      (Olaf Conradi)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
