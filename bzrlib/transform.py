@@ -1162,7 +1162,6 @@ def cook_conflicts(raw_conflicts, tt):
 
 def iter_cook_conflicts(raw_conflicts, tt):
     from bzrlib.conflicts import Conflict
-    cooked_conflicts = []
     fp = FinalPaths(tt)
     for conflict in raw_conflicts:
         c_type = conflict[0]
