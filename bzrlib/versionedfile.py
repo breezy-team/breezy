@@ -440,12 +440,26 @@ class VersionedFile(object):
         yield 'unchanged', ''           # terminator
 
     def weave_merge(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
+        return self.struct_to_lines(self.weave_merge_struct(plan), a_marker,
+                                    b_marker)
+
+    def struct_to_lines(self, struct_iter, a_marker, b_marker):
+        for lines in struct_iter:
+            if len(lines) == 1:
+                for line in lines[0]:
+                    yield line
+            else:
+                    yield a_marker
+                    for l in lines[0]: yield l
+                    yield '=======\n'
+                    for l in lines[1]: yield l
+                    yield b_marker
+                    
+
+    def weave_merge_struct(self, plan):
         lines_a = []
         lines_b = []
         ch_a = ch_b = False
-        # TODO: Return a structured form of the conflicts (e.g. 2-tuples for
-        # conflicted regions), rather than just inserting the markers.
-        # 
         # TODO: Show some version information (e.g. author, date) on 
         # conflicted regions.
         
@@ -458,18 +472,14 @@ class VersionedFile(object):
                 if not lines_a and not lines_b:
                     pass
                 elif ch_a and not ch_b:
-                    # one-sided change:                    
-                    for l in lines_a: yield l
+                    # one-sided change:
+                    yield(lines_a,)
                 elif ch_b and not ch_a:
-                    for l in lines_b: yield l
+                    yield (lines_b,)
                 elif lines_a == lines_b:
-                    for l in lines_a: yield l
+                    yield(lines_a,)
                 else:
-                    yield a_marker
-                    for l in lines_a: yield l
-                    yield '=======\n'
-                    for l in lines_b: yield l
-                    yield b_marker
+                    yield (lines_a, lines_b)
 
                 del lines_a[:]
                 del lines_b[:]
@@ -477,7 +487,7 @@ class VersionedFile(object):
                 
             if state == 'unchanged':
                 if line:
-                    yield line
+                    yield ([line],)
             elif state == 'killed-a':
                 ch_a = True
                 lines_b.append(line)
