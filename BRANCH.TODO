@@ -1,0 +1,13 @@
+# This file is for listing TODOs for branches that are being worked on.
+# It should ALWAYS be empty in the mainline or in integration branches.
+# 
+
+ * make revision store not annotate the contents
+   - ditto signature store
+ 
+ * make revision and signature stores not allow delta compression.
+
+ * implement a fast plan_merge for knits.
+   [Deferred]
+
+ * knit join should try a little harder to be in-sequence-order.

@@ -65,15 +65,15 @@ class TextStore(bzrlib.store.TransportStore):
 
     def _try_put(self, fn, f):
         try:
-            self._transport.put(fn, f)
+            self._transport.put(fn, f, mode=self._file_mode)
         except NoSuchFile:
             if not self._prefixed:
                 raise
             try:
-                self._transport.mkdir(os.path.dirname(fn))
+                self._transport.mkdir(os.path.dirname(fn), mode=self._dir_mode)
             except FileExists:
                 pass
-            self._transport.put(fn, f)
+            self._transport.put(fn, f, mode=self._file_mode)
 
     def _get(self, fn):
         if fn.endswith('.gz'):
@@ -95,15 +95,17 @@ class TextStore(bzrlib.store.TransportStore):
             raise KeyError(fileid + '-' + str(suffix))
 
         try:
-            result = other._transport.copy_to([path], self._transport, pb=pb)
+            result = other._transport.copy_to([path], self._transport, 
+                                              mode=self._file_mode)
         except NoSuchFile:
             if not self._prefixed:
                 raise
             try:
-                self._transport.mkdir(hash_prefix(fileid)[:-1])
+                self._transport.mkdir(hash_prefix(fileid)[:-1], mode=self._dir_mode)
             except FileExists:
                 pass
-            result = other._transport.copy_to([path], self._transport, pb=pb)
+            result = other._transport.copy_to([path], self._transport,
+                                              mode=self._file_mode)
 
         if result != 1:
             raise BzrError('Unable to copy file: %r' % (path,))

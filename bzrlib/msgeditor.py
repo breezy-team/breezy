@@ -20,6 +20,7 @@
 """Commit message editor support."""
 
 import os
+import errno
 from subprocess import call
 
 import bzrlib.config as config
@@ -51,7 +52,13 @@ def _run_editor(filename):
     """Try to execute an editor to edit the commit message."""
     for e in _get_editor():
         edargs = e.split(' ')
-        x = call(edargs + [filename])
+        try:
+            x = call(edargs + [filename])
+        except OSError, e:
+           # ENOENT means no such editor
+           if e.errno == errno.ENOENT:
+               continue
+           raise
         if x == 0:
             return True
         elif x == 127:
@@ -60,9 +67,13 @@ def _run_editor(filename):
             break
     raise BzrError("Could not start any editor. "
                    "Please specify $EDITOR or use ~/.bzr.conf/editor")
-                          
 
-def edit_commit_message(infotext, ignoreline=None):
+
+DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \
+    { 'bar' : '-' * 14, 'msg' : 'This line and the following will be ignored' }
+
+
+def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
     """Let the user edit a commit message in a temp file.
 
     This is run if they don't give a message or
@@ -74,10 +85,7 @@ def edit_commit_message(infotext, ignoreline=None):
         'bzr status'.
     """
     import tempfile
-    
-    if ignoreline is None:
-        ignoreline = "-- This line and the following will be ignored --"
-        
+
     try:
         tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
         msgfile = os.close(tmp_fileno)
@@ -141,7 +149,8 @@ def make_commit_message_template(working_tree, specific_files):
     # the revision to be committed, then pause and ask the user to
     # confirm/write a message.
     from StringIO import StringIO       # must be unicode-safe
-    from bzrlib.status import show_status
+    from bzrlib.status import show_tree_status
     status_tmp = StringIO()
-    show_status(working_tree.branch, specific_files=specific_files, to_file=status_tmp)
+    show_tree_status(working_tree, specific_files=specific_files, 
+                     to_file=status_tmp)
     return status_tmp.getvalue()

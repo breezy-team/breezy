@@ -20,6 +20,7 @@
 """
 
 import os
+import sys
 
 from bzrlib.branch import Branch
 from bzrlib.tests.blackbox import ExternalBase
@@ -45,9 +46,18 @@ class TestPull(ExternalBase):
         self.runbzr('missing', retcode=3)
         self.runbzr('missing .')
         self.runbzr('missing')
-        self.runbzr('pull')
+        if sys.platform not in ('win32', 'cygwin'):
+            # This is equivalent to doing "bzr pull ."
+            # Which means that bzr creates 2 branches grabbing
+            # the same location, and tries to pull.
+            # However, 2 branches mean 2 locks on the same file
+            # which ultimately implies a deadlock.
+            # (non windows platforms allow multiple locks on the
+            # same file by the same calling process)
+            self.runbzr('pull')
         self.runbzr('pull /', retcode=3)
-        self.runbzr('pull')
+        if sys.platform not in ('win32', 'cygwin'):
+            self.runbzr('pull')
 
         os.chdir('..')
         self.runbzr('branch a b')
@@ -90,6 +100,33 @@ class TestPull(ExternalBase):
         self.runbzr('commit -m blah8 --unchanged')
         self.runbzr('pull ../b')
         self.runbzr('pull ../b')
+
+    def test_pull_revision(self):
+        """Pull some changes from one branch to another."""
+        os.mkdir('a')
+        os.chdir('a')
+
+        self.example_branch()
+        file('hello2', 'wt').write('foo')
+        self.runbzr('add hello2')
+        self.runbzr('commit -m setup hello2')
+        file('goodbye2', 'wt').write('baz')
+        self.runbzr('add goodbye2')
+        self.runbzr('commit -m setup goodbye2')
+
+        os.chdir('..')
+        self.runbzr('branch -r 1 a b')
+        os.chdir('b')
+        self.runbzr('pull -r 2')
+        a = Branch.open('../a')
+        b = Branch.open('.')
+        self.assertEquals(a.revno(),4)
+        self.assertEquals(b.revno(),2)
+        self.runbzr('pull -r 3')
+        self.assertEquals(b.revno(),3)
+        self.runbzr('pull -r 4')
+        self.assertEquals(a.revision_history(), b.revision_history())
+
 
     def test_overwrite_uptodate(self):
         # Make sure pull --overwrite overwrites

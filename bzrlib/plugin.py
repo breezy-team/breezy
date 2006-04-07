@@ -50,8 +50,9 @@ from bzrlib.trace import log_error, mutter, log_exception, warning, \
         log_exception_quietly
 from bzrlib.errors import BzrError
 from bzrlib import plugins
+from bzrlib.osutils import pathjoin
 
-DEFAULT_PLUGIN_PATH = os.path.join(config_dir(), 'plugins')
+DEFAULT_PLUGIN_PATH = pathjoin(config_dir(), 'plugins')
 
 _loaded = False
 
@@ -63,6 +64,17 @@ def all_plugins():
         if isinstance(plugin, types.ModuleType):
             result[name] = plugin
     return result
+
+
+def disable_plugins():
+    """Disable loading plugins.
+
+    Future calls to load_plugins() will be ignored.
+    """
+    # TODO: jam 20060131 This should probably also disable
+    #       load_from_dirs()
+    global _loaded
+    _loaded = True
 
 
 def load_plugins():
@@ -115,12 +127,12 @@ def load_from_dirs(dirs):
         if not os.path.isdir(d):
             continue
         for f in os.listdir(d):
-            path = os.path.join(d, f)
+            path = pathjoin(d, f)
             if os.path.isdir(path):
                 for entry in package_entries:
                     # This directory should be a package, and thus added to
                     # the list
-                    if os.path.isfile(os.path.join(path, entry)):
+                    if os.path.isfile(pathjoin(path, entry)):
                         break
                 else: # This directory is not a package
                     continue

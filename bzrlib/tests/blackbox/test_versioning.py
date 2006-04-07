@@ -25,6 +25,8 @@ import os
 from bzrlib.tests import BzrTestBase, TestCaseInTempDir
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
+from bzrlib.osutils import pathjoin
+from bzrlib.workingtree import WorkingTree
 
 
 class TestVersioning(TestCaseInTempDir):
@@ -39,10 +41,9 @@ class TestVersioning(TestCaseInTempDir):
         self.run_bzr('mkdir', 'foo', retcode=3)
 
         from bzrlib.diff import compare_trees
-        from bzrlib.branch import Branch
-        b = Branch.open(u'.')
+        wt = WorkingTree.open('.')
         
-        delta = compare_trees(b.basis_tree(), b.working_tree())
+        delta = compare_trees(wt.basis_tree(), wt)
 
         self.log('delta.added = %r' % delta.added)
 
@@ -64,16 +65,15 @@ class TestVersioning(TestCaseInTempDir):
         os.chdir('..')
 
         from bzrlib.diff import compare_trees
-        from bzrlib.branch import Branch
-        b = Branch.open(u'.')
+        wt = WorkingTree.open('.')
         
-        delta = compare_trees(b.basis_tree(), b.working_tree())
+        delta = compare_trees(wt.basis_tree(), wt)
 
         self.log('delta.added = %r' % delta.added)
 
         self.assertEquals(len(delta.added), 2)
         self.assertEquals(delta.added[0][0], 'dir')
-        self.assertEquals(delta.added[1][0], os.path.join('dir','subdir'))
+        self.assertEquals(delta.added[1][0], pathjoin('dir','subdir'))
         self.failIf(delta.modified)
 
     def test_mkdir_w_nested_trees(self):
@@ -94,45 +94,24 @@ class TestVersioning(TestCaseInTempDir):
         self.failUnless(os.path.isdir('a/b/dir'))
 
         from bzrlib.diff import compare_trees
-        b = Branch.open(u'.')
-        b_a = Branch.open('a')
-        b_b = Branch.open('a/b')
+        wt = WorkingTree.open('.')
+        wt_a = WorkingTree.open('a')
+        wt_b = WorkingTree.open('a/b')
         
-        delta = compare_trees(b.basis_tree(), b.working_tree())
+        delta = compare_trees(wt.basis_tree(), wt)
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)
 
-        delta = compare_trees(b_a.basis_tree(), b_a.working_tree())
+        delta = compare_trees(wt_a.basis_tree(), wt_a)
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)
 
-        delta = compare_trees(b_b.basis_tree(), b_b.working_tree())
+        delta = compare_trees(wt_b.basis_tree(), wt_b)
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
         self.failIf(delta.modified)
-
-    def test_working_tree_add_in_unversioned(self):
-        """Try to add a file in an unversioned directory.
-
-        "bzr add" adds the parent as necessary, but simple working tree add
-        doesn't do that.
-        """
-        from bzrlib.branch import Branch
-        from bzrlib.errors import NotVersionedError
-        from bzrlib.workingtree import WorkingTree
-
-        b = Branch.initialize(u'.')
-
-        self.build_tree(['foo/',
-                         'foo/hello'])
-
-        self.assertRaises(NotVersionedError,
-                          WorkingTree(b.base, b).add,
-                          'foo/hello')
-        
-        self.check_branch()
 
     def check_branch(self):
         """After all the above changes, run the check and upgrade commands.
@@ -170,8 +149,8 @@ class SubdirCommit(TestCaseInTempDir):
         mutter('start selective subdir commit')
         run_bzr('commit', 'a', '-m', 'commit a only')
         
-        old = b.revision_tree(b.get_rev_id(1))
-        new = b.revision_tree(b.get_rev_id(2))
+        old = b.repository.revision_tree(b.get_rev_id(1))
+        new = b.repository.revision_tree(b.get_rev_id(2))
         
         eq(new.get_file_by_path('b/two').read(), 'old contents')
         eq(new.get_file_by_path('top').read(), 'old contents')
@@ -180,14 +159,14 @@ class SubdirCommit(TestCaseInTempDir):
         os.chdir('a')
         # commit from here should do nothing
         run_bzr('commit', '.', '-m', 'commit subdir only', '--unchanged')
-        v3 = b.revision_tree(b.get_rev_id(3))
+        v3 = b.repository.revision_tree(b.get_rev_id(3))
         eq(v3.get_file_by_path('b/two').read(), 'old contents')
         eq(v3.get_file_by_path('top').read(), 'old contents')
         eq(v3.get_file_by_path('a/one').read(), 'new contents')
                 
         # commit in subdirectory commits whole tree
         run_bzr('commit', '-m', 'commit whole tree from subdir')
-        v4 = b.revision_tree(b.get_rev_id(4))
+        v4 = b.repository.revision_tree(b.get_rev_id(4))
         eq(v4.get_file_by_path('b/two').read(), 'new contents')        
         eq(v4.get_file_by_path('top').read(), 'new contents')
         

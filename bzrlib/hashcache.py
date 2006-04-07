@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,11 +32,14 @@ CACHE_HEADER = "### bzr hashcache v5\n"
 import os, stat, time
 import sha
 
-from bzrlib.osutils import sha_file
+from bzrlib.osutils import sha_file, pathjoin, safe_unicode
 from bzrlib.trace import mutter, warning
 from bzrlib.atomicfile import AtomicFile
+from bzrlib.errors import BzrError
 
 
+FP_MTIME_COLUMN = 1
+FP_CTIME_COLUMN = 2
 FP_MODE_COLUMN = 5
 
 def _fingerprint(abspath):
@@ -91,8 +94,9 @@ class HashCache(object):
     """
     needs_write = False
 
-    def __init__(self, basedir):
-        self.basedir = basedir
+    def __init__(self, root, cache_file_name, mode=None):
+        """Create a hash cache in base dir, and set the file mode to mode."""
+        self.root = safe_unicode(root)
         self.hit_count = 0
         self.miss_count = 0
         self.stat_count = 0
@@ -100,11 +104,11 @@ class HashCache(object):
         self.removed_count = 0
         self.update_count = 0
         self._cache = {}
+        self._mode = mode
+        self._cache_file_name = safe_unicode(cache_file_name)
 
     def cache_file_name(self):
-        # FIXME: duplicate path logic here, this should be 
-        # something like 'branch.controlfile'.
-        return os.sep.join([self.basedir, '.bzr', 'stat-cache'])
+        return self._cache_file_name
 
     def clear(self):
         """Discard all cached information.
@@ -114,18 +118,19 @@ class HashCache(object):
             self.needs_write = True
             self._cache = {}
 
-
     def scan(self):
         """Scan all files and remove entries where the cache entry is obsolete.
         
         Obsolete entries are those where the file has been modified or deleted
         since the entry was inserted.        
         """
+        # FIXME optimisation opportunity, on linux [and check other oses]:
+        # rather than iteritems order, stat in inode order.
         prep = [(ce[1][3], path, ce) for (path, ce) in self._cache.iteritems()]
         prep.sort()
         
         for inum, path, cache_entry in prep:
-            abspath = os.sep.join([self.basedir, path])
+            abspath = pathjoin(self.root, path)
             fp = _fingerprint(abspath)
             self.stat_count += 1
             
@@ -141,7 +146,7 @@ class HashCache(object):
     def get_sha1(self, path):
         """Return the sha1 of a file.
         """
-        abspath = os.sep.join([self.basedir, path])
+        abspath = pathjoin(self.root, path)
         self.stat_count += 1
         file_fp = _fingerprint(abspath)
         
@@ -169,16 +174,23 @@ class HashCache(object):
         if stat.S_ISREG(mode):
             digest = sha_file(file(abspath, 'rb', buffering=65000))
         elif stat.S_ISLNK(mode):
-            link_target = os.readlink(abspath)
             digest = sha.new(os.readlink(abspath)).hexdigest()
         else:
             raise BzrError("file %r: unknown file stat mode: %o"%(abspath,mode))
 
         now = int(time.time())
-        if file_fp[1] >= now or file_fp[2] >= now:
+        if file_fp[FP_MTIME_COLUMN] >= now or file_fp[FP_CTIME_COLUMN] >= now:
             # changed too recently; can't be cached.  we can
             # return the result and it could possibly be cached
             # next time.
+            #
+            # the point is that we only want to cache when we are sure that any
+            # subsequent modifications of the file can be detected.  If a
+            # modification neither changes the inode, the device, the size, nor
+            # the mode, then we can only distinguish it by time; therefore we
+            # need to let sufficient time elapse before we may cache this entry
+            # again.  If we didn't do this, then, for example, a very quick 1
+            # byte replacement in the file might go undetected.
             self.danger_count += 1 
             if cache_fp:
                 self.removed_count += 1
@@ -192,7 +204,7 @@ class HashCache(object):
         
     def write(self):
         """Write contents of cache to file."""
-        outf = AtomicFile(self.cache_file_name(), 'wb')
+        outf = AtomicFile(self.cache_file_name(), 'wb', new_mode=self._mode)
         try:
             print >>outf, CACHE_HEADER,
 
@@ -204,9 +216,12 @@ class HashCache(object):
                 for fld in c[1]:
                     print >>outf, "%d" % fld,
                 print >>outf
-
             outf.commit()
             self.needs_write = False
+            mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
+                   self.cache_file_name(), self.hit_count, self.miss_count,
+                   self.stat_count,
+                   self.danger_count, self.update_count)
         finally:
             if not outf.closed:
                 outf.abort()

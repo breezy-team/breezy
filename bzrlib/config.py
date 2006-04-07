@@ -27,6 +27,7 @@ email=Your Name <your@email.address>
 check_signatures=require|ignore|check-available(default)
 create_signatures=always|never|when-required(default)
 gpg_signing_command=name-of-program
+log_format=name-of-format
 
 in branches.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
@@ -49,6 +50,16 @@ create_signatures - this option controls whether bzr will always create
                     gpg signatures, never create them, or create them if the
                     branch is configured to require them.
                     NB: This option is planned, but not implemented yet.
+log_format - This options set the default log format.  Options are long, 
+             short, line, or a plugin can register new formats
+
+In bazaar.conf you can also define aliases in the ALIASES sections, example
+
+[ALIASES]
+lastlog=log --line -r-10..-1
+ll=log --line -r-10..-1
+h=help
+up=pull
 """
 
 
@@ -60,6 +71,8 @@ import re
 
 import bzrlib
 import bzrlib.errors as errors
+from bzrlib.osutils import pathjoin
+from bzrlib.trace import mutter
 import bzrlib.util.configobj.configobj as configobj
 from StringIO import StringIO
 
@@ -71,13 +84,7 @@ CHECK_NEVER=2
 class ConfigObj(configobj.ConfigObj):
 
     def get_bool(self, section, key):
-        val = self[section][key].lower()
-        if val in ('1', 'yes', 'true', 'on'):
-            return True
-        elif val in ('0', 'no', 'false', 'off'):
-            return False
-        else:
-            raise ValueError("Value %r is not boolean" % val)
+        return self[section].as_bool(key)
 
     def get_value(self, section, name):
         # Try [] for the old DEFAULT section.
@@ -116,6 +123,17 @@ class Config(object):
 
     def _gpg_signing_command(self):
         """See gpg_signing_command()."""
+        return None
+
+    def log_format(self):
+        """What log format should be used"""
+        result = self._log_format()
+        if result is None:
+            result = "long"
+        return result
+
+    def _log_format(self):
+        """See log_format()."""
         return None
 
     def __init__(self):
@@ -181,6 +199,12 @@ class Config(object):
             return True
         return False
 
+    def get_alias(self, value):
+        return self._get_alias(value)
+
+    def _get_alias(self, value):
+        pass
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -193,7 +217,7 @@ class IniBasedConfig(Config):
         else:
             input = file
         try:
-            self._parser = ConfigObj(input)
+            self._parser = ConfigObj(input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
         return self._parser
@@ -224,6 +248,10 @@ class IniBasedConfig(Config):
         """See Config.gpg_signing_command."""
         return self._get_user_option('gpg_signing_command')
 
+    def _log_format(self):
+        """See Config.log_format."""
+        return self._get_user_option('log_format')
+
     def __init__(self, get_filename):
         super(IniBasedConfig, self).__init__()
         self._get_filename = get_filename
@@ -243,6 +271,13 @@ class IniBasedConfig(Config):
             return CHECK_ALWAYS
         raise errors.BzrError("Invalid signatures policy '%s'"
                               % signature_string)
+
+    def _get_alias(self, value):
+        try:
+            return self._get_parser().get_value("ALIASES", 
+                                                value)
+        except KeyError:
+            pass
 
 
 class GlobalConfig(IniBasedConfig):
@@ -299,7 +334,7 @@ class LocationConfig(IniBasedConfig):
             # if path is longer, and recurse is not true, no match
             if len(section_names) < len(location_names):
                 try:
-                    if not self._get_parser().get_bool(section, 'recurse'):
+                    if not self._get_parser()[section].as_bool('recurse'):
                         continue
                 except KeyError:
                     pass
@@ -315,6 +350,13 @@ class LocationConfig(IniBasedConfig):
         if command is not None:
             return command
         return self._get_global_config()._gpg_signing_command()
+
+    def _log_format(self):
+        """See Config.log_format."""
+        command = super(LocationConfig, self)._log_format()
+        if command is not None:
+            return command
+        return self._get_global_config()._log_format()
 
     def _get_user_id(self):
         user_id = super(LocationConfig, self)._get_user_id()
@@ -348,8 +390,8 @@ class LocationConfig(IniBasedConfig):
         """Save option and its value in the configuration."""
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on branches.conf.
-        if not os.path.isdir(os.path.dirname(self._get_filename())):
-            os.mkdir(os.path.dirname(self._get_filename()))
+        conf_dir = os.path.dirname(self._get_filename())
+        ensure_config_dir_exists(conf_dir)
         location = self.location
         if location.endswith('/'):
             location = location[:-1]
@@ -359,7 +401,7 @@ class LocationConfig(IniBasedConfig):
         elif location + '/' in self._get_parser():
             location = location + '/'
         self._get_parser()[location][option]=value
-        self._get_parser().write()
+        self._get_parser().write(file(self._get_filename(), 'wb'))
 
 
 class BranchConfig(Config):
@@ -377,7 +419,7 @@ class BranchConfig(Config):
         This is looked up in the email controlfile for the branch.
         """
         try:
-            return (self.branch.controlfile("email", "r") 
+            return (self.branch.control_files.get_utf8("email") 
                     .read()
                     .decode(bzrlib.user_encoding)
                     .rstrip("\r\n"))
@@ -407,6 +449,28 @@ class BranchConfig(Config):
         """See Config.post_commit."""
         return self._get_location_config()._post_commit()
 
+    def _log_format(self):
+        """See Config.log_format."""
+        return self._get_location_config()._log_format()
+
+
+def ensure_config_dir_exists(path=None):
+    """Make sure a configuration directory exists.
+    This makes sure that the directory exists.
+    On windows, since configuration directories are 2 levels deep,
+    it makes sure both the directory and the parent directory exists.
+    """
+    if path is None:
+        path = config_dir()
+    if not os.path.isdir(path):
+        if sys.platform == 'win32':
+            parent_dir = os.path.dirname(path)
+            if not os.path.isdir(parent_dir):
+                mutter('creating config parent directory: %r', parent_dir)
+            os.mkdir(parent_dir)
+        mutter('creating config directory: %r', path)
+        os.mkdir(path)
+
 
 def config_dir():
     """Return per-user configuration directory.
@@ -423,22 +487,22 @@ def config_dir():
             base = os.environ.get('HOME', None)
         if base is None:
             raise BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
-        return os.path.join(base, 'bazaar', '2.0')
+        return pathjoin(base, 'bazaar', '2.0')
     else:
         # cygwin, linux, and darwin all have a $HOME directory
         if base is None:
             base = os.path.expanduser("~")
-        return os.path.join(base, ".bazaar")
+        return pathjoin(base, ".bazaar")
 
 
 def config_filename():
     """Return per-user configuration ini file filename."""
-    return os.path.join(config_dir(), 'bazaar.conf')
+    return pathjoin(config_dir(), 'bazaar.conf')
 
 
 def branches_config_filename():
     """Return per-user configuration ini file filename."""
-    return os.path.join(config_dir(), 'branches.conf')
+    return pathjoin(config_dir(), 'branches.conf')
 
 
 def _auto_user_id():
@@ -460,8 +524,15 @@ def _auto_user_id():
         import pwd
         uid = os.getuid()
         w = pwd.getpwuid(uid)
-        gecos = w.pw_gecos.decode(bzrlib.user_encoding)
-        username = w.pw_name.decode(bzrlib.user_encoding)
+
+        try:
+            gecos = w.pw_gecos.decode(bzrlib.user_encoding)
+            username = w.pw_name.decode(bzrlib.user_encoding)
+        except UnicodeDecodeError:
+            # We're using pwd, therefore we're on Unix, so /etc/passwd is ok.
+            raise errors.BzrError("Can't decode username in " \
+                    "/etc/passwd as %s." % bzrlib.user_encoding)
+
         comma = gecos.find(',')
         if comma == -1:
             realname = gecos
@@ -472,7 +543,11 @@ def _auto_user_id():
 
     except ImportError:
         import getpass
-        realname = username = getpass.getuser().decode(bzrlib.user_encoding)
+        try:
+            realname = username = getpass.getuser().decode(bzrlib.user_encoding)
+        except UnicodeDecodeError:
+            raise errors.BzrError("Can't decode username as %s." % \
+                    bzrlib.user_encoding)
 
     return realname, (username + '@' + socket.gethostname())
 
@@ -500,11 +575,10 @@ class TreeConfig(object):
 
     def _get_config(self):
         try:
-            obj = ConfigObj(self.branch.controlfile('branch.conf',
-                                                    'rb').readlines())
-            obj.decode('UTF-8')
+            obj = ConfigObj(self.branch.control_files.get('branch.conf'), 
+                            encoding='utf-8')
         except errors.NoSuchFile:
-            obj = ConfigObj()
+            obj = ConfigObj(encoding='utf=8')
         return obj
 
     def get_option(self, name, section=None, default=None):
@@ -535,9 +609,9 @@ class TreeConfig(object):
                     cfg_obj[section] = {}
                     obj = cfg_obj[section]
             obj[name] = value
-            cfg_obj.encode('UTF-8')
-            out_file = StringIO(''.join([l+'\n' for l in cfg_obj.write()]))
+            out_file = StringIO()
+            cfg_obj.write(out_file)
             out_file.seek(0)
-            self.branch.put_controlfile('branch.conf', out_file, encode=False)
+            self.branch.control_files.put('branch.conf', out_file)
         finally:
             self.branch.unlock()

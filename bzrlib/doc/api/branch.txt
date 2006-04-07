@@ -1,0 +1,29 @@
+The Branch API in bzrlib provides creation and management of Branches.
+
+A Branch represents a series of commits and merges carried out by a user.
+
+Branches are created by BzrDir's:
+
+   >>> from bzrlib.bzrdir import ScratchDir
+   >>> from bzrlib.branch import Branch
+   >>> dir = ScratchDir()
+   >>> new_branch = dir.create_branch()
+
+
+Existing Branches can be opened directly:
+
+   >>> another_instance = Branch.open(dir.transport.clone('..').base)
+
+or via the BzrDir:
+
+   >>> still_the_same_branch = dir.open_branch()
+
+
+A branch has a history of revisions on it:
+
+   >>> new_branch.revision_history()
+   []
+
+
+We need to write some more documentation, showing
+push and pull operations. Cloning might also be nice.

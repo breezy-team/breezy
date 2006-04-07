@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 # -*- coding: utf-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
@@ -23,21 +23,61 @@ command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
-from bzrlib.tests import TestLoader
-from bzrlib.tests import TestCaseInTempDir, BzrTestBase
+from bzrlib.tests import (
+                          _load_module_by_name,
+                          TestCaseWithTransport,
+                          TestSuite,
+                          TestLoader,
+                          )
+import bzrlib.ui as ui
+
 
 def test_suite():
     testmod_names = [
+                     'bzrlib.tests.blackbox.test_added',
+                     'bzrlib.tests.blackbox.test_aliases',
+                     'bzrlib.tests.blackbox.test_ancestry',
+                     'bzrlib.tests.blackbox.test_break_lock',
+                     'bzrlib.tests.blackbox.test_bound_branches',
                      'bzrlib.tests.blackbox.test_cat',
-                     'bzrlib.tests.blackbox.test_too_much',
+                     'bzrlib.tests.blackbox.test_checkout',
+                     'bzrlib.tests.blackbox.test_commit',
+                     'bzrlib.tests.blackbox.test_conflicts',
+                     'bzrlib.tests.blackbox.test_diff',
+                     'bzrlib.tests.blackbox.test_export',
+                     'bzrlib.tests.blackbox.test_find_merge_base',
+                     'bzrlib.tests.blackbox.test_help',
+                     'bzrlib.tests.blackbox.test_info',
+                     'bzrlib.tests.blackbox.test_init',
+                     'bzrlib.tests.blackbox.test_log',
+                     'bzrlib.tests.blackbox.test_logformats',
+                     'bzrlib.tests.blackbox.test_missing',
+                     'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pull',
+                     'bzrlib.tests.blackbox.test_reconcile',
+                     'bzrlib.tests.blackbox.test_re_sign',
+                     'bzrlib.tests.blackbox.test_revert',
                      'bzrlib.tests.blackbox.test_revno',
+                     'bzrlib.tests.blackbox.test_revision_info',
+                     'bzrlib.tests.blackbox.test_selftest',
+                     'bzrlib.tests.blackbox.test_shared_repository',
+                     'bzrlib.tests.blackbox.test_sign_my_commits',
+                     'bzrlib.tests.blackbox.test_status',
+                     'bzrlib.tests.blackbox.test_too_much',
+                     'bzrlib.tests.blackbox.test_update',
+                     'bzrlib.tests.blackbox.test_upgrade',
                      'bzrlib.tests.blackbox.test_versioning',
                      ]
-    return TestLoader().loadTestsFromNames(testmod_names)
+
+    suite = TestSuite()
+    loader = TestLoader()
+    for mod_name in testmod_names:
+        mod = _load_module_by_name(mod_name)
+        suite.addTest(loader.loadTestsFromModule(mod))
+    return suite
 
 
-class ExternalBase(TestCaseInTempDir):
+class ExternalBase(TestCaseWithTransport):
 
     def runbzr(self, args, retcode=0, backtick=False):
         if isinstance(args, basestring):
@@ -46,3 +86,26 @@ class ExternalBase(TestCaseInTempDir):
             return self.run_bzr_captured(args, retcode=retcode)[0]
         else:
             return self.run_bzr_captured(args, retcode=retcode)
+
+
+class TestUIFactory(ui.UIFactory):
+    """A UI Factory for testing - hide the progress bar but emit note()s."""
+
+    def clear(self):
+        """See progress.ProgressBar.clear()."""
+
+    def finished(self):
+        """See progress.ProgressBar.finished()."""
+
+    def note(self, fmt_string, *args, **kwargs):
+        """See progress.ProgressBar.note()."""
+        print fmt_string % args
+
+    def progress_bar(self):
+        return self
+    
+    def nested_progress_bar(self):
+        return self
+
+    def update(self, message, count=None, total=None):
+        """See progress.ProgressBar.update()."""

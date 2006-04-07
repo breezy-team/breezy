@@ -18,13 +18,12 @@ from cStringIO import StringIO
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.clone import copy_branch
 import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
 from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.inventory as inventory
-from bzrlib.osutils import has_symlinks, rename
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.osutils import has_symlinks, rename, pathjoin
+from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
 class TestInventory(TestCase):
@@ -32,7 +31,7 @@ class TestInventory(TestCase):
     def test_is_within(self):
         from bzrlib.osutils import is_inside_any
 
-        SRC_FOO_C = os.path.join('src', 'foo.c')
+        SRC_FOO_C = pathjoin('src', 'foo.c')
         for dirs, fn in [(['src', 'doc'], SRC_FOO_C),
                          (['src'], SRC_FOO_C),
                          (['src'], 'src'),
@@ -133,26 +132,26 @@ class TestInventoryEntry(TestCase):
         self.failIf(link.has_text())
 
 
-class TestEntryDiffing(TestCaseInTempDir):
+class TestEntryDiffing(TestCaseWithTransport):
 
     def setUp(self):
         super(TestEntryDiffing, self).setUp()
-        self.branch = Branch.initialize(u'.')
-        self.wt = self.branch.working_tree()
+        self.wt = self.make_branch_and_tree('.')
+        self.branch = self.wt.branch
         print >> open('file', 'wb'), 'foo'
-        self.branch.working_tree().add(['file'], ['fileid'])
+        self.wt.add(['file'], ['fileid'])
         if has_symlinks():
             os.symlink('target1', 'symlink')
-            self.branch.working_tree().add(['symlink'], ['linkid'])
+            self.wt.add(['symlink'], ['linkid'])
         self.wt.commit('message_1', rev_id = '1')
         print >> open('file', 'wb'), 'bar'
         if has_symlinks():
             os.unlink('symlink')
             os.symlink('target2', 'symlink')
-        self.tree_1 = self.branch.revision_tree('1')
-        self.inv_1 = self.branch.get_inventory('1')
+        self.tree_1 = self.branch.repository.revision_tree('1')
+        self.inv_1 = self.branch.repository.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
-        self.tree_2 = self.branch.working_tree()
+        self.tree_2 = self.wt
         self.inv_2 = self.tree_2.read_working_inventory()
         self.file_2 = self.inv_2['fileid']
         if has_symlinks():
@@ -230,7 +229,7 @@ class TestEntryDiffing(TestCaseInTempDir):
                          "=== target changed 'target1' => 'target2'\n")
 
 
-class TestSnapshot(TestCaseInTempDir):
+class TestSnapshot(TestCaseWithTransport):
 
     def setUp(self):
         # for full testing we'll need a branch
@@ -240,46 +239,50 @@ class TestSnapshot(TestCaseInTempDir):
         # to change, and then test merge patterns
         # with fake parent entries.
         super(TestSnapshot, self).setUp()
-        self.branch = Branch.initialize(u'.')
+        self.wt = self.make_branch_and_tree('.')
+        self.branch = self.wt.branch
         self.build_tree(['subdir/', 'subdir/file'], line_endings='binary')
-        self.branch.working_tree().add(['subdir', 'subdir/file'],
+        self.wt.add(['subdir', 'subdir/file'],
                                        ['dirid', 'fileid'])
         if has_symlinks():
             pass
-        self.wt = self.branch.working_tree()
         self.wt.commit('message_1', rev_id = '1')
-        self.tree_1 = self.branch.revision_tree('1')
-        self.inv_1 = self.branch.get_inventory('1')
+        self.tree_1 = self.branch.repository.revision_tree('1')
+        self.inv_1 = self.branch.repository.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
-        self.work_tree = self.branch.working_tree()
-        self.file_active = self.work_tree.inventory['fileid']
+        self.file_active = self.wt.inventory['fileid']
 
     def test_snapshot_new_revision(self):
         # This tests that a simple commit with no parents makes a new
         # revision value in the inventory entry
-        self.file_active.snapshot('2', 'subdir/file', {}, self.work_tree, 
-                                  self.branch.weave_store,
+        self.file_active.snapshot('2', 'subdir/file', {}, self.wt, 
+                                  self.branch.repository.weave_store,
                                   self.branch.get_transaction())
         # expected outcome - file_1 has a revision id of '2', and we can get
         # its text of 'file contents' out of the weave.
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '2')
         # this should be a separate test probably, but lets check it once..
-        lines = self.branch.weave_store.get_lines('fileid','2',
-            self.branch.get_transaction())
+        lines = self.branch.repository.weave_store.get_weave(
+            'fileid', 
+            self.branch.get_transaction()).get_lines('2')
         self.assertEqual(lines, ['contents of subdir/file\n'])
 
     def test_snapshot_unchanged(self):
         #This tests that a simple commit does not make a new entry for
         # an unchanged inventory entry
         self.file_active.snapshot('2', 'subdir/file', {'1':self.file_1},
-                                  self.work_tree, self.branch.weave_store,
+                                  self.wt, 
+                                  self.branch.repository.weave_store,
                                   self.branch.get_transaction())
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '1')
-        self.assertRaises(errors.WeaveError,
-                          self.branch.weave_store.get_lines, 'fileid', '2',
-                          self.branch.get_transaction())
+        vf = self.branch.repository.weave_store.get_weave(
+            'fileid', 
+            self.branch.repository.get_transaction())
+        self.assertRaises(errors.RevisionNotPresent,
+                          vf.get_lines,
+                          '2')
 
     def test_snapshot_merge_identical_different_revid(self):
         # This tests that a commit with two identical parents, one of which has
@@ -293,11 +296,13 @@ class TestSnapshot(TestCaseInTempDir):
         self.assertEqual(self.file_1, other_ie)
         other_ie.revision = 'other'
         self.assertNotEqual(self.file_1, other_ie)
-        self.branch.weave_store.add_identical_text('fileid', '1', 'other', ['1'],
-            self.branch.get_transaction())
+        versionfile = self.branch.repository.weave_store.get_weave(
+            'fileid', self.branch.repository.get_transaction())
+        versionfile.clone_text('other', '1', ['1'])
         self.file_active.snapshot('2', 'subdir/file', 
                                   {'1':self.file_1, 'other':other_ie},
-                                  self.work_tree, self.branch.weave_store,
+                                  self.wt, 
+                                  self.branch.repository.weave_store,
                                   self.branch.get_transaction())
         self.assertEqual(self.file_active.revision, '2')
 
@@ -307,14 +312,14 @@ class TestSnapshot(TestCaseInTempDir):
         self.file_active.name='newname'
         rename('subdir/file', 'subdir/newname')
         self.file_active.snapshot('2', 'subdir/newname', {'1':self.file_1}, 
-                                  self.work_tree, 
-                                  self.branch.weave_store,
+                                  self.wt,
+                                  self.branch.repository.weave_store,
                                   self.branch.get_transaction())
         # expected outcome - file_1 has a revision id of '2'
         self.assertEqual(self.file_active.revision, '2')
 
 
-class TestPreviousHeads(TestCaseInTempDir):
+class TestPreviousHeads(TestCaseWithTransport):
 
     def setUp(self):
         # we want several inventories, that respectively
@@ -326,27 +331,34 @@ class TestPreviousHeads(TestCaseInTempDir):
         # D) fileid present in two inventories and one is
         #   a descendent of the other. (B, D)
         super(TestPreviousHeads, self).setUp()
+        self.wt = self.make_branch_and_tree('.')
+        self.branch = self.wt.branch
         self.build_tree(['file'])
-        self.branch = Branch.initialize(u'.')
-        self.wt = self.branch.working_tree()
         self.wt.commit('new branch', allow_pointless=True, rev_id='A')
-        self.inv_A = self.branch.get_inventory('A')
-        self.branch.working_tree().add(['file'], ['fileid'])
+        self.inv_A = self.branch.repository.get_inventory('A')
+        self.wt.add(['file'], ['fileid'])
         self.wt.commit('add file', rev_id='B')
-        self.inv_B = self.branch.get_inventory('B')
-        self.branch.put_controlfile('revision-history', 'A\n')
+        self.inv_B = self.branch.repository.get_inventory('B')
+        self.branch.lock_write()
+        try:
+            self.branch.control_files.put_utf8('revision-history', 'A\n')
+        finally:
+            self.branch.unlock()
         self.assertEqual(self.branch.revision_history(), ['A'])
         self.wt.commit('another add of file', rev_id='C')
-        self.inv_C = self.branch.get_inventory('C')
+        self.inv_C = self.branch.repository.get_inventory('C')
         self.wt.add_pending_merge('B')
         self.wt.commit('merge in B', rev_id='D')
-        self.inv_D = self.branch.get_inventory('D')
+        self.inv_D = self.branch.repository.get_inventory('D')
         self.file_active = self.wt.inventory['fileid']
-        self.weave = self.branch.weave_store.get_weave('fileid',
-            self.branch.get_transaction())
+        self.weave = self.branch.repository.weave_store.get_weave('fileid',
+            self.branch.repository.get_transaction())
         
     def get_previous_heads(self, inventories):
-        return self.file_active.find_previous_heads(inventories, self.weave)
+        return self.file_active.find_previous_heads(
+            inventories, 
+            self.branch.repository.weave_store,
+            self.branch.repository.get_transaction())
         
     def test_fileid_in_no_inventory(self):
         self.assertEqual({}, self.get_previous_heads([self.inv_A]))
@@ -374,3 +386,117 @@ class TestPreviousHeads(TestCaseInTempDir):
                          self.get_previous_heads([self.inv_D, self.inv_B]))
 
     # TODO: test two inventories with the same file revision 
+
+
+class TestExecutable(TestCaseWithTransport):
+
+    def test_stays_executable(self):
+        basic_inv = """<inventory format="5">
+<file file_id="a-20051208024829-849e76f7968d7a86" name="a" executable="yes" />
+<file file_id="b-20051208024829-849e76f7968d7a86" name="b" />
+</inventory>
+"""
+        wt = self.make_branch_and_tree('b1')
+        b = wt.branch
+        open('b1/a', 'wb').write('a test\n')
+        open('b1/b', 'wb').write('b test\n')
+        os.chmod('b1/a', 0755)
+        os.chmod('b1/b', 0644)
+        # Manually writing the inventory, to ensure that
+        # the executable="yes" entry is set for 'a' and not for 'b'
+        open('b1/.bzr/inventory', 'wb').write(basic_inv)
+
+        a_id = "a-20051208024829-849e76f7968d7a86"
+        b_id = "b-20051208024829-849e76f7968d7a86"
+        wt = wt.bzrdir.open_workingtree()
+        self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
+
+        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(wt.is_executable(b_id), "'b' gained an execute bit")
+
+        wt.commit('adding a,b', rev_id='r1')
+
+        rev_tree = b.repository.revision_tree('r1')
+        self.failUnless(rev_tree.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(rev_tree.is_executable(b_id), "'b' gained an execute bit")
+
+        self.failUnless(rev_tree.inventory[a_id].executable)
+        self.failIf(rev_tree.inventory[b_id].executable)
+
+        # Make sure the entries are gone
+        os.remove('b1/a')
+        os.remove('b1/b')
+        self.failIf(wt.has_id(a_id))
+        self.failIf(wt.has_filename('a'))
+        self.failIf(wt.has_id(b_id))
+        self.failIf(wt.has_filename('b'))
+
+        # Make sure that revert is able to bring them back,
+        # and sets 'a' back to being executable
+
+        wt.revert(['a', 'b'], rev_tree, backups=False)
+        self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
+
+        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(wt.is_executable(b_id), "'b' gained an execute bit")
+
+        # Now remove them again, and make sure that after a
+        # commit, they are still marked correctly
+        os.remove('b1/a')
+        os.remove('b1/b')
+        wt.commit('removed', rev_id='r2')
+
+        self.assertEqual([], [cn for cn,ie in wt.inventory.iter_entries()])
+        self.failIf(wt.has_id(a_id))
+        self.failIf(wt.has_filename('a'))
+        self.failIf(wt.has_id(b_id))
+        self.failIf(wt.has_filename('b'))
+
+        # Now revert back to the previous commit
+        wt.revert([], rev_tree, backups=False)
+        self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
+
+        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(wt.is_executable(b_id), "'b' gained an execute bit")
+
+        # Now make sure that 'bzr branch' also preserves the
+        # executable bit
+        # TODO: Maybe this should be a blackbox test
+        d2 = b.bzrdir.clone('b2', revision_id='r1')
+        t2 = d2.open_workingtree()
+        b2 = t2.branch
+        self.assertEquals('r1', b2.last_revision())
+
+        self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
+        self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
+
+        # Make sure pull will delete the files
+        t2.pull(b)
+        self.assertEquals('r2', b2.last_revision())
+        self.assertEqual([], [cn for cn,ie in t2.inventory.iter_entries()])
+
+        # Now commit the changes on the first branch
+        # so that the second branch can pull the changes
+        # and make sure that the executable bit has been copied
+        wt.commit('resurrected', rev_id='r3')
+
+        t2.pull(b)
+        self.assertEquals('r3', b2.last_revision())
+        self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
+
+        self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
+
+class TestRevert(TestCaseWithTransport):
+    def test_dangling_id(self):
+        wt = self.make_branch_and_tree('b1')
+        self.assertEqual(len(wt.inventory), 1)
+        open('b1/a', 'wb').write('a test\n')
+        wt.add('a')
+        self.assertEqual(len(wt.inventory), 2)
+        os.unlink('b1/a')
+        wt.revert([])
+        self.assertEqual(len(wt.inventory), 1)
+
+

@@ -71,6 +71,10 @@ def _parse_revision_str(revstr):
     BzrError: No namespace registered for string: 'abc'
     >>> _parse_revision_str('branch:../branch2')
     [<RevisionSpec_branch branch:../branch2>]
+    >>> _parse_revision_str('branch:../../branch2')
+    [<RevisionSpec_branch branch:../../branch2>]
+    >>> _parse_revision_str('branch:../../branch2..23')
+    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_int 23>]
     """
     # TODO: Maybe move this into revisionspec.py
     old_format_re = re.compile('\d*:\d*')
@@ -85,20 +89,9 @@ def _parse_revision_str(revstr):
             else:
                 revs.append(RevisionSpec(None))
     else:
-        next_prefix = None
-        for x in revstr.split('..'):
-            if not x:
-                revs.append(RevisionSpec(None))
-            elif x[-1] == ':':
-                # looks like a namespace:.. has happened
-                next_prefix = x + '..'
-            else:
-                if next_prefix is not None:
-                    x = next_prefix + x
-                revs.append(RevisionSpec(x))
-                next_prefix = None
-        if next_prefix is not None:
-            revs.append(RevisionSpec(next_prefix))
+        sep = re.compile("\\.\\.(?!/)")
+        for x in sep.split(revstr):
+            revs.append(RevisionSpec(x or None))
     return revs
 
 
@@ -168,6 +161,7 @@ _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally')
 _global_option('basis', type=str)
+_global_option('bound')
 _global_option('diff-options', type=str)
 _global_option('help',
                help='show help message')
@@ -186,12 +180,16 @@ _global_option('show-ids',
 _global_option('timezone', 
                type=str,
                help='display timezone as local, original, or utc')
+_global_option('unbound')
 _global_option('verbose',
                help='display more information')
 _global_option('version')
 _global_option('email')
 _global_option('update')
-_global_option('long')
+_global_option('log-format', type=str, help="Use this log format")
+_global_option('long', help='Use detailed log format. Same as --log-format long')
+_global_option('short', help='Use moderately short log format. Same as --log-format short')
+_global_option('line', help='Use log format with one line per revision. Same as --log-format line')
 _global_option('root', type=str)
 _global_option('no-backup')
 _global_option('merge-type', type=_parse_merge_type)
@@ -201,6 +199,8 @@ _global_option('remember', help='Remember the specified location as a'
                ' default.')
 _global_option('reprocess', help='Reprocess to reduce spurious conflicts')
 _global_option('kind', type=str)
+_global_option('dry-run',
+               help="show what would be done, but don't actually do anything")
 
 
 def _global_short(short_name, long_name):

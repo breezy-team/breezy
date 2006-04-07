@@ -28,11 +28,16 @@ import bzrlib.errors as errors
 from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
+sample_long_alias="log -r-15..-1 --line"
 sample_config_text = ("[DEFAULT]\n"
-                      "email=Robert Collins <robertc@example.com>\n"
+                      u"email=Erik B\u00e5gfors <erik@bagfors.nu>\n"
                       "editor=vim\n"
                       "gpg_signing_command=gnome-gpg\n"
-                      "user_global_option=something\n")
+                      "log_format=short\n"
+                      "user_global_option=something\n"
+                      "[ALIASES]\n"
+                      "h=help\n"
+                      "ll=" + sample_long_alias + "\n")
 
 
 sample_always_signatures = ("[DEFAULT]\n"
@@ -70,6 +75,7 @@ sample_branches_text = ("[http://www.example.com]\n"
                         "#testing explicit beats globs\n")
 
 
+
 class InstrumentedConfigObj(object):
     """A config obj look-enough-alike to record calls made to it."""
 
@@ -81,13 +87,13 @@ class InstrumentedConfigObj(object):
         self._calls.append(('__getitem__', key))
         return self
 
-    def __init__(self, input):
-        self._calls = [('__init__', input)]
+    def __init__(self, input, encoding=None):
+        self._calls = [('__init__', input, encoding)]
 
     def __setitem__(self, key, value):
         self._calls.append(('__setitem__', key, value))
 
-    def write(self):
+    def write(self, arg):
         self._calls.append(('write',))
 
 
@@ -95,9 +101,15 @@ class FakeBranch(object):
 
     def __init__(self):
         self.base = "http://example.com/branches/demo"
+        self.control_files = FakeControlFiles()
+
+
+class FakeControlFiles(object):
+
+    def __init__(self):
         self.email = 'Robert Collins <robertc@example.net>\n'
 
-    def controlfile(self, filename, mode):
+    def get_utf8(self, filename):
         if filename != 'email':
             raise NotImplementedError
         if self.email is not None:
@@ -120,6 +132,23 @@ class InstrumentedConfig(config.Config):
     def _get_signature_checking(self):
         self._calls.append('_get_signature_checking')
         return self._signatures
+
+
+bool_config = """[DEFAULT]
+active = true
+inactive = false
+[UPPERCASE]
+active = True
+nonactive = False
+"""
+class TestConfigObj(TestCase):
+    def test_get_bool(self):
+        from bzrlib.config import ConfigObj
+        co = ConfigObj(StringIO(bool_config))
+        self.assertIs(co.get_bool('DEFAULT', 'active'), True)
+        self.assertIs(co.get_bool('DEFAULT', 'inactive'), False)
+        self.assertIs(co.get_bool('UPPERCASE', 'active'), True)
+        self.assertIs(co.get_bool('UPPERCASE', 'nonactive'), False)
 
 
 class TestConfig(TestCase):
@@ -170,6 +199,10 @@ class TestConfig(TestCase):
         my_config = config.Config()
         self.assertEqual(None, my_config.post_commit())
 
+    def test_log_format_default(self):
+        my_config = config.Config()
+        self.assertEqual('long', my_config.log_format())
+
 
 class TestConfigPath(TestCase):
 
@@ -195,14 +228,14 @@ class TestConfigPath(TestCase):
     def test_config_dir(self):
         if sys.platform == 'win32':
             self.assertEqual(config.config_dir(), 
-                r'C:\Documents and Settings\bogus\Application Data\bazaar\2.0')
+                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0')
         else:
             self.assertEqual(config.config_dir(), '/home/bogus/.bazaar')
 
     def test_config_filename(self):
         if sys.platform == 'win32':
             self.assertEqual(config.config_filename(), 
-                r'C:\Documents and Settings\bogus\Application Data\bazaar\2.0\bazaar.conf')
+                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/bazaar.conf')
         else:
             self.assertEqual(config.config_filename(),
                              '/home/bogus/.bazaar/bazaar.conf')
@@ -210,7 +243,7 @@ class TestConfigPath(TestCase):
     def test_branches_config_filename(self):
         if sys.platform == 'win32':
             self.assertEqual(config.branches_config_filename(), 
-                r'C:\Documents and Settings\bogus\Application Data\bazaar\2.0\branches.conf')
+                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/branches.conf')
         else:
             self.assertEqual(config.branches_config_filename(),
                              '/home/bogus/.bazaar/branches.conf')
@@ -221,14 +254,14 @@ class TestIniConfig(TestCase):
         my_config = config.IniBasedConfig("nothing")
 
     def test_from_fp(self):
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         my_config = config.IniBasedConfig(None)
         self.failUnless(
             isinstance(my_config._get_parser(file=config_file),
                         ConfigObj))
 
     def test_cached(self):
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         my_config = config.IniBasedConfig(None)
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
@@ -249,7 +282,8 @@ class TestGetConfig(TestCase):
         finally:
             config.ConfigObj = oldparserclass
         self.failUnless(isinstance(parser, InstrumentedConfigObj))
-        self.assertEqual(parser._calls, [('__init__', config.config_filename())])
+        self.assertEqual(parser._calls, [('__init__', config.config_filename(),
+                                          'utf-8')])
 
 
 class TestBranchConfig(TestCaseInTempDir):
@@ -270,10 +304,10 @@ class TestBranchConfig(TestCaseInTempDir):
 class TestGlobalConfigItems(TestCase):
 
     def test_user_id(self):
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
-        self.assertEqual("Robert Collins <robertc@example.com>",
+        self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
 
     def test_absent_user_id(self):
@@ -283,7 +317,7 @@ class TestGlobalConfigItems(TestCase):
         self.assertEqual(None, my_config._get_user_id())
 
     def test_configured_editor(self):
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
         self.assertEqual("vim", my_config.get_editor())
@@ -313,7 +347,7 @@ class TestGlobalConfigItems(TestCase):
         self.assertEqual(False, my_config.signature_needed())
 
     def _get_sample_config(self):
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
         return my_config
@@ -346,6 +380,21 @@ class TestGlobalConfigItems(TestCase):
         my_config = self._get_sample_config()
         self.assertEqual(None, my_config.post_commit())
 
+    def test_configured_logformat(self):
+        my_config = self._get_sample_config()
+        self.assertEqual("short", my_config.log_format())
+
+    def test_get_alias(self):
+        my_config = self._get_sample_config()
+        self.assertEqual('help', my_config.get_alias('h'))
+
+    def test_get_no_alias(self):
+        my_config = self._get_sample_config()
+        self.assertEqual(None, my_config.get_alias('foo'))
+
+    def test_get_long_alias(self):
+        my_config = self._get_sample_config()
+        self.assertEqual(sample_long_alias, my_config.get_alias('ll'))
 
 class TestLocationConfig(TestCase):
 
@@ -498,23 +547,33 @@ class TestLocationConfig(TestCaseInTempDir):
 
     def get_location_config(self, location, global_config=None):
         if global_config is None:
-            global_file = StringIO(sample_config_text)
+            global_file = StringIO(sample_config_text.encode('utf-8'))
         else:
-            global_file = StringIO(global_config)
-        branches_file = StringIO(sample_branches_text)
+            global_file = StringIO(global_config.encode('utf-8'))
+        branches_file = StringIO(sample_branches_text.encode('utf-8'))
         self.my_config = config.LocationConfig(location)
         self.my_config._get_parser(branches_file)
         self.my_config._get_global_config()._get_parser(global_file)
 
     def test_set_user_setting_sets_and_saves(self):
-        # TODO RBC 20051029 test hat mkdir ~/.bazaar is called ..
         self.get_location_config('/a/c')
         record = InstrumentedConfigObj("foo")
         self.my_config._parser = record
-        print ("test_set_user_setting_sets_and_saves broken: creates .bazaar "
-               "in the top-level directory, not inside the test directory")
-        return
-        self.my_config.set_user_option('foo', 'bar')
+
+        real_mkdir = os.mkdir
+        self.created = False
+        def checked_mkdir(path, mode=0777):
+            self.log('making directory: %s', path)
+            real_mkdir(path, mode)
+            self.created = True
+
+        os.mkdir = checked_mkdir
+        try:
+            self.my_config.set_user_option('foo', 'bar')
+        finally:
+            os.mkdir = real_mkdir
+
+        self.failUnless(self.created, 'Failed to create ~/.bazaar')
         self.assertEqual([('__contains__', '/a/c'),
                           ('__contains__', '/a/c/'),
                           ('__setitem__', '/a/c', {}),
@@ -531,19 +590,19 @@ class TestBranchConfigItems(TestCase):
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.net>",
                          my_config._get_user_id())
-        branch.email = "John"
+        branch.control_files.email = "John"
         self.assertEqual("John", my_config._get_user_id())
 
     def test_not_set_in_branch(self):
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
-        branch.email = None
-        config_file = StringIO(sample_config_text)
+        branch.control_files.email = None
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
-        self.assertEqual("Robert Collins <robertc@example.com>",
+        self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
-        branch.email = "John"
+        branch.control_files.email = "John"
         self.assertEqual("John", my_config._get_user_id())
 
     def test_BZREMAIL_OVERRIDES(self):
@@ -564,7 +623,7 @@ class TestBranchConfigItems(TestCase):
     def test_gpg_signing_command(self):
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
         self.assertEqual('gnome-gpg', my_config.gpg_signing_command())
@@ -572,7 +631,7 @@ class TestBranchConfigItems(TestCase):
     def test_get_user_option_global(self):
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
         self.assertEqual('something',
@@ -582,7 +641,7 @@ class TestBranchConfigItems(TestCase):
         branch = FakeBranch()
         branch.base='/a/c'
         my_config = config.BranchConfig(branch)
-        config_file = StringIO(sample_config_text)
+        config_file = StringIO(sample_config_text.encode('utf-8'))
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
         branch_file = StringIO(sample_branches_text)

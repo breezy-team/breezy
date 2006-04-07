@@ -88,10 +88,10 @@ class Testament(object):
     """
 
     @classmethod
-    def from_revision(cls, branch, revision_id):
+    def from_revision(cls, repository, revision_id):
         """Produce a new testament from a historical revision"""
-        rev = branch.get_revision(revision_id)
-        inventory = branch.get_inventory(revision_id)
+        rev = repository.get_revision(revision_id)
+        inventory = repository.get_inventory(revision_id)
         return cls(rev, inventory)
 
     def __init__(self, rev, inventory):
@@ -114,8 +114,7 @@ class Testament(object):
         hashed in that encoding.
         """
         r = []
-        def a(s):
-            r.append(s)
+        a = r.append
         a('bazaar-ng testament version 1\n')
         a('revision-id: %s\n' % self.revision_id)
         a('committer: %s\n' % self.committer)
@@ -137,7 +136,7 @@ class Testament(object):
             for l in r:
                 assert isinstance(l, basestring), \
                     '%r of type %s is not a plain string' % (l, type(l))
-        return r
+        return [line.encode('utf-8') for line in r]
 
     def _escape_path(self, path):
         assert not contains_linebreaks(path)

@@ -1,4 +1,137 @@
-UNRELEASED CHANGES
+bzr development version
+ 
+
+  IMPROVEMENTS:
+
+    * Sftp paths can now be relative, or local, according to the lftp
+      convention. Paths now take the form:
+      sftp://user:pass@host:port/~/relative/path
+      or
+      sftp://user:pass@host:port/absolute/path
+
+    * The FTP transport now tries to reconnect after a temporary
+      failure. ftp put is made atomic. (Matthieu Moy)
+
+    * The FTP transport now maintains a pool of connections, and
+      reuses them to avoid multiple connections to the same host (like
+      sftp did). (Daniel Silverstone)
+
+    * The bzr_man.py file has been removed. To create the man page now,
+      use ./generate_docs.py man. The new program can also create other files.
+      Run "python generate_docs.py --help" for usage information. (Hans
+      Ulrich Niedermann & James Blackwell).
+
+    * Man Page now gives full help (James Blackwell). Help also updated to 
+      reflect user config now being stored in .bazaar (Hans Ulrich
+      Niedermann)
+
+    * It's now possible to set aliases in bazaar.conf (Erik Bågfors)
+
+    * Pull now accepts a --revision argument (Erik Bågfors)
+
+    * 'bzr re-sign' now allows multiple revisions to be supplied on the command
+      line. You can now use the following command to sign all of your old commits.
+        find .bzr/revision-store// -name my@email-* \
+          | sed 's/.*\/\/..\///' \
+          | xargs bzr re-sign
+
+    * Upgrade can now upgrade over the network. (Robert Collins)
+
+    * Two new commands 'bzr checkout' and 'bzr update' allow for CVS/SVN-alike
+      behaviour.  By default they will cache history in the checkout, but
+      with --lightweight almost all data is kept in the master branch.
+      (Robert Collins)
+
+    * 'revert' unversions newly-versioned files, instead of deleting them.
+
+    * 'merge' is more robust.  Conflict messages have changed.
+
+    * 'merge' and 'revert' no longer clobber existing files that end in '~' or
+      '.moved'.
+
+    * Default log format can be set in configuration and plugins can register
+      their own formatters. (Erik Bågfors)
+
+    * New 'reconcile' command will check branch consistency and repair indexes
+      that can become out of sync in pre 0.8 formats. (Robert Collins,
+      Daniel Silverstone)
+
+    * New 'bzr init --format' and 'bzr upgrade --format' option to control 
+      what storage format is created or produced.  (Robert Collins, 
+      Martin Pool)
+
+    * Add parent location to 'bzr info', if there is one.  (Olaf Conradi)
+
+    * New developer commands 'weave-list' and 'weave-join'.  (Martin Pool)
+
+    * New 'init-repository' command, plus support for repositories in 'init'
+      and 'branch' (Aaron Bentley, Erik Bågfors)
+
+  CHANGES:
+
+    * Commit is now verbose by default, and shows changed filenames and the 
+      new revision number.  (Robert Collins, Martin Pool)
+
+    * Unify 'mv', 'move', 'rename'.  (#5379, Matthew Fuller)
+
+    * 'bzr -h' shows help.  (#35940, Martin Pool, Ian Bicking)
+
+  INTERNALS:
+  
+    * The internal storage of history, and logical branch identity have now
+      been split into Branch, and Repository. The common locking and file 
+      management routines are now in bzrlib.lockablefiles. 
+      (Aaron Bentley, Robert Collins, Martin Pool)
+
+    * Transports can now raise DependencyNotPresent if they need a library
+      which is not installed, and then another implementation will be 
+      tried.  (Martin Pool)
+
+    * Remove obsolete (and no-op) `decode` parameter to `Transport.get`.  
+      (Martin Pool)
+
+    * Using Tree Transform for merge, revert, tree-building
+
+    * WorkingTree.create, Branch.create, WorkingTree.create_standalone,
+      Branch.initialize are now deprecated. Please see BzrDir.create_* for
+      replacement API's. (Robert Collins)
+
+    * New BzrDir class represents the .bzr control directory and manages
+      formatting issues. (Robert Collins)
+
+    * New repository.InterRepository class encapsulates Repository to 
+      Repository actions and allows for clean selection of optimised code
+      paths. (Robert Collins)
+
+    * bzrlib.fetch.fetch and bzrlib.fetch.greedy_fetch are now deprecated,
+      please use 'branch.fetch' or 'repository.fetch' depending on your
+      needs. (Robert Collins)
+
+    * deprecated methods now have a 'is_deprecated' flag on them that can
+      be checked, if you need to determine whether a given callable is 
+      deprecated at runtime. (Robert Collins)
+
+    * Progress bars are now nested - see
+      bzrlib.ui.ui_factory.nested_progress_bar. (Robert Collins, Robey Pointer)
+
+  TESTING:
+
+    * SFTP tests now shortcut the SSH negotiation, reducing test overhead
+      for testing SFTP protocol support. (Robey Pointer)
+
+    * Branch formats are now tested once per implementation (see bzrlib.
+      tests.branch_implementations. This is analagous to the transport
+      interface tests, and has been followed up with working tree,
+      repository and BzrDir tests. (Robert Collins)
+
+    * New test base class TestCaseWithTransport provides a transport aware
+      test environment, useful for testing any transport-interface using
+      code. The test suite option --transport controls the transport used
+      by this class (when its not being used as part of implementation
+      contract testing). (Robert Collins)
+
+
+bzr 0.7rc1 2006-01-09
 
   CHANGES:
 
@@ -27,13 +160,15 @@ UNRELEASED CHANGES
       This gives better integration with user settings such as ProxyCommand.
       (James Henstridge)
 
-    * Sftp paths can now be relative, or local, according to the IETF draft spec.
-      Paths now take the form:
-      sftp://user:pass@host:port/relative/path
-      or
-      sftp://user:pass@host:port/%2Fabsolute/path
-      or
-      sftp://user:pass@host:port//absolute/path
+    * Permissions on files underneath .bzr/ are inherited from the .bzr 
+      directory. So for a shared repository, simply doing 'chmod -R g+w .bzr/'
+      will mean that future file will be created with group write permissions.
+
+    * configure.in and config.guess are no longer in the builtin default 
+      ignore list.
+
+    * '.sw[nop]' pattern ignored, to ignore vim swap files for nameless
+      files.  (John Arbash Meinel, Martin Pool)
 
   IMPROVEMENTS:
 
@@ -86,6 +221,22 @@ UNRELEASED CHANGES
     * bzr cat defaults to printing the last version of the file.  
       (#3632, Matthieu Moy)
 
+    * New global option 'bzr --lsprof COMMAND' runs bzr under the lsprof 
+      profiler.  (Denys Duchier)
+
+    * Faster commits by reading only the headers of affected weave files. 
+      (Denys Duchier)
+
+    * 'bzr add' now takes a --dry-run parameter which shows you what would be
+      added, but doesn't actually add anything. (Michael Ellerman)
+
+    * 'bzr add' now lists how many files were ignored per glob.  add --verbose
+      lists the specific files.  (Aaron Bentley)
+
+    * 'bzr missing' now supports displaying changes in diverged trees and can
+      be limited to show what either end of the comparison is missing.
+      (Aaron Bently, with a little prompting from Daniel Silverstone)
+
   BUG FIXES:
 
     * SFTP can walk up to the root path without index errors. (Robert Collins)
@@ -131,6 +282,11 @@ UNRELEASED CHANGES
     * Fix bugs in bzr status display of non-ascii characters.  (Martin 
       Pool)
 
+    * Remove Makefile.in from default ignore list.  (#6413, Tollef Fog 
+      Heen, Martin Pool)
+
+    * Fix failure in 'bzr added'.  (Nathan McCallum, Martin Pool)
+
   TESTING:
 
     * Fix selftest asking for passwords when there are no SFTP keys.  
@@ -159,6 +315,32 @@ UNRELEASED CHANGES
 
     * Much better error message if one of the test suites can't be 
       imported.  (Martin Pool)
+
+    * Make check now runs the test suite twice - once with the default locale,
+      and once with all locales forced to C, to expose bugs. This is not 
+      trivially done within python, so for now its only triggered by running
+      Make check. Integrators and packagers who wish to check for full 
+      platform support should run 'make check' to test the source.
+      (Robert Collins)
+
+    * Tests can now run TestSkipped if they can't execute for any reason.
+      (Martin Pool) (NB: TestSkipped should only be raised for correctable
+      reasons - see the wiki spec ImprovingBzrTestSuite).
+
+    * Test sftp with relative, absolute-in-homedir and absolute-not-in-homedir
+      paths for the transport tests. Introduce blackbox remote sftp tests that
+      test the same permutations. (Robert Collins, Robey Pointer)
+
+    * Transport implementation tests are now independent of the local file
+      system, which allows tests for esoteric transports, and for features
+      not available in the local file system. They also repeat for variations
+      on the URL scheme that can introduce issues in the transport code,
+      see bzrlib.transport.TransportTestProviderAdapter() for this.
+      (Robert Collins).
+
+    * TestCase.build_tree uses the transport interface to build trees, pass
+      in a transport parameter to give it an existing connection.
+      (Robert Collins).
 
   INTERNALS:
 
@@ -213,7 +395,30 @@ UNRELEASED CHANGES
 
     * bzrlib.plugin.all_plugins has been changed from an attribute to a 
       query method. (Robert Collins)
+ 
+    * New options to read only the table-of-contents of a weave.  
+      (Denys Duchier)
+
+    * Raise NoSuchFile when someone tries to add a non-existant file.
+      (Michael Ellerman)
+
+    * Simplify handling of DivergedBranches in cmd_pull().
+      (Michael Ellerman)
+		   
    
+    * Branch.controlfile* logic has moved to lockablefiles.LockableFiles, which
+      is exposed as Branch().control_files. Also this has been altered with the
+      controlfile pre/suffix replaced by simple method names like 'get' and
+      'put'. (Aaron Bentley, Robert Collins).
+
+    * Deprecated functions and methods can now be marked as such using the 
+      bzrlib.symbol_versioning module. Marked method have their docstring
+      updated and will issue a DeprecationWarning using the warnings module
+      when they are used. (Robert Collins)
+
+    * bzrlib.osutils.safe_unicode now exists to provide parameter coercion
+      for functions that need unicode strings. (Robert Collins)
+
 bzr 0.6 2005-10-28
 
   IMPROVEMENTS:

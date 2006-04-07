@@ -14,12 +14,7 @@ Overall
   test before writing the code.
 
   In general, you can test at either the command-line level or the
-  internal API level.  Choose whichever is appropriate: if adding a
-  new command, or a new command option, then call through run_bzr().
-  It is not necessary to do both. Tests that test the command line level
-  are appropriate for checking the UI behaves well - bug fixes and
-  core improvements should be tested closer to the code that is doing the
-  work. Command line level tests should be placed in 'blackbox.py'.
+  internal API level.  See Writing Tests below for more detail.
 
 * Try to practice Test-Driven Development.  before fixing a bug, write a
   test case so that it does not regress.  Similarly for adding a new
@@ -53,15 +48,40 @@ Overall
 Evolving interfaces
 -------------------
 
-If you change the behaviour of an API in an incompatible way, please
-be sure to change its name as well. For instance, if I add a keyword
-parameter to branch.commit - that's fine. On the other hand, if I add
-a keyword parameter to branch.commit which is a *required* transaction
-object, I should rename the API - i.e. to 'branch.commit_transaction'.
+We have a commitment to 6 months API stability - any supported symbol in a
+release of bzr MUST NOT be altered in any way that would result in
+breaking existing code that uses it. That means that method names,
+parameter ordering, parameter names, variable and attribute names etc must
+not be changed without leaving a 'deprecated forwarder' behind. This even
+applies to modules and classes.
 
-This will prevent users of the old API getting surprising results. 
-Instead, they will get an Attribute error as the API is missing, and
-will know to update their code. If in doubt, just ask on #bzr.
+If you wish to change the behaviour of a supported API in an incompatible
+way, you need to change its name as well. For instance, if I add a optional keyword
+parameter to branch.commit - that's fine. On the other hand, if I add a
+keyword parameter to branch.commit which is a *required* transaction
+object, I should rename the API - i.e. to 'branch.commit_transaction'. 
+
+When renaming such supported API's, be sure to leave a deprecated_method (or
+_function or ...) behind which forwards to the new API. See the
+bzrlib.symbol_versioning module for decorators that take care of the
+details for you - such as updating the docstring, and issuing a warning
+when the old api is used.
+
+For unsupported API's, it does not hurt to follow this discipline, but its
+not required. Minimally though, please try to rename things so that
+callers will at least get an AttributeError rather than weird results.
+
+
+Standard parameter types
+------------------------
+
+There are some common requirements in the library: some parameters need to be
+unicode safe, some need byte strings, and so on. At the moment we have
+only codified one specific pattern: Parameters that need to be unicode
+should be check via 'bzrlib.osutils.safe_unicode'. This will coerce the
+input into unicode in a consistent fashion, allowing trivial strings to be
+used for programmer convenience, but not performing unpredictably in the
+presence of different locales.
 
 Documentation
 =============
@@ -213,21 +233,47 @@ should be only in the command-line tool.
 
 Writing tests
 =============
-In general tests should be placed in a file named testFOO.py where 
+In general tests should be placed in a file named test_FOO.py where 
 FOO is the logical thing under test. That file should be placed in the
 tests subdirectory under the package being tested.
 
-For example, tests for merge3 in bzrlib belong in bzrlib/tests/testmerge3.py.
-See bzrlib/selftest/testsampler.py for a template test script.
+For example, tests for merge3 in bzrlib belong in bzrlib/tests/test_merge3.py.
+See bzrlib/selftest/test_sampler.py for a template test script.
 
+Tests can be written for the UI or for individual areas of the library.
+Choose whichever is appropriate: if adding a new command, or a new command 
+option, then you should be writing a UI test.  If you are both adding UI
+functionality and library functionality, you will want to write tests for 
+both the UI and the core behaviours.  We call UI tests 'blackbox' tests
+and they are found in bzrlib/tests/blackbox/*.py. 
+
+When writing blackbox tests please honour the following conventions:
+
+ 1. Place the tests for the command 'name' in
+    bzrlib/tests/blackbox/test_name.py. This makes it easy for developers
+    to locate the test script for a faulty command.
+
+ 2. Use the 'self.run_bzr("name")' utility function to invoke the command
+    rather than running bzr in a subprocess or invoking the
+    cmd_object.run() method directly. This is a lot faster than
+    subprocesses and generates the same logging output as running it in a
+    subprocess (which invoking the method directly does not).
+ 
+ 3. Only test the one command in a single test script. Use the bzrlib 
+    library when setting up tests and when evaluating the side-effects of
+    the command. We do this so that the library api has continual pressure
+    on it to be as functional as the command line in a simple manner, and
+    to isolate knock-on effects throughout the blackbox test suite when a
+    command changes it name or signature. Ideally only the tests for a
+    given command are affected when a given command is changed.
 
 Running tests
 =============
 Currently, bzr selftest is used to invoke tests.
 You can provide a pattern argument to run a subset. For example, 
-to run just the whitebox tests, run::
+to run just the blackbox tests, run::
 
-  bzr selftest -v whitebox
+  ./bzr selftest -v blackbox
 
 
 Errors and exceptions
@@ -247,4 +293,48 @@ revno
     Revision 0 is always the null revision; others are 1-based
     indexes into the branch's revision history.
 
-:: vim: tw=74 ai
+
+Merge/review process
+====================
+
+If you'd like to propose a change, please post to the
+bazaar-ng@lists.canonical.com list with a patch, bzr changeset, or link to a
+branch.  Please put '[patch]' in the subject so we can pick them out, and
+include some text explaining the change.  Remember to put an update to the NEWS
+file in your diff, if it makes any changes visible to users or plugin
+developers.  Please include a diff against mainline if you're giving a link to
+a branch.
+
+Please indicate if you think the code is ready to merge, or if it's just a
+draft or for discussion.  If you want comments from many developers rather than
+to be merged, you can put '[rfc]' in the subject lines.
+
+Anyone is welcome to review code.  There are broadly three gates for
+code to get in:
+
+ * Doesn't reduce test coverage: if it adds new methods or commands,
+   there should be tests for them.  There is a good test framework
+   and plenty of examples to crib from, but if you are having trouble
+   working out how to test something feel free to post a draft patch
+   and ask for help.
+
+ * Doesn't reduce design clarity, such as by entangling objects
+   we're trying to separate.  This is mostly something the more
+   experienced reviewers need to help check.
+
+ * Improves bugs, features, speed, or code simplicity.
+
+Code that goes in should pass all three.
+
+If you read a patch please reply and say so.  We can use a numeric scale
+of -1, -0, +0, +1, meaning respectively "really don't want it in current
+form", "somewhat uncomfortable", "ok with me", and "please put it in".
+Anyone can "vote".   (It's not really voting, just a terse expression.)
+
+If something gets say two +1 votes from core reviewers, and no
+vetos, then it's OK to come in.  Any of the core developers can bring it
+into their integration branch, which I'll merge regularly.  (If you do
+so, please reply and say so.)
+
+
+:: vim:tw=74:ai

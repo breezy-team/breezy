@@ -18,16 +18,14 @@
 import os
 import shutil
 
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
-from bzrlib.commit import commit
 from bzrlib.errors import PointlessCommit, BzrError, PointlessCommit
 from bzrlib.tests.test_revision import make_branches
-from bzrlib.fetch import fetch
 from bzrlib.check import check
 
 
-class TestCommitMerge(TestCaseInTempDir):
+class TestCommitMerge(TestCaseWithTransport):
     """Tests for committing the results of a merge.
 
     These don't currently test the merge code, which is intentional to
@@ -36,60 +34,61 @@ class TestCommitMerge(TestCaseInTempDir):
 
     def test_merge_commit_empty(self):
         """Simple commit of two-way merge of empty trees."""
-        os.mkdir('x')
-        os.mkdir('y')
-        bx = Branch.initialize('x')
-        by = Branch.initialize('y')
+        wtx = self.make_branch_and_tree('x')
+        bx = wtx.branch
+        wty = self.make_branch_and_tree('y')
+        by = wty.branch
 
-        commit(bx, 'commit one', rev_id='x@u-0-1', allow_pointless=True)
-        commit(by, 'commit two', rev_id='y@u-0-1', allow_pointless=True)
+        wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
+        wty.commit('commit two', rev_id='y@u-0-1', allow_pointless=True)
 
-        fetcher = fetch(from_branch=bx, to_branch=by)
-        self.assertEqual(1, fetcher.count_copied)
-        self.assertEqual([], fetcher.failed_revisions)
+        self.assertEqual((1, []), by.fetch(bx))
         # just having the history there does nothing
         self.assertRaises(PointlessCommit,
-                          commit,
-                          by, 'no changes yet', rev_id='y@u-0-2',
+                          wty.commit,
+                          'no changes yet', rev_id='y@u-0-2',
                           allow_pointless=False)
-        by.working_tree().add_pending_merge('x@u-0-1')
-        commit(by, 'merge from x', rev_id='y@u-0-2', allow_pointless=False)
+        wty.add_pending_merge('x@u-0-1')
+        wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
 
         self.assertEquals(by.revno(), 2)
         self.assertEquals(list(by.revision_history()),
                           ['y@u-0-1', 'y@u-0-2'])
-        rev = by.get_revision('y@u-0-2')
+        rev = by.repository.get_revision('y@u-0-2')
         self.assertEquals(rev.parent_ids,
                           ['y@u-0-1', 'x@u-0-1'])
 
     def test_merge_new_file(self):
         """Commit merge of two trees with no overlapping files."""
-        self.build_tree(['x/', 'x/ecks', 'y/', 'y/why'])
+        wtx = self.make_branch_and_tree('x')
+        bx = wtx.branch
+        wty = self.make_branch_and_tree('y')
+        by = wty.branch
 
-        bx = Branch.initialize('x')
-        by = Branch.initialize('y')
-        bx.working_tree().add(['ecks'], ['ecks-id'])
-        by.working_tree().add(['why'], ['why-id'])
+        self.build_tree(['x/ecks', 'y/why'])
 
-        commit(bx, 'commit one', rev_id='x@u-0-1', allow_pointless=True)
-        commit(by, 'commit two', rev_id='y@u-0-1', allow_pointless=True)
+        wtx.add(['ecks'], ['ecks-id'])
+        wty.add(['why'], ['why-id'])
 
-        fetch(from_branch=bx, to_branch=by)
+        wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
+        wty.commit('commit two', rev_id='y@u-0-1', allow_pointless=True)
+
+        by.fetch(bx)
         # we haven't merged the texts, but let's fake it
         shutil.copyfile('x/ecks', 'y/ecks')
-        by.working_tree().add(['ecks'], ['ecks-id'])
-        by.working_tree().add_pending_merge('x@u-0-1')
+        wty.add(['ecks'], ['ecks-id'])
+        wty.add_pending_merge('x@u-0-1')
 
         # partial commit of merges is currently not allowed, because
         # it would give different merge graphs for each file which
         # might be complex.  it can be allowed in the future.
         self.assertRaises(Exception,
-                          commit,
-                          by, 'partial commit', allow_pointless=False,
+                          wty.commit,
+                          'partial commit', allow_pointless=False,
                           specific_files=['ecks'])
         
-        commit(by, 'merge from x', rev_id='y@u-0-2', allow_pointless=False)
-        tree = by.revision_tree('y@u-0-2')
+        wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
+        tree = by.repository.revision_tree('y@u-0-2')
         inv = tree.inventory
         self.assertEquals(inv['ecks-id'].revision, 'x@u-0-1')
         self.assertEquals(inv['why-id'].revision, 'y@u-0-1')

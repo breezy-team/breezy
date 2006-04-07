@@ -23,6 +23,7 @@ import os
 import sys
 
 from bzrlib.commands import Command
+from bzrlib.osutils import pathjoin
 
 
 class ExternalCommand(Command):
@@ -37,6 +38,8 @@ class ExternalCommand(Command):
             ## Empty directories are not real paths
             if not dir:
                 continue
+            # This needs to be os.path.join() or windows cannot
+            # find the batch file that you are wanting to execute
             path = os.path.join(dir, cmd)
             if os.path.isfile(path):
                 return ExternalCommand(path)
@@ -47,20 +50,17 @@ class ExternalCommand(Command):
     def __init__(self, path):
         self.path = path
 
-
     def name(self):
-        return self.path.split(os.sep)[-1]
-
+        return os.path.basename(self.path)
 
     def run(self, *args, **kwargs):
         raise NotImplementedError('should not be called on %r' % self)
 
-
-    def run_argv(self, argv):
+    def run_argv(self, argv, alias_argv=None):
         return os.spawnv(os.P_WAIT, self.path, [self.path] + argv)
-
 
     def help(self):
         m = 'external command from %s\n\n' % self.path
         pipe = os.popen('%s --help' % self.path)
         return m + pipe.read()
+
