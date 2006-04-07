@@ -24,6 +24,9 @@ from bzrlib.xml5 import serializer_v5
 class TestBasisInventory(TestCaseWithTransport):
 
     def test_create(self):
+        # TODO: jam 20051218 this probably should add more than just
+        #                    a couple files to the inventory
+
         # Make sure the basis file is created by a commit
         t = self.make_branch_and_tree('.')
         b = t.branch
@@ -31,11 +34,10 @@ class TestBasisInventory(TestCaseWithTransport):
         t.add('a')
         t.commit('a', rev_id='r1')
 
-        self.failUnlessExists('.bzr/basis-inventory.r1')
+        self.failUnlessExists('.bzr/basis-inventory')
 
-        basis_inv_txt = t.read_basis_inventory('r1')
-        basis_inv = serializer_v5.read_inventory_from_string(basis_inv_txt)
-        #self.assertEquals('r1', basis_inv.revision_id)
+        basis_inv = t.basis_tree().inventory
+        self.assertEquals('r1', basis_inv.revision_id)
         
         store_inv = b.repository.get_inventory('r1')
         self.assertEquals(store_inv._byid, basis_inv._byid)
@@ -44,11 +46,11 @@ class TestBasisInventory(TestCaseWithTransport):
         t.add('b')
         t.commit('b', rev_id='r2')
 
-        self.failIfExists('.bzr/basis-inventory.r1')
-        self.failUnlessExists('.bzr/basis-inventory.r2')
+        self.failUnlessExists('.bzr/basis-inventory')
 
-        basis_inv_txt = t.read_basis_inventory('r2')
+        basis_inv_txt = t.read_basis_inventory()
         basis_inv = serializer_v5.read_inventory_from_string(basis_inv_txt)
+        self.assertEquals('r2', basis_inv.revision_id)
         store_inv = b.repository.get_inventory('r2')
 
         self.assertEquals(store_inv._byid, basis_inv._byid)

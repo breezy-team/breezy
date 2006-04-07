@@ -33,6 +33,7 @@ from stat import *
 import sys
 from unittest import TestSuite
 import urllib
+import urlparse
 
 from bzrlib.trace import mutter, warning
 import bzrlib.errors as errors
@@ -117,6 +118,12 @@ def _get_transport_modules():
     result = list(modules)
     result.sort()
     return result
+
+
+def register_urlparse_netloc_protocol(protocol):
+    """Ensure that protocol is setup to be used with urlparse netloc parsing."""
+    if protocol not in urlparse.uses_netloc:
+        urlparse.uses_netloc.append(protocol)
 
 
 class Transport(object):

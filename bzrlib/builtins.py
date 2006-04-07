@@ -1053,19 +1053,28 @@ class cmd_root(Command):
 
 
 class cmd_log(Command):
-    """Show log of this branch.
+    """Show log of a branch, file, or directory.
+
+    By default show the log of the branch containing the working directory.
 
     To request a range of logs, you can use the command -r begin..end
     -r revision requests a specific revision, -r ..end or -r begin.. are
     also valid.
+
+    examples:
+        bzr log
+        bzr log foo.c
+        bzr log -r -10.. http://server/branch
     """
 
     # TODO: Make --revision support uuid: and hash: [future tag:] notation.
 
-    takes_args = ['filename?']
+    takes_args = ['location?']
     takes_options = [Option('forward', 
                             help='show from oldest to newest'),
-                     'timezone', 'verbose', 
+                     'timezone', 
+                     Option('verbose', 
+                             help='show files changed in each revision'),
                      'show-ids', 'revision',
                      'log-format',
                      'line', 'long', 
@@ -1075,7 +1084,7 @@ class cmd_log(Command):
                      'short',
                      ]
     @display_command
-    def run(self, filename=None, timezone='original',
+    def run(self, location=None, timezone='original',
             verbose=False,
             show_ids=False,
             forward=False,
@@ -1093,10 +1102,10 @@ class cmd_log(Command):
         
         # log everything
         file_id = None
-        if filename:
+        if location:
             # find the file id to log:
 
-            dir, fp = bzrdir.BzrDir.open_containing(filename)
+            dir, fp = bzrdir.BzrDir.open_containing(location)
             b = dir.open_branch()
             if fp != '':
                 try:

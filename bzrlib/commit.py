@@ -334,11 +334,7 @@ class Commit(object):
             self.branch.append_revision(self.rev_id)
 
             self.work_tree.set_pending_merges([])
-            if len(self.parents):
-                precursor = self.parents[0]
-            else:
-                precursor = None
-            self.work_tree.set_last_revision(self.rev_id, precursor)
+            self.work_tree.set_last_revision(self.rev_id)
             # now the work tree is up to date with the branch
             
             self.reporter.completed(self.branch.revno(), self.rev_id)
@@ -526,7 +522,7 @@ class Commit(object):
         revision set to their prior value.
         """
         mutter("Selecting files for commit with filter %s", self.specific_files)
-        self.new_inv = Inventory()
+        self.new_inv = Inventory(revision_id=self.rev_id)
         for path, new_ie in self.work_inv.iter_entries():
             file_id = new_ie.file_id
             mutter('check %s {%s}', path, new_ie.file_id)
