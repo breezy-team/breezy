@@ -7,9 +7,9 @@ Support for foreign branches (Subversion)
 """
 import sys
 import os.path
-import branch
 import transport
 import format
+import branch
 
 sys.path.append(os.path.dirname(__file__))
 

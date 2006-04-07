@@ -128,7 +128,7 @@ class SvnBranch(Branch):
 
     def url_from_file_id(self,revision_id,file_id):
         """Generate a full Subversion URL from a bzr file id."""
-        return self.url+"/"+self.filename_from_file_id(revision_id,file_id)
+        return self.base+"/"+self.filename_from_file_id(revision_id,file_id)
 
     def _get_last_revnum(self,kind):
         # The python bindings for the svn_client_info() function
@@ -139,8 +139,8 @@ class SvnBranch(Branch):
         self.last_revnum = None
         def rcvr(paths,rev,author,date,message,pool):
             self.last_revnum = rev
-        mutter("svn log -r HEAD %r" % self.url)
-        svn.client.log2([self.url.encode('utf8')], revt_head, revt_head, \
+        mutter("svn log -r HEAD %r" % self.base)
+        svn.client.log2([self.base.encode('utf8')], revt_head, revt_head, \
                 1, 0, 0, rcvr, self.client, self.pool)
         assert self.last_revnum
 
@@ -188,7 +188,7 @@ class SvnBranch(Branch):
         return inv.root.file_id
 
     def abspath(self, name):
-        return self.url+"/"+name
+        return self.base+"/"+name
 
     def push_stores(self, branch_to):
         raise NotImplementedError('push_stores is abstract') #FIXME
@@ -223,7 +223,7 @@ class SvnBranch(Branch):
         # then a revid
         revnum = self.get_revnum(self.get_rev_id(revno))
         stream = svn.core.svn_stream_empty(self.pool)
-        file_url = self.url+"/"+file
+        file_url = self.base+"/"+file
         mutter('svn cat -r %r %r' % (revnum.value.number,file_url))
         svn.client.cat(stream,file_url.encode('utf8'),revnum,self.client,self.pool)
         print Stream(stream).read()
@@ -231,8 +231,8 @@ class SvnBranch(Branch):
     def get_revision(self, revision_id):
         revnum = self.get_revnum(revision_id)
         
-        mutter('svn proplist -r %r %r' % (revnum.value.number,self.url))
-        (svn_props, actual_rev) = svn.client.revprop_list(self.url.encode('utf8'), revnum, self.client, self.pool)
+        mutter('svn proplist -r %r %r' % (revnum.value.number,self.base))
+        (svn_props, actual_rev) = svn.client.revprop_list(self.base.encode('utf8'), revnum, self.client, self.pool)
         assert actual_rev == revnum.value.number
 
         parent_ids = self.get_parents(revision_id)
@@ -279,10 +279,10 @@ class SvnBranch(Branch):
 
     def get_inventory(self, revision_id):
         revnum = self.get_revnum(revision_id)
-        mutter('getting inventory %r for branch %r' % (revnum.value.number, self.url))
+        mutter('getting inventory %r for branch %r' % (revnum.value.number, self.base))
 
-        mutter("svn ls -r %d '%r'" % (revnum.value.number, self.url))
-        remote_ls = svn.client.ls(self.url.encode('utf8'),
+        mutter("svn ls -r %d '%r'" % (revnum.value.number, self.base))
+        remote_ls = svn.client.ls(self.base.encode('utf8'),
                                          revnum,
                                          True, # recurse
                                          self.client, self.pool)
@@ -356,7 +356,7 @@ class SvnBranch(Branch):
 
     def working_tree(self):
         if self.path is None:
-            raise NoWorkingTree(self.url)
+            raise NoWorkingTree(self.base)
         else:
             return SvnWorkingTree(self.path,branch=self)
 
@@ -378,14 +378,13 @@ class RemoteSvnBranch(SvnBranch):
     """Branch representing a remote Subversion repository.  """
 
     def _get_uid(self):
-        mutter("svn uuid '%r'" % self.url)
-        uuid = svn.client.uuid_from_url(self.url.encode('utf8'), self.client, self.pool)
+        mutter("svn uuid '%r'" % self.base)
+        uuid = svn.client.uuid_from_url(self.base.encode('utf8'), self.client, self.pool)
         assert uuid
         return uuid
     
     def __init__(self, url):
         SvnBranch.__init__(self,url,svn.core.svn_opt_revision_base)
-        self.url = url
         self._generate_revnum_map()
 
 
@@ -395,7 +394,7 @@ class LocalSvnBranch(SvnBranch):
     def __init__(self, path):
         SvnBranch.__init__(self,path,svn.core.svn_opt_revision_working)
         self.path = path
-        self.url = svn.client.url_from_path(self.path.encode('utf8'),self.pool)
+        self.base = svn.client.url_from_path(self.path.encode('utf8'),self.pool)
         
         assert self.uuid
         self._generate_revnum_map()

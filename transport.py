@@ -7,8 +7,12 @@ from bzrlib.transport import Transport
 from cStringIO import StringIO
 
 class SvnTransport(Transport):
-        def get(self, relpath):
-            if relpath == '.bzr/branch-format':
-                return StringIO('SVN Repository')
-            else:
-                raise NotImplementedError(self.get)
+    def __init__(self, url=""):
+        Transport.__init__(self,url)
+        self.url = url
+
+    def get(self, relpath):
+        if relpath == '.bzr/branch-format':
+            return StringIO('SVN Repository')
+        else:
+            raise NotImplementedError(self.get)
