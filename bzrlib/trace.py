@@ -247,7 +247,6 @@ def enable_test_log(to_file):
 
 def disable_test_log((test_log_hdlr, old_trace_file)):
     _bzr_logger.removeHandler(test_log_hdlr)
-    test_log_hdlr.flush()
     test_log_hdlr.close()
     _trace_file = old_trace_file
     enable_default_logging()
