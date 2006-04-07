@@ -22,7 +22,7 @@ parallel knit.
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.knit import KnitVersionedFile
+from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
 from bzrlib.store.revision import RevisionStore
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.transport import get_transport
@@ -38,7 +38,8 @@ class KnitRevisionStoreFactory(object):
         versioned_file_store = VersionedFileStore(
             t.clone('revision-store'),
             precious=True,
-            versionedfile_class=KnitVersionedFile)
+            versionedfile_class=KnitVersionedFile,
+            versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory()})
         return KnitRevisionStore(versioned_file_store)
 
     def __str__(self):

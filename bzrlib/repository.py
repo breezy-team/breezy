@@ -25,7 +25,7 @@ from bzrlib.errors import InvalidRevisionId
 import bzrlib.gpg as gpg
 from bzrlib.graph import Graph
 from bzrlib.inter import InterObject
-from bzrlib.knit import KnitVersionedFile
+from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import safe_unicode
@@ -769,7 +769,7 @@ class KnitRepository(MetaDirRepository):
         """
         result = Graph()
         vf = self._get_revision_vf()
-        versions = vf.versions()
+        versions = set(vf.versions())
         if not revision_ids:
             pending = set(self.all_revision_ids())
             required = set([])
@@ -784,6 +784,8 @@ class KnitRepository(MetaDirRepository):
                     raise errors.NoSuchRevision(self, revision_id)
                 # a ghost
                 result.add_ghost(revision_id)
+                # mark it as done so we dont try for it again.
+                done.add(revision_id)
                 continue
             parent_ids = vf.get_parents_with_ghosts(revision_id)
             for parent_id in parent_ids:
@@ -793,7 +795,7 @@ class KnitRepository(MetaDirRepository):
                     # no, queue it.
                     pending.add(parent_id)
             result.add_node(revision_id, parent_ids)
-            done.add(result)
+            done.add(revision_id)
         return result
 
     def _get_revision_vf(self):
@@ -1261,11 +1263,13 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""
-        return self._get_versioned_file_store('',
-                                              repo_transport,
-                                              control_files,
-                                              prefixed=False,
-                                              versionedfile_class=KnitVersionedFile)
+        return VersionedFileStore(
+            repo_transport,
+            prefixed=False,
+            file_mode=control_files._file_mode,
+            versionedfile_class=KnitVersionedFile,
+            versionedfile_kwargs={'factory':KnitPlainFactory()},
+            )
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -1279,7 +1283,8 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
             file_mode = control_files._file_mode,
             prefixed=False,
             precious=True,
-            versionedfile_class=KnitVersionedFile)
+            versionedfile_class=KnitVersionedFile,
+            versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory()})
         return KnitRevisionStore(versioned_file_store)
 
     def _get_text_store(self, transport, control_files):

@@ -884,21 +884,32 @@ def topology_sorted_ids(tree):
 def build_tree(tree, wt):
     """Create working tree for a branch, using a Transaction."""
     file_trans_id = {}
+    top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    pp = ProgressPhase("Build phase", 2, top_pb)
     tt = TreeTransform(wt)
     try:
+        pp.next_phase()
         file_trans_id[wt.get_root_id()] = tt.trans_id_tree_file_id(wt.get_root_id())
         file_ids = topology_sorted_ids(tree)
-        for file_id in file_ids:
-            entry = tree.inventory[file_id]
-            if entry.parent_id is None:
-                continue
-            if entry.parent_id not in file_trans_id:
-                raise repr(entry.parent_id)
-            parent_id = file_trans_id[entry.parent_id]
-            file_trans_id[file_id] = new_by_entry(tt, entry, parent_id, tree)
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            for num, file_id in enumerate(file_ids):
+                pb.update("Building tree", num, len(file_ids))
+                entry = tree.inventory[file_id]
+                if entry.parent_id is None:
+                    continue
+                if entry.parent_id not in file_trans_id:
+                    raise repr(entry.parent_id)
+                parent_id = file_trans_id[entry.parent_id]
+                file_trans_id[file_id] = new_by_entry(tt, entry, parent_id, 
+                                                      tree)
+        finally:
+            pb.finished()
+        pp.next_phase()
         tt.apply()
     finally:
         tt.finalize()
+        top_pb.finished()
 
 def new_by_entry(tt, entry, parent_id, tree):
     """Create a new file according to its inventory entry"""

@@ -35,6 +35,8 @@ class Serializer_v5(Serializer):
         e.text = '\n'
         if inv.root.file_id not in (None, ROOT_ID):
             e.set('file_id', inv.root.file_id)
+        if inv.revision_id is not None:
+            e.set('revision_id', inv.revision_id)
         for path, ie in inv.iter_entries():
             e.append(self._pack_entry(ie))
         return e
@@ -121,7 +123,8 @@ class Serializer_v5(Serializer):
             if format != '5':
                 raise BzrError("invalid format version %r on inventory"
                                 % format)
-        inv = Inventory(root_id)
+        revision_id = elt.get('revision_id')
+        inv = Inventory(root_id, revision_id=revision_id)
         for e in elt:
             ie = self._unpack_entry(e)
             if ie.parent_id == ROOT_ID:

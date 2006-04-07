@@ -25,7 +25,6 @@ import sys
 import bzrlib.errors as errors
 from bzrlib.progress import TTYProgressBar, ProgressBarStack
 from bzrlib.tests import TestCase
-import bzrlib.ui
 from bzrlib.ui import SilentUIFactory
 from bzrlib.ui.text import TextUIFactory
 
@@ -63,13 +62,11 @@ class UITests(TestCase):
     def test_progress_note(self):
         stderr = StringIO()
         stdout = StringIO()
-        old_factory = bzrlib.ui.ui_factory
-        bzrlib.ui.ui_factory = TextUIFactory()
-        pb = None
+        ui_factory = TextUIFactory()
+        pb = ui_factory.nested_progress_bar()
         try:
-            pb = bzrlib.ui.ui_factory.nested_progress_bar()
             pb.to_messages_file = stdout
-            bzrlib.ui.ui_factory._progress_bar_stack.bottom().to_file = stderr
+            ui_factory._progress_bar_stack.bottom().to_file = stderr
             result = pb.note('t')
             self.assertEqual(None, result)
             self.assertEqual("t\n", stdout.getvalue())
@@ -78,9 +75,7 @@ class UITests(TestCase):
             # least a 10-character wide terminal :)
             self.assertContainsRe(stderr.getvalue(), r'^\r {10,}\r$')
         finally:
-            if pb is not None:
-                pb.finished()
-            bzrlib.ui.ui_factory = old_factory
+            pb.finished()
 
     def test_progress_nested(self):
         # test factory based nested and popping.
