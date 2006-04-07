@@ -54,7 +54,7 @@ class KnitTests(TestCaseInTempDir):
         self.assertEqualDiff(''.join(k.get_lines('text-1')), TEXT_1)
 
     def test_knit_reload(self):
-        """Store and reload a knit"""
+        # test that the content in a reloaded knit is correct
         k = self.make_test_knit()
         k.add_lines('text-1', [], split_lines(TEXT_1))
         del k
@@ -333,6 +333,34 @@ class KnitTests(TestCaseInTempDir):
         self.assertTrue(isinstance(k2.factory, KnitAnnotateFactory))
         self.assertEqual(k1.delta, k2.delta)
         # the generic test checks for empty content and file class
+
+    def test_knit_format(self):
+        # this tests that a new knit index file has the expected content
+        # and that is writes the data we expect as records are added.
+        knit = self.make_test_knit(True)
+        self.assertFileEqual("# bzr knit index 7\n", 'test.kndx')
+        knit.add_lines_with_ghosts('revid', ['a_ghost'], ['a\n'])
+        self.assertFileEqual(
+            "# bzr knit index 7\n"
+            "\n"
+            "revid fulltext 0 84 .a_ghost :",
+            'test.kndx')
+        knit.add_lines_with_ghosts('revid2', ['revid'], ['a\n'])
+        self.assertFileEqual(
+            "# bzr knit index 7\n"
+            "\nrevid fulltext 0 84 .a_ghost :"
+            "\nrevid2 line-delta 84 82 0 :",
+            'test.kndx')
+        # we should be able to load this file again
+        knit = KnitVersionedFile('test', LocalTransport('.'), access_mode='r')
+        self.assertEqual(['revid', 'revid2'], knit.versions())
+        # write a short write to the file and ensure that its ignored
+        indexfile = file('test.kndx', 'at')
+        indexfile.write('\nrevid3 line-delta 166 82 1 2 3 4 5 .phwoar:demo ')
+        indexfile.close()
+        # we should be able to load this file again
+        knit = KnitVersionedFile('test', LocalTransport('.'), access_mode='r')
+        self.assertEqual(['revid', 'revid2'], knit.versions())
 
 
 TEXT_1 = """\
