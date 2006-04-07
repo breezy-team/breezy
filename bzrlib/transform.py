@@ -1087,7 +1087,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
             raw_conflicts = resolve_conflicts(tt, child_pb)
         finally:
             child_pb.finished()
-        for line in conflicts_strings(cook_conflicts(raw_conflicts, tt)):
+        conflicts = cook_conflicts(raw_conflicts, tt)
+        for line in conflicts_strings(conflicts):
             warning(line)
         pp.next_phase()
         tt.apply()
@@ -1095,6 +1096,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
     finally:
         tt.finalize()
         pb.clear()
+    return conflicts
 
 
 def resolve_conflicts(tt, pb=DummyProgress()):
