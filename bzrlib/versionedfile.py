@@ -478,8 +478,8 @@ class PlanWeaveMerge(TextMerge):
                 else:
                     yield (lines_a, lines_b)
 
-                del lines_a[:]
-                del lines_b[:]
+                lines_a = []
+                lines_b = []
                 ch_a = ch_b = False
                 
             if state == 'unchanged':

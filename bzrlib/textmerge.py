@@ -54,7 +54,10 @@ class TextMerge(object):
                 yield group
 
     def merge_lines(self, reprocess=False):
-        return self.struct_to_lines(self.merge_struct(reprocess))
+        struct = []
+        for group in self.merge_struct(reprocess):
+            struct.append(group)
+        return self.struct_to_lines(struct)
 
     def merge_struct(self, reprocess=False):
         struct_iter = self.iter_useful(self._merge_struct())
