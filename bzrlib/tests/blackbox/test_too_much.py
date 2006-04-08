@@ -738,8 +738,8 @@ class TestCommands(ExternalBase):
         assert '|||||||' not in conflict_text
         assert 'hi world' not in conflict_text
         self.runbzr('remerge . --merge-type weave --show-base', retcode=3)
-        self.runbzr('remerge . --merge-type weave --reprocess', retcode=3)
         self.runbzr('remerge . --show-base --reprocess', retcode=3)
+        self.runbzr('remerge . --merge-type weave --reprocess', retcode=1)
         self.runbzr('remerge hello --show-base', retcode=1)
         self.runbzr('remerge hello --reprocess', retcode=1)
         self.runbzr('resolve --all')

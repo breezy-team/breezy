@@ -43,7 +43,7 @@ class MergeBuilder(object):
         for tt in (self.this_tt, self.base_tt, self.other_tt):
             new_file(tt)
 
-    def merge(self, merge_type=Merge3Merger, interesting_ids=None):
+    def merge(self, merge_type=Merge3Merger, interesting_ids=None, **kwargs):
         self.base_tt.apply()
         self.base.commit('base commit')
         for tt, wt in ((self.this_tt, self.this), (self.other_tt, self.other)):
@@ -54,7 +54,7 @@ class MergeBuilder(object):
         self.this.branch.fetch(self.other.branch)
         other_basis = self.other.branch.basis_tree()
         merger = merge_type(self.this, self.this, self.base, other_basis, 
-                            interesting_ids=interesting_ids)
+                            interesting_ids=interesting_ids, **kwargs)
         return merger.cooked_conflicts
 
     def list_transforms(self):
@@ -244,6 +244,29 @@ class MergeTest(TestCase):
     def test_contents_merge3(self):
         """Test diff3 merging"""
         self.do_contents_test(WeaveMerger)
+
+    def test_reprocess_weave(self):
+        # Reprocess works on weaves, and behaves as expected
+        builder = MergeBuilder()
+        builder.add_file('a', 'TREE_ROOT', 'blah', 'a', False)
+        builder.change_contents('a', this='b\nc\nd\ne\n', other='z\nc\nd\ny\n')
+        builder.merge(WeaveMerger, reprocess=True)
+        expected = """<<<<<<< TREE
+b
+=======
+z
+>>>>>>> MERGE-SOURCE
+c
+d
+<<<<<<< TREE
+e
+=======
+y
+>>>>>>> MERGE-SOURCE
+"""
+        self.assertEqualDiff(builder.this.get_file("a").read(), expected)
+
+ 
 
     def do_contents_test(self, merge_factory):
         """Test merging with specified ContentsChange factory"""
