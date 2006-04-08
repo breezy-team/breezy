@@ -31,6 +31,7 @@ from unittest import TestSuite
 import bzrlib.errors as errors
 from bzrlib.inter import InterObject
 from bzrlib.symbol_versioning import *
+from bzrlib.textmerge import TextMerge
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.tsort import topo_sort
 from bzrlib import ui
@@ -440,23 +441,14 @@ class VersionedFile(object):
         yield 'unchanged', ''           # terminator
 
     def weave_merge(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
-        return self.struct_to_lines(self.weave_merge_struct(plan), a_marker,
-                                    b_marker)
+        return WeaveMerge(plan, a_marker, b_marker).merge_lines()
 
-    def struct_to_lines(self, struct_iter, a_marker, b_marker):
-        for lines in struct_iter:
-            if len(lines) == 1:
-                for line in lines[0]:
-                    yield line
-            else:
-                    yield a_marker
-                    for l in lines[0]: yield l
-                    yield '=======\n'
-                    for l in lines[1]: yield l
-                    yield b_marker
-                    
+class WeaveMerge(TextMerge):
+    def __init__(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
+        TextMerge.__init__(self, a_marker, b_marker)
+        self.plan = plan
 
-    def weave_merge_struct(self, plan):
+    def _merge_struct(self):
         lines_a = []
         lines_b = []
         ch_a = ch_b = False
@@ -466,7 +458,7 @@ class VersionedFile(object):
         # We previously considered either 'unchanged' or 'killed-both' lines
         # to be possible places to resynchronize.  However, assuming agreement
         # on killed-both lines may be too agressive. -- mbp 20060324
-        for state, line in plan:
+        for state, line in self.plan:
             if state == 'unchanged':
                 # resync and flush queued conflicts changes if any
                 if not lines_a and not lines_b:
