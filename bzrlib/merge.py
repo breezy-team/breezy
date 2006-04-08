@@ -789,8 +789,8 @@ class WeaveMerger(Merge3Merger):
         this_revision_id = self.this_revision_tree.inventory[file_id].revision
         other_revision_id = \
             self.other_revision_tree.inventory[file_id].revision
-        plan =  weave.plan_merge(this_revision_id, other_revision_id)
-        wm = WeaveMerge(plan, '<<<<<<< TREE\n', '>>>>>>> MERGE-SOURCE\n')
+        wm = WeaveMerge(weave, this_revision_id, other_revision_id, 
+                        '<<<<<<< TREE\n', '>>>>>>> MERGE-SOURCE\n')
         return wm.merge_lines(self.reprocess)
 
     def text_merge(self, file_id, trans_id):

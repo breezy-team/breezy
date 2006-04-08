@@ -394,7 +394,19 @@ class VersionedFile(object):
         """Walk the names list."""
         return iter(self.versions())
 
-    def plan_merge(self, ver_a, ver_b):
+    def plan_merge(versionedfile, ver_a, ver_b):
+        return PlanWeaveMerge.plan_merge(versionedfile, ver_a, ver_b)
+
+    def weave_merge(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
+        return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()
+
+class PlanWeaveMerge(TextMerge):
+    def __init__(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
+        TextMerge.__init__(self, a_marker, b_marker)
+        self.plan = plan
+
+    @staticmethod
+    def plan_merge(versionedfile, ver_a, ver_b):
         """Return pseudo-annotation indicating how the two versions merge.
 
         This is computed between versions a and b and their common
@@ -402,11 +414,12 @@ class VersionedFile(object):
 
         Weave lines present in none of them are skipped entirely.
         """
-        inc_a = set(self.get_ancestry([ver_a]))
-        inc_b = set(self.get_ancestry([ver_b]))
+        inc_a = set(versionedfile.get_ancestry([ver_a]))
+        inc_b = set(versionedfile.get_ancestry([ver_b]))
         inc_c = inc_a & inc_b
 
-        for lineno, insert, deleteset, line in self.walk([ver_a, ver_b]):
+        for lineno, insert, deleteset, line in\
+            versionedfile.walk([ver_a, ver_b]):
             if deleteset & inc_c:
                 # killed in parent; can't be in either a or b
                 # not relevant to our work
@@ -439,14 +452,6 @@ class VersionedFile(object):
                 yield 'irrelevant', line
 
         yield 'unchanged', ''           # terminator
-
-    def weave_merge(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
-        return WeaveMerge(plan, a_marker, b_marker).merge_lines()
-
-class WeaveMerge(TextMerge):
-    def __init__(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
-        TextMerge.__init__(self, a_marker, b_marker)
-        self.plan = plan
 
     def _merge_struct(self):
         lines_a = []
@@ -495,6 +500,13 @@ class WeaveMerge(TextMerge):
             else:
                 assert state in ('irrelevant', 'ghost-a', 'ghost-b', 
                                  'killed-base', 'killed-both'), state
+
+
+class WeaveMerge(PlanWeaveMerge):
+    def __init__(self, versionedfile, ver_a, ver_b, 
+        a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
+        plan = self.plan_merge(versionedfile, ver_a, ver_b)
+        PlanWeaveMerge.__init__(self, plan, a_marker, b_marker)
 
 
 class InterVersionedFile(InterObject):
