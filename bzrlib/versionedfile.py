@@ -398,7 +398,7 @@ class VersionedFile(object):
         return PlanWeaveMerge.plan_merge(versionedfile, ver_a, ver_b)
 
     def weave_merge(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
-        return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()
+        return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
 class PlanWeaveMerge(TextMerge):
     def __init__(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):

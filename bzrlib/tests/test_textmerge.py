@@ -20,7 +20,7 @@ from bzrlib.tests import TestCase
 class TestMerge2(TestCase):
     def test_agreed(self):
         lines = "a\nb\nc\nd\ne\nf\n".splitlines(True)
-        mlines = list(Merge2(lines, lines).merge_lines())
+        mlines = list(Merge2(lines, lines).merge_lines()[0])
         self.assertEqualDiff(mlines, lines)
 
     def test_conflict(self):
@@ -29,9 +29,9 @@ class TestMerge2(TestCase):
         expected = "<\na\n=\nz\n>\nb\n<\nc\n=\nx\n>\nd\n<\n=\ne\n>\ne\nf\n"\
                    "g\n<\nh\n=\ny\n>\n"
         m2 = Merge2(lines_a, lines_b, '<\n', '>\n', '=\n')
-        mlines= m2.merge_lines()
+        mlines= m2.merge_lines()[0]
         self.assertEqualDiff(''.join(mlines), expected)
-        mlines= m2.merge_lines(reprocess=True)
+        mlines= m2.merge_lines(reprocess=True)[0]
         self.assertEqualDiff(''.join(mlines), expected)
 
     def test_reprocess(self):

@@ -55,9 +55,12 @@ class TextMerge(object):
 
     def merge_lines(self, reprocess=False):
         struct = []
+        conflicts = False
         for group in self.merge_struct(reprocess):
             struct.append(group)
-        return self.struct_to_lines(struct)
+            if len(group) > 1:
+                conflicts = True
+        return self.struct_to_lines(struct), conflicts
 
     def merge_struct(self, reprocess=False):
         struct_iter = self.iter_useful(self._merge_struct())
