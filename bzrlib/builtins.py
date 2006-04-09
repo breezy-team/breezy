@@ -1856,10 +1856,11 @@ class cmd_merge(Command):
         if revision is None or len(revision) < 1:
             base = [None, None]
             other = [branch, -1]
+            other_branch, path = Branch.open_containing(branch)
         else:
             if len(revision) == 1:
                 base = [None, None]
-                other_branch = Branch.open_containing(branch)[0]
+                other_branch, path = Branch.open_containing(branch)
                 revno = revision[0].in_history(other_branch).revno
                 other = [branch, revno]
             else:
@@ -1867,18 +1868,23 @@ class cmd_merge(Command):
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                b = Branch.open_containing(branch)[0]
+                b, path = Branch.open_containing(branch)
 
                 base = [branch, revision[0].in_history(b).revno]
                 other = [branch, revision[1].in_history(b).revno]
+        if path != "":
+            interesting_files = [path]
+        else:
+            interesting_files = None
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        print path 
         try:
             try:
                 conflict_count = merge(other, base, check_clean=(not force),
                                        merge_type=merge_type, 
                                        reprocess=reprocess,
                                        show_base=show_base, 
-                                       pb=pb)
+                                       pb=pb, file_list=interesting_files)
             finally:
                 pb.finished()
             if conflict_count != 0:
@@ -2427,7 +2433,8 @@ def merge(other_revision, base_revision,
         merger.show_base = show_base 
         merger.reprocess = reprocess
         conflicts = merger.do_merge()
-        merger.set_pending()
+        if file_list is None:
+            merger.set_pending()
     finally:
         pb.clear()
     return conflicts
