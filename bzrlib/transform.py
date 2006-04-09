@@ -605,8 +605,14 @@ class TreeTransform(object):
                 if name == last_name:
                     conflicts.append(('duplicate', last_trans_id, trans_id,
                     name))
-                last_name = name
-                last_trans_id = trans_id
+                try:
+                    kind = self.final_kind(trans_id)
+                except NoSuchFile:
+                    kind = None
+                file_id = self.final_file_id(trans_id)
+                if kind is not None or file_id is not None:
+                    last_name = name
+                    last_trans_id = trans_id
         return conflicts
 
     def _duplicate_ids(self):
@@ -884,21 +890,32 @@ def topology_sorted_ids(tree):
 def build_tree(tree, wt):
     """Create working tree for a branch, using a Transaction."""
     file_trans_id = {}
+    top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    pp = ProgressPhase("Build phase", 2, top_pb)
     tt = TreeTransform(wt)
     try:
+        pp.next_phase()
         file_trans_id[wt.get_root_id()] = tt.trans_id_tree_file_id(wt.get_root_id())
         file_ids = topology_sorted_ids(tree)
-        for file_id in file_ids:
-            entry = tree.inventory[file_id]
-            if entry.parent_id is None:
-                continue
-            if entry.parent_id not in file_trans_id:
-                raise repr(entry.parent_id)
-            parent_id = file_trans_id[entry.parent_id]
-            file_trans_id[file_id] = new_by_entry(tt, entry, parent_id, tree)
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            for num, file_id in enumerate(file_ids):
+                pb.update("Building tree", num, len(file_ids))
+                entry = tree.inventory[file_id]
+                if entry.parent_id is None:
+                    continue
+                if entry.parent_id not in file_trans_id:
+                    raise repr(entry.parent_id)
+                parent_id = file_trans_id[entry.parent_id]
+                file_trans_id[file_id] = new_by_entry(tt, entry, parent_id, 
+                                                      tree)
+        finally:
+            pb.finished()
+        pp.next_phase()
         tt.apply()
     finally:
         tt.finalize()
+        top_pb.finished()
 
 def new_by_entry(tt, entry, parent_id, tree):
     """Create a new file according to its inventory entry"""
@@ -1081,7 +1098,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
             raw_conflicts = resolve_conflicts(tt, child_pb)
         finally:
             child_pb.finished()
-        for line in conflicts_strings(cook_conflicts(raw_conflicts, tt)):
+        conflicts = cook_conflicts(raw_conflicts, tt)
+        for line in conflicts_strings(conflicts):
             warning(line)
         pp.next_phase()
         tt.apply()
@@ -1089,6 +1107,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
     finally:
         tt.finalize()
         pb.clear()
+    return conflicts
 
 
 def resolve_conflicts(tt, pb=DummyProgress()):

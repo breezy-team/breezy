@@ -583,7 +583,14 @@ def relpath(base, path):
 
     os.path.commonprefix (python2.4) has a bad bug that it works just
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
-    avoids that problem."""
+    avoids that problem.
+    """
+    if sys.platform != "win32":
+        minlength = 1
+    else:
+        minlength = 3
+    assert len(base) >= minlength, ('Length of base must be equal or exceed the'
+        ' platform minimum length (which is %d)' % minlength)
     rp = abspath(path)
 
     s = []

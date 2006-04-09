@@ -195,6 +195,10 @@ class DirectoryNotEmpty(PathError):
     """Directory not empty: %(path)r%(extra)s"""
 
 
+class ResourceBusy(PathError):
+    """Device or resource busy: %(path)r%(extra)s"""
+
+
 class PermissionDenied(PathError):
     """Permission denied: %(path)r%(extra)s"""
 

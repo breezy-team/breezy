@@ -350,12 +350,14 @@ class WorkingTree(bzrlib.tree.Tree):
         revision_id = self.last_revision()
         if revision_id is not None:
             try:
-                xml = self.read_basis_inventory(revision_id)
+                xml = self.read_basis_inventory()
                 inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+            except NoSuchFile:
+                inv = None
+            if inv is not None and inv.revision_id == revision_id:
                 return bzrlib.tree.RevisionTree(self.branch.repository, inv,
                                                 revision_id)
-            except NoSuchFile:
-                pass
+        # FIXME? RBC 20060403 should we cache the inventory here ?
         return self.branch.repository.revision_tree(revision_id)
 
     @staticmethod
@@ -1024,18 +1026,21 @@ class WorkingTree(bzrlib.tree.Tree):
             self.branch.unlock()
             raise
 
-    def _basis_inventory_name(self, revision_id):
-        return 'basis-inventory.%s' % revision_id
+    def _basis_inventory_name(self):
+        return 'basis-inventory'
 
     @needs_write_lock
-    def set_last_revision(self, new_revision, old_revision=None):
+    def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
-        self._remove_old_basis(old_revision)
         if self._change_last_revision(new_revision):
             self._cache_basis_inventory(new_revision)
 
     def _change_last_revision(self, new_revision):
-        """Template method part of set_last_revision to perform the change."""
+        """Template method part of set_last_revision to perform the change.
+        
+        This is used to allow WorkingTree3 instances to not affect branch
+        when their last revision is set.
+        """
         if new_revision is None:
             self.branch.set_revision_history([])
             return False
@@ -1051,25 +1056,23 @@ class WorkingTree(bzrlib.tree.Tree):
     def _cache_basis_inventory(self, new_revision):
         """Cache new_revision as the basis inventory."""
         try:
-            xml = self.branch.repository.get_inventory_xml(new_revision)
-            path = self._basis_inventory_name(new_revision)
+            # this double handles the inventory - unpack and repack - 
+            # but is easier to understand. We can/should put a conditional
+            # in here based on whether the inventory is in the latest format
+            # - perhaps we should repack all inventories on a repository
+            # upgrade ?
+            inv = self.branch.repository.get_inventory(new_revision)
+            inv.revision_id = new_revision
+            xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
+
+            path = self._basis_inventory_name()
             self._control_files.put_utf8(path, xml)
         except WeaveRevisionNotPresent:
             pass
 
-    def _remove_old_basis(self, old_revision):
-        """Remove the old basis inventory 'old_revision'."""
-        if old_revision is not None:
-            try:
-                path = self._basis_inventory_name(old_revision)
-                path = self._control_files._escape(path)
-                self._control_files._transport.delete(path)
-            except NoSuchFile:
-                pass
-
-    def read_basis_inventory(self, revision_id):
+    def read_basis_inventory(self):
         """Read the cached basis inventory."""
-        path = self._basis_inventory_name(revision_id)
+        path = self._basis_inventory_name()
         return self._control_files.get_utf8(path).read()
         
     @needs_read_lock
@@ -1129,9 +1132,10 @@ class WorkingTree(bzrlib.tree.Tree):
         from transform import revert
         if old_tree is None:
             old_tree = self.basis_tree()
-        revert(self, old_tree, filenames, backups, pb)
+        conflicts = revert(self, old_tree, filenames, backups, pb)
         if not len(filenames):
             self.set_pending_merges([])
+        return conflicts
 
     @needs_write_lock
     def set_inventory(self, new_inventory_list):
