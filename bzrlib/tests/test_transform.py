@@ -190,6 +190,15 @@ class TestTreeTransform(TestCaseInTempDir):
         transform3.adjust_path('tip', root_id, tip_id)
         transform3.apply()
 
+    def test_add_del(self):
+        start, root = self.get_transform()
+        start.new_directory('a', root, 'a')
+        start.apply()
+        transform, root = self.get_transform()
+        transform.delete_versioned(transform.trans_id_tree_file_id('a'))
+        transform.new_directory('a', root, 'a')
+        transform.apply()
+
     def test_unversioning(self):
         create_tree, root = self.get_transform()
         parent_id = create_tree.new_directory('parent', root, 'parent-id')

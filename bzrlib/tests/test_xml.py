@@ -71,6 +71,20 @@ _committed_inv_v5 = """<inventory>
 </inventory>
 """
 
+_basis_inv_v5 = """<inventory revision_id="mbp@sourcefrog.net-20050905063503-43948f59fa127d92">
+<file file_id="bar-20050901064931-73b4b1138abc9cd2" 
+      name="bar" parent_id="TREE_ROOT" 
+      revision="mbp@foo-123123"/>
+<directory name="subdir"
+           file_id="foo-20050801201819-4139aa4a272f4250"
+           parent_id="TREE_ROOT" 
+           revision="mbp@foo-00"/>
+<file file_id="bar-20050824000535-6bc48cfad47ed134" 
+      name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" 
+      revision="mbp@foo-00"/>
+</inventory>
+"""
+
 class TestSerializer(TestCase):
     """Test XML serialization"""
     def test_canned_inventory(self):
@@ -111,6 +125,19 @@ class TestSerializer(TestCase):
         inv = serializer_v5.read_inventory(inp)
         eq = self.assertEqual
         eq(len(inv), 4)
+        ie = inv['bar-20050824000535-6bc48cfad47ed134']
+        eq(ie.kind, 'file')
+        eq(ie.revision, 'mbp@foo-00')
+        eq(ie.name, 'bar')
+        eq(inv[ie.parent_id].kind, 'directory')
+
+    def test_unpack_basis_inventory_5(self):
+        """Unpack canned new-style inventory"""
+        inp = StringIO(_basis_inv_v5)
+        inv = serializer_v5.read_inventory(inp)
+        eq = self.assertEqual
+        eq(len(inv), 4)
+        eq(inv.revision_id, 'mbp@sourcefrog.net-20050905063503-43948f59fa127d92')
         ie = inv['bar-20050824000535-6bc48cfad47ed134']
         eq(ie.kind, 'file')
         eq(ie.revision, 'mbp@foo-00')

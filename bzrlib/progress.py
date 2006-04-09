@@ -44,7 +44,6 @@ from collections import deque
 
 import bzrlib.errors as errors
 from bzrlib.trace import mutter 
-import bzrlib.ui
 
 
 def _supports_progress(f):
@@ -165,7 +164,7 @@ class _BaseProgressBar(object):
 
     def note(self, fmt_string, *args, **kwargs):
         """Record a note without disrupting the progress bar."""
-        bzrlib.ui.ui_factory.clear_term()
+        self.clear()
         self.to_messages_file.write(fmt_string % args)
         self.to_messages_file.write('\n')
 
@@ -433,6 +432,9 @@ class ChildProgress(_BaseProgressBar):
 
     def clear(self):
         pass
+
+    def note(self, *args, **kwargs):
+        self.parent.note(*args, **kwargs)
 
  
 def str_tdelta(delt):

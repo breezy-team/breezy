@@ -37,12 +37,14 @@ class MergeBuilder(object):
             return None
         return pathjoin(self.cset.entries[parent].path, name)
 
-    def add_file(self, id, parent, name, contents, executable):
+    def add_file(self, id, parent, name, contents, executable, this=True, 
+                 base=True, other=True):
         def new_file(tt):
             parent_id = tt.trans_id_file_id(parent)
             tt.new_file(name, parent_id, contents, id, executable)
-        for tt in (self.this_tt, self.base_tt, self.other_tt):
-            new_file(tt)
+        for option, tt in self.selected_transforms(this, base, other):
+            if option is True:
+                new_file(tt)
 
     def merge(self, merge_type=Merge3Merger, interesting_ids=None):
         self.base_tt.apply()
@@ -339,6 +341,15 @@ class MergeTest(TestCase):
         builder.merge()
         os.lstat(builder.this.id2abspath("2"))
         builder.cleanup()
+
+    def test_spurious_conflict(self):
+        builder = MergeBuilder()
+        builder.add_file("1", "TREE_ROOT", "name1", "text1", False)
+        builder.remove_file("1", other=True)
+        builder.add_file("2", "TREE_ROOT", "name1", "text1", False, this=False, 
+                         base=False)
+        conflicts = builder.merge()
+        self.assertEqual(conflicts, []) 
 
 
 class FunctionalMergeTest(TestCaseWithTransport):
