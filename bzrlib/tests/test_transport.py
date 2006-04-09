@@ -275,6 +275,26 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
                           transport.rename, 'from', 'to')
 
 
+class FakeVFATDecoratorTests(TestCaseInTempDir):
+    """Tests for simulation of VFAT restrictions"""
+
+    def get_vfat_transport(self, url):
+        """Return vfat-backed transport for test directory"""
+        from bzrlib.transport.fakevfat import FakeVFATTransportDecorator
+        return FakeVFATTransportDecorator('vfat+' + url)
+
+    def test_transport_creation(self):
+        from bzrlib.transport.fakevfat import FakeVFATTransportDecorator
+        transport = self.get_vfat_transport('.')
+        self.assertIsInstance(transport, FakeVFATTransportDecorator)
+
+    def test_transport_mkdir(self):
+        transport = self.get_vfat_transport('.')
+        transport.mkdir('HELLO')
+        self.assertTrue(transport.has('hello'))
+        self.assertTrue(transport.has('Hello'))
+
+
 class BadTransportHandler(Transport):
     def __init__(self, base_url):
         raise DependencyNotPresent('some_lib', 'testing missing dependency')
