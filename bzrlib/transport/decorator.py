@@ -109,6 +109,9 @@ class TransportDecorator(Transport):
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
         return self._decorated.list_dir(relpath)
+
+    def rename(self, rel_from, rel_to):
+        return self._decorated.rename(rel_from, rel_to)
     
     def rmdir(self, relpath):
         """See Transport.rmdir."""
