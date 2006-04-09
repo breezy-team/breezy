@@ -106,6 +106,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
         self.check_file_contents('hello.txt~', 'new hello')
+        
+        # backup files are numbered
+        file('hello.txt', 'w').write('new hello2')
+        tree.revert(['hello.txt'])
+        self.check_file_contents('hello.txt', 'initial hello')
+        self.check_file_contents('hello.txt~', 'new hello')
+        self.check_file_contents('hello.txt~1~', 'new hello2')
 
     def test_unknowns(self):
         tree = self.make_branch_and_tree('.')
