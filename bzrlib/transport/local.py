@@ -20,6 +20,7 @@ This is a fairly thin wrapper on regular file IO."""
 
 import os
 import shutil
+import sys
 from stat import ST_MODE, S_ISDIR, ST_SIZE
 import tempfile
 import urllib
@@ -269,6 +270,14 @@ class LocalTransport(Transport):
             os.rmdir(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
+
+    def supports_unix_modebits(self):
+        if sys.platform == 'win32':
+            # anyone else?
+            return False
+        else:
+            return True
+
 
 
 class ScratchTransport(LocalTransport):
