@@ -401,6 +401,12 @@ class VersionedFile(object):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
 class PlanWeaveMerge(TextMerge):
+    """Weave merge that takes a plan as its input.
+    
+    This exists so that VersionedFile.plan_merge is implementable.  Otherwise,
+    we'd just use WeaveMerge everywhere.
+    """
+
     def __init__(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
         TextMerge.__init__(self, a_marker, b_marker)
         self.plan = plan
@@ -457,9 +463,7 @@ class PlanWeaveMerge(TextMerge):
         lines_a = []
         lines_b = []
         ch_a = ch_b = False
-        # TODO: Show some version information (e.g. author, date) on 
-        # conflicted regions.
-        
+       
         # We previously considered either 'unchanged' or 'killed-both' lines
         # to be possible places to resynchronize.  However, assuming agreement
         # on killed-both lines may be too agressive. -- mbp 20060324
@@ -503,6 +507,8 @@ class PlanWeaveMerge(TextMerge):
 
 
 class WeaveMerge(PlanWeaveMerge):
+    """Weave merge that takes a VersionedFile and two versions as its input"""
+
     def __init__(self, versionedfile, ver_a, ver_b, 
         a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
         plan = self.plan_merge(versionedfile, ver_a, ver_b)
