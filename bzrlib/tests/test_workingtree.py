@@ -22,6 +22,7 @@ import bzrlib
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.bzrdir import BzrDir
+from bzrlib.conflicts import *
 import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.lockdir import LockDir
@@ -203,3 +204,28 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertTrue(our_lock.peek())
         tree.unlock()
         self.assertEquals(our_lock.peek(), None)
+
+    def create_format2_tree(self, url):
+        return BzrDir.create_standalone_workingtree(url)
+
+    def test_conflicts_format2(self):
+        # test backwards compatability
+        tree = self.create_format2_tree('.')
+        self.assertRaises(errors.UnsupportedOperation, tree.set_conflicts,
+                          None)
+        file('lala.BASE', 'wb').write('labase')
+        expected = ContentsConflict('lala')
+        self.assertEqual(list(tree.conflicts()), [expected])
+        file('lala', 'wb').write('la')
+        tree.add('lala', 'lala-id')
+        expected = ContentsConflict('lala', file_id='lala-id')
+        self.assertEqual(list(tree.conflicts()), [expected])
+        file('lala.THIS', 'wb').write('lathis')
+        file('lala.OTHER', 'wb').write('laother')
+        # When "text conflict"s happen, stem, THIS and OTHER are text
+        expected = TextConflict('lala', file_id='lala-id')
+        self.assertEqual(list(tree.conflicts()), [expected])
+        os.unlink('lala.OTHER')
+        os.mkdir('lala.OTHER')
+        expected = ContentsConflict('lala', file_id='lala-id')
+        self.assertEqual(list(tree.conflicts()), [expected])

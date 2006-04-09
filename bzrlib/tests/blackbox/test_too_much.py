@@ -779,12 +779,14 @@ class TestCommands(ExternalBase):
         self.assert_('|||||||' not in conflict_text)
         self.assert_('hi world' not in conflict_text)
         result = self.runbzr('conflicts', backtick=1)
-        self.assertEquals(result, "hello\nquestion\n")
+        self.assertEquals(result, "Text conflict in hello\nText conflict in"
+                                  " question\n")
         result = self.runbzr('status', backtick=1)
-        self.assert_("conflicts:\n  hello\n  question\n" in result, result)
+        self.assert_("conflicts:\n  Text conflict in hello\n"
+                     "  Text conflict in question\n" in result, result)
         self.runbzr('resolve hello')
         result = self.runbzr('conflicts', backtick=1)
-        self.assertEquals(result, "question\n")
+        self.assertEquals(result, "Text conflict in question\n")
         self.runbzr('commit -m conflicts', retcode=3)
         self.runbzr('resolve --all')
         result = self.runbzr('conflicts', backtick=1)
