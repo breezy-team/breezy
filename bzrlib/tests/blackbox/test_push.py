@@ -22,53 +22,52 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.osutils import abspath
+from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.uncommit import uncommit
 
 
 class TestPush(ExternalBase):
 
-    def example_branch(test):
-        test.runbzr('init')
-        file('hello', 'wt').write('foo')
-        test.runbzr('add hello')
-        test.runbzr('commit -m setup hello')
-        file('goodbye', 'wt').write('baz')
-        test.runbzr('add goodbye')
-        test.runbzr('commit -m setup goodbye')
-
     def test_push_remember(self):
         """Push changes from one branch to another and test push location."""
-        os.mkdir('a')
-        os.chdir('a')
-
-        self.example_branch()
-        self.runbzr('init ../b')
-        self.runbzr('init ../c')
-        os.chdir('../b')
-        file('bottles', 'wt').write('99 bottles of beer on the wall')
-        self.runbzr('add bottles')
-        self.runbzr('commit -m 99_bottles')
-        os.chdir('../a')
-        b = Branch.open('')
+        transport = self.get_transport()
+        tree_a = self.make_branch_and_tree('branch_a')
+        branch_a = tree_a.branch
+        self.build_tree(['branch_a/a'])
+        tree_a.add('a')
+        tree_a.commit('commit a')
+        branch_b = branch_a.bzrdir.sprout('branch_b').open_branch()
+        tree_b = branch_b.bzrdir.open_workingtree()
+        branch_c = branch_a.bzrdir.sprout('branch_c').open_branch()
+        tree_c = branch_c.bzrdir.open_workingtree()
+        self.build_tree(['branch_a/b'])
+        tree_a.add('b')
+        tree_a.commit('commit b')
+        self.build_tree(['branch_b/c'])
+        tree_b.add('c')
+        tree_b.commit('commit c')
         # initial push location must be empty
-        self.assertEqual(None, b.get_push_location())
+        self.assertEqual(None, branch_b.get_push_location())
         # test push for failure without push location set
+        os.chdir('branch_a')
         out = self.runbzr('push', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: No push location known or specified.\n'))
         # test implicit --remember when no push location set, push fails
-        out = self.runbzr('push ../b', retcode=3)
+        out = self.runbzr('push ../branch_b', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: These branches have diverged.  '
                     'Try a merge then push with overwrite.\n'))
-        self.assertEquals(abspath(b.get_push_location()), abspath('../b'))
+        self.assertEquals(abspath(branch_a.get_push_location()),
+                          abspath(branch_b.bzrdir.root_transport.base))
         # test implicit --remember after resolving previous failure
-        os.chdir('../b')
-        self.runbzr('uncommit --force')
-        os.chdir('../a')
+        uncommit(branch=branch_b, tree=tree_b)
+        transport.delete('branch_b/c')
         self.runbzr('push')
-        self.assertEquals(abspath(b.get_push_location()), abspath('../b'))
+        self.assertEquals(abspath(branch_a.get_push_location()),
+                          abspath(branch_b.bzrdir.root_transport.base))
         # test explicit --remember
-        self.runbzr('push ../c --remember')
-        self.assertEquals(abspath(b.get_push_location()), abspath('../c'))
+        self.runbzr('push ../branch_c --remember')
+        self.assertEquals(abspath(branch_a.get_push_location()),
+                          abspath(branch_c.bzrdir.root_transport.base))
