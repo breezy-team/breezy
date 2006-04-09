@@ -1099,8 +1099,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
         finally:
             child_pb.finished()
         conflicts = cook_conflicts(raw_conflicts, tt)
-        for line in conflicts_strings(conflicts):
-            warning(line)
+        for conflict in conflicts:
+            warning(conflict)
         pp.next_phase()
         tt.apply()
         working_tree.set_merge_modified({})
@@ -1170,17 +1170,17 @@ def conflict_pass(tt, conflicts):
 def cook_conflicts(raw_conflicts, tt):
     """Generate a list of cooked conflicts, sorted by file path"""
     def key(conflict):
-        if conflict[2] is not None:
-            return conflict[2], conflict[0]
-        elif len(conflict) == 6:
-            return conflict[4], conflict[0]
+        if conflict.path is not None:
+            return conflict.path, conflict.typestring
+        elif getattr(conflict, "conflict_path", None) is not None:
+            return conflict.conflict_path, conflict.typestring
         else:
-            return None, conflict[0]
+            return None, conflict.typestring
 
     return sorted(list(iter_cook_conflicts(raw_conflicts, tt)), key=key)
 
 def iter_cook_conflicts(raw_conflicts, tt):
-    cooked_conflicts = []
+    from bzrlib.conflicts import Conflict
     fp = FinalPaths(tt)
     for conflict in raw_conflicts:
         c_type = conflict[0]
@@ -1188,36 +1188,13 @@ def iter_cook_conflicts(raw_conflicts, tt):
         modified_path = fp.get_path(conflict[2])
         modified_id = tt.final_file_id(conflict[2])
         if len(conflict) == 3:
-            yield c_type, action, modified_path, modified_id
+            yield Conflict.factory(c_type, action=action, path=modified_path,
+                                     file_id=modified_id)
+             
         else:
             conflicting_path = fp.get_path(conflict[3])
             conflicting_id = tt.final_file_id(conflict[3])
-            yield (c_type, action, modified_path, modified_id, 
-                   conflicting_path, conflicting_id)
-
-
-def conflicts_strings(conflicts):
-    """Generate strings for the provided conflicts"""
-    for conflict in conflicts:
-        conflict_type = conflict[0]
-        if conflict_type == 'text conflict':
-            yield 'Text conflict in %s' % conflict[2]
-        elif conflict_type == 'contents conflict':
-            yield 'Contents conflict in %s' % conflict[2]
-        elif conflict_type == 'path conflict':
-            yield 'Path conflict: %s / %s' % conflict[2:]
-        elif conflict_type == 'duplicate id':
-            vals = (conflict[4], conflict[1], conflict[2])
-            yield 'Conflict adding id to %s.  %s %s.' % vals
-        elif conflict_type == 'duplicate':
-            vals = (conflict[4], conflict[1], conflict[2])
-            yield 'Conflict adding file %s.  %s %s.' % vals
-        elif conflict_type == 'parent loop':
-            vals = (conflict[4], conflict[2], conflict[1])
-            yield 'Conflict moving %s into %s.  %s.' % vals
-        elif conflict_type == 'unversioned parent':
-            vals = (conflict[2], conflict[1])
-            yield 'Conflict adding versioned files to %s.  %s.' % vals
-        elif conflict_type == 'missing parent':
-            vals = (conflict[2], conflict[1])
-            yield 'Conflict adding files to %s.  %s.' % vals
+            yield Conflict.factory(c_type, action=action, path=modified_path,
+                                   file_id=modified_id, 
+                                   conflict_path=conflicting_path,
+                                   conflict_file_id=conflicting_id)
