@@ -302,8 +302,7 @@ class TransportStore(Store):
             prefix = self.hash_prefix(fileid)
         else:
             prefix = ''
-        if self._escaped:
-            fileid = self._escape_file_id(fileid)
+        fileid = self._escape_file_id(fileid)
         path = prefix + fileid
         full_path = u'.'.join([path] + suffixes)
         return transport.urlescape(full_path)
