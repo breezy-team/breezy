@@ -38,6 +38,8 @@ Some other restrictions are not implemented yet, but possibly could be:
 
 """
 
+import re
+
 from bzrlib.errors import TransportNotPossible
 from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
 
@@ -55,7 +57,8 @@ class FakeVFATTransportDecorator(TransportDecorator):
 
     This is requested via the 'vfat+' prefix to get_transport().
 
-    This is intended only for use in testing.
+    This is intended only for use in testing and doesn't implement every
+    method very well yet.
 
     This transport is typically layered on a local or memory transport
     which actually stored the files.
@@ -72,13 +75,24 @@ class FakeVFATTransportDecorator(TransportDecorator):
         The name is returned as it will be stored on disk.  This raises an
         error if there are invalid characters in the name.
         """
+        if re.search(r'[?*:;<>]', name):
+            raise ValueError("illegal characters for VFAT filename: %r" % name)
         return name.lower()
+
+    def get(self, relpath):
+        return self._decorated.get(self._squash_name(relpath))
 
     def mkdir(self, relpath, mode=None):
         return self._decorated.mkdir(self._squash_name(relpath), 0755)
 
     def has(self, relpath):
         return self._decorated.has(self._squash_name(relpath))
+
+    def readv(self, relpath, offsets):
+        return self._decorated.readv(self._squash_name(relpath), offsets)
+
+    def put(self, relpath, f, mode=None):
+        return self._decorated.put(self._squash_name(relpath), f, mode)
 
 
 class FakeVFATServer(DecoratorServer):
