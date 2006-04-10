@@ -316,12 +316,15 @@ class TransportStore(Store):
         """
         if not self._escaped:
             return file_id
+        if isinstance(file_id, unicode):
+            file_id = file_id.encode('utf-8')
         # @ does not get escaped. This is because it is a valid
         # filesystem character we use all the time, and it looks
         # a lot better than seeing %40 all the time.
-        if isinstance(file_id, unicode):
-            file_id = file_id.encode('utf-8')
-        return urllib.quote(file_id, safe='@')
+        safe = "abcdefghijklmnopqrstuvwxyz0123456789-_@,."
+        r = [((c in safe) and c or ('%%%02x' % ord(c)))
+             for c in file_id]
+        return ''.join(r)
 
     def hash_prefix(self, fileid):
         # fileid should be unescaped

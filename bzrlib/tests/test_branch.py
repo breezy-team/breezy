@@ -74,6 +74,43 @@ class TestBranchFormat5(TestCaseWithTransport):
         self.assertIsDirectory('.bzr/branch/lock/held', t)
 
 
+class TestBranchEscaping(TestCaseWithTransport):
+    """Test a branch can be correctly stored and used on a vfat-like transport
+    
+    Makes sure we have proper escaping of invalid characters, etc.
+
+    It'd be better to test all operations on the FakeVFATTransportDecorator,
+    but working trees go straight to the os not through the Transport layer.
+    Therefore we build some history first in the regular way and then 
+    check it's safe to access for vfat.
+    """
+
+    FOO_ID = 'foo<:>ID'
+    REV_ID = 'revid-1'
+
+    def setUp(self):
+        super(TestBranchEscaping, self).setUp()
+        from bzrlib.repository import RepositoryFormatKnit1
+        bzrdir = BzrDirMetaFormat1().initialize(self.get_url())
+        repo = RepositoryFormatKnit1().initialize(bzrdir)
+        branch = bzrdir.create_branch()
+        wt = bzrdir.create_workingtree()
+        self.build_tree_contents([("foo", "contents of foo")])
+        # add file with id containing wierd characters
+        wt.add(['foo'], [self.FOO_ID])
+        wt.commit('this is my new commit', rev_id=self.REV_ID)
+
+    def test_branch_on_vfat(self):
+        from bzrlib.transport.fakevfat import FakeVFATTransportDecorator
+        # now access over vfat; should be safe
+        transport = FakeVFATTransportDecorator('vfat+' + self.get_url())
+        bzrdir, junk = BzrDir.open_containing_from_transport(transport)
+        branch = bzrdir.open_branch()
+        revtree = branch.repository.revision_tree(self.REV_ID)
+        contents = revtree.get_file_text(self.FOO_ID)
+        self.assertEqual(contents, 'contents of foo')
+
+
 class SampleBranchFormat(bzrlib.branch.BranchFormat):
     """A sample format
 

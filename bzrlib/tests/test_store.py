@@ -399,6 +399,12 @@ class TestTransportStore(TestCase):
         my_store = store.TransportStore(MemoryTransport())
         self.assertEqual('%25', my_store._relpath('%'))
 
+    def test_escaped_uppercase(self):
+        """Uppercase letters are escaped for safety on Windows"""
+        my_store = store.TransportStore(MemoryTransport(), escaped=True)
+        # a particularly perverse file-id! :-)
+        self.assertEquals(my_store._escape_file_id('C:<>'), '%43%3a%3c%3e')
+
 
 class TestVersionFileStore(TestCaseWithTransport):
 

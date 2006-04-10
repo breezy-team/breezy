@@ -919,14 +919,16 @@ class RepositoryFormat(object):
                                   transport,
                                   control_files,
                                   prefixed=True,
-                                  versionedfile_class=WeaveFile):
+                                  versionedfile_class=WeaveFile,
+                                  escaped=False):
         weave_transport = control_files._transport.clone(name)
         dir_mode = control_files._dir_mode
         file_mode = control_files._file_mode
         return VersionedFileStore(weave_transport, prefixed=prefixed,
-                                dir_mode=dir_mode,
-                                file_mode=file_mode,
-                                versionedfile_class=versionedfile_class)
+                                  dir_mode=dir_mode,
+                                  file_mode=file_mode,
+                                  versionedfile_class=versionedfile_class,
+                                  escaped=escaped)
 
     def initialize(self, a_bzrdir, shared=False):
         """Initialize a repository of this format in a_bzrdir.
@@ -1273,6 +1275,8 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
      - an optional 'shared-storage' flag
      - an optional 'no-working-trees' flag
      - a LockDir lock
+
+    This format was introduced in bzr 0.8.
     """
 
     def _get_control_store(self, repo_transport, control_files):
@@ -1295,6 +1299,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
             file_mode = control_files._file_mode,
             prefixed=False,
             precious=True,
+            escaped=True,
             versionedfile_class=KnitVersionedFile)
         return KnitRevisionStore(versioned_file_store)
 
@@ -1303,7 +1308,8 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
         return self._get_versioned_file_store('knits',
                                               transport,
                                               control_files,
-                                              versionedfile_class=KnitVersionedFile)
+                                              versionedfile_class=KnitVersionedFile,
+                                              escaped=True)
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a knit format 1 repository.

@@ -893,7 +893,7 @@ class BzrDirFormat(object):
         return self.initialize_on_transport(get_transport(url),
                 _cloning=_cloning)
 
-    def initialize_on_transport(self, transport, _cloning):
+    def initialize_on_transport(self, transport, _cloning=False):
         """Initialize a new bzrdir in the base directory of a Transport."""
         # Since we don'transport have a .bzr directory, inherit the
         # mode from the root directory
@@ -991,7 +991,7 @@ class BzrDirFormat4(BzrDirFormat):
         # there is one and only one upgrade path here.
         return ConvertBzrDir4To5()
         
-    def initialize_on_transport(self, transport, _cloning):
+    def initialize_on_transport(self, transport, _cloning=False):
         """Format 4 branches cannot be created."""
         raise errors.UninitializableFormat(self)
 
