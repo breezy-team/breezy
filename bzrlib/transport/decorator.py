@@ -42,7 +42,9 @@ class TransportDecorator(Transport):
         
         _decorated is a private parameter for cloning."""
         prefix = self._get_url_prefix()
-        assert url.startswith(prefix)
+        assert url.startswith(prefix), \
+                "url %r doesn't start with decorator prefix %r" % \
+                (url, prefix)
         decorated_url = url[len(prefix):]
         if _decorated is None:
             self._decorated = get_transport(decorated_url)
