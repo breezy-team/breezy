@@ -1877,7 +1877,6 @@ class cmd_merge(Command):
         else:
             interesting_files = None
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
-        print path 
         try:
             try:
                 conflict_count = merge(other, base, check_clean=(not force),
