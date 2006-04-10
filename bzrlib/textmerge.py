@@ -37,12 +37,20 @@ class TextMerge(object):
     """
     # TODO: Show some version information (e.g. author, date) on conflicted
     # regions.
- 
-    def __init__(self, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n',
-                 split_marker='=======\n'):
+    A_MARKER = '<<<<<<< \n'
+    B_MARKER = '>>>>>>> \n'
+    SPLIT_MARKER = '=======\n'
+    def __init__(self, a_marker=A_MARKER, b_marker=B_MARKER,
+                 split_marker=SPLIT_MARKER):
         self.a_marker = a_marker
         self.b_marker = b_marker
         self.split_marker = split_marker
+
+    def _merge_struct(self):
+        """Return structured merge info.  Must be implemented by subclasses.
+        See TextMerge docstring for details on the format.
+        """
+        raise NotImplementedError('_merge_struct is abstract')
 
     def struct_to_lines(self, struct_iter):
         """Convert merge result tuples to lines"""
@@ -68,8 +76,7 @@ class TextMerge(object):
                 yield group
 
     def merge_lines(self, reprocess=False):
-        """
-        Produce an iterable of lines, suitable for writing to a file
+        """Produce an iterable of lines, suitable for writing to a file
         Returns a tuple of (line iterable, conflict indicator)
         If reprocess is True, a two-way merge will be performed on the
         intermediate structure, to reduce conflict regions.
@@ -92,10 +99,9 @@ class TextMerge(object):
 
     @staticmethod
     def reprocess_struct(struct_iter):
-        """
-        Perform a two-way merge on a two-way merge on structural merge info.
+        """ Perform a two-way merge on structural merge info.
         This reduces the size of conflict regions, but breaks the connection
-        between the BASE and the conflict region.
+        between the BASE text and the conflict region.
 
         This process may split a single conflict region into several smaller
         ones, but will not introduce new conflicts.
@@ -109,21 +115,20 @@ class TextMerge(object):
 
 
 class Merge2(TextMerge):
-    """
-    Two-way merge.
+    """ Two-way merge.
     In a two way merge, common regions are shown as unconflicting, and uncommon
     regions produce conflicts.
     """
 
-    def __init__(self, lines_a, lines_b, a_marker='<<<<<<< \n', 
-                 b_marker='>>>>>>> \n', split_marker='=======\n'):
+    def __init__(self, lines_a, lines_b, a_marker=TextMerge.A_MARKER, 
+                 b_marker=TextMerge.B_MARKER, 
+                 split_marker=TextMerge.SPLIT_MARKER):
         TextMerge.__init__(self, a_marker, b_marker, split_marker)
         self.lines_a = lines_a
         self.lines_b = lines_b
 
     def _merge_struct(self):
-        """
-        Return structured merge info.  
+        """Return structured merge info.  
         See TextMerge docstring.
         """
         sm = SequenceMatcher(None, self.lines_a, self.lines_b)

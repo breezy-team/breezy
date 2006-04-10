@@ -397,17 +397,19 @@ class VersionedFile(object):
     def plan_merge(versionedfile, ver_a, ver_b):
         return PlanWeaveMerge.plan_merge(versionedfile, ver_a, ver_b)
 
-    def weave_merge(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
+    def weave_merge(self, plan, a_marker=TextMerge.A_MARKER, 
+                    b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
 class PlanWeaveMerge(TextMerge):
     """Weave merge that takes a plan as its input.
     
-    This exists so that VersionedFile.plan_merge is implementable.  Otherwise,
-    we'd just use WeaveMerge everywhere.
+    This exists so that VersionedFile.plan_merge is implementable.
+    Most callers will want to use WeaveMerge instead.
     """
 
-    def __init__(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
+    def __init__(self, plan, a_marker=TextMerge.A_MARKER,
+                 b_marker=TextMerge.B_MARKER):
         TextMerge.__init__(self, a_marker, b_marker)
         self.plan = plan
 
@@ -510,7 +512,7 @@ class WeaveMerge(PlanWeaveMerge):
     """Weave merge that takes a VersionedFile and two versions as its input"""
 
     def __init__(self, versionedfile, ver_a, ver_b, 
-        a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
+        a_marker=PlanWeaveMerge.A_MARKER, b_marker=PlanWeaveMerge.B_MARKER):
         plan = self.plan_merge(versionedfile, ver_a, ver_b)
         PlanWeaveMerge.__init__(self, plan, a_marker, b_marker)
 

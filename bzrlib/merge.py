@@ -244,8 +244,8 @@ class Merger(object):
         if self.merge_type.supports_reprocess:
             kwargs['reprocess'] = self.reprocess
         elif self.reprocess:
-            raise BzrError("Reprocess is not supported for this merge"
-                                  " type. %s" % self.merge_type)
+            raise BzrError("Conflict reduction is not supported for merge"
+                                  " type %s." % self.merge_type)
         if self.merge_type.supports_show_base:
             kwargs['show_base'] = self.show_base
         elif self.show_base:
