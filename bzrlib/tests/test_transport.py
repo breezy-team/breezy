@@ -294,6 +294,11 @@ class FakeVFATDecoratorTests(TestCaseInTempDir):
         self.assertTrue(transport.has('hello'))
         self.assertTrue(transport.has('Hello'))
 
+    def test_forbidden_chars(self):
+        transport = self.get_vfat_transport('.')
+        self.assertRaises(ValueError, transport.has, "<NU>")
+
+
 
 class BadTransportHandler(Transport):
     def __init__(self, base_url):
