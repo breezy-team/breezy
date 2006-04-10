@@ -24,10 +24,10 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ExistingLimbo, ImmortalLimbo, LockError)
 from bzrlib.osutils import file_kind, has_symlinks, pathjoin
 from bzrlib.merge import Merge3Merger
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
+from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
-                              find_interesting, build_tree)
+                              find_interesting, build_tree, get_backup_name)
 
 class TestTreeTransform(TestCaseInTempDir):
     def setUp(self):
@@ -700,3 +700,33 @@ class TestBuildTree(TestCaseInTempDir):
         self.assertIs(os.path.isdir('b/foo'), True)
         self.assertEqual(file('b/foo/bar', 'rb').read(), "contents")
         self.assertEqual(os.readlink('b/foo/baz'), 'a/foo/bar')
+        
+class MockTransform(object):
+
+    def has_named_child(self, by_parent, parent_id, name):
+        for child_id in by_parent[parent_id]:
+            if child_id == '0':
+                if name == "name~":
+                    return True
+            elif name == "name.~%s~" % child_id:
+                return True
+        return False
+
+class MockEntry(object):
+    def __init__(self):
+        object.__init__(self)
+        self.name = "name"
+
+class TestGetBackupName(TestCase):
+    def test_get_backup_name(self):
+        tt = MockTransform()
+        name = get_backup_name(MockEntry(), {'a':[]}, 'a', tt)
+        self.assertEqual(name, 'name.~1~')
+        name = get_backup_name(MockEntry(), {'a':['1']}, 'a', tt)
+        self.assertEqual(name, 'name.~2~')
+        name = get_backup_name(MockEntry(), {'a':['2']}, 'a', tt)
+        self.assertEqual(name, 'name.~1~')
+        name = get_backup_name(MockEntry(), {'a':['2'], 'b':[]}, 'b', tt)
+        self.assertEqual(name, 'name.~1~')
+        name = get_backup_name(MockEntry(), {'a':['1', '2', '3']}, 'a', tt)
+        self.assertEqual(name, 'name.~4~')
