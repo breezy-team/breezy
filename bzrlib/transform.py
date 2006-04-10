@@ -1035,10 +1035,9 @@ def change_entry(tt, file_id, working_tree, target_tree,
 def get_backup_name(entry, by_parent, parent_trans_id, tt):
     """Produce a backup-style name that appears to be available"""
     def name_gen():
-        yield entry.name+"~"
         counter = 1
         while True:
-            yield "%s~%d~" % (entry.name, counter)
+            yield "%s.~%d~" % (entry.name, counter)
             counter += 1
     for name in name_gen():
         if not tt.has_named_child(by_parent, parent_trans_id, name):

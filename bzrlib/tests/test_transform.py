@@ -708,7 +708,7 @@ class MockTransform(object):
             if child_id == '0':
                 if name == "name~":
                     return True
-            elif name == "name~%s~" % child_id:
+            elif name == "name.~%s~" % child_id:
                 return True
         return False
 
@@ -721,12 +721,12 @@ class TestGetBackupName(TestCase):
     def test_get_backup_name(self):
         tt = MockTransform()
         name = get_backup_name(MockEntry(), {'a':[]}, 'a', tt)
-        self.assertEqual(name, 'name~')
-        name = get_backup_name(MockEntry(), {'a':['0']}, 'a', tt)
-        self.assertEqual(name, 'name~1~')
+        self.assertEqual(name, 'name.~1~')
+        name = get_backup_name(MockEntry(), {'a':['1']}, 'a', tt)
+        self.assertEqual(name, 'name.~2~')
         name = get_backup_name(MockEntry(), {'a':['2']}, 'a', tt)
-        self.assertEqual(name, 'name~')
+        self.assertEqual(name, 'name.~1~')
         name = get_backup_name(MockEntry(), {'a':['2'], 'b':[]}, 'b', tt)
-        self.assertEqual(name, 'name~')
-        name = get_backup_name(MockEntry(), {'a':['0', '1', '2']}, 'a', tt)
-        self.assertEqual(name, 'name~3~')
+        self.assertEqual(name, 'name.~1~')
+        name = get_backup_name(MockEntry(), {'a':['1', '2', '3']}, 'a', tt)
+        self.assertEqual(name, 'name.~4~')

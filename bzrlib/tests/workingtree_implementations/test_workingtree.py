@@ -100,24 +100,24 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # revert file modified since last revision
         tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt~', 'new hello')
+        self.check_file_contents('hello.txt.~1~', 'new hello')
 
         # reverting again does not clobber the backup
         tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt~', 'new hello')
+        self.check_file_contents('hello.txt.~1~', 'new hello')
         
         # backup files are numbered
         file('hello.txt', 'w').write('new hello2')
         tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt~', 'new hello')
-        self.check_file_contents('hello.txt~1~', 'new hello2')
+        self.check_file_contents('hello.txt.~1~', 'new hello')
+        self.check_file_contents('hello.txt.~2~', 'new hello2')
 
     def test_unknowns(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt',
-                         'hello.txt~'])
+                         'hello.txt.~1~'])
         self.assertEquals(list(tree.unknowns()),
                           ['hello.txt'])
 
@@ -125,7 +125,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         from bzrlib.tests.test_hashcache import pause
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt',
-                         'hello.txt~'])
+                         'hello.txt.~1~'])
         tree.add('hello.txt')
         pause()
         sha = tree.get_file_sha1(tree.path2id('hello.txt'))
@@ -464,9 +464,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertNotEqual(open('b1/a', 'rb').read(), 'a test\n')
         this.revert([])
         self.assertEqual(open('b1/a', 'rb').read(), 'a test\n')
-        self.assertIs(os.path.exists('b1/b~'), True)
+        self.assertIs(os.path.exists('b1/b.~1~'), True)
         self.assertIs(os.path.exists('b1/c'), False)
-        self.assertIs(os.path.exists('b1/a~'), False)
+        self.assertIs(os.path.exists('b1/a.~1~'), False)
         self.assertIs(os.path.exists('b1/d'), True)
 
     def test_update_updates_bound_branch_no_local_commits(self):
