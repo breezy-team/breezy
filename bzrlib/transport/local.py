@@ -271,13 +271,12 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
-    def supports_unix_modebits(self):
+    def _can_roundtrip_unix_modebits(self):
         if sys.platform == 'win32':
             # anyone else?
             return False
         else:
             return True
-
 
 
 class ScratchTransport(LocalTransport):

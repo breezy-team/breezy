@@ -609,7 +609,7 @@ class Transport(object):
         """Return true if this connection cannot be written to."""
         return False
 
-    def supports_unix_modebits(self):
+    def _can_roundtrip_unix_modebits(self):
         """Return true if this transport can store and retrieve unix modebits.
 
         (For example, 0700 to make a directory owner-private.)
