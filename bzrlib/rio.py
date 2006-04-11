@@ -20,6 +20,8 @@
 
 import re
 
+from bzrlib.iterablefile import IterableFile
+
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
 # through a writer object.  
 
@@ -51,6 +53,22 @@ class RioReader(object):
                 break
             else:
                 yield s
+
+
+def rio_file(stanzas, header=None):
+    """Produce a rio IterableFile from an iterable of stanzas"""
+    def str_iter():
+        if header is not None:
+            yield header + '\n'
+        first_stanza = True
+        for s in stanzas:
+            if first_stanza is not True:
+                yield '\n'
+            for line in s.to_lines():
+                yield line
+            first_stanza = False
+    return IterableFile(str_iter())
+
 
 def read_stanzas(from_file):
     while True:
@@ -135,7 +153,7 @@ class Stanza(object):
             return []
         result = []
         for tag, value in self.items:
-            assert isinstance(tag, str)
+            assert isinstance(tag, str), type(tag)
             assert isinstance(value, unicode)
             if value == '':
                 result.append(tag + ': \n')
@@ -228,7 +246,7 @@ def read_stanza(line_iter):
                 colon_index = line.index(': ')
             except ValueError:
                 raise ValueError('tag/value separator not found in line %r' % real_l)
-            tag = line[:colon_index]
+            tag = str(line[:colon_index])
             assert valid_tag(tag), \
                     "invalid rio tag %r" % tag
             accum_value = line[colon_index+2:-1]

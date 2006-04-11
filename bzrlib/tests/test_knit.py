@@ -322,7 +322,7 @@ class KnitTests(TestCaseInTempDir):
         instrumented_t._calls = []
         # request a last-first iteration
         results = list(k1.iter_lines_added_or_present_in_versions(['base2', 'base']))
-        self.assertEqual([('id.knit', [(0, 87), (87, 90)])], instrumented_t._calls)
+        self.assertEqual([('id.knit', [(0, 87), (87, 89)])], instrumented_t._calls)
         self.assertEqual(['text\n', 'text2\n'], results)
 
     def test_create_empty_annotated(self):

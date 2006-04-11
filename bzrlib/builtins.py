@@ -1055,19 +1055,28 @@ class cmd_root(Command):
 
 
 class cmd_log(Command):
-    """Show log of this branch.
+    """Show log of a branch, file, or directory.
+
+    By default show the log of the branch containing the working directory.
 
     To request a range of logs, you can use the command -r begin..end
     -r revision requests a specific revision, -r ..end or -r begin.. are
     also valid.
+
+    examples:
+        bzr log
+        bzr log foo.c
+        bzr log -r -10.. http://server/branch
     """
 
     # TODO: Make --revision support uuid: and hash: [future tag:] notation.
 
-    takes_args = ['filename?']
+    takes_args = ['location?']
     takes_options = [Option('forward', 
                             help='show from oldest to newest'),
-                     'timezone', 'verbose', 
+                     'timezone', 
+                     Option('verbose', 
+                             help='show files changed in each revision'),
                      'show-ids', 'revision',
                      'log-format',
                      'line', 'long', 
@@ -1077,7 +1086,7 @@ class cmd_log(Command):
                      'short',
                      ]
     @display_command
-    def run(self, filename=None, timezone='original',
+    def run(self, location=None, timezone='original',
             verbose=False,
             show_ids=False,
             forward=False,
@@ -1095,10 +1104,10 @@ class cmd_log(Command):
         
         # log everything
         file_id = None
-        if filename:
+        if location:
             # find the file id to log:
 
-            dir, fp = bzrdir.BzrDir.open_containing(filename)
+            dir, fp = bzrdir.BzrDir.open_containing(location)
             b = dir.open_branch()
             if fp != '':
                 try:
@@ -1849,10 +1858,11 @@ class cmd_merge(Command):
         if revision is None or len(revision) < 1:
             base = [None, None]
             other = [branch, -1]
+            other_branch, path = Branch.open_containing(branch)
         else:
             if len(revision) == 1:
                 base = [None, None]
-                other_branch = Branch.open_containing(branch)[0]
+                other_branch, path = Branch.open_containing(branch)
                 revno = revision[0].in_history(other_branch).revno
                 other = [branch, revno]
             else:
@@ -1860,10 +1870,14 @@ class cmd_merge(Command):
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                b = Branch.open_containing(branch)[0]
+                b, path = Branch.open_containing(branch)
 
                 base = [branch, revision[0].in_history(b).revno]
                 other = [branch, revision[1].in_history(b).revno]
+        if path != "":
+            interesting_files = [path]
+        else:
+            interesting_files = None
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             try:
@@ -1871,7 +1885,7 @@ class cmd_merge(Command):
                                        merge_type=merge_type, 
                                        reprocess=reprocess,
                                        show_base=show_base, 
-                                       pb=pb)
+                                       pb=pb, file_list=interesting_files)
             finally:
                 pb.finished()
             if conflict_count != 0:
@@ -2420,7 +2434,8 @@ def merge(other_revision, base_revision,
         merger.show_base = show_base 
         merger.reprocess = reprocess
         conflicts = merger.do_merge()
-        merger.set_pending()
+        if file_list is None:
+            merger.set_pending()
     finally:
         pb.clear()
     return conflicts

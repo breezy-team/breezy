@@ -309,7 +309,7 @@ class Commit(object):
                     or self.new_inv != self.basis_inv):
                 raise PointlessCommit()
 
-            if len(list(self.work_tree.iter_conflicts()))>0:
+            if len(self.work_tree.conflicts())>0:
                 raise ConflictsInTree
 
             self.inv_sha1 = self.branch.repository.add_inventory(

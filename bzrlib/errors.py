@@ -804,6 +804,10 @@ class MergeModifiedFormatError(BzrNewError):
     """Error in merge modified format"""
 
 
+class ConflictFormatError(BzrNewError):
+    """Format error in conflict listings"""
+
+
 class CorruptRepository(BzrNewError):
     """An error has been detected in the repository %(repo_path)s.
 Please run bzr reconcile on this repository."""
@@ -827,3 +831,11 @@ class LocalRequiresBoundBranch(BzrNewError):
 
 class MissingProgressBarFinish(BzrNewError):
     """A nested progress bar was not 'finished' correctly."""
+
+
+class UnsupportedOperation(BzrNewError):
+    """The method %(mname)s is not supported on objects of type %(tname)s."""
+    def __init__(self, method, method_self):
+        self.method = method
+        self.mname = method.__name__
+        self.tname = type(method_self).__name__

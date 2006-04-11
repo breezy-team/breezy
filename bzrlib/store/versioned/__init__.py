@@ -37,12 +37,14 @@ class VersionedFileStore(TransportStore):
 
     def __init__(self, transport, prefixed=False, precious=False,
                  dir_mode=None, file_mode=None,
-                 versionedfile_class=WeaveFile):
+                 versionedfile_class=WeaveFile,
+                 versionedfile_kwargs={}):
         super(WeaveStore, self).__init__(transport,
                 dir_mode=dir_mode, file_mode=file_mode,
                 prefixed=prefixed, compressed=False)
         self._precious = precious
         self._versionedfile_class = versionedfile_class
+        self._versionedfile_kwargs = versionedfile_kwargs
 
     def _clear_cache_id(self, file_id, transaction):
         """WARNING may lead to inconsistent object references for file_id.
@@ -105,7 +107,8 @@ class VersionedFileStore(TransportStore):
             #mutter("cache hit in %s for %s", self, file_id)
             return weave
         if transaction.writeable():
-            w = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode)
+            w = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode,
+                                          **self._versionedfile_kwargs)
             transaction.map.add_weave(file_id, w)
             transaction.register_dirty(w)
         else:
@@ -113,7 +116,8 @@ class VersionedFileStore(TransportStore):
                                           self._transport,
                                           self._file_mode,
                                           create=False,
-                                          access_mode='r')
+                                          access_mode='r',
+                                          **self._versionedfile_kwargs)
             transaction.map.add_weave(file_id, w)
             transaction.register_clean(w, precious=self._precious)
         return w
@@ -140,14 +144,16 @@ class VersionedFileStore(TransportStore):
         if self.has_id(file_id):
             self.delete(file_id, transaction)
         try:
-            weave = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode, create=True)
+            weave = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode, create=True,
+                                              **self._versionedfile_kwargs)
         except NoSuchFile:
             if not self._prefixed:
                 # unexpected error - NoSuchFile is raised on a missing dir only and that
                 # only occurs when we are prefixed.
                 raise
             self._transport.mkdir(hash_prefix(file_id), mode=self._dir_mode)
-            weave = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode, create=True)
+            weave = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode, create=True,
+                                              **self._versionedfile_kwargs)
         return weave
 
     def get_weave_or_empty(self, file_id, transaction):
