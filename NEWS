@@ -67,6 +67,11 @@ bzr development version
     * New 'init-repository' command, plus support for repositories in 'init'
       and 'branch' (Aaron Bentley, Erik Bågfors)
 
+    * Improve output of 'info' command. Show all relevant locations related to
+      working tree, branch and repository. Use kibibytes for binary quantities.
+      Fix off-by-one error in missing revisions of working tree.  Make 'info'
+      work on branches, repositories and remote locations.  (Olaf Conradi)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
@@ -113,6 +118,9 @@ bzr development version
 
     * Progress bars are now nested - see
       bzrlib.ui.ui_factory.nested_progress_bar. (Robert Collins, Robey Pointer)
+
+    * New API call get_format_description() for each type of format.
+      (Olaf Conradi)
 
   TESTING:
 

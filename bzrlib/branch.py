@@ -566,6 +566,10 @@ class BranchFormat(object):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
 
+    def get_format_description(self):
+        """Return the short format description for this format."""
+        raise NotImplementedError(self.get_format_string)
+
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
         raise NotImplementedError(self.initialized)
@@ -611,6 +615,10 @@ class BzrBranchFormat4(BranchFormat):
      - a revision-history file.
      - a branch-lock lock file [ to be shared with the bzrdir ]
     """
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Branch format 4"
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
@@ -668,6 +676,10 @@ class BzrBranchFormat5(BranchFormat):
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
         return "Bazaar-NG branch format 5\n"
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Branch format 5"
         
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
@@ -725,6 +737,10 @@ class BranchReferenceFormat(BranchFormat):
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
         return "Bazaar-NG Branch Reference Format 1\n"
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Checkout reference format 1"
         
     def initialize(self, a_bzrdir, target_branch=None):
         """Create a branch of this format in a_bzrdir."""

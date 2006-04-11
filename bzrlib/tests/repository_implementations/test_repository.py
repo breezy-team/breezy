@@ -250,6 +250,11 @@ class TestRepository(TestCaseWithRepository):
         repo.unlock()
         self.assertRaises(errors.OutSideTransaction, inv.add_lines, 'foo', [], [])
 
+    def test_format_description(self):
+        repo = self.make_repository('.')
+        text = repo._format.get_format_description()
+        self.failUnless(len(text))
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
