@@ -394,9 +394,9 @@ class VersionedFile(object):
         """Walk the names list."""
         return iter(self.versions())
 
-    def plan_merge(versionedfile, ver_a, ver_b):
-        return PlanWeaveMerge.plan_merge(versionedfile, ver_a, ver_b)
-
+    def plan_merge(self, ver_a, ver_b):
+        raise NotImplementedError(VersionedFile.plan_merge)
+        
     def weave_merge(self, plan, a_marker=TextMerge.A_MARKER, 
                     b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
@@ -413,53 +413,6 @@ class PlanWeaveMerge(TextMerge):
         TextMerge.__init__(self, a_marker, b_marker)
         self.plan = plan
 
-    @staticmethod
-    def plan_merge(versionedfile, ver_a, ver_b):
-        """Return pseudo-annotation indicating how the two versions merge.
-
-        This is computed between versions a and b and their common
-        base.
-
-        Weave lines present in none of them are skipped entirely.
-        """
-        inc_a = set(versionedfile.get_ancestry([ver_a]))
-        inc_b = set(versionedfile.get_ancestry([ver_b]))
-        inc_c = inc_a & inc_b
-
-        for lineno, insert, deleteset, line in\
-            versionedfile.walk([ver_a, ver_b]):
-            if deleteset & inc_c:
-                # killed in parent; can't be in either a or b
-                # not relevant to our work
-                yield 'killed-base', line
-            elif insert in inc_c:
-                # was inserted in base
-                killed_a = bool(deleteset & inc_a)
-                killed_b = bool(deleteset & inc_b)
-                if killed_a and killed_b:
-                    yield 'killed-both', line
-                elif killed_a:
-                    yield 'killed-a', line
-                elif killed_b:
-                    yield 'killed-b', line
-                else:
-                    yield 'unchanged', line
-            elif insert in inc_a:
-                if deleteset & inc_a:
-                    yield 'ghost-a', line
-                else:
-                    # new in A; not in B
-                    yield 'new-a', line
-            elif insert in inc_b:
-                if deleteset & inc_b:
-                    yield 'ghost-b', line
-                else:
-                    yield 'new-b', line
-            else:
-                # not in either revision
-                yield 'irrelevant', line
-
-        yield 'unchanged', ''           # terminator
 
     def _merge_struct(self):
         lines_a = []
@@ -513,7 +466,7 @@ class WeaveMerge(PlanWeaveMerge):
 
     def __init__(self, versionedfile, ver_a, ver_b, 
         a_marker=PlanWeaveMerge.A_MARKER, b_marker=PlanWeaveMerge.B_MARKER):
-        plan = self.plan_merge(versionedfile, ver_a, ver_b)
+        plan = versionedfile.plan_merge(ver_a, ver_b)
         PlanWeaveMerge.__init__(self, plan, a_marker, b_marker)
 
 
