@@ -57,11 +57,12 @@ class LocalTransport(Transport):
             return LocalTransport(self.abspath(offset))
 
     def abspath(self, relpath):
-        """Return the full url to the given relative URL.
-        This can be supplied with a string or a list
-        """
+        """Return the full url to the given relative URL."""
         assert isinstance(relpath, basestring), (type(relpath), relpath)
-        return pathjoin(self.base, urllib.unquote(relpath))
+        result = normpath(pathjoin(self.base, urllib.unquote(relpath)))
+        #if result[-1] != '/':
+        #    result += '/'
+        return result
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
@@ -69,9 +70,13 @@ class LocalTransport(Transport):
         from bzrlib.osutils import relpath
         if abspath is None:
             abspath = u'.'
-        if abspath.endswith('/'):
+        if len(abspath) > 1 and abspath.endswith('/'):
             abspath = abspath[:-1]
-        return relpath(self.base[:-1], abspath)
+        if self.base == '/':
+            root = '/'
+        else:
+            root = self.base[:-1]
+        return relpath(root, abspath)
 
     def has(self, relpath):
         return os.access(self.abspath(relpath), os.F_OK)
@@ -138,6 +143,8 @@ class LocalTransport(Transport):
             fp = open(self.abspath(relpath), 'ab')
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
+        # win32 workaround (tell on an unwritten file returns 0)
+        fp.seek(0, 2)
         result = fp.tell()
         self._pump(f, fp)
         return result

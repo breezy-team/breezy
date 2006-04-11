@@ -20,12 +20,13 @@ import sys
 import stat
 from cStringIO import StringIO
 
+import bzrlib
 from bzrlib.errors import (NoSuchFile, FileExists,
                            TransportNotPossible,
                            ConnectionError,
                            DependencyNotPresent,
                            )
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import (_get_protocol_handlers,
                               _get_transport_modules,
                               get_transport,
@@ -213,6 +214,65 @@ class ReadonlyDecoratorTransportTest(TestCase):
             self.assertEqual(True, transport.is_readonly())
         finally:
             server.tearDown()
+
+
+class FakeNFSDecoratorTests(TestCaseInTempDir):
+    """NFS decorator specific tests."""
+
+    def get_nfs_transport(self, url):
+        import bzrlib.transport.fakenfs as fakenfs
+        # connect to url with nfs decoration
+        return fakenfs.FakeNFSTransportDecorator('fakenfs+' + url)
+
+    def test_local_parameters(self):
+        # the listable, should_cache and is_readonly parameters
+        # are not changed by the fakenfs decorator
+        transport = self.get_nfs_transport('.')
+        self.assertEqual(True, transport.listable())
+        self.assertEqual(False, transport.should_cache())
+        self.assertEqual(False, transport.is_readonly())
+
+    def test_http_parameters(self):
+        # the listable, should_cache and is_readonly parameters
+        # are not changed by the fakenfs decorator
+        from bzrlib.transport.http import HttpServer
+        # connect to . via http which is not listable
+        server = HttpServer()
+        server.setUp()
+        try:
+            transport = self.get_nfs_transport(server.get_url())
+            self.assertIsInstance(
+                transport, bzrlib.transport.fakenfs.FakeNFSTransportDecorator)
+            self.assertEqual(False, transport.listable())
+            self.assertEqual(True, transport.should_cache())
+            self.assertEqual(True, transport.is_readonly())
+        finally:
+            server.tearDown()
+
+    def test_fakenfs_server_default(self):
+        # a FakeNFSServer() should bring up a local relpath server for itself
+        import bzrlib.transport.fakenfs as fakenfs
+        server = fakenfs.FakeNFSServer()
+        server.setUp()
+        try:
+            # the server should be a relpath localhost server
+            self.assertEqual(server.get_url(), 'fakenfs+.')
+            # and we should be able to get a transport for it
+            transport = get_transport(server.get_url())
+            # which must be a FakeNFSTransportDecorator instance.
+            self.assertIsInstance(
+                transport, fakenfs.FakeNFSTransportDecorator)
+        finally:
+            server.tearDown()
+
+    def test_fakenfs_rename_semantics(self):
+        # a FakeNFS transport must mangle the way rename errors occur to
+        # look like NFS problems.
+        transport = self.get_nfs_transport('.')
+        self.build_tree(['from/', 'from/foo', 'to/', 'to/bar'],
+                        transport=transport)
+        self.assertRaises(bzrlib.errors.ResourceBusy,
+                          transport.rename, 'from', 'to')
 
 
 class BadTransportHandler(Transport):

@@ -30,6 +30,7 @@ WorkingTree.open(dir).
 """
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
+CONFLICT_HEADER_1 = "BZR conflict list format 1"
 
 # TODO: Give the workingtree sole responsibility for the working inventory;
 # remove the variable and references to it from the branch.  This may require
@@ -49,17 +50,21 @@ import stat
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import (Branch,
                            quotefn)
+from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
+                           ConflictFormatError,
                            DivergedBranches,
                            WeaveRevisionNotPresent,
                            NotBranchError,
                            NoSuchFile,
                            NotVersionedError,
-                           MergeModifiedFormatError)
+                           MergeModifiedFormatError,
+                           UnsupportedOperation,
+                           )
 from bzrlib.inventory import InventoryEntry, Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
@@ -84,7 +89,7 @@ from bzrlib.osutils import (
                             )
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import NULL_REVISION
-from bzrlib.rio import RioReader, RioWriter, Stanza
+from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
@@ -234,7 +239,8 @@ class WorkingTree(bzrlib.tree.Tree):
         if deprecated_passed(branch):
             if not _internal:
                 warn("WorkingTree(..., branch=XXX) is deprecated as of bzr 0.8."
-                     " Please use bzrdir.open_workingtree() or WorkingTree.open().",
+                     " Please use bzrdir.open_workingtree() or"
+                     " WorkingTree.open().",
                      DeprecationWarning,
                      stacklevel=2
                      )
@@ -350,12 +356,14 @@ class WorkingTree(bzrlib.tree.Tree):
         revision_id = self.last_revision()
         if revision_id is not None:
             try:
-                xml = self.read_basis_inventory(revision_id)
+                xml = self.read_basis_inventory()
                 inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
+            except NoSuchFile:
+                inv = None
+            if inv is not None and inv.revision_id == revision_id:
                 return bzrlib.tree.RevisionTree(self.branch.repository, inv,
                                                 revision_id)
-            except NoSuchFile:
-                pass
+        # FIXME? RBC 20060403 should we cache the inventory here ?
         return self.branch.repository.revision_tree(revision_id)
 
     @staticmethod
@@ -605,14 +613,15 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_write_lock
     def set_merge_modified(self, modified_hashes):
-        my_file = StringIO()
-        my_file.write(MERGE_MODIFIED_HEADER_1 + '\n')
-        writer = RioWriter(my_file)
-        for file_id, hash in modified_hashes.iteritems():
-            s = Stanza(file_id=file_id, hash=hash)
-            writer.write_stanza(s)
-        my_file.seek(0)
-        self._control_files.put('merge-hashes', my_file)
+        def iter_stanzas():
+            for file_id, hash in modified_hashes.iteritems():
+                yield Stanza(file_id=file_id, hash=hash)
+        self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
+
+    @needs_write_lock
+    def _put_rio(self, filename, stanzas, header):
+        my_file = rio_file(stanzas, header)
+        self._control_files.put(filename, my_file)
 
     @needs_read_lock
     def merge_modified(self):
@@ -859,7 +868,13 @@ class WorkingTree(bzrlib.tree.Tree):
             if not self.is_ignored(subp):
                 yield subp
 
+    @deprecated_method(zero_eight)
     def iter_conflicts(self):
+        """List all files in the tree that have text or content conflicts.
+        DEPRECATED.  Use conflicts instead."""
+        return self._iter_conflicts()
+
+    def _iter_conflicts(self):
         conflicted = set()
         for path in (s[0] for s in self.list_files()):
             stem = get_conflicted_stem(path)
@@ -1024,18 +1039,21 @@ class WorkingTree(bzrlib.tree.Tree):
             self.branch.unlock()
             raise
 
-    def _basis_inventory_name(self, revision_id):
-        return 'basis-inventory.%s' % revision_id
+    def _basis_inventory_name(self):
+        return 'basis-inventory'
 
     @needs_write_lock
-    def set_last_revision(self, new_revision, old_revision=None):
+    def set_last_revision(self, new_revision):
         """Change the last revision in the working tree."""
-        self._remove_old_basis(old_revision)
         if self._change_last_revision(new_revision):
             self._cache_basis_inventory(new_revision)
 
     def _change_last_revision(self, new_revision):
-        """Template method part of set_last_revision to perform the change."""
+        """Template method part of set_last_revision to perform the change.
+        
+        This is used to allow WorkingTree3 instances to not affect branch
+        when their last revision is set.
+        """
         if new_revision is None:
             self.branch.set_revision_history([])
             return False
@@ -1051,25 +1069,23 @@ class WorkingTree(bzrlib.tree.Tree):
     def _cache_basis_inventory(self, new_revision):
         """Cache new_revision as the basis inventory."""
         try:
-            xml = self.branch.repository.get_inventory_xml(new_revision)
-            path = self._basis_inventory_name(new_revision)
+            # this double handles the inventory - unpack and repack - 
+            # but is easier to understand. We can/should put a conditional
+            # in here based on whether the inventory is in the latest format
+            # - perhaps we should repack all inventories on a repository
+            # upgrade ?
+            inv = self.branch.repository.get_inventory(new_revision)
+            inv.revision_id = new_revision
+            xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
+
+            path = self._basis_inventory_name()
             self._control_files.put_utf8(path, xml)
         except WeaveRevisionNotPresent:
             pass
 
-    def _remove_old_basis(self, old_revision):
-        """Remove the old basis inventory 'old_revision'."""
-        if old_revision is not None:
-            try:
-                path = self._basis_inventory_name(old_revision)
-                path = self._control_files._escape(path)
-                self._control_files._transport.delete(path)
-            except NoSuchFile:
-                pass
-
-    def read_basis_inventory(self, revision_id):
+    def read_basis_inventory(self):
         """Read the cached basis inventory."""
-        path = self._basis_inventory_name(revision_id)
+        path = self._basis_inventory_name()
         return self._control_files.get_utf8(path).read()
         
     @needs_read_lock
@@ -1127,11 +1143,16 @@ class WorkingTree(bzrlib.tree.Tree):
     def revert(self, filenames, old_tree=None, backups=True, 
                pb=DummyProgress()):
         from transform import revert
+        from conflicts import resolve
         if old_tree is None:
             old_tree = self.basis_tree()
-        revert(self, old_tree, filenames, backups, pb)
+        conflicts = revert(self, old_tree, filenames, backups, pb)
         if not len(filenames):
             self.set_pending_merges([])
+            resolve(self)
+        else:
+            resolve(self, filenames, ignore_misses=True)
+        return conflicts
 
     @needs_write_lock
     def set_inventory(self, new_inventory_list):
@@ -1269,6 +1290,40 @@ class WorkingTree(bzrlib.tree.Tree):
         self._set_inventory(inv)
         mutter('wrote working inventory')
 
+    def set_conflicts(self, arg):
+        raise UnsupportedOperation(self.set_conflicts, self)
+
+    @needs_read_lock
+    def conflicts(self):
+        conflicts = ConflictList()
+        for conflicted in self._iter_conflicts():
+            text = True
+            try:
+                if file_kind(self.abspath(conflicted)) != "file":
+                    text = False
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    text = False
+                else:
+                    raise
+            if text is True:
+                for suffix in ('.THIS', '.OTHER'):
+                    try:
+                        kind = file_kind(self.abspath(conflicted+suffix))
+                    except OSError, e:
+                        if e.errno == errno.ENOENT:
+                            text = False
+                            break
+                        else:
+                            raise
+                    if kind != "file":
+                        text = False
+                        break
+            ctype = {True: 'text conflict', False: 'contents conflict'}[text]
+            conflicts.append(Conflict.factory(ctype, path=conflicted,
+                             file_id=self.path2id(conflicted)))
+        return conflicts
+
 
 class WorkingTree3(WorkingTree):
     """This is the Format 3 working tree.
@@ -1304,8 +1359,25 @@ class WorkingTree3(WorkingTree):
             self._control_files.put_utf8('last-revision', revision_id)
             return True
 
+    @needs_write_lock
+    def set_conflicts(self, conflicts):
+        self._put_rio('conflicts', conflicts.to_stanzas(), 
+                      CONFLICT_HEADER_1)
 
-CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
+    @needs_read_lock
+    def conflicts(self):
+        try:
+            confile = self._control_files.get('conflicts')
+        except NoSuchFile:
+            return ConflictList()
+        try:
+            if confile.next() != CONFLICT_HEADER_1 + '\n':
+                raise ConflictFormatError()
+        except StopIteration:
+            raise ConflictFormatError()
+        return ConflictList.from_stanzas(RioReader(confile))
+
+
 def get_conflicted_stem(path):
     for suffix in CONFLICT_SUFFIXES:
         if path.endswith(suffix):

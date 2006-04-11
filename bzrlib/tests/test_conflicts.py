@@ -17,13 +17,27 @@
 
 import os
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.branch import Branch
-from bzrlib.conflicts import restore
+from bzrlib.conflicts import *
 from bzrlib.errors import NotConflicted
+
 
 # TODO: Test commit with some added, and added-but-missing files
 # RBC 20060124 is that not tested in test_commit.py ?
+
+example_conflicts = ConflictList([ 
+    ContentsConflict('patha', 'ida'), 
+    TextConflict('patha'),
+    PathConflict('pathb', 'pathc', 'idb'),
+    DuplicateID('Unversioned existing file', 'pathc', 'pathc2', 'idc', 'idc'),
+    DuplicateEntry('Moved existing file to',  'pathdd.moved', 'pathd', 'idd', 
+                   None),
+    ParentLoop('Cancelled move', 'pathe', 'path2e', None, 'id2e'),
+    UnversionedParent('Versioned directory', 'pathf', 'idf'),
+    MissingParent('Not deleting', 'pathg', 'idg'),
+])
+
 
 class TestConflicts(TestCaseWithTransport):
 
@@ -38,14 +52,35 @@ class TestConflicts(TestCaseWithTransport):
         file('hello.sploo.BASE', 'w').write('yellow world')
         file('hello.sploo.OTHER', 'w').write('yellow world2')
         self.assertEqual(len(list(tree.list_files())), 6)
-        conflicts = list(tree.iter_conflicts())
+        conflicts = tree.conflicts()
         self.assertEqual(len(conflicts), 2)
-        self.assert_('hello' in conflicts)
-        self.assert_('hello.sploo' in conflicts)
+        self.assert_('hello' in conflicts[0].path)
+        self.assert_('hello.sploo' in conflicts[1].path)
         restore('hello')
         restore('hello.sploo')
-        self.assertEqual(len(list(tree.iter_conflicts())), 0)
+        self.assertEqual(len(tree.conflicts()), 0)
         self.assertFileEqual('hello world2', 'hello')
         assert not os.path.lexists('hello.sploo')
         self.assertRaises(NotConflicted, restore, 'hello')
         self.assertRaises(NotConflicted, restore, 'hello.sploo')
+
+
+class TestConflictStanzas(TestCase):
+    def test_stanza_roundtrip(self):
+        stanza_iter = example_conflicts.to_stanzas()
+        processed = ConflictList.from_stanzas(stanza_iter)
+        for o,p in zip(processed, example_conflicts):
+            self.assertEqual(o, p)
+
+    def test_stanzification(self):
+        for stanza in example_conflicts.to_stanzas():
+            try:
+                self.assertStartsWith(stanza['file_id'], 'id')
+            except KeyError:
+                pass
+            self.assertStartsWith(stanza['path'], 'path')
+            try:
+                self.assertStartsWith(stanza['conflict_file_id'], 'id')
+                self.assertStartsWith(stanza['conflict_file_path'], 'path')
+            except KeyError:
+                pass

@@ -433,6 +433,9 @@ class ChildProgress(_BaseProgressBar):
     def clear(self):
         pass
 
+    def note(self, *args, **kwargs):
+        self.parent.note(*args, **kwargs)
+
  
 def str_tdelta(delt):
     if delt is None:

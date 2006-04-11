@@ -136,7 +136,12 @@ def show_tree_status(wt, show_unchanged=False,
 
         if new_is_working_tree:
             list_paths('unknown', new.unknowns(), specific_files, to_file)
-            list_paths('conflicts', new.iter_conflicts(), specific_files, to_file)
+            conflict_title = False
+            for conflict in wt.conflicts():
+                if conflict_title is False:
+                    print >> to_file, "conflicts:"
+                    conflict_title = True
+                print >> to_file, "  %s" % conflict
         if new_is_working_tree and show_pending:
             show_pending_merges(new, to_file)
     finally:

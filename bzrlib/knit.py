@@ -66,16 +66,16 @@ in the deltas to provide line annotation
 from copy import copy
 from cStringIO import StringIO
 import difflib
-import gzip
 from itertools import izip, chain
 import os
-
+import sys
 
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
         InvalidRevisionId, KnitCorrupt, KnitHeaderError, \
         RevisionNotPresent, RevisionAlreadyPresent
+from bzrlib.tuned_gzip import *
 from bzrlib.trace import mutter
 from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
      sha_strings
@@ -161,6 +161,10 @@ class KnitAnnotateFactory(_KnitFactory):
         return KnitContent(lines)
 
     def parse_line_delta_iter(self, lines):
+        for result_item in self.parse_line_delta[lines]:
+            yield result_item
+
+    def parse_line_delta(self, lines, version):
         """Convert a line based delta into internal representation.
 
         line delta is in the form of:
@@ -170,17 +174,20 @@ class KnitAnnotateFactory(_KnitFactory):
         internal represnetation is
         (start, end, count, [1..count tuples (revid, newline)])
         """
-        while lines:
-            header = lines.pop(0)
-            start, end, c = [int(n) for n in header.split(',')]
+        result = []
+        lines = iter(lines)
+        next = lines.next
+        # walk through the lines parsing.
+        for header in lines:
+            start, end, count = [int(n) for n in header.split(',')]
             contents = []
-            for i in range(c):
-                origin, text = lines.pop(0).split(' ', 1)
+            remaining = count
+            while remaining:
+                origin, text = next().split(' ', 1)
+                remaining -= 1
                 contents.append((origin.decode('utf-8'), text))
-            yield start, end, c, contents
-
-    def parse_line_delta(self, lines, version):
-        return list(self.parse_line_delta_iter(lines))
+            result.append((start, end, count, contents))
+        return result
 
     def lower_fulltext(self, content):
         """convert a fulltext content record into a serializable form.
@@ -192,7 +199,7 @@ class KnitAnnotateFactory(_KnitFactory):
     def lower_line_delta(self, delta):
         """convert a delta into a serializable form.
 
-        See parse_line_delta_iter which this inverts.
+        See parse_line_delta which this inverts.
         """
         out = []
         for start, end, c, lines in delta:
@@ -487,6 +494,12 @@ class KnitVersionedFile(VersionedFile):
         The basis knit will be used to the largest extent possible
         since it is assumed that accesses to it is faster.
         """
+        #profile notes:
+        # 4168 calls in 14912, 2289 internal
+        # 4168 in 9711 to read_records
+        # 52554 in 1250 to get_parents
+        # 170166 in 865 to list.append
+        
         # needed_revisions holds a list of (method, version_id) of
         # versions that is needed to be fetched to construct the final
         # version of the file.
@@ -749,13 +762,20 @@ class KnitVersionedFile(VersionedFile):
 
     def get_parents(self, version_id):
         """See VersionedFile.get_parents."""
-        self._check_versions_present([version_id])
-        return list(self._index.get_parents(version_id))
+        # perf notes:
+        # optimism counts!
+        # 52554 calls in 1264 872 internal down from 3674
+        try:
+            return self._index.get_parents(version_id)
+        except KeyError:
+            raise RevisionNotPresent(version_id, self.filename)
 
     def get_parents_with_ghosts(self, version_id):
         """See VersionedFile.get_parents."""
-        self._check_versions_present([version_id])
-        return list(self._index.get_parents_with_ghosts(version_id))
+        try:
+            return self._index.get_parents_with_ghosts(version_id)
+        except KeyError:
+            raise RevisionNotPresent(version_id, self.filename)
 
     def get_ancestry(self, versions):
         """See VersionedFile.get_ancestry."""
@@ -860,8 +880,16 @@ class _KnitIndex(_KnitComponentFile):
         # only want the _history index to reference the 1st index entry
         # for version_id
         if version_id not in self._cache:
+            index = len(self._history)
             self._history.append(version_id)
-        self._cache[version_id] = (version_id, options, pos, size, parents)
+        else:
+            index = self._cache[version_id][5]
+        self._cache[version_id] = (version_id, 
+                                   options,
+                                   pos,
+                                   size,
+                                   parents,
+                                   index)
 
     def __init__(self, transport, filename, mode, create=False):
         _KnitComponentFile.__init__(self, transport, filename, mode)
@@ -916,12 +944,16 @@ class _KnitIndex(_KnitComponentFile):
                     # index entry for version_id
                     version_id = rec[0]
                     if version_id not in self._cache:
+                        index = len(self._history)
                         self._history.append(version_id)
+                    else:
+                        index = self._cache[version_id][5]
                     self._cache[version_id] = (version_id,
                                                rec[1].split(','),
                                                int(rec[2]),
                                                int(rec[3]),
-                                               parents)
+                                               parents,
+                                               index)
                     # --- self._cache_version 
             except NoSuchFile, e:
                 if mode != 'w' or not create:
@@ -1012,13 +1044,15 @@ class _KnitIndex(_KnitComponentFile):
 
     def lookup(self, version_id):
         assert version_id in self._cache
-        return self._history.index(version_id)
+        return self._cache[version_id][5]
 
     def _version_list_to_index(self, versions):
         result_list = []
         for version in versions:
             if version in self._cache:
-                result_list.append(str(self._history.index(version)))
+                # -- inlined lookup() --
+                result_list.append(str(self._cache[version][5]))
+                # -- end lookup () --
             else:
                 result_list.append('.' + version.encode('utf-8'))
         return ' '.join(result_list)
@@ -1112,7 +1146,7 @@ class _KnitData(_KnitComponentFile):
                                      len(lines),
                                      digest)],
             lines,
-            ["end %s\n\n" % version_id.encode('utf-8')]))
+            ["end %s\n" % version_id.encode('utf-8')]))
         data_file.close()
         length= sio.tell()
 
@@ -1152,22 +1186,19 @@ class _KnitData(_KnitComponentFile):
         return df, rec
 
     def _parse_record(self, version_id, data):
+        # profiling notes:
+        # 4168 calls in 2880 217 internal
+        # 4168 calls to _parse_record_header in 2121
+        # 4168 calls to readlines in 330
         df, rec = self._parse_record_header(version_id, data)
-        lines = int(rec[2])
-        record_contents = self._read_record_contents(df, lines)
-        l = df.readline()
+        record_contents = df.readlines()
+        l = record_contents.pop()
+        assert len(record_contents) == int(rec[2])
         if l.decode('utf-8') != 'end %s\n' % version_id:
             raise KnitCorrupt(self._filename, 'unexpected version end line %r, wanted %r' 
                         % (l, version_id))
         df.close()
         return record_contents, rec[3]
-
-    def _read_record_contents(self, df, record_lines):
-        """Read and return n lines from datafile."""
-        r = []
-        for i in range(record_lines):
-            r.append(df.readline())
-        return r
 
     def read_records_iter_raw(self, records):
         """Read text records from data file and yield raw data.
@@ -1212,6 +1243,10 @@ class _KnitData(_KnitComponentFile):
         will be read in the given order.  Yields (version_id,
         contents, digest).
         """
+        # profiling notes:
+        # 60890  calls for 4168 extractions in 5045, 683 internal.
+        # 4168   calls to readv              in 1411
+        # 4168   calls to parse_record       in 2880
 
         needed_records = []
         for version_id, pos, size in records:
@@ -1229,7 +1264,7 @@ class _KnitData(_KnitComponentFile):
                 self._records[record_id] = (digest, content)
     
         for version_id, pos, size in records:
-            yield version_id, copy(self._records[version_id][1]), copy(self._records[version_id][0])
+            yield version_id, list(self._records[version_id][1]), self._records[version_id][0]
 
     def read_records(self, records):
         """Read records into a dictionary."""
@@ -1361,53 +1396,6 @@ class InterKnit(InterVersionedFile):
 
 
 InterVersionedFile.register_optimiser(InterKnit)
-
-
-# make GzipFile faster:
-import zlib
-class GzipFile(gzip.GzipFile):
-    """Knit tuned version of GzipFile.
-
-    This is based on the following lsprof stats:
-    python 2.4 stock GzipFile write:
-    58971      0   5644.3090   2721.4730   gzip:193(write)
-    +58971     0   1159.5530   1159.5530   +<built-in method compress>
-    +176913    0    987.0320    987.0320   +<len>
-    +58971     0    423.1450    423.1450   +<zlib.crc32>
-    +58971     0    353.1060    353.1060   +<method 'write' of 'cStringIO.
-                                            StringO' objects>
-    tuned GzipFile write:
-    58971      0   4477.2590   2103.1120   bzrlib.knit:1250(write)
-    +58971     0   1297.7620   1297.7620   +<built-in method compress>
-    +58971     0    406.2160    406.2160   +<zlib.crc32>
-    +58971     0    341.9020    341.9020   +<method 'write' of 'cStringIO.
-                                            StringO' objects>
-    +58971     0    328.2670    328.2670   +<len>
-
-
-    Yes, its only 1.6 seconds, but they add up.
-    """
-
-    def write(self, data):
-        if self.mode != gzip.WRITE:
-            import errno
-            raise IOError(errno.EBADF, "write() on read-only GzipFile object")
-
-        if self.fileobj is None:
-            raise ValueError, "write() on closed GzipFile object"
-        data_len = len(data)
-        if data_len > 0:
-            self.size = self.size + data_len
-            self.crc = zlib.crc32(data, self.crc)
-            self.fileobj.write( self.compress.compress(data) )
-            self.offset += data_len
-
-    def writelines(self, lines):
-        # profiling indicated a significant overhead 
-        # calling write for each line.
-        # this batch call is a lot faster :).
-        # (4 seconds to 1 seconds for the sample upgrades I was testing).
-        self.write(''.join(lines))
 
 
 class SequenceMatcher(difflib.SequenceMatcher):
