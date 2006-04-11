@@ -88,7 +88,7 @@ class TestEscaped(TestCaseWithTransport):
         weave_store = WeaveStore(t, prefixed=True, escaped=True)
         def add_text(file_id, rev_id, contents, parents, transaction):
             vfile = weave_store.get_weave_or_empty(file_id, transaction)
-            vfile.add_lines(rev_id, parents, new_lines)
+            vfile.add_lines(rev_id, parents, contents)
 
         add_text('a', 'r', ['a'], [], trans)
         self.failUnlessExists('62/a.weave')
