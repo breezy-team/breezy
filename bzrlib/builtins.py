@@ -750,11 +750,13 @@ class cmd_update(Command):
 class cmd_info(Command):
     """Show statistical information about a branch."""
     takes_args = ['branch?']
+    takes_options = ['verbose']
     
     @display_command
-    def run(self, branch=None):
+    def run(self, branch=None, verbose=False):
         import bzrlib.info
-        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0])
+        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0],
+                                     verbose=verbose)
 
 
 class cmd_remove(Command):

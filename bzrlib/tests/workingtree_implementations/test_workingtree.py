@@ -574,3 +574,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(len(tree.conflicts()), 1)
         tree.revert([])
         self.assertEqual(len(tree.conflicts()), 0)
+
+    def test_format_description(self):
+        tree = self.make_branch_and_tree('tree')
+        text = tree._format.get_format_description()
+        self.failUnless(len(text))
