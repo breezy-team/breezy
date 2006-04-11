@@ -875,7 +875,7 @@ class cmd_init(Command):
                      Option('format', 
                             help='Create a specific format rather than the'
                                  ' current default format. Currently this '
-                                 ' option only accepts =metadir',
+                                 ' option only accepts "metadir"',
                             type=get_format_type),
                      ]
     def run(self, location=None, format=None):
@@ -1587,7 +1587,7 @@ class cmd_upgrade(Command):
                      Option('format', 
                             help='Upgrade to a specific format rather than the'
                                  ' current default format. Currently this'
-                                 ' option only accepts -metadir and -knit'
+                                 ' option only accepts "metadir" and "knit".'
                                  ' WARNING: the knit format is currently'
                                  ' unstable and only for experimental use.',
                             type=get_format_type),
