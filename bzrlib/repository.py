@@ -228,20 +228,6 @@ class Repository(object):
         self.copy_content_into(result, revision_id, basis)
         return result
 
-    # XXX: Is this actually called?
-    @needs_read_lock
-    def copy(self, destination):
-        raise NotImplementedError("Repository.copy() no longer required?")
-        destination.lock_write()
-        try:
-            copy_all(self.weave_store, destination.weave_store)
-            note('copying inventories')
-            destination.control_weaves.copy_multi(self.control_weaves,
-                ['inventory'])
-            copy_all(self.revision_store, destination.revision_store)
-        finally:
-            destination.unlock()
-
     @needs_read_lock
     def has_revision(self, revision_id):
         """True if this repository has a copy of the revision."""
