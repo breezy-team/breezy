@@ -870,6 +870,10 @@ class BzrDirFormat(object):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
 
+    def get_format_description(self):
+        """Return the short description for this format."""
+        raise NotImplementedError(self.get_format_description)
+
     def get_converter(self, format=None):
         """Return the converter to use to convert bzrdirs needing converts.
 
@@ -977,6 +981,10 @@ class BzrDirFormat4(BzrDirFormat):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 0.0.4\n"
 
+    def get_format_description(self):
+        """See BzrDirFormat.get_format_description()."""
+        return "All-in-one format 4"
+
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
         # there is one and only one upgrade path here.
@@ -1022,6 +1030,10 @@ class BzrDirFormat5(BzrDirFormat):
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
+
+    def get_format_description(self):
+        """See BzrDirFormat.get_format_description()."""
+        return "All-in-one format 5"
 
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
@@ -1069,6 +1081,10 @@ class BzrDirFormat6(BzrDirFormat):
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 6\n"
+
+    def get_format_description(self):
+        """See BzrDirFormat.get_format_description()."""
+        return "All-in-one format 6"
 
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
@@ -1131,6 +1147,10 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG meta directory, format 1\n"
+
+    def get_format_description(self):
+        """See BzrDirFormat.get_format_description()."""
+        return "Meta directory format 1"
 
     def _open(self, transport):
         """See BzrDirFormat._open."""

@@ -1080,6 +1080,11 @@ class TestBzrDir(TestCaseWithBzrDir):
             # and it should pass 'check' now.
             check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)
 
+    def test_format_description(self):
+        dir = self.make_bzrdir('.')
+        text = dir._format.get_format_description()
+        self.failUnless(len(text))
+
 
 class ChrootedBzrDirTests(ChrootedTestCase):
 

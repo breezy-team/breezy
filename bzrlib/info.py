@@ -22,6 +22,8 @@ import time
 
 
 import bzrlib.diff as diff
+from bzrlib.errors import (NoWorkingTree, NotBranchError,
+                           NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
 from bzrlib.osutils import format_date
 from bzrlib.symbol_versioning import *
@@ -44,66 +46,88 @@ def plural(n, base='', pl=None):
         return 's'
 
 
-@deprecated_function(zero_eight)
-def show_info(b):
-    """Please see show_bzrdir_info."""
-    return show_bzrdir_info(b.bzrdir)
+def _show_location_info(repository=None, branch=None, working=None):
+    """Show known locations for working, branch and repository."""
+    print 'Location:'
+    if working and branch and working.bzrdir != branch.bzrdir:
+        # Lightweight checkout
+        print '       checkout root: %s' % (
+            working.bzrdir.root_transport.base)
+        print '  checkout of branch: %s' % (
+            branch.bzrdir.root_transport.base)
+    elif branch:
+        # Standalone or bound branch (normal checkout)
+        print '         branch root: %s' % (
+            branch.bzrdir.root_transport.base)
+        if branch.get_bound_location():
+            print '     bound to branch: %s' % branch.get_bound_location()
+
+    if repository and (not branch or repository.bzrdir != branch.bzrdir):
+        if repository.is_shared():
+            print '   shared repository: %s' % (
+                repository.bzrdir.root_transport.base)
+        else:
+            print '          repository: %s' % (
+                repository.bzrdir.root_transport.base)
+
+    if branch:
+        if branch.get_parent():
+            print '       parent branch: %s' % branch.get_parent()
+        if branch.get_push_location():
+            print '      push to branch: %s' % branch.get_push_location()
 
 
-def show_bzrdir_info(a_bzrdir):
-    """Output to stdout the 'info' for a_bzrdir."""
-
-    working = a_bzrdir.open_workingtree()
-    working.lock_read()
-    try:
-        show_tree_info(working)
-    finally:
-        working.unlock()
-
-
-def show_tree_info(working):
-    """Output to stdout the 'info' for working."""
-
-    b = working.branch
-    
-    if working.bzrdir != b.bzrdir:
-        print 'working tree format:', working._format
-        print 'branch location:', b.bzrdir.root_transport.base
-    try:
-        b._format.get_format_string()
-        format = b._format
-    except NotImplementedError:
-        format = b.bzrdir._format
-    print 'branch format:', format
-
-    if b.get_bound_location():
-        print 'bound to branch:',  b.get_bound_location()
-
-    count_version_dirs = 0
-
-    basis = working.basis_tree()
-    work_inv = working.inventory
-    delta = diff.compare_trees(basis, working, want_unchanged=True)
-    history = b.revision_history()
-    
+def _show_format_info(control=None, repository=None, branch=None, working=None):
+    """Show known formats for control, working, branch and repository."""
     print
+    print 'Format:'
+    if control:
+        print '       control: %s' % control._format.get_format_description()
+    if working:
+        print '  working tree: %s' % working._format.get_format_description()
+    if branch:
+        print '        branch: %s' % branch._format.get_format_description()
+    if repository:
+        print '    repository: %s' % repository._format.get_format_description()
+
+
+def _show_missing_revisions_branch(branch):
+    """Show missing master revisions in branch."""
     # Try with inaccessible branch ?
-    master = b.get_master_branch()
+    master = branch.get_master_branch()
     if master:
-        local_extra, remote_extra = find_unmerged(b, b.get_master_branch())
+        local_extra, remote_extra = find_unmerged(branch, master)
         if remote_extra:
+            print
             print 'Branch is out of date: missing %d revision%s.' % (
                 len(remote_extra), plural(len(remote_extra)))
 
-    if len(history) and working.last_revision() != history[-1]:
-        try:
-            missing_count = len(history) - history.index(working.last_revision())
-        except ValueError:
-            # consider it all out of date
-            missing_count = len(history)
+
+def _show_missing_revisions_working(working):
+    """Show missing revisions in working tree."""
+    branch = working.branch
+    basis = working.basis_tree()
+    work_inv = working.inventory
+    delta = diff.compare_trees(basis, working, want_unchanged=True)
+    history = branch.revision_history()
+    tree_last_id = working.last_revision()
+
+    if len(history) and tree_last_id != history[-1]:
+        tree_last_revno = branch.revision_id_to_revno(tree_last_id)
+        missing_count = len(history) - tree_last_revno
+        print
         print 'Working tree is out of date: missing %d revision%s.' % (
             missing_count, plural(missing_count))
-    print 'in the working tree:'
+
+
+def _show_working_stats(working):
+    """Show statistics about a working tree."""
+    basis = working.basis_tree()
+    work_inv = working.inventory
+    delta = diff.compare_trees(basis, working, want_unchanged=True)
+
+    print
+    print 'In the working tree:'
     print '  %8s unchanged' % len(delta.unchanged)
     print '  %8d modified' % len(delta.modified)
     print '  %8d added' % len(delta.added)
@@ -116,7 +140,6 @@ def show_tree_info(working):
             ignore_cnt += 1
         else:
             unknown_cnt += 1
-
     print '  %8d unknown' % unknown_cnt
     print '  %8d ignored' % ignore_cnt
 
@@ -128,47 +151,139 @@ def show_tree_info(working):
           % (dir_cnt,
              plural(dir_cnt, 'subdirectory', 'subdirectories'))
 
+
+def _show_branch_stats(branch, verbose):
+    """Show statistics about a branch."""
+    repository = branch.repository
+    history = branch.revision_history()
+
     print
-    print 'branch history:'
+    print 'Branch history:'
     revno = len(history)
     print '  %8d revision%s' % (revno, plural(revno))
-    committers = {}
-    for rev in history:
-        committers[b.repository.get_revision(rev).committer] = True
-    print '  %8d committer%s' % (len(committers), plural(len(committers)))
+    if verbose:
+        committers = {}
+        for rev in history:
+            committers[repository.get_revision(rev).committer] = True
+        print '  %8d committer%s' % (len(committers), plural(len(committers)))
     if revno > 0:
-        firstrev = b.repository.get_revision(history[0])
+        firstrev = repository.get_revision(history[0])
         age = int((time.time() - firstrev.timestamp) / 3600 / 24)
         print '  %8d day%s old' % (age, plural(age))
         print '   first revision: %s' % format_date(firstrev.timestamp,
                                                     firstrev.timezone)
 
-        lastrev = b.repository.get_revision(history[-1])
+        lastrev = repository.get_revision(history[-1])
         print '  latest revision: %s' % format_date(lastrev.timestamp,
                                                     lastrev.timezone)
 
 #     print
-#     print 'text store:'
-#     c, t = b.text_store.total_size()
+#     print 'Text store:'
+#     c, t = branch.text_store.total_size()
 #     print '  %8d file texts' % c
-#     print '  %8d kB' % (t/1024)
-
-    print
-    print 'revision store:'
-    c, t = b.repository._revision_store.total_size(b.repository.get_transaction())
-    print '  %8d revision%s' % (c, plural(c))
-    print '  %8d kB' % (t/1024)
-
+#     print '  %8d KiB' % (t/1024)
 
 #     print
-#     print 'inventory store:'
-#     c, t = b.inventory_store.total_size()
+#     print 'Inventory store:'
+#     c, t = branch.inventory_store.total_size()
 #     print '  %8d inventories' % c
-#     print '  %8d kB' % (t/1024)
+#     print '  %8d KiB' % (t/1024)
 
-    loc = b.get_parent()
-    if loc is not None:
+
+def _show_repository_info(repository):
+    """Show settings of a repository."""
+    if repository.make_working_trees():
         print
-        print 'parent location:'
-        print '  %s' % loc
+        print 'Create working tree for new branches inside the repository.'
 
+
+def _show_repository_stats(repository):
+    """Show statistics about a repository."""
+    if repository.bzrdir.root_transport.listable():
+        print
+        print 'Revision store:'
+        c, t = repository._revision_store.total_size(repository.get_transaction())
+        print '  %8d revision%s' % (c, plural(c))
+        print '  %8d KiB' % (t/1024)
+
+
+@deprecated_function(zero_eight)
+def show_info(b):
+    """Please see show_bzrdir_info."""
+    return show_bzrdir_info(b.bzrdir)
+
+
+def show_bzrdir_info(a_bzrdir, verbose=False):
+    """Output to stdout the 'info' for a_bzrdir."""
+    try:
+        working = a_bzrdir.open_workingtree()
+        working.lock_read()
+        try:
+            show_tree_info(working, verbose)
+        finally:
+            working.unlock()
+        return
+    except (NoWorkingTree, NotLocalUrl):
+        pass
+
+    try:
+        branch = a_bzrdir.open_branch()
+        branch.lock_read()
+        try:
+            show_branch_info(branch, verbose)
+        finally:
+            branch.unlock()
+        return
+    except NotBranchError:
+        pass
+
+    try:
+        repository = a_bzrdir.open_repository()
+        repository.lock_read()
+        try:
+            show_repository_info(repository, verbose)
+        finally:
+            repository.unlock()
+        return
+    except NoRepositoryPresent:
+        pass
+
+    # Return silently, cmd_info returns NotBranchError if no bzrdir
+    # could be opened.
+
+
+def show_tree_info(working, verbose):
+    """Output to stdout the 'info' for working."""
+    branch = working.branch
+    repository = branch.repository
+    control = working.bzrdir
+
+    _show_location_info(repository, branch, working)
+    _show_format_info(control, repository, branch, working)
+    _show_missing_revisions_branch(branch)
+    _show_missing_revisions_working(working)
+    _show_working_stats(working)
+    _show_branch_stats(branch, verbose)
+    _show_repository_stats(repository)
+
+
+def show_branch_info(branch, verbose):
+    """Output to stdout the 'info' for branch."""
+    repository = branch.repository
+    control = branch.bzrdir
+
+    _show_location_info(repository, branch)
+    _show_format_info(control, repository, branch)
+    _show_missing_revisions_branch(branch)
+    _show_branch_stats(branch, verbose)
+    _show_repository_stats(repository)
+
+
+def show_repository_info(repository, verbose):
+    """Output to stdout the 'info' for branch."""
+    control = repository.bzrdir
+
+    _show_location_info(repository)
+    _show_format_info(control, repository)
+    _show_repository_info(repository)
+    _show_repository_stats(repository)
