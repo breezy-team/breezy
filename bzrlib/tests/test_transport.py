@@ -299,7 +299,6 @@ class FakeVFATDecoratorTests(TestCaseInTempDir):
         self.assertRaises(ValueError, transport.has, "<NU>")
 
 
-
 class BadTransportHandler(Transport):
     def __init__(self, base_url):
         raise DependencyNotPresent('some_lib', 'testing missing dependency')

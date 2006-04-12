@@ -24,7 +24,6 @@ import bzrlib.errors as errors
 from bzrlib.errors import LockError, ReadOnlyError
 from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.symbol_versioning import *
-from bzrlib.symbol_versioning import deprecated_method, zero_eight
 from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 
