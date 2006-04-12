@@ -981,14 +981,14 @@ def find_interesting(working_tree, target_tree, filenames):
     else:
         interesting_ids = set()
         for tree_path in filenames:
+            not_found = True
             for tree in (working_tree, target_tree):
-                not_found = True
                 file_id = tree.inventory.path2id(tree_path)
                 if file_id is not None:
                     interesting_ids.add(file_id)
                     not_found = False
-                if not_found:
-                    raise NotVersionedError(path=tree_path)
+            if not_found:
+                raise NotVersionedError(path=tree_path)
     return interesting_ids
 
 

@@ -114,6 +114,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.check_file_contents('hello.txt.~1~', 'new hello')
         self.check_file_contents('hello.txt.~2~', 'new hello2')
 
+    def test_revert_missing(self):
+        # Revert a file that has been deleted since last commit
+        tree = self.make_branch_and_tree('.')
+        file('hello.txt', 'w').write('initial hello')
+        tree.add('hello.txt')
+        tree.commit('added hello.txt')
+        os.unlink('hello.txt')
+        tree.remove('hello.txt')
+        tree.revert(['hello.txt'])
+        self.failUnlessExists('hello.txt')
+
     def test_unknowns(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt',
