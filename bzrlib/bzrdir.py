@@ -556,7 +556,7 @@ class BzrDirPreSplitOut(BzrDir):
         """See BzrDir.clone()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
-        result = self._format.initialize(url, _cloning=True)
+        result = self._format._initialize_for_clone(url)
         basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
         self.open_repository().clone(result, revision_id=revision_id, basis=basis_repo)
         self.open_branch().clone(result, revision_id=revision_id)
@@ -644,7 +644,7 @@ class BzrDirPreSplitOut(BzrDir):
         """See BzrDir.sprout()."""
         from bzrlib.workingtree import WorkingTreeFormat2
         self._make_tail(url)
-        result = self._format.initialize(url, _cloning=True)
+        result = self._format._initialize_for_clone(url)
         basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
         try:
             self.open_repository().clone(result, revision_id=revision_id, basis=basis_repo)
@@ -884,16 +884,15 @@ class BzrDirFormat(object):
         """
         raise NotImplementedError(self.get_converter)
 
-    def initialize(self, url, _cloning=False):
+    def initialize(self, url):
         """Create a bzr control dir at this url and return an opened copy.
         
         Subclasses should typically override initialize_on_transport
         instead of this method.
         """
-        return self.initialize_on_transport(get_transport(url),
-                _cloning=_cloning)
+        return self.initialize_on_transport(get_transport(url))
 
-    def initialize_on_transport(self, transport, _cloning=False):
+    def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
         # Since we don'transport have a .bzr directory, inherit the
         # mode from the root directory
@@ -991,7 +990,7 @@ class BzrDirFormat4(BzrDirFormat):
         # there is one and only one upgrade path here.
         return ConvertBzrDir4To5()
         
-    def initialize_on_transport(self, transport, _cloning=False):
+    def initialize_on_transport(self, transport):
         """Format 4 branches cannot be created."""
         raise errors.UninitializableFormat(self)
 
@@ -1036,6 +1035,9 @@ class BzrDirFormat5(BzrDirFormat):
         """See BzrDirFormat.get_converter()."""
         # there is one and only one upgrade path here.
         return ConvertBzrDir5To6()
+
+    def _initialize_for_clone(self, url):
+        return self.initialize_on_transport(get_transport(url), _cloning=True)
         
     def initialize_on_transport(self, transport, _cloning=False):
         """Format 5 dirs always have working tree, branch and repository.
@@ -1045,8 +1047,7 @@ class BzrDirFormat5(BzrDirFormat):
         from bzrlib.branch import BzrBranchFormat4
         from bzrlib.repository import RepositoryFormat5
         from bzrlib.workingtree import WorkingTreeFormat2
-        result = (super(BzrDirFormat5, self)
-                  .initialize_on_transport(transport, _cloning))
+        result = (super(BzrDirFormat5, self).initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
         if not _cloning:
             BzrBranchFormat4().initialize(result)
@@ -1085,6 +1086,9 @@ class BzrDirFormat6(BzrDirFormat):
         # there is one and only one upgrade path here.
         return ConvertBzrDir6ToMeta()
         
+    def _initialize_for_clone(self, url):
+        return self.initialize_on_transport(get_transport(url), _cloning=True)
+
     def initialize_on_transport(self, transport, _cloning=False):
         """Format 6 dirs always have working tree, branch and repository.
         
@@ -1093,8 +1097,7 @@ class BzrDirFormat6(BzrDirFormat):
         from bzrlib.branch import BzrBranchFormat4
         from bzrlib.repository import RepositoryFormat6
         from bzrlib.workingtree import WorkingTreeFormat2
-        result = (super(BzrDirFormat6, self)
-                  .initialize_on_transport(transport, _cloning))
+        result = super(BzrDirFormat6, self).initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
         if not _cloning:
             BzrBranchFormat4().initialize(result)
