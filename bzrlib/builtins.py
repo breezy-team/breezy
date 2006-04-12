@@ -360,15 +360,15 @@ class cmd_mv(Command):
             
     
 class cmd_pull(Command):
-    """Pull any changes from another branch into the current one.
+    """Turn this branch into a mirror of another branch.
 
     If there is no default location set, the first pull will set it.  After
     that, you can omit the location to use the default.  To change the
     default, use --remember.
 
     This command only works on branches that have not diverged.  Branches are
-    considered diverged if both branches have had commits without first
-    pulling from the other.
+    considered diverged if the destination branch's most recent commit is one
+    that has not been merged (directly or indirectly) into the parent.
 
     If branches have diverged, you can use 'bzr merge' to pull the text changes
     from one into the other.  Once one branch has merged, the other should
@@ -424,27 +424,28 @@ class cmd_pull(Command):
 
 
 class cmd_push(Command):
-    """Push this branch into another branch.
+    """Update a mirror of this branch.
     
-    The remote branch will not have its working tree populated because this
-    is both expensive, and may not be supported on the remote file system.
+    The target branch will not have its working tree populated because this
+    is both expensive, and is not supported on remote file systems.
     
-    Some smart servers or protocols *may* put the working tree in place.
+    Some smart servers or protocols *may* put the working tree in place in
+    the future.
 
     If there is no default push location set, the first push will set it.
     After that, you can omit the location to use the default.  To change the
     default, use --remember.
 
     This command only works on branches that have not diverged.  Branches are
-    considered diverged if the branch being pushed to is not an older version
-    of this branch.
+    considered diverged if the destination branch's most recent commit is one
+    that has not been merged (directly or indirectly) by the source branch.
 
     If branches have diverged, you can use 'bzr push --overwrite' to replace
-    the other branch completely.
+    the other branch completely, discarding its unmerged changes.
     
     If you want to ensure you have the different changes in the other branch,
-    do a merge (see bzr help merge) from the other branch, and commit that
-    before doing a 'push --overwrite'.
+    do a merge (see bzr help merge) from the other branch, and commit that.
+    After that you will be able to do a push without '--overwrite'.
     """
     takes_options = ['remember', 'overwrite', 
                      Option('create-prefix', 

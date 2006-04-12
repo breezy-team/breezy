@@ -72,6 +72,10 @@ bzr development version
       Fix off-by-one error in missing revisions of working tree.  Make 'info'
       work on branches, repositories and remote locations.  (Olaf Conradi)
 
+    * 'pull' and 'push' now normalise the revision history, so that any two
+      branches with the same tip revision will have the same output from 'log'.
+      (Robert Collins)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
