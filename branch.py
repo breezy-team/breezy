@@ -110,6 +110,7 @@ class SvnBranch(Branch):
     def __init__(self,base,kind):
         self.pool = svn.core.svn_pool_create(global_pool)
         self.client = svn.client.svn_client_create_context(self.pool)
+        self.client.config = svn.core.svn_config_get_config(None)
         self.client.auth_baton = auth_baton
         self.base = base 
         self._get_last_revnum(kind)
@@ -140,8 +141,8 @@ class SvnBranch(Branch):
         def rcvr(paths,rev,author,date,message,pool):
             self.last_revnum = rev
         mutter("svn log -r HEAD %r" % self.base)
-        svn.client.log2([self.base.encode('utf8')], revt_head, revt_head, \
-                1, 0, 0, rcvr, self.client, self.pool)
+        svn.client.log3([self.base.encode('utf8')], revt_head, revt_head, revt_head, \
+                1, False, False, rcvr, self.client, self.pool)
         assert self.last_revnum
 
     def _generate_revnum_map(self):
@@ -377,14 +378,15 @@ class SvnBranch(Branch):
 class RemoteSvnBranch(SvnBranch):
     """Branch representing a remote Subversion repository.  """
 
-    def _get_uid(self):
+    def _get_uuid(self):
         mutter("svn uuid '%r'" % self.base)
         uuid = svn.client.uuid_from_url(self.base.encode('utf8'), self.client, self.pool)
         assert uuid
         return uuid
     
     def __init__(self, url):
-        SvnBranch.__init__(self,url,svn.core.svn_opt_revision_base)
+        SvnBranch.__init__(self,url,svn.core.svn_opt_revision_head)
+        self.uuid = self._get_uuid()
         self._generate_revnum_map()
 
 
