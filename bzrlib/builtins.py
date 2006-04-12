@@ -750,11 +750,13 @@ class cmd_update(Command):
 class cmd_info(Command):
     """Show statistical information about a branch."""
     takes_args = ['branch?']
+    takes_options = ['verbose']
     
     @display_command
-    def run(self, branch=None):
+    def run(self, branch=None, verbose=False):
         import bzrlib.info
-        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0])
+        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0],
+                                     verbose=verbose)
 
 
 class cmd_remove(Command):
@@ -875,7 +877,7 @@ class cmd_init(Command):
                      Option('format', 
                             help='Create a specific format rather than the'
                                  ' current default format. Currently this '
-                                 ' option only accepts =metadir',
+                                 ' option only accepts "metadir"',
                             type=get_format_type),
                      ]
     def run(self, location=None, format=None):
@@ -1587,7 +1589,7 @@ class cmd_upgrade(Command):
                      Option('format', 
                             help='Upgrade to a specific format rather than the'
                                  ' current default format. Currently this'
-                                 ' option only accepts -metadir and -knit'
+                                 ' option only accepts "metadir" and "knit".'
                                  ' WARNING: the knit format is currently'
                                  ' unstable and only for experimental use.',
                             type=get_format_type),

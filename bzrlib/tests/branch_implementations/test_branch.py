@@ -322,6 +322,11 @@ class TestBranch(TestCaseWithBranch):
         self.assertEqual(repo.bzrdir.root_transport.base,
                          child_branch.repository.bzrdir.root_transport.base)
 
+    def test_format_description(self):
+        tree = self.make_branch_and_tree('tree')
+        text = tree.branch._format.get_format_description()
+        self.failUnless(len(text))
+
 
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.

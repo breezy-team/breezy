@@ -873,6 +873,10 @@ class RepositoryFormat(object):
         """
         raise NotImplementedError(self.get_format_string)
 
+    def get_format_description(self):
+        """Return the short desciption for this format."""
+        raise NotImplementedError(self.get_format_description)
+
     def _get_revision_store(self, repo_transport, control_files):
         """Return the revision store object for this a_bzrdir."""
         raise NotImplementedError(self._get_revision_store)
@@ -1043,6 +1047,10 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         super(RepositoryFormat4, self).__init__()
         self._matchingbzrdir = bzrlib.bzrdir.BzrDirFormat4()
 
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Repository format 4"
+
     def initialize(self, url, shared=False, _internal=False):
         """Format 4 branches cannot be created."""
         raise errors.UninitializableFormat(self)
@@ -1088,6 +1096,10 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         super(RepositoryFormat5, self).__init__()
         self._matchingbzrdir = bzrlib.bzrdir.BzrDirFormat5()
 
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Weave repository format 5"
+
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
         """Return the revision store object for this a_bzrdir."""
@@ -1113,6 +1125,10 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     def __init__(self):
         super(RepositoryFormat6, self).__init__()
         self._matchingbzrdir = bzrlib.bzrdir.BzrDirFormat6()
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Weave repository format 6"
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
@@ -1182,6 +1198,10 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Repository format 7"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Weave repository format 7"
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
@@ -1274,6 +1294,10 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Knit Repository Format 1"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Knit repository format 1"
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
