@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""
-A store that keeps the full text of every version.
+"""A store that keeps the full text of every version.
 
 This store keeps uncompressed versions of the full text. It does not
 do any sort of delta compression.
@@ -23,7 +22,6 @@ do any sort of delta compression.
 
 import os
 import bzrlib.store
-from bzrlib.store import hash_prefix
 from bzrlib.trace import mutter
 from bzrlib.errors import BzrError, NoSuchFile, FileExists
 
@@ -95,13 +93,13 @@ class TextStore(bzrlib.store.TransportStore):
             raise KeyError(fileid + '-' + str(suffix))
 
         try:
-            result = other._transport.copy_to([path], self._transport, 
+            result = other._transport.copy_to([path], self._transport,
                                               mode=self._file_mode)
         except NoSuchFile:
             if not self._prefixed:
                 raise
             try:
-                self._transport.mkdir(hash_prefix(fileid)[:-1], mode=self._dir_mode)
+                self._transport.mkdir(self.hash_prefix(fileid)[:-1], mode=self._dir_mode)
             except FileExists:
                 pass
             result = other._transport.copy_to([path], self._transport,

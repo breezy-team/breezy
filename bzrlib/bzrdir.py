@@ -884,27 +884,36 @@ class BzrDirFormat(object):
         """
         raise NotImplementedError(self.get_converter)
 
-    def initialize(self, url):
-        """Create a bzr control dir at this url and return an opened copy."""
-        # Since we don't have a .bzr directory, inherit the
+    def initialize(self, url, _cloning=False):
+        """Create a bzr control dir at this url and return an opened copy.
+        
+        Subclasses should typically override initialize_on_transport
+        instead of this method.
+        """
+        return self.initialize_on_transport(get_transport(url),
+                _cloning=_cloning)
+
+    def initialize_on_transport(self, transport, _cloning=False):
+        """Initialize a new bzrdir in the base directory of a Transport."""
+        # Since we don'transport have a .bzr directory, inherit the
         # mode from the root directory
-        t = get_transport(url)
-        temp_control = LockableFiles(t, '', TransportLock)
+        temp_control = LockableFiles(transport, '', TransportLock)
         temp_control._transport.mkdir('.bzr',
                                       # FIXME: RBC 20060121 dont peek under
                                       # the covers
                                       mode=temp_control._dir_mode)
         file_mode = temp_control._file_mode
         del temp_control
-        mutter('created control directory in ' + t.base)
-        control = t.clone('.bzr')
+        mutter('created control directory in ' + transport.base)
+        control = transport.clone('.bzr')
         utf8_files = [('README', 
                        "This is a Bazaar-NG control directory.\n"
                        "Do not change any files in this directory.\n"),
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.
-        control_files = LockableFiles(control, self._lock_file_name, self._lock_class)
+        control_files = LockableFiles(control, self._lock_file_name, 
+                                      self._lock_class)
         control_files.create_lock()
         control_files.lock_write()
         try:
@@ -912,7 +921,7 @@ class BzrDirFormat(object):
                 control_files.put_utf8(file, content)
         finally:
             control_files.unlock()
-        return self.open(t, _found=True)
+        return self.open(transport, _found=True)
 
     def is_supported(self):
         """Is this format supported?
@@ -982,7 +991,7 @@ class BzrDirFormat4(BzrDirFormat):
         # there is one and only one upgrade path here.
         return ConvertBzrDir4To5()
         
-    def initialize(self, url):
+    def initialize_on_transport(self, transport, _cloning=False):
         """Format 4 branches cannot be created."""
         raise errors.UninitializableFormat(self)
 
@@ -1028,7 +1037,7 @@ class BzrDirFormat5(BzrDirFormat):
         # there is one and only one upgrade path here.
         return ConvertBzrDir5To6()
         
-    def initialize(self, url, _cloning=False):
+    def initialize_on_transport(self, transport, _cloning=False):
         """Format 5 dirs always have working tree, branch and repository.
         
         Except when they are being cloned.
@@ -1036,7 +1045,8 @@ class BzrDirFormat5(BzrDirFormat):
         from bzrlib.branch import BzrBranchFormat4
         from bzrlib.repository import RepositoryFormat5
         from bzrlib.workingtree import WorkingTreeFormat2
-        result = super(BzrDirFormat5, self).initialize(url)
+        result = (super(BzrDirFormat5, self)
+                  .initialize_on_transport(transport, _cloning))
         RepositoryFormat5().initialize(result, _internal=True)
         if not _cloning:
             BzrBranchFormat4().initialize(result)
@@ -1075,7 +1085,7 @@ class BzrDirFormat6(BzrDirFormat):
         # there is one and only one upgrade path here.
         return ConvertBzrDir6ToMeta()
         
-    def initialize(self, url, _cloning=False):
+    def initialize_on_transport(self, transport, _cloning=False):
         """Format 6 dirs always have working tree, branch and repository.
         
         Except when they are being cloned.
@@ -1083,7 +1093,8 @@ class BzrDirFormat6(BzrDirFormat):
         from bzrlib.branch import BzrBranchFormat4
         from bzrlib.repository import RepositoryFormat6
         from bzrlib.workingtree import WorkingTreeFormat2
-        result = super(BzrDirFormat6, self).initialize(url)
+        result = (super(BzrDirFormat6, self)
+                  .initialize_on_transport(transport, _cloning))
         RepositoryFormat6().initialize(result, _internal=True)
         if not _cloning:
             BzrBranchFormat4().initialize(result)
@@ -1545,11 +1556,12 @@ class ConvertBzrDir5To6(Converter):
         return BzrDir.open(self.bzrdir.root_transport.base)
 
     def _convert_to_prefixed(self):
-        from bzrlib.store import hash_prefix
+        from bzrlib.store import TransportStore
         self.bzrdir.transport.delete('branch-format')
         for store_name in ["weaves", "revision-store"]:
-            self.pb.note("adding prefixes to %s" % store_name) 
+            self.pb.note("adding prefixes to %s" % store_name)
             store_transport = self.bzrdir.transport.clone(store_name)
+            store = TransportStore(store_transport, prefixed=True)
             for urlfilename in store_transport.list_dir('.'):
                 filename = urlunescape(urlfilename)
                 if (filename.endswith(".weave") or
@@ -1558,7 +1570,7 @@ class ConvertBzrDir5To6(Converter):
                     file_id = os.path.splitext(filename)[0]
                 else:
                     file_id = filename
-                prefix_dir = hash_prefix(file_id)
+                prefix_dir = store.hash_prefix(file_id)
                 # FIXME keep track of the dirs made RBC 20060121
                 try:
                     store_transport.move(filename, prefix_dir + '/' + filename)

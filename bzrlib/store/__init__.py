@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Development Ltd
+# Copyright (C) 2005, 2006 by Canonical Development Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -206,7 +206,10 @@ class TransportStore(Store):
 
     def has_id(self, fileid, suffix=None):
         """See Store.has_id."""
-        return self._transport.has_any(self._id_to_names(fileid, suffix))
+        paths = self._id_to_names(fileid, suffix)
+        if not self._transport.has_any(paths):
+            return False
+        return True
 
     def _get_name(self, fileid, suffix=None):
         """A special check, which returns the name of an existing file.
@@ -238,7 +241,8 @@ class TransportStore(Store):
         raise KeyError(fileid)
 
     def __init__(self, a_transport, prefixed=False, compressed=False,
-                 dir_mode=None, file_mode=None):
+                 dir_mode=None, file_mode=None,
+                 escaped=False):
         assert isinstance(a_transport, transport.Transport)
         super(TransportStore, self).__init__()
         self._transport = a_transport
@@ -246,15 +250,25 @@ class TransportStore(Store):
         # FIXME RBC 20051128 this belongs in TextStore.
         self._compressed = compressed
         self._suffixes = set()
+        self._escaped = escaped
 
         # It is okay for these to be None, it just means they
         # will just use the filesystem defaults
         self._dir_mode = dir_mode
         self._file_mode = file_mode
 
+    def _unescape(self, file_id):
+        """If filename escaping is enabled for this store, unescape and return the filename."""
+        if self._escaped:
+            return urllib.unquote(file_id)
+        else:
+            return file_id
+
     def _iter_files_recursive(self):
         """Iterate through the files in the transport."""
         for quoted_relpath in self._transport.iter_files_recursive():
+            # transport iterator always returns quoted paths, regardless of
+            # escaping
             yield urllib.unquote(quoted_relpath)
 
     def __iter__(self):
@@ -269,7 +283,7 @@ class TransportStore(Store):
                     if name.endswith('.' + suffix):
                         skip = True
             if not skip:
-                yield name
+                yield self._unescape(name)
 
     def __len__(self):
         return len(list(self.__iter__()))
@@ -284,11 +298,39 @@ class TransportStore(Store):
         else:
             suffixes = []
         if self._prefixed:
-            path = [hash_prefix(fileid) + fileid]
+            # hash_prefix adds the '/' separator
+            prefix = self.hash_prefix(fileid)
         else:
-            path = [fileid]
-        path.extend(suffixes)
-        return transport.urlescape(u'.'.join(path))
+            prefix = ''
+        fileid = self._escape_file_id(fileid)
+        path = prefix + fileid
+        full_path = u'.'.join([path] + suffixes)
+        return transport.urlescape(full_path)
+
+    def _escape_file_id(self, file_id):
+        """Turn a file id into a filesystem safe string.
+
+        This is similar to a plain urllib.quote, except
+        it uses specific safe characters, so that it doesn't
+        have to translate a lot of valid file ids.
+        """
+        if not self._escaped:
+            return file_id
+        if isinstance(file_id, unicode):
+            file_id = file_id.encode('utf-8')
+        # @ does not get escaped. This is because it is a valid
+        # filesystem character we use all the time, and it looks
+        # a lot better than seeing %40 all the time.
+        safe = "abcdefghijklmnopqrstuvwxyz0123456789-_@,."
+        r = [((c in safe) and c or ('%%%02x' % ord(c)))
+             for c in file_id]
+        return ''.join(r)
+
+    def hash_prefix(self, fileid):
+        # fileid should be unescaped
+        if self._escaped:
+            fileid = self._escape_file_id(fileid)
+        return "%02x/" % (adler32(fileid) & 0xff)
 
     def __repr__(self):
         if self._transport is None:
@@ -331,9 +373,3 @@ def ImmutableMemoryStore():
 def copy_all(store_from, store_to, pb=None):
     """Copy all ids from one store to another."""
     store_to.copy_all_ids(store_from, pb)
-
-
-def hash_prefix(fileid):
-    return "%02x/" % (adler32(fileid) & 0xff)
-
-
