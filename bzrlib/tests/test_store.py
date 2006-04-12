@@ -102,11 +102,8 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
 class TestMemoryStore(TestCase):
     
     def get_store(self):
-        return store.ImmutableMemoryStore()
+        return TextStore(MemoryTransport())
     
-    def test_imports(self):
-        from bzrlib.store import ImmutableMemoryStore
-
     def test_add_and_retrieve(self):
         store = self.get_store()
         store.add(StringIO('hello'), 'aa')

@@ -34,7 +34,7 @@ import bzrlib.errors as errors
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
-import bzrlib.transport as transport
+from bzrlib.transport import Transport, urlescape
 from bzrlib.transport.local import LocalTransport
 
 ######################################################################
@@ -240,7 +240,7 @@ class TransportStore(Store):
     def __init__(self, a_transport, prefixed=False, compressed=False,
                  dir_mode=None, file_mode=None,
                  escaped=False):
-        assert isinstance(a_transport, transport.Transport)
+        assert isinstance(a_transport, Transport)
         super(TransportStore, self).__init__()
         self._transport = a_transport
         self._prefixed = prefixed
@@ -302,7 +302,7 @@ class TransportStore(Store):
         fileid = self._escape_file_id(fileid)
         path = prefix + fileid
         full_path = u'.'.join([path] + suffixes)
-        return transport.urlescape(full_path)
+        return urlescape(full_path)
 
     def _escape_file_id(self, file_id):
         """Turn a file id into a filesystem safe string.
@@ -361,10 +361,6 @@ class TransportStore(Store):
                 
         return count, total
 
-
-def ImmutableMemoryStore():
-    return bzrlib.store.text.TextStore(transport.memory.MemoryTransport())
-        
 
 @deprecated_function(zero_eight)
 def copy_all(store_from, store_to, pb=None):
