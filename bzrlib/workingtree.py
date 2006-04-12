@@ -637,6 +637,8 @@ class WorkingTree(bzrlib.tree.Tree):
             raise MergeModifiedFormatError()
         for s in RioReader(hashfile):
             file_id = s.get("file_id")
+            if file_id not in self.inventory:
+                continue
             hash = s.get("hash")
             if hash == self.get_file_sha1(file_id):
                 merge_hashes[file_id] = hash
