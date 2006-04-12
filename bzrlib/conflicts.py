@@ -54,6 +54,7 @@ class cmd_conflicts(bzrlib.commands.Command):
         for conflict in wt.conflicts():
             print conflict
 
+
 class cmd_resolve(bzrlib.commands.Command):
     """Mark a conflict as resolved.
 
@@ -81,8 +82,10 @@ class cmd_resolve(bzrlib.commands.Command):
             if all:
                 raise BzrCommandError(
                     "If --all is specified, no FILE may be provided")
-        tree = WorkingTree.open_containing(u'.')[0]
-        resolve(tree, file_list)
+                # XXX: arguably this should take a directory and mark as
+                # resolved everything within it?
+        tree = WorkingTree.open_containing(file_list[0])[0]
+        resolve(tree, [tree.relpath(p) for p in file_list])
 
 
 def resolve(tree, paths=None, ignore_misses=False):
@@ -133,7 +136,10 @@ def restore(filename):
 
 
 class ConflictList(object):
-    """List of conflicts
+    """List of conflicts.
+
+    Typically obtained from WorkingTree.conflicts()
+
     Can be instantiated from stanzas or from Conflict subclasses.
     """
 
@@ -143,6 +149,9 @@ class ConflictList(object):
             self.__list = []
         else:
             self.__list = conflicts
+
+    def is_empty(self):
+        return len(self.__list) == 0
 
     def __len__(self):
         return len(self.__list)
