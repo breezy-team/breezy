@@ -26,7 +26,7 @@ import bzrlib
 from bzrlib.commands import register_command
 from bzrlib.errors import BzrCommandError, NotConflicted, UnsupportedOperation
 from bzrlib.option import Option
-from bzrlib.osutils import rename
+from bzrlib.osutils import rename, delete_any
 from bzrlib.rio import Stanza
 
 
@@ -190,7 +190,7 @@ class ConflictList(object):
                 continue
             for suffix in CONFLICT_SUFFIXES:
                 try:
-                    os.unlink(tree.abspath(conflict.path+suffix))
+                    delete_any(tree.abspath(conflict.path+suffix))
                 except OSError, e:
                     if e.errno != errno.ENOENT:
                         raise
