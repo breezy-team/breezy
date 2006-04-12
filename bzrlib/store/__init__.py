@@ -206,10 +206,7 @@ class TransportStore(Store):
 
     def has_id(self, fileid, suffix=None):
         """See Store.has_id."""
-        paths = self._id_to_names(fileid, suffix)
-        if not self._transport.has_any(paths):
-            return False
-        return True
+        return self._transport.has_any(self._id_to_names(fileid, suffix))
 
     def _get_name(self, fileid, suffix=None):
         """A special check, which returns the name of an existing file.
