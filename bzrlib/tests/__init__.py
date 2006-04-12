@@ -327,9 +327,9 @@ class TestCase(unittest.TestCase):
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
         
-        If modes are not supported on this platform, the test is skipped.
+        If modes are not supported on this transport, the assertion is ignored.
         """
-        if sys.platform == 'win32':
+        if not transport._can_roundtrip_unix_modebits():
             return
         path_stat = transport.stat(path)
         actual_mode = stat.S_IMODE(path_stat.st_mode)
