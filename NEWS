@@ -138,6 +138,10 @@ bzr development version
       by this class (when its not being used as part of implementation
       contract testing). (Robert Collins)
 
+    * Close logging handler on disabling the test log. This will remove the
+      handler from the internal list inside python's logging module,
+      preventing shutdown from closing it twice.  (Olaf Conradi)
+
 
 bzr 0.7rc1 2006-01-09
 
