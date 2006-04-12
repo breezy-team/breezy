@@ -74,18 +74,17 @@ class cmd_resolve(bzrlib.commands.Command):
     takes_options = [Option('all', help='Resolve all conflicts in this tree')]
     def run(self, file_list=None, all=False):
         from bzrlib.workingtree import WorkingTree
-        if file_list is None:
-            if not all:
-                raise BzrCommandError(
-                    "command 'resolve' needs one or more FILE, or --all")
+        if all:
+            if file_list:
+                raise BzrCommandError("If --all is specified, no FILE may be provided")
+            tree = WorkingTree.open_containing('.')[0]
+            resolve(tree)
         else:
-            if all:
-                raise BzrCommandError(
-                    "If --all is specified, no FILE may be provided")
-                # XXX: arguably this should take a directory and mark as
-                # resolved everything within it?
-        tree = WorkingTree.open_containing(file_list[0])[0]
-        resolve(tree, [tree.relpath(p) for p in file_list])
+            if file_list is None:
+                raise BzrCommandError("command 'resolve' needs one or more FILE, or --all")
+            tree = WorkingTree.open_containing(file_list[0])[0]
+            to_resolve = [tree.relpath(p) for p in file_list]
+            resolve(tree, to_resolve)
 
 
 def resolve(tree, paths=None, ignore_misses=False):
