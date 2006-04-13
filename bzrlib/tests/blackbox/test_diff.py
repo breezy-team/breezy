@@ -55,11 +55,17 @@ class TestDiff(ExternalBase):
         # (Malone #3619)
         self.make_example_branch()
         out, err = self.runbzr('diff does-not-exist', retcode=3)
-        # should be an error that refers to the file that causes a problem
         self.assertContainsRe(err, 'not versioned.*does-not-exist')
 
-        # TODO: Get an error diffing a file that is not versioned
-        # TODO: How to handle a file deleted in working tree?
+    def test_diff_unversioned(self):
+        # Get an error when diffing a non-versioned file.
+        # (Malone #3619)
+        self.make_example_branch()
+        self.build_tree(['unversioned-file'])
+        out, err = self.runbzr('diff unversioned-file', retcode=3)
+        self.assertContainsRe(err, 'not versioned.*unversioned-file')
+
+    # TODO: What should diff say for a file deleted in working tree?
 
     def example_branches(self):
         self.build_tree(['branch1/', 'branch1/file'], line_endings='binary')

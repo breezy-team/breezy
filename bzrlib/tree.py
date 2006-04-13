@@ -116,7 +116,11 @@ class Tree(object):
 
         :return: set of paths.
         """
-        return set((p for p in paths if not self.has_filename(p)))
+        # NB: we specifically *don't* call self.has_filename, because for
+        # WorkingTrees that can indicate files that exist on disk but that 
+        # are not versioned.
+        pred = self.inventory.has_filename
+        return set((p for p in paths if not pred(p)))
         
         
 class RevisionTree(Tree):
