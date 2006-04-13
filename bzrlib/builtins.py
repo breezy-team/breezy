@@ -897,7 +897,18 @@ class cmd_init(Command):
 
 
 class cmd_init_repository(Command):
-    """Create a shared repository to keep branches in."""
+    """Create a shared repository to hold branches.
+
+    New branches created under the repository directory will store their revisions
+    in the repository, not in the branch directory, if the branch format supports
+    shared storage.
+
+    example:    
+        bzr init-repo repo
+        bzr init --format=metadir repo/trunk
+        cd repo/trunk
+        (add files here)
+    """
     takes_args = ["location"] 
     takes_options = [Option('format', 
                             help='Use a specific format rather than the'
@@ -915,8 +926,10 @@ class cmd_init_repository(Command):
         from bzrlib.transport import get_transport
         if format is None:
             format = BzrDirMetaFormat1()
-        get_transport(location).mkdir('')
-        newdir = format.initialize(location)
+        transport = get_transport(location)
+        if not transport.has('.'):
+            transport.mkdir('')
+        newdir = format.initialize_on_transport(transport)
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(trees)
 
