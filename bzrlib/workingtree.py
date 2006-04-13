@@ -93,8 +93,8 @@ from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
-from bzrlib.trace import mutter
 from bzrlib.transform import build_tree
+from bzrlib.trace import mutter, note
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
 import bzrlib.ui
@@ -637,6 +637,8 @@ class WorkingTree(bzrlib.tree.Tree):
             raise MergeModifiedFormatError()
         for s in RioReader(hashfile):
             file_id = s.get("file_id")
+            if file_id not in self.inventory:
+                continue
             hash = s.get("hash")
             if hash == self.get_file_sha1(file_id):
                 merge_hashes[file_id] = hash
@@ -1154,6 +1156,8 @@ class WorkingTree(bzrlib.tree.Tree):
             resolve(self, filenames, ignore_misses=True)
         return conflicts
 
+    # XXX: This method should be deprecated in favour of taking in a proper
+    # new Inventory object.
     @needs_write_lock
     def set_inventory(self, new_inventory_list):
         from bzrlib.inventory import (Inventory,
@@ -1444,6 +1448,10 @@ class WorkingTreeFormat(object):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
 
+    def get_format_description(self):
+        """Return the short description for this format."""
+        raise NotImplementedError(self.get_format_description)
+
     def is_supported(self):
         """Is this format supported?
 
@@ -1473,6 +1481,10 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     This format modified the hash cache from the format 1 hash cache.
     """
+
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 2"
 
     def initialize(self, a_bzrdir, revision_id=None):
         """See WorkingTreeFormat.initialize()."""
@@ -1541,6 +1553,10 @@ class WorkingTreeFormat3(WorkingTreeFormat):
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar-NG Working Tree format 3"
+
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 3"
 
     _lock_file_name = 'lock'
     _lock_class = LockDir

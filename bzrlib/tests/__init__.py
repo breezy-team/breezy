@@ -48,10 +48,12 @@ import bzrlib.errors as errors
 import bzrlib.inventory
 import bzrlib.iterablefile
 import bzrlib.lockdir
+from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.osutils
 import bzrlib.osutils as osutils
 import bzrlib.plugin
+from bzrlib.revision import common_ancestor
 import bzrlib.store
 import bzrlib.trace
 from bzrlib.transport import urlescape, get_transport
@@ -327,9 +329,9 @@ class TestCase(unittest.TestCase):
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
         
-        If modes are not supported on this platform, the test is skipped.
+        If modes are not supported on this transport, the assertion is ignored.
         """
-        if sys.platform == 'win32':
+        if not transport._can_roundtrip_unix_modebits():
             return
         path_stat = transport.stat(path)
         actual_mode = stat.S_IMODE(path_stat.st_mode)
@@ -548,6 +550,22 @@ class TestCase(unittest.TestCase):
             sys.stdout = real_stdout
             sys.stderr = real_stderr
             sys.stdin = real_stdin
+
+    def merge(self, branch_from, wt_to):
+        """A helper for tests to do a ui-less merge.
+
+        This should move to the main library when someone has time to integrate
+        it in.
+        """
+        # minimal ui-less merge.
+        wt_to.branch.fetch(branch_from)
+        base_rev = common_ancestor(branch_from.last_revision(),
+                                   wt_to.branch.last_revision(),
+                                   wt_to.branch.repository)
+        merge_inner(wt_to.branch, branch_from.basis_tree(), 
+                    wt_to.branch.repository.revision_tree(base_rev),
+                    this_tree=wt_to)
+        wt_to.add_pending_merge(branch_from.last_revision())
 
 
 BzrTestBase = TestCase
@@ -935,6 +953,7 @@ def test_suite():
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
+                   'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',

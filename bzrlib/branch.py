@@ -333,9 +333,6 @@ class Branch(object):
         """
         raise NotImplementedError('update_revisions is abstract')
 
-    def pullable_revisions(self, other, stop_revision):
-        raise NotImplementedError('pullable_revisions is abstract')
-        
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         if revision_id is None:
@@ -566,6 +563,10 @@ class BranchFormat(object):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
 
+    def get_format_description(self):
+        """Return the short format description for this format."""
+        raise NotImplementedError(self.get_format_string)
+
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
         raise NotImplementedError(self.initialized)
@@ -611,6 +612,10 @@ class BzrBranchFormat4(BranchFormat):
      - a revision-history file.
      - a branch-lock lock file [ to be shared with the bzrdir ]
     """
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Branch format 4"
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
@@ -668,6 +673,10 @@ class BzrBranchFormat5(BranchFormat):
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
         return "Bazaar-NG branch format 5\n"
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Branch format 5"
         
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
@@ -725,6 +734,10 @@ class BranchReferenceFormat(BranchFormat):
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
         return "Bazaar-NG Branch Reference Format 1\n"
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Checkout reference format 1"
         
     def initialize(self, a_bzrdir, target_branch=None):
         """Create a branch of this format in a_bzrdir."""
@@ -1016,20 +1029,49 @@ class BzrBranch(Branch):
         # transaction.register_clean(history, precious=True)
         return list(history)
 
+    @needs_write_lock
     def update_revisions(self, other, stop_revision=None):
         """See Branch.update_revisions."""
-        if stop_revision is None:
-            stop_revision = other.last_revision()
-        ### Should this be checking is_ancestor instead of revision_history?
-        if (stop_revision is not None and 
-            stop_revision in self.revision_history()):
-            return
-        self.fetch(other, stop_revision)
-        pullable_revs = self.pullable_revisions(other, stop_revision)
-        if len(pullable_revs) > 0:
-            self.append_revision(*pullable_revs)
+        other.lock_read()
+        try:
+            if stop_revision is None:
+                stop_revision = other.last_revision()
+                if stop_revision is None:
+                    # if there are no commits, we're done.
+                    return
+            # whats the current last revision, before we fetch [and change it
+            # possibly]
+            last_rev = self.last_revision()
+            # we fetch here regardless of whether we need to so that we pickup
+            # filled in ghosts.
+            self.fetch(other, stop_revision)
+            my_ancestry = self.repository.get_ancestry(last_rev)
+            if stop_revision in my_ancestry:
+                # last_revision is a descendant of stop_revision
+                return
+            # stop_revision must be a descendant of last_revision
+            stop_graph = self.repository.get_revision_graph(stop_revision)
+            if last_rev is not None and last_rev not in stop_graph:
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other)
+            # make a new revision history from the graph
+            current_rev_id = stop_revision
+            new_history = []
+            while current_rev_id not in (None, NULL_REVISION):
+                new_history.append(current_rev_id)
+                current_rev_id_parents = stop_graph[current_rev_id]
+                try:
+                    current_rev_id = current_rev_id_parents[0]
+                except IndexError:
+                    current_rev_id = None
+            new_history.reverse()
+            self.set_revision_history(new_history)
+        finally:
+            other.unlock()
 
+    @deprecated_method(zero_eight)
     def pullable_revisions(self, other, stop_revision):
+        """Please use bzrlib.missing instead."""
         other_revno = other.revision_id_to_revno(stop_revision)
         try:
             return self.missing_revisions(other, other_revno)

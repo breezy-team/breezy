@@ -172,6 +172,7 @@ class StrictCommitFailed(Exception):
 
 class PathError(BzrNewError):
     """Generic path error: %(path)r%(extra)s)"""
+
     def __init__(self, path, extra=None):
         BzrNewError.__init__(self)
         self.path = path
@@ -213,11 +214,12 @@ class PathNotChild(BzrNewError):
             self.extra = ''
 
 
-class NotBranchError(BzrNewError):
+class NotBranchError(PathError):
     """Not a branch: %(path)s"""
-    def __init__(self, path):
-        BzrNewError.__init__(self)
-        self.path = path
+
+
+class AlreadyBranchError(PathError):
+    """Already a branch: %(path)s. Use `bzr checkout` to build a working tree."""
 
 
 class NoRepositoryPresent(BzrNewError):
@@ -394,6 +396,7 @@ class HistoryMissing(BzrError):
 
 
 class DivergedBranches(BzrError):
+
     def __init__(self, branch1, branch2):
         BzrError.__init__(self, "These branches have diverged.  Try merge.")
         self.branch1 = branch1

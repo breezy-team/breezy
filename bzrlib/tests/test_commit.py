@@ -388,4 +388,7 @@ class TestCommit(TestCaseWithTransport):
         wt = bound.open_workingtree()
         wt.branch.set_bound_location(os.path.realpath('master'))
         master_branch.lock_write()
-        self.assertRaises(LockContention, wt.commit, 'silly')
+        try:
+            self.assertRaises(LockContention, wt.commit, 'silly')
+        finally:
+            master_branch.unlock()
