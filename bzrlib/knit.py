@@ -830,7 +830,7 @@ class _KnitComponentFile(object):
             raise KnitCorrupt(self._filename, 'misaligned after writing header')
 
     def check_header(self, fp):
-        line = fp.read(len(self.HEADER))
+        line = fp.readline()
         if line != self.HEADER:
             raise KnitHeaderError(badline=line)
 
@@ -863,6 +863,35 @@ class _KnitIndex(_KnitComponentFile):
     this allows updates to correct version and parent information. 
     Note that the two entries may share the delta, and that successive
     annotations and references MUST point to the first entry.
+
+    The index file on disc contains a header, followed by one line per knit
+    record. The same revision can be present in an index file more than once.
+    The first occurence gets assigned a sequence number starting from 0. 
+    
+    The format of a single line is
+    REVISION_ID FLAGS BYTE_OFFSET LENGTH( PARENT_ID|PARENT_SEQUENCE_ID)* :\n
+    REVISION_ID is a utf8-encoded revision id
+    FLAGS is a comma separated list of flags about the record. Values include 
+        no-eol, line-delta, fulltext.
+    BYTE_OFFSET is the ascii representation of the byte offset in the data file
+        that the the compressed data starts at.
+    LENGTH is the ascii representation of the length of the data file.
+    PARENT_ID a utf-8 revision id prefixed by a '.' that is a parent of
+        REVISION_ID.
+    PARENT_SEQUENCE_ID the ascii representation of the sequence number of a
+        revision id already in the knit that is a parent of REVISION_ID.
+    The ' :' marker is the end of record marker.
+    
+    partial writes:
+    when a write is interrupted to the index file, it will result in a line that
+    does not end in ' :'. If the ' :' is not present at the end of a line, or at
+    the end of the file, then the record that is missing it will be ignored by
+    the parser.
+
+    When writing new records to the index file, the data is preceeded by '\n'
+    to ensure that records always start on new lines even if the last write was
+    interrupted. As a result its normal for the last line in the index to be
+    missing a trailing newline. One can be added with no harmful effects.
     """
 
     HEADER = "# bzr knit index 7\n"
@@ -917,12 +946,18 @@ class _KnitIndex(_KnitComponentFile):
                 # a check for local vs non local indexes,
                 for l in fp.readlines():
                     rec = l.split()
+                    if len(rec) < 5 or rec[-1] != ':':
+                        # corrupt line.
+                        # FIXME: in the future we should determine if its a
+                        # short write - and ignore it 
+                        # or a different failure, and raise. RBC 20060407
+                        continue
                     count += 1
                     total += 1
                     #pb.update('read knit index', count, total)
                     # See self._parse_parents
                     parents = []
-                    for value in rec[4:]:
+                    for value in rec[4:-1]:
                         if '.' == value[0]:
                             # uncompressed reference
                             parents.append(value[1:])
@@ -1061,7 +1096,7 @@ class _KnitIndex(_KnitComponentFile):
         """Add a version record to the index."""
         self._cache_version(version_id, options, pos, size, parents)
 
-        content = "%s %s %s %s %s\n" % (version_id.encode('utf-8'),
+        content = "\n%s %s %s %s %s :" % (version_id.encode('utf-8'),
                                         ','.join(options),
                                         pos,
                                         size,
