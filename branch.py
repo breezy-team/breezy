@@ -69,30 +69,24 @@ class SvnRevisionTree(Tree):
     def is_executable(self,file_id):
         filename = self.branch.url_from_file_id(self.revision_id,file_id)
         mutter("svn propget %r %r" % (svn.core.SVN_PROP_EXECUTABLE, filename))
-        values = svn.client.propget(svn.core.SVN_PROP_EXECUTABLE, filename, self.revnum, False, self.client, self.pool)
+        values = svn.client.propget(svn.core.SVN_PROP_EXECUTABLE, filename, self.revnum, False, self.repository.client, self.repository.pool)
         if len(values) == 1 and values.pop() == svn.core.SVN_PROP_EXECUTABLE_VALUE:
             return True
         return False 
     
     def get_file(self,file_id):
-        stream = svn.core.svn_stream_empty(self.pool)
+        stream = svn.core.svn_stream_empty(self.repository.pool)
         url = self.branch.url_from_file_id(self.revision_id,file_id)
         mutter("svn cat -r %r %r" % (self.revnum.value.number,url))
-        svn.client.cat(stream,url.encode('utf8'),self.revnum,self.client,self.pool)
+        svn.repository.client.cat(stream,url.encode('utf8'),self.revnum,self.repository.client,self.repository.pool)
         return Stream(stream).read()
 
 class SvnBranch(Branch):
-    def __init__(self,base,kind):
-        self.pool = svn.core.svn_pool_create(global_pool)
-        self.client = svn.client.svn_client_create_context(self.pool)
-        self.client.config = svn.core.svn_config_get_config(None)
-        self.client.auth_baton = auth_baton
+    def __init__(self,repos,base,kind):
+        self.repository = repos
         self.base = base 
         self._get_last_revnum(kind)
         
-    def __del__(self):
-        svn.core.svn_pool_destroy(self.pool)
-
     #FIXME
     def filename_from_file_id(self,revision_id,file_id):
         """Generate a Subversion filename from a bzr file id."""
@@ -117,7 +111,8 @@ class SvnBranch(Branch):
             self.last_revnum = rev
         mutter("svn log -r HEAD %r" % self.base)
         svn.client.log3([self.base.encode('utf8')], revt_head, revt_head, \
-                revt_head, 1, False, False, rcvr, self.client, self.pool)
+                revt_head, 1, False, False, rcvr, 
+                self.repository.client, self.repository.pool)
         assert self.last_revnum
 
     def _generate_revnum_map(self):
@@ -137,7 +132,7 @@ class SvnBranch(Branch):
             if revnum == 0:
                 revid = None
             else:
-                revid = "%d@%s" % (revnum,self.uuid)
+                revid = "%d@%s" % (revnum,self.repository.uuid)
                 self._revision_history.append(revid)
             self.revid_map[revid] = revt
             self.revnum_map[revnum] = revid
@@ -191,17 +186,17 @@ class SvnBranch(Branch):
         # For some odd reason this method still takes a revno rather 
         # then a revid
         revnum = self.get_revnum(self.get_rev_id(revno))
-        stream = svn.core.svn_stream_empty(self.pool)
+        stream = svn.core.svn_stream_empty(self.repository.pool)
         file_url = self.base+"/"+file
         mutter('svn cat -r %r %r' % (revnum.value.number,file_url))
-        svn.client.cat(stream,file_url.encode('utf8'),revnum,self.client,self.pool)
+        svn.client.cat(stream,file_url.encode('utf8'),revnum,self.client,self.repository.pool)
         print Stream(stream).read()
 
     def get_revision(self, revision_id):
         revnum = self.get_revnum(revision_id)
         
         mutter('svn proplist -r %r %r' % (revnum.value.number,self.base))
-        (svn_props, actual_rev) = svn.client.revprop_list(self.base.encode('utf8'), revnum, self.client, self.pool)
+        (svn_props, actual_rev) = svn.client.revprop_list(self.base.encode('utf8'), revnum, self.repository.client, self.repository.pool)
         assert actual_rev == revnum.value.number
 
         parent_ids = self.get_parents(revision_id)
@@ -214,7 +209,7 @@ class SvnBranch(Branch):
         for name in svn_props:
             bzr_props[name] = str(svn_props[name])
 
-        rev.timestamp = svn.core.secs_from_timestr(bzr_props[svn.core.SVN_PROP_REVISION_DATE], self.pool) * 1.0
+        rev.timestamp = svn.core.secs_from_timestr(bzr_props[svn.core.SVN_PROP_REVISION_DATE], self.repository.pool) * 1.0
         rev.timezone = None
 
         rev.committer = bzr_props[svn.core.SVN_PROP_REVISION_AUTHOR]
@@ -254,7 +249,8 @@ class SvnBranch(Branch):
         remote_ls = svn.client.ls(self.base.encode('utf8'),
                                          revnum,
                                          True, # recurse
-                                         self.client, self.pool)
+                                         self.repository.client, 
+                                         self.repository.pool)
         mutter('done')
 
         # Make sure a directory is always added before its contents
@@ -342,29 +338,3 @@ class SvnBranch(Branch):
 
     def get_inventory_sha1(self, revision_id):
         return bzrlib.osutils.sha_string(self.get_inventory_xml(revision_id))
-
-class RemoteSvnBranch(SvnBranch):
-    """Branch representing a remote Subversion repository.  """
-
-    def _get_uuid(self):
-        mutter("svn uuid '%r'" % self.base)
-        uuid = svn.client.uuid_from_url(self.base.encode('utf8'), self.client, self.pool)
-        assert uuid
-        return uuid
-    
-    def __init__(self, url):
-        SvnBranch.__init__(self,url,svn.core.svn_opt_revision_head)
-        self.uuid = self._get_uuid()
-        self._generate_revnum_map()
-
-
-class LocalSvnBranch(SvnBranch):
-    """Branch representing a local Subversion checkout.  """
-
-    def __init__(self, path):
-        SvnBranch.__init__(self,path,svn.core.svn_opt_revision_working)
-        self.path = path
-        self.base = svn.client.url_from_path(self.path.encode('utf8'),self.pool)
-        
-        assert self.uuid
-        self._generate_revnum_map()
