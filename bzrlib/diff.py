@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
+import bzrlib.errors as errors
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 
@@ -235,7 +236,6 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
     external_diff_options
         If set, use an external GNU diff and pass these options.
     """
-
     old_tree.lock_read()
     try:
         new_tree.lock_read()
@@ -264,6 +264,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     # TODO: Generation of pseudo-diffs for added/deleted files could
     # be usefully made into a much faster special case.
 
+    _raise_if_doubly_unversioned(specific_files, old_tree, new_tree)
+
     if external_diff_options:
         assert isinstance(external_diff_options, basestring)
         opts = external_diff_options.split()
@@ -272,7 +274,6 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     else:
         diff_file = internal_diff
     
-
     delta = compare_trees(old_tree, new_tree, want_unchanged=False,
                           specific_files=specific_files)
 
@@ -306,7 +307,17 @@ def _show_diff_trees(old_tree, new_tree, to_file,
             _maybe_diff_file_or_symlink(old_label, path, old_tree, file_id,
                                         new_label, path, new_tree,
                                         True, kind, to_file, diff_file)
+
     return has_changes
+
+
+def _raise_if_doubly_unversioned(specific_files, old_tree, new_tree):
+    """Complain if paths are not versioned in either tree."""
+    old_unversioned = old_tree.filter_unversioned_files(specific_files)
+    new_unversioned = new_tree.filter_unversioned_files(specific_files)
+    unversioned = old_unversioned.intersection(new_unversioned)
+    if unversioned:
+        raise errors.PathsNotVersionedError(sorted(unversioned))
     
 
 def get_prop_change(meta_modified):

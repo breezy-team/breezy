@@ -53,6 +53,8 @@ def tree_files(file_list, default_branch=u'.'):
                              (e.path, file_list[0]))
 
 
+# XXX: Bad function name; should possibly also be a class method of
+# WorkingTree rather than a function.
 def internal_tree_files(file_list, default_branch=u'.'):
     """Convert command-line paths to a WorkingTree and relative paths.
 

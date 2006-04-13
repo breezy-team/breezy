@@ -110,6 +110,13 @@ class Tree(object):
 
     def unlock(self):
         pass
+
+    def filter_unversioned_files(self, paths):
+        """Filter out paths that are not versioned.
+
+        :return: set of paths.
+        """
+        return set((p for p in paths if not self.has_filename(p)))
         
         
 class RevisionTree(Tree):
