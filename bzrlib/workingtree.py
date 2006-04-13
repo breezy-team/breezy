@@ -1156,6 +1156,8 @@ class WorkingTree(bzrlib.tree.Tree):
             resolve(self, filenames, ignore_misses=True)
         return conflicts
 
+    # XXX: This method should be deprecated in favour of taking in a proper
+    # new Inventory object.
     @needs_write_lock
     def set_inventory(self, new_inventory_list):
         from bzrlib.inventory import (Inventory,
