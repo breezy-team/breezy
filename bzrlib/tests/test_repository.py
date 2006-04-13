@@ -262,20 +262,18 @@ class TestFormatKnit1(TestCaseWithTransport):
         self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
         self.check_knits(t)
 
+    def assertHasKnit(self, t, knit_name):
+        """Assert that knit_name exists on t."""
+        self.assertEqualDiff('# bzr knit index 7\n',
+                             t.get(knit_name + '.kndx').read())
+        # no default content
+        self.assertTrue(t.has(knit_name + '.knit'))
+
     def check_knits(self, t):
         """check knit content for a repository."""
-        self.assertEqualDiff('# bzr knit index 7\n',
-                             t.get('inventory.kndx').read())
-        # no default content
-        self.assertTrue(t.has('inventory.knit'))
-        self.assertEqualDiff('# bzr knit index 7\n',
-                             t.get('revisions.kndx').read())
-        # no default content
-        self.assertTrue(t.has('revisions.knit'))
-        self.assertEqualDiff('# bzr knit index 7\n',
-                             t.get('signatures.kndx').read())
-        # no default content
-        self.assertTrue(t.has('signatures.knit'))
+        self.assertHasKnit(t, 'inventory')
+        self.assertHasKnit(t, 'revisions')
+        self.assertHasKnit(t, 'signatures')
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
