@@ -267,6 +267,17 @@ class NotVersionedError(BzrNewError):
         self.path = path
 
 
+class PathsNotVersionedError(BzrNewError):
+    # used when reporting several paths are not versioned
+    """Path(s) are not versioned: %(paths_as_string)s"""
+
+    def __init__(self, paths):
+        from bzrlib.osutils import quotefn
+        BzrNewError.__init__(self)
+        self.paths = paths
+        self.paths_as_string = ' '.join([quotefn(p) for p in paths])
+
+
 class BadFileKindError(BzrError):
     """Specified file is of a kind that cannot be added.
 

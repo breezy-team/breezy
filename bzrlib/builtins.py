@@ -52,11 +52,22 @@ def tree_files(file_list, default_branch=u'.'):
         raise BzrCommandError("%s is not in the same branch as %s" %
                              (e.path, file_list[0]))
 
+
+# XXX: Bad function name; should possibly also be a class method of
+# WorkingTree rather than a function.
 def internal_tree_files(file_list, default_branch=u'.'):
-    """\
-    Return a branch and list of branch-relative paths.
-    If supplied file_list is empty or None, the branch default will be used,
-    and returned file_list will match the original.
+    """Convert command-line paths to a WorkingTree and relative paths.
+
+    This is typically used for command-line processors that take one or
+    more filenames, and infer the workingtree that contains them.
+
+    The filenames given are not required to exist.
+
+    :param file_list: Filenames to convert.  
+
+    :param default_branch: Fallback tree path to use if file_list is empty or None.
+
+    :return: workingtree, [relative_paths]
     """
     if file_list is None or len(file_list) == 0:
         return WorkingTree.open_containing(default_branch)[0], file_list
@@ -908,7 +919,18 @@ class cmd_init(Command):
 
 
 class cmd_init_repository(Command):
-    """Create a shared repository to keep branches in."""
+    """Create a shared repository to hold branches.
+
+    New branches created under the repository directory will store their revisions
+    in the repository, not in the branch directory, if the branch format supports
+    shared storage.
+
+    example:    
+        bzr init-repo repo
+        bzr init --format=metadir repo/trunk
+        cd repo/trunk
+        (add files here)
+    """
     takes_args = ["location"] 
     takes_options = [Option('format', 
                             help='Use a specific format rather than the'
@@ -926,8 +948,10 @@ class cmd_init_repository(Command):
         from bzrlib.transport import get_transport
         if format is None:
             format = BzrDirMetaFormat1()
-        get_transport(location).mkdir('')
-        newdir = format.initialize(location)
+        transport = get_transport(location)
+        if not transport.has('.'):
+            transport.mkdir('')
+        newdir = format.initialize_on_transport(transport)
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(trees)
 
