@@ -893,7 +893,18 @@ class cmd_init(Command):
             # locations if the user supplies an extended path
             if not os.path.exists(location):
                 os.mkdir(location)
-        bzrdir.BzrDir.create_branch_convenience(location, format=format)
+        try:
+            existing = bzrdir.BzrDir.open(location)
+        except NotBranchError:
+            bzrdir.BzrDir.create_branch_convenience(location, format=format)
+        else:
+            try:
+                existing.open_branch()
+            except NotBranchError:
+                existing.create_branch()
+                existing.create_workingtree()
+            else:
+                raise errors.AlreadyBranchError(location)
 
 
 class cmd_init_repository(Command):
