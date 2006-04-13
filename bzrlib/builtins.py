@@ -52,11 +52,20 @@ def tree_files(file_list, default_branch=u'.'):
         raise BzrCommandError("%s is not in the same branch as %s" %
                              (e.path, file_list[0]))
 
+
 def internal_tree_files(file_list, default_branch=u'.'):
-    """\
-    Return a branch and list of branch-relative paths.
-    If supplied file_list is empty or None, the branch default will be used,
-    and returned file_list will match the original.
+    """Convert command-line paths to a WorkingTree and relative paths.
+
+    This is typically used for command-line processors that take one or
+    more filenames, and infer the workingtree that contains them.
+
+    The filenames given are not required to exist.
+
+    :param file_list: Filenames to convert.  
+
+    :param default_branch: Fallback tree path to use if file_list is empty or None.
+
+    :return: workingtree, [relative_paths]
     """
     if file_list is None or len(file_list) == 0:
         return WorkingTree.open_containing(default_branch)[0], file_list
