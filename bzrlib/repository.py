@@ -1330,23 +1330,14 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
     def initialize(self, a_bzrdir, shared=False):
         """Create a knit format 1 repository.
 
+        :param a_bzrdir: bzrdir to contain the new repository; must already
+            be initialized.
         :param shared: If true the repository will be initialized as a shared
                        repository.
-        XXX NOTE that this current uses a Weave for testing and will become 
-            A Knit in due course.
         """
-        from bzrlib.weavefile import write_weave_v5
-        from bzrlib.weave import Weave
-
-        # Create an empty weave
-        sio = StringIO()
-        bzrlib.weavefile.write_weave_v5(Weave(), sio)
-        empty_weave = sio.getvalue()
-
         mutter('creating repository in %s.', a_bzrdir.transport.base)
-        dirs = ['revision-store', 'knits', 'control']
-        files = [('control/inventory.weave', StringIO(empty_weave)), 
-                 ]
+        dirs = ['revision-store', 'knits']
+        files = []
         utf8_files = [('format', self.get_format_string())]
         
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
