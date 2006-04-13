@@ -76,6 +76,9 @@ bzr development version
       branches with the same tip revision will have the same output from 'log'.
       (Robert Collins)
 
+    * 'merge' accepts --remember option to store parent location, like 'push'
+      and 'pull'. (Olaf Conradi)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
@@ -84,6 +87,9 @@ bzr development version
     * Unify 'mv', 'move', 'rename'.  (#5379, Matthew Fuller)
 
     * 'bzr -h' shows help.  (#35940, Martin Pool, Ian Bicking)
+
+    * Make 'pull' and 'push' remember location on failure using --remember.
+      (Olaf Conradi)
 
   INTERNALS:
   
@@ -126,6 +132,11 @@ bzr development version
     * New API call get_format_description() for each type of format.
       (Olaf Conradi)
 
+    * Changed branch.set_parent() to accept None to remove parent.
+      (Olaf Conradi)
+
+    * Deprecated BzrError AmbiguousBase.  (Olaf Conradi)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
@@ -146,6 +157,7 @@ bzr development version
       handler from the internal list inside python's logging module,
       preventing shutdown from closing it twice.  (Olaf Conradi)
 
+    * Move test case for uncommit to blackbox tests.  (Olaf Conradi)
 
 bzr 0.7rc1 2006-01-09
 
