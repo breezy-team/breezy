@@ -65,7 +65,7 @@ bzr development version
     * New developer commands 'weave-list' and 'weave-join'.  (Martin Pool)
 
     * New 'init-repository' command, plus support for repositories in 'init'
-      and 'branch' (Aaron Bentley, Erik Bågfors)
+      and 'branch' (Aaron Bentley, Erik Bågfors, Robert Collins)
 
     * Improve output of 'info' command. Show all relevant locations related to
       working tree, branch and repository. Use kibibytes for binary quantities.
