@@ -82,31 +82,6 @@ class SvnRevisionTree(Tree):
         return Stream(stream).read()
 
 class SvnBranch(Branch):
-    @staticmethod
-    def open(url):
-        # The SVN libraries don't like trailing slashes...
-        url = url.rstrip('/')
-        if os.path.exists(url):
-            url = os.path.abspath(url)
-            try:
-                return LocalSvnBranch(url)
-            except SubversionException, (msg, num):
-                if num == svn.core.SVN_ERR_UNVERSIONED_RESOURCE or \
-                    num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
-                    raise NotBranchError(path=url)
-                raise
-        else:
-            try:
-                return RemoteSvnBranch(url)
-            except SubversionException, (msg, num):
-                if num == svn.core.SVN_ERR_RA_ILLEGAL_URL or \
-                   num == svn.core.SVN_ERR_WC_NOT_DIRECTORY or \
-                   num == svn.core.SVN_ERR_RA_NO_REPOS_UUID or \
-                   num == svn.core.SVN_ERR_RA_SVN_REPOS_NOT_FOUND or \
-                   num == svn.core.SVN_ERR_RA_DAV_REQUEST_FAILED:
-                    raise NotBranchError(path=url)
-                raise
- 
     def __init__(self,base,kind):
         self.pool = svn.core.svn_pool_create(global_pool)
         self.client = svn.client.svn_client_create_context(self.pool)
@@ -141,8 +116,8 @@ class SvnBranch(Branch):
         def rcvr(paths,rev,author,date,message,pool):
             self.last_revnum = rev
         mutter("svn log -r HEAD %r" % self.base)
-        svn.client.log3([self.base.encode('utf8')], revt_head, revt_head, revt_head, \
-                1, False, False, rcvr, self.client, self.pool)
+        svn.client.log3([self.base.encode('utf8')], revt_head, revt_head, \
+                revt_head, 1, False, False, rcvr, self.client, self.pool)
         assert self.last_revnum
 
     def _generate_revnum_map(self):
@@ -177,13 +152,6 @@ class SvnBranch(Branch):
     def set_root_id(self, file_id):
         raise NotImplementedError('set_root_id not supported on Subversion Branches')
             
-    @staticmethod
-    def open_containing(base):
-        # Every directory in a Subversion branch is a directory on itself, 
-        # so no need to go down a few levels
-        # FIXME: Correction: this is true for directories, not for files...
-        return SvnBranch.open(base), ''
-
     def get_root_id(self):
         inv = self.get_inventory(self.last_revision())
         return inv.root.file_id

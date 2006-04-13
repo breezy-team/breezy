@@ -1,33 +1,15 @@
 class SvnTransport(Transport):
- - svn://
- - svn+http://
- - svn+https://
- - svn+ssh://
-
-
-register_transport('svn', SvnTransport)
 
 class SvnBranch(ForeignBranch):
+	. relpath contains path within repository
 
 class SvnRepository(ForeignRepository):
+	- contains notion of which paths are branches
+	- UUID
+	- num total revisions
 
 class SvnWorkingTree(WorkingTree):
 
 class SvnDirFormat(BzrDirFormat):
+	open_workingtree() - not always available
 
-	
-
-- svnpull
- - Maybe store latest known revision somewhere ?
- - walk over revno's and see if they already exist locally
-  - if they don't, pull them in, use UUID-revno as revision
- - keep list of bzr revisions and to what SVN commit they belong
-  - use revision properties (svn:revision) ?
-
-- svnpush
- - for all local revisions that don't have svn:revision set:
-  - send to remote server
-  - set bzr:revision as SVN revision property
-
-
-Register:
