@@ -71,7 +71,10 @@ class TestBranchFormat5(TestCaseWithTransport):
         self.assertIsDirectory('.bzr/branch', t)
         self.assertIsDirectory('.bzr/branch/lock', t)
         branch.lock_write()
-        self.assertIsDirectory('.bzr/branch/lock/held', t)
+        try:
+            self.assertIsDirectory('.bzr/branch/lock/held', t)
+        finally:
+            branch.unlock()
 
 
 class TestBranchEscaping(TestCaseWithTransport):
