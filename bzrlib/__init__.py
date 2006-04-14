@@ -88,9 +88,9 @@ user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
 __copyright__ = "Copyright 2005,06 Canonical Development Ltd."
-__version__ = version_string = '0.8pre'
+__version__ = version_string = '0.8rc1'
 # same format as sys.version_info
-version_info = (0, 8, 0, 'pre', 0)
+version_info = (0, 8, 0, 'rc', 1)
 
 
 from bzrlib.symbol_versioning import deprecated_function, zero_seven
