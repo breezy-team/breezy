@@ -5,6 +5,7 @@
 
 from bzrlib.repository import Repository
 from bzrlib.lockable_files import LockableFiles, TransportLock
+from bzrlib.trace import mutter
 import svn.core
 import bzrlib
 from branch import auth_baton
@@ -14,6 +15,8 @@ Provides a simplified interface to a Subversion repository
 by using the RA (remote access) API from subversion
 """
 class SvnRepository(Repository):
+    branch_paths = [".","branches","tags"]
+
     def __init__(self, bzrdir, url):
         self.url = url
         _revision_store = None
@@ -28,7 +31,77 @@ class SvnRepository(Repository):
         self.client.config = svn.core.svn_config_get_config(None)
         self.client.auth_baton = auth_baton
 
-        self.uuid = svn.client.uuid_from_url(self.url.encode('utf8'), self.client, self.pool)
+        self.uuid = svn.client.uuid_from_url(self.url.encode('utf8'), 
+                self.client, self.pool)
+
+        mutter("Connected to repository at %s, UUID %s" % (self.url, self.uuid))
 
     def __del__(self):
         svn.core.svn_pool_destroy(self.pool)
+
+    def get_inventory(self):
+        raise NotImplementedError()
+
+    def all_revision_ids(self):
+        raise NotImplementedError()
+
+    def get_revision(self,revid):
+        raise NotImplementedError()
+
+    def add_revision(self, rev_id, rev, inv=None, config=None):
+        raise NotImplementedError()
+
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        raise NotImplementedError()
+
+    def fileid_involved(self, last_revid=None):
+        raise NotImplementedError()
+
+    def get_inventory_xml(self, revision_id):
+        raise NotImplementedError()
+
+    def parse_revision_id(self,revid):
+        at = revid.index("@")
+        fash = revid.rindex("-")
+        uuid = revid[at+1:fash]
+
+        if uuid != self.uuid:
+            raise NoSuchRevision()
+
+        return (revid[fash+1:],revid[0:at])
+
+    def get_revision_graph_with_ghosts(self, revision_id):
+        raise NotImplementedError()
+
+    def get_revision_graph(self, revision_id):
+        if revision_id is None:
+            raise NotImplementedError()
+
+        (path,revnum) = self.parse_revision_id(revision_id)
+
+        revt_begin = svn.core.svn_opt_revision_t()
+        revt_begin.kind = svn.core.svn_opt_revision_number
+        revt_begin.value.number = int(revnum) - 1
+
+        revt_end = svn.core.svn_opt_revision_t()
+        revt_end.kind = svn.core.svn_opt_revision_number
+        revt_end.value.number = 0
+
+        self._previous = revision_id
+        self._ancestry = {}
+        
+        def rcvr(paths,rev,author,date,message,pool):
+            revid = "%d@%s-%s" % (rev,self.uuid,path)
+            self._ancestry[self._previous] = [revid]
+            self._previous = revid
+
+        url = self.url + "/" + path
+
+        svn.client.log3([url.encode('utf8')], revt_begin, revt_begin, \
+                revt_end, 0, False, False, rcvr, 
+                self.client, self.pool)
+
+        self._ancestry[self._previous] = [None]
+        self._ancestry[None] = []
+
+        return self._ancestry

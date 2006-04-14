@@ -7,7 +7,6 @@ from bzrlib.transport import Transport
 from cStringIO import StringIO
 import os
 
-
 class SvnTransport(Transport):
     def __init__(self, url=""):
         Transport.__init__(self,url)
@@ -32,4 +31,3 @@ class SvnTransport(Transport):
                 pass
         print "FIXME: lock_read on %s" % relpath
         return PhonyLock()
-

@@ -85,7 +85,9 @@ class SvnBranch(Branch):
     def __init__(self,repos,base,kind):
         self.repository = repos
         self.base = base 
-        self._get_last_revnum(kind)
+        self.base_revno = svn.core.svn_opt_revision_t()
+        self.base_revno.kind = svn.core.svn_opt_revision_head
+        self._generate_revnum_map('trunk',self.base_revno)
         
     #FIXME
     def filename_from_file_id(self,revision_id,file_id):
@@ -100,50 +102,29 @@ class SvnBranch(Branch):
         """Generate a full Subversion URL from a bzr file id."""
         return self.base+"/"+self.filename_from_file_id(revision_id,file_id)
 
-    def _get_last_revnum(self,kind):
-        # The python bindings for the svn_client_info() function
-        # are broken, so this is the only way to (cheaply) find out what the 
-        # youngest revision number is
-        revt_head = svn.core.svn_opt_revision_t()
-        revt_head.kind = kind
-        self.last_revnum = None
-        def rcvr(paths,rev,author,date,message,pool):
-            self.last_revnum = rev
-        mutter("svn log -r HEAD %r" % self.base)
-        svn.client.log3([self.base.encode('utf8')], revt_head, revt_head, \
-                revt_head, 1, False, False, rcvr, 
-                self.repository.client, self.repository.pool)
-        assert self.last_revnum
-
-    def _generate_revnum_map(self):
+    def _generate_revnum_map(self,relpath,revt_end):
         #FIXME: Revids should be globally unique, so we should include the 
         # branch path somehow. If we don't do this there might be revisions 
         # that have the same id because they were created in the same commit.
         # This requires finding out the URL of the root of the repository, 
         # but this is not possible at the moment since svn.client.info() does
         # not work.
-        self.revid_map = {}
-        self.revnum_map = {}
-        self._revision_history = []
-        for revnum in range(0,self.last_revnum+1):
-            revt = svn.core.svn_opt_revision_t()
-            revt.kind = svn.core.svn_opt_revision_number
-            revt.value.number = revnum
-            if revnum == 0:
-                revid = None
-            else:
-                revid = "%d@%s" % (revnum,self.repository.uuid)
-                self._revision_history.append(revid)
-            self.revid_map[revid] = revt
-            self.revnum_map[revnum] = revid
+        self._revision_history = [None]
 
-    def get_revnum(self,revid):
-        """Map bzr revision id to a SVN revision number."""
-        try:
-            return self.revid_map[revid]
-        except KeyError:
-            raise NoSuchRevision(revid,self)
+        revt_begin = svn.core.svn_opt_revision_t()
+        revt_begin.kind = svn.core.svn_opt_revision_number
+        revt_begin.value.number = 0
 
+        def rcvr(paths,rev,author,date,message,pool):
+            revid = "%d@%s-%s" % (rev,self.repository.uuid,relpath)
+            self._revision_history.append(revid)
+
+        url = "%s/%s" % (self.repository.url, relpath)
+
+        svn.client.log3([url.encode('utf8')], revt_end, revt_begin, \
+                revt_end, 0, False, False, rcvr, 
+                self.repository.client, self.repository.pool)
+ 
     def set_root_id(self, file_id):
         raise NotImplementedError('set_root_id not supported on Subversion Branches')
             
@@ -179,7 +160,7 @@ class SvnBranch(Branch):
         return self._revision_history
 
     def has_revision(self, revision_id):
-        return self.revid_map.has_key(revision_id)
+        return self.revision_history().has_key(revision_id)
 
     def print_file(self, file, revno):
         """See Branch.print_file."""
