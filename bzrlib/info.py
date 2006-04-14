@@ -285,7 +285,7 @@ def show_branch_info(branch, verbose):
 
 
 def show_repository_info(repository, verbose):
-    """Output to stdout the 'info' for branch."""
+    """Output to stdout the 'info' for repository."""
     control = repository.bzrdir
 
     _show_location_info(repository)
