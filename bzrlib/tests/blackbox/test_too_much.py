@@ -52,23 +52,6 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCommands(ExternalBase):
 
-    def test_init_branch(self):
-        self.runbzr(['init'])
-
-        # Can it handle subdirectories as well?
-        self.runbzr('init subdir1')
-        self.assert_(os.path.exists('subdir1'))
-        self.assert_(os.path.exists('subdir1/.bzr'))
-
-        self.runbzr('init subdir2/nothere', retcode=3)
-        
-        os.mkdir('subdir2')
-        self.runbzr('init subdir2')
-        self.runbzr('init subdir2', retcode=3)
-
-        self.runbzr('init subdir2/subsubdir1')
-        self.assert_(os.path.exists('subdir2/subsubdir1/.bzr'))
-
     def test_whoami(self):
         # this should always identify something, if only "john@localhost"
         self.runbzr("whoami")

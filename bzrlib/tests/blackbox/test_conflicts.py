@@ -1,5 +1,4 @@
 # Copyright (C) 2006 by Canonical Ltd
-# -*- coding: utf-8 -*-
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +16,7 @@
 
 import os
 
+from bzrlib.workingtree import WorkingTree
 from bzrlib.tests.blackbox import ExternalBase
 
 class TestConflicts(ExternalBase):
@@ -62,3 +62,18 @@ class TestConflicts(ExternalBase):
         conflicts = self.runbzr('conflicts', backtick=True)
         self.assertEqual(len(conflicts.splitlines()), 0)
 
+    def test_resolve_in_subdir(self):
+        """resolve when run from subdirectory should handle relative paths"""
+        orig_dir = os.getcwdu()
+        try:
+            os.mkdir("subdir")
+            os.chdir("subdir")
+            self.runbzr("resolve ../myfile")
+            os.chdir("../../b")
+            self.runbzr("resolve ../a/myfile")
+            wt = WorkingTree.open_containing('.')[0]
+            conflicts = wt.conflicts()
+            if not conflicts.is_empty():
+                self.fail("tree still contains conflicts: %r" % conflicts)
+        finally:
+            os.chdir(orig_dir)

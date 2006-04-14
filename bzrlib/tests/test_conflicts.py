@@ -64,6 +64,17 @@ class TestConflicts(TestCaseWithTransport):
         self.assertRaises(NotConflicted, restore, 'hello')
         self.assertRaises(NotConflicted, restore, 'hello.sploo')
 
+    def test_resolve_conflict_dir(self):
+        tree = self.make_branch_and_tree('.')
+        b = tree.branch
+        file('hello', 'w').write('hello world4')
+        tree.add('hello', 'q')
+        file('hello.THIS', 'w').write('hello world2')
+        file('hello.BASE', 'w').write('hello world1')
+        os.mkdir('hello.OTHER')
+        l = ConflictList([TextConflict('hello')])
+        l.remove_files(tree)
+
 
 class TestConflictStanzas(TestCase):
     def test_stanza_roundtrip(self):

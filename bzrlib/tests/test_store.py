@@ -102,11 +102,8 @@ class TestCompressedTextStore(TestCaseInTempDir, TestStores):
 class TestMemoryStore(TestCase):
     
     def get_store(self):
-        return store.ImmutableMemoryStore()
+        return TextStore(MemoryTransport())
     
-    def test_imports(self):
-        from bzrlib.store import ImmutableMemoryStore
-
     def test_add_and_retrieve(self):
         store = self.get_store()
         store.add(StringIO('hello'), 'aa')
@@ -398,6 +395,12 @@ class TestTransportStore(TestCase):
     def test_relpath_escaped(self):
         my_store = store.TransportStore(MemoryTransport())
         self.assertEqual('%25', my_store._relpath('%'))
+
+    def test_escaped_uppercase(self):
+        """Uppercase letters are escaped for safety on Windows"""
+        my_store = store.TransportStore(MemoryTransport(), escaped=True)
+        # a particularly perverse file-id! :-)
+        self.assertEquals(my_store._escape_file_id('C:<>'), '%43%3a%3c%3e')
 
 
 class TestVersionFileStore(TestCaseWithTransport):

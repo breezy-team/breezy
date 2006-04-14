@@ -53,6 +53,8 @@ Exception strings should start with a capital letter and not have a final
 fullstop.
 """
 
+from warnings import warn
+
 # based on Scott James Remnant's hct error classes
 
 # TODO: is there any value in providing the .args field used by standard
@@ -172,6 +174,7 @@ class StrictCommitFailed(Exception):
 
 class PathError(BzrNewError):
     """Generic path error: %(path)r%(extra)s)"""
+
     def __init__(self, path, extra=None):
         BzrNewError.__init__(self)
         self.path = path
@@ -213,11 +216,12 @@ class PathNotChild(BzrNewError):
             self.extra = ''
 
 
-class NotBranchError(BzrNewError):
+class NotBranchError(PathError):
     """Not a branch: %(path)s"""
-    def __init__(self, path):
-        BzrNewError.__init__(self)
-        self.path = path
+
+
+class AlreadyBranchError(PathError):
+    """Already a branch: %(path)s. Use `bzr checkout` to build a working tree."""
 
 
 class NoRepositoryPresent(BzrNewError):
@@ -263,6 +267,17 @@ class NotVersionedError(BzrNewError):
     def __init__(self, path):
         BzrNewError.__init__(self)
         self.path = path
+
+
+class PathsNotVersionedError(BzrNewError):
+    # used when reporting several paths are not versioned
+    """Path(s) are not versioned: %(paths_as_string)s"""
+
+    def __init__(self, paths):
+        from bzrlib.osutils import quotefn
+        BzrNewError.__init__(self)
+        self.paths = paths
+        self.paths_as_string = ' '.join([quotefn(p) for p in paths])
 
 
 class BadFileKindError(BzrError):
@@ -394,6 +409,7 @@ class HistoryMissing(BzrError):
 
 
 class DivergedBranches(BzrError):
+
     def __init__(self, branch1, branch2):
         BzrError.__init__(self, "These branches have diverged.  Try merge.")
         self.branch1 = branch1
@@ -440,6 +456,8 @@ class InstallFailed(BzrError):
 
 class AmbiguousBase(BzrError):
     def __init__(self, bases):
+        warn("BzrError AmbiguousBase has been deprecated as of bzrlib 0.8.",
+                DeprecationWarning)
         msg = "The correct base is unclear, becase %s are all equally close" %\
             ", ".join(bases)
         BzrError.__init__(self, msg)

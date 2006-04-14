@@ -22,7 +22,8 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo)
 from bzrlib.inventory import InventoryEntry
-from bzrlib.osutils import file_kind, supports_executable, pathjoin, lexists
+from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
+                            delete_any)
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, warning
 import bzrlib.ui 
@@ -286,21 +287,10 @@ class TreeTransform(object):
         os.symlink(target, self._limbo_name(trans_id))
         unique_add(self._new_contents, trans_id, 'symlink')
 
-    @staticmethod
-    def delete_any(full_path):
-        """Delete a file or directory."""
-        try:
-            os.unlink(full_path)
-        except OSError, e:
-        # We may be renaming a dangling inventory id
-            if e.errno not in (errno.EISDIR, errno.EACCES, errno.EPERM):
-                raise
-            os.rmdir(full_path)
-
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""
         del self._new_contents[trans_id]
-        self.delete_any(self._limbo_name(trans_id))
+        delete_any(self._limbo_name(trans_id))
 
     def delete_contents(self, trans_id):
         """Schedule the contents of a path entry for deletion"""
@@ -730,7 +720,7 @@ class TreeTransform(object):
                 child_pb.update('removing file', num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
-                    self.delete_any(full_path)
+                    delete_any(full_path)
                 elif trans_id in self._new_name or trans_id in \
                     self._new_parent:
                     try:
@@ -981,14 +971,14 @@ def find_interesting(working_tree, target_tree, filenames):
     else:
         interesting_ids = set()
         for tree_path in filenames:
+            not_found = True
             for tree in (working_tree, target_tree):
-                not_found = True
                 file_id = tree.inventory.path2id(tree_path)
                 if file_id is not None:
                     interesting_ids.add(file_id)
                     not_found = False
-                if not_found:
-                    raise NotVersionedError(path=tree_path)
+            if not_found:
+                raise NotVersionedError(path=tree_path)
     return interesting_ids
 
 
