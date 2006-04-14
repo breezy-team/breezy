@@ -3,11 +3,12 @@ from repository import SvnRepository
 from branch import SvnBranch
 import svn.client
 from libsvn._core import SubversionException
+from bzrlib.lockable_files import TransportLock
 
 class SvnRemoteAccess(BzrDir):
     def __init__(self, _transport, _format):
         self.transport = _transport
-        self.format = _format
+        self._format = _format
 
         if _transport.url.startswith("svn://") or \
            _transport.url.startswith("svn+ssh://"):
@@ -40,10 +41,13 @@ class SvnRemoteAccess(BzrDir):
         except:
             raise
  
-        branch.repository = self.find_repository()
+        branch.bzrdir = self
         return branch
 
 class SvnFormat(BzrDirFormat):
+
+    _lock_class = TransportLock
+
     def _open(self, transport):
         return SvnRemoteAccess(transport, self)
 

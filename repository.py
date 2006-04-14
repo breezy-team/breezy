@@ -46,6 +46,61 @@ class SvnRepository(Repository):
     def all_revision_ids(self):
         raise NotImplementedError()
 
+    def get_inventory_weave(self):
+        # FIXME
+        raise NotImplementedError()
+
+    def get_ancestry(self, revision_id):
+        (path,revnum) = self.parse_revision_id(revision_id)
+
+        url = self.url + "/" + path
+
+        revt_begin = svn.core.svn_opt_revision_t()
+        revt_begin.kind = svn.core.svn_opt_revision_number
+        revt_begin.value.number = 0
+
+        revt_peg = svn.core.svn_opt_revision_t()
+        revt_peg.kind = svn.core.svn_opt_revision_number
+        revt_peg.value.number = revnum
+
+        revt_end = svn.core.svn_opt_revision_t()
+        revt_end.kind = svn.core.svn_opt_revision_number
+        revt_end.value.number = revnum - 1
+
+        self._ancestry = [None]
+
+        def rcvr(paths,rev,author,date,message,pool):
+            revid = "%d@%s-%s" % (rev,self.uuid,path)
+            self._ancestry.append(revid)
+
+        mutter("log3 %s" % url)
+        svn.client.log3([url.encode('utf8')], revt_peg, revt_begin, \
+                revt_end, 1, False, False, rcvr, 
+                self.client, self.pool)
+
+        return self._ancestry
+
+    def has_revision(self,revision_id):
+        (path,revnum) = self.parse_revision_id(revision_id)
+
+        url = self.url + "/" + path
+
+        revt = svn.core.svn_opt_revision_t()
+        revt.kind = svn.core.svn_opt_revision_number
+        revt.value.number = revnum
+
+        self._found = False
+
+        def rcvr(paths,rev,author,date,message,pool):
+            self._found = True
+
+        mutter("log3 %s" % url)
+        svn.client.log3([url.encode('utf8')], revt, revt, \
+                revt, 1, False, False, rcvr, 
+                self.client, self.pool)
+
+        return self._found
+
     def get_revision(self,revision_id):
         (path,revnum) = self.parse_revision_id(revision_id)
         
@@ -58,15 +113,32 @@ class SvnRepository(Repository):
         (svn_props, actual_rev) = svn.client.revprop_list(url.encode('utf8'), rev, self.client, self.pool)
         assert actual_rev == revnum
 
-        parent_ids = [None] #FIXME
-    
+        revt_begin = svn.core.svn_opt_revision_t()
+        revt_begin.kind = svn.core.svn_opt_revision_number
+        revt_begin.value.number = revnum - 1
+
+        revt_end = svn.core.svn_opt_revision_t()
+        revt_end.kind = svn.core.svn_opt_revision_number
+        revt_end.value.number = 0
+
+        parent_ids = []
+
+        def rcvr(paths,rev,author,date,message,pool):
+            revid = "%d@%s-%s" % (rev,self.uuid,path)
+            parent_ids.append(revid)
+
+        mutter("log3 %s" % url)
+        svn.client.log3([url.encode('utf8')], revt_begin, revt_begin, \
+                revt_end, 1, False, False, rcvr, 
+                self.client, self.pool)
+
         # Commit SVN revision properties to a Revision object
         bzr_props = {}
         rev = Revision(revision_id=revision_id,
                        parent_ids=parent_ids)
 
         for name in svn_props:
-            bzr_props[name] = str(svn_props[name])
+            bzr_props[name] = svn_props[name].decode('utf8')
 
         rev.timestamp = svn.core.secs_from_timestr(bzr_props[svn.core.SVN_PROP_REVISION_DATE], self.pool) * 1.0
         rev.timezone = None
@@ -75,7 +147,6 @@ class SvnRepository(Repository):
         rev.message = bzr_props[svn.core.SVN_PROP_REVISION_LOG]
 
         rev.properties = bzr_props
-#        rev.inventory_sha1 = self.get_inventory_sha1(revision_id)
         
         return rev
 
@@ -90,6 +161,14 @@ class SvnRepository(Repository):
 
     def get_inventory_xml(self, revision_id):
         raise NotImplementedError()
+
+    def fileid_involved_by_set(self, changes):
+        ids = []
+
+        for revid in changes:
+            pass #FIXME
+
+        return ids
 
     def parse_revision_id(self,revid):
         at = revid.index("@")
@@ -128,6 +207,7 @@ class SvnRepository(Repository):
 
         url = self.url + "/" + path
 
+        mutter("log3 %s" % (url))
         svn.client.log3([url.encode('utf8')], revt_begin, revt_begin, \
                 revt_end, 0, False, False, rcvr, 
                 self.client, self.pool)
