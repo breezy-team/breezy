@@ -6,6 +6,7 @@
 from bzrlib.repository import Repository
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.trace import mutter
+from bzrlib.revision import Revision
 import svn.core
 import bzrlib
 from branch import auth_baton
@@ -45,8 +46,38 @@ class SvnRepository(Repository):
     def all_revision_ids(self):
         raise NotImplementedError()
 
-    def get_revision(self,revid):
-        raise NotImplementedError()
+    def get_revision(self,revision_id):
+        (path,revnum) = self.parse_revision_id(revision_id)
+        
+        url = self.url + "/" + path
+
+        rev = svn.core.svn_opt_revision_t()
+        rev.kind = svn.core.svn_opt_revision_number
+        rev.value.number = revnum
+        mutter('svn proplist -r %r %r' % (revnum,url))
+        (svn_props, actual_rev) = svn.client.revprop_list(url.encode('utf8'), rev, self.client, self.pool)
+        assert actual_rev == revnum
+
+        parent_ids = [None] #FIXME
+    
+        # Commit SVN revision properties to a Revision object
+        bzr_props = {}
+        rev = Revision(revision_id=revision_id,
+                       parent_ids=parent_ids)
+
+        for name in svn_props:
+            bzr_props[name] = str(svn_props[name])
+
+        rev.timestamp = svn.core.secs_from_timestr(bzr_props[svn.core.SVN_PROP_REVISION_DATE], self.pool) * 1.0
+        rev.timezone = None
+
+        rev.committer = bzr_props[svn.core.SVN_PROP_REVISION_AUTHOR]
+        rev.message = bzr_props[svn.core.SVN_PROP_REVISION_LOG]
+
+        rev.properties = bzr_props
+#        rev.inventory_sha1 = self.get_inventory_sha1(revision_id)
+        
+        return rev
 
     def add_revision(self, rev_id, rev, inv=None, config=None):
         raise NotImplementedError()
@@ -68,7 +99,7 @@ class SvnRepository(Repository):
         if uuid != self.uuid:
             raise NoSuchRevision()
 
-        return (revid[fash+1:],revid[0:at])
+        return (revid[fash+1:],int(revid[0:at]))
 
     def get_revision_graph_with_ghosts(self, revision_id):
         raise NotImplementedError()
@@ -81,7 +112,7 @@ class SvnRepository(Repository):
 
         revt_begin = svn.core.svn_opt_revision_t()
         revt_begin.kind = svn.core.svn_opt_revision_number
-        revt_begin.value.number = int(revnum) - 1
+        revt_begin.value.number = revnum - 1
 
         revt_end = svn.core.svn_opt_revision_t()
         revt_end.kind = svn.core.svn_opt_revision_number

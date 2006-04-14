@@ -173,34 +173,6 @@ class SvnBranch(Branch):
         svn.client.cat(stream,file_url.encode('utf8'),revnum,self.client,self.repository.pool)
         print Stream(stream).read()
 
-    def get_revision(self, revision_id):
-        revnum = self.get_revnum(revision_id)
-        
-        mutter('svn proplist -r %r %r' % (revnum.value.number,self.base))
-        (svn_props, actual_rev) = svn.client.revprop_list(self.base.encode('utf8'), revnum, self.repository.client, self.repository.pool)
-        assert actual_rev == revnum.value.number
-
-        parent_ids = self.get_parents(revision_id)
-    
-        # Commit SVN revision properties to a Revision object
-        bzr_props = {}
-        rev = Revision(revision_id=revision_id,
-                       parent_ids=parent_ids)
-
-        for name in svn_props:
-            bzr_props[name] = str(svn_props[name])
-
-        rev.timestamp = svn.core.secs_from_timestr(bzr_props[svn.core.SVN_PROP_REVISION_DATE], self.repository.pool) * 1.0
-        rev.timezone = None
-
-        rev.committer = bzr_props[svn.core.SVN_PROP_REVISION_AUTHOR]
-        rev.message = bzr_props[svn.core.SVN_PROP_REVISION_LOG]
-
-        rev.properties = bzr_props
-        rev.inventory_sha1 = self.get_inventory_sha1(revision_id)
-        
-        return rev
-
     def get_parents(self, revision_id):
         revnum = self.get_revnum(revision_id)
         parents = []
