@@ -253,7 +253,7 @@ def show_bzrdir_info(a_bzrdir, verbose=False):
     except NoRepositoryPresent:
         pass
 
-    # Return silently, cmd_info returns NotBranchError if no bzrdir
+    # Return silently, cmd_info already returned NotBranchError if no bzrdir
     # could be opened.
 
 

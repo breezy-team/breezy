@@ -29,6 +29,11 @@ from bzrlib.tests.blackbox import ExternalBase
 
 class TestInfo(ExternalBase):
 
+    def test_info_non_existing(self):
+        out, err = self.runbzr('info /i/do/not/exist/', retcode=3)
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'bzr: ERROR: Not a branch: /i/do/not/exist/\n')
+
     def test_info_standalone(self):
         transport = self.get_transport()
 
