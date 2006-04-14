@@ -948,3 +948,66 @@ Revision store:
         self.assertEqual('', err)
 
         bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
+    
+    def test_info_shared_repository_with_tree_in_root(self):
+        old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirMetaFormat1())
+        transport = self.get_transport()
+
+        # Create shared repository with working trees
+        repo = self.make_repository('repo', shared=True)
+        repo.set_make_working_trees(True)
+        out, err = self.runbzr('info repo')
+        self.assertEqualDiff(
+"""Location:
+   shared repository: %s
+
+Format:
+       control: Meta directory format 1
+    repository: Weave repository format 7
+
+Create working tree for new branches inside the repository.
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % repo.bzrdir.root_transport.base, out)
+        self.assertEqual('', err)
+
+        # Create branch in root of repository
+        control = repo.bzrdir
+        branch = control.create_branch()
+        control.create_workingtree()
+        out, err = self.runbzr('info repo')
+        self.assertEqualDiff(
+"""Location:
+         branch root: %s
+   shared repository: %s
+
+Format:
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: Weave repository format 7
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (branch.bzrdir.root_transport.base,
+       repo.bzrdir.root_transport.base), out)
+        self.assertEqual('', err)
+
+        bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)

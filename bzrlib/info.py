@@ -62,7 +62,12 @@ def _show_location_info(repository=None, branch=None, working=None):
         if branch.get_bound_location():
             print '     bound to branch: %s' % branch.get_bound_location()
 
-    if repository and (not branch or repository.bzrdir != branch.bzrdir):
+    # No branch? Info was requested on a repository, show it.
+    # If we have a branch with the same location as repository, hide it,
+    # unless that repository is shared.
+    if repository and (not branch or
+                       repository.bzrdir != branch.bzrdir or
+                       repository.is_shared()):
         if repository.is_shared():
             print '   shared repository: %s' % (
                 repository.bzrdir.root_transport.base)
