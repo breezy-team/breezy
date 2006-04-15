@@ -764,15 +764,22 @@ class cmd_update(Command):
 
 
 class cmd_info(Command):
-    """Show statistical information about a branch."""
-    takes_args = ['branch?']
+    """Show information about a working tree, branch or repository.
+
+    This command will show all known locations and formats associated to the
+    tree, branch or repository.  Statistical information is included with
+    each report.
+
+    Branches and working trees will also report any missing revisions.
+    """
+    takes_args = ['location?']
     takes_options = ['verbose']
-    
+
     @display_command
-    def run(self, branch=None, verbose=False):
-        import bzrlib.info
-        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0],
-                                     verbose=verbose)
+    def run(self, location=None, verbose=False):
+        from bzrlib.info import show_bzrdir_info
+        show_bzrdir_info(bzrdir.BzrDir.open_containing(location)[0],
+                         verbose=verbose)
 
 
 class cmd_remove(Command):
