@@ -89,15 +89,6 @@ class SvnBranch(Branch):
         self.base_revno.kind = svn.core.svn_opt_revision_head
         self._generate_revnum_map('trunk',self.base_revno)
         
-    #FIXME
-    def filename_from_file_id(self,revision_id,file_id):
-        """Generate a Subversion filename from a bzr file id."""
-        return file_id.replace('_','/')
-
-    def filename_to_file_id(self,revision_id,filename):
-        """Generate a bzr file id from a Subversion file name."""
-        return filename.replace('/','_')
-
     def url_from_file_id(self,revision_id,file_id):
         """Generate a full Subversion URL from a bzr file id."""
         return self.base+"/"+self.filename_from_file_id(revision_id,file_id)
@@ -161,17 +152,6 @@ class SvnBranch(Branch):
 
     def has_revision(self, revision_id):
         return self.revision_history().has_key(revision_id)
-
-    def print_file(self, file, revno):
-        """See Branch.print_file."""
-        # For some odd reason this method still takes a revno rather 
-        # then a revid
-        revnum = self.get_revnum(self.get_rev_id(revno))
-        stream = svn.core.svn_stream_empty(self.repository.pool)
-        file_url = self.base+"/"+file
-        mutter('svn cat -r %r %r' % (revnum.value.number,file_url))
-        svn.client.cat(stream,file_url.encode('utf8'),revnum,self.client,self.repository.pool)
-        print Stream(stream).read()
 
     def get_parents(self, revision_id):
         revnum = self.get_revnum(revision_id)

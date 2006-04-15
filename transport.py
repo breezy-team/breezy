@@ -22,8 +22,7 @@ class SvnTransport(Transport):
             raise NotImplementedError(self.get)
 
     def stat(self, relpath):
-        print "FIXME: Stat on %s" % relpath
-        return os.stat('.')
+        return os.stat('.') #FIXME
 
     def lock_read(self, relpath):
         class PhonyLock:

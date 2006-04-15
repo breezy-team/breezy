@@ -9,12 +9,49 @@ from bzrlib.trace import mutter
 from bzrlib.revision import Revision
 from bzrlib.errors import NoSuchRevision
 from bzrlib.versionedfile import VersionedFile
+from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
+            ROOT_ID
 from libsvn._core import SubversionException
 import svn.core
 import bzrlib
 from branch import auth_baton
 from bzrlib.weave import Weave
 from cStringIO import StringIO
+
+class SvnFileWeave(VersionedFile):
+    def __init__(self,repository,weave_name,access_mode='w'):
+        VersionedFile.__init__(self,access_mode)
+        self.repository = repository
+        self.file = weave_name
+
+    def get_lines(self, version_id):
+        return []
+        if version_id is None:
+            path = "trunk" # FIXME
+
+            revt = svn.core.svn_opt_revision_t()
+            revt.kind = svn.core.svn_opt_revision_head
+        else:
+            (path,revnum) = self.repository.parse_revision_id(version_id)
+
+            revt = svn.core.svn_opt_revision_t()
+            revt.kind = svn.core.svn_opt_revision_number
+            revt.value.number = revnum
+
+        file_url = "%s/%s/%s" % (self.repository.url,path,self.file)
+
+        mutter('svn cat %r' % file_url)
+
+        stream = svn.core.svn_stream_empty(self.repository.pool)
+        svn.client.cat(stream,file_url.encode('utf8'),revt,self.repository.client,self.repository.pool)
+        return [Stream(stream).read()]
+
+class SvnFileStore(object):
+    def __init__(self,repository):
+        self.repository = repository
+
+    def get_weave(self,file_id,transaction):
+        return SvnFileWeave(self.repository,file_id)
 
 """
 Provides a simplified interface to a Subversion repository 
@@ -27,7 +64,8 @@ class SvnRepository(Repository):
         self.url = url
         _revision_store = None
         control_store = None
-        text_store = None
+
+        text_store = SvnFileStore(self)
         control_files = LockableFiles(bzrdir.transport, '', TransportLock)
         Repository.__init__(self, 'SVN Repository', bzrdir, control_files, _revision_store, control_store, text_store)
 
@@ -42,20 +80,27 @@ class SvnRepository(Repository):
 
         mutter("Connected to repository at %s, UUID %s" % (self.url, self.uuid))
 
+
     def __del__(self):
         svn.core.svn_pool_destroy(self.pool)
 
     def get_inventory(self, revision_id):
-        revnum = self.get_revnum(revision_id)
-        mutter('getting inventory %r for branch %r' % (revnum.value.number, self.base))
+        (path,revnum) = self.parse_revision_id(revision_id)
+        mutter('getting inventory %r for branch %r' % (revnum, path))
 
-        mutter("svn ls -r %d '%r'" % (revnum.value.number, self.base))
-        remote_ls = svn.client.ls(self.base.encode('utf8'),
-                                         revnum,
+        url = self.url + "/" + path
+
+        mutter("svn ls -r %d '%r'" % (revnum, url))
+
+        revt = svn.core.svn_opt_revision_t()
+        revt.kind = svn.core.svn_opt_revision_number
+        revt.value.number = revnum
+
+        remote_ls = svn.client.ls(url.encode('utf8'),
+                                         revt,
                                          True, # recurse
-                                         self.repository.client, 
-                                         self.repository.pool)
-        mutter('done')
+                                         self.client, 
+                                         self.pool)
 
         # Make sure a directory is always added before its contents
         names = remote_ls.keys()
@@ -85,11 +130,22 @@ class SvnRepository(Repository):
 
         return inv
 
+    #FIXME
+    def filename_from_file_id(self,revision_id,file_id):
+        """Generate a Subversion filename from a bzr file id."""
+        return file_id.replace('_','/')
+
+    def filename_to_file_id(self,revision_id,filename):
+        """Generate a bzr file id from a Subversion file name."""
+        return filename.replace('/','_')
+
     def all_revision_ids(self):
         raise NotImplementedError()
 
     def get_inventory_weave(self):
+        weave = Weave('inventory','w')
         raise NotImplementedError
+        return weave
 
     def get_ancestry(self, revision_id):
         (path,revnum) = self.parse_revision_id(revision_id)

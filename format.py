@@ -7,7 +7,7 @@ from bzrlib.lockable_files import TransportLock
 
 class SvnRemoteAccess(BzrDir):
     def __init__(self, _transport, _format):
-        self.transport = _transport
+        self.root_transport = self.transport = _transport
         self._format = _format
 
         if _transport.url.startswith("svn://") or \
@@ -26,7 +26,10 @@ class SvnRemoteAccess(BzrDir):
         return SvnRepository(self, self.url)
 
     def open_workingtree(self):
-        pass
+        return None
+
+    def create_workingtree(self):
+        return None #FIXME
 
     def open_branch(self, unsupported=True):
         try:
