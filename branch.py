@@ -61,7 +61,7 @@ class SvnRevisionTree(Tree):
         self.branch = branch
         self.revision_id = revision_id
         self.revnum = self.branch.get_revnum(revision_id)
-        self._inventory = branch.get_inventory(revision_id)
+        self._inventory = branch.repository.get_inventory(revision_id)
 
     def get_file_sha1(self,file_id):
         return bzrlib.osutils.sha_string(self.get_file(file_id))
@@ -129,7 +129,7 @@ class SvnBranch(Branch):
         raise NotImplementedError('set_root_id not supported on Subversion Branches')
             
     def get_root_id(self):
-        inv = self.get_inventory(self.last_revision())
+        inv = self.repository.get_inventory(self.last_revision())
         return inv.root.file_id
 
     def abspath(self, name):
@@ -194,46 +194,6 @@ class SvnBranch(Branch):
         # from
         return self.revision_history()[0:i+1]
 
-    def get_inventory(self, revision_id):
-        revnum = self.get_revnum(revision_id)
-        mutter('getting inventory %r for branch %r' % (revnum.value.number, self.base))
-
-        mutter("svn ls -r %d '%r'" % (revnum.value.number, self.base))
-        remote_ls = svn.client.ls(self.base.encode('utf8'),
-                                         revnum,
-                                         True, # recurse
-                                         self.repository.client, 
-                                         self.repository.pool)
-        mutter('done')
-
-        # Make sure a directory is always added before its contents
-        names = remote_ls.keys()
-        names.sort(lambda a,b: len(a) - len(b))
-
-        inv = Inventory()
-        for entry in names:
-            ri = entry.rfind('/')
-            if ri == -1:
-                top = entry
-                parent = ''
-            else:
-                top = entry[ri+1:]
-                parent = entry[0:ri]
-
-            parent_id = inv.path2id(parent)
-            assert not parent_id is None
-            
-            id = self.filename_to_file_id(revision_id, entry)
-
-            if remote_ls[entry].kind == svn.core.svn_node_dir:
-                inv.add(InventoryDirectory(id,top,parent_id=parent_id))
-            elif remote_ls[entry].kind == svn.core.svn_node_file:
-                inv.add(InventoryFile(id,top,parent_id=parent_id))
-            else:
-                raise BzrError("Unknown entry kind for '%s': %d" % (entry, remote_ls[entry].kind))
-
-        return inv
-
     def pull(self, source, overwrite=False):
         print "Pull from %s to %s" % (source,self)
         raise NotImplementedError('pull is abstract') #FIXME
@@ -271,23 +231,3 @@ class SvnBranch(Branch):
 
     def append_revision(self, *revision_ids):
         raise NotImplementedError('append_revision is abstract') #FIXME
-
-    def working_tree(self):
-        if self.path is None:
-            raise NoWorkingTree(self.base)
-        else:
-            return SvnWorkingTree(self.path,branch=self)
-
-    # FIXME: perhaps move these four to a 'ForeignBranch' class in 
-    # bzr core?
-    def get_revision_xml(self, revision_id):
-        return bzrlib.xml5.serializer_v5.write_revision_to_string(self.get_revision(revision_id))
-
-    def get_inventory_xml(self, revision_id):
-        return bzrlib.xml5.serializer_v5.write_inventory_to_string(self.get_inventory(revision_id))
-
-    def get_revision_sha1(self, revision_id):
-        return bzrlib.osutils.sha_string(self.get_revision_xml(revision_id))
-
-    def get_inventory_sha1(self, revision_id):
-        return bzrlib.osutils.sha_string(self.get_inventory_xml(revision_id))

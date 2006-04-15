@@ -7,9 +7,14 @@ from bzrlib.repository import Repository
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.trace import mutter
 from bzrlib.revision import Revision
+from bzrlib.errors import NoSuchRevision
+from bzrlib.versionedfile import VersionedFile
+from libsvn._core import SubversionException
 import svn.core
 import bzrlib
 from branch import auth_baton
+from bzrlib.weave import Weave
+from cStringIO import StringIO
 
 """
 Provides a simplified interface to a Subversion repository 
@@ -40,15 +45,51 @@ class SvnRepository(Repository):
     def __del__(self):
         svn.core.svn_pool_destroy(self.pool)
 
-    def get_inventory(self):
-        raise NotImplementedError()
+    def get_inventory(self, revision_id):
+        revnum = self.get_revnum(revision_id)
+        mutter('getting inventory %r for branch %r' % (revnum.value.number, self.base))
+
+        mutter("svn ls -r %d '%r'" % (revnum.value.number, self.base))
+        remote_ls = svn.client.ls(self.base.encode('utf8'),
+                                         revnum,
+                                         True, # recurse
+                                         self.repository.client, 
+                                         self.repository.pool)
+        mutter('done')
+
+        # Make sure a directory is always added before its contents
+        names = remote_ls.keys()
+        names.sort(lambda a,b: len(a) - len(b))
+
+        inv = Inventory()
+        for entry in names:
+            ri = entry.rfind('/')
+            if ri == -1:
+                top = entry
+                parent = ''
+            else:
+                top = entry[ri+1:]
+                parent = entry[0:ri]
+
+            parent_id = inv.path2id(parent)
+            assert not parent_id is None
+            
+            id = self.filename_to_file_id(revision_id, entry)
+
+            if remote_ls[entry].kind == svn.core.svn_node_dir:
+                inv.add(InventoryDirectory(id,top,parent_id=parent_id))
+            elif remote_ls[entry].kind == svn.core.svn_node_file:
+                inv.add(InventoryFile(id,top,parent_id=parent_id))
+            else:
+                raise BzrError("Unknown entry kind for '%s': %d" % (entry, remote_ls[entry].kind))
+
+        return inv
 
     def all_revision_ids(self):
         raise NotImplementedError()
 
     def get_inventory_weave(self):
-        # FIXME
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def get_ancestry(self, revision_id):
         (path,revnum) = self.parse_revision_id(revision_id)
@@ -102,6 +143,7 @@ class SvnRepository(Repository):
         return self._found
 
     def get_revision(self,revision_id):
+        mutter("retrieving %s" % revision_id)
         (path,revnum) = self.parse_revision_id(revision_id)
         
         url = self.url + "/" + path
@@ -112,6 +154,10 @@ class SvnRepository(Repository):
         mutter('svn proplist -r %r %r' % (revnum,url))
         (svn_props, actual_rev) = svn.client.revprop_list(url.encode('utf8'), rev, self.client, self.pool)
         assert actual_rev == revnum
+
+        revt_peg = svn.core.svn_opt_revision_t()
+        revt_peg.kind = svn.core.svn_opt_revision_number
+        revt_peg.value.number = revnum
 
         revt_begin = svn.core.svn_opt_revision_t()
         revt_begin.kind = svn.core.svn_opt_revision_number
@@ -127,10 +173,15 @@ class SvnRepository(Repository):
             revid = "%d@%s-%s" % (rev,self.uuid,path)
             parent_ids.append(revid)
 
-        mutter("log3 %s" % url)
-        svn.client.log3([url.encode('utf8')], revt_begin, revt_begin, \
+        mutter("log3 -r%d:0 %s" % (revnum-1,url))
+        try:
+            svn.client.log3([url.encode('utf8')], revt_peg, revt_begin, \
                 revt_end, 1, False, False, rcvr, 
                 self.client, self.pool)
+
+        except SubversionException, (_,num):
+            if num != 195012:
+                raise
 
         # Commit SVN revision properties to a Revision object
         bzr_props = {}
@@ -147,6 +198,8 @@ class SvnRepository(Repository):
         rev.message = bzr_props[svn.core.SVN_PROP_REVISION_LOG]
 
         rev.properties = bzr_props
+
+        rev.inventory_sha1 = "EMPTY"  #FIXME
         
         return rev
 
@@ -159,9 +212,6 @@ class SvnRepository(Repository):
     def fileid_involved(self, last_revid=None):
         raise NotImplementedError()
 
-    def get_inventory_xml(self, revision_id):
-        raise NotImplementedError()
-
     def fileid_involved_by_set(self, changes):
         ids = []
 
@@ -171,6 +221,7 @@ class SvnRepository(Repository):
         return ids
 
     def parse_revision_id(self,revid):
+        assert isinstance(revid,basestring)
         at = revid.index("@")
         fash = revid.rindex("-")
         uuid = revid[at+1:fash]
@@ -180,8 +231,32 @@ class SvnRepository(Repository):
 
         return (revid[fash+1:],int(revid[0:at]))
 
+    def get_inventory_xml(self, revision_id):
+        return bzrlib.xml5.serializer_v5.write_inventory_to_string(self.get_inventory(revision_id))
+
+    def get_inventory_sha1(self, revision_id):
+        return bzrlib.osutils.sha_string(self.get_inventory_xml(revision_id))
+
+    def get_revision_xml(self, revision_id):
+        return bzrlib.xml5.serializer_v5.write_revision_to_string(self.get_revision(revision_id))
+
+    def get_revision_sha1(self, revision_id):
+        return bzrlib.osutils.sha_string(self.get_revision_xml(revision_id))
+
     def get_revision_graph_with_ghosts(self, revision_id):
-        raise NotImplementedError()
+        result = Graph()
+
+        #FIXME
+        raise NotImplementedError
+
+        return result
+
+    def has_signature_for_revision_id(self, revision_id):
+        return False # SVN doesn't store GPG signatures. Perhaps 
+                     # store in SVN revision property?
+
+    def get_signature_text(self, revision_id):
+        raise NoSuchRevision(self, revision_id) # SVN doesn't store GPG signatures
 
     def get_revision_graph(self, revision_id):
         if revision_id is None:
