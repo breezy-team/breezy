@@ -1,0 +1,6 @@
+- support tracking of moves
+- support SVN working trees
+- support svn:executable
+- support svn:ignore
+- support svn:externals
+- integrate DumpFile support (e.g. svn2bzr) ?

@@ -5,7 +5,8 @@ Bazaar (http://www.bazaar-vcs.org/)
 You will need a recent version of Bazaar-NG, at least 0.8 (or 
 one of the 0.8 pre releases).
 
-You also need the Subversion bindings for python.
+You also need the Subversion bindings for python, with my patch for svn_info_t (available at 
+http://jelmer.vernstok.nl/files/patches/svn-client-info-python.diff)
 
 Simply place this directory in ~/.bazaar/plugins and you should be able 
 to check out branches from Subversion using bzr.

@@ -82,18 +82,23 @@ class SvnRevisionTree(Tree):
         return Stream(stream).read()
 
 class SvnBranch(Branch):
-    def __init__(self,repos,base,kind):
+    def __init__(self,repos,base):
         self.repository = repos
+
+        if not base.startswith(repos.url):
+            raise CorruptRepository(repos)
+
+        self.branch_path = base[len(repos.url):]
         self.base = base 
-        self.base_revno = svn.core.svn_opt_revision_t()
-        self.base_revno.kind = svn.core.svn_opt_revision_head
-        self._generate_revnum_map('trunk',self.base_revno)
+        self.base_revt = svn.core.svn_opt_revision_t()
+        self.base_revt.kind = svn.core.svn_opt_revision_head
+        self._generate_revnum_map()
         
     def url_from_file_id(self,revision_id,file_id):
         """Generate a full Subversion URL from a bzr file id."""
         return self.base+"/"+self.filename_from_file_id(revision_id,file_id)
 
-    def _generate_revnum_map(self,relpath,revt_end):
+    def _generate_revnum_map(self):
         #FIXME: Revids should be globally unique, so we should include the 
         # branch path somehow. If we don't do this there might be revisions 
         # that have the same id because they were created in the same commit.
@@ -107,13 +112,13 @@ class SvnBranch(Branch):
         revt_begin.value.number = 0
 
         def rcvr(paths,rev,author,date,message,pool):
-            revid = "%d@%s-%s" % (rev,self.repository.uuid,relpath)
+            revid = "%d@%s-%s" % (rev,self.repository.uuid,self.branch_path)
             self._revision_history.append(revid)
 
-        url = "%s/%s" % (self.repository.url, relpath)
+        url = "%s/%s" % (self.repository.url, self.branch_path)
 
-        svn.client.log3([url.encode('utf8')], revt_end, revt_begin, \
-                revt_end, 0, False, False, rcvr, 
+        svn.client.log3([url.encode('utf8')], self.base_revt, revt_begin, \
+                self.base_revt, 0, False, False, rcvr, 
                 self.repository.client, self.repository.pool)
  
     def set_root_id(self, file_id):

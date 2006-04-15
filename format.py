@@ -3,6 +3,7 @@ from repository import SvnRepository
 from branch import SvnBranch
 import svn.client
 from libsvn._core import SubversionException
+from bzrlib.errors import NotBranchError
 from bzrlib.lockable_files import TransportLock
 
 class SvnRemoteAccess(BzrDir):
@@ -33,7 +34,7 @@ class SvnRemoteAccess(BzrDir):
 
     def open_branch(self, unsupported=True):
         try:
-            branch = SvnBranch(self.find_repository(),self.url,svn.core.svn_opt_revision_head)
+            branch = SvnBranch(self.find_repository(),self.url)
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_RA_ILLEGAL_URL or \
                num == svn.core.SVN_ERR_WC_NOT_DIRECTORY or \
@@ -56,4 +57,5 @@ class SvnFormat(BzrDirFormat):
 
     def get_format_string(self):
         return 'SVN Repository'
+
 

@@ -25,18 +25,14 @@ class SvnFileWeave(VersionedFile):
         self.file = weave_name
 
     def get_lines(self, version_id):
-        return []
         if version_id is None:
-            path = "trunk" # FIXME
+            return []
 
-            revt = svn.core.svn_opt_revision_t()
-            revt.kind = svn.core.svn_opt_revision_head
-        else:
-            (path,revnum) = self.repository.parse_revision_id(version_id)
+        (path,revnum) = self.repository.parse_revision_id(version_id)
 
-            revt = svn.core.svn_opt_revision_t()
-            revt.kind = svn.core.svn_opt_revision_number
-            revt.value.number = revnum
+        revt = svn.core.svn_opt_revision_t()
+        revt.kind = svn.core.svn_opt_revision_number
+        revt.value.number = revnum
 
         file_url = "%s/%s/%s" % (self.repository.url,path,self.file)
 
@@ -61,7 +57,6 @@ class SvnRepository(Repository):
     branch_paths = [".","branches","tags"]
 
     def __init__(self, bzrdir, url):
-        self.url = url
         _revision_store = None
         control_store = None
 
@@ -75,8 +70,17 @@ class SvnRepository(Repository):
         self.client.config = svn.core.svn_config_get_config(None)
         self.client.auth_baton = auth_baton
 
-        self.uuid = svn.client.uuid_from_url(self.url.encode('utf8'), 
-                self.client, self.pool)
+        def rcvr(path,info,pool):
+            self.url = info.repos_root_URL
+            self.uuid = info.repos_UUID
+
+        revt = svn.core.svn_opt_revision_t()
+        revt.kind = svn.core.svn_opt_revision_head
+
+        svn.client.info(url.encode('utf8'), revt, revt, rcvr, False, self.client, self.pool)
+
+        assert self.url
+        assert self.uuid
 
         mutter("Connected to repository at %s, UUID %s" % (self.url, self.uuid))
 
