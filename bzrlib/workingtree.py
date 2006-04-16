@@ -93,8 +93,8 @@ from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
-from bzrlib.trace import mutter
 from bzrlib.transform import build_tree
+from bzrlib.trace import mutter, note
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
 import bzrlib.ui
@@ -637,6 +637,8 @@ class WorkingTree(bzrlib.tree.Tree):
             raise MergeModifiedFormatError()
         for s in RioReader(hashfile):
             file_id = s.get("file_id")
+            if file_id not in self.inventory:
+                continue
             hash = s.get("hash")
             if hash == self.get_file_sha1(file_id):
                 merge_hashes[file_id] = hash
@@ -1154,6 +1156,8 @@ class WorkingTree(bzrlib.tree.Tree):
             resolve(self, filenames, ignore_misses=True)
         return conflicts
 
+    # XXX: This method should be deprecated in favour of taking in a proper
+    # new Inventory object.
     @needs_write_lock
     def set_inventory(self, new_inventory_list):
         from bzrlib.inventory import (Inventory,
