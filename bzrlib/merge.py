@@ -35,6 +35,7 @@ from bzrlib.errors import (BzrCommandError,
                            UnrelatedBranches,
                            UnsupportedOperation,
                            WorkingTreeNotRevision,
+                           BinaryFile,
                            )
 from bzrlib.merge3 import Merge3
 import bzrlib.osutils
@@ -517,6 +518,18 @@ class Merge3Merger(object):
             else:
                 contents = None
             return kind, contents
+
+        def contents_conflict():
+            trans_id = self.tt.trans_id_file_id(file_id)
+            name = self.tt.final_name(trans_id)
+            parent_id = self.tt.final_parent(trans_id)
+            if file_id in self.this_tree.inventory:
+                self.tt.unversion_file(trans_id)
+                self.tt.delete_contents(trans_id)
+            file_group = self._dump_conflicts(name, parent_id, file_id, 
+                                              set_version=True)
+            self._raw_conflicts.append(('contents conflict', file_group))
+
         # See SPOT run.  run, SPOT, run.
         # So we're not QUITE repeating ourselves; we do tricky things with
         # file kind...
@@ -553,9 +566,12 @@ class Merge3Merger(object):
                 # THIS and OTHER are both files, so text merge.  Either
                 # BASE is a file, or both converted to files, so at least we
                 # have agreement that output should be a file.
+                try:
+                    self.text_merge(file_id, trans_id)
+                except BinaryFile:
+                    return contents_conflict()
                 if file_id not in self.this_tree.inventory:
                     self.tt.version_file(file_id, trans_id)
-                self.text_merge(file_id, trans_id)
                 try:
                     self.tt.tree_kind(trans_id)
                     self.tt.delete_contents(trans_id)
@@ -564,15 +580,7 @@ class Merge3Merger(object):
                 return "modified"
             else:
                 # Scalar conflict, can't text merge.  Dump conflicts
-                trans_id = self.tt.trans_id_file_id(file_id)
-                name = self.tt.final_name(trans_id)
-                parent_id = self.tt.final_parent(trans_id)
-                if file_id in self.this_tree.inventory:
-                    self.tt.unversion_file(trans_id)
-                    self.tt.delete_contents(trans_id)
-                file_group = self._dump_conflicts(name, parent_id, file_id, 
-                                                  set_version=True)
-                self._raw_conflicts.append(('contents conflict', file_group))
+                return contents_conflict()
 
     def get_lines(self, tree, file_id):
         """Return the lines in a file, or an empty list."""
