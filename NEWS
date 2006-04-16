@@ -72,6 +72,8 @@ bzr development version
       Fix off-by-one error in missing revisions of working tree.  Make 'info'
       work on branches, repositories and remote locations.  (Olaf Conradi)
 
+    * Diff and merge now safely handle binary files. (Aaron Bentley)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
