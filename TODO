@@ -1,3 +1,5 @@
+- support open_containing() properly - don't assume any URL passed in 
+  refers to a branch
 - support tracking of moves
 - support SVN working trees
 - support svn:executable

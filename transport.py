@@ -25,8 +25,8 @@ class SvnTransport(Transport):
         return os.stat('.') #FIXME
 
     def lock_read(self, relpath):
+        # FIXME
         class PhonyLock:
             def unlock(self):
                 pass
-        print "FIXME: lock_read on %s" % relpath
         return PhonyLock()

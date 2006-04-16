@@ -88,7 +88,7 @@ class SvnBranch(Branch):
         if not base.startswith(repos.url):
             raise CorruptRepository(repos)
 
-        self.branch_path = base[len(repos.url):]
+        self.branch_path = base[len(repos.url):].strip("/")
         self.base = base 
         self.base_revt = svn.core.svn_opt_revision_t()
         self.base_revt.kind = svn.core.svn_opt_revision_head

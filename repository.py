@@ -22,12 +22,12 @@ class SvnFileWeave(VersionedFile):
     def __init__(self,repository,weave_name,access_mode='w'):
         VersionedFile.__init__(self,access_mode)
         self.repository = repository
-        self.file = weave_name
+        self.file = repository.filename_from_file_id(None, weave_name) #FIXME
+        assert self.file
 
     def get_lines(self, version_id):
-        if version_id is None:
-            return []
-
+        assert version_id != None
+        
         (path,revnum) = self.repository.parse_revision_id(version_id)
 
         revt = svn.core.svn_opt_revision_t()
@@ -38,9 +38,11 @@ class SvnFileWeave(VersionedFile):
 
         mutter('svn cat %r' % file_url)
 
-        stream = svn.core.svn_stream_empty(self.repository.pool)
+        stream = StringIO()
         svn.client.cat(stream,file_url.encode('utf8'),revt,self.repository.client,self.repository.pool)
-        return [Stream(stream).read()]
+        contents = stream.read()
+        print contents
+        return [contents]
 
 class SvnFileStore(object):
     def __init__(self,repository):
@@ -126,22 +128,25 @@ class SvnRepository(Repository):
             id = self.filename_to_file_id(revision_id, entry)
 
             if remote_ls[entry].kind == svn.core.svn_node_dir:
-                inv.add(InventoryDirectory(id,top,parent_id=parent_id))
+                entry = InventoryDirectory(id,top,parent_id=parent_id)
             elif remote_ls[entry].kind == svn.core.svn_node_file:
-                inv.add(InventoryFile(id,top,parent_id=parent_id))
+                entry = InventoryFile(id,top,parent_id=parent_id)
             else:
                 raise BzrError("Unknown entry kind for '%s': %d" % (entry, remote_ls[entry].kind))
+
+            entry.revision = revision_id # FIXME: shouldn't this be last changed revision?
+            inv.add(entry)
 
         return inv
 
     #FIXME
     def filename_from_file_id(self,revision_id,file_id):
         """Generate a Subversion filename from a bzr file id."""
-        return file_id.replace('_','/')
+        return file_id.replace('%','/')
 
     def filename_to_file_id(self,revision_id,filename):
         """Generate a bzr file id from a Subversion file name."""
-        return filename.replace('/','_')
+        return filename.replace('/','%')
 
     def all_revision_ids(self):
         raise NotImplementedError()
