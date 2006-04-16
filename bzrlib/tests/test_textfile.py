@@ -22,6 +22,7 @@ from bzrlib.textfile import *
 
 
 class TextFile(TestCase):
+
     def test_text_file(self):
         s = StringIO('ab' * 2048)
         self.assertEqual(text_file(s).read(), s.getvalue())
@@ -38,7 +39,9 @@ class TextFile(TestCase):
         lines = ['a' * 1024 + '\x00']
         check_text_lines(lines)
 
+
 class TextPath(TestCaseInTempDir):
+
     def test_text_file(self):
         file('boo', 'wb').write('ab' * 2048)
         check_text_path('boo')
