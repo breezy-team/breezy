@@ -22,11 +22,13 @@ class SvnFileWeave(VersionedFile):
     def __init__(self,repository,weave_name,access_mode='w'):
         VersionedFile.__init__(self,access_mode)
         self.repository = repository
-        self.file = repository.filename_from_file_id(None, weave_name) #FIXME
-        assert self.file
+        self.file_id = weave_name
+        assert self.file_id
 
     def get_lines(self, version_id):
         assert version_id != None
+
+        file = self.repository.filename_from_file_id(version_id, self.file_id)
         
         (path,revnum) = self.repository.parse_revision_id(version_id)
 
@@ -34,15 +36,15 @@ class SvnFileWeave(VersionedFile):
         revt.kind = svn.core.svn_opt_revision_number
         revt.value.number = revnum
 
-        file_url = "%s/%s/%s" % (self.repository.url,path,self.file)
+        file_url = "%s/%s/%s" % (self.repository.url,path,file)
 
         mutter('svn cat %r' % file_url)
 
         stream = StringIO()
         svn.client.cat(stream,file_url.encode('utf8'),revt,self.repository.client,self.repository.pool)
-        contents = stream.read()
-        print contents
-        return [contents]
+        stream.seek(0)
+
+        return stream.readlines()
 
 class SvnFileStore(object):
     def __init__(self,repository):
@@ -80,6 +82,8 @@ class SvnRepository(Repository):
         revt.kind = svn.core.svn_opt_revision_head
 
         svn.client.info(url.encode('utf8'), revt, revt, rcvr, False, self.client, self.pool)
+
+        self.fileid_map = {}
 
         assert self.url
         assert self.uuid
@@ -139,14 +143,18 @@ class SvnRepository(Repository):
 
         return inv
 
-    #FIXME
     def filename_from_file_id(self,revision_id,file_id):
         """Generate a Subversion filename from a bzr file id."""
-        return file_id.replace('%','/')
+        return self.fileid_map[revision_id][file_id]
 
     def filename_to_file_id(self,revision_id,filename):
         """Generate a bzr file id from a Subversion file name."""
-        return filename.replace('/','%')
+        file_id = filename.replace('/','@')
+        if not self.fileid_map.has_key(revision_id):
+            self.fileid_map[revision_id] = {}
+
+        self.fileid_map[revision_id][file_id] = filename
+        return file_id
 
     def all_revision_ids(self):
         raise NotImplementedError()
