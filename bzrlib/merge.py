@@ -43,6 +43,7 @@ from bzrlib.osutils import rename, pathjoin
 from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
 from bzrlib.symbol_versioning import *
+from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               FinalPaths, create_by_entry, unique_add)
@@ -816,6 +817,9 @@ class WeaveMerger(Merge3Merger):
         self._check_file(file_id)
         lines = list(self._merged_lines(file_id))
         conflicts = '<<<<<<< TREE\n' in lines
+        # Note we're checking whether the OUTPUT is binary in this case, 
+        # because we don't want to get into weave merge guts.
+        check_text_lines(lines)
         self.tt.create_file(lines, trans_id)
         if conflicts:
             self._raw_conflicts.append(('text conflict', trans_id))
