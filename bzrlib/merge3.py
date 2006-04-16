@@ -21,6 +21,7 @@
 
 from difflib import SequenceMatcher
 from bzrlib.errors import CantReprocessAndShowBase
+from textfile import check_text_lines
 
 def intersect(ra, rb):
     """Given two ranges return the range where they intersect or None.
@@ -66,6 +67,9 @@ class Merge3(object):
     incorporating the changes from both BASE->OTHER and BASE->THIS.
     All three will typically be sequences of lines."""
     def __init__(self, base, a, b):
+        check_text_lines(base)
+        check_text_lines(a)
+        check_text_lines(b)
         self.base = base
         self.a = a
         self.b = b
