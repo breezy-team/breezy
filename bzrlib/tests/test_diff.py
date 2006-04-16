@@ -1,6 +1,10 @@
-from bzrlib.tests import TestCase
-from bzrlib.diff import internal_diff
 from cStringIO import StringIO
+
+from bzrlib.diff import internal_diff
+from bzrlib.errors import BinaryFile
+from bzrlib.tests import TestCase
+
+
 def udiff_lines(old, new):
     output = StringIO()
     internal_diff('old', old, 'new', new, output)
@@ -47,3 +51,8 @@ class TestDiff(TestCase):
         self.assert_('@@' in lines[2][2:])
             ## "Unterminated hunk header for patch:\n%s" % "".join(lines)
 
+    def test_binary_lines(self):
+        self.assertRaises(BinaryFile, udiff_lines, [1023 * 'a' + '\x00'], [])
+        self.assertRaises(BinaryFile, udiff_lines, [], [1023 * 'a' + '\x00'])
+        udiff_lines([1024 * 'a' + '\x00'], [])
+        udiff_lines([], [1024 * 'a' + '\x00'])

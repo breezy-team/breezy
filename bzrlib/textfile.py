@@ -11,3 +11,12 @@ def text_file(input):
     if '\x00' in first_chunk:
         raise BinaryFile()
     return IterableFile(chain((first_chunk,), file_iterator(input)))
+
+
+def check_text_lines(lines):
+    """Raise BinaryFile if the supplied lines contain NULs.
+    Only the first 1024 characters are checked.
+    """
+    f = IterableFile(lines)
+    if '\x00' in f.read(1024):
+        raise BinaryFile()

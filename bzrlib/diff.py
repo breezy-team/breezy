@@ -17,6 +17,7 @@
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 from bzrlib.symbol_versioning import *
+from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter
 
 # TODO: Rather than building a changeset object, we should probably
@@ -41,6 +42,9 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file):
     # both sequences are empty.
     if not oldlines and not newlines:
         return
+    
+    check_text_lines(oldlines)
+    check_text_lines(newlines)
 
     ud = difflib.unified_diff(oldlines, newlines,
                               fromfile=old_filename+'\t', 
