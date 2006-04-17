@@ -400,6 +400,18 @@ class VersionedFile(object):
         base.
 
         Weave lines present in none of them are skipped entirely.
+
+        Legend:
+        killed-base Dead in base revision
+        killed-both Killed in each revision
+        killed-a    Killed in a
+        killed-b    Killed in b
+        unchanged   Alive in both a and b (possibly created in both)
+        new-a       Created in a
+        new-b       Created in b
+        ghost-a     ??     
+        ghost-b     ??
+        irrelevant  Not in either revision
         """
         inc_a = set(self.get_ancestry([ver_a]))
         inc_b = set(self.get_ancestry([ver_b]))
