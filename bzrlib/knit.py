@@ -817,7 +817,36 @@ class KnitVersionedFile(VersionedFile):
             yield lineno, insert_id, dset, line
 
     def plan_merge(self, ver_a, ver_b):
-        return []
+        annotated_a = self.annotate(ver_a)
+        annotated_b = self.annotate(ver_b)
+        plain_a = [t for a, t in annotated_a]
+        plain_b = [t for a, t in annotated_b]
+        blocks = SequenceMatcher(None, plain_a, plain_b).get_matching_blocks()
+        a_cur = 0
+        b_cur = 0
+        a_iter = iter(annotated_a)
+        b_iter = iter(annotated_b)
+        for ai, bi, l in blocks:
+            for a_num, (revision, text) in xenumerate(a_iter, ai, a_cur):
+                pass
+            for b_num, (revision, text) in xenumerate(b_iter, bi, b_cur):
+                pass
+            for num, ((revision_a, text_a), (revision_b, text_b)) in \
+                xenumerate(izip(a_iter, b_iter), l):
+                assert text_a == text_b
+                yield "unchanged", text_a
+            a_cur = ai + l
+            b_cur = bi + l
+
+def xenumerate(iter, stop=None, start=0, step=1):
+    count = start
+    if start == stop:
+        return
+    for result in iter:
+        yield count, result
+        count += step
+        if count == stop:
+            return
 
 
 class _KnitComponentFile(object):
