@@ -373,8 +373,8 @@ class KnitTests(TestCaseInTempDir):
         my_knit.add_lines('text1', [], split_lines(TEXT_1))
         my_knit.add_lines('text1a', ['text1'], split_lines(TEXT_1A))
         my_knit.add_lines('text1b', ['text1'], split_lines(TEXT_1B))
-        plan = my_knit.plan_merge('text1a', 'text1b')
-
+        plan = list(my_knit.plan_merge('text1a', 'text1b'))
+        self.assertEqual(plan, AB_MERGE)
 
 
 TEXT_1 = """\
@@ -420,6 +420,18 @@ Boeuf bourguignon
 - carrot
 - mushrooms
 """
+
+AB_MERGE_TEXT="""unchanged|Banana cup cake recipe
+new-a|(serves 6)
+unchanged|
+killed-b|- bananas
+killed-b|- eggs
+new-b|- bananas (do not use plantains!!!)
+unchanged|- broken tea cups
+new-a|- self-raising flour
+new-b|- flour"""
+AB_MERGE=[tuple(l.split('|')) for l in AB_MERGE_TEXT.splitlines(True)]
+
 
 def line_delta(from_lines, to_lines):
     """Generate line-based delta from one text to another"""

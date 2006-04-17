@@ -816,6 +816,9 @@ class KnitVersionedFile(VersionedFile):
         for lineno, insert_id, dset, line in w.walk(version_ids):
             yield lineno, insert_id, dset, line
 
+    def plan_merge(self, ver_a, ver_b):
+        return []
+
 
 class _KnitComponentFile(object):
     """One of the files used to implement a knit database"""
