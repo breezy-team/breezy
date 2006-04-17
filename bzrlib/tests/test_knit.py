@@ -368,6 +368,13 @@ class KnitTests(TestCaseInTempDir):
         self.assertEqual(['revid', 'revid2', 'revid3'], knit.versions())
         self.assertEqual(['revid2'], knit.get_parents('revid3'))
 
+    def test_plan_merge(self):
+        my_knit = self.make_test_knit(annotate=True)
+        my_knit.add_lines('text1', [], split_lines(TEXT_1))
+        my_knit.add_lines('text1a', ['text1'], split_lines(TEXT_1A))
+        my_knit.add_lines('text1b', ['text1'], split_lines(TEXT_1B))
+        plan = my_knit.plan_merge('text1a', 'text1b')
+
 
 
 TEXT_1 = """\
@@ -386,6 +393,14 @@ Banana cup cake recipe
 - eggs
 - broken tea cups
 - self-raising flour
+"""
+
+TEXT_1B = """\
+Banana cup cake recipe
+
+- bananas (do not use plantains!!!)
+- broken tea cups
+- flour
 """
 
 delta_1_1a = """\
