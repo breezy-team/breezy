@@ -92,6 +92,7 @@ class SvnBranch(Branch):
         self.base = base 
         self.base_revt = svn.core.svn_opt_revision_t()
         self.base_revt.kind = svn.core.svn_opt_revision_head
+        self.control_files = "FIXME"
         self._generate_revnum_map()
         
     def url_from_file_id(self,revision_id,file_id):
@@ -105,14 +106,14 @@ class SvnBranch(Branch):
         # This requires finding out the URL of the root of the repository, 
         # but this is not possible at the moment since svn.client.info() does
         # not work.
-        self._revision_history = [None]
+        self._revision_history = []
 
         revt_begin = svn.core.svn_opt_revision_t()
         revt_begin.kind = svn.core.svn_opt_revision_number
         revt_begin.value.number = 0
 
         def rcvr(paths,rev,author,date,message,pool):
-            revid = "%d@%s-%s" % (rev,self.repository.uuid,self.branch_path)
+            revid = self.repository.generate_revision_id(rev,self.branch_path)
             self._revision_history.append(revid)
 
         url = "%s/%s" % (self.repository.url, self.branch_path)
@@ -150,7 +151,8 @@ class SvnBranch(Branch):
         raise NotImplementedError('set_push_location not supported on Subversion')
 
     def get_push_location(self):
-        raise NotImplementedError('get_push_location not supported on Subversion')
+        # get_push_location not supported on Subversion
+        return None
 
     def revision_history(self):
         return self._revision_history

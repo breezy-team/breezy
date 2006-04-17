@@ -1,5 +1,5 @@
 # Simple SVN pull / push functionality for bzr
-# Copyright (C) 2005 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2005-2006 Jelmer Vernooij <jelmer@samba.org>
 # Published under the GNU GPL
 
 """

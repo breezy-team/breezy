@@ -7,7 +7,7 @@ from bzrlib.repository import Repository
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.trace import mutter
 from bzrlib.revision import Revision
-from bzrlib.errors import NoSuchRevision
+from bzrlib.errors import NoSuchRevision, InvalidRevisionId
 from bzrlib.versionedfile import VersionedFile
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
             ROOT_ID
@@ -66,7 +66,7 @@ class SvnRepository(Repository):
 
         text_store = SvnFileStore(self)
         control_files = LockableFiles(bzrdir.transport, '', TransportLock)
-        Repository.__init__(self, 'SVN Repository', bzrdir, control_files, _revision_store, control_store, text_store)
+        Repository.__init__(self, 'Subversion Smart Server', bzrdir, control_files, _revision_store, control_store, text_store)
 
         self.pool = svn.core.svn_pool_create(None)
 
@@ -135,6 +135,7 @@ class SvnRepository(Repository):
                 entry = InventoryDirectory(id,top,parent_id=parent_id)
             elif remote_ls[entry].kind == svn.core.svn_node_file:
                 entry = InventoryFile(id,top,parent_id=parent_id)
+                entry.text_sha1 = "FIXME" 
             else:
                 raise BzrError("Unknown entry kind for '%s': %d" % (entry, remote_ls[entry].kind))
 
@@ -184,7 +185,7 @@ class SvnRepository(Repository):
         self._ancestry = [None]
 
         def rcvr(paths,rev,author,date,message,pool):
-            revid = "%d@%s-%s" % (rev,self.uuid,path)
+            revid = self.generate_revision_id(rev,path)
             self._ancestry.append(revid)
 
         mutter("log3 %s" % url)
@@ -216,6 +217,9 @@ class SvnRepository(Repository):
         return self._found
 
     def get_revision(self,revision_id):
+        if not revision_id or not isinstance(revision_id, basestring):
+            raise InvalidRevisionId(revision_id=revision_id,branch=self)
+
         mutter("retrieving %s" % revision_id)
         (path,revnum) = self.parse_revision_id(revision_id)
         
@@ -243,7 +247,7 @@ class SvnRepository(Repository):
         parent_ids = []
 
         def rcvr(paths,rev,author,date,message,pool):
-            revid = "%d@%s-%s" % (rev,self.uuid,path)
+            revid = self.generate_revision_id(rev,path)
             parent_ids.append(revid)
 
         mutter("log3 -r%d:0 %s" % (revnum-1,url))
@@ -293,8 +297,13 @@ class SvnRepository(Repository):
 
         return ids
 
+    def generate_revision_id(self,rev,path):
+        return "%d@%s-%s" % (rev,self.uuid,path)
+
     def parse_revision_id(self,revid):
-        assert isinstance(revid,basestring)
+        assert revid
+        assert isinstance(revid, basestring)
+
         at = revid.index("@")
         fash = revid.rindex("-")
         uuid = revid[at+1:fash]
@@ -349,7 +358,7 @@ class SvnRepository(Repository):
         self._ancestry = {}
         
         def rcvr(paths,rev,author,date,message,pool):
-            revid = "%d@%s-%s" % (rev,self.uuid,path)
+            revid = self.generate_revision_id(rev,path)
             self._ancestry[self._previous] = [revid]
             self._previous = revid
 

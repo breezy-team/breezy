@@ -17,12 +17,15 @@ class SvnTransport(Transport):
 
     def get(self, relpath):
         if relpath == '.bzr/branch-format':
-            return StringIO('SVN Repository')
+            return StringIO('Subversion Smart Server')
         else:
             raise NotImplementedError(self.get)
 
     def stat(self, relpath):
         return os.stat('.') #FIXME
+
+    def listable(self):
+        return False
 
     def lock_read(self, relpath):
         # FIXME

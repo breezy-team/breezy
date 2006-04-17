@@ -1,3 +1,5 @@
+- use svn-ra API rather then svn-client API (should be faster)
+- implement get_inventory_weave()
 - support open_containing() properly - don't assume any URL passed in 
   refers to a branch
 - support tracking of moves
@@ -5,4 +7,4 @@
 - support svn:executable
 - support svn:ignore
 - support svn:externals
-- integrate DumpFile support (e.g. svn2bzr) ?
+- integrate DumpFile support (e.g. svn2bzr) so you can branch off dumpfiles?

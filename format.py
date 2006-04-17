@@ -1,3 +1,7 @@
+# Foreign branch support for Subversion
+#
+# Copyright (C) 2006 Jelmer Vernooij <jelmer@samba.org>
+
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from repository import SvnRepository
 from branch import SvnBranch
@@ -24,7 +28,9 @@ class SvnRemoteAccess(BzrDir):
         raise NotImplementedError(SvnRemoteAccess.clone)
 
     def find_repository(self):
-        return SvnRepository(self, self.url)
+        repos = SvnRepository(self, self.url)
+        repos._format = self._format
+        return repos
 
     def open_workingtree(self):
         return None
@@ -46,6 +52,7 @@ class SvnRemoteAccess(BzrDir):
             raise
  
         branch.bzrdir = self
+        branch._format = self._format
         return branch
 
 class SvnFormat(BzrDirFormat):
@@ -56,6 +63,8 @@ class SvnFormat(BzrDirFormat):
         return SvnRemoteAccess(transport, self)
 
     def get_format_string(self):
-        return 'SVN Repository'
+        return 'Subversion Smart Server'
 
+    def get_format_description(self):
+        return 'Subversion Smart Server'
 
