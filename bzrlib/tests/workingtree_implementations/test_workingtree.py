@@ -24,7 +24,8 @@ from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
-from bzrlib.errors import NotBranchError, NotVersionedError
+from bzrlib.errors import (NotBranchError, NotVersionedError, 
+                           UnsupportedOperation)
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
@@ -99,17 +100,35 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # revert file modified since last revision
         tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt~', 'new hello')
+        self.check_file_contents('hello.txt.~1~', 'new hello')
 
         # reverting again does not clobber the backup
         tree.revert(['hello.txt'])
         self.check_file_contents('hello.txt', 'initial hello')
-        self.check_file_contents('hello.txt~', 'new hello')
+        self.check_file_contents('hello.txt.~1~', 'new hello')
+        
+        # backup files are numbered
+        file('hello.txt', 'w').write('new hello2')
+        tree.revert(['hello.txt'])
+        self.check_file_contents('hello.txt', 'initial hello')
+        self.check_file_contents('hello.txt.~1~', 'new hello')
+        self.check_file_contents('hello.txt.~2~', 'new hello2')
+
+    def test_revert_missing(self):
+        # Revert a file that has been deleted since last commit
+        tree = self.make_branch_and_tree('.')
+        file('hello.txt', 'w').write('initial hello')
+        tree.add('hello.txt')
+        tree.commit('added hello.txt')
+        os.unlink('hello.txt')
+        tree.remove('hello.txt')
+        tree.revert(['hello.txt'])
+        self.failUnlessExists('hello.txt')
 
     def test_unknowns(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt',
-                         'hello.txt~'])
+                         'hello.txt.~1~'])
         self.assertEquals(list(tree.unknowns()),
                           ['hello.txt'])
 
@@ -117,7 +136,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         from bzrlib.tests.test_hashcache import pause
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt',
-                         'hello.txt~'])
+                         'hello.txt.~1~'])
         tree.add('hello.txt')
         pause()
         sha = tree.get_file_sha1(tree.path2id('hello.txt'))
@@ -456,9 +475,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertNotEqual(open('b1/a', 'rb').read(), 'a test\n')
         this.revert([])
         self.assertEqual(open('b1/a', 'rb').read(), 'a test\n')
-        self.assertIs(os.path.exists('b1/b~'), True)
+        self.assertIs(os.path.exists('b1/b.~1~'), True)
         self.assertIs(os.path.exists('b1/c'), False)
-        self.assertIs(os.path.exists('b1/a~'), False)
+        self.assertIs(os.path.exists('b1/a.~1~'), False)
         self.assertIs(os.path.exists('b1/d'), True)
 
     def test_update_updates_bound_branch_no_local_commits(self):
@@ -503,3 +522,71 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('master')
         tree._control_files.put('merge-hashes', StringIO('asdfasdf'))
         self.assertRaises(errors.MergeModifiedFormatError, tree.merge_modified)
+
+    def test_conflicts(self):
+        from bzrlib.tests.test_conflicts import example_conflicts
+        tree = self.make_branch_and_tree('master')
+        try:
+            tree.set_conflicts(example_conflicts)
+        except UnsupportedOperation:
+            raise TestSkipped('set_conflicts not supported')
+            
+        tree2 = WorkingTree.open('master')
+        self.assertEqual(tree2.conflicts(), example_conflicts)
+        tree2._control_files.put('conflicts', StringIO(''))
+        self.assertRaises(errors.ConflictFormatError, 
+                          tree2.conflicts)
+        tree2._control_files.put('conflicts', StringIO('a'))
+        self.assertRaises(errors.ConflictFormatError, 
+                          tree2.conflicts)
+
+    def make_merge_conflicts(self):
+        from bzrlib.merge import merge_inner 
+        tree = self.make_branch_and_tree('mine')
+        file('mine/bloo', 'wb').write('one')
+        tree.add('bloo')
+        file('mine/blo', 'wb').write('on')
+        tree.add('blo')
+        tree.commit("blah", allow_pointless=False)
+        base = tree.basis_tree()
+        BzrDir.open("mine").sprout("other")
+        file('other/bloo', 'wb').write('two')
+        othertree = WorkingTree.open('other')
+        othertree.commit('blah', allow_pointless=False)
+        file('mine/bloo', 'wb').write('three')
+        tree.commit("blah", allow_pointless=False)
+        merge_inner(tree.branch, othertree, base, this_tree=tree)
+        return tree
+
+    def test_merge_conflicts(self):
+        tree = self.make_merge_conflicts()
+        self.assertEqual(len(tree.conflicts()), 1)
+
+    def test_clear_merge_conflicts(self):
+        from bzrlib.conflicts import ConflictList
+        tree = self.make_merge_conflicts()
+        self.assertEqual(len(tree.conflicts()), 1)
+        try:
+            tree.set_conflicts(ConflictList())
+        except UnsupportedOperation:
+            raise TestSkipped
+        self.assertEqual(tree.conflicts(), ConflictList())
+
+    def test_revert_clear_conflicts(self):
+        tree = self.make_merge_conflicts()
+        self.assertEqual(len(tree.conflicts()), 1)
+        tree.revert(["blo"])
+        self.assertEqual(len(tree.conflicts()), 1)
+        tree.revert(["bloo"])
+        self.assertEqual(len(tree.conflicts()), 0)
+
+    def test_revert_clear_conflicts2(self):
+        tree = self.make_merge_conflicts()
+        self.assertEqual(len(tree.conflicts()), 1)
+        tree.revert([])
+        self.assertEqual(len(tree.conflicts()), 0)
+
+    def test_format_description(self):
+        tree = self.make_branch_and_tree('tree')
+        text = tree._format.get_format_description()
+        self.failUnless(len(text))

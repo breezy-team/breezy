@@ -33,7 +33,7 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.store.versioned import VersionedFileStore, WeaveStore
 from bzrlib.store.text import TextStore
 from bzrlib.symbol_versioning import *
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, note
 from bzrlib.tree import RevisionTree
 from bzrlib.tsort import topo_sort
 from bzrlib.testament import Testament
@@ -96,7 +96,7 @@ class Repository(object):
             else:
                 # yes, this is not suitable for adding with ghosts.
                 self.add_inventory(rev_id, inv, rev.parent_ids)
-        self._revision_store.add_revision(rev, self.get_transaction())   
+        self._revision_store.add_revision(rev, self.get_transaction())
 
     @needs_read_lock
     def _all_possible_ids(self):
@@ -143,7 +143,7 @@ class Repository(object):
         getting file texts, inventories and revisions, then
         this construct will accept instances of those things.
         """
-        object.__init__(self)
+        super(Repository, self).__init__()
         self._format = _format
         # the following are part of the public API for Repository:
         self.bzrdir = a_bzrdir
@@ -156,6 +156,8 @@ class Repository(object):
         # 
         self.control_store = control_store
         self.control_weaves = control_store
+        # TODO: make sure to construct the right store classes, etc, depending
+        # on whether escaping is required.
 
     def lock_write(self):
         self.control_files.lock_write()
@@ -873,6 +875,10 @@ class RepositoryFormat(object):
         """
         raise NotImplementedError(self.get_format_string)
 
+    def get_format_description(self):
+        """Return the short desciption for this format."""
+        raise NotImplementedError(self.get_format_description)
+
     def _get_revision_store(self, repo_transport, control_files):
         """Return the revision store object for this a_bzrdir."""
         raise NotImplementedError(self._get_revision_store)
@@ -905,14 +911,16 @@ class RepositoryFormat(object):
                                   transport,
                                   control_files,
                                   prefixed=True,
-                                  versionedfile_class=WeaveFile):
+                                  versionedfile_class=WeaveFile,
+                                  escaped=False):
         weave_transport = control_files._transport.clone(name)
         dir_mode = control_files._dir_mode
         file_mode = control_files._file_mode
         return VersionedFileStore(weave_transport, prefixed=prefixed,
-                                dir_mode=dir_mode,
-                                file_mode=file_mode,
-                                versionedfile_class=versionedfile_class)
+                                  dir_mode=dir_mode,
+                                  file_mode=file_mode,
+                                  versionedfile_class=versionedfile_class,
+                                  escaped=escaped)
 
     def initialize(self, a_bzrdir, shared=False):
         """Initialize a repository of this format in a_bzrdir.
@@ -1043,6 +1051,10 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         super(RepositoryFormat4, self).__init__()
         self._matchingbzrdir = bzrlib.bzrdir.BzrDirFormat4()
 
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Repository format 4"
+
     def initialize(self, url, shared=False, _internal=False):
         """Format 4 branches cannot be created."""
         raise errors.UninitializableFormat(self)
@@ -1088,6 +1100,10 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         super(RepositoryFormat5, self).__init__()
         self._matchingbzrdir = bzrlib.bzrdir.BzrDirFormat5()
 
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Weave repository format 5"
+
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
         """Return the revision store object for this a_bzrdir."""
@@ -1113,6 +1129,10 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     def __init__(self):
         super(RepositoryFormat6, self).__init__()
         self._matchingbzrdir = bzrlib.bzrdir.BzrDirFormat6()
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Weave repository format 6"
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
@@ -1182,6 +1202,10 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Repository format 7"
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Weave repository format 7"
 
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
@@ -1259,6 +1283,8 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
      - an optional 'shared-storage' flag
      - an optional 'no-working-trees' flag
      - a LockDir lock
+
+    This format was introduced in bzr 0.8.
     """
 
     def _get_control_store(self, repo_transport, control_files):
@@ -1275,16 +1301,22 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar-NG Knit Repository Format 1"
 
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return "Knit repository format 1"
+
     def _get_revision_store(self, repo_transport, control_files):
         """See RepositoryFormat._get_revision_store()."""
         from bzrlib.store.revision.knit import KnitRevisionStore
         versioned_file_store = VersionedFileStore(
             repo_transport,
-            file_mode = control_files._file_mode,
+            file_mode=control_files._file_mode,
             prefixed=False,
             precious=True,
             versionedfile_class=KnitVersionedFile,
-            versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory()})
+            versionedfile_kwargs={'delta':False, 'factory':KnitPlainFactory()},
+            escaped=True,
+            )
         return KnitRevisionStore(versioned_file_store)
 
     def _get_text_store(self, transport, control_files):
@@ -1292,28 +1324,20 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
         return self._get_versioned_file_store('knits',
                                               transport,
                                               control_files,
-                                              versionedfile_class=KnitVersionedFile)
+                                              versionedfile_class=KnitVersionedFile,
+                                              escaped=True)
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a knit format 1 repository.
 
+        :param a_bzrdir: bzrdir to contain the new repository; must already
+            be initialized.
         :param shared: If true the repository will be initialized as a shared
                        repository.
-        XXX NOTE that this current uses a Weave for testing and will become 
-            A Knit in due course.
         """
-        from bzrlib.weavefile import write_weave_v5
-        from bzrlib.weave import Weave
-
-        # Create an empty weave
-        sio = StringIO()
-        bzrlib.weavefile.write_weave_v5(Weave(), sio)
-        empty_weave = sio.getvalue()
-
         mutter('creating repository in %s.', a_bzrdir.transport.base)
-        dirs = ['revision-store', 'knits', 'control']
-        files = [('control/inventory.weave', StringIO(empty_weave)), 
-                 ]
+        dirs = ['revision-store', 'knits']
+        files = []
         utf8_files = [('format', self.get_format_string())]
         
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)

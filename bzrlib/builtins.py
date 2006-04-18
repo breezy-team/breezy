@@ -52,11 +52,22 @@ def tree_files(file_list, default_branch=u'.'):
         raise BzrCommandError("%s is not in the same branch as %s" %
                              (e.path, file_list[0]))
 
+
+# XXX: Bad function name; should possibly also be a class method of
+# WorkingTree rather than a function.
 def internal_tree_files(file_list, default_branch=u'.'):
-    """\
-    Return a branch and list of branch-relative paths.
-    If supplied file_list is empty or None, the branch default will be used,
-    and returned file_list will match the original.
+    """Convert command-line paths to a WorkingTree and relative paths.
+
+    This is typically used for command-line processors that take one or
+    more filenames, and infer the workingtree that contains them.
+
+    The filenames given are not required to exist.
+
+    :param file_list: Filenames to convert.  
+
+    :param default_branch: Fallback tree path to use if file_list is empty or None.
+
+    :return: workingtree, [relative_paths]
     """
     if file_list is None or len(file_list) == 0:
         return WorkingTree.open_containing(default_branch)[0], file_list
@@ -360,22 +371,26 @@ class cmd_mv(Command):
             
     
 class cmd_pull(Command):
-    """Pull any changes from another branch into the current one.
-
-    If there is no default location set, the first pull will set it.  After
-    that, you can omit the location to use the default.  To change the
-    default, use --remember.
+    """Turn this branch into a mirror of another branch.
 
     This command only works on branches that have not diverged.  Branches are
-    considered diverged if both branches have had commits without first
-    pulling from the other.
+    considered diverged if the destination branch's most recent commit is one
+    that has not been merged (directly or indirectly) into the parent.
+
+    If branches have diverged, you can use 'bzr merge' to integrate the changes
+    from one into the other.  Once one branch has merged, the other should
+    be able to pull it again.
 
     If branches have diverged, you can use 'bzr merge' to pull the text changes
     from one into the other.  Once one branch has merged, the other should
     be able to pull it again.
 
     If you want to forget your local changes and just update your branch to
-    match the remote one, use --overwrite.
+    match the remote one, use pull --overwrite.
+
+    If there is no default location set, the first pull will set it.  After
+    that, you can omit the location to use the default.  To change the
+    default, use --remember.
     """
     takes_options = ['remember', 'overwrite', 'revision', 'verbose']
     takes_args = ['location?']
@@ -396,23 +411,23 @@ class cmd_pull(Command):
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
 
-        br_from = Branch.open(location)
+        if branch_to.get_parent() is None or remember:
+            branch_to.set_parent(location)
+
+        branch_from = Branch.open(location)
 
         if revision is None:
             rev_id = None
         elif len(revision) == 1:
-            rev_id = revision[0].in_history(br_from).rev_id
+            rev_id = revision[0].in_history(branch_from).rev_id
         else:
             raise BzrCommandError('bzr pull --revision takes one value.')
 
         old_rh = branch_to.revision_history()
         if tree_to is not None:
-            count = tree_to.pull(br_from, overwrite, rev_id)
+            count = tree_to.pull(branch_from, overwrite, rev_id)
         else:
-            count = branch_to.pull(br_from, overwrite, rev_id)
-
-        if branch_to.get_parent() is None or remember:
-            branch_to.set_parent(location)
+            count = branch_to.pull(branch_from, overwrite, rev_id)
         note('%d revision(s) pulled.' % (count,))
 
         if verbose:
@@ -424,27 +439,28 @@ class cmd_pull(Command):
 
 
 class cmd_push(Command):
-    """Push this branch into another branch.
+    """Update a mirror of this branch.
     
-    The remote branch will not have its working tree populated because this
-    is both expensive, and may not be supported on the remote file system.
+    The target branch will not have its working tree populated because this
+    is both expensive, and is not supported on remote file systems.
     
-    Some smart servers or protocols *may* put the working tree in place.
+    Some smart servers or protocols *may* put the working tree in place in
+    the future.
+
+    This command only works on branches that have not diverged.  Branches are
+    considered diverged if the destination branch's most recent commit is one
+    that has not been merged (directly or indirectly) by the source branch.
+
+    If branches have diverged, you can use 'bzr push --overwrite' to replace
+    the other branch completely, discarding its unmerged changes.
+    
+    If you want to ensure you have the different changes in the other branch,
+    do a merge (see bzr help merge) from the other branch, and commit that.
+    After that you will be able to do a push without '--overwrite'.
 
     If there is no default push location set, the first push will set it.
     After that, you can omit the location to use the default.  To change the
     default, use --remember.
-
-    This command only works on branches that have not diverged.  Branches are
-    considered diverged if the branch being pushed to is not an older version
-    of this branch.
-
-    If branches have diverged, you can use 'bzr push --overwrite' to replace
-    the other branch completely.
-    
-    If you want to ensure you have the different changes in the other branch,
-    do a merge (see bzr help merge) from the other branch, and commit that
-    before doing a 'push --overwrite'.
     """
     takes_options = ['remember', 'overwrite', 
                      Option('create-prefix', 
@@ -467,6 +483,8 @@ class cmd_push(Command):
             else:
                 print "Using saved location: %s" % stored_loc
                 location = stored_loc
+        if br_from.get_push_location() is None or remember:
+            br_from.set_push_location(location)
         try:
             dir_to = bzrlib.bzrdir.BzrDir.open(location)
             br_to = dir_to.open_branch()
@@ -514,8 +532,6 @@ class cmd_push(Command):
         except DivergedBranches:
             raise BzrCommandError("These branches have diverged."
                                   "  Try a merge then push with overwrite.")
-        if br_from.get_push_location() is None or remember:
-            br_from.set_push_location(location)
         note('%d revision(s) pushed.' % (count,))
 
         if verbose:
@@ -750,11 +766,13 @@ class cmd_update(Command):
 class cmd_info(Command):
     """Show statistical information about a branch."""
     takes_args = ['branch?']
+    takes_options = ['verbose']
     
     @display_command
-    def run(self, branch=None):
+    def run(self, branch=None, verbose=False):
         import bzrlib.info
-        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0])
+        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0],
+                                     verbose=verbose)
 
 
 class cmd_remove(Command):
@@ -875,7 +893,7 @@ class cmd_init(Command):
                      Option('format', 
                             help='Create a specific format rather than the'
                                  ' current default format. Currently this '
-                                 ' option only accepts =metadir',
+                                 ' option only accepts "metadir"',
                             type=get_format_type),
                      ]
     def run(self, location=None, format=None):
@@ -890,11 +908,33 @@ class cmd_init(Command):
             # locations if the user supplies an extended path
             if not os.path.exists(location):
                 os.mkdir(location)
-        bzrdir.BzrDir.create_branch_convenience(location, format=format)
+        try:
+            existing = bzrdir.BzrDir.open(location)
+        except NotBranchError:
+            bzrdir.BzrDir.create_branch_convenience(location, format=format)
+        else:
+            try:
+                existing.open_branch()
+            except NotBranchError:
+                existing.create_branch()
+                existing.create_workingtree()
+            else:
+                raise errors.AlreadyBranchError(location)
 
 
 class cmd_init_repository(Command):
-    """Create a shared repository to keep branches in."""
+    """Create a shared repository to hold branches.
+
+    New branches created under the repository directory will store their revisions
+    in the repository, not in the branch directory, if the branch format supports
+    shared storage.
+
+    example:    
+        bzr init-repo repo
+        bzr init --format=metadir repo/trunk
+        cd repo/trunk
+        (add files here)
+    """
     takes_args = ["location"] 
     takes_options = [Option('format', 
                             help='Use a specific format rather than the'
@@ -912,8 +952,10 @@ class cmd_init_repository(Command):
         from bzrlib.transport import get_transport
         if format is None:
             format = BzrDirMetaFormat1()
-        get_transport(location).mkdir('')
-        newdir = format.initialize(location)
+        transport = get_transport(location)
+        if not transport.has('.'):
+            transport.mkdir('')
+        newdir = format.initialize_on_transport(transport)
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(trees)
 
@@ -1587,7 +1629,7 @@ class cmd_upgrade(Command):
                      Option('format', 
                             help='Upgrade to a specific format rather than the'
                                  ' current default format. Currently this'
-                                 ' option only accepts -metadir and -knit'
+                                 ' option only accepts "metadir" and "knit".'
                                  ' WARNING: the knit format is currently'
                                  ' unstable and only for experimental use.',
                             type=get_format_type),
@@ -1824,6 +1866,10 @@ class cmd_merge(Command):
 
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
+    If there is no default branch set, the first merge will set it. After
+    that, you can omit the branch to use the default.  To change the
+    default, use --remember.
+
     Examples:
 
     To merge the latest revision from bzr.dev
@@ -1839,27 +1885,35 @@ class cmd_merge(Command):
     --force is given.
     """
     takes_args = ['branch?']
-    takes_options = ['revision', 'force', 'merge-type', 'reprocess',
+    takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
                      Option('show-base', help="Show base revision text in "
                             "conflicts")]
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
-            show_base=False, reprocess=False):
+            show_base=False, reprocess=False, remember=False):
         if merge_type is None:
             merge_type = Merge3Merger
+
+        tree = WorkingTree.open_containing(u'.')[0]
+        stored_loc = tree.branch.get_parent()
         if branch is None:
-            branch = WorkingTree.open_containing(u'.')[0].branch.get_parent()
-            if branch is None:
-                raise BzrCommandError("No merge location known or specified.")
+            if stored_loc is None:
+                raise BzrCommandError("No merge branch known or specified.")
             else:
-                print "Using saved location: %s" % branch 
+                print "Using saved branch: %s" % stored_loc
+                branch = stored_loc
+
+        if tree.branch.get_parent() is None or remember:
+            tree.branch.set_parent(branch)
+
         if revision is None or len(revision) < 1:
             base = [None, None]
             other = [branch, -1]
+            other_branch, path = Branch.open_containing(branch)
         else:
             if len(revision) == 1:
                 base = [None, None]
-                other_branch = Branch.open_containing(branch)[0]
+                other_branch, path = Branch.open_containing(branch)
                 revno = revision[0].in_history(other_branch).revno
                 other = [branch, revno]
             else:
@@ -1867,10 +1921,14 @@ class cmd_merge(Command):
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                b = Branch.open_containing(branch)[0]
+                b, path = Branch.open_containing(branch)
 
                 base = [branch, revision[0].in_history(b).revno]
                 other = [branch, revision[1].in_history(b).revno]
+        if path != "":
+            interesting_files = [path]
+        else:
+            interesting_files = None
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             try:
@@ -1878,7 +1936,7 @@ class cmd_merge(Command):
                                        merge_type=merge_type, 
                                        reprocess=reprocess,
                                        show_base=show_base, 
-                                       pb=pb)
+                                       pb=pb, file_list=interesting_files)
             finally:
                 pb.finished()
             if conflict_count != 0:
@@ -2427,7 +2485,8 @@ def merge(other_revision, base_revision,
         merger.show_base = show_base 
         merger.reprocess = reprocess
         conflicts = merger.do_merge()
-        merger.set_pending()
+        if file_list is None:
+            merger.set_pending()
     finally:
         pb.clear()
     return conflicts

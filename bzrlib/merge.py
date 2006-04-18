@@ -22,6 +22,7 @@ from tempfile import mkdtemp
 
 import bzrlib
 from bzrlib.branch import Branch
+from bzrlib.conflicts import ConflictList
 from bzrlib.delta import compare_trees
 from bzrlib.errors import (BzrCommandError,
                            BzrError,
@@ -32,6 +33,7 @@ from bzrlib.errors import (BzrCommandError,
                            NotBranchError,
                            NotVersionedError,
                            UnrelatedBranches,
+                           UnsupportedOperation,
                            WorkingTreeNotRevision,
                            )
 from bzrlib.merge3 import Merge3
@@ -42,8 +44,7 @@ from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
-                              conflicts_strings, FinalPaths, create_by_entry,
-                              unique_add)
+                              FinalPaths, create_by_entry, unique_add)
 from bzrlib.versionedfile import WeaveMerge
 import bzrlib.ui
 
@@ -282,8 +283,13 @@ class Merger(object):
         for file_id in old_entries:
             entry = old_entries[file_id]
             path = id2path(file_id)
+            if file_id in self.base_tree.inventory:
+                executable = getattr(self.base_tree.inventory[file_id], 'executable', False)
+            else:
+                executable = getattr(entry, 'executable', False)
             new_inventory[file_id] = (path, file_id, entry.parent_id, 
-                                      entry.kind)
+                                      entry.kind, executable)
+                                      
             by_path[path] = file_id
         
         deletions = 0
@@ -306,7 +312,11 @@ class Merger(object):
                 parent = by_path[os.path.dirname(path)]
             abspath = pathjoin(self.this_tree.basedir, path)
             kind = bzrlib.osutils.file_kind(abspath)
-            new_inventory[file_id] = (path, file_id, parent, kind)
+            if file_id in self.base_tree.inventory:
+                executable = getattr(self.base_tree.inventory[file_id], 'executable', False)
+            else:
+                executable = False
+            new_inventory[file_id] = (path, file_id, parent, kind, executable)
             by_path[path] = file_id 
 
         # Get a list in insertion order
@@ -371,11 +381,15 @@ class Merge3Merger(object):
             finally:
                 child_pb.finished()
             self.cook_conflicts(fs_conflicts)
-            for line in conflicts_strings(self.cooked_conflicts):
-                warning(line)
+            for conflict in self.cooked_conflicts:
+                warning(conflict)
             self.pp.next_phase()
             results = self.tt.apply()
             self.write_modified(results)
+            try:
+                working_tree.set_conflicts(ConflictList(self.cooked_conflicts))
+            except UnsupportedOperation:
+                pass
         finally:
             try:
                 self.tt.finalize()
@@ -693,6 +707,7 @@ class Merge3Merger(object):
 
     def cook_conflicts(self, fs_conflicts):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
+        from conflicts import Conflict
         name_conflicts = {}
         self.cooked_conflicts.extend(cook_conflicts(fs_conflicts, self.tt))
         fp = FinalPaths(self.tt)
@@ -715,12 +730,14 @@ class Merge3Merger(object):
                     if path.endswith(suffix):
                         path = path[:-len(suffix)]
                         break
-                self.cooked_conflicts.append((conflict_type, file_id, path))
+                c = Conflict.factory(conflict_type, path=path, file_id=file_id)
+                self.cooked_conflicts.append(c)
             if conflict_type == 'text conflict':
                 trans_id = conflict[1]
                 path = fp.get_path(trans_id)
                 file_id = self.tt.final_file_id(trans_id)
-                self.cooked_conflicts.append((conflict_type, file_id, path))
+                c = Conflict.factory(conflict_type, path=path, file_id=file_id)
+                self.cooked_conflicts.append(c)
 
         for trans_id, conflicts in name_conflicts.iteritems():
             try:
@@ -742,8 +759,9 @@ class Merge3Merger(object):
             else:
                 this_path = "<deleted>"
             file_id = self.tt.final_file_id(trans_id)
-            self.cooked_conflicts.append(('path conflict', file_id, this_path, 
-                                         other_path))
+            c = Conflict.factory('path conflict', path=this_path,
+                                 conflict_path=other_path, file_id=file_id)
+            self.cooked_conflicts.append(c)
 
 
 class WeaveMerger(Merge3Merger):

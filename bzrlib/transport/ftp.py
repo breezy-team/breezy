@@ -38,7 +38,7 @@ from warnings import warn
 
 from bzrlib.transport import Transport
 from bzrlib.errors import (TransportNotPossible, TransportError,
-                           NoSuchFile, FileExists)
+                           NoSuchFile, FileExists, DirectoryNotEmpty)
 from bzrlib.trace import mutter, warning
 
 
@@ -289,6 +289,20 @@ class FtpTransport(Transport):
         except ftplib.error_perm, e:
             raise TransportError(orig_error=e)
 
+    def rmdir(self, rel_path):
+        """Delete the directory at rel_path"""
+        try:
+            mutter("FTP rmd: %s" % self._abspath(rel_path))
+
+            f = self._get_FTP()
+            f.rmd(self._abspath(rel_path))
+        except ftplib.error_perm, e:
+            if str(e).endswith("Directory not empty"):
+                raise DirectoryNotEmpty(self._abspath(rel_path), extra=str(e))
+            else:
+                raise TransportError(msg="Cannot remove directory at %s" % \
+                        self._abspath(rel_path), extra=str(e))
+
     def append(self, relpath, f):
         """Append the text in the file-like object into the final
         location.
@@ -309,6 +323,8 @@ class FtpTransport(Transport):
         except ftplib.error_perm, e:
             raise TransportError(orig_error=e)
 
+    rename = move
+
     def delete(self, relpath):
         """Delete the item at relpath"""
         try:
@@ -316,7 +332,10 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             f.delete(self._abspath(relpath))
         except ftplib.error_perm, e:
-            raise TransportError(orig_error=e)
+            if str(e).endswith("No such file or directory"):
+                raise NoSuchFile(self._abspath(relpath), extra=str(e))
+            else:
+                raise TransportError(orig_error=e)
 
     def listable(self):
         """See Transport.listable."""

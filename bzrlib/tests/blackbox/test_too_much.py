@@ -52,23 +52,6 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCommands(ExternalBase):
 
-    def test_init_branch(self):
-        self.runbzr(['init'])
-
-        # Can it handle subdirectories as well?
-        self.runbzr('init subdir1')
-        self.assert_(os.path.exists('subdir1'))
-        self.assert_(os.path.exists('subdir1/.bzr'))
-
-        self.runbzr('init subdir2/nothere', retcode=3)
-        
-        os.mkdir('subdir2')
-        self.runbzr('init subdir2')
-        self.runbzr('init subdir2', retcode=3)
-
-        self.runbzr('init subdir2/subsubdir1')
-        self.assert_(os.path.exists('subdir2/subsubdir1/.bzr'))
-
     def test_whoami(self):
         # this should always identify something, if only "john@localhost"
         self.runbzr("whoami")
@@ -707,12 +690,14 @@ class TestCommands(ExternalBase):
         self.assert_('|||||||' not in conflict_text)
         self.assert_('hi world' not in conflict_text)
         result = self.runbzr('conflicts', backtick=1)
-        self.assertEquals(result, "hello\nquestion\n")
+        self.assertEquals(result, "Text conflict in hello\nText conflict in"
+                                  " question\n")
         result = self.runbzr('status', backtick=1)
-        self.assert_("conflicts:\n  hello\n  question\n" in result, result)
+        self.assert_("conflicts:\n  Text conflict in hello\n"
+                     "  Text conflict in question\n" in result, result)
         self.runbzr('resolve hello')
         result = self.runbzr('conflicts', backtick=1)
-        self.assertEquals(result, "question\n")
+        self.assertEquals(result, "Text conflict in question\n")
         self.runbzr('commit -m conflicts', retcode=3)
         self.runbzr('resolve --all')
         result = self.runbzr('conflicts', backtick=1)

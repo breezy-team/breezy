@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,24 +24,28 @@ from cStringIO import StringIO
 import urllib
 
 from bzrlib.weavefile import read_weave, write_weave_v5
-from bzrlib.weave import WeaveFile
-from bzrlib.store import TransportStore, hash_prefix
+from bzrlib.weave import WeaveFile, Weave
+from bzrlib.store import TransportStore
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.errors import NoSuchFile, FileExists
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
+import bzrlib.ui
 
 
 class VersionedFileStore(TransportStore):
     """Collection of many versioned files in a transport."""
 
+    # TODO: Rather than passing versionedfile_kwargs, perhaps pass in a
+    # transport factory callable?
     def __init__(self, transport, prefixed=False, precious=False,
                  dir_mode=None, file_mode=None,
                  versionedfile_class=WeaveFile,
-                 versionedfile_kwargs={}):
-        super(WeaveStore, self).__init__(transport,
+                 versionedfile_kwargs={},
+                 escaped=False):
+        super(VersionedFileStore, self).__init__(transport,
                 dir_mode=dir_mode, file_mode=file_mode,
-                prefixed=prefixed, compressed=False)
+                prefixed=prefixed, compressed=False, escaped=escaped)
         self._precious = precious
         self._versionedfile_class = versionedfile_class
         self._versionedfile_kwargs = versionedfile_kwargs
@@ -63,10 +67,7 @@ class VersionedFileStore(TransportStore):
 
     def filename(self, file_id):
         """Return the path relative to the transport root."""
-        if self._prefixed:
-            return hash_prefix(file_id) + urllib.quote(file_id)
-        else:
-            return urllib.quote(file_id)
+        return self._relpath(file_id)
 
     def __iter__(self):
         suffixes = self._versionedfile_class.get_suffixes()
@@ -74,10 +75,13 @@ class VersionedFileStore(TransportStore):
         for relpath in self._iter_files_recursive():
             for suffix in suffixes:
                 if relpath.endswith(suffix):
-                    id = os.path.basename(relpath[:-len(suffix)])
-                    if not id in ids:
-                        yield id
-                        ids.add(id)
+                    # TODO: use standard remove_suffix function
+                    escaped_id = os.path.basename(relpath[:-len(suffix)])
+                    file_id = self._unescape(escaped_id)
+                    if file_id not in ids:
+                        ids.add(file_id)
+                        yield file_id
+                    break # only one suffix can match
 
     def has_id(self, fileid):
         suffixes = self._versionedfile_class.get_suffixes()
@@ -100,6 +104,19 @@ class VersionedFileStore(TransportStore):
         for suffix in suffixes:
             self._transport.delete(filename + suffix)
         self._clear_cache_id(file_id, transaction)
+
+    def _get(self, file_id):
+        return self._transport.get(self.filename(file_id))
+
+    def _put(self, file_id, f):
+        fn = self.filename(file_id)
+        try:
+            return self._transport.put(fn, f, mode=self._file_mode)
+        except NoSuchFile:
+            if not self._prefixed:
+                raise
+            self._transport.mkdir(os.path.dirname(fn), mode=self._dir_mode)
+            return self._transport.put(fn, f, mode=self._file_mode)
 
     def get_weave(self, file_id, transaction):
         weave = transaction.map.find_weave(file_id)
@@ -128,7 +145,6 @@ class VersionedFileStore(TransportStore):
 
         Returned as a list of lines.
         """
-        assert 0
         w = self.get_weave(file_id, transaction)
         return w.get_lines(rev_id)
     
@@ -151,8 +167,9 @@ class VersionedFileStore(TransportStore):
                 # unexpected error - NoSuchFile is raised on a missing dir only and that
                 # only occurs when we are prefixed.
                 raise
-            self._transport.mkdir(hash_prefix(file_id), mode=self._dir_mode)
-            weave = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode, create=True,
+            self._transport.mkdir(self.hash_prefix(file_id), mode=self._dir_mode)
+            weave = self._versionedfile_class(self.filename(file_id), self._transport, 
+                                              self._file_mode, create=True,
                                               **self._versionedfile_kwargs)
         return weave
 
@@ -173,7 +190,7 @@ class VersionedFileStore(TransportStore):
         Its maintained for backwards compatability but will only work on
         weave stores - pre 0.8 repositories.
         """
-        self._put_weave(self, file_id, weave, transaction)
+        self._put_weave(file_id, weave, transaction)
 
     def _put_weave(self, file_id, weave, transaction):
         """Preserved here for upgrades-to-weaves to use."""
@@ -252,17 +269,16 @@ class VersionedFileStore(TransportStore):
             # we are copying single objects, and there may be open tranasactions
             # so again with the passthrough
             to_transaction = PassThroughTransaction()
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
         for count, f in enumerate(file_ids):
             mutter("copy weave {%s} into %s", f, self)
-            if pb:
-                pb.update('copy', count, len(file_ids))
+            pb.update('copy', count, len(file_ids))
             # if we have it in cache, its faster.
             # joining is fast with knits, and bearable for weaves -
             # indeed the new case can be optimised if needed.
             target = self._make_new_versionedfile(f, to_transaction)
             target.join(from_store.get_weave(f, from_transaction))
-        if pb:
-            pb.clear()
+        pb.finished()
 
     def total_size(self):
         count, bytes =  super(VersionedFileStore, self).total_size()

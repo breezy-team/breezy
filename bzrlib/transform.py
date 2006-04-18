@@ -22,7 +22,8 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo)
 from bzrlib.inventory import InventoryEntry
-from bzrlib.osutils import file_kind, supports_executable, pathjoin
+from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
+                            delete_any)
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, warning
 import bzrlib.ui 
@@ -286,21 +287,10 @@ class TreeTransform(object):
         os.symlink(target, self._limbo_name(trans_id))
         unique_add(self._new_contents, trans_id, 'symlink')
 
-    @staticmethod
-    def delete_any(full_path):
-        """Delete a file or directory."""
-        try:
-            os.unlink(full_path)
-        except OSError, e:
-        # We may be renaming a dangling inventory id
-            if e.errno not in (errno.EISDIR, errno.EACCES, errno.EPERM):
-                raise
-            os.rmdir(full_path)
-
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""
         del self._new_contents[trans_id]
-        self.delete_any(self._limbo_name(trans_id))
+        delete_any(self._limbo_name(trans_id))
 
     def delete_contents(self, trans_id):
         """Schedule the contents of a path entry for deletion"""
@@ -438,7 +428,7 @@ class TreeTransform(object):
         except KeyError:
             return os.path.basename(self._tree_id_paths[trans_id])
 
-    def _by_parent(self):
+    def by_parent(self):
         """Return a map of parent: children for known parents.
         
         Only new paths and parents of tree files with assigned ids are used.
@@ -465,7 +455,7 @@ class TreeTransform(object):
         # ensure all children of all existent parents are known
         # all children of non-existent parents are known, by definition.
         self._add_tree_children()
-        by_parent = self._by_parent()
+        by_parent = self.by_parent()
         conflicts.extend(self._unversioned_parents(by_parent))
         conflicts.extend(self._parent_loops())
         conflicts.extend(self._duplicate_entries(by_parent))
@@ -482,7 +472,7 @@ class TreeTransform(object):
         Active parents are those which gain children, and those which are
         removed.  This is a necessary first step in detecting conflicts.
         """
-        parents = self._by_parent().keys()
+        parents = self.by_parent().keys()
         parents.extend([t for t in self._removed_contents if 
                         self.tree_kind(t) == 'directory'])
         for trans_id in self._removed_id:
@@ -513,6 +503,31 @@ class TreeTransform(object):
             if self._tree.is_control_filename(childpath):
                 continue
             yield self.trans_id_tree_path(childpath)
+
+    def has_named_child(self, by_parent, parent_id, name):
+        try:
+            children = by_parent[parent_id]
+        except KeyError:
+            children = []
+        for child in children:
+            if self.final_name(child) == name:
+                return True
+        try:
+            path = self._tree_id_paths[parent_id]
+        except KeyError:
+            return False
+        childpath = joinpath(path, name)
+        child_id = self._tree_path_ids.get(childpath)
+        if child_id is None:
+            return lexists(self._tree.abspath(childpath))
+        else:
+            if tt.final_parent(child_id) != parent_id:
+                return False
+            if child_id in tt._removed_contents:
+                # XXX What about dangling file-ids?
+                return False
+            else:
+                return True
 
     def _parent_loops(self):
         """No entry should be its own ancestor"""
@@ -605,8 +620,14 @@ class TreeTransform(object):
                 if name == last_name:
                     conflicts.append(('duplicate', last_trans_id, trans_id,
                     name))
-                last_name = name
-                last_trans_id = trans_id
+                try:
+                    kind = self.final_kind(trans_id)
+                except NoSuchFile:
+                    kind = None
+                file_id = self.final_file_id(trans_id)
+                if kind is not None or file_id is not None:
+                    last_name = name
+                    last_trans_id = trans_id
         return conflicts
 
     def _duplicate_ids(self):
@@ -699,7 +720,7 @@ class TreeTransform(object):
                 child_pb.update('removing file', num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
-                    self.delete_any(full_path)
+                    delete_any(full_path)
                 elif trans_id in self._new_name or trans_id in \
                     self._new_parent:
                     try:
@@ -950,19 +971,19 @@ def find_interesting(working_tree, target_tree, filenames):
     else:
         interesting_ids = set()
         for tree_path in filenames:
+            not_found = True
             for tree in (working_tree, target_tree):
-                not_found = True
                 file_id = tree.inventory.path2id(tree_path)
                 if file_id is not None:
                     interesting_ids.add(file_id)
                     not_found = False
-                if not_found:
-                    raise NotVersionedError(path=tree_path)
+            if not_found:
+                raise NotVersionedError(path=tree_path)
     return interesting_ids
 
 
 def change_entry(tt, file_id, working_tree, target_tree, 
-                 trans_id_file_id, backups, trans_id):
+                 trans_id_file_id, backups, trans_id, by_parent):
     """Replace a file_id's contents with those from a target tree."""
     e_trans_id = trans_id_file_id(file_id)
     entry = target_tree.inventory[file_id]
@@ -975,7 +996,9 @@ def change_entry(tt, file_id, working_tree, target_tree,
                 tt.delete_contents(e_trans_id)
             else:
                 parent_trans_id = trans_id_file_id(entry.parent_id)
-                tt.adjust_path(entry.name+"~", parent_trans_id, e_trans_id)
+                backup_name = get_backup_name(entry, by_parent,
+                                              parent_trans_id, tt)
+                tt.adjust_path(backup_name, parent_trans_id, e_trans_id)
                 tt.unversion_file(e_trans_id)
                 e_trans_id = tt.create_path(entry.name, parent_trans_id)
                 tt.version_file(file_id, e_trans_id)
@@ -998,6 +1021,17 @@ def change_entry(tt, file_id, working_tree, target_tree,
         parent_trans_id = trans_id_file_id(entry.parent_id)
         tt.adjust_path(entry.name, parent_trans_id, e_trans_id)
 
+
+def get_backup_name(entry, by_parent, parent_trans_id, tt):
+    """Produce a backup-style name that appears to be available"""
+    def name_gen():
+        counter = 1
+        while True:
+            yield "%s.~%d~" % (entry.name, counter)
+            counter += 1
+    for name in name_gen():
+        if not tt.has_named_child(by_parent, parent_trans_id, name):
+            return name
 
 def _entry_changes(file_id, entry, working_tree):
     """Determine in which ways the inventory entry has changed.
@@ -1054,6 +1088,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
                               interesting(i)]
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            by_parent = tt.by_parent()
             for id_num, file_id in enumerate(sorted_interesting):
                 child_pb.update("Reverting file", id_num+1, 
                                 len(sorted_interesting))
@@ -1068,7 +1103,8 @@ def revert(working_tree, target_tree, filenames, backups=False,
                         backup_this = False
                         del merge_modified[file_id]
                     change_entry(tt, file_id, working_tree, target_tree, 
-                                 trans_id_file_id, backup_this, trans_id)
+                                 trans_id_file_id, backup_this, trans_id,
+                                 by_parent)
         finally:
             child_pb.finished()
         pp.next_phase()
@@ -1092,14 +1128,16 @@ def revert(working_tree, target_tree, filenames, backups=False,
             raw_conflicts = resolve_conflicts(tt, child_pb)
         finally:
             child_pb.finished()
-        for line in conflicts_strings(cook_conflicts(raw_conflicts, tt)):
-            warning(line)
+        conflicts = cook_conflicts(raw_conflicts, tt)
+        for conflict in conflicts:
+            warning(conflict)
         pp.next_phase()
         tt.apply()
         working_tree.set_merge_modified({})
     finally:
         tt.finalize()
         pb.clear()
+    return conflicts
 
 
 def resolve_conflicts(tt, pb=DummyProgress()):
@@ -1162,17 +1200,17 @@ def conflict_pass(tt, conflicts):
 def cook_conflicts(raw_conflicts, tt):
     """Generate a list of cooked conflicts, sorted by file path"""
     def key(conflict):
-        if conflict[2] is not None:
-            return conflict[2], conflict[0]
-        elif len(conflict) == 6:
-            return conflict[4], conflict[0]
+        if conflict.path is not None:
+            return conflict.path, conflict.typestring
+        elif getattr(conflict, "conflict_path", None) is not None:
+            return conflict.conflict_path, conflict.typestring
         else:
-            return None, conflict[0]
+            return None, conflict.typestring
 
     return sorted(list(iter_cook_conflicts(raw_conflicts, tt)), key=key)
 
 def iter_cook_conflicts(raw_conflicts, tt):
-    cooked_conflicts = []
+    from bzrlib.conflicts import Conflict
     fp = FinalPaths(tt)
     for conflict in raw_conflicts:
         c_type = conflict[0]
@@ -1180,36 +1218,13 @@ def iter_cook_conflicts(raw_conflicts, tt):
         modified_path = fp.get_path(conflict[2])
         modified_id = tt.final_file_id(conflict[2])
         if len(conflict) == 3:
-            yield c_type, action, modified_path, modified_id
+            yield Conflict.factory(c_type, action=action, path=modified_path,
+                                     file_id=modified_id)
+             
         else:
             conflicting_path = fp.get_path(conflict[3])
             conflicting_id = tt.final_file_id(conflict[3])
-            yield (c_type, action, modified_path, modified_id, 
-                   conflicting_path, conflicting_id)
-
-
-def conflicts_strings(conflicts):
-    """Generate strings for the provided conflicts"""
-    for conflict in conflicts:
-        conflict_type = conflict[0]
-        if conflict_type == 'text conflict':
-            yield 'Text conflict in %s' % conflict[2]
-        elif conflict_type == 'contents conflict':
-            yield 'Contents conflict in %s' % conflict[2]
-        elif conflict_type == 'path conflict':
-            yield 'Path conflict: %s / %s' % conflict[2:]
-        elif conflict_type == 'duplicate id':
-            vals = (conflict[4], conflict[1], conflict[2])
-            yield 'Conflict adding id to %s.  %s %s.' % vals
-        elif conflict_type == 'duplicate':
-            vals = (conflict[4], conflict[1], conflict[2])
-            yield 'Conflict adding file %s.  %s %s.' % vals
-        elif conflict_type == 'parent loop':
-            vals = (conflict[4], conflict[2], conflict[1])
-            yield 'Conflict moving %s into %s.  %s.' % vals
-        elif conflict_type == 'unversioned parent':
-            vals = (conflict[2], conflict[1])
-            yield 'Conflict adding versioned files to %s.  %s.' % vals
-        elif conflict_type == 'missing parent':
-            vals = (conflict[2], conflict[1])
-            yield 'Conflict adding files to %s.  %s.' % vals
+            yield Conflict.factory(c_type, action=action, path=modified_path,
+                                   file_id=modified_id, 
+                                   conflict_path=conflicting_path,
+                                   conflict_file_id=conflicting_id)

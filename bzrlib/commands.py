@@ -570,7 +570,7 @@ def run_bzr(argv):
     argv = argv_copy
     if (not argv):
         from bzrlib.builtins import cmd_help
-        cmd_help().run_argv([])
+        cmd_help().run_argv_aliases([])
         return 0
 
     if argv[0] == '--version':
