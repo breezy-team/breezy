@@ -27,12 +27,19 @@ from bzrlib.workingtree import WorkingTree
 class TestInit(ExternalBase):
 
     def test_init_with_format(self):
-        """Verify bzr init --format constructs something plausible"""
+        # Verify bzr init --format constructs something plausible
         t = self.get_transport()
         self.runbzr('init --format metadir')
         self.assertIsDirectory('.bzr', t)
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)
+
+    def test_init_weave(self):
+        # --format=weave should be accepted to allow interoperation with
+        # old releases when desired.
+        out, err = self.run_bzr('init', '--format=weave')
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_init_at_repository_root(self):
         # bzr init at the root of a repository should create a branch
