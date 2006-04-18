@@ -22,7 +22,7 @@ from tempfile import mkdtemp
 
 import bzrlib
 from bzrlib.branch import Branch
-from bzrlib.conflicts import ConflictList
+from bzrlib.conflicts import ConflictList, Conflict
 from bzrlib.delta import compare_trees
 from bzrlib.errors import (BzrCommandError,
                            BzrError,
@@ -761,6 +761,7 @@ class Merge3Merger(object):
             c = Conflict.factory('path conflict', path=this_path,
                                  conflict_path=other_path, file_id=file_id)
             self.cooked_conflicts.append(c)
+        self.cooked_conflicts.sort(key=Conflict.sort_key)
 
 
 class WeaveMerger(Merge3Merger):

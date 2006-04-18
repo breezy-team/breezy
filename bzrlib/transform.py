@@ -1197,17 +1197,13 @@ def conflict_pass(tt, conflicts):
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))
     return new_conflicts
 
+
 def cook_conflicts(raw_conflicts, tt):
     """Generate a list of cooked conflicts, sorted by file path"""
-    def key(conflict):
-        if conflict.path is not None:
-            return conflict.path, conflict.typestring
-        elif getattr(conflict, "conflict_path", None) is not None:
-            return conflict.conflict_path, conflict.typestring
-        else:
-            return None, conflict.typestring
+    from bzrlib.conflicts import Conflict
+    conflict_iter = iter_cook_conflicts(raw_conflicts, tt)
+    return sorted(conflict_iter, key=Conflict.sort_key)
 
-    return sorted(list(iter_cook_conflicts(raw_conflicts, tt)), key=key)
 
 def iter_cook_conflicts(raw_conflicts, tt):
     from bzrlib.conflicts import Conflict

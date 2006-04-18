@@ -193,8 +193,9 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
     """Test some stuff when accessing a bzr Branch over sftp"""
 
     def test_lock_file(self):
-        """Make sure that a Branch accessed over sftp tries to lock itself."""
-        b = bzrdir.BzrDir.create_branch_and_repo(self.get_url())
+        # old format branches use a special lock file on sftp.
+        b = self.make_branch('', format=bzrdir.BzrDirFormat6())
+        b = bzrlib.branch.Branch.open(self.get_url())
         self.failUnlessExists('.bzr/')
         self.failUnlessExists('.bzr/branch-format')
         self.failUnlessExists('.bzr/branch-lock')

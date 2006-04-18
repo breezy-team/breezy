@@ -39,11 +39,11 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
     def setUp(self):
         super(TestCaseWithInterRepository, self).setUp()
 
-    def make_branch(self, relpath):
-        repo = self.make_repository(relpath)
+    def make_branch(self, relpath, format=None):
+        repo = self.make_repository(relpath, format=format)
         return repo.bzrdir.create_branch()
 
-    def make_bzrdir(self, relpath, bzrdir_format=None):
+    def make_bzrdir(self, relpath, format=None):
         try:
             url = self.get_url(relpath)
             segments = url.split('/')
@@ -54,14 +54,14 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
                     t.mkdir(segments[-1])
                 except FileExists:
                     pass
-            if bzrdir_format is None:
-                bzrdir_format = self.repository_format._matchingbzrdir
-            return bzrdir_format.initialize(url)
+            if format is None:
+                format = self.repository_format._matchingbzrdir
+            return format.initialize(url)
         except UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
-    def make_repository(self, relpath):
-        made_control = self.make_bzrdir(relpath)
+    def make_repository(self, relpath, format=None):
+        made_control = self.make_bzrdir(relpath, format=format)
         return self.repository_format.initialize(made_control)
 
     def make_to_repository(self, relpath):

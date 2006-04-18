@@ -51,6 +51,7 @@ class MergeBuilder(object):
         self.base.commit('base commit')
         for tt, wt in ((self.this_tt, self.this), (self.other_tt, self.other)):
             wt.branch.pull(self.base.branch)
+            wt.set_last_revision(wt.branch.last_revision())
             tt.apply()
             wt.commit('branch commit')
             assert len(wt.branch.revision_history()) == 2
@@ -179,6 +180,7 @@ class MergeBuilder(object):
 
 
 class MergeTest(TestCase):
+
     def test_change_name(self):
         """Test renames"""
         builder = MergeBuilder()

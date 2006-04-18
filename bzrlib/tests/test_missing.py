@@ -35,15 +35,15 @@ class TestMissing(TestCaseWithTransport):
         self.assertEqual(find_unmerged(original, puller), ([], []))
         original_tree.commit('a', rev_id='a')
         self.assertEqual(find_unmerged(original, puller), ([(1, u'a')], []))
-        puller.pull(original)
+        puller_tree.pull(original)
         self.assertEqual(find_unmerged(original, puller), ([], []))
-        merger.pull(original)
+        merger_tree.pull(original)
         original_tree.commit('b', rev_id='b')
         original_tree.commit('c', rev_id='c')
         self.assertEqual(find_unmerged(original, puller), ([(2, u'b'), 
                                                             (3, u'c')], []))
 
-        puller.pull(original)
+        puller_tree.pull(original)
         self.assertEqual(find_unmerged(original, puller), ([], []))
         self.assertEqual(find_unmerged(original, merger), ([(2, u'b'), 
                                                             (3, u'c')], []))

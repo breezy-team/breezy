@@ -24,6 +24,7 @@ from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.inventory as inventory
 from bzrlib.osutils import has_symlinks, rename, pathjoin
 from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.uncommit import uncommit
 
 
 class TestInventory(TestCase):
@@ -339,11 +340,7 @@ class TestPreviousHeads(TestCaseWithTransport):
         self.wt.add(['file'], ['fileid'])
         self.wt.commit('add file', rev_id='B')
         self.inv_B = self.branch.repository.get_inventory('B')
-        self.branch.lock_write()
-        try:
-            self.branch.control_files.put_utf8('revision-history', 'A\n')
-        finally:
-            self.branch.unlock()
+        uncommit(self.branch, tree=self.wt)
         self.assertEqual(self.branch.revision_history(), ['A'])
         self.wt.commit('another add of file', rev_id='C')
         self.inv_C = self.branch.repository.get_inventory('C')
@@ -391,23 +388,19 @@ class TestPreviousHeads(TestCaseWithTransport):
 class TestExecutable(TestCaseWithTransport):
 
     def test_stays_executable(self):
-        basic_inv = """<inventory format="5">
-<file file_id="a-20051208024829-849e76f7968d7a86" name="a" executable="yes" />
-<file file_id="b-20051208024829-849e76f7968d7a86" name="b" />
-</inventory>
-"""
+        a_id = "a-20051208024829-849e76f7968d7a86"
+        b_id = "b-20051208024829-849e76f7968d7a86"
         wt = self.make_branch_and_tree('b1')
         b = wt.branch
         open('b1/a', 'wb').write('a test\n')
         open('b1/b', 'wb').write('b test\n')
         os.chmod('b1/a', 0755)
         os.chmod('b1/b', 0644)
-        # Manually writing the inventory, to ensure that
-        # the executable="yes" entry is set for 'a' and not for 'b'
-        open('b1/.bzr/inventory', 'wb').write(basic_inv)
+        wt.add(['a', 'b'], [a_id, b_id])
+        wt.inventory[a_id].executable = True
+        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
 
-        a_id = "a-20051208024829-849e76f7968d7a86"
-        b_id = "b-20051208024829-849e76f7968d7a86"
+        # reopen the tree and ensure it stuck.
         wt = wt.bzrdir.open_workingtree()
         self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
 

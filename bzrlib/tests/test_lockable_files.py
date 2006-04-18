@@ -119,6 +119,10 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
         super(TestLockableFiles_LockDir, self).setUp()
         self.transport = get_transport('.')
         self.lockable = LockableFiles(self.transport, 'my-lock', LockDir)
+        # the lock creation here sets mode - test_permissions on branch 
+        # tests that implicitly, but it might be a good idea to factor 
+        # out the mode checking logic and have it applied to loackable files
+        # directly. RBC 20060418
         self.lockable.create_lock()
 
     def test_lock_is_lockdir(self):

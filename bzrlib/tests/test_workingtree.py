@@ -205,10 +205,15 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         tree.unlock()
         self.assertEquals(our_lock.peek(), None)
 
-    def create_format2_tree(self, url):
-        return BzrDir.create_standalone_workingtree(url)
 
-    def test_conflicts_format2(self):
+class TestFormat2WorkingTree(TestCaseWithTransport):
+    """Tests that are specific to format 2 trees."""
+
+    def create_format2_tree(self, url):
+        return self.make_branch_and_tree(
+            url, format=bzrlib.bzrdir.BzrDirFormat6())
+
+    def test_conflicts(self):
         # test backwards compatability
         tree = self.create_format2_tree('.')
         self.assertRaises(errors.UnsupportedOperation, tree.set_conflicts,

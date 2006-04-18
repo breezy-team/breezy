@@ -78,6 +78,10 @@ bzr 0.8rc1  2006-04-14
     * 'merge' accepts --remember option to store parent location, like 'push'
       and 'pull'. (Olaf Conradi)
 
+    * 'Metadir' is now the default disk format. This improves behaviour in
+      SFTP using circumstances and allows binding and rebinding and easier
+      use of repositories. (Robert Collins, Aaron Bentley).
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
