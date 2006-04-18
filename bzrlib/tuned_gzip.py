@@ -109,9 +109,14 @@ class GzipFile(gzip.GzipFile):
             # (The number of bytes to seek back is the length of the unused
             # data, minus 8 because those 8 bytes are part of this member.
             seek_length = len (self.decompress.unused_data) - 8
-            if seek_length:
-                assert seek_length > 0
+            if seek_length > 0:
+                # we read too much data
                 self.fileobj.seek(-seek_length, 1)
+            elif seek_length < 0:
+                # we haven't read enough to check the checksum.
+                assert -8 < seek_length, "too great a seek."
+                buf = self.fileobj.read(-seek_length)
+                self.decompress.decompress(buf)
 
             # Check the CRC and file size, and set the flag so we read
             # a new member on the next call
@@ -135,7 +140,7 @@ class GzipFile(gzip.GzipFile):
         crc32, isize = struct.unpack("<LL", self.decompress.unused_data[0:8])
         # note that isize is unsigned - it can exceed 2GB
         if crc32 != U32(self.crc):
-            raise IOError, "CRC check failed"
+            raise IOError, "CRC check failed %d %d" % (crc32, U32(self.crc))
         elif isize != LOWU32(self.size):
             raise IOError, "Incorrect length of data produced"
 

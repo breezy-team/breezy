@@ -45,6 +45,7 @@ from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               FinalPaths, create_by_entry, unique_add)
+from bzrlib.versionedfile import WeaveMerge
 import bzrlib.ui
 
 # TODO: Report back as changes are merged in
@@ -244,8 +245,8 @@ class Merger(object):
         if self.merge_type.supports_reprocess:
             kwargs['reprocess'] = self.reprocess
         elif self.reprocess:
-            raise BzrError("Reprocess is not supported for this merge"
-                                  " type. %s" % merge_type)
+            raise BzrError("Conflict reduction is not supported for merge"
+                                  " type %s." % self.merge_type)
         if self.merge_type.supports_show_base:
             kwargs['show_base'] = self.show_base
         elif self.show_base:
@@ -765,17 +766,18 @@ class Merge3Merger(object):
 
 class WeaveMerger(Merge3Merger):
     """Three-way tree merger, text weave merger."""
-    supports_reprocess = False
+    supports_reprocess = True
     supports_show_base = False
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
-                 interesting_ids=None, pb=DummyProgress(), pp=None):
+                 interesting_ids=None, pb=DummyProgress(), pp=None,
+                 reprocess=False):
         self.this_revision_tree = self._get_revision_tree(this_tree)
         self.other_revision_tree = self._get_revision_tree(other_tree)
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
                                           interesting_ids=interesting_ids, 
-                                          pb=pb, pp=pp)
+                                          pb=pb, pp=pp, reprocess=reprocess)
 
     def _get_revision_tree(self, tree):
         """Return a revision tree releated to this tree.
@@ -805,9 +807,9 @@ class WeaveMerger(Merge3Merger):
         this_revision_id = self.this_revision_tree.inventory[file_id].revision
         other_revision_id = \
             self.other_revision_tree.inventory[file_id].revision
-        plan =  weave.plan_merge(this_revision_id, other_revision_id)
-        return weave.weave_merge(plan, '<<<<<<< TREE\n', 
-                                       '>>>>>>> MERGE-SOURCE\n')
+        wm = WeaveMerge(weave, this_revision_id, other_revision_id, 
+                        '<<<<<<< TREE\n', '>>>>>>> MERGE-SOURCE\n')
+        return wm.merge_lines(self.reprocess)
 
     def text_merge(self, file_id, trans_id):
         """Perform a (weave) text merge for a given file and file-id.
@@ -815,8 +817,7 @@ class WeaveMerger(Merge3Merger):
         and a conflict will be noted.
         """
         self._check_file(file_id)
-        lines = list(self._merged_lines(file_id))
-        conflicts = '<<<<<<< TREE\n' in lines
+        lines, conflicts = self._merged_lines(file_id)
         self.tt.create_file(lines, trans_id)
         if conflicts:
             self._raw_conflicts.append(('text conflict', trans_id))
