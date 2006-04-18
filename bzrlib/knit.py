@@ -817,6 +817,20 @@ class KnitVersionedFile(VersionedFile):
             yield lineno, insert_id, dset, line
 
     def plan_merge(self, ver_a, ver_b):
+        ancestors_b = set(self.get_ancestry(ver_b))
+        def status_a(revision, text):
+            if revision in ancestors_b:
+                return 'killed-b', text
+            else:
+                return 'new-a', text
+        
+        ancestors_a = set(self.get_ancestry(ver_a))
+        def status_b(revision, text):
+            if revision in ancestors_a:
+                return 'killed-a', text
+            else:
+                return 'new-b', text
+
         annotated_a = self.annotate(ver_a)
         annotated_b = self.annotate(ver_b)
         plain_a = [t for a, t in annotated_a]
@@ -828,15 +842,20 @@ class KnitVersionedFile(VersionedFile):
         b_iter = iter(annotated_b)
         for ai, bi, l in blocks:
             for a_num, (revision, text) in xenumerate(a_iter, ai, a_cur):
-                pass
+                yield status_a(revision, text)
             for b_num, (revision, text) in xenumerate(b_iter, bi, b_cur):
-                pass
+                yield status_b(revision, text)
             for num, ((revision_a, text_a), (revision_b, text_b)) in \
                 xenumerate(izip(a_iter, b_iter), l):
                 assert text_a == text_b
                 yield "unchanged", text_a
             a_cur = ai + l
             b_cur = bi + l
+        # handle a final conflicting region
+        for a_num, (revision, text) in xenumerate(a_iter, start=a_cur):
+            yield status_a(revision, text)
+        for b_num, (revision, text) in xenumerate(b_iter, start=b_cur):
+            yield status_b(revision, text)
 
 def xenumerate(iter, stop=None, start=0, step=1):
     count = start

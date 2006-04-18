@@ -374,7 +374,8 @@ class KnitTests(TestCaseInTempDir):
         my_knit.add_lines('text1a', ['text1'], split_lines(TEXT_1A))
         my_knit.add_lines('text1b', ['text1'], split_lines(TEXT_1B))
         plan = list(my_knit.plan_merge('text1a', 'text1b'))
-        self.assertEqual(plan, AB_MERGE)
+        for plan_line, expected_line in zip(plan, AB_MERGE):
+            self.assertEqual(plan_line, expected_line)
 
 
 TEXT_1 = """\
@@ -429,7 +430,8 @@ killed-b|- eggs
 new-b|- bananas (do not use plantains!!!)
 unchanged|- broken tea cups
 new-a|- self-raising flour
-new-b|- flour"""
+new-b|- flour
+"""
 AB_MERGE=[tuple(l.split('|')) for l in AB_MERGE_TEXT.splitlines(True)]
 
 
