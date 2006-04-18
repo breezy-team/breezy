@@ -409,8 +409,8 @@ class VersionedFile(object):
         unchanged   Alive in both a and b (possibly created in both)
         new-a       Created in a
         new-b       Created in b
-        ghost-a     ??     
-        ghost-b     ??
+        ghost-a     Killed in a, unborn in b    
+        ghost-b     Killed in b, unborn in a
         irrelevant  Not in either revision
         """
         inc_a = set(self.get_ancestry([ver_a]))
