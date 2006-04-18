@@ -796,6 +796,11 @@ class MergeCases(TestBase):
         self.log(result_text)
         self.assertEqualDiff(result_text, expected)
 
+    def test_weave_merge_conflicts(self):
+        # does weave merge properly handle plans that end with unchanged?
+        result = ''.join(Weave().weave_merge([('new-a', 'hello\n')]))
+        self.assertEqual(result, 'hello\n')
+
     def test_deletion_extended(self):
         """One side deletes, the other deletes more.
         """

@@ -437,6 +437,19 @@ class PlanWeaveMerge(TextMerge):
         lines_a = []
         lines_b = []
         ch_a = ch_b = False
+
+        def outstanding_struct():
+            if not lines_a and not lines_b:
+                return
+            elif ch_a and not ch_b:
+                # one-sided change:
+                yield(lines_a,)
+            elif ch_b and not ch_a:
+                yield (lines_b,)
+            elif lines_a == lines_b:
+                yield(lines_a,)
+            else:
+                yield (lines_a, lines_b)
        
         # We previously considered either 'unchanged' or 'killed-both' lines
         # to be possible places to resynchronize.  However, assuming agreement
@@ -444,18 +457,8 @@ class PlanWeaveMerge(TextMerge):
         for state, line in self.plan:
             if state == 'unchanged':
                 # resync and flush queued conflicts changes if any
-                if not lines_a and not lines_b:
-                    pass
-                elif ch_a and not ch_b:
-                    # one-sided change:
-                    yield(lines_a,)
-                elif ch_b and not ch_a:
-                    yield (lines_b,)
-                elif lines_a == lines_b:
-                    yield(lines_a,)
-                else:
-                    yield (lines_a, lines_b)
-
+                for struct in outstanding_struct():
+                    yield struct
                 lines_a = []
                 lines_b = []
                 ch_a = ch_b = False
@@ -478,7 +481,8 @@ class PlanWeaveMerge(TextMerge):
             else:
                 assert state in ('irrelevant', 'ghost-a', 'ghost-b', 
                                  'killed-base', 'killed-both'), state
-
+        for struct in outstanding_struct():
+            yield struct
 
 class WeaveMerge(PlanWeaveMerge):
     """Weave merge that takes a VersionedFile and two versions as its input"""
