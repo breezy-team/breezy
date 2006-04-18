@@ -710,6 +710,53 @@ class Weave(VersionedFile):
             raise WeaveFormatError("unclosed deletion blocks at end of weave: %s"
                                    % dset)
 
+    def plan_merge(self, ver_a, ver_b):
+        """Return pseudo-annotation indicating how the two versions merge.
+
+        This is computed between versions a and b and their common
+        base.
+
+        Weave lines present in none of them are skipped entirely.
+        """
+        inc_a = set(self.get_ancestry([ver_a]))
+        inc_b = set(self.get_ancestry([ver_b]))
+        inc_c = inc_a & inc_b
+
+        for lineno, insert, deleteset, line in\
+            self.walk([ver_a, ver_b]):
+            if deleteset & inc_c:
+                # killed in parent; can't be in either a or b
+                # not relevant to our work
+                yield 'killed-base', line
+            elif insert in inc_c:
+                # was inserted in base
+                killed_a = bool(deleteset & inc_a)
+                killed_b = bool(deleteset & inc_b)
+                if killed_a and killed_b:
+                    yield 'killed-both', line
+                elif killed_a:
+                    yield 'killed-a', line
+                elif killed_b:
+                    yield 'killed-b', line
+                else:
+                    yield 'unchanged', line
+            elif insert in inc_a:
+                if deleteset & inc_a:
+                    yield 'ghost-a', line
+                else:
+                    # new in A; not in B
+                    yield 'new-a', line
+            elif insert in inc_b:
+                if deleteset & inc_b:
+                    yield 'ghost-b', line
+                else:
+                    yield 'new-b', line
+            else:
+                # not in either revision
+                yield 'irrelevant', line
+
+        yield 'unchanged', ''           # terminator
+
     def _extract(self, versions):
         """Yield annotation of lines in included set.
 

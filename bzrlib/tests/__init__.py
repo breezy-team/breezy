@@ -991,6 +991,7 @@ def test_suite():
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_testament',
+                   'bzrlib.tests.test_textmerge',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
