@@ -136,7 +136,7 @@ class InvalidRevisionId(BzrNewError):
 
 
 class NoWorkingTree(BzrNewError):
-    """No WorkingTree exists for %s(base)."""
+    """No WorkingTree exists for %(base)s."""
     
     def __init__(self, base):
         BzrNewError.__init__(self)
@@ -144,7 +144,7 @@ class NoWorkingTree(BzrNewError):
 
 
 class NotLocalUrl(BzrNewError):
-    """%s(url) is not a local path."""
+    """%(url)s is not a local path."""
     
     def __init__(self, url):
         BzrNewError.__init__(self)
