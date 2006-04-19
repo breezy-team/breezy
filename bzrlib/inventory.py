@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -348,18 +348,36 @@ class InventoryEntry(object):
         raise BzrCheckError('unknown entry kind %r in revision {%s}' % 
                             (self.kind, rev_id))
 
-
     def copy(self):
         """Clone this inventory entry."""
         raise NotImplementedError
 
-    def _get_snapshot_change(self, previous_entries):
+    def _describe_snapshot_change(self, previous_entries):
+        """Describe how this entry will have changed in a new commit.
+
+        :param previous_entries: Dictionary from revision_id to inventory entry.
+
+        :returns: One-word description: "merged", "added", "renamed", "modified".
+        """
+        # XXX: This assumes that the file *has* changed -- it should probably
+        # be fused with whatever does that detection.  Why not just a single
+        # thing to compare the entries?
+        #
+        # TODO: Return some kind of object describing all the possible
+        # dimensions that can change, not just a string.  That can then give
+        # both old and new names for renames, etc.
+        #
         if len(previous_entries) > 1:
             return 'merged'
         elif len(previous_entries) == 0:
             return 'added'
-        else:
-            return 'modified/renamed/reparented'
+        the_parent, = previous_entries.values()
+        if self.parent_id != the_parent.parent_id:
+            # actually, moved to another directory
+            return 'renamed'
+        elif self.name != the_parent.name:
+            return 'renamed'
+        return 'modified'
 
     def __repr__(self):
         return ("%s(%r, %r, parent_id=%r)"
@@ -384,15 +402,23 @@ class InventoryEntry(object):
                 mutter("found unchanged entry")
                 self.revision = parent_ie.revision
                 return "unchanged"
-        return self.snapshot_revision(revision, previous_entries, 
-                                      work_tree, weave_store, transaction)
+        return self._snapshot_into_revision(revision, previous_entries, 
+                                            work_tree, weave_store, transaction)
 
-    def snapshot_revision(self, revision, previous_entries, work_tree,
-                          weave_store, transaction):
-        """Record this revision unconditionally."""
-        mutter('new revision for {%s}', self.file_id)
+    def _snapshot_into_revision(self, revision, previous_entries, work_tree,
+                                weave_store, transaction):
+        """Record this revision unconditionally into a store.
+
+        The entry's last-changed revision property (`revision`) is updated to 
+        that of the new revision.
+        
+        :param revision: id of the new revision that is being recorded.
+
+        :returns: String description of the commit (e.g. "merged", "modified"), etc.
+        """
+        mutter('new revision {%s} for {%s}', revision, self.file_id)
         self.revision = revision
-        change = self._get_snapshot_change(previous_entries)
+        change = self._describe_snapshot_change(previous_entries)
         self._snapshot_text(previous_entries, work_tree, weave_store,
                             transaction)
         return change
