@@ -414,6 +414,11 @@ class Commit(object):
 
     def _escape_commit_message(self):
         """Replace xml-incompatible control characters."""
+        # FIXME: RBC 20060419 this should be done by the revision
+        # serialiser not by commit. Then we can also add an unescaper
+        # in the deserializer and start roundtripping revision messages
+        # precisely. See repository_implementations/test_repository.py
+        
         # Python strings can include characters that can't be
         # represented in well-formed XML; escape characters that
         # aren't listed in the XML specification

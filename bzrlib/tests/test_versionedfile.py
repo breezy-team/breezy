@@ -64,7 +64,8 @@ class VersionedFileTestMixIn(object):
             self.assertRaises(RevisionAlreadyPresent,
                 f.add_lines, 'r1', [], [])
         verify_file(f)
-        f = self.reopen_file()
+        # this checks that reopen with create=True does not break anything.
+        f = self.reopen_file(create=True)
         verify_file(f)
 
     def test_adds_with_parent_texts(self):
@@ -104,6 +105,31 @@ class VersionedFileTestMixIn(object):
         verify_file(f)
         f = self.reopen_file()
         verify_file(f)
+
+    def test_add_unicode_content(self):
+        # unicode content is not permitted in versioned files. 
+        # versioned files version sequences of bytes only.
+        vf = self.get_file()
+        self.assertRaises(errors.BzrBadParameterUnicode,
+            vf.add_lines, 'a', [], ['a\n', u'b\n', 'c\n'])
+        self.assertRaises(
+            (errors.BzrBadParameterUnicode, NotImplementedError),
+            vf.add_lines_with_ghosts, 'a', [], ['a\n', u'b\n', 'c\n'])
+
+    def test_inline_newline_throws(self):
+        # \r characters are not permitted in lines being added
+        vf = self.get_file()
+        self.assertRaises(errors.BzrBadParameterContainsNewline, 
+            vf.add_lines, 'a', [], ['a\n\n'])
+        self.assertRaises(
+            (errors.BzrBadParameterContainsNewline, NotImplementedError),
+            vf.add_lines_with_ghosts, 'a', [], ['a\n\n'])
+        # but inline CR's are allowed
+        vf.add_lines('a', [], ['a\r\n'])
+        try:
+            vf.add_lines_with_ghosts('b', [], ['a\r\n'])
+        except NotImplementedError:
+            pass
 
     def test_get_delta(self):
         f = self.get_file()
@@ -637,6 +663,22 @@ class VersionedFileTestMixIn(object):
         self.assertRaises(errors.ReadOnlyError, vf.fix_parents, 'base', [])
         self.assertRaises(errors.ReadOnlyError, vf.join, 'base')
         self.assertRaises(errors.ReadOnlyError, vf.clone_text, 'base', 'bar', ['foo'])
+    
+    def test_get_sha1(self):
+        # check the sha1 data is available
+        vf = self.get_file()
+        # a simple file
+        vf.add_lines('a', [], ['a\n'])
+        # the same file, different metadata
+        vf.add_lines('b', ['a'], ['a\n'])
+        # a file differing only in last newline.
+        vf.add_lines('c', [], ['a'])
+        self.assertEqual(
+            '3f786850e387550fdab836ed7e6dc881de23001b', vf.get_sha1('a'))
+        self.assertEqual(
+            '3f786850e387550fdab836ed7e6dc881de23001b', vf.get_sha1('b'))
+        self.assertEqual(
+            '86f7e437faa5a7fce15d1ddcb9eaeaea377667b8', vf.get_sha1('c'))
         
 
 class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
@@ -678,8 +720,8 @@ class TestWeave(TestCaseWithTransport, VersionedFileTestMixIn):
         w._sha1s[1] =  'f0f265c6e75f1c8f9ab76dcf85528352c5f215ef'
         return w
 
-    def reopen_file(self, name='foo'):
-        return WeaveFile(name, get_transport(self.get_url('.')))
+    def reopen_file(self, name='foo', create=False):
+        return WeaveFile(name, get_transport(self.get_url('.')), create=create)
 
     def test_no_implicit_create(self):
         self.assertRaises(errors.NoSuchFile,
@@ -706,8 +748,10 @@ class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
         knit.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
         return knit
 
-    def reopen_file(self, name='foo'):
-        return KnitVersionedFile(name, get_transport(self.get_url('.')), delta=True)
+    def reopen_file(self, name='foo', create=False):
+        return KnitVersionedFile(name, get_transport(self.get_url('.')),
+            delta=True,
+            create=create)
 
     def test_detection(self):
         print "TODO for merging: create a corrupted knit."
@@ -791,9 +835,14 @@ class TestReadonlyHttpMixin(object):
     def test_readonly_http_works(self):
         # we should be able to read from http with a versioned file.
         vf = self.get_file()
+        # try an empty file access
+        readonly_vf = self.get_factory()('foo', get_transport(self.get_readonly_url('.')))
+        self.assertEqual([], readonly_vf.versions())
+        # now with feeling.
         vf.add_lines('1', [], ['a\n'])
         vf.add_lines('2', ['1'], ['b\n', 'a\n'])
         readonly_vf = self.get_factory()('foo', get_transport(self.get_readonly_url('.')))
+        self.assertEqual(['1', '2'], vf.versions())
         for version in readonly_vf.versions():
             readonly_vf.get_lines(version)
 

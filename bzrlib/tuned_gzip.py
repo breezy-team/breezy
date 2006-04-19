@@ -24,6 +24,9 @@ import sys
 import struct
 import zlib
 
+# we want a \n preserved, break on \n only splitlines.
+import bzrlib
+
 __all__ = ["GzipFile"]
 
 
@@ -250,7 +253,7 @@ class GzipFile(gzip.GzipFile):
         if sizehint <= 0:
             sizehint = -1
         content = self.read(sizehint)
-        return content.splitlines(True)
+        return bzrlib.osutils.split_lines(content)
 
     def _unread(self, buf, len_buf=None):
         """tuned to remove unneeded len calls.

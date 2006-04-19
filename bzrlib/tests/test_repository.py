@@ -44,8 +44,7 @@ class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
         old_format = repository.RepositoryFormat.get_default_format()
-        # default is None - we cannot create a Repository independently yet
-        self.assertTrue(isinstance(old_format, repository.RepositoryFormat7))
+        self.assertTrue(isinstance(old_format, repository.RepositoryFormatKnit1))
         repository.RepositoryFormat.set_default_format(SampleRepositoryFormat())
         # creating a repository should now create an instrumented dir.
         try:

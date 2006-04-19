@@ -341,7 +341,8 @@ class TestCase(unittest.TestCase):
     def assertIsInstance(self, obj, kls):
         """Fail if obj is not an instance of kls"""
         if not isinstance(obj, kls):
-            self.fail("%r is not an instance of %s" % (obj, kls))
+            self.fail("%r is an instance of %s rather than %s" % (
+                obj, obj.__class__, kls))
 
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.

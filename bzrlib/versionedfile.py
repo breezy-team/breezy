@@ -154,6 +154,18 @@ class VersionedFile(object):
         """Check the versioned file for integrity."""
         raise NotImplementedError(self.check)
 
+    def _check_lines_not_unicode(self, lines):
+        """Check that lines being added to a versioned file are not unicode."""
+        for line in lines:
+            if line.__class__ is not str:
+                raise errors.BzrBadParameterUnicode("lines")
+
+    def _check_lines_are_lines(self, lines):
+        """Check that the lines really are full lines without inline EOL."""
+        for line in lines:
+            if '\n' in line[:-1]:
+                raise errors.BzrBadParameterContainsNewline("lines")
+
     def _check_write_ok(self):
         """Is the versioned file marked as 'finished' ? Raise if it is."""
         if self.finished:
@@ -222,6 +234,13 @@ class VersionedFile(object):
         for version in versions:
             result[version] = self.get_delta(version)
         return result
+
+    def get_sha1(self, version_id):
+        """Get the stored sha1 sum for the given revision.
+        
+        :param name: The name of the version to lookup
+        """
+        raise NotImplementedError(self.get_sha1)
 
     def get_suffixes(self):
         """Return the file suffixes associated with this versioned file."""

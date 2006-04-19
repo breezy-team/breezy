@@ -463,6 +463,8 @@ class Weave(VersionedFile):
         """
 
         assert isinstance(version_id, basestring)
+        self._check_lines_not_unicode(lines)
+        self._check_lines_are_lines(lines)
         if not sha1:
             sha1 = sha_strings(lines)
         if version_id in self._name_map:
@@ -839,12 +841,9 @@ class Weave(VersionedFile):
                        expected_sha1, measured_sha1))
         return result
 
-    def get_sha1(self, name):
-        """Get the stored sha1 sum for the given revision.
-        
-        :param name: The name of the version to lookup
-        """
-        return self._sha1s[self._lookup(name)]
+    def get_sha1(self, version_id):
+        """See VersionedFile.get_sha1()."""
+        return self._sha1s[self._lookup(version_id)]
 
     @deprecated_method(zero_eight)
     def numversions(self):
