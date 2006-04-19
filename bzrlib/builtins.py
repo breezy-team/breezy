@@ -83,13 +83,15 @@ def internal_tree_files(file_list, default_branch=u'.'):
 
 def get_format_type(typestring):
     """Parse and return a format specifier."""
+    if typestring == "weave":
+        return bzrdir.BzrDirFormat6()
     if typestring == "metadir":
         return bzrdir.BzrDirMetaFormat1()
     if typestring == "knit":
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
         return format
-    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
+    msg = "No known bzr-dir format %s. Supported types are: weave, metadir\n" %\
         (typestring)
     raise BzrCommandError(msg)
 
@@ -2463,11 +2465,11 @@ def merge(other_revision, base_revision,
     if show_base and not merge_type is Merge3Merger:
         raise BzrCommandError("Show-base is not supported for this merge"
                               " type. %s" % merge_type)
-    if reprocess and not merge_type is Merge3Merger:
-        raise BzrCommandError("Reprocess is not supported for this merge"
-                              " type. %s" % merge_type)
+    if reprocess and not merge_type.supports_reprocess:
+        raise BzrCommandError("Conflict reduction is not supported for merge"
+                              " type %s." % merge_type)
     if reprocess and show_base:
-        raise BzrCommandError("Cannot reprocess and show base.")
+        raise BzrCommandError("Cannot do conflict reduction and show base.")
     try:
         merger = Merger(this_tree.branch, this_tree=this_tree, pb=pb)
         merger.pp = ProgressPhase("Merge phase", 5, pb)
