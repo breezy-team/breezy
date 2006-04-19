@@ -16,8 +16,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Black-box tests for bzr pull.
-"""
+"""Black-box tests for bzr pull."""
 
 import os
 import sys
@@ -49,15 +48,9 @@ class TestPull(ExternalBase):
         self.runbzr('missing', retcode=3)
         self.runbzr('missing .')
         self.runbzr('missing')
-        if sys.platform not in ('win32', 'cygwin'):
-            # This is equivalent to doing "bzr pull ."
-            # Which means that bzr creates 2 branches grabbing
-            # the same location, and tries to pull.
-            # However, 2 branches mean 2 locks on the same file
-            # which ultimately implies a deadlock.
-            # (non windows platforms allow multiple locks on the
-            # same file by the same calling process)
-            self.runbzr('pull')
+        # this will work on windows because we check for the same branch
+        # in pull - if it fails, it is a regression
+        self.runbzr('pull')
         self.runbzr('pull /', retcode=3)
         if sys.platform not in ('win32', 'cygwin'):
             self.runbzr('pull')
