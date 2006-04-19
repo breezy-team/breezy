@@ -190,7 +190,7 @@ class VersionedFileStore(TransportStore):
         Its maintained for backwards compatability but will only work on
         weave stores - pre 0.8 repositories.
         """
-        self._put_weave(self, file_id, weave, transaction)
+        self._put_weave(file_id, weave, transaction)
 
     def _put_weave(self, file_id, weave, transaction):
         """Preserved here for upgrades-to-weaves to use."""

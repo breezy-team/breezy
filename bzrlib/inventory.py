@@ -37,9 +37,9 @@ import types
 import bzrlib
 from bzrlib.osutils import (pumpfile, quotefn, splitpath, joinpath,
                             pathjoin, sha_strings)
-from bzrlib.trace import mutter
 from bzrlib.errors import (NotVersionedError, InvalidEntryName,
-                           BzrError, BzrCheckError)
+                           BzrError, BzrCheckError, BinaryFile)
+from bzrlib.trace import mutter
 
 
 class InventoryEntry(object):
@@ -572,17 +572,24 @@ class InventoryFile(InventoryEntry):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """See InventoryEntry._diff."""
-        from_text = tree.get_file(self.file_id).readlines()
-        if to_entry:
-            to_text = to_tree.get_file(to_entry.file_id).readlines()
-        else:
-            to_text = []
-        if not reverse:
-            text_diff(from_label, from_text,
-                      to_label, to_text, output_to)
-        else:
-            text_diff(to_label, to_text,
-                      from_label, from_text, output_to)
+        try:
+            from_text = tree.get_file(self.file_id).readlines()
+            if to_entry:
+                to_text = to_tree.get_file(to_entry.file_id).readlines()
+            else:
+                to_text = []
+            if not reverse:
+                text_diff(from_label, from_text,
+                          to_label, to_text, output_to)
+            else:
+                text_diff(to_label, to_text,
+                          from_label, from_text, output_to)
+        except BinaryFile:
+            if reverse:
+                label_pair = (to_label, from_label)
+            else:
+                label_pair = (from_label, to_label)
+            print >> output_to, "Binary files %s and %s differ" % label_pair
 
     def has_text(self):
         """See InventoryEntry.has_text."""

@@ -816,6 +816,45 @@ class KnitVersionedFile(VersionedFile):
         for lineno, insert_id, dset, line in w.walk(version_ids):
             yield lineno, insert_id, dset, line
 
+    def plan_merge(self, ver_a, ver_b):
+        """See VersionedFile.plan_merge."""
+        ancestors_b = set(self.get_ancestry(ver_b))
+        def status_a(revision, text):
+            if revision in ancestors_b:
+                return 'killed-b', text
+            else:
+                return 'new-a', text
+        
+        ancestors_a = set(self.get_ancestry(ver_a))
+        def status_b(revision, text):
+            if revision in ancestors_a:
+                return 'killed-a', text
+            else:
+                return 'new-b', text
+
+        annotated_a = self.annotate(ver_a)
+        annotated_b = self.annotate(ver_b)
+        plain_a = [t for (a, t) in annotated_a]
+        plain_b = [t for (a, t) in annotated_b]
+        blocks = SequenceMatcher(None, plain_a, plain_b).get_matching_blocks()
+        a_cur = 0
+        b_cur = 0
+        for ai, bi, l in blocks:
+            # process all mismatched sections
+            # (last mismatched section is handled because blocks always
+            # includes a 0-length last block)
+            for revision, text in annotated_a[a_cur:ai]:
+                yield status_a(revision, text)
+            for revision, text in annotated_b[b_cur:bi]:
+                yield status_b(revision, text)
+
+            # and now the matched section
+            a_cur = ai + l
+            b_cur = bi + l
+            for text_a, text_b in zip(plain_a[ai:a_cur], plain_b[bi:b_cur]):
+                assert text_a == text_b
+                yield "unchanged", text_a
+
 
 class _KnitComponentFile(object):
     """One of the files used to implement a knit database"""

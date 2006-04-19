@@ -46,18 +46,19 @@ class MergeBuilder(object):
             if option is True:
                 new_file(tt)
 
-    def merge(self, merge_type=Merge3Merger, interesting_ids=None):
+    def merge(self, merge_type=Merge3Merger, interesting_ids=None, **kwargs):
         self.base_tt.apply()
         self.base.commit('base commit')
         for tt, wt in ((self.this_tt, self.this), (self.other_tt, self.other)):
             wt.branch.pull(self.base.branch)
+            wt.set_last_revision(wt.branch.last_revision())
             tt.apply()
             wt.commit('branch commit')
             assert len(wt.branch.revision_history()) == 2
         self.this.branch.fetch(self.other.branch)
         other_basis = self.other.branch.basis_tree()
         merger = merge_type(self.this, self.this, self.base, other_basis, 
-                            interesting_ids=interesting_ids)
+                            interesting_ids=interesting_ids, **kwargs)
         return merger.cooked_conflicts
 
     def list_transforms(self):
@@ -179,6 +180,7 @@ class MergeBuilder(object):
 
 
 class MergeTest(TestCase):
+
     def test_change_name(self):
         """Test renames"""
         builder = MergeBuilder()
@@ -248,6 +250,29 @@ class MergeTest(TestCase):
         """Test diff3 merging"""
         self.do_contents_test(WeaveMerger)
 
+    def test_reprocess_weave(self):
+        # Reprocess works on weaves, and behaves as expected
+        builder = MergeBuilder()
+        builder.add_file('a', 'TREE_ROOT', 'blah', 'a', False)
+        builder.change_contents('a', this='b\nc\nd\ne\n', other='z\nc\nd\ny\n')
+        builder.merge(WeaveMerger, reprocess=True)
+        expected = """<<<<<<< TREE
+b
+=======
+z
+>>>>>>> MERGE-SOURCE
+c
+d
+<<<<<<< TREE
+e
+=======
+y
+>>>>>>> MERGE-SOURCE
+"""
+        self.assertEqualDiff(builder.this.get_file("a").read(), expected)
+
+ 
+
     def do_contents_test(self, merge_factory):
         """Test merging with specified ContentsChange factory"""
         builder = self.contents_test_success(merge_factory)
@@ -280,8 +305,12 @@ class MergeTest(TestCase):
         builder = MergeBuilder()
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.change_contents("1", other="text4", this="text3")
+        builder.add_file("2", "TREE_ROOT", "name2", "text1", True)
+        builder.change_contents("2", other="\x00", this="text3")
         conflicts = builder.merge(merge_factory)
-        self.assertEqual(conflicts, [TextConflict('name1', file_id='1')])
+        self.assertEqual(conflicts, [TextConflict('name1', file_id='1'),
+                                     ContentsConflict('name2', file_id='2')])
+        self.assertEqual(builder.this.get_file('2').read(), '\x00')
         builder.cleanup()
 
     def test_symlink_conflicts(self):

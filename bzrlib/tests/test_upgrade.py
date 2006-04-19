@@ -52,13 +52,11 @@ class TestUpgrade(TestCaseInTempDir):
         upgrade(u'.')
         control = bzrdir.BzrDir.open('.')
         b = control.open_branch()
-        r = control.open_repository()
-        t = control.open_workingtree()
         # tsk, peeking under the covers.
-        self.failUnless(isinstance(control._format, bzrdir.BzrDirFormat6))
-        self.failUnless(isinstance(b._format, bzrlib.branch.BzrBranchFormat4))
-        self.failUnless(isinstance(r._format, repository.RepositoryFormat6))
-        self.failUnless(isinstance(t._format, workingtree.WorkingTreeFormat2))
+        self.failUnless(
+            isinstance(
+                control._format,
+                bzrdir.BzrDirFormat.get_default_format().__class__))
         rh = b.revision_history()
         eq(rh,
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
@@ -112,12 +110,22 @@ class TestUpgrade(TestCaseInTempDir):
 
     def test_upgrade_makes_dir_weaves(self):
         self.build_tree_contents(_upgrade_dir_template)
+        old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
+        old_repo_format = old_repodir.open_repository()._format
         upgrade('.')
         # this is the path to the literal file. As format changes 
         # occur it needs to be updated. FIXME: ask the store for the
         # path.
-        self.failUnlessExists(
-            '.bzr/weaves/de/dir-20051005095101-da1441ea3fa6917a.weave')
+        repo = bzrlib.repository.Repository.open('.')
+        # it should have changed the format
+        self.assertNotEqual(old_repo_format.__class__, repo._format.__class__)
+        # and we should be able to read the names for the file id 
+        # 'dir-20051005095101-da1441ea3fa6917a'
+        self.assertNotEqual(
+            [],
+            repo.text_store.get_weave(
+                'dir-20051005095101-da1441ea3fa6917a',
+                repo.get_transaction()))
 
     def test_upgrade_to_meta_sets_workingtree_last_revision(self):
         self.build_tree_contents(_upgrade_dir_template)

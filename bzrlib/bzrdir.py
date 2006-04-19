@@ -740,6 +740,11 @@ class BzrDirMeta1(BzrDir):
         from bzrlib.workingtree import WorkingTreeFormat
         return WorkingTreeFormat.get_default_format().initialize(self, revision_id)
 
+    def _get_mkdir_mode(self):
+        """Figure out the mode to use when creating a bzrdir subdir."""
+        temp_control = LockableFiles(self.transport, '', TransportLock)
+        return temp_control._dir_mode
+
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
         if branch_format is None:
@@ -749,7 +754,7 @@ class BzrDirMeta1(BzrDir):
         except NotImplementedError:
             raise errors.IncompatibleFormat(branch_format, self._format)
         try:
-            self.transport.mkdir('branch')
+            self.transport.mkdir('branch', mode=self._get_mkdir_mode())
         except errors.FileExists:
             pass
         return self.transport.clone('branch')
@@ -763,7 +768,7 @@ class BzrDirMeta1(BzrDir):
         except NotImplementedError:
             raise errors.IncompatibleFormat(repository_format, self._format)
         try:
-            self.transport.mkdir('repository')
+            self.transport.mkdir('repository', mode=self._get_mkdir_mode())
         except errors.FileExists:
             pass
         return self.transport.clone('repository')
@@ -777,7 +782,7 @@ class BzrDirMeta1(BzrDir):
         except NotImplementedError:
             raise errors.IncompatibleFormat(workingtree_format, self._format)
         try:
-            self.transport.mkdir('checkout')
+            self.transport.mkdir('checkout', mode=self._get_mkdir_mode())
         except errors.FileExists:
             pass
         return self.transport.clone('checkout')
@@ -1186,8 +1191,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
 BzrDirFormat.register_format(BzrDirFormat4())
 BzrDirFormat.register_format(BzrDirFormat5())
-BzrDirFormat.register_format(BzrDirMetaFormat1())
-__default_format = BzrDirFormat6()
+BzrDirFormat.register_format(BzrDirFormat6())
+__default_format = BzrDirMetaFormat1()
 BzrDirFormat.register_format(__default_format)
 BzrDirFormat.set_default_format(__default_format)
 
@@ -1625,7 +1630,7 @@ class ConvertBzrDir6ToMeta(Converter):
             pass
         # find out whats there
         self.step('Finding branch files')
-        last_revision = self.bzrdir.open_workingtree().last_revision()
+        last_revision = self.bzrdir.open_branch().last_revision()
         bzrcontents = self.bzrdir.transport.list_dir('.')
         for name in bzrcontents:
             if name.startswith('basis-inventory.'):

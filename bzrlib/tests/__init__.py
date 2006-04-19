@@ -793,12 +793,12 @@ class TestCaseWithTransport(TestCaseInTempDir):
         self.assertTrue(t.is_readonly())
         return t
 
-    def make_branch(self, relpath):
+    def make_branch(self, relpath, format=None):
         """Create a branch on the transport at relpath."""
-        repo = self.make_repository(relpath)
+        repo = self.make_repository(relpath, format=format)
         return repo.bzrdir.create_branch()
 
-    def make_bzrdir(self, relpath):
+    def make_bzrdir(self, relpath, format=None):
         try:
             url = self.get_url(relpath)
             segments = relpath.split('/')
@@ -809,16 +809,19 @@ class TestCaseWithTransport(TestCaseInTempDir):
                     t.mkdir(segments[-1])
                 except errors.FileExists:
                     pass
-            return bzrlib.bzrdir.BzrDir.create(url)
+            if format is None:
+                format=bzrlib.bzrdir.BzrDirFormat.get_default_format()
+            # FIXME: make this use a single transport someday. RBC 20060418
+            return format.initialize_on_transport(get_transport(relpath))
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
-    def make_repository(self, relpath, shared=False):
+    def make_repository(self, relpath, shared=False, format=None):
         """Create a repository on our default transport at relpath."""
-        made_control = self.make_bzrdir(relpath)
+        made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
-    def make_branch_and_tree(self, relpath):
+    def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
 
         Returns the tree.
@@ -827,7 +830,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         # this obviously requires a format that supports branch references
         # so check for that by checking bzrdir.BzrDirFormat.get_default_format()
         # RBC 20060208
-        b = self.make_branch(relpath)
+        b = self.make_branch(relpath, format=format)
         try:
             return b.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
@@ -941,7 +944,6 @@ def test_suite():
                    'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
-                   'bzrlib.tests.test_basis_inventory',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_command',
@@ -973,6 +975,7 @@ def test_suite():
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
+                   'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_progress',
@@ -991,11 +994,14 @@ def test_suite():
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_testament',
+                   'bzrlib.tests.test_textfile',
+                   'bzrlib.tests.test_textmerge',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_tsort',
+                   'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
                    'bzrlib.tests.test_upgrade',
                    'bzrlib.tests.test_versionedfile',

@@ -72,12 +72,18 @@ bzr 0.8rc1  2006-04-14
       work on branches, repositories and remote locations.  Show locations
       relative to the shared repository, if applicable.  (Olaf Conradi)
 
+    * Diff and merge now safely handle binary files. (Aaron Bentley)
+
     * 'pull' and 'push' now normalise the revision history, so that any two
       branches with the same tip revision will have the same output from 'log'.
       (Robert Collins)
 
     * 'merge' accepts --remember option to store parent location, like 'push'
       and 'pull'. (Olaf Conradi)
+
+    * 'Metadir' is now the default disk format. This improves behaviour in
+      SFTP using circumstances and allows binding and rebinding and easier
+      use of repositories. (Robert Collins, Aaron Bentley).
 
   CHANGES:
 

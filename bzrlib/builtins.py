@@ -83,13 +83,15 @@ def internal_tree_files(file_list, default_branch=u'.'):
 
 def get_format_type(typestring):
     """Parse and return a format specifier."""
+    if typestring == "weave":
+        return bzrdir.BzrDirFormat6()
     if typestring == "metadir":
         return bzrdir.BzrDirMetaFormat1()
     if typestring == "knit":
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
         return format
-    msg = "No known bzr-dir format %s. Supported types are: metadir\n" %\
+    msg = "No known bzr-dir format %s. Supported types are: weave, metadir\n" %\
         (typestring)
     raise BzrCommandError(msg)
 
@@ -2141,9 +2143,9 @@ class cmd_missing(Command):
                 raise BzrCommandError("No missing location known or specified.")
             print "Using last location: " + local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
-        local_branch.lock_write()
         if remote_branch.base == local_branch.base:
             remote_branch = local_branch
+        local_branch.lock_read()
         try:
             remote_branch.lock_read()
             try:
@@ -2177,13 +2179,19 @@ class cmd_missing(Command):
                     print "Branches are up to date."
                 else:
                     status_code = 1
-                if parent is None and other_branch is not None:
+            finally:
+                remote_branch.unlock()
+        finally:
+            local_branch.unlock()
+        if not status_code and parent is None and other_branch is not None:
+            local_branch.lock_write()
+            try:
+                # handle race conditions - a parent might be set while we run.
+                if local_branch.get_parent() is None:
                     local_branch.set_parent(other_branch)
-                return status_code
             finally:
                 local_branch.unlock()
-        finally:
-            remote_branch.unlock()
+        return status_code
 
 
 class cmd_plugins(Command):
@@ -2470,11 +2478,11 @@ def merge(other_revision, base_revision,
     if show_base and not merge_type is Merge3Merger:
         raise BzrCommandError("Show-base is not supported for this merge"
                               " type. %s" % merge_type)
-    if reprocess and not merge_type is Merge3Merger:
-        raise BzrCommandError("Reprocess is not supported for this merge"
-                              " type. %s" % merge_type)
+    if reprocess and not merge_type.supports_reprocess:
+        raise BzrCommandError("Conflict reduction is not supported for merge"
+                              " type %s." % merge_type)
     if reprocess and show_base:
-        raise BzrCommandError("Cannot reprocess and show base.")
+        raise BzrCommandError("Cannot do conflict reduction and show base.")
     try:
         merger = Merger(this_tree.branch, this_tree=this_tree, pb=pb)
         merger.pp = ProgressPhase("Merge phase", 5, pb)
