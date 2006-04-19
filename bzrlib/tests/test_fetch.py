@@ -240,6 +240,8 @@ class TestHttpFetch(TestCaseWithWebserver):
         http_logs = self.get_readonly_server().logs
         self.log("web server logs are:")
         self.log('\n'.join(http_logs))
-        self.assertEqual(1, self._count_log_matches('branch-format', http_logs[0:1]))
-        self.assertEqual(1, self._count_log_matches('revision-history', http_logs[1:2]))
-        self.assertEqual(2, len(http_logs))
+        self.assertEqual(1, self._count_log_matches('branch-format', http_logs))
+        self.assertEqual(1, self._count_log_matches('branch/format', http_logs))
+        self.assertEqual(1, self._count_log_matches('repository/format', http_logs))
+        self.assertEqual(1, self._count_log_matches('revision-history', http_logs))
+        self.assertEqual(4, len(http_logs))

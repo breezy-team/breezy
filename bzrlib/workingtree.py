@@ -1577,6 +1577,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         transport = a_bzrdir.get_workingtree_transport(self)
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
+        control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
         branch = a_bzrdir.open_branch()
         if revision_id is None:
@@ -1589,11 +1590,16 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          _format=self,
                          _bzrdir=a_bzrdir,
                          _control_files=control_files)
-        wt._write_inventory(inv)
-        wt.set_root_id(inv.root.file_id)
-        wt.set_last_revision(revision_id)
-        wt.set_pending_merges([])
-        build_tree(wt.basis_tree(), wt)
+        wt.lock_write()
+        try:
+            wt._write_inventory(inv)
+            wt.set_root_id(inv.root.file_id)
+            wt.set_last_revision(revision_id)
+            wt.set_pending_merges([])
+            build_tree(wt.basis_tree(), wt)
+        finally:
+            wt.unlock()
+            control_files.unlock()
         return wt
 
     def __init__(self):

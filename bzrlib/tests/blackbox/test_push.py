@@ -37,10 +37,10 @@ class TestPush(ExternalBase):
         self.build_tree(['branch_a/a'])
         tree_a.add('a')
         tree_a.commit('commit a')
-        branch_b = branch_a.bzrdir.sprout('branch_b').open_branch()
-        tree_b = branch_b.bzrdir.open_workingtree()
-        branch_c = branch_a.bzrdir.sprout('branch_c').open_branch()
-        tree_c = branch_c.bzrdir.open_workingtree()
+        tree_b = branch_a.bzrdir.sprout('branch_b').open_workingtree()
+        branch_b = tree_b.branch
+        tree_c = branch_a.bzrdir.sprout('branch_c').open_workingtree()
+        branch_c = tree_c.branch
         self.build_tree(['branch_a/b'])
         tree_a.add('b')
         tree_a.commit('commit b')
