@@ -78,7 +78,7 @@ from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
 from bzrlib.tuned_gzip import *
 from bzrlib.trace import mutter
 from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
-     sha_strings, xenumerate
+     sha_strings
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 from bzrlib.tsort import topo_sort
 
@@ -839,22 +839,21 @@ class KnitVersionedFile(VersionedFile):
         blocks = SequenceMatcher(None, plain_a, plain_b).get_matching_blocks()
         a_cur = 0
         b_cur = 0
-        a_iter = iter(annotated_a)
-        b_iter = iter(annotated_b)
         for ai, bi, l in blocks:
-            # process mismatched sections before this block
-            for a_num, (revision, text) in xenumerate(a_iter, ai, a_cur):
+            # process all mismatched sections
+            # (last mismatched section is handled because blocks always
+            # includes a 0-length last block)
+            for revision, text in annotated_a[a_cur:ai]:
                 yield status_a(revision, text)
-            for b_num, (revision, text) in xenumerate(b_iter, bi, b_cur):
+            for revision, text in annotated_b[b_cur:bi]:
                 yield status_b(revision, text)
+
             # and now the matched section
-            # blocks always includes a 0-length last block
-            for num, ((revision_a, text_a), (revision_b, text_b)) in \
-                xenumerate(izip(a_iter, b_iter), l):
-                assert text_a == text_b
-                yield "unchanged", text_a
             a_cur = ai + l
             b_cur = bi + l
+            for text_a, text_b in zip(plain_a[ai:a_cur], plain_b[bi:b_cur]):
+                assert text_a == text_b
+                yield "unchanged", text_a
 
 
 class _KnitComponentFile(object):
