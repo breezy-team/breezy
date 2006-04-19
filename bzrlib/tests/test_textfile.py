@@ -36,8 +36,6 @@ class TextFile(TestCase):
         check_text_lines(lines)
         lines = ['a' * 1023 + '\x00']
         self.assertRaises(BinaryFile, check_text_lines, lines)
-        lines = ['a' * 1024 + '\x00']
-        check_text_lines(lines)
 
 
 class TextPath(TestCaseInTempDir):
@@ -47,5 +45,3 @@ class TextPath(TestCaseInTempDir):
         check_text_path('boo')
         file('boo', 'wb').write('a' * 1023 + '\x00')
         self.assertRaises(BinaryFile, check_text_path, 'boo')
-        file('boo', 'wb').write('a' * 1024 + '\x00')
-        check_text_path('boo')

@@ -20,8 +20,9 @@
 
 
 from difflib import SequenceMatcher
+
 from bzrlib.errors import CantReprocessAndShowBase
-from textfile import check_text_lines
+from bzrlib.textfile import check_text_lines
 
 def intersect(ra, rb):
     """Given two ranges return the range where they intersect or None.

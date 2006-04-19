@@ -585,7 +585,11 @@ class InventoryFile(InventoryEntry):
                 text_diff(to_label, to_text,
                           from_label, from_text, output_to)
         except BinaryFile:
-            print >> output_to, "Binary files differ"
+            if reverse:
+                label_pair = (to_label, from_label)
+            else:
+                label_pair = (from_label, to_label)
+            print >> output_to, "Binary files %s and %s differ" % label_pair
 
     def has_text(self):
         """See InventoryEntry.has_text."""

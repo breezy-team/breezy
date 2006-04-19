@@ -206,7 +206,8 @@ class TestEntryDiffing(TestCaseWithTransport):
                           "/dev/null", self.tree_1, 
                           "new_label", self.file_2b, self.tree_2,
                           output)
-        self.assertEqual(output.getvalue(), "Binary files differ\n")
+        self.assertEqual(output.getvalue(), 
+                         "Binary files /dev/null and new_label differ\n")
     def test_link_diff_deleted(self):
         if not has_symlinks():
             return
