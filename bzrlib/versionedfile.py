@@ -484,6 +484,7 @@ class PlanWeaveMerge(TextMerge):
         for struct in outstanding_struct():
             yield struct
 
+
 class WeaveMerge(PlanWeaveMerge):
     """Weave merge that takes a VersionedFile and two versions as its input"""
 
