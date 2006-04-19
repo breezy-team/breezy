@@ -848,17 +848,13 @@ class KnitVersionedFile(VersionedFile):
             for b_num, (revision, text) in xenumerate(b_iter, bi, b_cur):
                 yield status_b(revision, text)
             # and now the matched section
+            # blocks always includes a 0-length last block
             for num, ((revision_a, text_a), (revision_b, text_b)) in \
                 xenumerate(izip(a_iter, b_iter), l):
                 assert text_a == text_b
                 yield "unchanged", text_a
             a_cur = ai + l
             b_cur = bi + l
-        # handle a final conflicting region
-        for a_num, (revision, text) in xenumerate(a_iter, start=a_cur):
-            yield status_a(revision, text)
-        for b_num, (revision, text) in xenumerate(b_iter, start=b_cur):
-            yield status_b(revision, text)
 
 
 class _KnitComponentFile(object):
