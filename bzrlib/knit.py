@@ -817,6 +817,7 @@ class KnitVersionedFile(VersionedFile):
             yield lineno, insert_id, dset, line
 
     def plan_merge(self, ver_a, ver_b):
+        """See VersionedFile.plan_merge."""
         ancestors_b = set(self.get_ancestry(ver_b))
         def status_a(revision, text):
             if revision in ancestors_b:
@@ -833,18 +834,20 @@ class KnitVersionedFile(VersionedFile):
 
         annotated_a = self.annotate(ver_a)
         annotated_b = self.annotate(ver_b)
-        plain_a = [t for a, t in annotated_a]
-        plain_b = [t for a, t in annotated_b]
+        plain_a = [t for (a, t) in annotated_a]
+        plain_b = [t for (a, t) in annotated_b]
         blocks = SequenceMatcher(None, plain_a, plain_b).get_matching_blocks()
         a_cur = 0
         b_cur = 0
         a_iter = iter(annotated_a)
         b_iter = iter(annotated_b)
         for ai, bi, l in blocks:
+            # process mismatched sections before this block
             for a_num, (revision, text) in xenumerate(a_iter, ai, a_cur):
                 yield status_a(revision, text)
             for b_num, (revision, text) in xenumerate(b_iter, bi, b_cur):
                 yield status_b(revision, text)
+            # and now the matched section
             for num, ((revision_a, text_a), (revision_b, text_b)) in \
                 xenumerate(izip(a_iter, b_iter), l):
                 assert text_a == text_b
