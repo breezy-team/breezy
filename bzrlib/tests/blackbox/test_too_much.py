@@ -52,23 +52,6 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCommands(ExternalBase):
 
-    def test_init_branch(self):
-        self.runbzr(['init'])
-
-        # Can it handle subdirectories as well?
-        self.runbzr('init subdir1')
-        self.assert_(os.path.exists('subdir1'))
-        self.assert_(os.path.exists('subdir1/.bzr'))
-
-        self.runbzr('init subdir2/nothere', retcode=3)
-        
-        os.mkdir('subdir2')
-        self.runbzr('init subdir2')
-        self.runbzr('init subdir2', retcode=3)
-
-        self.runbzr('init subdir2/subsubdir1')
-        self.assert_(os.path.exists('subdir2/subsubdir1/.bzr'))
-
     def test_whoami(self):
         # this should always identify something, if only "john@localhost"
         self.runbzr("whoami")
@@ -321,78 +304,6 @@ class TestCommands(ExternalBase):
         self.assertEqual('2', target.open_branch().last_revision())
         self.assertEqual('2', target.open_workingtree().last_revision())
         self.assertTrue(target.open_branch().repository.has_revision('2'))
-
-    def test_merge(self):
-        from bzrlib.branch import Branch
-        
-        os.mkdir('a')
-        os.chdir('a')
-        self.example_branch()
-        os.chdir('..')
-        self.runbzr('branch a b')
-        os.chdir('b')
-        file('goodbye', 'wt').write('quux')
-        self.runbzr(['commit',  '-m',  "more u's are always good"])
-
-        os.chdir('../a')
-        file('hello', 'wt').write('quuux')
-        # We can't merge when there are in-tree changes
-        self.runbzr('merge ../b', retcode=3)
-        self.runbzr(['commit', '-m', "Like an epidemic of u's"])
-        self.runbzr('merge ../b -r last:1..last:1 --merge-type blooof',
-                    retcode=3)
-        self.runbzr('merge ../b -r last:1..last:1 --merge-type merge3')
-        self.runbzr('revert --no-backup')
-        self.runbzr('merge ../b -r last:1..last:1 --merge-type weave')
-        self.runbzr('revert --no-backup')
-        self.runbzr('merge ../b -r last:1..last:1 --reprocess')
-        self.runbzr('revert --no-backup')
-        self.runbzr('merge ../b -r last:1')
-        self.check_file_contents('goodbye', 'quux')
-        # Merging a branch pulls its revision into the tree
-        a = WorkingTree.open('.')
-        b = Branch.open('../b')
-        a.branch.repository.get_revision_xml(b.last_revision())
-        self.log('pending merges: %s', a.pending_merges())
-        self.assertEquals(a.pending_merges(),
-                          [b.last_revision()])
-        self.runbzr('commit -m merged')
-        self.runbzr('merge ../b -r last:1')
-        self.assertEqual(a.pending_merges(), [])
-
-    def test_merge_with_missing_file(self):
-        """Merge handles missing file conflicts"""
-        os.mkdir('a')
-        os.chdir('a')
-        os.mkdir('sub')
-        print >> file('sub/a.txt', 'wb'), "hello"
-        print >> file('b.txt', 'wb'), "hello"
-        print >> file('sub/c.txt', 'wb'), "hello"
-        self.runbzr('init')
-        self.runbzr('add')
-        self.runbzr(('commit', '-m', 'added a'))
-        self.runbzr('branch . ../b')
-        print >> file('sub/a.txt', 'ab'), "there"
-        print >> file('b.txt', 'ab'), "there"
-        print >> file('sub/c.txt', 'ab'), "there"
-        self.runbzr(('commit', '-m', 'Added there'))
-        os.unlink('sub/a.txt')
-        os.unlink('sub/c.txt')
-        os.rmdir('sub')
-        os.unlink('b.txt')
-        self.runbzr(('commit', '-m', 'Removed a.txt'))
-        os.chdir('../b')
-        print >> file('sub/a.txt', 'ab'), "something"
-        print >> file('b.txt', 'ab'), "something"
-        print >> file('sub/c.txt', 'ab'), "something"
-        self.runbzr(('commit', '-m', 'Modified a.txt'))
-        self.runbzr('merge ../a/', retcode=1)
-        self.assert_(os.path.exists('sub/a.txt.THIS'))
-        self.assert_(os.path.exists('sub/a.txt.BASE'))
-        os.chdir('../a')
-        self.runbzr('merge ../b/', retcode=1)
-        self.assert_(os.path.exists('sub/a.txt.OTHER'))
-        self.assert_(os.path.exists('sub/a.txt.BASE'))
 
     def test_inventory(self):
         bzr = self.runbzr
@@ -738,8 +649,8 @@ class TestCommands(ExternalBase):
         assert '|||||||' not in conflict_text
         assert 'hi world' not in conflict_text
         self.runbzr('remerge . --merge-type weave --show-base', retcode=3)
-        self.runbzr('remerge . --merge-type weave --reprocess', retcode=3)
         self.runbzr('remerge . --show-base --reprocess', retcode=3)
+        self.runbzr('remerge . --merge-type weave --reprocess', retcode=1)
         self.runbzr('remerge hello --show-base', retcode=1)
         self.runbzr('remerge hello --reprocess', retcode=1)
         self.runbzr('resolve --all')

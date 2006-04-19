@@ -31,6 +31,7 @@ from unittest import TestSuite
 import bzrlib.errors as errors
 from bzrlib.inter import InterObject
 from bzrlib.symbol_versioning import *
+from bzrlib.textmerge import TextMerge
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.tsort import topo_sort
 from bzrlib import ui
@@ -394,90 +395,55 @@ class VersionedFile(object):
         return iter(self.versions())
 
     def plan_merge(self, ver_a, ver_b):
-        """Return pseudo-annotation indicating how the two versions merge.
+        raise NotImplementedError(VersionedFile.plan_merge)
+        
+    def weave_merge(self, plan, a_marker=TextMerge.A_MARKER, 
+                    b_marker=TextMerge.B_MARKER):
+        return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
 
-        This is computed between versions a and b and their common
-        base.
+class PlanWeaveMerge(TextMerge):
+    """Weave merge that takes a plan as its input.
+    
+    This exists so that VersionedFile.plan_merge is implementable.
+    Most callers will want to use WeaveMerge instead.
+    """
 
-        Weave lines present in none of them are skipped entirely.
-        """
-        inc_a = set(self.get_ancestry([ver_a]))
-        inc_b = set(self.get_ancestry([ver_b]))
-        inc_c = inc_a & inc_b
+    def __init__(self, plan, a_marker=TextMerge.A_MARKER,
+                 b_marker=TextMerge.B_MARKER):
+        TextMerge.__init__(self, a_marker, b_marker)
+        self.plan = plan
 
-        for lineno, insert, deleteset, line in self.walk([ver_a, ver_b]):
-            if deleteset & inc_c:
-                # killed in parent; can't be in either a or b
-                # not relevant to our work
-                yield 'killed-base', line
-            elif insert in inc_c:
-                # was inserted in base
-                killed_a = bool(deleteset & inc_a)
-                killed_b = bool(deleteset & inc_b)
-                if killed_a and killed_b:
-                    yield 'killed-both', line
-                elif killed_a:
-                    yield 'killed-a', line
-                elif killed_b:
-                    yield 'killed-b', line
-                else:
-                    yield 'unchanged', line
-            elif insert in inc_a:
-                if deleteset & inc_a:
-                    yield 'ghost-a', line
-                else:
-                    # new in A; not in B
-                    yield 'new-a', line
-            elif insert in inc_b:
-                if deleteset & inc_b:
-                    yield 'ghost-b', line
-                else:
-                    yield 'new-b', line
-            else:
-                # not in either revision
-                yield 'irrelevant', line
 
-        yield 'unchanged', ''           # terminator
-
-    def weave_merge(self, plan, a_marker='<<<<<<< \n', b_marker='>>>>>>> \n'):
+    def _merge_struct(self):
         lines_a = []
         lines_b = []
         ch_a = ch_b = False
-        # TODO: Return a structured form of the conflicts (e.g. 2-tuples for
-        # conflicted regions), rather than just inserting the markers.
-        # 
-        # TODO: Show some version information (e.g. author, date) on 
-        # conflicted regions.
-        
+       
         # We previously considered either 'unchanged' or 'killed-both' lines
         # to be possible places to resynchronize.  However, assuming agreement
         # on killed-both lines may be too agressive. -- mbp 20060324
-        for state, line in plan:
+        for state, line in self.plan:
             if state == 'unchanged':
                 # resync and flush queued conflicts changes if any
                 if not lines_a and not lines_b:
                     pass
                 elif ch_a and not ch_b:
-                    # one-sided change:                    
-                    for l in lines_a: yield l
+                    # one-sided change:
+                    yield(lines_a,)
                 elif ch_b and not ch_a:
-                    for l in lines_b: yield l
+                    yield (lines_b,)
                 elif lines_a == lines_b:
-                    for l in lines_a: yield l
+                    yield(lines_a,)
                 else:
-                    yield a_marker
-                    for l in lines_a: yield l
-                    yield '=======\n'
-                    for l in lines_b: yield l
-                    yield b_marker
+                    yield (lines_a, lines_b)
 
-                del lines_a[:]
-                del lines_b[:]
+                lines_a = []
+                lines_b = []
                 ch_a = ch_b = False
                 
             if state == 'unchanged':
                 if line:
-                    yield line
+                    yield ([line],)
             elif state == 'killed-a':
                 ch_a = True
                 lines_b.append(line)
@@ -491,9 +457,17 @@ class VersionedFile(object):
                 ch_b = True
                 lines_b.append(line)
             else:
-                assert state in ('irrelevant', 'ghost-a', 'ghost-b', 'killed-base',
-                                 'killed-both'), \
-                       state
+                assert state in ('irrelevant', 'ghost-a', 'ghost-b', 
+                                 'killed-base', 'killed-both'), state
+
+
+class WeaveMerge(PlanWeaveMerge):
+    """Weave merge that takes a VersionedFile and two versions as its input"""
+
+    def __init__(self, versionedfile, ver_a, ver_b, 
+        a_marker=PlanWeaveMerge.A_MARKER, b_marker=PlanWeaveMerge.B_MARKER):
+        plan = versionedfile.plan_merge(ver_a, ver_b)
+        PlanWeaveMerge.__init__(self, plan, a_marker, b_marker)
 
 
 class InterVersionedFile(InterObject):

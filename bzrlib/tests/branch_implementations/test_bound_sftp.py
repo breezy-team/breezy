@@ -226,9 +226,9 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
         # by pushing the new change to base
         wt_child.branch.bind(sftp_b_base)
 
-        self.assertEqual(['r@b-1', 'r@b-2', 'r@c-3'],
+        self.assertEqual(['r@b-1', 'r@c-2', 'r@c-3'],
                 b_base.revision_history())
-        self.assertEqual(['r@b-1', 'r@b-2', 'r@c-3'],
+        self.assertEqual(['r@b-1', 'r@c-2', 'r@c-3'],
                 wt_child.branch.revision_history())
 
     def test_bind_parent_ahead(self):

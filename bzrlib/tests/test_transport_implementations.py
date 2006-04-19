@@ -247,6 +247,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         t = self.get_transport()
         if t.is_readonly():
             return
+        if not t._can_roundtrip_unix_modebits():
+            # no sense testing on this transport
+            return
         # Test mkdir with a mode
         t.mkdir('dmode755', mode=0755)
         self.assertTransportMode(t, 'dmode755', 0755)

@@ -1,5 +1,4 @@
-bzr development version
- 
+bzr 0.8rc1  2006-04-14
 
   IMPROVEMENTS:
 
@@ -65,7 +64,7 @@ bzr development version
     * New developer commands 'weave-list' and 'weave-join'.  (Martin Pool)
 
     * New 'init-repository' command, plus support for repositories in 'init'
-      and 'branch' (Aaron Bentley, Erik Bågfors)
+      and 'branch' (Aaron Bentley, Erik Bågfors, Robert Collins)
 
     * Improve output of 'info' command. Show all relevant locations related to
       working tree, branch and repository. Use kibibytes for binary quantities.
@@ -73,6 +72,13 @@ bzr development version
       work on branches, repositories and remote locations.  (Olaf Conradi)
 
     * Diff and merge now safely handle binary files. (Aaron Bentley)
+
+    * 'pull' and 'push' now normalise the revision history, so that any two
+      branches with the same tip revision will have the same output from 'log'.
+      (Robert Collins)
+
+    * 'merge' accepts --remember option to store parent location, like 'push'
+      and 'pull'. (Olaf Conradi)
 
   CHANGES:
 
@@ -82,6 +88,9 @@ bzr development version
     * Unify 'mv', 'move', 'rename'.  (#5379, Matthew Fuller)
 
     * 'bzr -h' shows help.  (#35940, Martin Pool, Ian Bicking)
+
+    * Make 'pull' and 'push' remember location on failure using --remember.
+      (Olaf Conradi)
 
   INTERNALS:
   
@@ -124,6 +133,11 @@ bzr development version
     * New API call get_format_description() for each type of format.
       (Olaf Conradi)
 
+    * Changed branch.set_parent() to accept None to remove parent.
+      (Olaf Conradi)
+
+    * Deprecated BzrError AmbiguousBase.  (Olaf Conradi)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
@@ -140,6 +154,11 @@ bzr development version
       by this class (when its not being used as part of implementation
       contract testing). (Robert Collins)
 
+    * Close logging handler on disabling the test log. This will remove the
+      handler from the internal list inside python's logging module,
+      preventing shutdown from closing it twice.  (Olaf Conradi)
+
+    * Move test case for uncommit to blackbox tests.  (Olaf Conradi)
 
 bzr 0.7rc1 2006-01-09
 

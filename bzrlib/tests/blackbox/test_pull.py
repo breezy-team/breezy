@@ -23,7 +23,10 @@ import os
 import sys
 
 from bzrlib.branch import Branch
+from bzrlib.osutils import abspath
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.uncommit import uncommit
+
 
 class TestPull(ExternalBase):
 
@@ -222,4 +225,44 @@ class TestPull(ExternalBase):
 
         self.assertEqual(rev_history_b, rev_history_a)
 
-
+    def test_pull_remember(self):
+        """Pull changes from one branch to another and test parent location."""
+        transport = self.get_transport()
+        tree_a = self.make_branch_and_tree('branch_a')
+        branch_a = tree_a.branch
+        self.build_tree(['branch_a/a'])
+        tree_a.add('a')
+        tree_a.commit('commit a')
+        branch_b = branch_a.bzrdir.sprout('branch_b').open_branch()
+        tree_b = branch_b.bzrdir.open_workingtree()
+        branch_c = branch_a.bzrdir.sprout('branch_c').open_branch()
+        tree_c = branch_c.bzrdir.open_workingtree()
+        self.build_tree(['branch_a/b'])
+        tree_a.add('b')
+        tree_a.commit('commit b')
+        # reset parent
+        parent = branch_b.get_parent()
+        branch_b.set_parent(None)
+        self.assertEqual(None, branch_b.get_parent())
+        # test pull for failure without parent set
+        os.chdir('branch_b')
+        out = self.runbzr('pull', retcode=3)
+        self.assertEquals(out,
+                ('','bzr: ERROR: No pull location known or specified.\n'))
+        # test implicit --remember when no parent set, this pull conflicts
+        self.build_tree(['d'])
+        tree_b.add('d')
+        tree_b.commit('commit d')
+        out = self.runbzr('pull ../branch_a', retcode=3)
+        self.assertEquals(out,
+                ('','bzr: ERROR: These branches have diverged.  Try merge.\n'))
+        self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
+        # test implicit --remember after resolving previous failure
+        uncommit(branch=branch_b, tree=tree_b)
+        transport.delete('branch_b/d')
+        self.runbzr('pull')
+        self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
+        # test explicit --remember
+        self.runbzr('pull ../branch_c --remember')
+        self.assertEquals(abspath(branch_b.get_parent()),
+                          abspath(branch_c.bzrdir.root_transport.base))

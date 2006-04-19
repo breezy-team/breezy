@@ -28,6 +28,7 @@ from bzrlib.errors import (
 from bzrlib.knit import KnitVersionedFile, \
      KnitAnnotateFactory
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
@@ -783,3 +784,34 @@ class TestInterVersionedFile(TestCaseWithTransport):
             versionedfile.InterVersionedFile.unregister_optimiser(InterString)
         # now we should get the default InterVersionedFile object again.
         self.assertGetsDefaultInterVersionedFile(dummy_a, dummy_b)
+
+
+class TestReadonlyHttpMixin(object):
+
+    def test_readonly_http_works(self):
+        # we should be able to read from http with a versioned file.
+        vf = self.get_file()
+        vf.add_lines('1', [], ['a\n'])
+        vf.add_lines('2', ['1'], ['b\n', 'a\n'])
+        readonly_vf = self.get_factory()('foo', get_transport(self.get_readonly_url('.')))
+        for version in readonly_vf.versions():
+            readonly_vf.get_lines(version)
+
+
+class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
+
+    def get_file(self):
+        return WeaveFile('foo', get_transport(self.get_url('.')), create=True)
+
+    def get_factory(self):
+        return WeaveFile
+
+
+class TestKnitHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
+
+    def get_file(self):
+        return KnitVersionedFile('foo', get_transport(self.get_url('.')),
+                                 delta=True, create=True)
+
+    def get_factory(self):
+        return KnitVersionedFile

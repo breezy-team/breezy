@@ -55,9 +55,8 @@ def make_branches(self):
     tree1.commit("Commit two", rev_id="a@u-0-1")
     tree1.commit("Commit three", rev_id="a@u-0-2")
 
-    tree2 = self.make_branch_and_tree("branch2")
+    tree2 = tree1.bzrdir.clone("branch2").open_workingtree()
     br2 = tree2.branch
-    br2.update_revisions(br1)
     tree2.commit("Commit four", rev_id="b@u-0-3")
     tree2.commit("Commit five", rev_id="b@u-0-4")
     revisions_2 = br2.revision_history()

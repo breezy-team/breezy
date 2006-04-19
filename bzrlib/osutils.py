@@ -549,6 +549,16 @@ def link_or_copy(src, dest):
             raise
         copyfile(src, dest)
 
+def delete_any(full_path):
+    """Delete a file or directory."""
+    try:
+        os.unlink(full_path)
+    except OSError, e:
+    # We may be renaming a dangling inventory id
+        if e.errno not in (errno.EISDIR, errno.EACCES, errno.EPERM):
+            raise
+        os.rmdir(full_path)
+
 
 def has_symlinks():
     if hasattr(os, 'symlink'):

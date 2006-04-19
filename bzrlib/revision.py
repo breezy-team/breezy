@@ -23,6 +23,7 @@ import bzrlib.errors as errors
 from bzrlib.graph import node_distances, select_farthest, all_descendants, Graph
 from bzrlib.osutils import contains_whitespace
 from bzrlib.progress import DummyProgress
+from bzrlib.symbol_versioning import *
 
 NULL_REVISION="null:"
 
@@ -400,6 +401,7 @@ class MultipleRevisionSources(object):
             source.unlock()
 
 
+@deprecated_method(zero_eight)
 def get_intervening_revisions(ancestor_id, rev_id, rev_source, 
                               revision_history=None):
     """Find the longest line of descent from maybe_ancestor to revision.

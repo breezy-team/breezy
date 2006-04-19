@@ -106,9 +106,7 @@ If you add the wrong file, simply use **bzr remove** to make it unversioned agai
 Branch locations
 ================
 
-All history is stored in a branch, which is just an on-disk directory containing control files.  There is no repository or database as used in svn or svk.
-
-  (There are proposals to add shared storage between related branches.)
+All history is stored in a branch, which is just an on-disk directory containing control files.  By default there is no separate repository or database as used in svn or svk. You can choose to create a repository if you want to (see the **bzr init-repo** command). You may wish to do this if you have very large branches, or many branches of a moderate sized project.
 
 You'll usually refer to branches on your computer's filesystem just by
 giving the name of the directory containing the branch.  bzr also supports
@@ -311,11 +309,14 @@ You can stay up-to-date with the parent branch by "pulling" in their changes::
 
     % bzr pull
 
-After this change, the local directory will be a mirror of the source.
+After this change, the local directory will be a mirror of the source. This
+includes the ''revision-history'' - which is a list of the commits done in 
+this branch, rather than merged from other branches.
 
-This command only works if your local (destination) branch includes only
-changes from the parent branch and no commits of its own.  Otherwise, the
-branches are said to have ''diverged'', and they must be merged instead.
+This command only works if your local (destination) branch is either an
+older copy of the parent branch with no new commits of its own, or if the
+most recent commit in your local branch has been merged into the parent
+branch.
 
 Merging from related branches
 =============================
