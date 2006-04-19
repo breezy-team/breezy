@@ -69,7 +69,8 @@ bzr 0.8rc1  2006-04-14
     * Improve output of 'info' command. Show all relevant locations related to
       working tree, branch and repository. Use kibibytes for binary quantities.
       Fix off-by-one error in missing revisions of working tree.  Make 'info'
-      work on branches, repositories and remote locations.  (Olaf Conradi)
+      work on branches, repositories and remote locations.  Show locations
+      relative to the shared repository, if applicable.  (Olaf Conradi)
 
     * 'pull' and 'push' now normalise the revision history, so that any two
       branches with the same tip revision will have the same output from 'log'.

@@ -48,7 +48,7 @@ class TestInfo(ExternalBase):
         out, err = self.runbzr('info standalone')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
+  branch root: %s
 
 Format:
        control: All-in-one format 6
@@ -84,9 +84,11 @@ Revision store:
         out, err = self.runbzr('info branch --verbose')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-       parent branch: %s
-      push to branch: %s
+  branch root: %s
+
+Related branches:
+      parent branch: %s
+  publish to branch: %s
 
 Format:
        control: All-in-one format 6
@@ -133,9 +135,11 @@ Revision store:
         out, err = self.runbzr('info bound')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-     bound to branch: %s
-       parent branch: %s
+      branch root: %s
+  bound to branch: %s
+
+Related branches:
+      parent branch: %s
 
 Format:
        control: Meta directory format 1
@@ -177,8 +181,8 @@ Revision store:
         out, err = self.runbzr('info checkout --verbose')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-     bound to branch: %s
+      branch root: %s
+  bound to branch: %s
 
 Format:
        control: Meta directory format 1
@@ -266,9 +270,11 @@ Revision store:
         out, err = self.runbzr('info branch')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-       parent branch: %s
-      push to branch: %s
+  branch root: %s
+
+Related branches:
+      parent branch: %s
+  publish to branch: %s
 
 Format:
        control: All-in-one format 6
@@ -304,9 +310,11 @@ Revision store:
         out, err = self.runbzr('info bound')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-     bound to branch: %s
-       parent branch: %s
+      branch root: %s
+  bound to branch: %s
+
+Related branches:
+      parent branch: %s
 
 Format:
        control: Meta directory format 1
@@ -344,8 +352,8 @@ Revision store:
         out, err = self.runbzr('info checkout')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-     bound to branch: %s
+      branch root: %s
+  bound to branch: %s
 
 Format:
        control: Meta directory format 1
@@ -428,7 +436,7 @@ Revision store:
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
 """Location:
-   shared repository: %s
+  shared repository: %s
 
 Format:
        control: Meta directory format 1
@@ -446,8 +454,8 @@ Revision store:
         out, err = self.runbzr('info repo/branch')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-   shared repository: %s
+  shared repository: %s
+  repository branch: branch
 
 Format:
        control: Meta directory format 1
@@ -460,8 +468,7 @@ Branch history:
 Revision store:
          0 revisions
          0 KiB
-""" % (branch1.bzrdir.root_transport.base,
-       repo.bzrdir.root_transport.base), out)
+""" % repo.bzrdir.root_transport.base, out)
         self.assertEqual('', err)
 
         # Create lightweight checkout
@@ -475,9 +482,9 @@ Revision store:
         out, err = self.runbzr('info tree/lightcheckout')
         self.assertEqualDiff(
 """Location:
-       checkout root: %s
-  checkout of branch: %s
-   shared repository: %s
+      checkout root: %s
+  shared repository: %s
+  repository branch: branch
 
 Format:
        control: Meta directory format 1
@@ -502,7 +509,6 @@ Revision store:
          0 revisions
          0 KiB
 """ % (tree2.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base), out)
         self.assertEqual('', err)
 
@@ -514,8 +520,8 @@ Revision store:
         out, err = self.runbzr('info tree/checkout --verbose')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-     bound to branch: %s
+      branch root: %s
+  bound to branch: %s
 
 Format:
        control: Meta directory format 1
@@ -553,9 +559,9 @@ Revision store:
         out, err = self.runbzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Location:
-       checkout root: %s
-  checkout of branch: %s
-   shared repository: %s
+      checkout root: %s
+  shared repository: %s
+  repository branch: branch
 
 Format:
        control: Meta directory format 1
@@ -583,9 +589,7 @@ Branch history:
 Revision store:
          1 revision
          0 KiB
-""" % (tree2.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       repo.bzrdir.root_transport.base,
+""" % (tree2.bzrdir.root_transport.base, repo.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
 
@@ -593,8 +597,8 @@ Revision store:
         out, err = self.runbzr('info tree/checkout')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-     bound to branch: %s
+      branch root: %s
+  bound to branch: %s
 
 Format:
        control: Meta directory format 1
@@ -631,8 +635,8 @@ Revision store:
         out, err = self.runbzr('info tree/checkout --verbose')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-     bound to branch: %s
+      branch root: %s
+  bound to branch: %s
 
 Format:
        control: Meta directory format 1
@@ -671,9 +675,9 @@ Revision store:
         out, err = self.runbzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Location:
-       checkout root: %s
-  checkout of branch: %s
-   shared repository: %s
+      checkout root: %s
+  shared repository: %s
+  repository branch: branch
 
 Format:
        control: Meta directory format 1
@@ -703,9 +707,7 @@ Branch history:
 Revision store:
          2 revisions
          0 KiB
-""" % (tree2.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
-       repo.bzrdir.root_transport.base,
+""" % (tree2.bzrdir.root_transport.base, repo.bzrdir.root_transport.base,
        datestring_first, datestring_last), out)
         self.assertEqual('', err)
 
@@ -713,8 +715,8 @@ Revision store:
         out, err = self.runbzr('info repo/branch --verbose')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-   shared repository: %s
+  shared repository: %s
+  repository branch: branch
 
 Format:
        control: Meta directory format 1
@@ -731,8 +733,7 @@ Branch history:
 Revision store:
          2 revisions
          0 KiB
-""" % (branch1.bzrdir.root_transport.base,
-       repo.bzrdir.root_transport.base,
+""" % (repo.bzrdir.root_transport.base,
        datestring_first, datestring_last), out)
         self.assertEqual('', err)
 
@@ -740,7 +741,7 @@ Revision store:
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
 """Location:
-   shared repository: %s
+  shared repository: %s
 
 Format:
        control: Meta directory format 1
@@ -765,7 +766,7 @@ Revision store:
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
 """Location:
-   shared repository: %s
+  shared repository: %s
 
 Format:
        control: Meta directory format 1
@@ -788,8 +789,8 @@ Revision store:
         out, err = self.runbzr('info repo/branch1 --verbose')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-   shared repository: %s
+    shared repository: %s
+  repository checkout: branch1
 
 Format:
        control: Meta directory format 1
@@ -814,8 +815,7 @@ Branch history:
 Revision store:
          0 revisions
          0 KiB
-""" % (branch1.bzrdir.root_transport.base,
-       repo.bzrdir.root_transport.base), out)
+""" % repo.bzrdir.root_transport.base, out)
         self.assertEqual('', err)
 
         # Update first branch
@@ -828,8 +828,8 @@ Revision store:
         out, err = self.runbzr('info repo/branch1')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-   shared repository: %s
+    shared repository: %s
+  repository checkout: branch1
 
 Format:
        control: Meta directory format 1
@@ -856,7 +856,7 @@ Branch history:
 Revision store:
          1 revision
          0 KiB
-""" % (branch1.bzrdir.root_transport.base, repo.bzrdir.root_transport.base,
+""" % (repo.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
 
@@ -864,9 +864,11 @@ Revision store:
         out, err = self.runbzr('info repo/branch2 --verbose')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-   shared repository: %s
-       parent branch: %s
+    shared repository: %s
+  repository checkout: branch2
+
+Related branches:
+      parent branch: %s
 
 Format:
        control: Meta directory format 1
@@ -891,7 +893,7 @@ Branch history:
 Revision store:
          1 revision
          0 KiB
-""" % (branch2.bzrdir.root_transport.base, repo.bzrdir.root_transport.base,
+""" % (repo.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base), out)
         self.assertEqual('', err)
 
@@ -901,9 +903,11 @@ Revision store:
         out, err = self.runbzr('info repo/branch2')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-   shared repository: %s
-       parent branch: %s
+    shared repository: %s
+  repository checkout: branch2
+
+Related branches:
+      parent branch: %s
 
 Format:
        control: Meta directory format 1
@@ -930,9 +934,7 @@ Branch history:
 Revision store:
          1 revision
          0 KiB
-""" % (branch2.bzrdir.root_transport.base,
-       repo.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base,
+""" % (repo.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        datestring_first, datestring_first), out)
         self.assertEqual('', err)
 
@@ -940,7 +942,7 @@ Revision store:
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
 """Location:
-   shared repository: %s
+  shared repository: %s
 
 Format:
        control: Meta directory format 1
@@ -967,7 +969,7 @@ Revision store:
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
 """Location:
-   shared repository: %s
+  shared repository: %s
 
 Format:
        control: Meta directory format 1
@@ -988,8 +990,8 @@ Revision store:
         out, err = self.runbzr('info repo')
         self.assertEqualDiff(
 """Location:
-         branch root: %s
-   shared repository: %s
+    shared repository: %s
+  repository checkout: .
 
 Format:
        control: Meta directory format 1
@@ -1013,8 +1015,7 @@ Branch history:
 Revision store:
          0 revisions
          0 KiB
-""" % (branch.bzrdir.root_transport.base,
-       repo.bzrdir.root_transport.base), out)
+""" % repo.bzrdir.root_transport.base, out)
         self.assertEqual('', err)
 
         bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)

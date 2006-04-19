@@ -25,7 +25,7 @@ import bzrlib.diff as diff
 from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
-from bzrlib.osutils import format_date
+import bzrlib.osutils as osutils
 from bzrlib.symbol_versioning import *
 
 
@@ -46,40 +46,111 @@ def plural(n, base='', pl=None):
         return 's'
 
 
-def _show_location_info(repository=None, branch=None, working=None):
+def _repo_relpath(repo_path, path):
+    """Return path with common prefix of repository path removed.
+
+    If path is not part of the repository, the original path is returned.
+    If path is equal to the repository, the current directory marker '.' is
+    returned.
+    """
+    path = osutils.normalizepath(path)
+    repo_path = osutils.normalizepath(repo_path)
+    if path == repo_path:
+        return '.'
+    if osutils.is_inside(repo_path, path):
+        return osutils.relpath(repo_path, path)
+    return path
+
+
+def _show_location_info(repository, branch=None, working=None):
     """Show known locations for working, branch and repository."""
     print 'Location:'
-    if working and branch and working.bzrdir != branch.bzrdir:
-        # Lightweight checkout
-        print '       checkout root: %s' % (
-            working.bzrdir.root_transport.base)
-        print '  checkout of branch: %s' % (
-            branch.bzrdir.root_transport.base)
-    elif branch:
-        # Standalone or bound branch (normal checkout)
-        print '         branch root: %s' % (
-            branch.bzrdir.root_transport.base)
-        if branch.get_bound_location():
-            print '     bound to branch: %s' % branch.get_bound_location()
-
-    # No branch? Info was requested on a repository, show it.
-    # If we have a branch with the same location as repository, hide it,
-    # unless that repository is shared.
-    if repository and (not branch or
-                       repository.bzrdir != branch.bzrdir or
-                       repository.is_shared()):
-        if repository.is_shared():
-            print '   shared repository: %s' % (
-                repository.bzrdir.root_transport.base)
-        else:
-            print '          repository: %s' % (
-                repository.bzrdir.root_transport.base)
-
+    repo_path = repository.bzrdir.root_transport.base
     if branch:
+        branch_path = branch.bzrdir.root_transport.base
+        if repository.bzrdir == branch.bzrdir:
+            if working:
+                work_path = working.bzrdir.root_transport.base
+                if working.bzrdir == branch.bzrdir:
+                    if repository.is_shared():
+                        # checkout in root of repository
+                        print '    shared repository: %s' % repo_path
+                        print '  repository checkout: %s' % (
+                            _repo_relpath(repo_path, work_path))
+                    elif branch.get_bound_location():
+                        # bound branch
+                        print '      branch root: %s' % branch_path
+                        print '  bound to branch: %s' % (
+                            branch.get_bound_location())
+                    else:
+                        # standalone branch
+                        print '  branch root: %s' % branch_path
+                else:
+                    # lightweight checkout of standalone branch
+                    print '       checkout root: %s' % work_path
+                    print '  checkout of branch: %s' % branch_path
+            else:
+                # repository with a branch inside root
+                if repository.is_shared():
+                    print '  shared repository: %s' % repo_path
+                    print '  repository branch: %s' % (
+                        _repo_relpath(repo_path, branch_path))
+                else:
+                    print "this isn't possible, right? (1)"
+        else:
+            if working:
+                work_path = working.bzrdir.root_transport.base
+                if working.bzrdir != branch.bzrdir and (working.bzrdir !=
+                                                        repository.bzrdir):
+                    if osutils.is_inside(osutils.normalizepath(repo_path),
+                                         osutils.normalizepath(work_path)):
+                        # lightweight checkout inside repository
+                        print '    shared repository: %s' % repo_path
+                        print '  repository checkout: %s' % (
+                            _repo_relpath(repo_path, work_path))
+                        print '    repository branch: %s' % (
+                            _repo_relpath(repo_path, branch_path))
+                    else:
+                        # lightweight checkout outside repository
+                        print '      checkout root: %s' % work_path
+                        print '  shared repository: %s' % repo_path
+                        print '  repository branch: %s' % (
+                            _repo_relpath(repo_path, branch_path))
+                else:
+                    # working tree inside branch or inside root
+                    # of shared repository
+                    print '    shared repository: %s' % repo_path
+                    if working.bzrdir == branch.bzrdir:
+                        print '  repository checkout: %s' % (
+                            _repo_relpath(repo_path, work_path))
+                    else:
+                        print '    repository branch: %s' % (
+                            _repo_relpath(repo_path, branch_path))
+            else:
+                # repository with branch
+                if repository.is_shared():
+                    print '  shared repository: %s' % repo_path
+                    print '  repository branch: %s' % (
+                        _repo_relpath(repo_path, branch_path))
+                else:
+                    print "this isn't possible, right? (2)"
+    else:
+        # repository
+        if repository.is_shared():
+            print '  shared repository: %s' % repo_path
+        else:
+            print '  repository: %s' % repo_path
+
+
+def _show_related_info(branch):
+    """Show parent and push location of branch."""
+    if branch.get_parent() or branch.get_push_location():
+        print
+        print 'Related branches:'
         if branch.get_parent():
-            print '       parent branch: %s' % branch.get_parent()
+            print '      parent branch: %s' % branch.get_parent()
         if branch.get_push_location():
-            print '      push to branch: %s' % branch.get_push_location()
+            print '  publish to branch: %s' % branch.get_push_location()
 
 
 def _show_format_info(control=None, repository=None, branch=None, working=None):
@@ -175,12 +246,12 @@ def _show_branch_stats(branch, verbose):
         firstrev = repository.get_revision(history[0])
         age = int((time.time() - firstrev.timestamp) / 3600 / 24)
         print '  %8d day%s old' % (age, plural(age))
-        print '   first revision: %s' % format_date(firstrev.timestamp,
-                                                    firstrev.timezone)
+        print '   first revision: %s' % osutils.format_date(firstrev.timestamp,
+                                                            firstrev.timezone)
 
         lastrev = repository.get_revision(history[-1])
-        print '  latest revision: %s' % format_date(lastrev.timestamp,
-                                                    lastrev.timezone)
+        print '  latest revision: %s' % osutils.format_date(lastrev.timestamp,
+                                                            lastrev.timezone)
 
 #     print
 #     print 'Text store:'
@@ -264,6 +335,7 @@ def show_tree_info(working, verbose):
     control = working.bzrdir
 
     _show_location_info(repository, branch, working)
+    _show_related_info(branch)
     _show_format_info(control, repository, branch, working)
     _show_missing_revisions_branch(branch)
     _show_missing_revisions_working(working)
@@ -278,6 +350,7 @@ def show_branch_info(branch, verbose):
     control = branch.bzrdir
 
     _show_location_info(repository, branch)
+    _show_related_info(branch)
     _show_format_info(control, repository, branch)
     _show_missing_revisions_branch(branch)
     _show_branch_stats(branch, verbose)
