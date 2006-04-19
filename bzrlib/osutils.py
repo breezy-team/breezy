@@ -653,3 +653,14 @@ def terminal_width():
 
 def supports_executable():
     return sys.platform != "win32"
+
+
+def xenumerate(iter, stop=None, start=0, step=1):
+    count = start
+    if start == stop:
+        return
+    for result in iter:
+        yield count, result
+        count += step
+        if count == stop:
+            return

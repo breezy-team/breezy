@@ -78,7 +78,7 @@ from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
 from bzrlib.tuned_gzip import *
 from bzrlib.trace import mutter
 from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
-     sha_strings
+     sha_strings, xenumerate
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 from bzrlib.tsort import topo_sort
 
@@ -856,16 +856,6 @@ class KnitVersionedFile(VersionedFile):
             yield status_a(revision, text)
         for b_num, (revision, text) in xenumerate(b_iter, start=b_cur):
             yield status_b(revision, text)
-
-def xenumerate(iter, stop=None, start=0, step=1):
-    count = start
-    if start == stop:
-        return
-    for result in iter:
-        yield count, result
-        count += step
-        if count == stop:
-            return
 
 
 class _KnitComponentFile(object):
