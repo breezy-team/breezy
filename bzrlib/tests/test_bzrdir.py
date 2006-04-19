@@ -30,7 +30,6 @@ from bzrlib.errors import (NotBranchError,
                            )
 import bzrlib.repository as repository
 from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
