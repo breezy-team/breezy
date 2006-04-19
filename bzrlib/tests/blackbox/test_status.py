@@ -178,6 +178,14 @@ class BranchStatus(TestCaseWithTransport):
                            '  dir2\n'
                            ])
 
+    def test_status_nonexistent_file(self):
+        # files that don't exist in either the basis tree or working tree
+        # should give an error
+        wt = self.make_branch_and_tree('.')
+        out, err = self.run_bzr('status', 'does-not-exist', retcode=3)
+        self.assertContainsRe(err, r'do not exist.*does-not-exist')
+
+
 class CheckoutStatus(BranchStatus):
 
     def setUp(self):

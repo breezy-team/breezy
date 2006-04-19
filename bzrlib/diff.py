@@ -313,7 +313,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
 
 def _raise_if_doubly_unversioned(specific_files, old_tree, new_tree):
     """Complain if paths are not versioned in either tree."""
-    if not specific_files:
+    if len(specific_files) == 0:
         return
     old_unversioned = old_tree.filter_unversioned_files(specific_files)
     new_unversioned = new_tree.filter_unversioned_files(specific_files)
@@ -321,6 +321,25 @@ def _raise_if_doubly_unversioned(specific_files, old_tree, new_tree):
     if unversioned:
         raise errors.PathsNotVersionedError(sorted(unversioned))
     
+
+def _raise_if_nonexistent(paths, old_tree, new_tree):
+    """Complain if paths are not in either inventory or tree.
+
+    It's OK with the files exist in either tree's inventory, or 
+    if they exist in the tree but are not versioned.
+    
+    This can be used by operations such as bzr status that can accept
+    unknown or ignored files.
+    """
+    mutter("check paths: %r", paths)
+    if not paths:
+        return
+    s = old_tree.filter_unversioned_files(paths)
+    s = new_tree.filter_unversioned_files(s)
+    s = [path for path in s if not new_tree.has_filename(path)]
+    if s:
+        raise errors.PathsDoNotExist(sorted(s))
+
 
 def get_prop_change(meta_modified):
     if meta_modified:
