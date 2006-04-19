@@ -857,3 +857,7 @@ class UnsupportedOperation(BzrNewError):
         self.method = method
         self.mname = method.__name__
         self.tname = type(method_self).__name__
+
+
+class BinaryFile(BzrNewError):
+    """File is binary but should be text."""
