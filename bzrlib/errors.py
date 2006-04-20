@@ -227,7 +227,12 @@ class NotBranchError(PathError):
 
 
 class AlreadyBranchError(PathError):
-    """Already a branch: %(path)s. Use `bzr checkout` to build a working tree."""
+    """Already a branch: %(path)s."""
+
+
+class BranchExistsWithoutWorkingTree(PathError):
+    """Directory contains a branch, but no working tree \
+(use bzr checkout if you wish to build a working tree): %(path)s"""
 
 
 class NoRepositoryPresent(BzrNewError):
