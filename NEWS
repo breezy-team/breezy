@@ -80,7 +80,7 @@ bzr 0.8rc1  2006-04-14
 
     * 'knit' is now the default disk format. This improves disk performance and
       utilization, increases incremental pull performance, robustness with SFTP
-      and allows checkouts over SFTP to perform acceptable. 
+      and allows checkouts over SFTP to perform acceptably.
       (Robert Collins, Aaron Bentley).
 
   CHANGES:

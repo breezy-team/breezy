@@ -94,6 +94,7 @@ class GzipFile(gzip.GzipFile):
         if buf == "":
             self._add_read_data(self.decompress.flush())
             assert len(self.decompress.unused_data) >= 8, "what does flush do?"
+            self._gzip_tail = self.decompress.unused_data[0:8]
             self._read_eof()
             # tell the driving read() call we have stuffed all the data
             # in self.extrabuf
@@ -115,11 +116,14 @@ class GzipFile(gzip.GzipFile):
             if seek_length > 0:
                 # we read too much data
                 self.fileobj.seek(-seek_length, 1)
+                self._gzip_tail = self.decompress.unused_data[0:8]
             elif seek_length < 0:
                 # we haven't read enough to check the checksum.
                 assert -8 < seek_length, "too great a seek."
                 buf = self.fileobj.read(-seek_length)
-                self.decompress.decompress(buf)
+                self._gzip_tail = self.decompress.unused_data + buf
+            else:
+                self._gzip_tail = self.decompress.unused_data
 
             # Check the CRC and file size, and set the flag so we read
             # a new member on the next call
@@ -140,7 +144,8 @@ class GzipFile(gzip.GzipFile):
         # We then check the that the computed CRC and size of the
         # uncompressed data matches the stored values.  Note that the size
         # stored is the true file size mod 2**32.
-        crc32, isize = struct.unpack("<LL", self.decompress.unused_data[0:8])
+        assert len(self._gzip_tail) == 8, "gzip trailer is incorrect length."
+        crc32, isize = struct.unpack("<LL", self._gzip_tail)
         # note that isize is unsigned - it can exceed 2GB
         if crc32 != U32(self.crc):
             raise IOError, "CRC check failed %d %d" % (crc32, U32(self.crc))
