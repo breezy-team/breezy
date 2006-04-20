@@ -479,6 +479,35 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.open_workingtree)
 
+    def has_branch(self):
+        """Tell if this bzrdir contains a branch.
+        
+        Note: if you're going to open the branch, you should just go ahead
+        and try, and not ask permission first.  (This method just opens the 
+        branch and discards it, and that's somewhat expensive.) 
+        """
+        try:
+            self.open_branch()
+            return True
+        except errors.NotBranchError:
+            return False
+
+    def has_workingtree(self):
+        """Tell if this bzrdir contains a working tree.
+
+        This will still raise an exception if the bzrdir has a workingtree that
+        is remote & inaccessible.
+        
+        Note: if you're going to open the working tree, you should just go ahead
+        and try, and not ask permission first.  (This method just opens the 
+        workingtree and discards it, and that's somewhat expensive.) 
+        """
+        try:
+            self.open_workingtree()
+            return True
+        except errors.NoWorkingTree:
+            return False
+
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
         """Create a copy of this bzrdir prepared for use as a new line of
         development.

@@ -890,6 +890,14 @@ class cmd_init(Command):
     Use this to create an empty branch, or before importing an
     existing project.
 
+    If there is a repository in a parent directory of the location, then 
+    the history of the branch will be stored in the repository.  Otherwise
+    init creates a standalone branch which carries its own history in 
+    .bzr.
+
+    If there is already a branch at the location but it has no working tree,
+    the tree can be populated with 'bzr checkout'.
+
     Recipe for importing a tree of files:
         cd ~/project
         bzr init
@@ -918,17 +926,19 @@ class cmd_init(Command):
             if not os.path.exists(location):
                 os.mkdir(location)
         try:
-            existing = bzrdir.BzrDir.open(location)
+            existing_bzrdir = bzrdir.BzrDir.open(location)
         except NotBranchError:
+            # really a NotBzrDir error...
             bzrdir.BzrDir.create_branch_convenience(location, format=format)
         else:
-            try:
-                existing.open_branch()
-            except NotBranchError:
-                existing.create_branch()
-                existing.create_workingtree()
+            if existing_bzrdir.has_branch():
+                if existing_bzrdir.has_workingtree():
+                    raise errors.AlreadyBranchError(location)
+                else:
+                    raise errors.BranchExistsWithoutWorkingTree(location)
             else:
-                raise errors.AlreadyBranchError(location)
+                existing_bzrdir.create_branch()
+                existing_bzrdir.create_workingtree()
 
 
 class cmd_init_repository(Command):
@@ -938,19 +948,18 @@ class cmd_init_repository(Command):
     in the repository, not in the branch directory, if the branch format supports
     shared storage.
 
-    example:    
+    example:
         bzr init-repo repo
-        bzr init --format=metadir repo/trunk
-        cd repo/trunk
+        bzr init repo/trunk
+        bzr checkout --lightweight repo/trunk trunk-checkout
+        cd trunk-checkout
         (add files here)
     """
     takes_args = ["location"] 
     takes_options = [Option('format', 
                             help='Use a specific format rather than the'
                             ' current default format. Currently this'
-                            ' option only accepts "metadir" and "knit"'
-                            ' WARNING: the knit format is currently unstable'
-                            ' and only for experimental use.',
+                            ' option accepts "weave", "metadir" and "knit"',
                             type=get_format_type),
                      Option('trees',
                              help='Allows branches in repository to have'
@@ -1638,9 +1647,8 @@ class cmd_upgrade(Command):
                      Option('format', 
                             help='Upgrade to a specific format rather than the'
                                  ' current default format. Currently this'
-                                 ' option only accepts "metadir" and "knit".'
-                                 ' WARNING: the knit format is currently'
-                                 ' unstable and only for experimental use.',
+                                 ' option accepts "weave", "metadir" and'
+                                 ' "knit".',
                             type=get_format_type),
                     ]
 

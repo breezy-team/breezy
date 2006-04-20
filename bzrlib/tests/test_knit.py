@@ -89,6 +89,8 @@ class KnitTests(TestCaseInTempDir):
         k = KnitVersionedFile('test', LocalTransport('.'), delta=False, create=True)
         k.add_lines('text-1', [], ['a\n',    'b'  ])
         k.add_lines('text-2', ['text-1'], ['a\rb\n', 'b\n'])
+        # reopening ensures maximum room for confusion
+        k = KnitVersionedFile('test', LocalTransport('.'), delta=False, create=True)
         self.assertEquals(k.get_lines('text-1'), ['a\n',    'b'  ])
         self.assertEquals(k.get_lines('text-2'), ['a\rb\n', 'b\n'])
 
@@ -338,16 +340,16 @@ class KnitTests(TestCaseInTempDir):
         # this tests that a new knit index file has the expected content
         # and that is writes the data we expect as records are added.
         knit = self.make_test_knit(True)
-        self.assertFileEqual("# bzr knit index 7\n", 'test.kndx')
+        self.assertFileEqual("# bzr knit index 8\n", 'test.kndx')
         knit.add_lines_with_ghosts('revid', ['a_ghost'], ['a\n'])
         self.assertFileEqual(
-            "# bzr knit index 7\n"
+            "# bzr knit index 8\n"
             "\n"
             "revid fulltext 0 84 .a_ghost :",
             'test.kndx')
         knit.add_lines_with_ghosts('revid2', ['revid'], ['a\n'])
         self.assertFileEqual(
-            "# bzr knit index 7\n"
+            "# bzr knit index 8\n"
             "\nrevid fulltext 0 84 .a_ghost :"
             "\nrevid2 line-delta 84 82 0 :",
             'test.kndx')

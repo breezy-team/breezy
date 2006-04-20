@@ -1,4 +1,5 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>, Canonical Ltd
+# Copyright (C) 2005 Robey Pointer <robey@lag.net>
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,7 +35,9 @@ from bzrlib.errors import (ConnectionError,
                            FileExists, 
                            TransportNotPossible, NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError, ParamikoNotPresent
+                           LockError, 
+                           PathError,
+                           ParamikoNotPresent,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename
 from bzrlib.trace import mutter, warning, error
@@ -62,19 +65,31 @@ else:
 register_urlparse_netloc_protocol('sftp')
 
 
+def os_specific_subprocess_params():
+    """Get O/S specific subprocess parameters."""
+    if sys.platform == 'win32':
+        # setting the process group and closing fds is not supported on 
+        # win32
+        return {}
+    else:
+        # we close fds as the child process does not need them to be open.
+        # we set the process group so that signals from the keyboard like
+        # 'SIGINT' - KeyboardInterrupt - are not recieved in the child procecss
+        # if we do not do this, then the sftp/ssh subprocesses will terminate 
+        # when a user hits CTRL-C, and we are unable to use them to unlock the
+        # remote branch/repository etc.
+        return {'preexec_fn': os.setpgrp,
+                'close_fds': True,
+                }
+
+
 # don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
 _default_do_prefetch = False
-if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 2):
+if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 5):
     _default_do_prefetch = True
 
 
-_close_fds = True
-if sys.platform == 'win32':
-    # close_fds not supported on win32
-    _close_fds = False
-
 _ssh_vendor = None
-
 def _get_ssh_vendor():
     """Find out what version of SSH is on the system."""
     global _ssh_vendor
@@ -91,10 +106,10 @@ def _get_ssh_vendor():
 
     try:
         p = subprocess.Popen(['ssh', '-V'],
-                             close_fds=_close_fds,
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
+                             stderr=subprocess.PIPE,
+                             **os_specific_subprocess_params())
         returncode = p.returncode
         stdout, stderr = p.communicate()
     except OSError:
@@ -139,9 +154,10 @@ class SFTPSubprocess:
                 args.extend(['-l', user])
             args.extend(['-s', 'sftp', hostname])
 
-        self.proc = subprocess.Popen(args, close_fds=_close_fds,
+        self.proc = subprocess.Popen(args,
                                      stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE)
+                                     stdout=subprocess.PIPE,
+                                     **os_specific_subprocess_params())
 
     def send(self, data):
         return os.write(self.proc.stdin.fileno(), data)
@@ -477,7 +493,8 @@ class SFTPTransport (Transport):
             self._translate_io_exception(e, path, ': unable to mkdir',
                 failure_exc=FileExists)
 
-    def _translate_io_exception(self, e, path, more_info='', failure_exc=NoSuchFile):
+    def _translate_io_exception(self, e, path, more_info='', 
+                                failure_exc=PathError):
         """Translate a paramiko or IOError into a friendlier exception.
 
         :param e: The original exception
@@ -487,8 +504,8 @@ class SFTPTransport (Transport):
         :param failure_exc: Paramiko has the super fun ability to raise completely
                            opaque errors that just set "e.args = ('Failure',)" with
                            no more information.
-                           This sometimes means FileExists, but it also sometimes
-                           means NoSuchFile
+                           If this parameter is set, it defines the exception 
+                           to raise in these cases.
         """
         # paramiko seems to generate detailless errors.
         self._translate_error(e, path, raise_generic=False)
@@ -506,7 +523,7 @@ class SFTPTransport (Transport):
             mutter('Raising exception with errno %s', e.errno)
         raise e
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """
         Append the text in the file-like object into the final
         location.
@@ -514,6 +531,8 @@ class SFTPTransport (Transport):
         try:
             path = self._remote_path(relpath)
             fout = self._sftp.file(path, 'ab')
+            if mode is not None:
+                self._sftp.chmod(path, mode)
             result = fout.tell()
             self._pump(f, fout)
             return result

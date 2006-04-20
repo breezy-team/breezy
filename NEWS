@@ -81,9 +81,23 @@ bzr 0.8rc1  2006-04-14
     * 'merge' accepts --remember option to store parent location, like 'push'
       and 'pull'. (Olaf Conradi)
 
-    * 'Metadir' is now the default disk format. This improves behaviour in
-      SFTP using circumstances and allows binding and rebinding and easier
-      use of repositories. (Robert Collins, Aaron Bentley).
+    * bzr status and diff when files given as arguments do not exist
+      in the relevant trees.  (Martin Pool, #3619)
+
+    * Add '.hg' to the default ignore list.  (Martin Pool)
+
+    * 'knit' is now the default disk format. This improves disk performance and
+      utilization, increases incremental pull performance, robustness with SFTP
+      and allows checkouts over SFTP to perform acceptably. 
+      The initial Knit code was contributed by Johan Rydberg based on a
+      specification by Martin Pool.
+      (Robert Collins, Aaron Bentley, John Rydberg, Martin Pool).
+
+    * New tool to generate all-in-one html version of the manual.  (Alexander
+      Belchenko)
+
+    * Hitting CTRL-C while doing an SFTP push will no longer cause stale locks
+      to be left in the SFTP repository. (Robert Collins, Martin Pool).
 
   CHANGES:
 

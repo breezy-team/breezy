@@ -136,12 +136,14 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """
         try:
             fp = open(self.abspath(relpath), 'ab')
+            if mode is not None:
+                os.chmod(self.abspath(relpath), mode)
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
         # win32 workaround (tell on an unwritten file returns 0)
