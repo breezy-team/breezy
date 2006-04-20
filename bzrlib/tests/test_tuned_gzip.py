@@ -36,7 +36,9 @@ class FakeDecompress(object):
 
     def decompress(self, buf):
         """Return an empty string as though we are at eof."""
-        self.unused_data += buf
+        # note that the zlib module *overwrites* unused data 
+        # on writes after EOF.
+        self.unused_data = buf
         return ''
 
 
@@ -59,9 +61,10 @@ class TestFakeDecompress(TestCase):
         decompress.decompress('0')
         self.assertEqual('0', decompress.unused_data)
         # decompressing again (when the short read is read)
-        # will give us the full value in the unused_data
+        # will give us the latest input in the unused_data
+        # this is arguably a bug in zlib but ...
         decompress.decompress('1234567')
-        self.assertEqual('01234567', decompress.unused_data)
+        self.assertEqual('1234567', decompress.unused_data)
 
 
 class TestGzip(TestCase):
