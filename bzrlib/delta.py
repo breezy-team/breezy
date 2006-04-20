@@ -160,7 +160,8 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
         files within them.  Any unversioned files given have no effect
         (but this might change in the future).
     """
-
+    # NB: show_status depends on being able to pass in non-versioned files and
+    # report them as unknown
     old_tree.lock_read()
     try:
         new_tree.lock_read()

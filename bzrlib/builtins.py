@@ -931,10 +931,11 @@ class cmd_init_repository(Command):
     in the repository, not in the branch directory, if the branch format supports
     shared storage.
 
-    example:    
+    example:
         bzr init-repo repo
-        bzr init --format=metadir repo/trunk
-        cd repo/trunk
+        bzr init repo/trunk
+        bzr checkout --lightweight repo/trunk trunk-checkout
+        cd trunk-checkout
         (add files here)
     """
     takes_args = ["location"] 
