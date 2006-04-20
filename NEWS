@@ -78,6 +78,9 @@ bzr 0.8rc1  2006-04-14
     * 'merge' accepts --remember option to store parent location, like 'push'
       and 'pull'. (Olaf Conradi)
 
+    * bzr status and diff when files given as arguments do not exist
+      in the relevant trees.  (Martin Pool, #3619)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
