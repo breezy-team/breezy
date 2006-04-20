@@ -46,6 +46,7 @@ DEFAULT_IGNORE = [
                   '.arch-inventory',
                   '.bzr.log',
                   '.del-*',
+                  '.hg',
                   '.git',
                   '.jamdeps'
                   '.libs',

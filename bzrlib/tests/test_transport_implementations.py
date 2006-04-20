@@ -506,6 +506,13 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.check_transport_contents(t.get('f2').read(), t, 'c')
         self.check_transport_contents(t.get('f3').read(), t, 'd')
 
+    def test_append_mode(self):
+        # check append accepts a mode
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        t.append('f', StringIO('f'), mode=None)
+        
     def test_delete(self):
         # TODO: Test Transport.delete
         t = self.get_transport()
@@ -781,9 +788,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertEqual([u'a', u'c', u'c2'], sorted_list('.'))
         self.assertEqual([u'e'], sorted_list(u'c'))
 
-        self.assertListRaises(NoSuchFile, t.list_dir, 'q')
-        self.assertListRaises(NoSuchFile, t.list_dir, 'c/f')
-        self.assertListRaises(NoSuchFile, t.list_dir, 'a')
+        self.assertListRaises(PathError, t.list_dir, 'q')
+        self.assertListRaises(PathError, t.list_dir, 'c/f')
+        self.assertListRaises(PathError, t.list_dir, 'a')
 
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem

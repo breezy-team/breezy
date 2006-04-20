@@ -17,6 +17,7 @@
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
 import os
+import re
 import sys
 
 import bzrlib
@@ -240,6 +241,34 @@ class TestRepository(TestCaseWithRepository):
         text = repo._format.get_format_description()
         self.failUnless(len(text))
 
+    def assertMessageRoundtrips(self, message):
+        """Assert that message roundtrips to a repository and back intact."""
+        tree = self.make_branch_and_tree('.')
+        tree.commit(message, rev_id='a', allow_pointless=True)
+        rev = tree.branch.repository.get_revision('a')
+        # we have to manually escape this as we dont try to
+        # roundtrip xml invalid characters at this point.
+        # when escaping is moved to the serialiser, this test
+        # can check against the literal message rather than
+        # this escaped version.
+        escaped_message, escape_count = re.subn(
+            u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+            lambda match: match.group(0).encode('unicode_escape'),
+            message)
+        escaped_message= re.sub('\r', '\n', escaped_message)
+        self.assertEqual(rev.message, escaped_message)
+        # insist the class is unicode no matter what came in for 
+        # consistency.
+        self.assertIsInstance(rev.message, unicode)
+
+    def test_commit_unicode_message(self):
+        # a siple unicode message should be preserved
+        self.assertMessageRoundtrips(u'foo bar gamm\xae plop')
+
+    def test_commit_unicode_control_characters(self):
+        # a unicode message with control characters should roundtrip too.
+        self.assertMessageRoundtrips(
+            "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)]))
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 

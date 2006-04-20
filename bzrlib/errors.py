@@ -68,6 +68,10 @@ from warnings import warn
 # TODO: Convert all the other error classes here to BzrNewError, and eliminate
 # the old one.
 
+# TODO: The pattern (from hct) of using classes docstrings as message
+# templates is cute but maybe not such a great idea - perhaps should have a
+# separate static message_template.
+
 
 class BzrError(StandardError):
     def __str__(self):
@@ -136,7 +140,7 @@ class InvalidRevisionId(BzrNewError):
 
 
 class NoWorkingTree(BzrNewError):
-    """No WorkingTree exists for %s(base)."""
+    """No WorkingTree exists for %(base)s."""
     
     def __init__(self, base):
         BzrNewError.__init__(self)
@@ -144,7 +148,7 @@ class NoWorkingTree(BzrNewError):
 
 
 class NotLocalUrl(BzrNewError):
-    """%s(url) is not a local path."""
+    """%(url)s is not a local path."""
     
     def __init__(self, url):
         BzrNewError.__init__(self)
@@ -172,6 +176,8 @@ class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
 
+# XXX: Should be unified with TransportError; they seem to represent the
+# same thing
 class PathError(BzrNewError):
     """Generic path error: %(path)r%(extra)s)"""
 
@@ -274,6 +280,20 @@ class PathsNotVersionedError(BzrNewError):
     """Path(s) are not versioned: %(paths_as_string)s"""
 
     def __init__(self, paths):
+        from bzrlib.osutils import quotefn
+        BzrNewError.__init__(self)
+        self.paths = paths
+        self.paths_as_string = ' '.join([quotefn(p) for p in paths])
+
+
+class PathsDoNotExist(BzrNewError):
+    """Path(s) do not exist: %(paths_as_string)s"""
+
+    # used when reporting that paths are neither versioned nor in the working
+    # tree
+
+    def __init__(self, paths):
+        # circular import
         from bzrlib.osutils import quotefn
         BzrNewError.__init__(self)
         self.paths = paths
@@ -762,6 +782,14 @@ class BzrBadParameterNotString(BzrBadParameter):
 
 class BzrBadParameterMissing(BzrBadParameter):
     """Parameter $(param)s is required but not present."""
+
+
+class BzrBadParameterUnicode(BzrBadParameter):
+    """Parameter %(param)s is unicode but only byte-strings are permitted."""
+
+
+class BzrBadParameterContainsNewline(BzrBadParameter):
+    """Parameter %(param)s contains a newline."""
 
 
 class DependencyNotPresent(BzrNewError):

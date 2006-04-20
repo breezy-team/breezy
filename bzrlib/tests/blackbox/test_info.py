@@ -134,7 +134,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 In the working tree:
          1 unchanged
@@ -154,10 +154,16 @@ Branch history:
 
 Revision store:
          1 revision
-         0 KiB
+         %d KiB
 """ % (branch3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_first), out)
+       branch3.repository._format.get_format_description(),
+       datestring_first, datestring_first,
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       branch3.repository._revision_store.total_size(
+        branch3.repository.get_transaction())[1] / 1024,
+       ), out)
         self.assertEqual('', err)
 
         # Checkout standalone (same as above, but does not have parent set)
@@ -177,7 +183,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 In the working tree:
          1 unchanged
@@ -198,9 +204,15 @@ Branch history:
 
 Revision store:
          1 revision
-         0 KiB
+         %d KiB
 """ % (branch4.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_first), out)
+       branch4.repository._format.get_format_description(),
+       datestring_first, datestring_first,
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       branch4.repository._revision_store.total_size(
+        branch4.repository.get_transaction())[1] / 1024,
+       ), out)
         self.assertEqual('', err)
 
         # Lightweight checkout (same as above, different branch and repository)
@@ -305,7 +317,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 Branch is out of date: missing 1 revision.
 
@@ -327,10 +339,16 @@ Branch history:
 
 Revision store:
          1 revision
-         0 KiB
+         %d KiB
 """ % (branch3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_first), out)
+       branch3.repository._format.get_format_description(),
+       datestring_first, datestring_first,
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       branch3.repository._revision_store.total_size(
+        branch3.repository.get_transaction())[1] / 1024,
+       ), out)
         self.assertEqual('', err)
 
         # Out of date checkout
@@ -344,7 +362,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 Branch is out of date: missing 1 revision.
 
@@ -366,9 +384,15 @@ Branch history:
 
 Revision store:
          1 revision
-         0 KiB
+         %d KiB
 """ % (branch4.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_first), out)
+       branch4.repository._format.get_format_description(),
+       datestring_first, datestring_first,
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       branch4.repository._revision_store.total_size(
+        branch4.repository.get_transaction())[1] / 1024,
+       ), out)
         self.assertEqual('', err)
 
         # Out of date lightweight checkout
@@ -425,12 +449,13 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-    repository: Weave repository format 7
+    repository: %s
 
 Revision store:
          0 revisions
          0 KiB
-""" % repo.bzrdir.root_transport.base, out)
+""" % (repo.bzrdir.root_transport.base, repo._format.get_format_description()),
+            out)
         self.assertEqual('', err)
 
         # Create branch inside shared repository
@@ -445,7 +470,7 @@ Revision store:
 Format:
        control: Meta directory format 1
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 Branch history:
          0 revisions
@@ -454,7 +479,9 @@ Revision store:
          0 revisions
          0 KiB
 """ % (branch1.bzrdir.root_transport.base,
-       repo.bzrdir.root_transport.base), out)
+       repo.bzrdir.root_transport.base,
+       repo._format.get_format_description(),
+       ), out)
         self.assertEqual('', err)
 
         # Create lightweight checkout
@@ -476,7 +503,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 In the working tree:
          0 unchanged
@@ -496,7 +523,9 @@ Revision store:
          0 KiB
 """ % (tree2.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       repo.bzrdir.root_transport.base), out)
+       repo.bzrdir.root_transport.base,
+       repo._format.get_format_description(),
+       ), out)
         self.assertEqual('', err)
 
         # Create normal checkout
@@ -514,7 +543,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 In the working tree:
          0 unchanged
@@ -534,7 +563,9 @@ Revision store:
          0 revisions
          0 KiB
 """ % (branch3.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base), out)
+       branch1.bzrdir.root_transport.base,
+       repo._format.get_format_description(),
+       ), out)
         self.assertEqual('', err)
 
         # Update lightweight checkout
@@ -554,7 +585,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 In the working tree:
          1 unchanged
@@ -575,11 +606,16 @@ Branch history:
 
 Revision store:
          1 revision
-         0 KiB
+         %d KiB
 """ % (tree2.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
-       datestring_first, datestring_first), out)
+       repo._format.get_format_description(),
+       datestring_first, datestring_first,
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
+       ), out)
         self.assertEqual('', err)
 
         # Out of date checkout
@@ -593,7 +629,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 Branch is out of date: missing 1 revision.
 
@@ -614,7 +650,9 @@ Revision store:
          0 revisions
          0 KiB
 """ % (tree3.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base), out)
+       branch1.bzrdir.root_transport.base,
+       repo._format.get_format_description(),
+       ), out)
         self.assertEqual('', err)
 
         # Update checkout
@@ -631,7 +669,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 In the working tree:
          1 unchanged
@@ -652,9 +690,14 @@ Branch history:
 
 Revision store:
          1 revision
-         0 KiB
+         %d KiB
 """ % (tree3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_first), out)
+       repo._format.get_format_description(),
+       datestring_first, datestring_first,
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
+       ), out)
         self.assertEqual('', err)
         tree3.commit('commit two')
 
@@ -672,7 +715,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 Working tree is out of date: missing 1 revision.
 
@@ -695,11 +738,16 @@ Branch history:
 
 Revision store:
          2 revisions
-         0 KiB
+         %d KiB
 """ % (tree2.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
-       datestring_first, datestring_last), out)
+       repo._format.get_format_description(),
+       datestring_first, datestring_last,
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
+       ), out)
         self.assertEqual('', err)
 
         # Show info about shared branch
@@ -712,7 +760,7 @@ Revision store:
 Format:
        control: Meta directory format 1
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 Branch history:
          2 revisions
@@ -723,10 +771,15 @@ Branch history:
 
 Revision store:
          2 revisions
-         0 KiB
+         %d KiB
 """ % (branch1.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
-       datestring_first, datestring_last), out)
+       repo._format.get_format_description(),
+       datestring_first, datestring_last,
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
+       ), out)
         self.assertEqual('', err)
 
         # Show info about repository with revisions
@@ -737,12 +790,18 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-    repository: Weave repository format 7
+    repository: %s
 
 Revision store:
          2 revisions
-         0 KiB
-""" % repo.bzrdir.root_transport.base, out)
+         %d KiB
+""" % (repo.bzrdir.root_transport.base,
+       repo._format.get_format_description(),
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
+       ),
+       out)
         self.assertEqual('', err)
 
         bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
@@ -762,14 +821,16 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-    repository: Weave repository format 7
+    repository: %s
 
 Create working tree for new branches inside the repository.
 
 Revision store:
          0 revisions
          0 KiB
-""" % repo.bzrdir.root_transport.base, out)
+""" % (repo.bzrdir.root_transport.base,
+       repo._format.get_format_description(),
+       ), out)
         self.assertEqual('', err)
 
         # Create two branches
@@ -788,7 +849,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 In the working tree:
          0 unchanged
@@ -808,7 +869,9 @@ Revision store:
          0 revisions
          0 KiB
 """ % (branch1.bzrdir.root_transport.base,
-       repo.bzrdir.root_transport.base), out)
+       repo.bzrdir.root_transport.base,
+       repo._format.get_format_description(),
+       ), out)
         self.assertEqual('', err)
 
         # Update first branch
@@ -828,7 +891,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 In the working tree:
          1 unchanged
@@ -848,9 +911,14 @@ Branch history:
 
 Revision store:
          1 revision
-         0 KiB
+         %d KiB
 """ % (branch1.bzrdir.root_transport.base, repo.bzrdir.root_transport.base,
-       datestring_first, datestring_first), out)
+       repo._format.get_format_description(),
+       datestring_first, datestring_first,
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
+       ), out)
         self.assertEqual('', err)
 
         # Out of date second branch
@@ -865,7 +933,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 In the working tree:
          0 unchanged
@@ -883,9 +951,14 @@ Branch history:
 
 Revision store:
          1 revision
-         0 KiB
+         %d KiB
 """ % (branch2.bzrdir.root_transport.base, repo.bzrdir.root_transport.base,
-       branch1.bzrdir.root_transport.base), out)
+       branch1.bzrdir.root_transport.base,
+       repo._format.get_format_description(),
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
+       ), out)
         self.assertEqual('', err)
 
         # Update second branch
@@ -902,7 +975,7 @@ Format:
        control: Meta directory format 1
   working tree: Working tree format 3
         branch: Branch format 5
-    repository: Weave repository format 7
+    repository: %s
 
 In the working tree:
          1 unchanged
@@ -922,11 +995,16 @@ Branch history:
 
 Revision store:
          1 revision
-         0 KiB
+         %d KiB
 """ % (branch2.bzrdir.root_transport.base,
        repo.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_first), out)
+       repo._format.get_format_description(),
+       datestring_first, datestring_first,
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
+       ), out)
         self.assertEqual('', err)
 
         # Show info about repository with revisions
@@ -937,14 +1015,20 @@ Revision store:
 
 Format:
        control: Meta directory format 1
-    repository: Weave repository format 7
+    repository: %s
 
 Create working tree for new branches inside the repository.
 
 Revision store:
          1 revision
-         0 KiB
-""" % repo.bzrdir.root_transport.base, out)
+         %d KiB
+""" % (repo.bzrdir.root_transport.base,
+       repo._format.get_format_description(),
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
+       ),
+       out)
         self.assertEqual('', err)
 
         bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)

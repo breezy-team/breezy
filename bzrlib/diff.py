@@ -328,6 +328,25 @@ def _raise_if_doubly_unversioned(specific_files, old_tree, new_tree):
         raise errors.PathsNotVersionedError(sorted(unversioned))
     
 
+def _raise_if_nonexistent(paths, old_tree, new_tree):
+    """Complain if paths are not in either inventory or tree.
+
+    It's OK with the files exist in either tree's inventory, or 
+    if they exist in the tree but are not versioned.
+    
+    This can be used by operations such as bzr status that can accept
+    unknown or ignored files.
+    """
+    mutter("check paths: %r", paths)
+    if not paths:
+        return
+    s = old_tree.filter_unversioned_files(paths)
+    s = new_tree.filter_unversioned_files(s)
+    s = [path for path in s if not new_tree.has_filename(path)]
+    if s:
+        raise errors.PathsDoNotExist(sorted(s))
+
+
 def get_prop_change(meta_modified):
     if meta_modified:
         return " (properties changed)"
