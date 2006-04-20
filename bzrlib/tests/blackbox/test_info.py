@@ -115,10 +115,16 @@ Branch history:
 
 Revision store:
          1 revision
-         0 KiB
-""" % (branch2.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+         %d KiB
+""" % (branch2.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_first), out)
+       branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_first,
+       # poking at _revision_store isn't all that clean, but neither is
+       # having the ui test dependent on the exact overhead of a given store.
+       branch2.repository._revision_store.total_size(
+        branch2.repository.get_transaction())[1] / 1024,
+       ), out)
         self.assertEqual('', err)
 
         # Branch and bind to standalone, needs upgrade to metadir
@@ -166,7 +172,8 @@ Branch history:
 Revision store:
          1 revision
          %d KiB
-""" % (branch3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+""" % (branch3.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        branch3.repository._format.get_format_description(),
        datestring_first, datestring_first,
@@ -216,7 +223,8 @@ Branch history:
 Revision store:
          1 revision
          %d KiB
-""" % (branch4.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+""" % (branch4.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
        branch4.repository._format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -267,8 +275,10 @@ Branch history:
 Revision store:
          1 revision
          0 KiB
-""" % (tree5.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_first), out)
+""" % (tree5.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_first,
+       ), out)
         self.assertEqual('', err)
 
         # Update initial standalone branch
@@ -313,9 +323,11 @@ Branch history:
 Revision store:
          1 revision
          0 KiB
-""" % (branch2.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+""" % (branch2.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_first), out)
+       branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_first,
+       ), out)
         self.assertEqual('', err)
 
         # Out of date bound branch
@@ -355,7 +367,8 @@ Branch history:
 Revision store:
          1 revision
          %d KiB
-""" % (branch3.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+""" % (branch3.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        branch3.repository._format.get_format_description(),
        datestring_first, datestring_first,
@@ -400,7 +413,8 @@ Branch history:
 Revision store:
          1 revision
          %d KiB
-""" % (branch4.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
+""" % (branch4.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
        branch4.repository._format.get_format_description(),
        datestring_first, datestring_first,
        # poking at _revision_store isn't all that clean, but neither is
@@ -445,8 +459,10 @@ Branch history:
 Revision store:
          2 revisions
          0 KiB
-""" % (tree5.bzrdir.root_transport.base, branch1.bzrdir.root_transport.base,
-       datestring_first, datestring_last), out)
+""" % (tree5.bzrdir.root_transport.base,
+       branch1.bzrdir.root_transport.base,
+       datestring_first, datestring_last,
+       ), out)
         self.assertEqual('', err)
 
     def test_info_shared_repository(self):
@@ -469,8 +485,9 @@ Format:
 Revision store:
          0 revisions
          0 KiB
-""" % (repo.bzrdir.root_transport.base, repo._format.get_format_description()),
-            out)
+""" % (repo.bzrdir.root_transport.base,
+       repo._format.get_format_description(),
+       ), out)
         self.assertEqual('', err)
 
         # Create branch inside shared repository
@@ -810,8 +827,7 @@ Revision store:
        # poking at _revision_store isn't all that clean, but neither is
        # having the ui test dependent on the exact overhead of a given store.
        repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
-       ),
-       out)
+       ), out)
         self.assertEqual('', err)
 
         bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
