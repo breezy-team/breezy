@@ -90,6 +90,9 @@ bzr 0.8rc1  2006-04-14
       and allows checkouts over SFTP to perform acceptable. 
       (Robert Collins, Aaron Bentley).
 
+    * New tool to generate all-in-one html version of the manual.  (Alexander
+      Belchenko)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
