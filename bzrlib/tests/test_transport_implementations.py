@@ -781,9 +781,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertEqual([u'a', u'c', u'c2'], sorted_list('.'))
         self.assertEqual([u'e'], sorted_list(u'c'))
 
-        self.assertListRaises(NoSuchFile, t.list_dir, 'q')
-        self.assertListRaises(NoSuchFile, t.list_dir, 'c/f')
-        self.assertListRaises(NoSuchFile, t.list_dir, 'a')
+        self.assertListRaises(PathError, t.list_dir, 'q')
+        self.assertListRaises(PathError, t.list_dir, 'c/f')
+        self.assertListRaises(PathError, t.list_dir, 'a')
 
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem

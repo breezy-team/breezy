@@ -68,6 +68,10 @@ from warnings import warn
 # TODO: Convert all the other error classes here to BzrNewError, and eliminate
 # the old one.
 
+# TODO: The pattern (from hct) of using classes docstrings as message
+# templates is cute but maybe not such a great idea - perhaps should have a
+# separate static message_template.
+
 
 class BzrError(StandardError):
     def __str__(self):
@@ -172,6 +176,8 @@ class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
 
+# XXX: Should be unified with TransportError; they seem to represent the
+# same thing
 class PathError(BzrNewError):
     """Generic path error: %(path)r%(extra)s)"""
 

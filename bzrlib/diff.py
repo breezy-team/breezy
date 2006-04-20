@@ -313,7 +313,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
 
 def _raise_if_doubly_unversioned(specific_files, old_tree, new_tree):
     """Complain if paths are not versioned in either tree."""
-    if len(specific_files) == 0:
+    if not specific_files:
         return
     old_unversioned = old_tree.filter_unversioned_files(specific_files)
     new_unversioned = new_tree.filter_unversioned_files(specific_files)
