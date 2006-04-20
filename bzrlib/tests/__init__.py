@@ -48,10 +48,12 @@ import bzrlib.errors as errors
 import bzrlib.inventory
 import bzrlib.iterablefile
 import bzrlib.lockdir
+from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.osutils
 import bzrlib.osutils as osutils
 import bzrlib.plugin
+from bzrlib.revision import common_ancestor
 import bzrlib.store
 import bzrlib.trace
 from bzrlib.transport import urlescape, get_transport
@@ -327,9 +329,9 @@ class TestCase(unittest.TestCase):
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
         
-        If modes are not supported on this platform, the test is skipped.
+        If modes are not supported on this transport, the assertion is ignored.
         """
-        if sys.platform == 'win32':
+        if not transport._can_roundtrip_unix_modebits():
             return
         path_stat = transport.stat(path)
         actual_mode = stat.S_IMODE(path_stat.st_mode)
@@ -548,6 +550,22 @@ class TestCase(unittest.TestCase):
             sys.stdout = real_stdout
             sys.stderr = real_stderr
             sys.stdin = real_stdin
+
+    def merge(self, branch_from, wt_to):
+        """A helper for tests to do a ui-less merge.
+
+        This should move to the main library when someone has time to integrate
+        it in.
+        """
+        # minimal ui-less merge.
+        wt_to.branch.fetch(branch_from)
+        base_rev = common_ancestor(branch_from.last_revision(),
+                                   wt_to.branch.last_revision(),
+                                   wt_to.branch.repository)
+        merge_inner(wt_to.branch, branch_from.basis_tree(), 
+                    wt_to.branch.repository.revision_tree(base_rev),
+                    this_tree=wt_to)
+        wt_to.add_pending_merge(branch_from.last_revision())
 
 
 BzrTestBase = TestCase
@@ -775,12 +793,12 @@ class TestCaseWithTransport(TestCaseInTempDir):
         self.assertTrue(t.is_readonly())
         return t
 
-    def make_branch(self, relpath):
+    def make_branch(self, relpath, format=None):
         """Create a branch on the transport at relpath."""
-        repo = self.make_repository(relpath)
+        repo = self.make_repository(relpath, format=format)
         return repo.bzrdir.create_branch()
 
-    def make_bzrdir(self, relpath):
+    def make_bzrdir(self, relpath, format=None):
         try:
             url = self.get_url(relpath)
             segments = relpath.split('/')
@@ -791,16 +809,19 @@ class TestCaseWithTransport(TestCaseInTempDir):
                     t.mkdir(segments[-1])
                 except errors.FileExists:
                     pass
-            return bzrlib.bzrdir.BzrDir.create(url)
+            if format is None:
+                format=bzrlib.bzrdir.BzrDirFormat.get_default_format()
+            # FIXME: make this use a single transport someday. RBC 20060418
+            return format.initialize_on_transport(get_transport(relpath))
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable.")
 
-    def make_repository(self, relpath, shared=False):
+    def make_repository(self, relpath, shared=False, format=None):
         """Create a repository on our default transport at relpath."""
-        made_control = self.make_bzrdir(relpath)
+        made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
-    def make_branch_and_tree(self, relpath):
+    def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
 
         Returns the tree.
@@ -809,7 +830,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         # this obviously requires a format that supports branch references
         # so check for that by checking bzrdir.BzrDirFormat.get_default_format()
         # RBC 20060208
-        b = self.make_branch(relpath)
+        b = self.make_branch(relpath, format=format)
         try:
             return b.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
@@ -923,7 +944,6 @@ def test_suite():
                    'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
-                   'bzrlib.tests.test_basis_inventory',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_command',
@@ -935,6 +955,7 @@ def test_suite():
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
+                   'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
@@ -954,6 +975,7 @@ def test_suite():
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
+                   'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_progress',
@@ -972,13 +994,15 @@ def test_suite():
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_testament',
+                   'bzrlib.tests.test_textfile',
+                   'bzrlib.tests.test_textmerge',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_tsort',
+                   'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
-                   'bzrlib.tests.test_uncommit',
                    'bzrlib.tests.test_upgrade',
                    'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_weave',

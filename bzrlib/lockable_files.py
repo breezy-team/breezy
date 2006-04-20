@@ -16,6 +16,7 @@
 
 from cStringIO import StringIO
 import codecs
+#import traceback
 
 import bzrlib
 from bzrlib.decorators import *
@@ -23,7 +24,7 @@ import bzrlib.errors as errors
 from bzrlib.errors import LockError, ReadOnlyError
 from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.symbol_versioning import *
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 
 # XXX: The tracking here of lock counts and whether the lock is held is
@@ -80,7 +81,7 @@ class LockableFiles(object):
         self._lock_mode = None
         self._lock_count = 0
         esc_name = self._escape(lock_name)
-        self._lock = lock_class(transport, esc_name, 
+        self._lock = lock_class(transport, esc_name,
                                 file_modebits=self._file_mode,
                                 dir_modebits=self._dir_mode)
 
@@ -90,11 +91,21 @@ class LockableFiles(object):
         This should normally be called only when the LockableFiles directory
         is first created on disk.
         """
-        self._lock.create()
+        self._lock.create(mode=self._dir_mode)
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
                            self._transport)
+    def __str__(self):
+        return 'LockableFiles(%s, %s)' % (self.lock_name, self._transport.base)
+
+    def __del__(self):
+        if self.is_locked():
+            # XXX: This should show something every time, and be suitable for
+            # headless operation and embedding
+            from warnings import warn
+            warn("file group %r was not explicitly unlocked" % self)
+            self._lock.unlock()
 
     def _escape(self, file_or_path):
         if not isinstance(file_or_path, basestring):
@@ -201,6 +212,8 @@ class LockableFiles(object):
             self._lock_count += 1
         else:
             self._lock.lock_write()
+            #note('write locking %s', self)
+            #traceback.print_stack()
             self._lock_mode = 'w'
             self._lock_count = 1
             self._set_transaction(transactions.WriteTransaction())
@@ -213,6 +226,8 @@ class LockableFiles(object):
             self._lock_count += 1
         else:
             self._lock.lock_read()
+            #note('read locking %s', self)
+            #traceback.print_stack()
             self._lock_mode = 'r'
             self._lock_count = 1
             self._set_transaction(transactions.ReadOnlyTransaction())
@@ -226,6 +241,8 @@ class LockableFiles(object):
         if self._lock_count > 1:
             self._lock_count -= 1
         else:
+            #note('unlocking %s', self)
+            #traceback.print_stack()
             self._finish_transaction()
             self._lock.unlock()
             self._lock_mode = self._lock_count = None
@@ -289,7 +306,7 @@ class TransportLock(object):
         self._lock.unlock()
         self._lock = None
 
-    def create(self):
+    def create(self, mode=None):
         """Create lock mechanism"""
         # for old-style locks, create the file now
         self._transport.put(self._escaped_name, StringIO(), 

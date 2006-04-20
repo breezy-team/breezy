@@ -59,20 +59,10 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
             self.bzrdir = self.make_bzrdir(None)
         return self.bzrdir
 
-    def make_bzrdir(self, relpath):
-        try:
-            url = self.get_url(relpath)
-            segments = url.split('/')
-            if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
-                try:
-                    t.mkdir(segments[-1])
-                except FileExists:
-                    pass
-            return self.bzrdir_format.initialize(url)
-        except UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
+    def make_bzrdir(self, relpath, format=None):
+        return super(TestCaseWithBzrDir, self).make_bzrdir(
+            relpath, format=self.bzrdir_format)
+
 
 
 class TestBzrDir(TestCaseWithBzrDir):
@@ -1079,6 +1069,11 @@ class TestBzrDir(TestCaseWithBzrDir):
                 pb.finished()
             # and it should pass 'check' now.
             check(bzrdir.BzrDir.open(self.get_url('.')).open_branch(), False)
+
+    def test_format_description(self):
+        dir = self.make_bzrdir('.')
+        text = dir._format.get_format_description()
+        self.failUnless(len(text))
 
 
 class ChrootedBzrDirTests(ChrootedTestCase):

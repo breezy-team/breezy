@@ -19,8 +19,6 @@ import os
 from bzrlib.add import smart_add
 from bzrlib.builtins import merge
 from bzrlib.delta import compare_trees
-from bzrlib.merge import merge_inner
-from bzrlib.revision import common_ancestor
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.workingtree import WorkingTree
 
@@ -31,17 +29,6 @@ class FileIdInvolvedBase(TestCaseWithRepository):
         f = file(filename,"a")
         f.write("appended line\n")
         f.close( )
-
-    def merge(self, branch_from, wt_to):
-        # minimal ui-less merge.
-        wt_to.branch.fetch(branch_from)
-        base_rev = common_ancestor(branch_from.last_revision(),
-                                    wt_to.branch.last_revision(),
-                                    wt_to.branch.repository)
-        merge_inner(wt_to.branch, branch_from.basis_tree(), 
-                    wt_to.branch.repository.revision_tree(base_rev),
-                    this_tree=wt_to)
-        wt_to.add_pending_merge(branch_from.last_revision())
 
     def compare_tree_fileids(self, branch, old_rev, new_rev):
         old_tree = self.branch.repository.revision_tree(old_rev)

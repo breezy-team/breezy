@@ -46,26 +46,11 @@ class TestCaseWithRepository(TestCaseWithBzrDir):
     def setUp(self):
         super(TestCaseWithRepository, self).setUp()
 
-    def make_branch(self, relpath):
-        repo = self.make_repository(relpath)
+    def make_branch(self, relpath, format=None):
+        repo = self.make_repository(relpath, format=None)
         return repo.bzrdir.create_branch()
 
-    def make_bzrdir(self, relpath):
-        try:
-            url = self.get_url(relpath)
-            segments = url.split('/')
-            if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
-                try:
-                    t.mkdir(segments[-1])
-                except FileExists:
-                    pass
-            return self.bzrdir_format.initialize(url)
-        except UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
-
-    def make_repository(self, relpath):
+    def make_repository(self, relpath, format=None):
         made_control = self.make_bzrdir(relpath)
         return self.repository_format.initialize(made_control)
 
@@ -249,6 +234,11 @@ class TestRepository(TestCaseWithRepository):
         inv = repo.get_inventory_weave()
         repo.unlock()
         self.assertRaises(errors.OutSideTransaction, inv.add_lines, 'foo', [], [])
+
+    def test_format_description(self):
+        repo = self.make_repository('.')
+        text = repo._format.get_format_description()
+        self.failUnless(len(text))
 
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):

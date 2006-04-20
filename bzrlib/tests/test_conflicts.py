@@ -26,7 +26,10 @@ from bzrlib.errors import NotConflicted
 # TODO: Test commit with some added, and added-but-missing files
 # RBC 20060124 is that not tested in test_commit.py ?
 
+# The order of 'path' here is important - do not let it
+# be a sorted list.
 example_conflicts = ConflictList([ 
+    MissingParent('Not deleting', 'pathg', 'idg'),
     ContentsConflict('patha', 'ida'), 
     TextConflict('patha'),
     PathConflict('pathb', 'pathc', 'idb'),
@@ -35,7 +38,6 @@ example_conflicts = ConflictList([
                    None),
     ParentLoop('Cancelled move', 'pathe', 'path2e', None, 'id2e'),
     UnversionedParent('Versioned directory', 'pathf', 'idf'),
-    MissingParent('Not deleting', 'pathg', 'idg'),
 ])
 
 
@@ -43,7 +45,8 @@ class TestConflicts(TestCaseWithTransport):
 
     def test_conflicts(self):
         """Conflicts are detected properly"""
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree('.',
+            format=bzrlib.bzrdir.BzrDirFormat6())
         b = tree.branch
         file('hello', 'w').write('hello world4')
         file('hello.THIS', 'w').write('hello world2')
@@ -64,9 +67,22 @@ class TestConflicts(TestCaseWithTransport):
         self.assertRaises(NotConflicted, restore, 'hello')
         self.assertRaises(NotConflicted, restore, 'hello.sploo')
 
+    def test_resolve_conflict_dir(self):
+        tree = self.make_branch_and_tree('.')
+        b = tree.branch
+        file('hello', 'w').write('hello world4')
+        tree.add('hello', 'q')
+        file('hello.THIS', 'w').write('hello world2')
+        file('hello.BASE', 'w').write('hello world1')
+        os.mkdir('hello.OTHER')
+        l = ConflictList([TextConflict('hello')])
+        l.remove_files(tree)
+
 
 class TestConflictStanzas(TestCase):
+
     def test_stanza_roundtrip(self):
+        # write and read our example stanza.
         stanza_iter = example_conflicts.to_stanzas()
         processed = ConflictList.from_stanzas(stanza_iter)
         for o,p in zip(processed, example_conflicts):

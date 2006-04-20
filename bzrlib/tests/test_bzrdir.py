@@ -30,7 +30,6 @@ from bzrlib.errors import (NotBranchError,
                            )
 import bzrlib.repository as repository
 from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
@@ -42,7 +41,7 @@ class TestDefaultFormat(TestCase):
     def test_get_set_default_format(self):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         # default is BzrDirFormat6
-        self.failUnless(isinstance(old_format, bzrdir.BzrDirFormat6))
+        self.failUnless(isinstance(old_format, bzrdir.BzrDirMetaFormat1))
         bzrdir.BzrDirFormat.set_default_format(SampleBzrDirFormat())
         # creating a bzr dir should now create an instrumented dir.
         try:
@@ -464,7 +463,6 @@ class TestFormat6(TestCaseWithTransport):
             self.assertTrue(dir.needs_format_conversion())
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
-        self.assertFalse(dir.needs_format_conversion())
 
 
 class NonLocalTests(TestCaseWithTransport):

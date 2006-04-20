@@ -171,7 +171,7 @@ class LockDir(object):
 
     is_held = property(lambda self: self._lock_held)
 
-    def create(self):
+    def create(self, mode=None):
         """Create the on-disk lock.
 
         This is typically only called when the object/directory containing the 
@@ -179,7 +179,7 @@ class LockDir(object):
         """
         if self.transport.is_readonly():
             raise UnlockableTransport(self.transport)
-        self.transport.mkdir(self.path)
+        self.transport.mkdir(self.path, mode=mode)
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
