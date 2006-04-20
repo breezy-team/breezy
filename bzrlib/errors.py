@@ -764,6 +764,14 @@ class BzrBadParameterMissing(BzrBadParameter):
     """Parameter $(param)s is required but not present."""
 
 
+class BzrBadParameterUnicode(BzrBadParameter):
+    """Parameter %(param)s is unicode but only byte-strings are permitted."""
+
+
+class BzrBadParameterContainsNewline(BzrBadParameter):
+    """Parameter %(param)s contains a newline."""
+
+
 class DependencyNotPresent(BzrNewError):
     """Unable to import library "%(library)s": %(error)s"""
 

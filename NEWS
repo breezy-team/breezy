@@ -80,9 +80,10 @@ bzr 0.8rc1  2006-04-14
     * 'merge' accepts --remember option to store parent location, like 'push'
       and 'pull'. (Olaf Conradi)
 
-    * 'Metadir' is now the default disk format. This improves behaviour in
-      SFTP using circumstances and allows binding and rebinding and easier
-      use of repositories. (Robert Collins, Aaron Bentley).
+    * 'knit' is now the default disk format. This improves disk performance and
+      utilization, increases incremental pull performance, robustness with SFTP
+      and allows checkouts over SFTP to perform acceptable. 
+      (Robert Collins, Aaron Bentley).
 
   CHANGES:
 

@@ -122,6 +122,7 @@ class InventoryEntry(object):
         versionedfile = weave_store.get_weave_or_empty(self.file_id,
                                                        transaction)
         versionedfile.add_lines(self.revision, parents, new_lines)
+        versionedfile.clear_cache()
 
     def detect_changes(self, old_entry):
         """Return a (text_modified, meta_modified) from this to old_entry.

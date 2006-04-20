@@ -64,7 +64,7 @@ register_urlparse_netloc_protocol('sftp')
 
 # don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
 _default_do_prefetch = False
-if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 2):
+if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 5):
     _default_do_prefetch = True
 
 
@@ -506,7 +506,7 @@ class SFTPTransport (Transport):
             mutter('Raising exception with errno %s', e.errno)
         raise e
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """
         Append the text in the file-like object into the final
         location.
@@ -514,6 +514,8 @@ class SFTPTransport (Transport):
         try:
             path = self._remote_path(relpath)
             fout = self._sftp.file(path, 'ab')
+            if mode is not None:
+                self._sftp.chmod(path, mode)
             result = fout.tell()
             self._pump(f, fout)
             return result

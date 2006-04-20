@@ -530,7 +530,11 @@ def appendpath(p1, p2):
 
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
-    return StringIO(s).readlines()
+    lines = s.split('\n')
+    result = [line + '\n' for line in lines[:-1]]
+    if lines[-1]:
+        result.append(lines[-1])
+    return result
 
 
 def hardlinks_good():
