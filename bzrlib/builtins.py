@@ -941,9 +941,7 @@ class cmd_init_repository(Command):
     takes_options = [Option('format', 
                             help='Use a specific format rather than the'
                             ' current default format. Currently this'
-                            ' option only accepts "metadir" and "knit"'
-                            ' WARNING: the knit format is currently unstable'
-                            ' and only for experimental use.',
+                            ' option accepts "weave", "metadir" and "knit"'
                             type=get_format_type),
                      Option('trees',
                              help='Allows branches in repository to have'
@@ -1631,9 +1629,7 @@ class cmd_upgrade(Command):
                      Option('format', 
                             help='Upgrade to a specific format rather than the'
                                  ' current default format. Currently this'
-                                 ' option only accepts "metadir" and "knit".'
-                                 ' WARNING: the knit format is currently'
-                                 ' unstable and only for experimental use.',
+                                 ' option accepts "weave", "metadir" and "knit".'
                             type=get_format_type),
                     ]
 

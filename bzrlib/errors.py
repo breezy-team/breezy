@@ -765,11 +765,11 @@ class BzrBadParameterMissing(BzrBadParameter):
 
 
 class BzrBadParameterUnicode(BzrBadParameter):
-    """Parameter %(param) is unicode by only byte-strings are permitted."""
+    """Parameter %(param)s is unicode but only byte-strings are permitted."""
 
 
 class BzrBadParameterContainsNewline(BzrBadParameter):
-    """Parameter %(param) contains a newline."""
+    """Parameter %(param)s contains a newline."""
 
 
 class DependencyNotPresent(BzrNewError):
