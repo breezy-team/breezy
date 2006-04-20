@@ -28,7 +28,8 @@ import sys
 from tempfile import TemporaryFile
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.rio import RioWriter, Stanza, read_stanza, read_stanzas
+from bzrlib.rio import (RioWriter, Stanza, read_stanza, read_stanzas, rio_file,
+                        RioReader)
 
 
 class TestRio(TestCase):
@@ -157,6 +158,7 @@ tabs: \t\t\t
 """)
         s2 = read_stanza(s.to_lines())
         self.assertEquals(s, s2)
+        self.rio_file_stanzas([s])
 
     def test_quoted(self):
         """rio quoted string cases"""
@@ -172,6 +174,9 @@ tabs: \t\t\t
                    )
         s2 = read_stanza(s.to_lines())
         self.assertEquals(s, s2)
+        # apparent bug in read_stanza
+        # s3 = read_stanza(self.stanzas_to_str([s]))
+        # self.assertEquals(s, s3)
 
     def test_read_empty(self):
         """Detect end of rio file"""
@@ -229,6 +234,21 @@ val: 129319
         self.assertEquals(s, Stanza(name="bar", val='129319'))
         s = read_stanza(tmpf)
         self.assertEquals(s, None)
+        self.check_rio_file(tmpf)
+
+    def check_rio_file(self, real_file):
+        real_file.seek(0)
+        read_write = rio_file(RioReader(real_file)).read()
+        real_file.seek(0)
+        self.assertEquals(read_write, real_file.read())
+
+    @staticmethod
+    def stanzas_to_str(stanzas):
+        return rio_file(stanzas).read()
+
+    def rio_file_stanzas(self, stanzas):
+        new_stanzas = list(RioReader(rio_file(stanzas)))
+        self.assertEqual(new_stanzas, stanzas)
 
     def test_tricky_quoted(self):
         tmpf = TemporaryFile()
@@ -280,6 +300,7 @@ s: both\\\"
             ]
         for expected in expected_vals:
             stanza = read_stanza(tmpf)
+            self.rio_file_stanzas([stanza])
             self.assertEquals(len(stanza), 1)
             self.assertEqualDiff(stanza.get('s'), expected)
 

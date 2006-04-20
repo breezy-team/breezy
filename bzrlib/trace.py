@@ -78,8 +78,17 @@ class QuietFormatter(logging.Formatter):
 
 _bzr_logger = logging.getLogger('bzr')
 
-info = note = _bzr_logger.info
-warning =   _bzr_logger.warning
+def note(*args, **kwargs):
+    import bzrlib.ui
+    bzrlib.ui.ui_factory.clear_term()
+    _bzr_logger.info(*args, **kwargs)
+
+def warning(*args, **kwargs):
+    import bzrlib.ui
+    bzrlib.ui.ui_factory.clear_term()
+    _bzr_logger.warning(*args, **kwargs)
+
+info = note
 log_error = _bzr_logger.error
 error =     _bzr_logger.error
 
@@ -238,6 +247,7 @@ def enable_test_log(to_file):
 
 def disable_test_log((test_log_hdlr, old_trace_file)):
     _bzr_logger.removeHandler(test_log_hdlr)
+    test_log_hdlr.close()
     _trace_file = old_trace_file
     enable_default_logging()
 

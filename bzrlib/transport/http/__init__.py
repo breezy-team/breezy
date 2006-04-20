@@ -1,46 +1,53 @@
-# Copyright (C) 2005 Canonical Ltd
-
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-"""Implementation of Transport over http.
+
+"""Base implementation of Transport over http.
+
+There are separate implementation modules for each http client implementation.
 """
 
-import os, errno
+import errno
+import os
 from collections import deque
 from cStringIO import StringIO
-import urllib, urllib2
+import re
 import urlparse
+import urllib
 from warnings import warn
 
-import bzrlib
-from bzrlib.transport import Transport, Server
-from bzrlib.errors import (TransportNotPossible, NoSuchFile, 
+from bzrlib.transport import Transport, register_transport, Server
+from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError)
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
+# TODO: load these only when running http tests
+import BaseHTTPServer, SimpleHTTPServer, socket, time
+import threading
 from bzrlib.ui import ui_factory
 
 
 def extract_auth(url, password_manager):
-    """
-    Extract auth parameters from am HTTP/HTTPS url and add them to the given
+    """Extract auth parameters from am HTTP/HTTPS url and add them to the given
     password manager.  Return the url, minus those auth parameters (which
     confuse urllib2).
     """
+    assert re.match(r'^(https?)(\+\w+)?://', url), \
+            'invalid absolute url %r' % url
     scheme, netloc, path, query, fragment = urlparse.urlsplit(url)
-    assert (scheme == 'http') or (scheme == 'https')
     
     if '@' in netloc:
         auth, netloc = netloc.split('@', 1)
@@ -63,76 +70,47 @@ def extract_auth(url, password_manager):
     return url
 
 
-class Request(urllib2.Request):
-    """Request object for urllib2 that allows the method to be overridden."""
+class HttpTransportBase(Transport):
+    """Base class for http implementations.
 
-    method = None
+    Does URL parsing, etc, but not any network IO.
 
-    def get_method(self):
-        if self.method is not None:
-            return self.method
-        else:
-            return urllib2.Request.get_method(self)
-
-
-def get_url(url, method=None, ranges=None):
-    import urllib2
-    if ranges:
-        rangestring = ranges
-    else:
-        rangestring = 'all'
-    mutter("get_url %s [%s]", url, rangestring)
-    manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
-    url = extract_auth(url, manager)
-    auth_handler = urllib2.HTTPBasicAuthHandler(manager)
-    opener = urllib2.build_opener(auth_handler)
-
-    request = Request(url)
-    request.method = method
-    request.add_header('User-Agent', 'bzr/%s' % bzrlib.__version__)
-    if ranges:
-        request.add_header('Range', ranges)
-    response = opener.open(request)
-    return response
-
-
-class HttpTransport(Transport):
-    """This is the transport agent for http:// access.
-    
-    TODO: Implement pipelined versions of all of the *_multi() functions.
+    The protocol can be given as e.g. http+urllib://host/ to use a particular
+    implementation.
     """
+
+    # _proto: "http" or "https"
+    # _qualified_proto: may have "+pycurl", etc
 
     def __init__(self, base):
         """Set the base path where files will be stored."""
-        assert base.startswith('http://') or base.startswith('https://')
+        proto_match = re.match(r'^(https?)(\+\w+)?://', base)
+        if not proto_match:
+            raise AssertionError("not a http url: %r" % base)
+        self._proto = proto_match.group(1)
+        impl_name = proto_match.group(2)
+        if impl_name:
+            impl_name = impl_name[1:]
+        self._impl_name = impl_name
         if base[-1] != '/':
             base = base + '/'
-        super(HttpTransport, self).__init__(base)
+        super(HttpTransportBase, self).__init__(base)
         # In the future we might actually connect to the remote host
         # rather than using get_url
         # self._connection = None
-        (self._proto, self._host,
+        (apparent_proto, self._host,
             self._path, self._parameters,
             self._query, self._fragment) = urlparse.urlparse(self.base)
-
-    def should_cache(self):
-        """Return True if the data pulled across should be cached locally.
-        """
-        return True
-
-    def clone(self, offset=None):
-        """Return a new HttpTransport with root at self.base + offset
-        For now HttpTransport does not actually connect, so just return
-        a new HttpTransport object.
-        """
-        if offset is None:
-            return HttpTransport(self.base)
-        else:
-            return HttpTransport(self.abspath(offset))
+        self._qualified_proto = apparent_proto
 
     def abspath(self, relpath):
         """Return the full url to the given relative path.
-        This can be supplied with a string or a list
+
+        This can be supplied with a string or a list.
+
+        The URL returned always has the protocol scheme originally used to 
+        construct the transport, even if that includes an explicit
+        implementation qualifier.
         """
         assert isinstance(relpath, basestring)
         if isinstance(relpath, basestring):
@@ -165,72 +143,62 @@ class HttpTransport(Transport):
         # I'm concerned about when it chooses to strip the last
         # portion of the path, and when it doesn't.
         path = '/'.join(basepath)
-        return urlparse.urlunparse((self._proto,
-                self._host, path, '', '', ''))
+        if path == '':
+            path = '/'
+        result = urlparse.urlunparse((self._qualified_proto,
+                                    self._host, path, '', '', ''))
+        return result
+
+    def _real_abspath(self, relpath):
+        """Produce absolute path, adjusting protocol if needed"""
+        abspath = self.abspath(relpath)
+        qp = self._qualified_proto
+        rp = self._proto
+        if self._qualified_proto != self._proto:
+            abspath = rp + abspath[len(qp):]
+        if not isinstance(abspath, str):
+            # escaping must be done at a higher level
+            abspath = abspath.encode('ascii')
+        return abspath
 
     def has(self, relpath):
-        """Does the target location exist?
+        raise NotImplementedError("has() is abstract on %r" % self)
 
-        TODO: This should be changed so that we don't use
-        urllib2 and get an exception, the code path would be
-        cleaner if we just do an http HEAD request, and parse
-        the return code.
-        """
-        path = relpath
-        try:
-            path = self.abspath(relpath)
-            f = get_url(path, method='HEAD')
-            # Without the read and then close()
-            # we tend to have busy sockets.
-            f.read()
-            f.close()
-            return True
-        except urllib2.HTTPError, e:
-            mutter('url error code: %s for has url: %r', e.code, path)
-            if e.code == 404:
-                return False
-            raise
-        except IOError, e:
-            mutter('io error: %s %s for has url: %r', 
-                e.errno, errno.errorcode.get(e.errno), path)
-            if e.errno == errno.ENOENT:
-                return False
-            raise TransportError(orig_error=e)
-
-    def _get(self, relpath, decode=False, ranges=None):
-        path = relpath
-        try:
-            path = self.abspath(relpath)
-            return get_url(path, ranges=ranges)
-        except urllib2.HTTPError, e:
-            mutter('url error code: %s for has url: %r', e.code, path)
-            if e.code == 404:
-                raise NoSuchFile(path, extra=e)
-            raise
-        except (BzrError, IOError), e:
-            if hasattr(e, 'errno'):
-                mutter('io error: %s %s for has url: %r', 
-                    e.errno, errno.errorcode.get(e.errno), path)
-                if e.errno == errno.ENOENT:
-                    raise NoSuchFile(path, extra=e)
-            raise ConnectionError(msg = "Error retrieving %s: %s" 
-                             % (self.abspath(relpath), str(e)),
-                             orig_error=e)
-
-    def get(self, relpath, decode=False):
+    def get(self, relpath):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
         """
-        return self._get(relpath, decode=decode)
+        code, response_file = self._get(relpath, None)
+        return response_file
+
+    def _get(self, relpath, ranges):
+        """Get a file, or part of a file.
+
+        :param relpath: Path relative to transport base URL
+        :param byte_range: None to get the whole file;
+            or [(start,end)] to fetch parts of a file.
+
+        :returns: (http_code, result_file)
+
+        Note that the current http implementations can only fetch one range at
+        a time through this call.
+        """
+        raise NotImplementedError(self._get)
 
     def readv(self, relpath, offsets):
         """Get parts of the file at the given relative path.
 
-        :offsets: A list of (offset, size) tuples.
-        :return: A list or generator of (offset, data) tuples
+        :param offsets: A list of (offset, size) tuples.
+        :param return: A list or generator of (offset, data) tuples
         """
-        # this is not quite regular enough to have a single driver routine and
+        # Ideally we would pass one big request asking for all the ranges in
+        # one go; however then the server will give a multipart mime response
+        # back, and we can't parse them yet.  So instead we just get one range
+        # per region, and try to coallesce the regions as much as possible.
+        #
+        # The read-coallescing code is not quite regular enough to have a
+        # single driver routine and
         # helper method in Transport.
         def do_combined_read(combined_offsets):
             # read one coalesced block
@@ -239,19 +207,20 @@ class HttpTransport(Transport):
                 total_size += size
             mutter('readv coalesced %d reads.', len(combined_offsets))
             offset = combined_offsets[0][0]
-            ranges = 'bytes=%d-%d' % (offset, offset + total_size - 1)
-            response = self._get(relpath, ranges=ranges)
-            if response.code == 206:
+            byte_range = (offset, offset + total_size - 1)
+            code, result_file = self._get(relpath, [byte_range])
+            if code == 206:
                 for off, size in combined_offsets:
-                    yield off, response.read(size)
-            elif response.code == 200:
-                data = response.read(offset + total_size)[offset:offset + total_size]
+                    result_bytes = result_file.read(size)
+                    assert len(result_bytes) == size
+                    yield off, result_bytes
+            elif code == 200:
+                data = result_file.read(offset + total_size)[offset:offset + total_size]
                 pos = 0
                 for offset, size in combined_offsets:
                     yield offset, data[pos:pos + size]
                     pos += size
                 del data
-
         if not len(offsets):
             return
         pending_offsets = deque(offsets)
@@ -313,10 +282,11 @@ class HttpTransport(Transport):
         # At this point HttpTransport might be able to check and see if
         # the remote location is the same, and rather than download, and
         # then upload, it could just issue a remote copy_this command.
-        if isinstance(other, HttpTransport):
+        if isinstance(other, HttpTransportBase):
             raise TransportNotPossible('http cannot be the target of copy_to()')
         else:
-            return super(HttpTransport, self).copy_to(relpaths, other, mode=mode, pb=pb)
+            return super(HttpTransportBase, self).\
+                    copy_to(relpaths, other, mode=mode, pb=pb)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -360,10 +330,18 @@ class HttpTransport(Transport):
         """
         raise TransportNotPossible('http does not support lock_write()')
 
+    def clone(self, offset=None):
+        """Return a new HttpTransportBase with root at self.base + offset
+        For now HttpTransportBase does not actually connect, so just return
+        a new HttpTransportBase object.
+        """
+        if offset is None:
+            return self.__class__(self.base)
+        else:
+            return self.__class__(self.abspath(offset))
 
 #---------------- test server facilities ----------------
-import BaseHTTPServer, SimpleHTTPServer, socket, time
-import threading
+# TODO: load these only when running tests
 
 
 class WebserverNotAvailable(Exception):
@@ -426,9 +404,11 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
                                                 RequestHandlerClass)
         self.test_case = test_case
 
-
 class HttpServer(Server):
     """A test server for http transports."""
+
+    # used to form the url that connects to this server
+    _url_protocol = 'http'
 
     def _http_start(self):
         httpd = None
@@ -436,7 +416,7 @@ class HttpServer(Server):
                                   TestingHTTPRequestHandler,
                                   self)
         host, port = httpd.socket.getsockname()
-        self._http_base_url = 'http://localhost:%s/' % port
+        self._http_base_url = '%s://localhost:%s/' % (self._url_protocol, port)
         self._http_starting.release()
         httpd.socket.settimeout(0.1)
 
@@ -494,11 +474,7 @@ class HttpServer(Server):
         
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
-        return 'http://jasldkjsalkdjalksjdkljasd'
+        # this is chosen to try to prevent trouble with proxies, wierd dns,
+        # etc
+        return 'http://127.0.0.1:1/'
 
-
-def get_test_permutations():
-    """Return the permutations to be used in testing."""
-    warn("There are no HTTPS transport provider tests yet.")
-    return [(HttpTransport, HttpServer),
-            ]

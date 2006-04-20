@@ -530,7 +530,11 @@ def appendpath(p1, p2):
 
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
-    return StringIO(s).readlines()
+    lines = s.split('\n')
+    result = [line + '\n' for line in lines[:-1]]
+    if lines[-1]:
+        result.append(lines[-1])
+    return result
 
 
 def hardlinks_good():
@@ -548,6 +552,16 @@ def link_or_copy(src, dest):
         if e.errno != errno.EXDEV:
             raise
         copyfile(src, dest)
+
+def delete_any(full_path):
+    """Delete a file or directory."""
+    try:
+        os.unlink(full_path)
+    except OSError, e:
+    # We may be renaming a dangling inventory id
+        if e.errno not in (errno.EISDIR, errno.EACCES, errno.EPERM):
+            raise
+        os.rmdir(full_path)
 
 
 def has_symlinks():
@@ -583,7 +597,14 @@ def relpath(base, path):
 
     os.path.commonprefix (python2.4) has a bad bug that it works just
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
-    avoids that problem."""
+    avoids that problem.
+    """
+    if sys.platform != "win32":
+        minlength = 1
+    else:
+        minlength = 3
+    assert len(base) >= minlength, ('Length of base must be equal or exceed the'
+        ' platform minimum length (which is %d)' % minlength)
     rp = abspath(path)
 
     s = []

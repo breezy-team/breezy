@@ -20,10 +20,12 @@
 
 import os
 
+import bzrlib
 import bzrlib.bzrdir as bzrdir
 import bzrlib.repository as repository
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.blackbox import TestUIFactory
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
 import bzrlib.ui as ui
 
@@ -33,11 +35,15 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
     def setUp(self):
         super(TestWithUpgradableBranches, self).setUp()
         self.old_format = bzrdir.BzrDirFormat.get_default_format()
+        self.old_repo_format = \
+            bzrlib.repository.RepositoryFormat.get_default_format()
         self.old_ui_factory = ui.ui_factory
         self.addCleanup(self.restoreDefaults)
 
         ui.ui_factory = TestUIFactory()
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        bzrlib.repository.RepositoryFormat.set_default_format(
+            bzrlib.repository.RepositoryFormat7())
         # FIXME RBC 20060120 we should be able to do this via ui calls only.
         # setup a format 5 branch we can upgrade from.
         t = get_transport(self.get_url())
@@ -55,6 +61,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def restoreDefaults(self):
         bzrdir.BzrDirFormat.set_default_format(self.old_format)
+        bzrlib.repository.RepositoryFormat.set_default_format(
+            self.old_repo_format)
         ui.ui_factory = self.old_ui_factory
 
     def test_readonly_url_error(self):
@@ -145,3 +153,38 @@ finished
                                    bzrdir.BzrDirMetaFormat1))
         self.assertTrue(isinstance(converted_dir.open_repository()._format,
                                    repository.RepositoryFormatKnit1))
+
+    def test_upgrade_repo(self):
+        self.run_bzr('init-repository', '--format=metadir', 'repo')
+        self.run_bzr('upgrade', '--format=knit', 'repo')
+
+
+class SFTPTests(TestCaseWithSFTPServer):
+    """Tests for upgrade over sftp."""
+
+    def setUp(self):
+        super(SFTPTests, self).setUp()
+        self.old_ui_factory = ui.ui_factory
+        self.addCleanup(self.restoreDefaults)
+
+        ui.ui_factory = TestUIFactory()
+
+    def restoreDefaults(self):
+        ui.ui_factory = self.old_ui_factory
+
+    def test_upgrade_url(self):
+        self.run_bzr('init', '--format=weave')
+        t = get_transport(self.get_url())
+        url = t.base
+        out, err = self.run_bzr('upgrade', '--format=knit', url)
+        self.assertEqualDiff("""starting upgrade of %s
+making backup of tree history
+%s.bzr has been backed up to %s.bzr.backup
+if conversion fails, you can move this directory back to .bzr
+if it succeeds, you can remove this directory if you wish
+starting upgrade from format 6 to metadir
+starting repository conversion
+repository converted
+finished
+""" % (url, url, url), out)
+        self.assertEqual('', err)

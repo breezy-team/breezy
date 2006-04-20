@@ -24,6 +24,7 @@ from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.inventory as inventory
 from bzrlib.osutils import has_symlinks, rename, pathjoin
 from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.uncommit import uncommit
 
 
 class TestInventory(TestCase):
@@ -139,21 +140,26 @@ class TestEntryDiffing(TestCaseWithTransport):
         self.wt = self.make_branch_and_tree('.')
         self.branch = self.wt.branch
         print >> open('file', 'wb'), 'foo'
+        print >> open('binfile', 'wb'), 'foo'
         self.wt.add(['file'], ['fileid'])
+        self.wt.add(['binfile'], ['binfileid'])
         if has_symlinks():
             os.symlink('target1', 'symlink')
             self.wt.add(['symlink'], ['linkid'])
         self.wt.commit('message_1', rev_id = '1')
         print >> open('file', 'wb'), 'bar'
+        print >> open('binfile', 'wb'), 'x' * 1023 + '\x00'
         if has_symlinks():
             os.unlink('symlink')
             os.symlink('target2', 'symlink')
         self.tree_1 = self.branch.repository.revision_tree('1')
         self.inv_1 = self.branch.repository.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
+        self.file_1b = self.inv_1['binfileid']
         self.tree_2 = self.wt
         self.inv_2 = self.tree_2.read_working_inventory()
         self.file_2 = self.inv_2['fileid']
+        self.file_2b = self.inv_2['binfileid']
         if has_symlinks():
             self.link_1 = self.inv_1['linkid']
             self.link_2 = self.inv_2['linkid']
@@ -195,6 +201,14 @@ class TestEntryDiffing(TestCaseWithTransport):
                                             "+bar\n"
                                             "\n")
         
+    def test_file_diff_binary(self):
+        output = StringIO()
+        self.file_1.diff(internal_diff, 
+                          "/dev/null", self.tree_1, 
+                          "new_label", self.file_2b, self.tree_2,
+                          output)
+        self.assertEqual(output.getvalue(), 
+                         "Binary files /dev/null and new_label differ\n")
     def test_link_diff_deleted(self):
         if not has_symlinks():
             return
@@ -339,11 +353,7 @@ class TestPreviousHeads(TestCaseWithTransport):
         self.wt.add(['file'], ['fileid'])
         self.wt.commit('add file', rev_id='B')
         self.inv_B = self.branch.repository.get_inventory('B')
-        self.branch.lock_write()
-        try:
-            self.branch.control_files.put_utf8('revision-history', 'A\n')
-        finally:
-            self.branch.unlock()
+        uncommit(self.branch, tree=self.wt)
         self.assertEqual(self.branch.revision_history(), ['A'])
         self.wt.commit('another add of file', rev_id='C')
         self.inv_C = self.branch.repository.get_inventory('C')
@@ -352,10 +362,13 @@ class TestPreviousHeads(TestCaseWithTransport):
         self.inv_D = self.branch.repository.get_inventory('D')
         self.file_active = self.wt.inventory['fileid']
         self.weave = self.branch.repository.weave_store.get_weave('fileid',
-            self.branch.get_transaction())
+            self.branch.repository.get_transaction())
         
     def get_previous_heads(self, inventories):
-        return self.file_active.find_previous_heads(inventories, self.weave)
+        return self.file_active.find_previous_heads(
+            inventories, 
+            self.branch.repository.weave_store,
+            self.branch.repository.get_transaction())
         
     def test_fileid_in_no_inventory(self):
         self.assertEqual({}, self.get_previous_heads([self.inv_A]))
@@ -388,23 +401,19 @@ class TestPreviousHeads(TestCaseWithTransport):
 class TestExecutable(TestCaseWithTransport):
 
     def test_stays_executable(self):
-        basic_inv = """<inventory format="5">
-<file file_id="a-20051208024829-849e76f7968d7a86" name="a" executable="yes" />
-<file file_id="b-20051208024829-849e76f7968d7a86" name="b" />
-</inventory>
-"""
+        a_id = "a-20051208024829-849e76f7968d7a86"
+        b_id = "b-20051208024829-849e76f7968d7a86"
         wt = self.make_branch_and_tree('b1')
         b = wt.branch
         open('b1/a', 'wb').write('a test\n')
         open('b1/b', 'wb').write('b test\n')
         os.chmod('b1/a', 0755)
         os.chmod('b1/b', 0644)
-        # Manually writing the inventory, to ensure that
-        # the executable="yes" entry is set for 'a' and not for 'b'
-        open('b1/.bzr/inventory', 'wb').write(basic_inv)
+        wt.add(['a', 'b'], [a_id, b_id])
+        wt.inventory[a_id].executable = True
+        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
 
-        a_id = "a-20051208024829-849e76f7968d7a86"
-        b_id = "b-20051208024829-849e76f7968d7a86"
+        # reopen the tree and ensure it stuck.
         wt = wt.bzrdir.open_workingtree()
         self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
 

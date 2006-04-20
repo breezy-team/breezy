@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 import sys
 
 from bzrlib.delta import compare_trees
+from bzrlib.diff import _raise_if_nonexistent
 from bzrlib.errors import NoSuchRevision
 from bzrlib.log import line_log
 from bzrlib.osutils import is_inside_any
@@ -83,11 +84,16 @@ def show_tree_status(wt, show_unchanged=False,
     The result is written out as Unicode and to_file should be able 
     to encode that.
 
+    If showing the status of a working tree, extra information is included
+    about unknown files, conflicts, and pending merges.
+
     show_unchanged
         If set, includes unchanged files.
 
     specific_files
-        If set, only show the status of files in this list.
+        If set, a list of filenames whose status should be shown.
+        It is an error to give a filename that is not in the working 
+        tree, or in the working inventory or in the basis inventory.
 
     show_ids
         If set, includes each file's id.
@@ -127,7 +133,7 @@ def show_tree_status(wt, show_unchanged=False,
                     raise BzrCommandError(str(e))
             else:
                 new = wt
-                
+        _raise_if_nonexistent(specific_files, old, new)
         delta = compare_trees(old, new, want_unchanged=show_unchanged,
                               specific_files=specific_files)
         delta.show(to_file,
@@ -136,7 +142,12 @@ def show_tree_status(wt, show_unchanged=False,
 
         if new_is_working_tree:
             list_paths('unknown', new.unknowns(), specific_files, to_file)
-            list_paths('conflicts', new.iter_conflicts(), specific_files, to_file)
+            conflict_title = False
+            for conflict in wt.conflicts():
+                if conflict_title is False:
+                    print >> to_file, "conflicts:"
+                    conflict_title = True
+                print >> to_file, "  %s" % conflict
         if new_is_working_tree and show_pending:
             show_pending_merges(new, to_file)
     finally:

@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+# Copyright (C) 2004, 2005, 2006 Canonical Ltd.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,14 +16,17 @@
 
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
+import bzrlib.errors as errors
 from bzrlib.symbol_versioning import *
+from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter
 
 # TODO: Rather than building a changeset object, we should probably
 # invoke callbacks on an object.  That object can either accumulate a
 # list, write them out directly, etc etc.
 
-def internal_diff(old_filename, oldlines, new_filename, newlines, to_file):
+def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
+                  allow_binary=False):
     import difflib
     
     # FIXME: difflib is wrong if there is no trailing newline.
@@ -41,6 +44,10 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file):
     # both sequences are empty.
     if not oldlines and not newlines:
         return
+    
+    if allow_binary is False:
+        check_text_lines(oldlines)
+        check_text_lines(newlines)
 
     ud = difflib.unified_diff(oldlines, newlines,
                               fromfile=old_filename+'\t', 
@@ -235,7 +242,6 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
     external_diff_options
         If set, use an external GNU diff and pass these options.
     """
-
     old_tree.lock_read()
     try:
         new_tree.lock_read()
@@ -264,6 +270,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     # TODO: Generation of pseudo-diffs for added/deleted files could
     # be usefully made into a much faster special case.
 
+    _raise_if_doubly_unversioned(specific_files, old_tree, new_tree)
+
     if external_diff_options:
         assert isinstance(external_diff_options, basestring)
         opts = external_diff_options.split()
@@ -272,7 +280,6 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     else:
         diff_file = internal_diff
     
-
     delta = compare_trees(old_tree, new_tree, want_unchanged=False,
                           specific_files=specific_files)
 
@@ -306,8 +313,39 @@ def _show_diff_trees(old_tree, new_tree, to_file,
             _maybe_diff_file_or_symlink(old_label, path, old_tree, file_id,
                                         new_label, path, new_tree,
                                         True, kind, to_file, diff_file)
+
     return has_changes
+
+
+def _raise_if_doubly_unversioned(specific_files, old_tree, new_tree):
+    """Complain if paths are not versioned in either tree."""
+    if not specific_files:
+        return
+    old_unversioned = old_tree.filter_unversioned_files(specific_files)
+    new_unversioned = new_tree.filter_unversioned_files(specific_files)
+    unversioned = old_unversioned.intersection(new_unversioned)
+    if unversioned:
+        raise errors.PathsNotVersionedError(sorted(unversioned))
     
+
+def _raise_if_nonexistent(paths, old_tree, new_tree):
+    """Complain if paths are not in either inventory or tree.
+
+    It's OK with the files exist in either tree's inventory, or 
+    if they exist in the tree but are not versioned.
+    
+    This can be used by operations such as bzr status that can accept
+    unknown or ignored files.
+    """
+    mutter("check paths: %r", paths)
+    if not paths:
+        return
+    s = old_tree.filter_unversioned_files(paths)
+    s = new_tree.filter_unversioned_files(s)
+    s = [path for path in s if not new_tree.has_filename(path)]
+    if s:
+        raise errors.PathsDoNotExist(sorted(s))
+
 
 def get_prop_change(meta_modified):
     if meta_modified:

@@ -109,8 +109,11 @@ from bzrlib.errors import (
         LockError,
         LockNotHeld,
         NoSuchFile,
+        PathError,
+        ResourceBusy,
         UnlockableTransport,
         )
+from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 from bzrlib.osutils import rand_chars
 from bzrlib.rio import RioWriter, read_stanza, Stanza
@@ -170,7 +173,7 @@ class LockDir(object):
 
     is_held = property(lambda self: self._lock_held)
 
-    def create(self):
+    def create(self, mode=None):
         """Create the on-disk lock.
 
         This is typically only called when the object/directory containing the 
@@ -178,7 +181,7 @@ class LockDir(object):
         """
         if self.transport.is_readonly():
             raise UnlockableTransport(self.transport)
-        self.transport.mkdir(self.path)
+        self.transport.mkdir(self.path, mode=mode)
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
@@ -200,11 +203,9 @@ class LockDir(object):
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
             self.confirm()
-            return
-        except (DirectoryNotEmpty, FileExists), e:
-            pass
-        # fall through to here on contention
-        raise LockContention(self)
+        except (PathError, DirectoryNotEmpty, FileExists, ResourceBusy), e:
+            mutter("contention on %r: %s", self, e)
+            raise LockContention(self)
 
     def unlock(self):
         """Release a held lock

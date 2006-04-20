@@ -1,5 +1,4 @@
-bzr development version
- 
+bzr 0.8rc1  2006-04-14
 
   IMPROVEMENTS:
 
@@ -38,9 +37,9 @@ bzr development version
     * Upgrade can now upgrade over the network. (Robert Collins)
 
     * Two new commands 'bzr checkout' and 'bzr update' allow for CVS/SVN-alike
-      behaviour. They use the existing serverless-mode and store no data
-      locally. As such they are not suitable for use except in high bandwidth
-      low latency environments like LAN's or local disk. (Robert Collins)
+      behaviour.  By default they will cache history in the checkout, but
+      with --lightweight almost all data is kept in the master branch.
+      (Robert Collins)
 
     * 'revert' unversions newly-versioned files, instead of deleting them.
 
@@ -54,11 +53,62 @@ bzr development version
 
     * New 'reconcile' command will check branch consistency and repair indexes
       that can become out of sync in pre 0.8 formats. (Robert Collins,
-      Aaron Bentley)
+      Daniel Silverstone)
 
     * New 'bzr init --format' and 'bzr upgrade --format' option to control 
       what storage format is created or produced.  (Robert Collins, 
       Martin Pool)
+
+    * Add parent location to 'bzr info', if there is one.  (Olaf Conradi)
+
+    * New developer commands 'weave-list' and 'weave-join'.  (Martin Pool)
+
+    * New 'init-repository' command, plus support for repositories in 'init'
+      and 'branch' (Aaron Bentley, Erik Bågfors, Robert Collins)
+
+    * Improve output of 'info' command. Show all relevant locations related to
+      working tree, branch and repository. Use kibibytes for binary quantities.
+      Fix off-by-one error in missing revisions of working tree.  Make 'info'
+      work on branches, repositories and remote locations.  (Olaf Conradi)
+
+    * Diff and merge now safely handle binary files. (Aaron Bentley)
+
+    * 'pull' and 'push' now normalise the revision history, so that any two
+      branches with the same tip revision will have the same output from 'log'.
+      (Robert Collins)
+
+    * 'merge' accepts --remember option to store parent location, like 'push'
+      and 'pull'. (Olaf Conradi)
+
+    * bzr status and diff when files given as arguments do not exist
+      in the relevant trees.  (Martin Pool, #3619)
+
+    * Add '.hg' to the default ignore list.  (Martin Pool)
+
+    * 'knit' is now the default disk format. This improves disk performance and
+      utilization, increases incremental pull performance, robustness with SFTP
+      and allows checkouts over SFTP to perform acceptably. 
+      The initial Knit code was contributed by Johan Rydberg based on a
+      specification by Martin Pool.
+      (Robert Collins, Aaron Bentley, John Rydberg, Martin Pool).
+
+    * New tool to generate all-in-one html version of the manual.  (Alexander
+      Belchenko)
+
+    * Hitting CTRL-C while doing an SFTP push will no longer cause stale locks
+      to be left in the SFTP repository. (Robert Collins, Martin Pool).
+
+  CHANGES:
+
+    * Commit is now verbose by default, and shows changed filenames and the 
+      new revision number.  (Robert Collins, Martin Pool)
+
+    * Unify 'mv', 'move', 'rename'.  (#5379, Matthew Fuller)
+
+    * 'bzr -h' shows help.  (#35940, Martin Pool, Ian Bicking)
+
+    * Make 'pull' and 'push' remember location on failure using --remember.
+      (Olaf Conradi)
 
   INTERNALS:
   
@@ -66,6 +116,13 @@ bzr development version
       been split into Branch, and Repository. The common locking and file 
       management routines are now in bzrlib.lockablefiles. 
       (Aaron Bentley, Robert Collins, Martin Pool)
+
+    * Transports can now raise DependencyNotPresent if they need a library
+      which is not installed, and then another implementation will be 
+      tried.  (Martin Pool)
+
+    * Remove obsolete (and no-op) `decode` parameter to `Transport.get`.  
+      (Martin Pool)
 
     * Using Tree Transform for merge, revert, tree-building
 
@@ -91,6 +148,14 @@ bzr development version
     * Progress bars are now nested - see
       bzrlib.ui.ui_factory.nested_progress_bar. (Robert Collins, Robey Pointer)
 
+    * New API call get_format_description() for each type of format.
+      (Olaf Conradi)
+
+    * Changed branch.set_parent() to accept None to remove parent.
+      (Olaf Conradi)
+
+    * Deprecated BzrError AmbiguousBase.  (Olaf Conradi)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
@@ -107,6 +172,11 @@ bzr development version
       by this class (when its not being used as part of implementation
       contract testing). (Robert Collins)
 
+    * Close logging handler on disabling the test log. This will remove the
+      handler from the internal list inside python's logging module,
+      preventing shutdown from closing it twice.  (Olaf Conradi)
+
+    * Move test case for uncommit to blackbox tests.  (Olaf Conradi)
 
 bzr 0.7rc1 2006-01-09
 

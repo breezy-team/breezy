@@ -128,10 +128,12 @@ class NullCommitReporter(object):
 class ReportCommitToLog(NullCommitReporter):
 
     def snapshot_change(self, change, path):
+        if change == 'unchanged':
+            return
         note("%s %s", change, path)
 
     def completed(self, revno, rev_id):
-        note('committed r%d {%s}', revno, rev_id)
+        note('Committed revision %d.', revno)
     
     def deleted(self, file_id):
         note('deleted %s', file_id)
@@ -179,7 +181,9 @@ class Commit(object):
                verbose=False,
                revprops=None,
                working_tree=None,
-               local=False):
+               local=False,
+               reporter=None,
+               config=None):
         """Commit working copy as a new revision.
 
         branch -- the deprecated branch to commit to. New callers should pass in 
@@ -227,12 +231,18 @@ class Commit(object):
         self.bound_branch = None
         self.local = local
         self.master_branch = None
+        self.master_locked = False
         self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
         self.revprops = {}
         if revprops is not None:
             self.revprops.update(revprops)
+
+        if reporter is None and self.reporter is None:
+            self.reporter = NullCommitReporter()
+        elif reporter is not None:
+            self.reporter = reporter
 
         self.work_tree.lock_write()
         try:
@@ -299,7 +309,7 @@ class Commit(object):
                     or self.new_inv != self.basis_inv):
                 raise PointlessCommit()
 
-            if len(list(self.work_tree.iter_conflicts()))>0:
+            if len(self.work_tree.conflicts())>0:
                 raise ConflictsInTree
 
             self.inv_sha1 = self.branch.repository.add_inventory(
@@ -324,14 +334,10 @@ class Commit(object):
             self.branch.append_revision(self.rev_id)
 
             self.work_tree.set_pending_merges([])
-            if len(self.parents):
-                precursor = self.parents[0]
-            else:
-                precursor = None
-            self.work_tree.set_last_revision(self.rev_id, precursor)
+            self.work_tree.set_last_revision(self.rev_id)
             # now the work tree is up to date with the branch
             
-            self.reporter.completed(self.branch.revno()+1, self.rev_id)
+            self.reporter.completed(self.branch.revno(), self.rev_id)
             if self.config.post_commit() is not None:
                 hooks = self.config.post_commit().split(' ')
                 # this would be nicer with twisted.python.reflect.namedAny
@@ -384,6 +390,7 @@ class Commit(object):
         # so grab the lock
         self.bound_branch = self.branch
         self.master_branch.lock_write()
+        self.master_locked = True
 ####        
 ####        # Check to see if we have any pending merges. If we do
 ####        # those need to be pushed into the master branch
@@ -402,10 +409,16 @@ class Commit(object):
         """
         if not self.bound_branch:
             return
-        self.master_branch.unlock()
+        if self.master_locked:
+            self.master_branch.unlock()
 
     def _escape_commit_message(self):
         """Replace xml-incompatible control characters."""
+        # FIXME: RBC 20060419 this should be done by the revision
+        # serialiser not by commit. Then we can also add an unescaper
+        # in the deserializer and start roundtripping revision messages
+        # precisely. See repository_implementations/test_repository.py
+        
         # Python strings can include characters that can't be
         # represented in well-formed XML; escape characters that
         # aren't listed in the XML specification
@@ -492,9 +505,9 @@ class Commit(object):
         # mark-merge.  
         for path, ie in self.new_inv.iter_entries():
             previous_entries = ie.find_previous_heads(
-                self.parent_invs, 
-                self.weave_store.get_weave_or_empty(ie.file_id,
-                    self.branch.get_transaction()))
+                self.parent_invs,
+                self.weave_store,
+                self.branch.repository.get_transaction())
             if ie.revision is None:
                 change = ie.snapshot(self.rev_id, path, previous_entries,
                                      self.work_tree, self.weave_store,
@@ -514,7 +527,7 @@ class Commit(object):
         revision set to their prior value.
         """
         mutter("Selecting files for commit with filter %s", self.specific_files)
-        self.new_inv = Inventory()
+        self.new_inv = Inventory(revision_id=self.rev_id)
         for path, new_ie in self.work_inv.iter_entries():
             file_id = new_ie.file_id
             mutter('check %s {%s}', path, new_ie.file_id)
