@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ import codecs
 import bzrlib.branch
 from bzrlib.builtins import merge
 import bzrlib.bzrdir as bzrdir
+import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.status import show_tree_status
@@ -154,14 +155,10 @@ class BranchStatus(TestCaseWithTransport):
                            '  directory/hello.c\n'
                            ])
 
-        tof = StringIO()
-        show_tree_status(wt, specific_files=['bye.c','test.c','absent.c'], 
-                         to_file=tof)
-        tof.seek(0)
-        self.assertEquals(tof.readlines(),
-                          ['unknown:\n',
-                           '  bye.c\n'
-                           ])
+        self.assertRaises(errors.PathsDoNotExist,
+                          show_tree_status,
+                          wt, specific_files=['bye.c','test.c','absent.c'], 
+                          to_file=tof)
         
         tof = StringIO()
         show_tree_status(wt, specific_files=['directory'], to_file=tof)
@@ -177,6 +174,14 @@ class BranchStatus(TestCaseWithTransport):
                           ['unknown:\n',
                            '  dir2\n'
                            ])
+
+    def test_status_nonexistent_file(self):
+        # files that don't exist in either the basis tree or working tree
+        # should give an error
+        wt = self.make_branch_and_tree('.')
+        out, err = self.run_bzr('status', 'does-not-exist', retcode=3)
+        self.assertContainsRe(err, r'do not exist.*does-not-exist')
+
 
 class CheckoutStatus(BranchStatus):
 

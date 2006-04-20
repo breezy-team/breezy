@@ -140,21 +140,26 @@ class TestEntryDiffing(TestCaseWithTransport):
         self.wt = self.make_branch_and_tree('.')
         self.branch = self.wt.branch
         print >> open('file', 'wb'), 'foo'
+        print >> open('binfile', 'wb'), 'foo'
         self.wt.add(['file'], ['fileid'])
+        self.wt.add(['binfile'], ['binfileid'])
         if has_symlinks():
             os.symlink('target1', 'symlink')
             self.wt.add(['symlink'], ['linkid'])
         self.wt.commit('message_1', rev_id = '1')
         print >> open('file', 'wb'), 'bar'
+        print >> open('binfile', 'wb'), 'x' * 1023 + '\x00'
         if has_symlinks():
             os.unlink('symlink')
             os.symlink('target2', 'symlink')
         self.tree_1 = self.branch.repository.revision_tree('1')
         self.inv_1 = self.branch.repository.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
+        self.file_1b = self.inv_1['binfileid']
         self.tree_2 = self.wt
         self.inv_2 = self.tree_2.read_working_inventory()
         self.file_2 = self.inv_2['fileid']
+        self.file_2b = self.inv_2['binfileid']
         if has_symlinks():
             self.link_1 = self.inv_1['linkid']
             self.link_2 = self.inv_2['linkid']
@@ -196,6 +201,14 @@ class TestEntryDiffing(TestCaseWithTransport):
                                             "+bar\n"
                                             "\n")
         
+    def test_file_diff_binary(self):
+        output = StringIO()
+        self.file_1.diff(internal_diff, 
+                          "/dev/null", self.tree_1, 
+                          "new_label", self.file_2b, self.tree_2,
+                          output)
+        self.assertEqual(output.getvalue(), 
+                         "Binary files /dev/null and new_label differ\n")
     def test_link_diff_deleted(self):
         if not has_symlinks():
             return

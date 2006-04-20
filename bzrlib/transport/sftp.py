@@ -1,4 +1,5 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>, Canonical Ltd
+# Copyright (C) 2005 Robey Pointer <robey@lag.net>
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,7 +35,9 @@ from bzrlib.errors import (ConnectionError,
                            FileExists, 
                            TransportNotPossible, NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError, ParamikoNotPresent
+                           LockError, 
+                           PathError,
+                           ParamikoNotPresent,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename
 from bzrlib.trace import mutter, warning, error
@@ -490,7 +493,8 @@ class SFTPTransport (Transport):
             self._translate_io_exception(e, path, ': unable to mkdir',
                 failure_exc=FileExists)
 
-    def _translate_io_exception(self, e, path, more_info='', failure_exc=NoSuchFile):
+    def _translate_io_exception(self, e, path, more_info='', 
+                                failure_exc=PathError):
         """Translate a paramiko or IOError into a friendlier exception.
 
         :param e: The original exception
@@ -500,8 +504,8 @@ class SFTPTransport (Transport):
         :param failure_exc: Paramiko has the super fun ability to raise completely
                            opaque errors that just set "e.args = ('Failure',)" with
                            no more information.
-                           This sometimes means FileExists, but it also sometimes
-                           means NoSuchFile
+                           If this parameter is set, it defines the exception 
+                           to raise in these cases.
         """
         # paramiko seems to generate detailless errors.
         self._translate_error(e, path, raise_generic=False)

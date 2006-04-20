@@ -174,7 +174,6 @@ _global_option('no-recurse')
 _global_option('profile',
                help='show performance profiling information')
 _global_option('revision', type=_parse_revision_str)
-_global_option('short')
 _global_option('show-ids', 
                help='show internal object ids')
 _global_option('timezone', 

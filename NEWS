@@ -71,6 +71,8 @@ bzr 0.8rc1  2006-04-14
       Fix off-by-one error in missing revisions of working tree.  Make 'info'
       work on branches, repositories and remote locations.  (Olaf Conradi)
 
+    * Diff and merge now safely handle binary files. (Aaron Bentley)
+
     * 'pull' and 'push' now normalise the revision history, so that any two
       branches with the same tip revision will have the same output from 'log'.
       (Robert Collins)
@@ -78,10 +80,18 @@ bzr 0.8rc1  2006-04-14
     * 'merge' accepts --remember option to store parent location, like 'push'
       and 'pull'. (Olaf Conradi)
 
+    * bzr status and diff when files given as arguments do not exist
+      in the relevant trees.  (Martin Pool, #3619)
+
+    * Add '.hg' to the default ignore list.  (Martin Pool)
+
     * 'knit' is now the default disk format. This improves disk performance and
       utilization, increases incremental pull performance, robustness with SFTP
       and allows checkouts over SFTP to perform acceptably.
       (Robert Collins, Aaron Bentley).
+
+    * New tool to generate all-in-one html version of the manual.  (Alexander
+      Belchenko)
 
     * Hitting CTRL-C while doing an SFTP push will no longer cause stale locks
       to be left in the SFTP repository. (Robert Collins, Martin Pool).

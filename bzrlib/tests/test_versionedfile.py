@@ -18,6 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+from StringIO import StringIO
+
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import (
@@ -34,7 +36,7 @@ from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 import bzrlib.versionedfile as versionedfile
 from bzrlib.weave import WeaveFile
-from bzrlib.weavefile import read_weave
+from bzrlib.weavefile import read_weave, write_weave
 
 
 class VersionedFileTestMixIn(object):
@@ -864,3 +866,265 @@ class TestKnitHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
     def get_factory(self):
         return KnitVersionedFile
+
+
+class MergeCasesMixin(object):
+
+    def doMerge(self, base, a, b, mp):
+        from cStringIO import StringIO
+        from textwrap import dedent
+
+        def addcrlf(x):
+            return x + '\n'
+        
+        w = self.get_file()
+        w.add_lines('text0', [], map(addcrlf, base))
+        w.add_lines('text1', ['text0'], map(addcrlf, a))
+        w.add_lines('text2', ['text0'], map(addcrlf, b))
+
+        self.log_contents(w)
+
+        self.log('merge plan:')
+        p = list(w.plan_merge('text1', 'text2'))
+        for state, line in p:
+            if line:
+                self.log('%12s | %s' % (state, line[:-1]))
+
+        self.log('merge:')
+        mt = StringIO()
+        mt.writelines(w.weave_merge(p))
+        mt.seek(0)
+        self.log(mt.getvalue())
+
+        mp = map(addcrlf, mp)
+        self.assertEqual(mt.readlines(), mp)
+        
+        
+    def testOneInsert(self):
+        self.doMerge([],
+                     ['aa'],
+                     [],
+                     ['aa'])
+
+    def testSeparateInserts(self):
+        self.doMerge(['aaa', 'bbb', 'ccc'],
+                     ['aaa', 'xxx', 'bbb', 'ccc'],
+                     ['aaa', 'bbb', 'yyy', 'ccc'],
+                     ['aaa', 'xxx', 'bbb', 'yyy', 'ccc'])
+
+    def testSameInsert(self):
+        self.doMerge(['aaa', 'bbb', 'ccc'],
+                     ['aaa', 'xxx', 'bbb', 'ccc'],
+                     ['aaa', 'xxx', 'bbb', 'yyy', 'ccc'],
+                     ['aaa', 'xxx', 'bbb', 'yyy', 'ccc'])
+    overlappedInsertExpected = ['aaa', 'xxx', 'yyy', 'bbb']
+    def testOverlappedInsert(self):
+        self.doMerge(['aaa', 'bbb'],
+                     ['aaa', 'xxx', 'yyy', 'bbb'],
+                     ['aaa', 'xxx', 'bbb'], self.overlappedInsertExpected)
+
+        # really it ought to reduce this to 
+        # ['aaa', 'xxx', 'yyy', 'bbb']
+
+
+    def testClashReplace(self):
+        self.doMerge(['aaa'],
+                     ['xxx'],
+                     ['yyy', 'zzz'],
+                     ['<<<<<<< ', 'xxx', '=======', 'yyy', 'zzz', 
+                      '>>>>>>> '])
+
+    def testNonClashInsert1(self):
+        self.doMerge(['aaa'],
+                     ['xxx', 'aaa'],
+                     ['yyy', 'zzz'],
+                     ['<<<<<<< ', 'xxx', 'aaa', '=======', 'yyy', 'zzz', 
+                      '>>>>>>> '])
+
+    def testNonClashInsert2(self):
+        self.doMerge(['aaa'],
+                     ['aaa'],
+                     ['yyy', 'zzz'],
+                     ['yyy', 'zzz'])
+
+
+    def testDeleteAndModify(self):
+        """Clashing delete and modification.
+
+        If one side modifies a region and the other deletes it then
+        there should be a conflict with one side blank.
+        """
+
+        #######################################
+        # skippd, not working yet
+        return
+        
+        self.doMerge(['aaa', 'bbb', 'ccc'],
+                     ['aaa', 'ddd', 'ccc'],
+                     ['aaa', 'ccc'],
+                     ['<<<<<<<< ', 'aaa', '=======', '>>>>>>> ', 'ccc'])
+
+    def _test_merge_from_strings(self, base, a, b, expected):
+        w = self.get_file()
+        w.add_lines('text0', [], base.splitlines(True))
+        w.add_lines('text1', ['text0'], a.splitlines(True))
+        w.add_lines('text2', ['text0'], b.splitlines(True))
+        self.log('merge plan:')
+        p = list(w.plan_merge('text1', 'text2'))
+        for state, line in p:
+            if line:
+                self.log('%12s | %s' % (state, line[:-1]))
+        self.log('merge result:')
+        result_text = ''.join(w.weave_merge(p))
+        self.log(result_text)
+        self.assertEqualDiff(result_text, expected)
+
+    def test_weave_merge_conflicts(self):
+        # does weave merge properly handle plans that end with unchanged?
+        result = ''.join(self.get_file().weave_merge([('new-a', 'hello\n')]))
+        self.assertEqual(result, 'hello\n')
+
+    def test_deletion_extended(self):
+        """One side deletes, the other deletes more.
+        """
+        base = """\
+            line 1
+            line 2
+            line 3
+            """
+        a = """\
+            line 1
+            line 2
+            """
+        b = """\
+            line 1
+            """
+        result = """\
+            line 1
+            """
+        self._test_merge_from_strings(base, a, b, result)
+
+    def test_deletion_overlap(self):
+        """Delete overlapping regions with no other conflict.
+
+        Arguably it'd be better to treat these as agreement, rather than 
+        conflict, but for now conflict is safer.
+        """
+        base = """\
+            start context
+            int a() {}
+            int b() {}
+            int c() {}
+            end context
+            """
+        a = """\
+            start context
+            int a() {}
+            end context
+            """
+        b = """\
+            start context
+            int c() {}
+            end context
+            """
+        result = """\
+            start context
+<<<<<<< 
+            int a() {}
+=======
+            int c() {}
+>>>>>>> 
+            end context
+            """
+        self._test_merge_from_strings(base, a, b, result)
+
+    def test_agreement_deletion(self):
+        """Agree to delete some lines, without conflicts."""
+        base = """\
+            start context
+            base line 1
+            base line 2
+            end context
+            """
+        a = """\
+            start context
+            base line 1
+            end context
+            """
+        b = """\
+            start context
+            base line 1
+            end context
+            """
+        result = """\
+            start context
+            base line 1
+            end context
+            """
+        self._test_merge_from_strings(base, a, b, result)
+
+    def test_sync_on_deletion(self):
+        """Specific case of merge where we can synchronize incorrectly.
+        
+        A previous version of the weave merge concluded that the two versions
+        agreed on deleting line 2, and this could be a synchronization point.
+        Line 1 was then considered in isolation, and thought to be deleted on 
+        both sides.
+
+        It's better to consider the whole thing as a disagreement region.
+        """
+        base = """\
+            start context
+            base line 1
+            base line 2
+            end context
+            """
+        a = """\
+            start context
+            base line 1
+            a's replacement line 2
+            end context
+            """
+        b = """\
+            start context
+            b replaces
+            both lines
+            end context
+            """
+        result = """\
+            start context
+<<<<<<< 
+            base line 1
+            a's replacement line 2
+=======
+            b replaces
+            both lines
+>>>>>>> 
+            end context
+            """
+        self._test_merge_from_strings(base, a, b, result)
+
+
+class TestKnitMerge(TestCaseWithTransport, MergeCasesMixin):
+
+    def get_file(self, name='foo'):
+        return KnitVersionedFile(name, get_transport(self.get_url('.')),
+                                 delta=True, create=True)
+
+    def log_contents(self, w):
+        pass
+
+
+class TestWeaveMerge(TestCaseWithTransport, MergeCasesMixin):
+
+    def get_file(self, name='foo'):
+        return WeaveFile(name, get_transport(self.get_url('.')), create=True)
+
+    def log_contents(self, w):
+        self.log('weave is:')
+        tmpf = StringIO()
+        write_weave(w, tmpf)
+        self.log(tmpf.getvalue())
+
+    overlappedInsertExpected = ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======', 
+                                'xxx', '>>>>>>> ', 'bbb']

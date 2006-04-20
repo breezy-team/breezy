@@ -90,20 +90,23 @@ class TestEscaped(TestCaseWithTransport):
             vfile = weave_store.get_weave_or_empty(file_id, transaction)
             vfile.add_lines(rev_id, parents, contents)
 
+        def check_text(file_id, revision_id, contents):
+            vfile = weave_store.get_weave(file_id, trans)
+            self.assertEqual(contents, vfile.get_lines(revision_id))
+
         add_text('a', 'r', ['a'], [], trans)
         self.failUnlessExists('62/a.weave')
-        self.assertEqual(['a'], weave_store.get_lines('a', 'r', trans))
+        check_text('a', 'r', ['a'])
 
         add_text(' ', 'r', ['space'], [], trans)
         self.failIfExists('21/ .weave')
         self.failUnlessExists('88/%20.weave')
-        self.assertEquals(['space'], weave_store.get_lines(' ', 'r', trans))
+        check_text(' ', 'r', ['space'])
 
         add_text('@:<>', 'r', ['surprise'], [], trans)
         self.failUnlessExists('72/@%3a%3c%3e.weave')
-        self.assertEquals(['surprise'], weave_store.get_lines('@:<>', 'r', trans))
+        check_text('@:<>', 'r', ['surprise'])
 
         add_text(u'\xe5', 'r', ['unicode'], [], trans)
         self.failUnlessExists('77/%c3%a5.weave')
-        self.assertEquals(['unicode'], weave_store.get_lines(u'\xe5', 'r', trans))
-
+        check_text(u'\xe5', 'r', ['unicode'])

@@ -931,10 +931,11 @@ class cmd_init_repository(Command):
     in the repository, not in the branch directory, if the branch format supports
     shared storage.
 
-    example:    
+    example:
         bzr init-repo repo
-        bzr init --format=metadir repo/trunk
-        cd repo/trunk
+        bzr init repo/trunk
+        bzr checkout --lightweight repo/trunk trunk-checkout
+        cd trunk-checkout
         (add files here)
     """
     takes_args = ["location"] 
@@ -2468,11 +2469,11 @@ def merge(other_revision, base_revision,
     if show_base and not merge_type is Merge3Merger:
         raise BzrCommandError("Show-base is not supported for this merge"
                               " type. %s" % merge_type)
-    if reprocess and not merge_type is Merge3Merger:
-        raise BzrCommandError("Reprocess is not supported for this merge"
-                              " type. %s" % merge_type)
+    if reprocess and not merge_type.supports_reprocess:
+        raise BzrCommandError("Conflict reduction is not supported for merge"
+                              " type %s." % merge_type)
     if reprocess and show_base:
-        raise BzrCommandError("Cannot reprocess and show base.")
+        raise BzrCommandError("Cannot do conflict reduction and show base.")
     try:
         merger = Merger(this_tree.branch, this_tree=this_tree, pb=pb)
         merger.pp = ProgressPhase("Merge phase", 5, pb)
