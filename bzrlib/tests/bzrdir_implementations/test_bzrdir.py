@@ -78,6 +78,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         """Assert that the content of source and target are identical.
 
         paths in ignore list will be completely ignored.
+        
+        We ignore paths that represent data which is allowed to change during
+        a clone or sprout: for instance, inventory.knit contains gzip fragements
+        which have timestamps in them, and as we have read the inventory from 
+        the source knit, the already-read data is recompressed rather than
+        reading it again, which leads to changed timestamps. This is ok though,
+        because the inventory.kndx file is not ignored, and the integrity of
+        knit joins is tested by test_knit and test_versionedfile.
         """
         files = []
         directories = ['.']
@@ -121,7 +129,10 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertTrue(repo.has_revision('1'))
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
-        self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
+                                    ['./.bzr/repository/inventory.knit',
+                                     ])
+
 
     def test_clone_bzrdir_repository_under_shared(self):
         tree = self.make_branch_and_tree('commit_tree')
@@ -175,7 +186,9 @@ class TestBzrDir(TestCaseWithBzrDir):
             return
         target = dir.clone(self.get_url('target/child'), force_new_repo=True)
         self.assertNotEqual(dir.transport.base, target.transport.base)
-        self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
+                                    ['./.bzr/repository/inventory.knit',
+                                     ])
 
     def test_clone_bzrdir_repository_revision(self):
         # test for revision limiting, [smoke test, not corner case checks].
@@ -207,7 +220,10 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
+                                    ['./.bzr/stat-cache',
+                                     './.bzr/checkout/stat-cache',
+                                     './.bzr/repository/inventory.knit',
+                                     ])
 
     def test_clone_bzrdir_branch_and_repo_into_shared_repo(self):
         # by default cloning into a shared repo uses the shared repo.
@@ -246,7 +262,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.clone(self.get_url('target/child'), force_new_repo=True)
         self.assertNotEqual(dir.transport.base, target.transport.base)
         target.open_repository()
-        self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
+                                    ['./.bzr/repository/inventory.knit',
+                                     ])
 
     def test_clone_bzrdir_branch_reference(self):
         # cloning should preserve the reference status of the branch in a bzrdir
@@ -260,7 +278,9 @@ class TestBzrDir(TestCaseWithBzrDir):
             return
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
-        self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
+                                    ['./.bzr/repository/inventory.knit',
+                                     ])
 
     def test_clone_bzrdir_branch_revision(self):
         # test for revision limiting, [smoke test, not corner case checks].
@@ -288,7 +308,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
+                                    ['./.bzr/stat-cache',
+                                     './.bzr/checkout/stat-cache',
+                                     './.bzr/repository/inventory.knit',
+                                     ])
+
         target.open_workingtree().revert([])
 
     def test_revert_inventory(self):
@@ -299,10 +323,18 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = tree.bzrdir
         target = dir.clone(self.get_url('target'))
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
+                                    ['./.bzr/stat-cache',
+                                     './.bzr/checkout/stat-cache',
+                                     './.bzr/repository/inventory.knit',
+                                     ])
+
         target.open_workingtree().revert([])
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
+                                    ['./.bzr/stat-cache',
+                                     './.bzr/checkout/stat-cache',
+                                     './.bzr/repository/inventory.knit',
+                                     ])
+
 
     def test_clone_bzrdir_tree_branch_reference(self):
         # a tree with a branch reference (aka a checkout) 
@@ -319,7 +351,11 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.clone(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
-                                    ['./.bzr/stat-cache', './.bzr/checkout/stat-cache'])
+                                    ['./.bzr/stat-cache',
+                                     './.bzr/checkout/stat-cache',
+                                     './.bzr/repository/inventory.knit',
+                                     ])
+
 
     def test_clone_bzrdir_tree_revision(self):
         # test for revision limiting, [smoke test, not corner case checks].
@@ -400,7 +436,9 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertTrue(repo.has_revision('1'))
         target = dir.sprout(self.get_url('target'))
         self.assertNotEqual(dir.transport.base, target.transport.base)
-        self.assertDirectoriesEqual(dir.root_transport, target.root_transport)
+        self.assertDirectoriesEqual(dir.root_transport, target.root_transport,
+                                    ['./.bzr/repository/inventory.knit',
+                                     ])
 
     def test_sprout_bzrdir_with_repository_to_shared(self):
         tree = self.make_branch_and_tree('commit_tree')
@@ -494,6 +532,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/inventory',
                                      './.bzr/checkout/inventory',
+                                     './.bzr/repository/inventory.knit',
                                      ])
 
     def test_sprout_bzrdir_branch_and_repo_shared(self):
@@ -633,6 +672,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/checkout/stat-cache',
                                      './.bzr/inventory',
                                      './.bzr/checkout/inventory',
+                                     './.bzr/repository/inventory.knit',
                                      ])
 
     def test_sprout_bzrdir_tree_branch_reference(self):
