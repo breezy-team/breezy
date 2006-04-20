@@ -97,6 +97,9 @@ class TestUIFactory(ui.UIFactory):
     def clear(self):
         """See progress.ProgressBar.clear()."""
 
+    def clear_term(self):
+        """See progress.ProgressBar.clear_term()."""
+
     def finished(self):
         """See progress.ProgressBar.finished()."""
 
