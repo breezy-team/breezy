@@ -62,19 +62,31 @@ else:
 register_urlparse_netloc_protocol('sftp')
 
 
+def os_specific_subprocess_params():
+    """Get O/S specific subprocess parameters."""
+    if sys.platform == 'win32':
+        # setting the process group and closing fds is not supported on 
+        # win32
+        return {}
+    else:
+        # we close fds as the child process does not need them to be open.
+        # we set the process group so that signals from the keyboard like
+        # 'SIGINT' - KeyboardInterrupt - are not recieved in the child procecss
+        # if we do not do this, then the sftp/ssh subprocesses will terminate 
+        # when a user hits CTRL-C, and we are unable to use them to unlock the
+        # remote branch/repository etc.
+        return {'preexec_fn': os.setpgrp,
+                'close_fds': True,
+                }
+
+
 # don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
 _default_do_prefetch = False
 if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 5):
     _default_do_prefetch = True
 
 
-_close_fds = True
-if sys.platform == 'win32':
-    # close_fds not supported on win32
-    _close_fds = False
-
 _ssh_vendor = None
-
 def _get_ssh_vendor():
     """Find out what version of SSH is on the system."""
     global _ssh_vendor
@@ -91,10 +103,10 @@ def _get_ssh_vendor():
 
     try:
         p = subprocess.Popen(['ssh', '-V'],
-                             close_fds=_close_fds,
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
+                             stderr=subprocess.PIPE,
+                             **os_specific_subprocess_params())
         returncode = p.returncode
         stdout, stderr = p.communicate()
     except OSError:
@@ -139,9 +151,10 @@ class SFTPSubprocess:
                 args.extend(['-l', user])
             args.extend(['-s', 'sftp', hostname])
 
-        self.proc = subprocess.Popen(args, close_fds=_close_fds,
+        self.proc = subprocess.Popen(args,
                                      stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE)
+                                     stdout=subprocess.PIPE,
+                                     **os_specific_subprocess_params())
 
     def send(self, data):
         return os.write(self.proc.stdin.fileno(), data)
