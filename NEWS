@@ -83,6 +83,9 @@ bzr 0.8rc1  2006-04-14
       and allows checkouts over SFTP to perform acceptably.
       (Robert Collins, Aaron Bentley).
 
+    * Hitting CTRL-C while doing an SFTP push will no longer cause stale locks
+      to be left in the SFTP repository. (Robert Collins, Martin Pool).
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
