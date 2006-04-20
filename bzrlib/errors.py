@@ -287,16 +287,17 @@ class PathsNotVersionedError(BzrNewError):
 
 
 class PathsDoNotExist(BzrNewError):
-    # used when reporting that paths are neither versioned nor in the working
-    # tree
     """Path(s) do not exist: %(paths_as_string)s"""
 
+    # used when reporting that paths are neither versioned nor in the working
+    # tree
+
     def __init__(self, paths):
+        # circular import
         from bzrlib.osutils import quotefn
         BzrNewError.__init__(self)
         self.paths = paths
         self.paths_as_string = ' '.join([quotefn(p) for p in paths])
-
 
 
 class BadFileKindError(BzrError):
