@@ -81,6 +81,8 @@ bzr 0.8rc1  2006-04-14
     * bzr status and diff when files given as arguments do not exist
       in the relevant trees.  (Martin Pool, #3619)
 
+    * Add '.hg' to the default ignore list.  (Martin Pool)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
