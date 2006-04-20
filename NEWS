@@ -87,8 +87,10 @@ bzr 0.8rc1  2006-04-14
 
     * 'knit' is now the default disk format. This improves disk performance and
       utilization, increases incremental pull performance, robustness with SFTP
-      and allows checkouts over SFTP to perform acceptably.
-      (Robert Collins, Aaron Bentley).
+      and allows checkouts over SFTP to perform acceptably. 
+      The initial Knit code was contributed by Johan Rydberg based on a
+      specification by Martin Pool.
+      (Robert Collins, Aaron Bentley, John Rydberg, Martin Pool).
 
     * New tool to generate all-in-one html version of the manual.  (Alexander
       Belchenko)
