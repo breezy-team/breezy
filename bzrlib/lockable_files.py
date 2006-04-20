@@ -91,7 +91,7 @@ class LockableFiles(object):
         This should normally be called only when the LockableFiles directory
         is first created on disk.
         """
-        self._lock.create()
+        self._lock.create(mode=self._dir_mode)
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
@@ -306,7 +306,7 @@ class TransportLock(object):
         self._lock.unlock()
         self._lock = None
 
-    def create(self):
+    def create(self, mode=None):
         """Create lock mechanism"""
         # for old-style locks, create the file now
         self._transport.put(self._escaped_name, StringIO(), 

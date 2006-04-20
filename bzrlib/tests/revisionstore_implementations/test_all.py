@@ -107,7 +107,9 @@ class TestAll(TestCaseWithTransport):
         # we get a revision count and a numeric size figure from total_size().
         count, bytes = self.store.total_size(self.transaction)
         self.assertEqual(0, count)
-        self.assertEqual(0, bytes)
+        # some stores use disk immediately that they are created so we just 
+        # check that its an int.
+        self.assertIsInstance(bytes, (int, long))
         self.add_sample_rev()
         count, bytes = self.store.total_size(self.transaction)
         self.assertEqual(1, count)

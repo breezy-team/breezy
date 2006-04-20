@@ -942,9 +942,7 @@ class cmd_init_repository(Command):
     takes_options = [Option('format', 
                             help='Use a specific format rather than the'
                             ' current default format. Currently this'
-                            ' option only accepts "metadir" and "knit"'
-                            ' WARNING: the knit format is currently unstable'
-                            ' and only for experimental use.',
+                            ' option accepts "weave", "metadir" and "knit"',
                             type=get_format_type),
                      Option('trees',
                              help='Allows branches in repository to have'
@@ -1632,9 +1630,8 @@ class cmd_upgrade(Command):
                      Option('format', 
                             help='Upgrade to a specific format rather than the'
                                  ' current default format. Currently this'
-                                 ' option only accepts "metadir" and "knit".'
-                                 ' WARNING: the knit format is currently'
-                                 ' unstable and only for experimental use.',
+                                 ' option accepts "weave", "metadir" and'
+                                 ' "knit".',
                             type=get_format_type),
                     ]
 
@@ -2137,9 +2134,9 @@ class cmd_missing(Command):
                 raise BzrCommandError("No missing location known or specified.")
             print "Using last location: " + local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
-        local_branch.lock_write()
         if remote_branch.base == local_branch.base:
             remote_branch = local_branch
+        local_branch.lock_read()
         try:
             remote_branch.lock_read()
             try:
@@ -2173,13 +2170,19 @@ class cmd_missing(Command):
                     print "Branches are up to date."
                 else:
                     status_code = 1
-                if parent is None and other_branch is not None:
+            finally:
+                remote_branch.unlock()
+        finally:
+            local_branch.unlock()
+        if not status_code and parent is None and other_branch is not None:
+            local_branch.lock_write()
+            try:
+                # handle race conditions - a parent might be set while we run.
+                if local_branch.get_parent() is None:
                     local_branch.set_parent(other_branch)
-                return status_code
             finally:
                 local_branch.unlock()
-        finally:
-            remote_branch.unlock()
+        return status_code
 
 
 class cmd_plugins(Command):

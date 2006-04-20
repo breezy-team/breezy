@@ -16,12 +16,12 @@
 
 import os
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.branch import Branch
 from bzrlib.xml5 import serializer_v5
 
 
-class TestBasisInventory(TestCaseWithTransport):
+class TestBasisInventory(TestCaseWithWorkingTree):
 
     def test_create(self):
         # TODO: jam 20051218 this probably should add more than just
@@ -34,7 +34,7 @@ class TestBasisInventory(TestCaseWithTransport):
         t.add('a')
         t.commit('a', rev_id='r1')
 
-        self.failUnlessExists('.bzr/basis-inventory')
+        t._control_files.get_utf8('basis-inventory')
 
         basis_inv = t.basis_tree().inventory
         self.assertEquals('r1', basis_inv.revision_id)
@@ -46,7 +46,7 @@ class TestBasisInventory(TestCaseWithTransport):
         t.add('b')
         t.commit('b', rev_id='r2')
 
-        self.failUnlessExists('.bzr/basis-inventory')
+        t._control_files.get_utf8('basis-inventory')
 
         basis_inv_txt = t.read_basis_inventory()
         basis_inv = serializer_v5.read_inventory_from_string(basis_inv_txt)

@@ -33,6 +33,7 @@ from bzrlib.errors import (FileExists,
 import bzrlib.gpg
 from bzrlib.osutils import getcwd
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
+from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.trace import mutter
 import bzrlib.transactions as transactions
 from bzrlib.transport import get_transport
@@ -47,7 +48,7 @@ from bzrlib.workingtree import WorkingTree
 # hooking into the Transport.
 
 
-class TestCaseWithBranch(TestCaseWithTransport):
+class TestCaseWithBranch(TestCaseWithBzrDir):
 
     def setUp(self):
         super(TestCaseWithBranch, self).setUp()
@@ -55,11 +56,11 @@ class TestCaseWithBranch(TestCaseWithTransport):
 
     def get_branch(self):
         if self.branch is None:
-            self.branch = self.make_branch(None)
+            self.branch = self.make_branch('')
         return self.branch
 
-    def make_branch(self, relpath):
-        repo = self.make_repository(relpath)
+    def make_branch(self, relpath, format=None):
+        repo = self.make_repository(relpath, format=format)
         # fixme RBC 20060210 this isnt necessarily a fixable thing,
         # Skipped is the wrong exception to raise.
         try:
@@ -67,21 +68,9 @@ class TestCaseWithBranch(TestCaseWithTransport):
         except errors.UninitializableFormat:
             raise TestSkipped('Uninitializable branch format')
 
-    def make_repository(self, relpath, shared=False):
-        try:
-            url = self.get_url(relpath)
-            segments = url.split('/')
-            if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
-                try:
-                    t.mkdir(segments[-1])
-                except FileExists:
-                    pass
-            made_control = self.bzrdir_format.initialize(url)
-            return made_control.create_repository(shared=shared)
-        except UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
+    def make_repository(self, relpath, shared=False, format=None):
+        made_control = self.make_bzrdir(relpath, format=format)
+        return made_control.create_repository(shared=shared)
 
 
 class TestBranch(TestCaseWithBranch):

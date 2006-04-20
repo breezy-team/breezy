@@ -20,6 +20,7 @@
 
 import os
 
+import bzrlib
 import bzrlib.bzrdir as bzrdir
 import bzrlib.repository as repository
 from bzrlib.tests import TestCaseWithTransport
@@ -34,11 +35,15 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
     def setUp(self):
         super(TestWithUpgradableBranches, self).setUp()
         self.old_format = bzrdir.BzrDirFormat.get_default_format()
+        self.old_repo_format = \
+            bzrlib.repository.RepositoryFormat.get_default_format()
         self.old_ui_factory = ui.ui_factory
         self.addCleanup(self.restoreDefaults)
 
         ui.ui_factory = TestUIFactory()
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        bzrlib.repository.RepositoryFormat.set_default_format(
+            bzrlib.repository.RepositoryFormat7())
         # FIXME RBC 20060120 we should be able to do this via ui calls only.
         # setup a format 5 branch we can upgrade from.
         t = get_transport(self.get_url())
@@ -56,6 +61,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def restoreDefaults(self):
         bzrdir.BzrDirFormat.set_default_format(self.old_format)
+        bzrlib.repository.RepositoryFormat.set_default_format(
+            self.old_repo_format)
         ui.ui_factory = self.old_ui_factory
 
     def test_readonly_url_error(self):

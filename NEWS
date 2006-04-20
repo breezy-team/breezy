@@ -71,6 +71,8 @@ bzr 0.8rc1  2006-04-14
       Fix off-by-one error in missing revisions of working tree.  Make 'info'
       work on branches, repositories and remote locations.  (Olaf Conradi)
 
+    * Diff and merge now safely handle binary files. (Aaron Bentley)
+
     * 'pull' and 'push' now normalise the revision history, so that any two
       branches with the same tip revision will have the same output from 'log'.
       (Robert Collins)
@@ -82,6 +84,11 @@ bzr 0.8rc1  2006-04-14
       in the relevant trees.  (Martin Pool, #3619)
 
     * Add '.hg' to the default ignore list.  (Martin Pool)
+
+    * 'knit' is now the default disk format. This improves disk performance and
+      utilization, increases incremental pull performance, robustness with SFTP
+      and allows checkouts over SFTP to perform acceptable. 
+      (Robert Collins, Aaron Bentley).
 
   CHANGES:
 

@@ -1380,9 +1380,9 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-_default_format = RepositoryFormat7()
+RepositoryFormat.register_format(RepositoryFormat7())
+_default_format = RepositoryFormatKnit1()
 RepositoryFormat.register_format(_default_format)
-RepositoryFormat.register_format(RepositoryFormatKnit1())
 RepositoryFormat.set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
@@ -1511,7 +1511,7 @@ class InterRepository(InterObject):
 class InterWeaveRepo(InterRepository):
     """Optimised code paths between Weave based repositories."""
 
-    _matching_repo_format = _default_format
+    _matching_repo_format = RepositoryFormat7()
     """Repository format for testing with."""
 
     @staticmethod

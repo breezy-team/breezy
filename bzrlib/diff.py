@@ -18,13 +18,15 @@ from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 import bzrlib.errors as errors
 from bzrlib.symbol_versioning import *
+from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter
 
 # TODO: Rather than building a changeset object, we should probably
 # invoke callbacks on an object.  That object can either accumulate a
 # list, write them out directly, etc etc.
 
-def internal_diff(old_filename, oldlines, new_filename, newlines, to_file):
+def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
+                  allow_binary=False):
     import difflib
     
     # FIXME: difflib is wrong if there is no trailing newline.
@@ -42,6 +44,10 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file):
     # both sequences are empty.
     if not oldlines and not newlines:
         return
+    
+    if allow_binary is False:
+        check_text_lines(oldlines)
+        check_text_lines(newlines)
 
     ud = difflib.unified_diff(oldlines, newlines,
                               fromfile=old_filename+'\t', 

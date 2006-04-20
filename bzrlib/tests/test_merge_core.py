@@ -51,6 +51,7 @@ class MergeBuilder(object):
         self.base.commit('base commit')
         for tt, wt in ((self.this_tt, self.this), (self.other_tt, self.other)):
             wt.branch.pull(self.base.branch)
+            wt.set_last_revision(wt.branch.last_revision())
             tt.apply()
             wt.commit('branch commit')
             assert len(wt.branch.revision_history()) == 2
@@ -179,6 +180,7 @@ class MergeBuilder(object):
 
 
 class MergeTest(TestCase):
+
     def test_change_name(self):
         """Test renames"""
         builder = MergeBuilder()
@@ -303,8 +305,12 @@ y
         builder = MergeBuilder()
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.change_contents("1", other="text4", this="text3")
+        builder.add_file("2", "TREE_ROOT", "name2", "text1", True)
+        builder.change_contents("2", other="\x00", this="text3")
         conflicts = builder.merge(merge_factory)
-        self.assertEqual(conflicts, [TextConflict('name1', file_id='1')])
+        self.assertEqual(conflicts, [TextConflict('name1', file_id='1'),
+                                     ContentsConflict('name2', file_id='2')])
+        self.assertEqual(builder.this.get_file('2').read(), '\x00')
         builder.cleanup()
 
     def test_symlink_conflicts(self):
