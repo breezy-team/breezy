@@ -267,7 +267,7 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def assertHasKnit(self, t, knit_name):
         """Assert that knit_name exists on t."""
-        self.assertEqualDiff('# bzr knit index 7\n',
+        self.assertEqualDiff('# bzr knit index 8\n',
                              t.get(knit_name + '.kndx').read())
         # no default content
         self.assertTrue(t.has(knit_name + '.knit'))
