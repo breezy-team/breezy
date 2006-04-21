@@ -245,7 +245,12 @@ class Commit(object):
             self.reporter = reporter
 
         self.work_tree.lock_write()
+        self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
+            # Cannot commit with conflicts present.
+            if len(self.work_tree.conflicts())>0:
+                raise ConflictsInTree
+
             # setup the bound branch variables as needed.
             self._check_bound_branch()
 
@@ -293,6 +298,13 @@ class Commit(object):
             self.work_inv = self.work_tree.inventory
             self.basis_tree = self.work_tree.basis_tree()
             self.basis_inv = self.basis_tree.inventory
+            # one to finish, one for rev and inventory, and one for each
+            # inventory entry, and the same for the new inventory.
+            # note that this estimate is too long when we do a partial tree
+            # commit which excludes some new files from being considered.
+            # The estimate is corrected when we populate the new inv.
+            self.pb_total = len(self.basis_inv) + len(self.work_inv) + 3 - 1
+            self.pb_count = 0
 
             self._gather_parents()
             if len(self.parents) > 1 and self.specific_files:
@@ -309,14 +321,13 @@ class Commit(object):
                     or self.new_inv != self.basis_inv):
                 raise PointlessCommit()
 
-            if len(self.work_tree.conflicts())>0:
-                raise ConflictsInTree
-
+            self._update()
             self.inv_sha1 = self.branch.repository.add_inventory(
                 self.rev_id,
                 self.new_inv,
                 self.present_parents
                 )
+            self._update()
             self._make_revision()
             # revision data is in the local branch now.
             
@@ -346,9 +357,9 @@ class Commit(object):
                                   {'branch':self.branch,
                                    'bzrlib':bzrlib,
                                    'rev_id':self.rev_id})
+            self._update()
         finally:
-            self._cleanup_bound_branch()
-            self.work_tree.unlock()
+            self._cleanup()
 
     def _check_bound_branch(self):
         """Check to see if the local branch is bound.
@@ -399,6 +410,29 @@ class Commit(object):
 ####            for revision_id in pending_merges:
 ####                self.master_branch.repository.fetch(self.bound_branch.repository,
 ####                                                    revision_id=revision_id)
+
+    def _cleanup(self):
+        """Cleanup any open locks, progress bars etc."""
+        cleanups = [self._cleanup_bound_branch,
+                    self.work_tree.unlock,
+                    self.pb.finished]
+        found_exception = None
+        for cleanup in cleanups:
+            try:
+                cleanup()
+            # we want every cleanup to run no matter what.
+            # so we have a catchall here, but we will raise the
+            # last encountered exception up the stack: and
+            # typically this will be useful enough.
+            except Exception, e:
+                found_exception = e
+        if found_exception is not None: 
+            # dont do a plan raise, because the last exception may have been
+            # trashed, e is our sure-to-work exception even though it loses the
+            # full traceback. XXX: RBC 20060421 perhaps we could check the
+            # exc_info and if its the same one do a plain raise otherwise 
+            # 'raise e' as we do now.
+            raise e
 
     def _cleanup_bound_branch(self):
         """Executed at the end of a try/finally to cleanup a bound branch.
@@ -503,7 +537,12 @@ class Commit(object):
         # XXX: Need to think more here about when the user has
         # made a specific decision on a particular value -- c.f.
         # mark-merge.  
+
+        # iter_entries does not visit the ROOT_ID node so we need to call
+        # self._update once by hand.
+        self._update()
         for path, ie in self.new_inv.iter_entries():
+            self._update()
             previous_entries = ie.find_previous_heads(
                 self.parent_invs,
                 self.weave_store,
@@ -528,7 +567,11 @@ class Commit(object):
         """
         mutter("Selecting files for commit with filter %s", self.specific_files)
         self.new_inv = Inventory(revision_id=self.rev_id)
+        # iter_entries does not visit the ROOT_ID node so we need to call
+        # self._update once by hand.
+        self._update()
         for path, new_ie in self.work_inv.iter_entries():
+            self._update()
             file_id = new_ie.file_id
             mutter('check %s {%s}', path, new_ie.file_id)
             if self.specific_files:
@@ -554,6 +597,11 @@ class Commit(object):
             mutter('%s selected for commit', path)
             self._select_entry(new_ie)
 
+    def _update(self):
+        """Emit an update to the progress bar."""
+        self.pb.update("Committing", self.pb_count, self.pb_total)
+        self.pb_count += 1
+
     def _select_entry(self, new_ie):
         """Make new_ie be considered for committing."""
         ie = new_ie.copy()
@@ -565,6 +613,9 @@ class Commit(object):
         """Carry the file unchanged from the basis revision."""
         if self.basis_inv.has_id(file_id):
             self.new_inv.add(self.basis_inv[file_id].copy())
+        else:
+            # this entry is new and not being committed
+            self.pb_total -= 1
 
     def _report_deletes(self):
         for file_id in self.basis_inv:
