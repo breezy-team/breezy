@@ -156,6 +156,8 @@ bzr 0.8rc1  2006-04-14
 
     * Deprecated BzrError AmbiguousBase.  (Olaf Conradi)
 
+    * WorkingTree.branch is now a read only property.  (Robert Collins)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
