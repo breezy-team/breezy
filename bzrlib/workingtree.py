@@ -223,7 +223,7 @@ class WorkingTree(bzrlib.tree.Tree):
                  DeprecationWarning,
                  stacklevel=2)
             wt = WorkingTree.open(basedir)
-            self.branch = wt.branch
+            self._branch = wt.branch
             self.basedir = wt.basedir
             self._control_files = wt._control_files
             self._hashcache = wt._hashcache
@@ -244,9 +244,9 @@ class WorkingTree(bzrlib.tree.Tree):
                      DeprecationWarning,
                      stacklevel=2
                      )
-            self.branch = branch
+            self._branch = branch
         else:
-            self.branch = self.bzrdir.open_branch()
+            self._branch = self.bzrdir.open_branch()
         assert isinstance(self.branch, Branch), \
             "branch %r is not a Branch" % self.branch
         self.basedir = realpath(basedir)
@@ -281,6 +281,14 @@ class WorkingTree(bzrlib.tree.Tree):
             self._set_inventory(self.read_working_inventory())
         else:
             self._set_inventory(_inventory)
+
+    branch = property(
+        fget=lambda self: self._branch,
+        doc="""The branch this WorkingTree is connected to.
+
+            This cannot be set - it is reflective of the actual disk structure
+            the working tree has been constructed from.
+            """)
 
     def _set_inventory(self, inv):
         self._inventory = inv
