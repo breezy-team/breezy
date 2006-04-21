@@ -64,82 +64,45 @@ def _repo_relpath(repo_path, path):
 
 def _show_location_info(repository, branch=None, working=None):
     """Show known locations for working, branch and repository."""
+    repository_path = repository.bzrdir.root_transport.base
     print 'Location:'
-    repo_path = repository.bzrdir.root_transport.base
-    if branch:
+    if working and branch:
+        working_path = working.bzrdir.root_transport.base
         branch_path = branch.bzrdir.root_transport.base
-        if repository.bzrdir == branch.bzrdir:
-            if working:
-                work_path = working.bzrdir.root_transport.base
-                if working.bzrdir == branch.bzrdir:
-                    if repository.is_shared():
-                        # checkout in root of repository
-                        print '    shared repository: %s' % repo_path
-                        print '  repository checkout: %s' % (
-                            _repo_relpath(repo_path, work_path))
-                    elif branch.get_bound_location():
-                        # bound branch
-                        print '      branch root: %s' % branch_path
-                        print '  bound to branch: %s' % (
-                            branch.get_bound_location())
-                    else:
-                        # standalone branch
-                        print '  branch root: %s' % branch_path
-                else:
-                    # lightweight checkout of standalone branch
-                    print '       checkout root: %s' % work_path
-                    print '  checkout of branch: %s' % branch_path
+        if working_path != branch_path:
+            # lightweight checkout
+            print '  light checkout root: %s' % working_path
+            if repository.is_shared():
+                # lightweight checkout of branch in shared repository
+                print '    shared repository: %s' % repository_path
+                print '    repository branch: %s' % (
+                    _repo_relpath(repository_path, branch_path))
             else:
-                # repository with a branch inside root
-                if repository.is_shared():
-                    print '  shared repository: %s' % repo_path
-                    print '  repository branch: %s' % (
-                        _repo_relpath(repo_path, branch_path))
-                else:
-                    print "this isn't possible, right? (1)"
+                # lightweight checkout of standalone branch
+                print '   checkout of branch: %s' % branch_path
+        elif repository.is_shared():
+            # branch with tree inside shared repository
+            print '    shared repository: %s' % repository_path
+            print '  repository checkout: %s' % (
+                _repo_relpath(repository_path, branch_path))
+        elif branch.get_bound_location():
+            # normal checkout
+            print '       checkout root: %s' % working_path
+            print '  checkout of branch: %s' % branch.get_bound_location()
         else:
-            if working:
-                work_path = working.bzrdir.root_transport.base
-                if working.bzrdir != branch.bzrdir and (working.bzrdir !=
-                                                        repository.bzrdir):
-                    if osutils.is_inside(osutils.normalizepath(repo_path),
-                                         osutils.normalizepath(work_path)):
-                        # lightweight checkout inside repository
-                        print '    shared repository: %s' % repo_path
-                        print '  repository checkout: %s' % (
-                            _repo_relpath(repo_path, work_path))
-                        print '    repository branch: %s' % (
-                            _repo_relpath(repo_path, branch_path))
-                    else:
-                        # lightweight checkout outside repository
-                        print '      checkout root: %s' % work_path
-                        print '  shared repository: %s' % repo_path
-                        print '  repository branch: %s' % (
-                            _repo_relpath(repo_path, branch_path))
-                else:
-                    # working tree inside branch or inside root
-                    # of shared repository
-                    print '    shared repository: %s' % repo_path
-                    if working.bzrdir == branch.bzrdir:
-                        print '  repository checkout: %s' % (
-                            _repo_relpath(repo_path, work_path))
-                    else:
-                        print '    repository branch: %s' % (
-                            _repo_relpath(repo_path, branch_path))
-            else:
-                # repository with branch
-                if repository.is_shared():
-                    print '  shared repository: %s' % repo_path
-                    print '  repository branch: %s' % (
-                        _repo_relpath(repo_path, branch_path))
-                else:
-                    print "this isn't possible, right? (2)"
+            # standalone
+            print '  branch root: %s' % working_path
+    elif branch:
+        # branch is part of shared repository
+        assert repository.is_shared()
+        branch_path = branch.bzrdir.root_transport.base
+        print '  shared repository: %s' % repository_path
+        print '  repository branch: %s' % (
+            _repo_relpath(repository_path, branch_path))
     else:
-        # repository
-        if repository.is_shared():
-            print '  shared repository: %s' % repo_path
-        else:
-            print '  repository: %s' % repo_path
+        # shared repository
+        assert repository.is_shared()
+        print '  shared repository: %s' % repository_path
 
 
 def _show_related_info(branch):

@@ -141,8 +141,8 @@ Revision store:
         out, err = self.runbzr('info bound')
         self.assertEqualDiff(
 """Location:
-      branch root: %s
-  bound to branch: %s
+       checkout root: %s
+  checkout of branch: %s
 
 Related branches:
       parent branch: %s
@@ -194,8 +194,8 @@ Revision store:
         out, err = self.runbzr('info checkout --verbose')
         self.assertEqualDiff(
 """Location:
-      branch root: %s
-  bound to branch: %s
+       checkout root: %s
+  checkout of branch: %s
 
 Format:
        control: Meta directory format 1
@@ -247,8 +247,8 @@ Revision store:
         out, err = self.runbzr('info lightcheckout')
         self.assertEqualDiff(
 """Location:
-       checkout root: %s
-  checkout of branch: %s
+  light checkout root: %s
+   checkout of branch: %s
 
 Format:
        control: Meta directory format 1
@@ -334,8 +334,8 @@ Revision store:
         out, err = self.runbzr('info bound')
         self.assertEqualDiff(
 """Location:
-      branch root: %s
-  bound to branch: %s
+       checkout root: %s
+  checkout of branch: %s
 
 Related branches:
       parent branch: %s
@@ -383,8 +383,8 @@ Revision store:
         out, err = self.runbzr('info checkout')
         self.assertEqualDiff(
 """Location:
-      branch root: %s
-  bound to branch: %s
+       checkout root: %s
+  checkout of branch: %s
 
 Format:
        control: Meta directory format 1
@@ -428,8 +428,8 @@ Revision store:
         out, err = self.runbzr('info lightcheckout --verbose')
         self.assertEqualDiff(
 """Location:
-       checkout root: %s
-  checkout of branch: %s
+  light checkout root: %s
+   checkout of branch: %s
 
 Format:
        control: Meta directory format 1
@@ -526,9 +526,9 @@ Revision store:
         out, err = self.runbzr('info tree/lightcheckout')
         self.assertEqualDiff(
 """Location:
-      checkout root: %s
-  shared repository: %s
-  repository branch: branch
+  light checkout root: %s
+    shared repository: %s
+    repository branch: branch
 
 Format:
        control: Meta directory format 1
@@ -566,8 +566,8 @@ Revision store:
         out, err = self.runbzr('info tree/checkout --verbose')
         self.assertEqualDiff(
 """Location:
-      branch root: %s
-  bound to branch: %s
+       checkout root: %s
+  checkout of branch: %s
 
 Format:
        control: Meta directory format 1
@@ -607,9 +607,9 @@ Revision store:
         out, err = self.runbzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Location:
-      checkout root: %s
-  shared repository: %s
-  repository branch: branch
+  light checkout root: %s
+    shared repository: %s
+    repository branch: branch
 
 Format:
        control: Meta directory format 1
@@ -651,8 +651,8 @@ Revision store:
         out, err = self.runbzr('info tree/checkout')
         self.assertEqualDiff(
 """Location:
-      branch root: %s
-  bound to branch: %s
+       checkout root: %s
+  checkout of branch: %s
 
 Format:
        control: Meta directory format 1
@@ -691,8 +691,8 @@ Revision store:
         out, err = self.runbzr('info tree/checkout --verbose')
         self.assertEqualDiff(
 """Location:
-      branch root: %s
-  bound to branch: %s
+       checkout root: %s
+  checkout of branch: %s
 
 Format:
        control: Meta directory format 1
@@ -736,9 +736,9 @@ Revision store:
         out, err = self.runbzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Location:
-      checkout root: %s
-  shared repository: %s
-  repository branch: branch
+  light checkout root: %s
+    shared repository: %s
+    repository branch: branch
 
 Format:
        control: Meta directory format 1
