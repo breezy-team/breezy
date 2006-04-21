@@ -25,10 +25,10 @@ from stat import ST_MODE, S_ISDIR, ST_SIZE
 import tempfile
 import urllib
 
-from bzrlib.errors import IllegalPath
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, Server
-from bzrlib.osutils import abspath, realpath, normpath, pathjoin, rename
+from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename, 
+                            check_legal_path)
 
 
 class LocalTransport(Transport):
@@ -101,8 +101,7 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self.abspath(relpath)
-            if sys.platform=="win32" and ('<' in path or '>' in path) :
-                raise IllegalPath(path)
+            check_legal_path(path)
             fp = AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)

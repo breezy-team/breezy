@@ -35,6 +35,7 @@ from bzrlib.errors import (BzrError,
                            BzrBadParameterNotUnicode,
                            NoSuchFile,
                            PathNotChild,
+                           IllegalPath,
                            )
 from bzrlib.trace import mutter
 
@@ -668,3 +669,17 @@ def strip_trailing_slash(path):
         return path[:-1]
     else:
         return path
+
+
+_validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
+
+
+def check_legal_path(path):
+    """Check whether the supplied path is legal.  
+    This is only required on Windows, so we don't test on other platforms
+    right now.
+    """
+    if sys.platform != "win32":
+        return
+    if _validWin32PathRE.match(path) is None:
+        raise IllegalPath(path)
