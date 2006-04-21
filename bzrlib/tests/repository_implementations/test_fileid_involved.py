@@ -18,7 +18,9 @@ import os
 
 from bzrlib.add import smart_add
 from bzrlib.builtins import merge
+from bzrlib.errors import IllegalPath
 from bzrlib.delta import compare_trees
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.workingtree import WorkingTree
 
@@ -62,7 +64,10 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
                                  'c-funky<file-id> quiji%bo'])
-        main_wt.commit("Commit one", rev_id="rev-A")
+        try:
+            main_wt.commit("Commit one", rev_id="rev-A")
+        except IllegalPath:
+            raise TestSkipped("File-id with <> not supported on this platform")
         #-------- end A -----------
 
         d1 = main_branch.bzrdir.clone('branch1')
@@ -187,7 +192,10 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
                                  'c-funky<file-id> quiji%bo'])
-        main_wt.commit("Commit one", rev_id="rev-A")
+        try:
+            main_wt.commit("Commit one", rev_id="rev-A")
+        except IllegalPath:
+            raise TestSkipped("Used unsupported characters")
 
         branch2_bzrdir = main_branch.bzrdir.sprout("branch2")
         branch2_branch = branch2_bzrdir.open_branch()
