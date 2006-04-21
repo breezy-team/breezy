@@ -181,6 +181,8 @@ rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
 
+MIN_ABS_PATHLENGTH = 1
+
 if os.name == "posix":
     # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
     # choke on a Unicode string containing a relative path if
@@ -217,6 +219,7 @@ if sys.platform == 'win32':
     def rename(old, new):
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
 
+    MIN_ABS_PATHLENGTH = 3
 
 def normalizepath(f):
     if hasattr(os.path, 'realpath'):
@@ -599,12 +602,10 @@ def relpath(base, path):
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem.
     """
-    if sys.platform != "win32":
-        minlength = 1
-    else:
-        minlength = 3
-    assert len(base) >= minlength, ('Length of base must be equal or exceed the'
-        ' platform minimum length (which is %d)' % minlength)
+
+    assert len(base) >= MIN_ABS_PATHLENGTH, ('Length of base must be equal or'
+        ' exceed the platform minimum length (which is %d)' % 
+        MIN_ABS_PATHLENGTH)
     rp = abspath(path)
 
     s = []
@@ -657,3 +658,13 @@ def terminal_width():
 
 def supports_executable():
     return sys.platform != "win32"
+
+
+def strip_trailing_slash(path):
+    """Strip trailing slash, except for root paths.
+    The definition of 'root path' is platform-dependent.
+    """
+    if len(path) != MIN_ABS_PATHLENGTH and path[-1] == '/':
+        return path[:-1]
+    else:
+        return path
