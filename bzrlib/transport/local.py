@@ -27,7 +27,8 @@ import urllib
 
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, Server
-from bzrlib.osutils import abspath, realpath, normpath, pathjoin, rename
+from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename, 
+                            check_legal_path)
 
 
 class LocalTransport(Transport):
@@ -68,16 +69,12 @@ class LocalTransport(Transport):
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
         """
-        from bzrlib.osutils import relpath
+        from bzrlib.osutils import relpath, strip_trailing_slash
         if abspath is None:
             abspath = u'.'
-        if len(abspath) > 1 and abspath.endswith('/'):
-            abspath = abspath[:-1]
-        if self.base == '/':
-            root = '/'
-        else:
-            root = self.base[:-1]
-        return relpath(root, abspath)
+
+        return relpath(strip_trailing_slash(self.base), 
+                       strip_trailing_slash(abspath))
 
     def has(self, relpath):
         return os.access(self.abspath(relpath), os.F_OK)
@@ -104,6 +101,7 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self.abspath(relpath)
+            check_legal_path(path)
             fp = AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
