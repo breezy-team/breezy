@@ -58,8 +58,10 @@ def _supports_progress(f):
 
 
 
-def ProgressBar(to_file=sys.stderr, **kwargs):
+def ProgressBar(to_file=None, **kwargs):
     """Abstract factory"""
+    if to_file is None:
+        to_file = sys.stderr
     if _supports_progress(to_file):
         return TTYProgressBar(to_file=to_file, **kwargs)
     else:
@@ -70,15 +72,19 @@ class ProgressBarStack(object):
     """A stack of progress bars."""
 
     def __init__(self,
-                 to_file=sys.stderr,
+                 to_file=None,
                  show_pct=False,
                  show_spinner=True,
                  show_eta=False,
                  show_bar=True,
                  show_count=True,
-                 to_messages_file=sys.stdout,
+                 to_messages_file=None,
                  klass=None):
         """Setup the stack with the parameters the progress bars should have."""
+        if to_file is None:
+            to_file = sys.stderr
+        if to_messages_file is None:
+            to_messages_file = sys.stdout
         self._to_file = to_file
         self._show_pct = show_pct
         self._show_spinner = show_spinner
@@ -128,15 +134,19 @@ class ProgressBarStack(object):
 class _BaseProgressBar(object):
 
     def __init__(self,
-                 to_file=sys.stderr,
+                 to_file=None,
                  show_pct=False,
                  show_spinner=False,
                  show_eta=True,
                  show_bar=True,
                  show_count=True,
-                 to_messages_file=sys.stdout,
+                 to_messages_file=None,
                  _stack=None):
         object.__init__(self)
+        if to_file is None:
+            to_file = sys.stderr
+        if to_messages_file is None:
+            to_messages_file = sys.stdout
         self.to_file = to_file
         self.to_messages_file = to_messages_file
         self.last_msg = None
@@ -195,6 +205,7 @@ class DummyProgress(_BaseProgressBar):
     def child_progress(self, **kwargs):
         return DummyProgress(**kwargs)
 
+
 class DotsProgressBar(_BaseProgressBar):
 
     def __init__(self, **kwargs):
@@ -209,7 +220,6 @@ class DotsProgressBar(_BaseProgressBar):
         if msg and msg != self.last_msg:
             if self.need_nl:
                 self.to_file.write('\n')
-            
             self.to_file.write(msg + ': ')
             self.last_msg = msg
         self.need_nl = True
@@ -218,9 +228,11 @@ class DotsProgressBar(_BaseProgressBar):
     def clear(self):
         if self.need_nl:
             self.to_file.write('\n')
+        self.need_nl = False
         
     def child_update(self, message, current, total):
         self.tick()
+
     
 class TTYProgressBar(_BaseProgressBar):
     """Progress bar display object.
@@ -397,6 +409,7 @@ class TTYProgressBar(_BaseProgressBar):
 
 class ChildProgress(_BaseProgressBar):
     """A progress indicator that pushes its data to the parent"""
+
     def __init__(self, _stack, **kwargs):
         _BaseProgressBar.__init__(self, _stack=_stack, **kwargs)
         self.parent = _stack.top()

@@ -158,6 +158,11 @@ bzr 0.8rc1  2006-04-14
 
     * WorkingTree.branch is now a read only property.  (Robert Collins)
 
+    * bzrlib.ui.text.TextUIFactory now accepts a bar_type parameter which
+      can be None or a factory that will create a progress bar. This is
+      useful for testing or for overriding the bzrlib.progress heuristic.
+      (Robert Collins)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
