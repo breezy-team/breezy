@@ -1478,8 +1478,7 @@ class InterWeave(InterVersionedFile):
 
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
-        if self.target.versions() == []:
-            # optimised copy
+        if self.target.versions() == [] and version_ids is None:
             self.target._copy_weave_content(self.source)
             return
         try:

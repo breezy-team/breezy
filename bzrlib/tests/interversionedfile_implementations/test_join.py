@@ -306,3 +306,14 @@ class TestJoin(TestCaseWithTransport):
                           },
                          target.get_graph_with_ghosts())
         self.assertFalse(target.has_ghost('base'))
+
+    def test_restricted_join_into_empty(self):
+        # joining into an empty versioned file with a version_ids list
+        # should only grab the selected versions.
+        source = self.get_source()
+        source.add_lines('skip_me', [], ['a\n'])
+        source.add_lines('inherit_me', [], ['b\n'])
+        source.add_lines('select_me', ['inherit_me'], ['b\n'])
+        target = self.get_target()
+        target.join(source, version_ids=['select_me'])
+        self.assertEqual(['inherit_me', 'select_me'], target.versions())

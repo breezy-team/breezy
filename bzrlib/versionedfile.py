@@ -17,10 +17,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# Remaing to do is to figure out if get_graph should return a simple
-# map, or a graph object of some kind.
-
-
 """Versioned text file storage api."""
 
 
@@ -286,14 +282,29 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_ancestry_with_ghosts)
         
-    def get_graph(self):
-        """Return a graph for the entire versioned file.
+    def get_graph(self, version_ids=None):
+        """Return a graph from the versioned file. 
         
         Ghosts are not listed or referenced in the graph.
+        :param version_ids: Versions to select.
+                            None means retreive all versions.
         """
         result = {}
-        for version in self.versions():
-            result[version] = self.get_parents(version)
+        if version_ids is None:
+            for version in self.versions():
+                result[version] = self.get_parents(version)
+        else:
+            pending = set(version_ids)
+            while pending:
+                version = pending.pop()
+                if version in result:
+                    continue
+                parents = self.get_parents(version)
+                for parent in parents:
+                    if parent in result:
+                        continue
+                    pending.add(parent)
+                result[version] = parents
         return result
 
     def get_graph_with_ghosts(self):
@@ -550,7 +561,16 @@ class InterVersionedFile(InterObject):
             # Make a new target-format versioned file. 
             temp_source = self.target.create_empty("temp", MemoryTransport())
             target = temp_source
-        graph = self.source.get_graph()
+        if version_ids is not None:
+            new_version_ids = []
+            for version in version_ids:
+                if not self.source.has_version(version):
+                    if not ignore_missing:
+                        raise errors.RevisionNotPresent(version, str(self.source))
+                else:
+                    new_version_ids.append(version)
+            version_ids = new_version_ids
+        graph = self.source.get_graph(version_ids)
         order = topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
         parent_texts = {}

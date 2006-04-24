@@ -34,6 +34,7 @@ from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.tsort import topo_sort
 import bzrlib.versionedfile as versionedfile
 from bzrlib.weave import WeaveFile
 from bzrlib.weavefile import read_weave, write_weave
@@ -420,15 +421,48 @@ class VersionedFileTestMixIn(object):
         # and should be a list
         self.assertTrue(isinstance(f.__class__.get_suffixes(), list))
 
+    def build_graph(self, file, graph):
+        for node in topo_sort(graph.items()):
+            file.add_lines(node, graph[node], [])
+
     def test_get_graph(self):
         f = self.get_file()
-        f.add_lines('v1', [], ['hello\n'])
-        f.add_lines('v2', ['v1'], ['hello\n', 'world\n'])
-        f.add_lines('v3', ['v2'], ['hello\n', 'cruel\n', 'world\n'])
-        self.assertEqual({'v1': [],
-                          'v2': ['v1'],
-                          'v3': ['v2']},
-                         f.get_graph())
+        graph = {
+            'v1': [],
+            'v2': ['v1'],
+            'v3': ['v2']}
+        self.build_graph(f, graph)
+        self.assertEqual(graph, f.get_graph())
+    
+    def test_get_graph_partial(self):
+        f = self.get_file()
+        complex_graph = {}
+        simple_a = {
+            'c': [],
+            'b': ['c'],
+            'a': ['b'],
+            }
+        complex_graph.update(simple_a)
+        simple_b = {
+            'c': [],
+            'b': ['c'],
+            }
+        complex_graph.update(simple_b)
+        simple_gam = {
+            'c': [],
+            'oo': [],
+            'bar': ['oo', 'c'],
+            'gam': ['bar'],
+            }
+        complex_graph.update(simple_gam)
+        simple_b_gam = {}
+        simple_b_gam.update(simple_gam)
+        simple_b_gam.update(simple_b)
+        self.build_graph(f, complex_graph)
+        self.assertEqual(simple_a, f.get_graph(['a']))
+        self.assertEqual(simple_b, f.get_graph(['b']))
+        self.assertEqual(simple_gam, f.get_graph(['gam']))
+        self.assertEqual(simple_b_gam, f.get_graph(['b', 'gam']))
 
     def test_get_parents(self):
         f = self.get_file()
