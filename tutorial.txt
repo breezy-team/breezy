@@ -276,9 +276,10 @@ Message from an editor
 
 If you use neither the `-m` nor the `-F` option then bzr will open an
 editor for you to enter a message.  The editor to run is controlled by
-your `$EDITOR` environment variable or (Post Bazaar-NG 0.6) email setting
-in .  If you quit the editor without making any changes, the commit will
-be cancelled.
+your `$EDITOR` environment variable or (Post Bazaar-NG 0.6)
+add `editor` to ~/.bazaar/bazaar.conf; `$BZR_EDITOR` will override
+the above mentioned editor options.  If you quit the editor without
+making any changes, the commit will be cancelled.
 
 Selective commit
 ----------------
