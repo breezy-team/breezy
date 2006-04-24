@@ -117,14 +117,14 @@ email address. Bzr is smart enough to automatically generate an email
 address by looking up your username and hostname. If you don't like the
 guess that Bazaar-NG makes, then three options exist:
 
- 1. (**Bazaar-NG 0.6 and later**). Setting the email address in the
+ 1. Setting the email address in the
  ``~/.bazaar/bazaar.conf`` by adding the following lines. Please note that
  ``[DEFAULT]`` is case sensitive::
 
     [DEFAULT]
     email= Your Name <email@isp.com>
  
- 1. (**Bazaar-NG 0.6 and later**) Override the previous setting on a
+ 1. Override the previous setting on a
  branch by branch basis by creating a branch section in
  ``~/.bazaar/branches.conf`` by adding the following lines::
 
@@ -276,9 +276,10 @@ Message from an editor
 
 If you use neither the `-m` nor the `-F` option then bzr will open an
 editor for you to enter a message.  The editor to run is controlled by
-your `$EDITOR` environment variable or (Post Bazaar-NG 0.6) email setting
-in .  If you quit the editor without making any changes, the commit will
-be cancelled.
+your `$EDITOR` environment variable or 
+add `editor` to ~/.bazaar/bazaar.conf; `$BZR_EDITOR` will override
+the above mentioned editor options.  If you quit the editor without
+making any changes, the commit will be cancelled.
 
 Selective commit
 ----------------
