@@ -23,7 +23,7 @@ from copy import deepcopy
 
 from bzrlib.tests import TestSuite
 
-# prefix for micro (1/1000)
+# prefix for micro (1/1000000)
 _mu = u'\xb5'
 
 # Swedish?
@@ -69,6 +69,7 @@ _something = u'\u0165ou\u010dk\xfd'
 # Hebrew
 # Shalom -> 'hello' or 'peace', used as a common greeting
 _shalom = u'\u05e9\u05dc\u05d5\u05dd'
+
 
 class EncodingTestAdapter(object):
     """A tool to generate a suite, testing multiple encodings for a single test.
