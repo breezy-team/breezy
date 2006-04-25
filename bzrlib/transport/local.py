@@ -23,10 +23,9 @@ import shutil
 import sys
 from stat import ST_MODE, S_ISDIR, ST_SIZE
 import tempfile
-import urllib
 
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport, Server
+from bzrlib.transport import Transport, Server, urlescape, urlunescape
 from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename, 
                             check_legal_path)
 
@@ -61,7 +60,7 @@ class LocalTransport(Transport):
     def abspath(self, relpath):
         """Return the full url to the given relative URL."""
         assert isinstance(relpath, basestring), (type(relpath), relpath)
-        result = normpath(pathjoin(self.base, urllib.unquote(relpath)))
+        result = normpath(pathjoin(self.base, urlunescape(relpath)))
         #if result[-1] != '/':
         #    result += '/'
         return result
@@ -232,7 +231,7 @@ class LocalTransport(Transport):
         """
         path = self.abspath(relpath)
         try:
-            return [urllib.quote(entry) for entry in os.listdir(path)]
+            return [urlescape(entry) for entry in os.listdir(path)]
         except (IOError, OSError), e:
             self._translate_error(e, path)
 

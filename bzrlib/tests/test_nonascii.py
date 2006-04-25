@@ -61,8 +61,6 @@ class UnicodeFilename(TestCaseWithTransport):
             self.assertEqual((a_circle_d, False), unicode_filename(a_circle_d))
 
     def test_platform(self):
-        raise TestSkipped('This test is skipped until unicode filenames are worked out')
-        # FIXME: jam 20060425 Right now build_tree does not accept unicode filenames
         self.build_tree([a_circle_c, a_dots_c, z_umlat_c])
 
         if sys.platform == 'darwin':

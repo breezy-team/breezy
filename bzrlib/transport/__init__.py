@@ -31,7 +31,6 @@ from collections import deque
 from copy import deepcopy
 from stat import *
 import sys
-import urllib
 from unittest import TestSuite
 import urllib
 import urlparse
