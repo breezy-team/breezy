@@ -26,6 +26,7 @@ interface later, they will be non blackbox tests.
 
 from cStringIO import StringIO
 from os import mkdir, chdir
+import sys
 from tempfile import TemporaryFile
 import codecs
 
@@ -218,4 +219,50 @@ class TestStatus(TestCaseWithTransport):
         result2 = self.run_bzr("status", "-r", "0..")[0]
         self.assertEquals(result2, result)
 
+
+class TestStatusEncodings(TestCaseWithTransport):
+    
+    def setUp(self):
+        TestCaseWithTransport.setUp(self)
+        self.user_encoding = bzrlib.user_encoding
+        self.stdout = sys.stdout
+
+    def tearDown(self):
+        bzrlib.user_encoding = self.user_encoding
+        sys.stdout = self.stdout
+        TestCaseWithTransport.tearDown(self)
+
+    def make_uncommitted_tree(self):
+        """Build a branch with uncommitted unicode named changes in the cwd."""
+        working_tree = self.make_branch_and_tree(u'.')
+        filename = u'hell\u00d8'
+        try:
+            self.build_tree_contents([(filename, 'contents of hello')])
+        except UnicodeEncodeError:
+            raise TestSkipped("can't build unicode working tree in "
+                "filesystem encoding %s" % sys.getfilesystemencoding())
+        working_tree.add(filename)
+        return working_tree
+
+    def test_stdout_ascii(self):
+        sys.stdout = StringIO()
+        bzrlib.user_encoding = 'ascii'
+        working_tree = self.make_uncommitted_tree()
+        stdout, stderr = self.run_bzr("status")
+
+        self.assertEquals(stdout, """\
+added:
+  hell?
+""")
+
+    def test_stdout_latin1(self):
+        sys.stdout = StringIO()
+        bzrlib.user_encoding = 'latin-1'
+        working_tree = self.make_uncommitted_tree()
+        stdout, stderr = self.run_bzr('status')
+
+        self.assertEquals(stdout, u"""\
+added:
+  hell\u00d8
+""".encode('latin-1'))
 
