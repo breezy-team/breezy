@@ -898,10 +898,6 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
 
     def test_unicode_paths(self):
-        # jam 20060425 Intentional wart so that we can remember 
-        #      to get this working again
-        print 'Unicode path testing disabled for now'
-        raise TestSkipped('This test is disabled until unicode support is worked out')
         t = self.get_transport()
 
         files = [u'\xe5', # a w/ circle iso-8859-1
