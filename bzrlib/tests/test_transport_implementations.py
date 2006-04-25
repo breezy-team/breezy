@@ -26,9 +26,9 @@ import stat
 import sys
 
 from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
-                           LockError,
-                           PathError,
-                           TransportNotPossible, ConnectionError)
+                           LockError, PathError,
+                           TransportNotPossible, ConnectionError,
+                           InvalidURL)
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.transport import memory, urlescape
 import bzrlib.transport
@@ -896,6 +896,32 @@ class TestTransportImplementation(TestCaseInTempDir):
         sub_transport = transport.clone('isolated')
         paths = set(sub_transport.iter_files_recursive())
         self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
+
+    def test_unicode_paths(self):
+        # jam 20060425 Intentional wart so that we can remember 
+        #      to get this working again
+        print 'Unicode path testing disabled for now'
+        raise TestSkipped('This test is disabled until unicode support is worked out')
+        t = self.get_transport()
+
+        files = [u'\xe5', # a w/ circle iso-8859-1
+                 u'\xe4', # a w/ dots iso-8859-1
+                 u'\u017d', # Z with umlat iso-8859-2
+                 u'\u062c', # Arabic j
+                 u'\u0410', # Russian A
+                 u'\u65e5', # Kanji person
+                ]
+
+        self.build_tree(files, transport=t)
+
+        # A plain unicode string is not a valid url
+        for fname in files:
+            self.assertRaises(InvalidURL, t.get, fname)
+
+        for fname in files:
+            fname_utf8 = fname.encode('utf-8')
+            contents = 'contents of %s\n' % (fname_utf8,)
+            self.check_transport_contents(contents, t, urlescape(fname))
 
     def test_connect_twice_is_same_content(self):
         # check that our server (whatever it is) is accessable reliably

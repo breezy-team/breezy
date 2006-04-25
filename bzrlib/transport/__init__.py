@@ -31,6 +31,7 @@ from collections import deque
 from copy import deepcopy
 from stat import *
 import sys
+import urllib
 from unittest import TestSuite
 import urllib
 import urlparse
@@ -672,10 +673,17 @@ def urlescape(relpath):
     return urllib.quote(relpath)
 
 
-def urlunescape(relpath):
-    """Unescape relpath from url format."""
-    return urllib.unquote(relpath)
-    # TODO de-utf8 it last. relpath = utf8relpath.decode('utf8')
+def urlunescape(url):
+    """Unescape relpath from url format.
+
+    This returns a Unicode path from a URL
+    """
+    unquoted = urllib.unquote(url)
+    try:
+        unicode_path = unquoted.decode('utf-8')
+    except UnicodeError, e:
+        raise errors.InvalidURL(url, e)
+    return unicode_path
 
 
 class Server(object):

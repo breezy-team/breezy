@@ -187,26 +187,24 @@ class TestSmartAddBranch(TestCaseWithTransport):
 class TestAddActions(TestCase):
 
     def test_null(self):
-        from bzrlib.add import add_action_null
-        self.run_action(add_action_null, "", False)
+        self.run_action("", False)
 
     def test_add(self):
-        self.entry = InventoryFile("id", "name", None)
-        from bzrlib.add import add_action_add
-        self.run_action(add_action_add, "", True)
+        self.run_action("", True)
 
     def test_add_and_print(self):
-        from bzrlib.add import add_action_add_and_print
-        self.run_action(add_action_add_and_print, "added path\n", True)
+        self.run_action("added path\n", True)
 
     def test_print(self):
-        from bzrlib.add import add_action_print
-        self.run_action(add_action_print, "added path\n", False)
+        self.run_action("added path\n", False)
 
-    def run_action(self, action, output, should_add):
-        from StringIO import StringIO
+    def run_action(self, output, should_add):
+        from bzrlib.add import AddAction
+        from cStringIO import StringIO
         inv = Inventory()
         stdout = StringIO()
+        action = AddAction(to_file=stdout,
+            should_print=bool(output), should_add=should_add)
 
         self.apply_redirected(None, stdout, None, action, inv, 'path', 'file')
         self.assertEqual(stdout.getvalue(), output)

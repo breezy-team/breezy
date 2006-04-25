@@ -23,11 +23,13 @@ command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
+from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
 from bzrlib.tests import (
                           _load_module_by_name,
                           TestCaseWithTransport,
                           TestSuite,
                           TestLoader,
+                          iter_suite_tests,
                           )
 import bzrlib.ui as ui
 
@@ -41,6 +43,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_bound_branches',
                      'bzrlib.tests.blackbox.test_cat',
                      'bzrlib.tests.blackbox.test_checkout',
+                     'bzrlib.tests.blackbox.test_command_encoding',
                      'bzrlib.tests.blackbox.test_commit',
                      'bzrlib.tests.blackbox.test_conflicts',
                      'bzrlib.tests.blackbox.test_diff',
@@ -71,12 +74,22 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_upgrade',
                      'bzrlib.tests.blackbox.test_versioning',
                      ]
+    test_encodings = [
+        'bzrlib.tests.blackbox.test_non_ascii',
+    ]
 
     suite = TestSuite()
     loader = TestLoader()
     for mod_name in testmod_names:
         mod = _load_module_by_name(mod_name)
         suite.addTest(loader.loadTestsFromModule(mod))
+
+    adapter = EncodingTestAdapter()
+    for mod_name in test_encodings:
+        mod = _load_module_by_name(mod_name)
+        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
+            suite.addTests(adapter.adapt(test))
+
     return suite
 
 

@@ -29,6 +29,7 @@ import sys
 import time
 import types
 import tempfile
+import unicodedata
 
 import bzrlib
 from bzrlib.errors import (BzrError,
@@ -642,6 +643,54 @@ def safe_unicode(unicode_or_utf8_string):
         return unicode_or_utf8_string.decode('utf8')
     except UnicodeDecodeError:
         raise BzrBadParameterNotUnicode(unicode_or_utf8_string)
+
+
+_platform_normalizes_filenames = False
+if sys.platform == 'darwin':
+    _platform_normalizes_filenames = True
+
+
+def normalizes_filenames():
+    """Return True if this platform normalizes unicode filenames.
+
+    Mac OSX does, Windows/Linux do not.
+    """
+    return _platform_normalizes_filenames
+
+
+if _platform_normalizes_filenames:
+    def unicode_filename(path):
+        """Make sure 'path' is a properly normalized filename.
+
+        On platforms where the system normalizes filenames (Mac OSX),
+        you can access a file by any path which will normalize
+        correctly.
+        Internally, bzr only supports NFC/NFKC normalization, since
+        that is the standard for XML documents.
+        So we return an normalized path, and indicate this has been
+        properly normalized.
+
+        :return: (path, is_normalized) Return a path which can
+                access the file, and whether or not this path is
+                normalized.
+        """
+        return unicodedata.normalize('NFKC', path), True
+else:
+    def unicode_filename(path):
+        """Make sure 'path' is a properly normalized filename.
+
+        On platforms where the system does not normalize filenames 
+        (Windows, Linux), you have to access a file by its exact path.
+        Internally, bzr only supports NFC/NFKC normalization, since
+        that is the standard for XML documents.
+        So we return the original path, and indicate if this is
+        properly normalized.
+
+        :return: (path, is_normalized) Return a path which can
+                access the file, and whether or not this path is
+                normalized.
+        """
+        return path, unicodedata.normalize('NFKC', path) == path
 
 
 def terminal_width():

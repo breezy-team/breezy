@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import sys
 from os.path import dirname
 
 import bzrlib.errors as errors
@@ -43,7 +44,6 @@ def glob_expand_for_win32(file_list):
 
 def _prepare_file_list(file_list):
     """Prepare a file list for use by smart_add_*."""
-    import sys
     if sys.platform == 'win32':
         file_list = glob_expand_for_win32(file_list)
     if not file_list:
@@ -52,38 +52,71 @@ def _prepare_file_list(file_list):
     return file_list
 
 
-def add_action_null(inv, path, kind):
-    """Absorb add actions and do nothing."""
-    pass
+class AddAction(object):
+    """A class which defines what action to take when adding a file."""
 
-def add_action_print(inv, path, kind):
-    """Print a line to stdout for each file that would be added."""
-    print "added", bzrlib.osutils.quotefn(path)
+    should_add = False
+    should_print = False
 
-def add_action_add(inv, path, kind):
-    """Add each file to the given inventory. Produce no output."""
-    entry = inv.add_path(path, kind=kind)
-    mutter("added %r kind %r file_id={%s}" % (path, kind, entry.file_id))
+    def __init__(self, to_file=None, should_add=None, should_print=None):
+        self._to_file = to_file
+        if to_file is None:
+            self._to_file = sys.stdout
+        if should_add is not None:
+            self.should_add = should_add
+        if should_print is not None:
+            self.should_print = should_print
 
-def add_action_add_and_print(inv, path, kind):
-    """Add each file to the given inventory, and print a line to stdout."""
-    add_action_add(inv, path, kind)
-    add_action_print(inv, path, kind)
+    def __call__(self, inv, path, kind):
+        """Add path to inventory.
+
+        The default action does nothing.
+
+        :param inv: The inventory we are working with.
+        :param path: The path being added
+        :param kind: The kind of the object being added.
+        """
+        if self.should_add:
+            self._add_to_inv(inv, path, kind)
+        if self.should_print:
+            self._print(inv, path, kind)
+
+    def _print(self, inv, path, kind):
+        self._to_file.write('added ')
+        self._to_file.write(bzrlib.osutils.quotefn(path))
+        self._to_file.write('\n')
+
+    def _add_to_inv(self, inv, path, kind):
+        entry = inv.add_path(path, kind=kind)
+        mutter("added %r kind %r file_id={%s}", path, kind, entry.file_id)
 
 
-def smart_add(file_list, recurse=True, action=add_action_add):
+# TODO: jam 20050105 These could be used for compatibility
+#       however, they bind against the current stdout, not the
+#       one which exists at the time they are called, so they
+#       don't work for the test suite.
+# deprecated
+add_action_null = AddAction()
+add_action_add = AddAction(should_add=True)
+add_action_print = AddAction(should_print=True)
+add_action_add_and_print = AddAction(should_add=True, should_print=True)
+
+
+def smart_add(file_list, recurse=True, action=None):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
     For the specific behaviour see the help for cmd_add().
 
     Returns the number of files added.
+
     """
     file_list = _prepare_file_list(file_list)
     tree = WorkingTree.open_containing(file_list[0])[0]
-    return smart_add_tree(tree, file_list, recurse, action)
+    return smart_add_tree(tree, file_list, recurse, action=action)
 
-def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
+
+def smart_add_tree(tree, file_list, recurse=True, action=None):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
@@ -96,6 +129,8 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
     import os, errno
     from bzrlib.errors import BadFileKindError, ForbiddenFileError
     assert isinstance(recurse, bool)
+    if action is None:
+        action = AddAction(should_add=True)
 
     file_list = _prepare_file_list(file_list)
     user_list = file_list[:]
@@ -172,6 +207,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
         tree._write_inventory(inv)
 
     return added, ignored
+
 
 def __add_one(tree, inv, path, kind, action):
     """Add a file or directory, automatically add unversioned parents."""

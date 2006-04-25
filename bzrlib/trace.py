@@ -103,7 +103,13 @@ def mutter(fmt, *args):
     else:
         out = fmt
     out += '\n'
-    _trace_file.write(out)
+    try:
+        _trace_file.write(out)
+    except UnicodeError, e:
+        warning('UnicodeError: %s', e)
+        _trace_file.write(repr(out))
+    # TODO: jam 20051227 Consider flushing the trace file to help debugging
+    #_trace_file.flush()
 debug = mutter
 
 

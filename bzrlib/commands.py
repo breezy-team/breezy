@@ -32,6 +32,7 @@ import sys
 import os
 from warnings import warn
 import errno
+import codecs
 
 import bzrlib
 from bzrlib.errors import (BzrError,
@@ -189,10 +190,21 @@ class Command(object):
     hidden
         If true, this command isn't advertised.  This is typically
         for commands intended for expert users.
+
+    encoding_type
+        Command objects will get a 'outf' attribute, which has been
+        setup to properly handle encoding of unicode strings.
+        encoding_type determines what will happen when characters cannot
+        be encoded
+            strict - abort if we cannot decode
+            replace - put in a bogus character (typically '?')
+            exact - do not encode sys.stdout
+
     """
     aliases = []
     takes_args = []
     takes_options = []
+    encoding_type = 'strict'
 
     hidden = False
     
@@ -212,6 +224,27 @@ class Command(object):
                 o = Option.OPTIONS[o]
             r[o.name] = o
         return r
+
+    def _setup_stdout(self):
+        """Return a file linked to stdout, which has proper encoding."""
+        assert self.encoding_type in ['strict', 'exact', 'replace']
+
+        # Originally I was using self.stdout, but that looks
+        # *way* too much like sys.stdout
+        if self.encoding_type == 'exact':
+            self.outf = sys.stdout
+            return
+
+        output_encoding = getattr(sys.stdout, 'encoding', None)
+        if not output_encoding:
+            output_encoding = bzrlib.user_encoding
+            mutter('encoding stdout bzrlib.user_encoding %r', output_encoding)
+        else:
+            mutter('encoding stdout log as sys.stdout encoding %r', output_encoding)
+
+        # use 'replace' so that we don't abort if trying to write out
+        # in e.g. the default C locale.
+        self.outf = codecs.getwriter(output_encoding)(sys.stdout, errors=self.encoding_type)
 
     @deprecated_method(zero_eight)
     def run_argv(self, argv):
@@ -242,6 +275,8 @@ class Command(object):
 
         all_cmd_args = cmdargs.copy()
         all_cmd_args.update(cmdopts)
+
+        self._setup_stdout()
 
         return self.run(**all_cmd_args)
     
@@ -512,6 +547,8 @@ def run_bzr(argv):
     
     argv
        The command-line arguments, without the program name from argv[0]
+       These should already be decoded. All library/test code calling
+       run_bzr should be passing valid strings (don't need decoding).
     
     Returns a command status or raises an exception.
 
@@ -534,7 +571,7 @@ def run_bzr(argv):
     --lsprof
         Run under the Python lsprof profiler.
     """
-    argv = [a.decode(bzrlib.user_encoding) for a in argv]
+    argv = list(argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
                 opt_no_aliases = False
@@ -639,7 +676,9 @@ def main(argv):
     ## bzrlib.trace.enable_default_logging()
     bzrlib.trace.log_startup(argv)
     bzrlib.ui.ui_factory = TextUIFactory()
-    ret = run_bzr_catch_errors(argv[1:])
+
+    argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
+    ret = run_bzr_catch_errors(argv)
     mutter("return code %d", ret)
     return ret
 

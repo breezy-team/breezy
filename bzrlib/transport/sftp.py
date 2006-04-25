@@ -46,6 +46,7 @@ from bzrlib.transport import (
     Server,
     Transport,
     urlescape,
+    urlunescape,
     )
 import bzrlib.ui
 
@@ -338,7 +339,7 @@ class SFTPTransport (Transport):
         """
         # FIXME: share the common code across transports
         assert isinstance(relpath, basestring)
-        relpath = urllib.unquote(relpath).split('/')
+        relpath = urlunescape(relpath).split('/')
         basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
@@ -647,7 +648,9 @@ class SFTPTransport (Transport):
 
     def _split_url(self, url):
         if isinstance(url, unicode):
-            url = url.encode('utf-8')
+            # TODO: Disallow unicode urls
+            #raise InvalidURL(url, 'urls must not be unicode.')
+            url = url.encode('ascii')
         (scheme, netloc, path, params,
          query, fragment) = urlparse.urlparse(url, allow_fragments=False)
         assert scheme == 'sftp'
@@ -670,7 +673,7 @@ class SFTPTransport (Transport):
                 raise TransportError('%s: invalid port number' % port)
         host = urllib.unquote(host)
 
-        path = urllib.unquote(path)
+        path = urlunescape(path)
 
         # the initial slash should be removed from the path, and treated
         # as a homedir relative path (the path begins with a double slash

@@ -44,6 +44,7 @@ from cStringIO import StringIO
 import errno
 import fnmatch
 import os
+import re
 import stat
  
 
@@ -100,14 +101,28 @@ from bzrlib.transport.local import LocalTransport
 import bzrlib.ui
 import bzrlib.xml5
 
+_non_word_re = None
+def _get_non_word_re():
+    """Get the compiled regular expression for non-unicode words."""
+    global _non_word_re
+    if _non_word_re is None:
+
+        # TODO: jam 20060106 Currently the BZR codebase can't really handle
+        #           unicode ids. There are a lot of code paths which don't
+        #           expect them. And we need to do more serious testing
+        #           before we enable unicode in ids.
+        #_non_word_re = re.compile(r'[^\w.]', re.UNICODE)
+        _non_word_re = re.compile(r'[^\w.]')
+    return _non_word_re
+
 
 def gen_file_id(name):
     """Return new file id.
 
     This should probably generate proper UUIDs, but for the moment we
     cope with just randomness because running uuidgen every time is
-    slow."""
-    import re
+    slow.
+    """
     from binascii import hexlify
     from time import time
 
@@ -124,7 +139,8 @@ def gen_file_id(name):
 
     # remove any wierd characters; we don't escape them but rather
     # just pull them out
-    name = re.sub(r'[^\w.]', '', name)
+    non_word = _get_non_word_re()
+    name = non_word.sub('', name)
 
     s = hexlify(rand_bytes(8))
     return '-'.join((name, compact_date(time()), s))
@@ -975,7 +991,8 @@ class WorkingTree(bzrlib.tree.Tree):
         l = bzrlib.DEFAULT_IGNORE[:]
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
-            l.extend([line.rstrip("\n\r") for line in f.readlines()])
+            l.extend([line.rstrip("\n\r").decode('utf-8') 
+                      for line in f.readlines()])
         self._ignorelist = l
         return l
 
@@ -998,6 +1015,10 @@ class WorkingTree(bzrlib.tree.Tree):
         # treat dotfiles correctly and allows * to match /.
         # Eventually it should be replaced with something more
         # accurate.
+
+        # FIXME: fnmatch also won't match unicode exact path filenames.
+        #        it does seem to handle wildcard, as long as the non-wildcard
+        #        characters are ascii.
         
         for pat in self.get_ignore_list():
             if '/' in pat or '\\' in pat:
