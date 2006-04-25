@@ -99,7 +99,10 @@ def mutter(fmt, *args):
     if hasattr(_trace_file, 'closed') and _trace_file.closed:
         return
     if len(args) > 0:
-        out = fmt % args
+        # It seems that if we do ascii % (unicode, ascii) we can
+        # get a unicode cannot encode ascii error, so make sure that "fmt"
+        # is a unicode string
+        out = unicode(fmt) % args
     else:
         out = fmt
     out += '\n'

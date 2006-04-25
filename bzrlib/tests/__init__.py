@@ -521,7 +521,7 @@ class TestCase(unittest.TestCase):
         if err:
             self.log('errors:\n%r', err)
         if retcode is not None:
-            self.assertEquals(result, retcode)
+            self.assertEquals(retcode, result)
         return out, err
 
     def run_bzr(self, *args, **kwargs):

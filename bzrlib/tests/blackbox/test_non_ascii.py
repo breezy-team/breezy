@@ -31,7 +31,6 @@ class TestNonAscii(TestCaseInTempDir):
 
     def setUp(self):
         super(TestNonAscii, self).setUp()
-        raise TestSkipped('We cannot handle unicode filenames (yet)')
         # TODO: jam 20060425 because of the confusion of URLs versus Unicode
         #       'bzr add f' will not add a unicode filename
         self._orig_email = os.environ.get('BZREMAIL', None)
@@ -181,7 +180,7 @@ class TestNonAscii(TestCaseInTempDir):
         newpath = u'%s/%s' % (dirname, fname2)
         txt = bzr('mv', newpath, 'a', encoding='ascii')
         self.failUnlessExists('a')
-        self.assertEqual(newpath.encode('ascii', 'replace'), txt)
+        self.assertEqual(newpath.encode('ascii', 'replace') + ' => a\n', txt)
 
     def test_branch(self):
         # We should be able to branch into a directory that
@@ -210,7 +209,7 @@ class TestNonAscii(TestCaseInTempDir):
         os.chdir(u'../' + dirname2)
         txt = bzr('pull')
 
-        self.assertEqual(u'Using saved location: %s\n' % (pwd,), txt)
+        self.assertEqual(u'Using saved location: %s/\n' % (pwd,), txt)
 
         os.chdir('../' + dirname1)
         open('a', 'ab').write('and yet more\n')
@@ -450,27 +449,18 @@ class TestNonAscii(TestCaseInTempDir):
 
         bzr('ignore', './' + fname2)
         txt = bzr('unknowns')
-        # TODO: jam 20060107 This is the correct output
-        # self.assertEqual('', txt)
-        # This is the incorrect output
-        self.assertEqual(u'"%s"\n' % (fname2,), txt)
+        self.assertEqual(u'', txt)
 
         fname3 = self.info['filename'] + '3.txt'
         open(fname3, 'wb').write('unknown 3\n')
         txt = bzr('unknowns')
-        # TODO: jam 20060107 This is the correct output
-        # self.assertEqual(u'"%s"\n' % (fname3,), txt)
-        # This is the incorrect output
-        self.assertEqual(u'"%s"\n"%s"\n' % (fname2, fname3,), txt)
+        self.assertEqual(u'"%s"\n' % (fname3,), txt)
 
         # Ignore should not care what the encoding is
         # (right now it doesn't print anything)
         bzr('ignore', fname3, encoding='ascii')
         txt = bzr('unknowns')
-        # TODO: jam 20060107 This is the correct output
-        # self.assertEqual('', txt)
-        # This is the incorrect output
-        self.assertEqual(u'"%s"\n"%s"\n' % (fname2, fname3), txt)
+        self.assertEqual('', txt)
 
         # Now try a wildcard match
         fname4 = self.info['filename'] + '4.txt'
@@ -482,13 +472,6 @@ class TestNonAscii(TestCaseInTempDir):
         os.remove('.bzrignore')
         bzr('ignore', self.info['filename'] + '*')
         txt = bzr('unknowns')
-        # TODO: jam 20060107 This is the correct output
-        # self.assertEqual('', txt)
-        # This is the incorrect output
-        self.assertEqual(u'"%s"\n"%s"\n"%s"\n' % (fname2, fname3, fname4), txt)
-
-        # TODO: jam 20060107 The best error we have right now is TestSkipped
-        #       to indicate that this test is known to fail
-        raise TestSkipped("WorkingTree.is_ignored doesn't match unicode filenames (yet)")
+        self.assertEqual('', txt)
 
 
