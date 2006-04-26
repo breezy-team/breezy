@@ -87,6 +87,7 @@ from bzrlib.osutils import (
                             relpath,
                             rename,
                             supports_executable,
+                            local_path_to_url,
                             )
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import NULL_REVISION
@@ -318,7 +319,8 @@ class WorkingTree(bzrlib.tree.Tree):
         on disk will not be a control file for this tree.
         """
         try:
-            self.bzrdir.transport.relpath(self.abspath(filename))
+            url = local_path_to_url(self.abspath(filename))
+            self.bzrdir.transport.relpath(url)
             return True
         except errors.PathNotChild:
             return False
