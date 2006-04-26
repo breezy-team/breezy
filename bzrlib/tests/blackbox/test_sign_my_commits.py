@@ -53,6 +53,14 @@ class SignMyCommits(TestCaseWithTransport):
 
         return wt
 
+    def assertUnsigned(self, repo, revision_id):
+        """Assert that revision_id is not signed in repo."""
+        self.assertFalse(repo.has_signature_for_revision_id(revision_id))
+
+    def assertSigned(self, repo, revision_id):
+        """Assert that revision_id is signed in repo."""
+        self.assertTrue(repo.has_signature_for_revision_id(revision_id))
+
     def test_sign_my_commits(self):
         #Test re signing of data.
         wt = self.setup_tree()
@@ -60,17 +68,17 @@ class SignMyCommits(TestCaseWithTransport):
 
         self.monkey_patch_gpg()
 
-        self.assertFalse(repo.revision_store.has_id('A', 'sig'))
-        self.assertFalse(repo.revision_store.has_id('B', 'sig'))
-        self.assertFalse(repo.revision_store.has_id('C', 'sig'))
-        self.assertFalse(repo.revision_store.has_id('D', 'sig'))
+        self.assertUnsigned(repo, 'A')
+        self.assertUnsigned(repo, 'B')
+        self.assertUnsigned(repo, 'C')
+        self.assertUnsigned(repo, 'D')
 
         self.run_bzr('sign-my-commits')
 
-        self.assertTrue(repo.revision_store.has_id('A', 'sig'))
-        self.assertTrue(repo.revision_store.has_id('B', 'sig'))
-        self.assertTrue(repo.revision_store.has_id('C', 'sig'))
-        self.assertFalse(repo.revision_store.has_id('D', 'sig'))
+        self.assertSigned(repo, 'A')
+        self.assertSigned(repo, 'B')
+        self.assertSigned(repo, 'C')
+        self.assertUnsigned(repo, 'D')
             
     def test_sign_my_commits_location(self):
         wt = self.setup_tree('other')
@@ -80,10 +88,10 @@ class SignMyCommits(TestCaseWithTransport):
 
         self.run_bzr('sign-my-commits', 'other')
 
-        self.assertTrue(repo.revision_store.has_id('A', 'sig'))
-        self.assertTrue(repo.revision_store.has_id('B', 'sig'))
-        self.assertTrue(repo.revision_store.has_id('C', 'sig'))
-        self.assertFalse(repo.revision_store.has_id('D', 'sig'))
+        self.assertSigned(repo, 'A')
+        self.assertSigned(repo, 'B')
+        self.assertSigned(repo, 'C')
+        self.assertUnsigned(repo, 'D')
 
     def test_sign_diff_committer(self):
         wt = self.setup_tree()
@@ -93,10 +101,10 @@ class SignMyCommits(TestCaseWithTransport):
 
         self.run_bzr('sign-my-commits', '.', 'Alternate <alt@foo.com>')
 
-        self.assertFalse(repo.revision_store.has_id('A', 'sig'))
-        self.assertFalse(repo.revision_store.has_id('B', 'sig'))
-        self.assertFalse(repo.revision_store.has_id('C', 'sig'))
-        self.assertTrue(repo.revision_store.has_id('D', 'sig'))
+        self.assertUnsigned(repo, 'A')
+        self.assertUnsigned(repo, 'B')
+        self.assertUnsigned(repo, 'C')
+        self.assertSigned(repo, 'D')
 
     def test_sign_dry_run(self):
         wt = self.setup_tree()
@@ -107,8 +115,7 @@ class SignMyCommits(TestCaseWithTransport):
         out = self.run_bzr('sign-my-commits', '--dry-run')[0]
 
         self.assertEquals('A\nB\nC\nSigned 3 revisions\n', out)
-        self.assertFalse(repo.revision_store.has_id('A', 'sig'))
-        self.assertFalse(repo.revision_store.has_id('B', 'sig'))
-        self.assertFalse(repo.revision_store.has_id('C', 'sig'))
-        self.assertFalse(repo.revision_store.has_id('D', 'sig'))
-
+        self.assertUnsigned(repo, 'A')
+        self.assertUnsigned(repo, 'B')
+        self.assertUnsigned(repo, 'C')
+        self.assertUnsigned(repo, 'D')

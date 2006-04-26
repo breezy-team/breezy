@@ -106,10 +106,10 @@ class TestSmartAdd(TestCaseWithTransport):
         self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS', 
                         'inertiatic/foo.pyc'])
         added, ignored = smart_add_tree(wt, u'.')
-        self.AssertSubset(('inertiatic', 'inertiatic/esp'), added)
-        self.AssertSubset(('CVS', '*.py[oc]'), ignored)
-        self.AssertSubset(('inertiatic/CVS',), ignored['CVS'])
-        self.AssertSubset(('inertiatic/foo.pyc',), ignored['*.py[oc]'])
+        self.assertSubset(('inertiatic', 'inertiatic/esp'), added)
+        self.assertSubset(('CVS', '*.py[oc]'), ignored)
+        self.assertSubset(('inertiatic/CVS',), ignored['CVS'])
+        self.assertSubset(('inertiatic/foo.pyc',), ignored['*.py[oc]'])
 
 
 class TestSmartAddBranch(TestCaseWithTransport):

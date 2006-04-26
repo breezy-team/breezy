@@ -25,6 +25,7 @@ also see this file.
 from stat import *
 from StringIO import StringIO
 
+import bzrlib
 import bzrlib.bzrdir as bzrdir
 import bzrlib.errors as errors
 from bzrlib.errors import (NotBranchError,
@@ -43,8 +44,7 @@ class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
         old_format = repository.RepositoryFormat.get_default_format()
-        # default is None - we cannot create a Repository independently yet
-        self.assertTrue(isinstance(old_format, repository.RepositoryFormat7))
+        self.assertTrue(isinstance(old_format, repository.RepositoryFormatKnit1))
         repository.RepositoryFormat.set_default_format(SampleRepositoryFormat())
         # creating a repository should now create an instrumented dir.
         try:
@@ -156,7 +156,6 @@ class TestFormat7(TestCaseWithTransport):
         t = control.get_repository_transport(None)
         self.assertEqualDiff('Bazaar-NG Repository format 7',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
         self.assertEqualDiff('# bzr weave file v5\n'
@@ -169,15 +168,14 @@ class TestFormat7(TestCaseWithTransport):
         repo = repository.RepositoryFormat7().initialize(control, shared=True)
         # we want:
         # format 'Bazaar-NG Repository format 7'
-        # lock ''
         # inventory.weave == empty_weave
         # empty revision-store directory
         # empty weaves directory
         # a 'shared-storage' marker file.
+        # lock is not present when unlocked
         t = control.get_repository_transport(None)
         self.assertEqualDiff('Bazaar-NG Repository format 7',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff('', t.get('shared-storage').read())
         self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
         self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
@@ -185,6 +183,38 @@ class TestFormat7(TestCaseWithTransport):
                              'w\n'
                              'W\n',
                              t.get('inventory.weave').read())
+        self.assertFalse(t.has('branch-lock'))
+
+    def test_creates_lockdir(self):
+        """Make sure it appears to be controlled by a LockDir existence"""
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = repository.RepositoryFormat7().initialize(control, shared=True)
+        t = control.get_repository_transport(None)
+        # TODO: Should check there is a 'lock' toplevel directory, 
+        # regardless of contents
+        self.assertFalse(t.has('lock/held/info'))
+        repo.lock_write()
+        try:
+            self.assertTrue(t.has('lock/held/info'))
+        finally:
+            # unlock so we don't get a warning about failing to do so
+            repo.unlock()
+
+    def test_uses_lockdir(self):
+        """repo format 7 actually locks on lockdir"""
+        base_url = self.get_url()
+        control = bzrdir.BzrDirMetaFormat1().initialize(base_url)
+        repo = repository.RepositoryFormat7().initialize(control, shared=True)
+        t = control.get_repository_transport(None)
+        repo.lock_write()
+        repo.unlock()
+        del repo
+        # make sure the same lock is created by opening it
+        repo = repository.Repository.open(base_url)
+        repo.lock_write()
+        self.assertTrue(t.has('lock/held/info'))
+        repo.unlock()
+        self.assertFalse(t.has('lock/held/info'))
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -200,7 +230,7 @@ class TestFormat7(TestCaseWithTransport):
         t = control.get_repository_transport(None)
         self.assertEqualDiff('Bazaar-NG Repository format 7',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
+        ## self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff('', t.get('shared-storage').read())
         self.assertEqualDiff('', t.get('no-working-trees').read())
         repo.set_make_working_trees(True)
@@ -211,6 +241,84 @@ class TestFormat7(TestCaseWithTransport):
                              'w\n'
                              'W\n',
                              t.get('inventory.weave').read())
+
+
+class TestFormatKnit1(TestCaseWithTransport):
+    
+    def test_disk_layout(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = repository.RepositoryFormatKnit1().initialize(control)
+        # in case of side effects of locking.
+        repo.lock_write()
+        repo.unlock()
+        # we want:
+        # format 'Bazaar-NG Knit Repository Format 1'
+        # lock: is a directory
+        # inventory.weave == empty_weave
+        # empty revision-store directory
+        # empty weaves directory
+        t = control.get_repository_transport(None)
+        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
+                             t.get('format').read())
+        # XXX: no locks left when unlocked at the moment
+        # self.assertEqualDiff('', t.get('lock').read())
+        self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        self.check_knits(t)
+
+    def assertHasKnit(self, t, knit_name):
+        """Assert that knit_name exists on t."""
+        self.assertEqualDiff('# bzr knit index 8\n',
+                             t.get(knit_name + '.kndx').read())
+        # no default content
+        self.assertTrue(t.has(knit_name + '.knit'))
+
+    def check_knits(self, t):
+        """check knit content for a repository."""
+        self.assertHasKnit(t, 'inventory')
+        self.assertHasKnit(t, 'revisions')
+        self.assertHasKnit(t, 'signatures')
+
+    def test_shared_disk_layout(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = repository.RepositoryFormatKnit1().initialize(control, shared=True)
+        # we want:
+        # format 'Bazaar-NG Knit Repository Format 1'
+        # lock: is a directory
+        # inventory.weave == empty_weave
+        # empty revision-store directory
+        # empty weaves directory
+        # a 'shared-storage' marker file.
+        t = control.get_repository_transport(None)
+        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
+                             t.get('format').read())
+        # XXX: no locks left when unlocked at the moment
+        # self.assertEqualDiff('', t.get('lock').read())
+        self.assertEqualDiff('', t.get('shared-storage').read())
+        self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        self.check_knits(t)
+
+    def test_shared_no_tree_disk_layout(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        repo = repository.RepositoryFormatKnit1().initialize(control, shared=True)
+        repo.set_make_working_trees(False)
+        # we want:
+        # format 'Bazaar-NG Knit Repository Format 1'
+        # lock ''
+        # inventory.weave == empty_weave
+        # empty revision-store directory
+        # empty weaves directory
+        # a 'shared-storage' marker file.
+        t = control.get_repository_transport(None)
+        self.assertEqualDiff('Bazaar-NG Knit Repository Format 1',
+                             t.get('format').read())
+        # XXX: no locks left when unlocked at the moment
+        # self.assertEqualDiff('', t.get('lock').read())
+        self.assertEqualDiff('', t.get('shared-storage').read())
+        self.assertEqualDiff('', t.get('no-working-trees').read())
+        repo.set_make_working_trees(True)
+        self.assertFalse(t.has('no-working-trees'))
+        self.assertTrue(S_ISDIR(t.stat('knits').st_mode))
+        self.check_knits(t)
 
 
 class InterString(repository.InterRepository):
@@ -282,14 +390,18 @@ class TestInterWeaveRepo(TestCaseWithTransport):
         formats = [repository.RepositoryFormat5(),
                    repository.RepositoryFormat6(),
                    repository.RepositoryFormat7()]
+        incompatible_formats = [repository.RepositoryFormat4(),
+                                repository.RepositoryFormatKnit1(),
+                                ]
         repo_a = self.make_repository('a')
         repo_b = self.make_repository('b')
-        # force incompatible left then right
-        repo_a._format = repository.RepositoryFormat4()
-        repo_b._format = formats[0]
         is_compatible = repository.InterWeaveRepo.is_compatible
-        self.assertFalse(is_compatible(repo_a, repo_b))
-        self.assertFalse(is_compatible(repo_b, repo_a))
+        for source in incompatible_formats:
+            # force incompatible left then right
+            repo_a._format = source
+            repo_b._format = formats[0]
+            self.assertFalse(is_compatible(repo_a, repo_b))
+            self.assertFalse(is_compatible(repo_b, repo_a))
         for source in formats:
             repo_a._format = source
             for target in formats:
@@ -298,3 +410,21 @@ class TestInterWeaveRepo(TestCaseWithTransport):
         self.assertEqual(repository.InterWeaveRepo,
                          repository.InterRepository.get(repo_a,
                                                         repo_b).__class__)
+
+
+class TestRepositoryConverter(TestCaseWithTransport):
+
+    def test_convert_empty(self):
+        t = get_transport(self.get_url('.'))
+        t.mkdir('repository')
+        repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
+        repo = repository.RepositoryFormat7().initialize(repo_dir)
+        target_format = repository.RepositoryFormatKnit1()
+        converter = repository.CopyConverter(target_format)
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            converter.convert(repo, pb)
+        finally:
+            pb.finished()
+        repo = repo_dir.open_repository()
+        self.assertTrue(isinstance(target_format, repo._format.__class__))

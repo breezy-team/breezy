@@ -161,6 +161,7 @@ _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally')
 _global_option('basis', type=str)
+_global_option('bound')
 _global_option('diff-options', type=str)
 _global_option('help',
                help='show help message')
@@ -173,12 +174,12 @@ _global_option('no-recurse')
 _global_option('profile',
                help='show performance profiling information')
 _global_option('revision', type=_parse_revision_str)
-_global_option('short')
 _global_option('show-ids', 
                help='show internal object ids')
 _global_option('timezone', 
                type=str,
                help='display timezone as local, original, or utc')
+_global_option('unbound')
 _global_option('verbose',
                help='display more information')
 _global_option('version')

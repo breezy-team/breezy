@@ -67,9 +67,13 @@ def _run_editor(filename):
             break
     raise BzrError("Could not start any editor. "
                    "Please specify $EDITOR or use ~/.bzr.conf/editor")
-                          
 
-def edit_commit_message(infotext, ignoreline=None):
+
+DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \
+    { 'bar' : '-' * 14, 'msg' : 'This line and the following will be ignored' }
+
+
+def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
     """Let the user edit a commit message in a temp file.
 
     This is run if they don't give a message or
@@ -81,10 +85,7 @@ def edit_commit_message(infotext, ignoreline=None):
         'bzr status'.
     """
     import tempfile
-    
-    if ignoreline is None:
-        ignoreline = "-- This line and the following will be ignored --"
-        
+
     try:
         tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
         msgfile = os.close(tmp_fileno)
@@ -148,7 +149,8 @@ def make_commit_message_template(working_tree, specific_files):
     # the revision to be committed, then pause and ask the user to
     # confirm/write a message.
     from StringIO import StringIO       # must be unicode-safe
-    from bzrlib.status import show_status
+    from bzrlib.status import show_tree_status
     status_tmp = StringIO()
-    show_status(working_tree.branch, specific_files=specific_files, to_file=status_tmp)
+    show_tree_status(working_tree, specific_files=specific_files, 
+                     to_file=status_tmp)
     return status_tmp.getvalue()

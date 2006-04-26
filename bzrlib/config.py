@@ -52,6 +52,14 @@ create_signatures - this option controls whether bzr will always create
                     NB: This option is planned, but not implemented yet.
 log_format - This options set the default log format.  Options are long, 
              short, line, or a plugin can register new formats
+
+In bazaar.conf you can also define aliases in the ALIASES sections, example
+
+[ALIASES]
+lastlog=log --line -r-10..-1
+ll=log --line -r-10..-1
+h=help
+up=pull
 """
 
 
@@ -191,6 +199,12 @@ class Config(object):
             return True
         return False
 
+    def get_alias(self, value):
+        return self._get_alias(value)
+
+    def _get_alias(self, value):
+        pass
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -203,7 +217,7 @@ class IniBasedConfig(Config):
         else:
             input = file
         try:
-            self._parser = ConfigObj(input)
+            self._parser = ConfigObj(input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
         return self._parser
@@ -257,6 +271,13 @@ class IniBasedConfig(Config):
             return CHECK_ALWAYS
         raise errors.BzrError("Invalid signatures policy '%s'"
                               % signature_string)
+
+    def _get_alias(self, value):
+        try:
+            return self._get_parser().get_value("ALIASES", 
+                                                value)
+        except KeyError:
+            pass
 
 
 class GlobalConfig(IniBasedConfig):
@@ -313,7 +334,7 @@ class LocationConfig(IniBasedConfig):
             # if path is longer, and recurse is not true, no match
             if len(section_names) < len(location_names):
                 try:
-                    if not self._get_parser().get_bool(section, 'recurse'):
+                    if not self._get_parser()[section].as_bool('recurse'):
                         continue
                 except KeyError:
                     pass
@@ -380,7 +401,7 @@ class LocationConfig(IniBasedConfig):
         elif location + '/' in self._get_parser():
             location = location + '/'
         self._get_parser()[location][option]=value
-        self._get_parser().write()
+        self._get_parser().write(file(self._get_filename(), 'wb'))
 
 
 class BranchConfig(Config):
@@ -431,6 +452,7 @@ class BranchConfig(Config):
     def _log_format(self):
         """See Config.log_format."""
         return self._get_location_config()._log_format()
+
 
 def ensure_config_dir_exists(path=None):
     """Make sure a configuration directory exists.
@@ -502,8 +524,15 @@ def _auto_user_id():
         import pwd
         uid = os.getuid()
         w = pwd.getpwuid(uid)
-        gecos = w.pw_gecos.decode(bzrlib.user_encoding)
-        username = w.pw_name.decode(bzrlib.user_encoding)
+
+        try:
+            gecos = w.pw_gecos.decode(bzrlib.user_encoding)
+            username = w.pw_name.decode(bzrlib.user_encoding)
+        except UnicodeDecodeError:
+            # We're using pwd, therefore we're on Unix, so /etc/passwd is ok.
+            raise errors.BzrError("Can't decode username in " \
+                    "/etc/passwd as %s." % bzrlib.user_encoding)
+
         comma = gecos.find(',')
         if comma == -1:
             realname = gecos
@@ -514,7 +543,11 @@ def _auto_user_id():
 
     except ImportError:
         import getpass
-        realname = username = getpass.getuser().decode(bzrlib.user_encoding)
+        try:
+            realname = username = getpass.getuser().decode(bzrlib.user_encoding)
+        except UnicodeDecodeError:
+            raise errors.BzrError("Can't decode username as %s." % \
+                    bzrlib.user_encoding)
 
     return realname, (username + '@' + socket.gethostname())
 

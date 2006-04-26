@@ -18,9 +18,9 @@ import os
 
 from bzrlib.add import smart_add
 from bzrlib.builtins import merge
+from bzrlib.errors import IllegalPath
 from bzrlib.delta import compare_trees
-from bzrlib.merge import merge_inner
-from bzrlib.revision import common_ancestor
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.workingtree import WorkingTree
 
@@ -31,17 +31,6 @@ class FileIdInvolvedBase(TestCaseWithRepository):
         f = file(filename,"a")
         f.write("appended line\n")
         f.close( )
-
-    def merge(self, branch_from, wt_to):
-        # minimal ui-less merge.
-        wt_to.branch.fetch(branch_from)
-        base_rev = common_ancestor(branch_from.last_revision(),
-                                    wt_to.branch.last_revision(),
-                                    wt_to.branch.repository)
-        merge_inner(wt_to.branch, branch_from.basis_tree(), 
-                    wt_to.branch.repository.revision_tree(base_rev),
-                    this_tree=wt_to)
-        wt_to.add_pending_merge(branch_from.last_revision())
 
     def compare_tree_fileids(self, branch, old_rev, new_rev):
         old_tree = self.branch.repository.revision_tree(old_rev)
@@ -75,7 +64,10 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
                                  'c-funky<file-id> quiji%bo'])
-        main_wt.commit("Commit one", rev_id="rev-A")
+        try:
+            main_wt.commit("Commit one", rev_id="rev-A")
+        except IllegalPath:
+            raise TestSkipped("File-id with <> not supported on this platform")
         #-------- end A -----------
 
         d1 = main_branch.bzrdir.clone('branch1')
@@ -173,7 +165,6 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.assertEquals( l1, l2 )
 
     def test_fileid_involved_full_compare(self):
-        from bzrlib.tsort import topo_sort
         pp=[]
         history = self.branch.revision_history( )
 
@@ -201,7 +192,10 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
                                  'c-funky<file-id> quiji%bo'])
-        main_wt.commit("Commit one", rev_id="rev-A")
+        try:
+            main_wt.commit("Commit one", rev_id="rev-A")
+        except IllegalPath:
+            raise TestSkipped("Used unsupported characters")
 
         branch2_bzrdir = main_branch.bzrdir.sprout("branch2")
         branch2_branch = branch2_bzrdir.open_branch()
@@ -225,4 +219,4 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
 
         l2 = self.compare_tree_fileids(self.branch, old_rev, new_rev)
         self.assertNotEqual(l2, l1)
-        self.AssertSubset(l2, l1)
+        self.assertSubset(l2, l1)

@@ -14,12 +14,7 @@ Overall
   test before writing the code.
 
   In general, you can test at either the command-line level or the
-  internal API level.  Choose whichever is appropriate: if adding a
-  new command, or a new command option, then call through run_bzr().
-  It is not necessary to do both. Tests that test the command line level
-  are appropriate for checking the UI behaves well - bug fixes and
-  core improvements should be tested closer to the code that is doing the
-  work. Command line level tests should be placed in 'blackbox.py'.
+  internal API level.  See Writing Tests below for more detail.
 
 * Try to practice Test-Driven Development.  before fixing a bug, write a
   test case so that it does not regress.  Similarly for adding a new
@@ -238,21 +233,47 @@ should be only in the command-line tool.
 
 Writing tests
 =============
-In general tests should be placed in a file named testFOO.py where 
+In general tests should be placed in a file named test_FOO.py where 
 FOO is the logical thing under test. That file should be placed in the
 tests subdirectory under the package being tested.
 
-For example, tests for merge3 in bzrlib belong in bzrlib/tests/testmerge3.py.
-See bzrlib/selftest/testsampler.py for a template test script.
+For example, tests for merge3 in bzrlib belong in bzrlib/tests/test_merge3.py.
+See bzrlib/selftest/test_sampler.py for a template test script.
 
+Tests can be written for the UI or for individual areas of the library.
+Choose whichever is appropriate: if adding a new command, or a new command 
+option, then you should be writing a UI test.  If you are both adding UI
+functionality and library functionality, you will want to write tests for 
+both the UI and the core behaviours.  We call UI tests 'blackbox' tests
+and they are found in bzrlib/tests/blackbox/*.py. 
+
+When writing blackbox tests please honour the following conventions:
+
+ 1. Place the tests for the command 'name' in
+    bzrlib/tests/blackbox/test_name.py. This makes it easy for developers
+    to locate the test script for a faulty command.
+
+ 2. Use the 'self.run_bzr("name")' utility function to invoke the command
+    rather than running bzr in a subprocess or invoking the
+    cmd_object.run() method directly. This is a lot faster than
+    subprocesses and generates the same logging output as running it in a
+    subprocess (which invoking the method directly does not).
+ 
+ 3. Only test the one command in a single test script. Use the bzrlib 
+    library when setting up tests and when evaluating the side-effects of
+    the command. We do this so that the library api has continual pressure
+    on it to be as functional as the command line in a simple manner, and
+    to isolate knock-on effects throughout the blackbox test suite when a
+    command changes it name or signature. Ideally only the tests for a
+    given command are affected when a given command is changed.
 
 Running tests
 =============
 Currently, bzr selftest is used to invoke tests.
 You can provide a pattern argument to run a subset. For example, 
-to run just the whitebox tests, run::
+to run just the blackbox tests, run::
 
-  bzr selftest -v whitebox
+  ./bzr selftest -v blackbox
 
 
 Errors and exceptions

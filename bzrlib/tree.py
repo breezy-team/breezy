@@ -110,6 +110,17 @@ class Tree(object):
 
     def unlock(self):
         pass
+
+    def filter_unversioned_files(self, paths):
+        """Filter out paths that are not versioned.
+
+        :return: set of paths.
+        """
+        # NB: we specifically *don't* call self.has_filename, because for
+        # WorkingTrees that can indicate files that exist on disk but that 
+        # are not versioned.
+        pred = self.inventory.has_filename
+        return set((p for p in paths if not pred(p)))
         
         
 class RevisionTree(Tree):
@@ -129,19 +140,13 @@ class RevisionTree(Tree):
         self._revision_id = revision_id
 
     def get_weave(self, file_id):
-        import bzrlib.transactions as transactions
         return self._weave_store.get_weave(file_id,
-                self._branch.get_transaction())
-
-    def get_weave_prelude(self, file_id):
-        import bzrlib.transactions as transactions
-        return self._weave_store.get_weave_prelude(file_id,
                 self._branch.get_transaction())
 
     def get_file_lines(self, file_id):
         ie = self._inventory[file_id]
         weave = self.get_weave(file_id)
-        return weave.get(ie.revision)
+        return weave.get_lines(ie.revision)
 
     def get_file_text(self, file_id):
         return ''.join(self.get_file_lines(file_id))

@@ -14,6 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
+from bzrlib.tsort import topo_sort
+
+
 def max_distance(node, ancestors, distances, root_descendants):
     """Calculate the max distance to an ancestor.  
     Return None if not all possible ancestors have known distances"""
@@ -102,3 +106,57 @@ def all_descendants(descendants, start):
                 new_lines.add(descendant)
         lines = new_lines
     return result
+
+
+class Graph(object):
+    """A graph object which can memoise and cache results for performance."""
+
+    def __init__(self):
+        super(Graph, self).__init__()
+        self.roots = set([])
+        self.ghosts = set([])
+        self._graph_ancestors = {}
+        self._graph_descendants = {}
+
+    def add_ghost(self, node_id):
+        """Add a ghost to the graph."""
+        self.ghosts.add(node_id)
+        self._ensure_descendant(node_id)
+
+    def add_node(self, node_id, parent_ids):
+        """Add node_id to the graph with parent_ids as its parents."""
+        if parent_ids == []:
+            self.roots.add(node_id)
+        self._graph_ancestors[node_id] = list(parent_ids)
+        self._ensure_descendant(node_id)
+        for parent in parent_ids:
+            self._ensure_descendant(parent)
+            self._graph_descendants[parent][node_id] = 1
+        
+    def _ensure_descendant(self, node_id):
+        """Ensure that a descendant lookup for node_id will work."""
+        if not node_id in self._graph_descendants:
+            self._graph_descendants[node_id] = {}
+
+    def get_ancestors(self):
+        """Return a dictionary of graph node:ancestor_list entries."""
+        return dict(self._graph_ancestors.items())
+
+    def get_ancestry(self, node_id):
+        """Return the inclusive ancestors of node_id in topological order."""
+        # maybe optimise this ?
+        result = {}
+        pending = set([node_id])
+        while len(pending):
+            current = pending.pop()
+            parents = self._graph_ancestors[current]
+            parents = [parent for parent in parents if parent not in self.ghosts]
+            result[current] = parents
+            for parent in parents:
+                if parent not in result and parent not in pending:
+                    pending.add(parent)
+        return topo_sort(result.items())
+
+    def get_descendants(self):
+        """Return a dictionary of graph node:child_node:distance entries."""
+        return dict(self._graph_descendants.items())

@@ -26,8 +26,7 @@ global_help = \
 """Bazaar-NG -- a free distributed version-control tool
 http://bazaar-ng.org/
 
-WARNING: This is an unstable development version.
-         Please keep backups.
+Please remember to keep backups!
 
 Basic commands:
 
@@ -162,5 +161,5 @@ def help_commands(outfile=None):
         cmd_help = cmd_object.help()
         if cmd_help:
             firstline = cmd_help.split('\n', 1)[0]
-            print >>outfile, '    ' + firstline
+            print >>outfile, '        ' + firstline
         

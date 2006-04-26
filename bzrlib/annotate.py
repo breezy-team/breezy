@@ -64,15 +64,14 @@ def _annotate_file(branch, rev_id, file_id ):
             (revno_str, author, date_str) = ('','','')
         else:
             last_origin = origin
-            line_rev_id = w.idx_to_name(origin)
-            if not branch.repository.has_revision(line_rev_id):
+            if not branch.repository.has_revision(origin):
                 (revno_str, author, date_str) = ('?','?','?')
             else:
-                if line_rev_id in rh:
-                    revno_str = str(rh.index(line_rev_id) + 1)
+                if origin in rh:
+                    revno_str = str(rh.index(origin) + 1)
                 else:
                     revno_str = 'merge'
-            rev = branch.repository.get_revision(line_rev_id)
+            rev = branch.repository.get_revision(origin)
             tz = rev.timezone or 0
             date_str = time.strftime('%Y%m%d', 
                                      time.gmtime(rev.timestamp + tz))
@@ -83,4 +82,4 @@ def _annotate_file(branch, rev_id, file_id ):
                 author = extract_email_address(author)
             except BzrError:
                 pass        # use the whole name
-        yield (revno_str, author, date_str, line_rev_id, text)
+        yield (revno_str, author, date_str, origin, text)

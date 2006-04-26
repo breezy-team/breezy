@@ -59,8 +59,17 @@ class TestOSUtils(TestCaseInTempDir):
 
         self.check_file_contents('a', 'something in a\n')
 
-
     # TODO: test fancy_rename using a MemoryTransport
+
+    def test_01_rand_chars_empty(self):
+        result = osutils.rand_chars(0)
+        self.assertEqual(result, '')
+
+    def test_02_rand_chars_100(self):
+        result = osutils.rand_chars(100)
+        self.assertEqual(len(result), 100)
+        self.assertEqual(type(result), str)
+        self.assertContainsRe(result, r'^[a-z0-9]{100}$')
 
 
 class TestSafeUnicode(TestCase):
@@ -81,3 +90,16 @@ class TestSafeUnicode(TestCase):
         self.assertRaises(BzrBadParameterNotUnicode,
                           osutils.safe_unicode,
                           '\xbb\xbb')
+
+
+class TestSplitLines(TestCase):
+
+    def test_split_unicode(self):
+        self.assertEqual([u'foo\n', u'bar\xae'],
+                         osutils.split_lines(u'foo\nbar\xae'))
+        self.assertEqual([u'foo\n', u'bar\xae\n'],
+                         osutils.split_lines(u'foo\nbar\xae\n'))
+
+    def test_split_with_carriage_returns(self):
+        self.assertEqual(['foo\rbar\n'],
+                         osutils.split_lines('foo\rbar\n'))

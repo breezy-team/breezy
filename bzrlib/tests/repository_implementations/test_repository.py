@@ -17,6 +17,7 @@
 """Tests for bzrdir implementations - tests a bzrdir format."""
 
 import os
+import re
 import sys
 
 import bzrlib
@@ -46,26 +47,11 @@ class TestCaseWithRepository(TestCaseWithBzrDir):
     def setUp(self):
         super(TestCaseWithRepository, self).setUp()
 
-    def make_branch(self, relpath):
-        repo = self.make_repository(relpath)
+    def make_branch(self, relpath, format=None):
+        repo = self.make_repository(relpath, format=None)
         return repo.bzrdir.create_branch()
 
-    def make_bzrdir(self, relpath):
-        try:
-            url = self.get_url(relpath)
-            segments = url.split('/')
-            if segments and segments[-1] not in ('', '.'):
-                parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
-                try:
-                    t.mkdir(segments[-1])
-                except FileExists:
-                    pass
-            return self.bzrdir_format.initialize(url)
-        except UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
-
-    def make_repository(self, relpath):
+    def make_repository(self, relpath, format=None):
         made_control = self.make_bzrdir(relpath)
         return self.repository_format.initialize(made_control)
 
@@ -221,6 +207,68 @@ class TestRepository(TestCaseWithRepository):
         self.assertTrue(result.open_repository().is_shared())
         self.assertFalse(result.open_repository().make_working_trees())
 
+    def test_upgrade_preserves_signatures(self):
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        wt.branch.repository.sign_revision('A',
+            bzrlib.gpg.LoopbackGPGStrategy(None))
+        old_signature = wt.branch.repository.get_signature_text('A')
+        try:
+            old_format = bzrdir.BzrDirFormat.get_default_format()
+            # This gives metadir branches something they can convert to.
+            # it would be nice to have a 'latest' vs 'default' concept.
+            bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+            try:
+                upgrade(wt.basedir)
+            finally:
+                bzrdir.BzrDirFormat.set_default_format(old_format)
+        except errors.UpToDateFormat:
+            # this is in the most current format already.
+            return
+        wt = WorkingTree.open(wt.basedir)
+        new_signature = wt.branch.repository.get_signature_text('A')
+        self.assertEqual(old_signature, new_signature)
+
+    def test_exposed_versioned_files_are_marked_dirty(self):
+        repo = self.make_repository('.')
+        repo.lock_write()
+        inv = repo.get_inventory_weave()
+        repo.unlock()
+        self.assertRaises(errors.OutSideTransaction, inv.add_lines, 'foo', [], [])
+
+    def test_format_description(self):
+        repo = self.make_repository('.')
+        text = repo._format.get_format_description()
+        self.failUnless(len(text))
+
+    def assertMessageRoundtrips(self, message):
+        """Assert that message roundtrips to a repository and back intact."""
+        tree = self.make_branch_and_tree('.')
+        tree.commit(message, rev_id='a', allow_pointless=True)
+        rev = tree.branch.repository.get_revision('a')
+        # we have to manually escape this as we dont try to
+        # roundtrip xml invalid characters at this point.
+        # when escaping is moved to the serialiser, this test
+        # can check against the literal message rather than
+        # this escaped version.
+        escaped_message, escape_count = re.subn(
+            u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+            lambda match: match.group(0).encode('unicode_escape'),
+            message)
+        escaped_message= re.sub('\r', '\n', escaped_message)
+        self.assertEqual(rev.message, escaped_message)
+        # insist the class is unicode no matter what came in for 
+        # consistency.
+        self.assertIsInstance(rev.message, unicode)
+
+    def test_commit_unicode_message(self):
+        # a siple unicode message should be preserved
+        self.assertMessageRoundtrips(u'foo bar gamm\xae plop')
+
+    def test_commit_unicode_control_characters(self):
+        # a unicode message with control characters should roundtrip too.
+        self.assertMessageRoundtrips(
+            "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)]))
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
@@ -230,17 +278,25 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         self.bzrdir = tree_a.branch.bzrdir
         # add a corrupt inventory 'orphan'
         # this may need some generalising for knits.
-        tree_a.branch.repository.control_weaves.add_text(
-            'inventory', 'orphan', [], [],
+        inv_file = tree_a.branch.repository.control_weaves.get_weave(
+            'inventory', 
             tree_a.branch.repository.get_transaction())
+        inv_file.add_lines('orphan', [], [])
         # add a real revision 'rev1'
         tree_a.commit('rev1', rev_id='rev1', allow_pointless=True)
         # add a real revision 'rev2' based on rev1
         tree_a.commit('rev2', rev_id='rev2', allow_pointless=True)
+        # add a reference to a ghost
+        tree_a.add_pending_merge('ghost1')
+        tree_a.commit('rev3', rev_id='rev3', allow_pointless=True)
+        # add another reference to a ghost, and a second ghost.
+        tree_a.add_pending_merge('ghost1')
+        tree_a.add_pending_merge('ghost2')
+        tree_a.commit('rev4', rev_id='rev4', allow_pointless=True)
 
     def test_all_revision_ids(self):
         # all_revision_ids -> all revisions
-        self.assertEqual(['rev1', 'rev2'],
+        self.assertEqual(['rev1', 'rev2', 'rev3', 'rev4'],
                          self.bzrdir.open_repository().all_revision_ids())
 
     def test_get_ancestry_missing_revision(self):
@@ -248,3 +304,97 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         # -> NoSuchRevision
         self.assertRaises(errors.NoSuchRevision,
                           self.bzrdir.open_repository().get_ancestry, 'orphan')
+
+    def test_get_revision_graph(self):
+        # we can get a mapping of id->parents for the entire revision graph or bits thereof.
+        self.assertEqual({'rev1':[],
+                          'rev2':['rev1'],
+                          'rev3':['rev2'],
+                          'rev4':['rev3'],
+                          },
+                         self.bzrdir.open_repository().get_revision_graph(None))
+        self.assertEqual({'rev1':[]},
+                         self.bzrdir.open_repository().get_revision_graph('rev1'))
+        self.assertEqual({'rev1':[],
+                          'rev2':['rev1']},
+                         self.bzrdir.open_repository().get_revision_graph('rev2'))
+        self.assertRaises(NoSuchRevision,
+                          self.bzrdir.open_repository().get_revision_graph,
+                          'orphan')
+        # and ghosts are not mentioned
+        self.assertEqual({'rev1':[],
+                          'rev2':['rev1'],
+                          'rev3':['rev2'],
+                          },
+                         self.bzrdir.open_repository().get_revision_graph('rev3'))
+
+    def test_get_revision_graph_with_ghosts(self):
+        # we can get a graph object with roots, ghosts, ancestors and
+        # descendants.
+        repo = self.bzrdir.open_repository()
+        graph = repo.get_revision_graph_with_ghosts([])
+        self.assertEqual(set(['rev1']), graph.roots)
+        self.assertEqual(set(['ghost1', 'ghost2']), graph.ghosts)
+        self.assertEqual({'rev1':[],
+                          'rev2':['rev1'],
+                          'rev3':['rev2', 'ghost1'],
+                          'rev4':['rev3', 'ghost1', 'ghost2'],
+                          },
+                          graph.get_ancestors())
+        self.assertEqual({'ghost1':{'rev3':1, 'rev4':1},
+                          'ghost2':{'rev4':1},
+                          'rev1':{'rev2':1},
+                          'rev2':{'rev3':1},
+                          'rev3':{'rev4':1},
+                          'rev4':{},
+                          },
+                          graph.get_descendants())
+
+
+class TestCaseWithCorruptRepository(TestCaseWithRepository):
+
+    def setUp(self):
+        super(TestCaseWithCorruptRepository, self).setUp()
+        # a inventory with no parents and the revision has parents..
+        # i.e. a ghost.
+        repo = self.make_repository('inventory_with_unnecessary_ghost')
+        inv = bzrlib.tree.EmptyTree().inventory
+        sha1 = repo.add_inventory('ghost', inv, [])
+        rev = bzrlib.revision.Revision(timestamp=0,
+                                       timezone=None,
+                                       committer="Foo Bar <foo@example.com>",
+                                       message="Message",
+                                       inventory_sha1=sha1,
+                                       revision_id='ghost')
+        rev.parent_ids = ['the_ghost']
+        repo.add_revision('ghost', rev)
+         
+        sha1 = repo.add_inventory('the_ghost', inv, [])
+        rev = bzrlib.revision.Revision(timestamp=0,
+                                       timezone=None,
+                                       committer="Foo Bar <foo@example.com>",
+                                       message="Message",
+                                       inventory_sha1=sha1,
+                                       revision_id='the_ghost')
+        rev.parent_ids = []
+        repo.add_revision('the_ghost', rev)
+        # check its setup usefully
+        inv_weave = repo.get_inventory_weave()
+        self.assertEqual(['ghost'], inv_weave.get_ancestry(['ghost']))
+
+    def test_corrupt_revision_access_asserts_if_reported_wrong(self):
+        repo = repository.Repository.open('inventory_with_unnecessary_ghost')
+        reported_wrong = False
+        try:
+            if repo.get_ancestry('ghost') != [None, 'the_ghost', 'ghost']:
+                reported_wrong = True
+        except errors.CorruptRepository:
+            # caught the bad data:
+            return
+        if not reported_wrong:
+            return
+        self.assertRaises(errors.CorruptRepository, repo.get_revision, 'ghost')
+
+    def test_corrupt_revision_get_revision_reconcile(self):
+        repo = repository.Repository.open('inventory_with_unnecessary_ghost')
+        repo.get_revision_reconcile('ghost')

@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,12 +22,14 @@ rio itself works in Unicode strings.  It is typically encoded to UTF-8,
 but this depends on the transport.
 """
 
+import cStringIO
 import os
 import sys
 from tempfile import TemporaryFile
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.rio import RioWriter, Stanza, read_stanza, read_stanzas
+from bzrlib.rio import (RioWriter, Stanza, read_stanza, read_stanzas, rio_file,
+                        RioReader)
 
 
 class TestRio(TestCase):
@@ -63,6 +65,12 @@ class TestRio(TestCase):
         self.assertEquals(list(s.to_lines()),
                 ['name: fred\n',
                  'number: 42\n'])
+
+    def test_as_dict(self):
+        """Convert rio Stanza to dictionary"""
+        s = Stanza(number='42', name='fred')
+        sd = s.as_dict()
+        self.assertEquals(sd, dict(number='42', name='fred'))
 
     def test_to_file(self):
         """Write rio to file"""
@@ -150,6 +158,7 @@ tabs: \t\t\t
 """)
         s2 = read_stanza(s.to_lines())
         self.assertEquals(s, s2)
+        self.rio_file_stanzas([s])
 
     def test_quoted(self):
         """rio quoted string cases"""
@@ -165,6 +174,9 @@ tabs: \t\t\t
                    )
         s2 = read_stanza(s.to_lines())
         self.assertEquals(s, s2)
+        # apparent bug in read_stanza
+        # s3 = read_stanza(self.stanzas_to_str([s]))
+        # self.assertEquals(s, s3)
 
     def test_read_empty(self):
         """Detect end of rio file"""
@@ -222,6 +234,21 @@ val: 129319
         self.assertEquals(s, Stanza(name="bar", val='129319'))
         s = read_stanza(tmpf)
         self.assertEquals(s, None)
+        self.check_rio_file(tmpf)
+
+    def check_rio_file(self, real_file):
+        real_file.seek(0)
+        read_write = rio_file(RioReader(real_file)).read()
+        real_file.seek(0)
+        self.assertEquals(read_write, real_file.read())
+
+    @staticmethod
+    def stanzas_to_str(stanzas):
+        return rio_file(stanzas).read()
+
+    def rio_file_stanzas(self, stanzas):
+        new_stanzas = list(RioReader(rio_file(stanzas)))
+        self.assertEqual(new_stanzas, stanzas)
 
     def test_tricky_quoted(self):
         tmpf = TemporaryFile()
@@ -273,6 +300,7 @@ s: both\\\"
             ]
         for expected in expected_vals:
             stanza = read_stanza(tmpf)
+            self.rio_file_stanzas([stanza])
             self.assertEquals(len(stanza), 1)
             self.assertEqualDiff(stanza.get('s'), expected)
 
@@ -280,3 +308,26 @@ s: both\\\"
         """Write empty stanza"""
         l = list(Stanza().to_lines())
         self.assertEquals(l, [])
+
+    def test_rio_raises_type_error(self):
+        """TypeError on adding invalid type to Stanza"""
+        s = Stanza()
+        self.assertRaises(TypeError, s.add, 'foo', {})
+
+    def test_rio_raises_type_error_key(self):
+        """TypeError on adding invalid type to Stanza"""
+        s = Stanza()
+        self.assertRaises(TypeError, s.add, 10, {})
+
+    def test_rio_unicode(self):
+        # intentionally use cStringIO which doesn't accomodate unencoded unicode objects
+        sio = cStringIO.StringIO()
+        uni_data = u'\N{KATAKANA LETTER O}'
+        s = Stanza(foo=uni_data)
+        self.assertEquals(s.get('foo'), uni_data)
+        raw_lines = s.to_lines()
+        self.assertEquals(raw_lines,
+                ['foo: ' + uni_data.encode('utf-8') + '\n'])
+        new_s = read_stanza(raw_lines)
+        self.assertEquals(new_s.get('foo'), uni_data)
+

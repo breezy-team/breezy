@@ -1,15 +1,15 @@
-# (C) 2005 Canonical Ltd
-
+# Copyright (C) 2005, 2006 Canonical Ltd
+# 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+# 
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+# 
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -41,7 +41,7 @@ class TestDefaultFormat(TestCase):
     def test_get_set_default_format(self):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         # default is BzrDirFormat6
-        self.failUnless(isinstance(old_format, bzrdir.BzrDirFormat6))
+        self.failUnless(isinstance(old_format, bzrdir.BzrDirMetaFormat1))
         bzrdir.BzrDirFormat.set_default_format(SampleBzrDirFormat())
         # creating a bzr dir should now create an instrumented dir.
         try:
@@ -143,6 +143,8 @@ class TestBzrDirFormat(TestCaseWithTransport):
         bzrdir.BzrDirFormat.register_format(format)
         # which bzrdir.Open will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, bzrdir.BzrDir.open, url)
+        # which bzrdir.open_containing will refuse (not supported)
+        self.assertRaises(UnsupportedFormatError, bzrdir.BzrDir.open_containing, url)
         # but open_downlevel will work
         t = get_transport(url)
         self.assertEqual(format.open(t), bzrdir.BzrDir.open_unsupported(url))
@@ -386,6 +388,12 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         self.assertEqual(checkout_base,
                          dir.get_workingtree_transport(workingtree.WorkingTreeFormat3()).base)
 
+    def test_meta1dir_uses_lockdir(self):
+        """Meta1 format uses a LockDir to guard the whole directory, not a file."""
+        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        t = dir.transport
+        self.assertIsDirectory('branch-lock', t)
+
         
 class TestFormat5(TestCaseWithTransport):
     """Tests specific to the version 5 bzrdir format."""
@@ -455,4 +463,53 @@ class TestFormat6(TestCaseWithTransport):
             self.assertTrue(dir.needs_format_conversion())
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
-        self.assertFalse(dir.needs_format_conversion())
+
+
+class NonLocalTests(TestCaseWithTransport):
+    """Tests for bzrdir static behaviour on non local paths."""
+
+    def setUp(self):
+        super(NonLocalTests, self).setUp()
+        self.transport_server = MemoryServer
+    
+    def test_create_branch_convenience(self):
+        # outside a repo the default convenience output is a repo+branch_tree
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            branch = bzrdir.BzrDir.create_branch_convenience(self.get_url('foo'))
+            self.assertRaises(errors.NoWorkingTree,
+                              branch.bzrdir.open_workingtree)
+            branch.bzrdir.open_repository()
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_convenience_force_tree_not_local_fails(self):
+        # outside a repo the default convenience output is a repo+branch_tree
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            self.assertRaises(errors.NotLocalUrl,
+                bzrdir.BzrDir.create_branch_convenience,
+                self.get_url('foo'),
+                force_new_tree=True)
+            t = get_transport(self.get_url('.'))
+            self.assertFalse(t.has('foo'))
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_clone(self):
+        # clone into a nonlocal path works
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            branch = bzrdir.BzrDir.create_branch_convenience('local')
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+        branch.bzrdir.open_workingtree()
+        result = branch.bzrdir.clone(self.get_url('remote'))
+        self.assertRaises(errors.NoWorkingTree,
+                          result.open_workingtree)
+        result.open_branch()
+        result.open_repository()
+

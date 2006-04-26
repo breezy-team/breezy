@@ -20,7 +20,9 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
 from bzrlib.commit import commit
+from bzrlib.graph import Graph
 from bzrlib.revision import (find_present_ancestors, combined_graph,
+                             common_ancestor,
                              is_ancestor, MultipleRevisionSources)
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
@@ -31,9 +33,7 @@ def make_branches(self):
     """Create two branches
 
     branch 1 has 6 commits, branch 2 has 3 commits
-    commit 10 was a psuedo merge from branch 1
-    but has been disabled until ghost support is
-    implemented.
+    commit 10 is a ghosted merge merge from branch 1
 
     the object graph is
     B:     A:
@@ -55,9 +55,8 @@ def make_branches(self):
     tree1.commit("Commit two", rev_id="a@u-0-1")
     tree1.commit("Commit three", rev_id="a@u-0-2")
 
-    tree2 = self.make_branch_and_tree("branch2")
+    tree2 = tree1.bzrdir.clone("branch2").open_workingtree()
     br2 = tree2.branch
-    br2.update_revisions(br1)
     tree2.commit("Commit four", rev_id="b@u-0-3")
     tree2.commit("Commit five", rev_id="b@u-0-4")
     revisions_2 = br2.revision_history()
@@ -208,51 +207,26 @@ class TestIntermediateRevisions(TestCaseWithTransport):
                           'c@u-0-6', self.br2.revision_history())
 
 
+class MockRevisionSource(object):
+    """A RevisionSource that takes a pregenerated graph.
+
+    This is useful for testing revision graph algorithms where
+    the actual branch existing is irrelevant.
+    """
+
+    def __init__(self, full_graph):
+        self._full_graph = full_graph
+
+    def get_revision_graph_with_ghosts(self, revision_ids):
+        # This is mocked out to just return a constant graph.
+        return self._full_graph
+
+
 class TestCommonAncestor(TestCaseWithTransport):
     """Test checking whether a revision is an ancestor of another revision"""
 
-    def test_old_common_ancestor(self):
-        """Pick a resonable merge base using the old functionality"""
-        from bzrlib.revision import old_common_ancestor as common_ancestor
-        br1, br2 = make_branches(self)
-        revisions = br1.revision_history()
-        revisions_2 = br2.revision_history()
-        sources = br1.repository
-
-        expected_ancestors_list = {revisions[3]:(0, 0), 
-                                   revisions[2]:(1, 1),
-                                   revisions_2[4]:(2, 1), 
-                                   revisions[1]:(3, 2),
-                                   revisions_2[3]:(4, 2),
-                                   revisions[0]:(5, 3) }
-        ancestors_list = find_present_ancestors(revisions[3], sources)
-        self.assertEquals(len(expected_ancestors_list), len(ancestors_list))
-        for key, value in expected_ancestors_list.iteritems():
-            self.assertEqual(ancestors_list[key], value, 
-                              "key %r, %r != %r" % (key, ancestors_list[key],
-                                                    value))
-
-        self.assertEqual(common_ancestor(revisions[0], revisions[0], sources),
-                          revisions[0])
-        self.assertEqual(common_ancestor(revisions[1], revisions[2], sources),
-                          revisions[1])
-        self.assertEqual(common_ancestor(revisions[1], revisions[1], sources),
-                          revisions[1])
-        self.assertEqual(common_ancestor(revisions[2], revisions_2[4], sources),
-                          revisions[2])
-        self.assertEqual(common_ancestor(revisions[3], revisions_2[4], sources),
-                          revisions_2[4])
-        self.assertEqual(common_ancestor(revisions[4], revisions_2[5], sources),
-                          revisions_2[4])
-        br1.fetch(br2)
-        self.assertEqual(common_ancestor(revisions[5], revisions_2[6], sources),
-                          revisions[4]) # revisions_2[5] is equally valid
-        self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
-                          revisions_2[5])
-
     def test_common_ancestor(self):
         """Pick a reasonable merge base"""
-        from bzrlib.revision import common_ancestor
         br1, br2 = make_branches(self)
         revisions = br1.revision_history()
         revisions_2 = br2.revision_history()
@@ -281,10 +255,11 @@ class TestCommonAncestor(TestCaseWithTransport):
                           revisions_2[4])
         self.assertEqual(common_ancestor(revisions[4], revisions_2[5], sources),
                           revisions_2[4])
-        self.assertEqual(common_ancestor(revisions[5], revisions_2[6], sources),
-                          revisions[4]) # revisions_2[5] is equally valid
-        self.assertEqual(common_ancestor(revisions_2[6], revisions[5], sources),
-                          revisions[4]) # revisions_2[5] is equally valid
+        self.assertTrue(common_ancestor(revisions[5], revisions_2[6], sources) in
+                        (revisions[4], revisions_2[5]))
+        self.assertTrue(common_ancestor(revisions_2[6], revisions[5], sources),
+                        (revisions[4], revisions_2[5]))
+        self.assertEqual(None, common_ancestor(None, revisions[5], sources))
 
     def test_combined(self):
         """combined_graph
@@ -319,3 +294,38 @@ class TestCommonAncestor(TestCaseWithTransport):
         rev = tree.branch.repository.get_revision('3')
         history = rev.get_history(tree.branch.repository)
         self.assertEqual([None, '1', '2' ,'3'], history)
+
+    def test_common_ancestor_rootless_graph(self):
+        # common_ancestor on a graph with no reachable roots - only
+        # ghosts - should still return a useful value.
+        graph = Graph()
+        # add a ghost node which would be a root if it wasn't a ghost.
+        graph.add_ghost('a_ghost')
+        # add a normal commit on top of that
+        graph.add_node('rev1', ['a_ghost'])
+        # add a left-branch revision
+        graph.add_node('left', ['rev1'])
+        # add a right-branch revision
+        graph.add_node('right', ['rev1'])
+        source = MockRevisionSource(graph)
+        self.assertEqual('rev1', common_ancestor('left', 'right', source))
+
+
+class TestMultipleRevisionSources(TestCaseWithTransport):
+    """Tests for the MultipleRevisionSources adapter."""
+
+    def test_get_revision_graph_merges_ghosts(self):
+        # when we ask for the revision graph for B, which
+        # is in repo 1 with a ghost of A, and which is not
+        # in repo 2, which has A, the revision_graph()
+        # should return A and B both.
+        tree_1 = self.make_branch_and_tree('1')
+        tree_1.add_pending_merge('A')
+        tree_1.commit('foo', rev_id='B', allow_pointless=True)
+        tree_2 = self.make_branch_and_tree('2')
+        tree_2.commit('bar', rev_id='A', allow_pointless=True)
+        source = MultipleRevisionSources(tree_1.branch.repository,
+                                         tree_2.branch.repository)
+        self.assertEqual({'B':['A'],
+                          'A':[]},
+                         source.get_revision_graph('B'))

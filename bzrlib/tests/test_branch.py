@@ -1,15 +1,15 @@
-# (C) 2005 Canonical Ltd
-
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -25,7 +25,11 @@ also see this file.
 from StringIO import StringIO
 
 import bzrlib.branch
+from bzrlib.branch import (BzrBranch5, 
+                           BzrBranchFormat5)
 import bzrlib.bzrdir as bzrdir
+from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1, 
+                           BzrDir, BzrDirFormat)
 from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
@@ -44,12 +48,70 @@ class TestDefaultFormat(TestCase):
         try:
             # the default branch format is used by the meta dir format
             # which is not the default bzrdir format at this point
-            dir = bzrdir.BzrDirMetaFormat1().initialize('memory:/')
+            dir = BzrDirMetaFormat1().initialize('memory:/')
             result = dir.create_branch()
             self.assertEqual(result, 'A branch')
         finally:
             bzrlib.branch.BranchFormat.set_default_format(old_format)
         self.assertEqual(old_format, bzrlib.branch.BranchFormat.get_default_format())
+
+
+class TestBranchFormat5(TestCaseWithTransport):
+    """Tests specific to branch format 5"""
+
+    def test_branch_format_5_uses_lockdir(self):
+        url = self.get_url()
+        bzrdir = BzrDirMetaFormat1().initialize(url)
+        bzrdir.create_repository()
+        branch = bzrdir.create_branch()
+        t = self.get_transport()
+        self.log("branch instance is %r" % branch)
+        self.assert_(isinstance(branch, BzrBranch5))
+        self.assertIsDirectory('.', t)
+        self.assertIsDirectory('.bzr/branch', t)
+        self.assertIsDirectory('.bzr/branch/lock', t)
+        branch.lock_write()
+        try:
+            self.assertIsDirectory('.bzr/branch/lock/held', t)
+        finally:
+            branch.unlock()
+
+
+class TestBranchEscaping(TestCaseWithTransport):
+    """Test a branch can be correctly stored and used on a vfat-like transport
+    
+    Makes sure we have proper escaping of invalid characters, etc.
+
+    It'd be better to test all operations on the FakeVFATTransportDecorator,
+    but working trees go straight to the os not through the Transport layer.
+    Therefore we build some history first in the regular way and then 
+    check it's safe to access for vfat.
+    """
+
+    FOO_ID = 'foo<:>ID'
+    REV_ID = 'revid-1'
+
+    def setUp(self):
+        super(TestBranchEscaping, self).setUp()
+        from bzrlib.repository import RepositoryFormatKnit1
+        bzrdir = BzrDirMetaFormat1().initialize(self.get_url())
+        repo = RepositoryFormatKnit1().initialize(bzrdir)
+        branch = bzrdir.create_branch()
+        wt = bzrdir.create_workingtree()
+        self.build_tree_contents([("foo", "contents of foo")])
+        # add file with id containing wierd characters
+        wt.add(['foo'], [self.FOO_ID])
+        wt.commit('this is my new commit', rev_id=self.REV_ID)
+
+    def test_branch_on_vfat(self):
+        from bzrlib.transport.fakevfat import FakeVFATTransportDecorator
+        # now access over vfat; should be safe
+        transport = FakeVFATTransportDecorator('vfat+' + self.get_url())
+        bzrdir, junk = BzrDir.open_containing_from_transport(transport)
+        branch = bzrdir.open_branch()
+        revtree = branch.repository.revision_tree(self.REV_ID)
+        contents = revtree.get_file_text(self.FOO_ID)
+        self.assertEqual(contents, 'contents of foo')
 
 
 class SampleBranchFormat(bzrlib.branch.BranchFormat):

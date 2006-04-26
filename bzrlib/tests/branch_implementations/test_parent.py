@@ -33,8 +33,10 @@ class TestParent(TestCaseWithTransport):
         self.assertEquals(b.get_parent(), None)
         
     def test_set_get_parent(self):
-        """Set and then re-get the parent"""
+        """Set, re-get and reset the parent"""
         b = self.make_branch('.')
         url = 'http://bazaar-ng.org/bzr/bzr.dev'
         b.set_parent(url)
         self.assertEquals(b.get_parent(), url)
+        b.set_parent(None)
+        self.assertEquals(b.get_parent(), None)

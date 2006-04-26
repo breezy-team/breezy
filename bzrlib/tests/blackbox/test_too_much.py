@@ -40,6 +40,7 @@ import re
 import shutil
 import sys
 
+import bzrlib
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
@@ -52,23 +53,6 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCommands(ExternalBase):
 
-    def test_init_branch(self):
-        self.runbzr(['init'])
-
-        # Can it handle subdirectories as well?
-        self.runbzr('init subdir1')
-        self.assert_(os.path.exists('subdir1'))
-        self.assert_(os.path.exists('subdir1/.bzr'))
-
-        self.runbzr('init subdir2/nothere', retcode=3)
-        
-        os.mkdir('subdir2')
-        self.runbzr('init subdir2')
-        self.runbzr('init subdir2', retcode=3)
-
-        self.runbzr('init subdir2/subsubdir1')
-        self.assert_(os.path.exists('subdir2/subsubdir1/.bzr'))
-
     def test_whoami(self):
         # this should always identify something, if only "john@localhost"
         self.runbzr("whoami")
@@ -80,9 +64,8 @@ class TestCommands(ExternalBase):
     def test_whoami_branch(self):
         """branch specific user identity works."""
         self.runbzr('init')
-        f = file('.bzr/email', 'wt')
-        f.write('Branch Identity <branch@identi.ty>')
-        f.close()
+        b = bzrlib.branch.Branch.open('.')
+        b.control_files.put_utf8('email', 'Branch Identity <branch@identi.ty>')
         bzr_email = os.environ.get('BZREMAIL')
         if bzr_email is not None:
             del os.environ['BZREMAIL']
@@ -296,7 +279,8 @@ class TestCommands(ExternalBase):
         self.example_branch()
         os.chdir('..')
         self.runbzr('branch a b')
-        self.assertFileEqual('b\n', 'b/.bzr/branch-name')
+        b = bzrlib.branch.Branch.open('b')
+        self.assertEqual('b\n', b.control_files.get_utf8('branch-name').read())
         self.runbzr('branch a c -r 1')
         os.chdir('b')
         self.runbzr('commit -m foo --unchanged')
@@ -321,78 +305,6 @@ class TestCommands(ExternalBase):
         self.assertEqual('2', target.open_branch().last_revision())
         self.assertEqual('2', target.open_workingtree().last_revision())
         self.assertTrue(target.open_branch().repository.has_revision('2'))
-
-    def test_merge(self):
-        from bzrlib.branch import Branch
-        
-        os.mkdir('a')
-        os.chdir('a')
-        self.example_branch()
-        os.chdir('..')
-        self.runbzr('branch a b')
-        os.chdir('b')
-        file('goodbye', 'wt').write('quux')
-        self.runbzr(['commit',  '-m',  "more u's are always good"])
-
-        os.chdir('../a')
-        file('hello', 'wt').write('quuux')
-        # We can't merge when there are in-tree changes
-        self.runbzr('merge ../b', retcode=3)
-        self.runbzr(['commit', '-m', "Like an epidemic of u's"])
-        self.runbzr('merge ../b -r last:1..last:1 --merge-type blooof',
-                    retcode=3)
-        self.runbzr('merge ../b -r last:1..last:1 --merge-type merge3')
-        self.runbzr('revert --no-backup')
-        self.runbzr('merge ../b -r last:1..last:1 --merge-type weave')
-        self.runbzr('revert --no-backup')
-        self.runbzr('merge ../b -r last:1..last:1 --reprocess')
-        self.runbzr('revert --no-backup')
-        self.runbzr('merge ../b -r last:1')
-        self.check_file_contents('goodbye', 'quux')
-        # Merging a branch pulls its revision into the tree
-        a = WorkingTree.open('.')
-        b = Branch.open('../b')
-        a.branch.repository.get_revision_xml(b.last_revision())
-        self.log('pending merges: %s', a.pending_merges())
-        self.assertEquals(a.pending_merges(),
-                          [b.last_revision()])
-        self.runbzr('commit -m merged')
-        self.runbzr('merge ../b -r last:1')
-        self.assertEqual(a.pending_merges(), [])
-
-    def test_merge_with_missing_file(self):
-        """Merge handles missing file conflicts"""
-        os.mkdir('a')
-        os.chdir('a')
-        os.mkdir('sub')
-        print >> file('sub/a.txt', 'wb'), "hello"
-        print >> file('b.txt', 'wb'), "hello"
-        print >> file('sub/c.txt', 'wb'), "hello"
-        self.runbzr('init')
-        self.runbzr('add')
-        self.runbzr(('commit', '-m', 'added a'))
-        self.runbzr('branch . ../b')
-        print >> file('sub/a.txt', 'ab'), "there"
-        print >> file('b.txt', 'ab'), "there"
-        print >> file('sub/c.txt', 'ab'), "there"
-        self.runbzr(('commit', '-m', 'Added there'))
-        os.unlink('sub/a.txt')
-        os.unlink('sub/c.txt')
-        os.rmdir('sub')
-        os.unlink('b.txt')
-        self.runbzr(('commit', '-m', 'Removed a.txt'))
-        os.chdir('../b')
-        print >> file('sub/a.txt', 'ab'), "something"
-        print >> file('b.txt', 'ab'), "something"
-        print >> file('sub/c.txt', 'ab'), "something"
-        self.runbzr(('commit', '-m', 'Modified a.txt'))
-        self.runbzr('merge ../a/', retcode=1)
-        self.assert_(os.path.exists('sub/a.txt.THIS'))
-        self.assert_(os.path.exists('sub/a.txt.BASE'))
-        os.chdir('../a')
-        self.runbzr('merge ../b/', retcode=1)
-        self.assert_(os.path.exists('sub/a.txt.OTHER'))
-        self.assert_(os.path.exists('sub/a.txt.BASE'))
 
     def test_inventory(self):
         bzr = self.runbzr
@@ -725,8 +637,11 @@ class TestCommands(ExternalBase):
         assert '|||||||' not in conflict_text
         assert 'hi world' not in conflict_text
         os.unlink('hello.OTHER')
+        os.unlink('question.OTHER')
+        self.runbzr('remerge jello --merge-type weave', retcode=3)
         self.runbzr('remerge hello --merge-type weave', retcode=1)
         assert os.path.exists('hello.OTHER')
+        self.assertIs(False, os.path.exists('question.OTHER'))
         file_id = self.runbzr('file-id hello')
         file_id = self.runbzr('file-id hello.THIS', retcode=3)
         self.runbzr('remerge --merge-type weave', retcode=1)
@@ -735,8 +650,8 @@ class TestCommands(ExternalBase):
         assert '|||||||' not in conflict_text
         assert 'hi world' not in conflict_text
         self.runbzr('remerge . --merge-type weave --show-base', retcode=3)
-        self.runbzr('remerge . --merge-type weave --reprocess', retcode=3)
         self.runbzr('remerge . --show-base --reprocess', retcode=3)
+        self.runbzr('remerge . --merge-type weave --reprocess', retcode=1)
         self.runbzr('remerge hello --show-base', retcode=1)
         self.runbzr('remerge hello --reprocess', retcode=1)
         self.runbzr('resolve --all')
@@ -776,12 +691,14 @@ class TestCommands(ExternalBase):
         self.assert_('|||||||' not in conflict_text)
         self.assert_('hi world' not in conflict_text)
         result = self.runbzr('conflicts', backtick=1)
-        self.assertEquals(result, "hello\nquestion\n")
+        self.assertEquals(result, "Text conflict in hello\nText conflict in"
+                                  " question\n")
         result = self.runbzr('status', backtick=1)
-        self.assert_("conflicts:\n  hello\n  question\n" in result, result)
+        self.assert_("conflicts:\n  Text conflict in hello\n"
+                     "  Text conflict in question\n" in result, result)
         self.runbzr('resolve hello')
         result = self.runbzr('conflicts', backtick=1)
-        self.assertEquals(result, "question\n")
+        self.assertEquals(result, "Text conflict in question\n")
         self.runbzr('commit -m conflicts', retcode=3)
         self.runbzr('resolve --all')
         result = self.runbzr('conflicts', backtick=1)
@@ -834,19 +751,17 @@ class TestCommands(ExternalBase):
         self.runbzr('missing ../missing/new-branch')
 
     def test_external_command(self):
-        """test that external commands can be run by setting the path"""
+        """Test that external commands can be run by setting the path
+        """
+        # We don't at present run bzr in a subprocess for blackbox tests, and so 
+        # don't really capture stdout, only the internal python stream.
+        # Therefore we don't use a subcommand that produces any output or does
+        # anything -- we just check that it can be run successfully.  
         cmd_name = 'test-command'
-        output = 'Hello from test-command'
         if sys.platform == 'win32':
             cmd_name += '.bat'
-            output += '\r\n'
-        else:
-            output += '\n'
-
         oldpath = os.environ.get('BZRPATH', None)
-
         bzr = self.capture
-
         try:
             if os.environ.has_key('BZRPATH'):
                 del os.environ['BZRPATH']
@@ -856,7 +771,7 @@ class TestCommands(ExternalBase):
                 f.write('@echo off\n')
             else:
                 f.write('#!/bin/sh\n')
-            f.write('echo Hello from test-command')
+            # f.write('echo Hello from test-command')
             f.close()
             os.chmod(cmd_name, 0755)
 
@@ -868,11 +783,6 @@ class TestCommands(ExternalBase):
             os.environ['BZRPATH'] = '.'
 
             bzr(cmd_name)
-            # The test suite does not capture stdout for external commands
-            # this is because you have to have a real file object
-            # to pass to Popen(stdout=FOO), and StringIO is not one of those.
-            # (just replacing sys.stdout does not change a spawned objects stdout)
-            #self.assertEquals(bzr(cmd_name), output)
 
             # Make sure empty path elements are ignored
             os.environ['BZRPATH'] = os.pathsep
@@ -1195,6 +1105,18 @@ class RemoteTests(object):
         url = self.get_readonly_url('branch/')
         self.run_bzr('check', url)
     
+    def test_push(self):
+        # create a source branch
+        os.mkdir('my-branch')
+        os.chdir('my-branch')
+        self.run_bzr('init')
+        file('hello', 'wt').write('foo')
+        self.run_bzr('add', 'hello')
+        self.run_bzr('commit', '-m', 'setup')
+
+        # with an explicit target work
+        self.run_bzr('push', self.get_url('output-branch'))
+
     
 class HTTPTests(TestCaseWithWebserver, RemoteTests):
     """Test various commands against a HTTP server."""

@@ -10,9 +10,6 @@
 PWK_ROOT='http://patchwork.ozlabs.org/bazaar-ng'
 PWK_AUTH_ROOT='https://patchwork.ozlabs.org/bazaar-ng'
 
-# bzr uses -p0 style; others use -p1
-PATCH_OPTS='-p0'
-
 usage() {
     cat <<EOF
 usage: 
@@ -42,10 +39,10 @@ cat)
     catpatch $2 | ${PAGER:-less}
     ;;
 try)
-    catpatch $2 | patch -p0 --dry-run
+    catpatch $2 | patch -p1 --dry-run
     ;;
 apply)
-    catpatch $2 | patch -p0
+    catpatch $2 | patch -p1
     ;;
 *)
     usage

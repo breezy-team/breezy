@@ -119,7 +119,7 @@ class TestamentTests(TestCaseWithTransport):
         self.assertEqualDiff(t.as_text(), REV_PROPS_TESTAMENT)
 
     def test_testament_unicode_commit_message(self):
-        self.b.working_tree().commit(
+        self.wt.commit(
             message=u'non-ascii commit \N{COPYRIGHT SIGN} me',
             timestamp=1129025493,
             timezone=36000,

@@ -33,15 +33,22 @@ class Convert(object):
         if self.bzrdir.root_transport.is_readonly():
             raise errors.UpgradeReadonly
         self.transport = self.bzrdir.root_transport
-        self.convert()
+        self.pb = ui.ui_factory.nested_progress_bar()
+        try:
+            self.convert()
+        finally:
+            self.pb.finished()
 
     def convert(self):
-        self.pb = ui.ui_factory.progress_bar()
-        branch = self.bzrdir.open_branch()
-        if branch.bzrdir.root_transport.base != self.bzrdir.root_transport.base:
-            self.pb.note("This is a checkout. The branch (%s) needs to be "
-                         "upgraded separately.",
-                         branch.bzrdir.root_transport.base)
+        try:
+            branch = self.bzrdir.open_branch()
+            if branch.bzrdir.root_transport.base != \
+                self.bzrdir.root_transport.base:
+                self.pb.note("This is a checkout. The branch (%s) needs to be "
+                             "upgraded separately.",
+                             branch.bzrdir.root_transport.base)
+        except errors.NotBranchError:
+            pass
         if not self.bzrdir.needs_format_conversion(self.format):
             raise errors.UpToDateFormat(self.bzrdir._format)
         if not self.bzrdir.can_convert_format():
