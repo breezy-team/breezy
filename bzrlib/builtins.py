@@ -902,8 +902,8 @@ class cmd_init(Command):
     takes_options = [
                      Option('format', 
                             help='Create a specific format rather than the'
-                                 ' current default format. Currently this '
-                                 ' option only accepts "metadir"',
+                                 ' current default format. Currently supports:'
+                                 ' metadir, knit, and weave',
                             type=get_format_type),
                      ]
     def run(self, location=None, format=None):
