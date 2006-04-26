@@ -65,6 +65,11 @@ else:
 register_urlparse_netloc_protocol('sftp')
 
 
+def _ignore_sigint():
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    
+
 def os_specific_subprocess_params():
     """Get O/S specific subprocess parameters."""
     if sys.platform == 'win32':
@@ -72,13 +77,21 @@ def os_specific_subprocess_params():
         # win32
         return {}
     else:
-        # we close fds as the child process does not need them to be open.
-        # we set the process group so that signals from the keyboard like
-        # 'SIGINT' - KeyboardInterrupt - are not recieved in the child procecss
-        # if we do not do this, then the sftp/ssh subprocesses will terminate 
-        # when a user hits CTRL-C, and we are unable to use them to unlock the
-        # remote branch/repository etc.
-        return {'preexec_fn': os.setpgrp,
+        # We close fds other than the pipes as the child process does not need 
+        # them to be open.
+        #
+        # We also set the child process to ignore SIGINT.  Normally the signal
+        # would be sent to every process in the foreground process group, but
+        # this causes it to be seen only by bzr and not by ssh.  Python will
+        # generate a KeyboardInterrupt in bzr, and we will then have a chance
+        # to release locks or do other cleanup over ssh before the connection
+        # goes away.  
+        # <https://launchpad.net/products/bzr/+bug/5987>
+        #
+        # Running it in a separate process group is not good because then it
+        # can't get non-echoed input of a password or passphrase.
+        # <https://launchpad.net/products/bzr/+bug/40508>
+        return {'preexec_fn': _ignore_sigint,
                 'close_fds': True,
                 }
 
