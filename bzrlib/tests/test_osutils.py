@@ -21,7 +21,7 @@ import os
 import sys
 
 import bzrlib
-from bzrlib.errors import BzrBadParameterNotUnicode
+from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
 import bzrlib.osutils as osutils
 from bzrlib.tests import TestCaseInTempDir, TestCase
 
@@ -90,6 +90,55 @@ class TestSafeUnicode(TestCase):
         self.assertRaises(BzrBadParameterNotUnicode,
                           osutils.safe_unicode,
                           '\xbb\xbb')
+
+
+class TestUrlToPath(TestCase):
+    
+    def test_function_type(self):
+        if sys.platform == 'win32':
+            self.assertEqual(osutils.win34_local_path_to_url, osutils.local_path_to_url)
+            self.assertEqual(osutils.win32_local_path_from_url, osutils.local_path_from_url)
+        else:
+            self.assertEqual(osutils.posix_local_path_to_url, osutils.local_path_to_url)
+            self.assertEqual(osutils.posix_local_path_from_url, osutils.local_path_from_url)
+
+    def test_posix_local_path_to_url(self):
+        to_url = osutils.posix_local_path_to_url
+        self.assertEqual('file:///path/to/foo',
+            to_url('/path/to/foo'))
+        self.assertEqual('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s',
+            to_url(u'/path/to/r\xe4ksm\xf6rg\xe5s'))
+
+    def test_posix_local_path_from_url(self):
+        from_url = osutils.posix_local_path_from_url
+        self.assertEqual('/path/to/foo',
+            from_url('file:///path/to/foo'))
+        self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
+            from_url('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
+        self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
+            from_url('file:///path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
+
+        self.assertRaises(InvalidURL, from_url, '/path/to/foo')
+
+    def test_win32_local_path_to_url(self):
+        to_url = osutils.win32_local_path_to_url
+        self.assertEqual('file:///C|/path/to/foo',
+            to_url('C:/path/to/foo'))
+        self.assertEqual('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s',
+            to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s'))
+
+    def test_win32_local_path_from_url(self):
+        from_url = osutils.win32_local_path_from_url
+        self.assertEqual('C:/path/to/foo',
+            from_url('file:///C|/path/to/foo'))
+        self.assertEqual(u'd:/path/to/r\xe4ksm\xf6rg\xe5s',
+            from_url('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
+        self.assertEqual(u'd:/path/to/r\xe4ksm\xf6rg\xe5s',
+            from_url('file:///d|/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
+
+        self.assertRaises(InvalidURL, from_url, '/path/to/foo')
+        # Not a valid win32 url, no drive letter
+        self.assertRaises(InvalidURL, from_url, 'file:///path/to/foo')
 
 
 class TestSplitLines(TestCase):

@@ -29,6 +29,7 @@ from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
                            LockError, PathError,
                            TransportNotPossible, ConnectionError,
                            InvalidURL)
+from bzrlib.osutils import getcwd
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.transport import memory, urlescape
 import bzrlib.transport
@@ -857,6 +858,15 @@ class TestTransportImplementation(TestCaseInTempDir):
         # the abspath - eg http+pycurl-> just http -- mbp 20060308 
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
+
+    def test_local_abspath(self):
+        transport = self.get_transport()
+        try:
+            p = transport.local_abspath('.')
+        except TransportNotPossible:
+            pass # This is not a local transport
+        else:
+            self.assertEqual(getcwd(), p)
 
     def test_abspath_at_root(self):
         t = self.get_transport()

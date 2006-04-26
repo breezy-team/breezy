@@ -30,6 +30,7 @@ import time
 import types
 import tempfile
 import unicodedata
+import urllib
 
 import bzrlib
 from bzrlib.errors import (BzrError,
@@ -37,6 +38,7 @@ from bzrlib.errors import (BzrError,
                            NoSuchFile,
                            PathNotChild,
                            IllegalPath,
+                           InvalidURL,
                            )
 from bzrlib.trace import mutter
 
@@ -172,6 +174,73 @@ def fancy_rename(old, new, rename_func, unlink_func):
             else:
                 rename_func(tmp_name, new)
 
+
+def urlescape(relpath):
+    """Escape relpath to be a valid url."""
+    if isinstance(relpath, unicode):
+        relpath = relpath.encode('utf-8')
+    return urllib.quote(relpath)
+
+
+def urlunescape(url):
+    """Unescape relpath from url format.
+
+    This returns a Unicode path from a URL
+    """
+    unquoted = urllib.unquote(url)
+    try:
+        unicode_path = unquoted.decode('utf-8')
+    except UnicodeError, e:
+        raise InvalidURL(url, e)
+    return unicode_path
+
+
+def posix_local_path_to_url(path):
+    """Convert a local path like ./foo into a URL like file:///path/to/foo
+
+    This also handles transforming escaping unicode characters, etc.
+    """
+    # importing directly from posixpath allows us to test this 
+    # on non-posix platforms
+    from posixpath import abspath, normpath
+    return 'file://' + urlescape(normpath(abspath(path)))
+
+
+def posix_local_path_from_url(url):
+    """Convert a url like file:///path/to/foo into /path/to/foo"""
+    if not url.startswith('file://'):
+        raise InvalidURL(url, 'local urls must start with file://')
+    return urlunescape(url[len('file://'):])
+
+
+def win32_local_path_to_url(path):
+    """Convert a local path like ./foo into a URL like file:///C|/path/to/foo
+
+    This also handles transforming escaping unicode characters, etc.
+    """
+    # importing directly from ntpath allows us to test this 
+    # on non-win32 platforms
+    # TODO: jam 20060426 consider moving this import outside of the function
+    from ntpath import normpath, abspath
+    win32_path = normpath(abspath(path)).replace('\\', '/')
+    return 'file:///' + win32_path[0] + '|' + urlescape(win32_path[2:])
+
+
+def win32_local_path_from_url(url):
+    """Convert a url like file:///C|/path/to/foo into C:/path/to/foo"""
+    if not url.startswith('file://'):
+        raise InvalidURL(url, 'local urls must start with file://')
+    win32_url = url[len('file://'):]
+    if (win32_url[0] != '/' 
+        or win32_url[1] not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        or win32_url[2] != '|'
+        or win32_url[3] != '/'):
+        raise InvalidURL(url, 'Win32 file urls start with file:///X|/, where X is a valid drive letter')
+    # TODO: jam 20060426, we could .upper() or .lower() the drive letter
+    #       for better consistency.
+    return win32_url[1] + u':' + urlunescape(win32_url[3:])
+
+
 # Default is to just use the python builtins
 abspath = os.path.abspath
 realpath = os.path.realpath
@@ -182,8 +251,11 @@ mkdtemp = tempfile.mkdtemp
 rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
+local_path_to_url = posix_local_path_to_url
+local_path_from_url = posix_local_path_from_url
 
 MIN_ABS_PATHLENGTH = 1
+
 
 if os.name == "posix":
     # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
@@ -220,6 +292,9 @@ if sys.platform == 'win32':
 
     def rename(old, new):
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+
+    local_path_to_url = win32_local_path_to_url
+    local_path_from_url = win32_local_path_from_url
 
     MIN_ABS_PATHLENGTH = 3
 
@@ -604,14 +679,18 @@ def relpath(base, path):
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem.
     """
-
     assert len(base) >= MIN_ABS_PATHLENGTH, ('Length of base must be equal or'
         ' exceed the platform minimum length (which is %d)' % 
         MIN_ABS_PATHLENGTH)
-    rp = abspath(path)
+
+    return _relpath_helper(base, abspath(path))
+
+
+def _relpath_helper(base, path):
+    """Compute the relative path, without making the child path absolute."""
 
     s = []
-    head = rp
+    head = path
     while len(head) >= len(base):
         if head == base:
             break
@@ -619,14 +698,20 @@ def relpath(base, path):
         if tail:
             s.insert(0, tail)
     else:
-        # XXX This should raise a NotChildPath exception, as its not tied
-        # to branch anymore.
-        raise PathNotChild(rp, base)
+        raise PathNotChild(path, base)
 
     if s:
         return pathjoin(*s)
     else:
         return ''
+
+
+def urlrelpath(base, path):
+    """Compute just the relative sub-portion of a url
+    
+    This assumes that both paths are already fully specified URLs.
+    """
+    return _relpath_helper(base, path)
 
 
 def safe_unicode(unicode_or_utf8_string):

@@ -283,7 +283,7 @@ class WorkingTree(bzrlib.tree.Tree):
         # if needed, or, when the cache sees a change, append it to the hash
         # cache file, and have the parser take the most recent entry for a
         # given path only.
-        cache_filename = self.bzrdir.get_workingtree_transport(None).abspath('stat-cache')
+        cache_filename = self.bzrdir.get_workingtree_transport(None).local_abspath('stat-cache')
         hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
         hc.read()
         # is this scan needed ? it makes things kinda slow.
@@ -700,6 +700,8 @@ class WorkingTree(bzrlib.tree.Tree):
                 ## should exclude it.
 
                 # the bzrdir for this tree
+                # TODO: jam 20060426 I think this is now broken
+                #       but it needs to be tested
                 if self.bzrdir.transport.base.endswith(f + '/'):
                     continue
 
@@ -1533,7 +1535,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                 branch.unlock()
         revision = branch.last_revision()
         inv = Inventory() 
-        wt = WorkingTree(a_bzrdir.root_transport.base,
+        wt = WorkingTree(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
@@ -1561,7 +1563,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        return WorkingTree(a_bzrdir.root_transport.base,
+        return WorkingTree(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
                            _bzrdir=a_bzrdir)
@@ -1612,7 +1614,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         if revision_id is None:
             revision_id = branch.last_revision()
         inv = Inventory() 
-        wt = WorkingTree3(a_bzrdir.root_transport.base,
+        wt = WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
@@ -1647,7 +1649,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         control_files = self._open_control_files(a_bzrdir)
-        return WorkingTree3(a_bzrdir.root_transport.base,
+        return WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
                            _bzrdir=a_bzrdir,

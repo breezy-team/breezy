@@ -29,16 +29,17 @@ it.
 import errno
 from collections import deque
 from copy import deepcopy
+import re
 from stat import *
 import sys
 from unittest import TestSuite
-import urllib
 import urlparse
 
-from bzrlib.trace import mutter, warning
 import bzrlib.errors as errors
 from bzrlib.errors import DependencyNotPresent
+import bzrlib.osutils as osutils
 from bzrlib.symbol_versioning import *
+from bzrlib.trace import mutter, warning
 
 # {prefix: [transport_classes]}
 # Transports are inserted onto the list LIFO and tried in order; as a result
@@ -254,6 +255,16 @@ class Transport(object):
             raise errors.PathNotChild(abspath, self.base)
         pl = len(self.base)
         return abspath[pl:].strip('/')
+
+    def local_abspath(self, relpath):
+        """Return the absolute path on the local filesystem.
+
+        This function will only be defined for Transports which have a
+        physical local filesystem representation.
+        """
+        # TODO: jam 20060426 Should this raise 
+        raise errors.TransportNotPossible('This is not a LocalTransport,'
+            ' so there is no local representation for a path')
 
     def has(self, relpath):
         """Does the file relpath exist?
@@ -633,6 +644,12 @@ class Transport(object):
         return False
 
 
+# jam 20060426 For compatibility we copy the functions here
+urlescape = osutils.urlescape
+urlunescape = osutils.urlunescape
+_urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<path>.*)$')
+
+
 def get_transport(base):
     """Open a transport to access a URL or directory.
 
@@ -645,6 +662,18 @@ def get_transport(base):
         base = u'.'
     else:
         base = unicode(base)
+
+    # Now that we have a unicode string, it really should be a URL string
+    m = _urlRE.match(base)
+    if m:
+        # This is a real URL, so convert it back into a string
+        base = str(base)
+    else:
+        # This is a local unicode path, convert it to a url
+        new_base = osutils.local_path_to_url(base)
+        mutter('converting os path %r => url %s' , base, new_base)
+        base = new_base
+    
     for proto, factory_list in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
             t = _try_transport_factories(base, factory_list)
@@ -663,26 +692,6 @@ def _try_transport_factories(base, factory_list):
                     (factory, base, e))
             continue
     return None
-
-
-def urlescape(relpath):
-    """Escape relpath to be a valid url."""
-    if isinstance(relpath, unicode):
-        relpath = relpath.encode('utf-8')
-    return urllib.quote(relpath)
-
-
-def urlunescape(url):
-    """Unescape relpath from url format.
-
-    This returns a Unicode path from a URL
-    """
-    unquoted = urllib.unquote(url)
-    try:
-        unicode_path = unquoted.decode('utf-8')
-    except UnicodeError, e:
-        raise errors.InvalidURL(url, e)
-    return unicode_path
 
 
 class Server(object):
