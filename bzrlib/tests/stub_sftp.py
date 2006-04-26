@@ -77,6 +77,7 @@ class StubSFTPServer (SFTPServerInterface):
         return self.root + self.canonicalize(path)
 
     def canonicalize(self, path):
+        path = path.decode('utf-8')
         if os.path.isabs(path):
             return os.path.normpath(path)
         else:
