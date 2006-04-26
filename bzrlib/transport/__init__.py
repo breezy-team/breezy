@@ -262,7 +262,7 @@ class Transport(object):
         This function will only be defined for Transports which have a
         physical local filesystem representation.
         """
-        # TODO: jam 20060426 Should this raise 
+        # TODO: jam 20060426 Should this raise NotLocalUrl instead?
         raise errors.TransportNotPossible('This is not a LocalTransport,'
             ' so there is no local representation for a path')
 
@@ -659,26 +659,26 @@ def get_transport(base):
     # handler for the scheme?
     global _protocol_handlers
     if base is None:
-        base = u'.'
-    else:
-        base = unicode(base)
-
-    # Now that we have a unicode string, it really should be a URL string
-    m = _urlRE.match(base)
-    if m:
-        # This is a real URL, so convert it back into a string
-        base = str(base)
-    else:
-        # This is a local unicode path, convert it to a url
-        new_base = osutils.local_path_to_url(base)
-        mutter('converting os path %r => url %s' , base, new_base)
-        base = new_base
+        base = '.'
     
     for proto, factory_list in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
             t = _try_transport_factories(base, factory_list)
             if t:
                 return t
+
+    m = _urlRE.match(base)
+    if m:
+        # This looks like a URL, but we weren't able to 
+        # instantiate it as such raise an appropriate error
+        raise InvalidURL(base, 
+            'Unable to access URL (protocol: %s)' % m.group('proto'))
+    else:
+        # This is a local unicode path, convert it to a url
+        new_base = osutils.local_path_to_url(base)
+        mutter('converting os path %r => url %s' , base, new_base)
+        base = new_base
+
     # The default handler is the filesystem handler, stored as protocol None
     return _try_transport_factories(base, _protocol_handlers[None])
 
