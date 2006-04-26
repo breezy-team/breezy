@@ -561,15 +561,7 @@ class InterVersionedFile(InterObject):
             # Make a new target-format versioned file. 
             temp_source = self.target.create_empty("temp", MemoryTransport())
             target = temp_source
-        if version_ids is not None:
-            new_version_ids = []
-            for version in version_ids:
-                if not self.source.has_version(version):
-                    if not ignore_missing:
-                        raise errors.RevisionNotPresent(version, str(self.source))
-                else:
-                    new_version_ids.append(version)
-            version_ids = new_version_ids
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         graph = self.source.get_graph(version_ids)
         order = topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
@@ -614,6 +606,30 @@ class InterVersionedFile(InterObject):
                                         ignore_missing)
         finally:
             pb.finished()
+
+    def _get_source_version_ids(self, version_ids, ignore_missing):
+        """Determine the version ids to be used from self.source.
+
+        :param version_ids: The caller-supplied version ids to check. (None 
+                            for all).
+        :param ignore_missing: if True, remove missing ids from the version 
+                               list. If False, raise RevisionNotPresent on
+                               a missing version id.
+        :return: A set of version ids.
+        """
+        if version_ids is None:
+            return set(self.source.versions())
+        else:
+            if ignore_missing:
+                return set(self.source.versions()).intersection(set(version_ids))
+            else:
+                new_version_ids = set()
+                for version in version_ids:
+                    if not self.source.has_version(version):
+                        raise errors.RevisionNotPresent(version, str(self.source))
+                    else:
+                        new_version_ids.add(version)
+                return new_version_ids
 
 
 class InterVersionedFileTestProviderAdapter(object):

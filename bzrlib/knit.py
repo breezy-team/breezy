@@ -1373,14 +1373,7 @@ class InterKnit(InterVersionedFile):
         assert isinstance(self.source, KnitVersionedFile)
         assert isinstance(self.target, KnitVersionedFile)
 
-        if version_ids is None:
-            version_ids = self.source.versions()
-        else:
-            if not ignore_missing:
-                self.source._check_versions_present(version_ids)
-            else:
-                version_ids = set(self.source.versions()).intersection(
-                    set(version_ids))
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
 
         if not version_ids:
             return 0

@@ -977,12 +977,9 @@ class Weave(VersionedFile):
         if not other.versions():
             return          # nothing to update, easy
 
-        if version_ids:
-            for version_id in version_ids:
-                if not other.has_version(version_id) and not ignore_missing:
-                    raise RevisionNotPresent(version_id, self._weave_name)
-        else:
-            version_ids = other.versions()
+        if not version_ids:
+            # versions is never none, InterWeave checks this.
+            return 0
 
         # two loops so that we do not change ourselves before verifying it
         # will be ok
@@ -1478,6 +1475,7 @@ class InterWeave(InterVersionedFile):
 
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
         if self.target.versions() == [] and version_ids is None:
             self.target._copy_weave_content(self.source)
             return
