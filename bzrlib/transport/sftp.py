@@ -66,6 +66,9 @@ register_urlparse_netloc_protocol('sftp')
 
 
 def _ignore_sigint():
+    # TODO: This should possibly ignore SIGHUP as well, but bzr currently
+    # doesn't handle it itself.
+    # <https://launchpad.net/products/bzr/+bug/41433/+index>
     import signal
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     
