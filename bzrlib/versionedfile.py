@@ -611,13 +611,14 @@ class InterVersionedFile(InterObject):
         """Determine the version ids to be used from self.source.
 
         :param version_ids: The caller-supplied version ids to check. (None 
-                            for all).
+                            for all). If None is in version_ids, it is stripped.
         :param ignore_missing: if True, remove missing ids from the version 
                                list. If False, raise RevisionNotPresent on
                                a missing version id.
         :return: A set of version ids.
         """
         if version_ids is None:
+            # None cannot be in source.versions
             return set(self.source.versions())
         else:
             if ignore_missing:
@@ -625,6 +626,8 @@ class InterVersionedFile(InterObject):
             else:
                 new_version_ids = set()
                 for version in version_ids:
+                    if version is None:
+                        continue
                     if not self.source.has_version(version):
                         raise errors.RevisionNotPresent(version, str(self.source))
                     else:
@@ -670,14 +673,14 @@ class InterVersionedFileTestProviderAdapter(object):
         from bzrlib.weave import WeaveFile
         from bzrlib.knit import KnitVersionedFile
         result = []
-        # test the fallback InterVersionedFile from weave to annotated knits
+        # test the fallback InterVersionedFile from annotated knits to weave
         result.append((InterVersionedFile, 
-                       WeaveFile,
-                       KnitVersionedFile))
+                       KnitVersionedFile,
+                       WeaveFile))
         for optimiser in InterVersionedFile._optimisers:
             result.append((optimiser,
-                           optimiser._matching_file_factory,
-                           optimiser._matching_file_factory
+                           optimiser._matching_file_from_factory,
+                           optimiser._matching_file_to_factory
                            ))
         # if there are specific combinations we want to use, we can add them 
         # here.

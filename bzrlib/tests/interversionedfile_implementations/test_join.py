@@ -267,7 +267,7 @@ class TestJoin(TestCaseWithTransport):
             # switch source and target so source is ghostless
             t = source
             source = target
-            target = source
+            target = t
             source_ghosts = False
             target_ghosts = True
         # now target always supports ghosts.

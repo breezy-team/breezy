@@ -1462,7 +1462,8 @@ if __name__ == '__main__':
 class InterWeave(InterVersionedFile):
     """Optimised code paths for weave to weave operations."""
     
-    _matching_file_factory = staticmethod(WeaveFile)
+    _matching_file_from_factory = staticmethod(WeaveFile)
+    _matching_file_to_factory = staticmethod(WeaveFile)
     
     @staticmethod
     def is_compatible(source, target):
