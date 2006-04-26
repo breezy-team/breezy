@@ -208,8 +208,9 @@ def posix_local_path_to_url(path):
 
 def posix_local_path_from_url(url):
     """Convert a url like file:///path/to/foo into /path/to/foo"""
-    if not url.startswith('file://'):
-        raise InvalidURL(url, 'local urls must start with file://')
+    if not url.startswith('file:///'):
+        raise InvalidURL(url, 'local urls must start with file:///')
+    # We only strip off 2 slashes
     return urlunescape(url[len('file://'):])
 
 
@@ -228,17 +229,17 @@ def win32_local_path_to_url(path):
 
 def win32_local_path_from_url(url):
     """Convert a url like file:///C|/path/to/foo into C:/path/to/foo"""
-    if not url.startswith('file://'):
-        raise InvalidURL(url, 'local urls must start with file://')
-    win32_url = url[len('file://'):]
-    if (win32_url[0] != '/' 
-        or win32_url[1] not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-        or win32_url[2] != '|'
-        or win32_url[3] != '/'):
+    if not url.startswith('file:///'):
+        raise InvalidURL(url, 'local urls must start with file:///')
+    # We strip off all 3 slashes
+    win32_url = url[len('file:///'):]
+    if (win32_url[0] not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        or win32_url[1] != '|'
+        or win32_url[2] != '/'):
         raise InvalidURL(url, 'Win32 file urls start with file:///X|/, where X is a valid drive letter')
     # TODO: jam 20060426, we could .upper() or .lower() the drive letter
     #       for better consistency.
-    return win32_url[1] + u':' + urlunescape(win32_url[3:])
+    return win32_url[0] + u':' + urlunescape(win32_url[2:])
 
 
 # Default is to just use the python builtins
@@ -255,6 +256,7 @@ local_path_to_url = posix_local_path_to_url
 local_path_from_url = posix_local_path_from_url
 
 MIN_ABS_PATHLENGTH = 1
+MIN_ABS_URLPATHLENGTH = len('file:///')
 
 
 if os.name == "posix":
@@ -297,6 +299,7 @@ if sys.platform == 'win32':
     local_path_from_url = win32_local_path_from_url
 
     MIN_ABS_PATHLENGTH = 3
+    MIN_ABS_URLPATHLENGTH = len('file:///C|/')
 
 def normalizepath(f):
     if hasattr(os.path, 'realpath'):
@@ -679,18 +682,15 @@ def relpath(base, path):
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem.
     """
+
     assert len(base) >= MIN_ABS_PATHLENGTH, ('Length of base must be equal or'
         ' exceed the platform minimum length (which is %d)' % 
         MIN_ABS_PATHLENGTH)
 
-    return _relpath_helper(base, abspath(path))
-
-
-def _relpath_helper(base, path):
-    """Compute the relative path, without making the child path absolute."""
+    rp = abspath(path)
 
     s = []
-    head = path
+    head = rp
     while len(head) >= len(base):
         if head == base:
             break
@@ -698,7 +698,7 @@ def _relpath_helper(base, path):
         if tail:
             s.insert(0, tail)
     else:
-        raise PathNotChild(path, base)
+        raise PathNotChild(rp, base)
 
     if s:
         return pathjoin(*s)
@@ -711,7 +711,13 @@ def urlrelpath(base, path):
     
     This assumes that both paths are already fully specified URLs.
     """
-    return _relpath_helper(base, path)
+    assert len(base) >= MIN_ABS_URLPATHLENGTH, ('Length of base must be equal or'
+        ' exceed the platform minimum url length (which is %d)' % 
+        MIN_ABS_URLPATHLENGTH)
+
+    base = local_path_from_url(base)
+    path = local_path_from_url(path)
+    return relpath(base, path)
 
 
 def safe_unicode(unicode_or_utf8_string):
@@ -795,11 +801,13 @@ def supports_executable():
     return sys.platform != "win32"
 
 
-def strip_trailing_slash(path):
+def strip_url_trailing_slash(path):
     """Strip trailing slash, except for root paths.
     The definition of 'root path' is platform-dependent.
     """
-    if len(path) != MIN_ABS_PATHLENGTH and path[-1] == '/':
+    assert path.startswith('file:///'), \
+        'strip_url_trailing_slash expects file:// urls (%s)' % path
+    if len(path) != MIN_ABS_URLPATHLENGTH and path[-1] == '/':
         return path[:-1]
     else:
         return path
