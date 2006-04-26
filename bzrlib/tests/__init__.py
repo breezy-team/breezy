@@ -820,7 +820,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         if relpath is not None and relpath != '.':
             if not base.endswith('/'):
                 base = base + '/'
-            base = base + relpath
+            base = base + urlescape(relpath)
         return base
 
     def get_transport(self):
@@ -847,7 +847,8 @@ class TestCaseWithTransport(TestCaseInTempDir):
     def make_bzrdir(self, relpath, format=None):
         try:
             url = self.get_url(relpath)
-            segments = relpath.split('/')
+            mutter('relpath %r => url %r', relpath, url)
+            segments = url.split('/')
             if segments and segments[-1] not in ('', '.'):
                 parent = self.get_url('/'.join(segments[:-1]))
                 t = get_transport(parent)
