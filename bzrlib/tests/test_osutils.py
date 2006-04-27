@@ -141,6 +141,68 @@ class TestUrlToPath(TestCase):
         self.assertRaises(InvalidURL, from_url, 'file:///path/to/foo')
 
 
+class TestWin32Funcs(TestCase):
+    """Test that the _win32 versions of os utilities return appropriate paths."""
+
+    def test_abspath(self):
+        self.assertEqual('C:/foo', osutils._win32_abspath('C:\\foo'))
+        self.assertEqual('C:/foo', osutils._win32_abspath('C:/foo'))
+
+    def test_realpath(self):
+        self.assertEqual('C:/foo', osutils._win32_realpath('C:\\foo'))
+        self.assertEqual('C:/foo', osutils._win32_realpath('C:/foo'))
+
+    def test_pathjoin(self):
+        self.assertEqual('path/to/foo', osutils._win32_pathjoin('path', 'to', 'foo'))
+        self.assertEqual('C:/foo', osutils._win32_pathjoin('path\\to', 'C:\\foo'))
+        self.assertEqual('C:/foo', osutils._win32_pathjoin('path/to', 'C:/foo'))
+        self.assertEqual('path/to/foo', osutils._win32_pathjoin('path/to/', 'foo'))
+        self.assertEqual('/foo', osutils._win32_pathjoin('C:/path/to/', '/foo'))
+        self.assertEqual('/foo', osutils._win32_pathjoin('C:\\path\\to\\', '\\foo'))
+
+    def test_normpath(self):
+        self.assertEqual('path/to/foo', osutils._win32_normpath(r'path\\from\..\to\.\foo'))
+        self.assertEqual('path/to/foo', osutils._win32_normpath('path//from/../to/./foo'))
+
+    def test_getcwd(self):
+        self.assertEqual(os.getcwdu().replace('\\', '/'), osutils._win32_getcwd())
+
+
+class TestWin32FuncsDirs(TestCaseInTempDir):
+    """Test win32 functions that create files."""
+    
+    def test_getcwd(self):
+        # Make sure getcwd can handle unicode filenames
+        try:
+            os.mkdir(u'B\xe5gfors')
+        except UnicodeError:
+            raise TestSkipped("Unable to create Unicode filename")
+
+        os.chdir(u'B\xe5gfors')
+        # TODO: jam 20060427 This will probably fail on Mac OSX because
+        #       it will change the normalization of B\xe5gfors
+        #       Consider using a different unicode character, or make
+        #       osutils.getcwd() renormalize the path.
+        self.assertTrue(osutils._win32_getcwd().endswith(u'/B\xe5gfors'))
+
+    def test_mkdtemp(self):
+        tmpdir = osutils._win32_mkdtemp(dir='.')
+        self.assertFalse('\\' in tmpdir)
+
+    def test_rename(self):
+        a = open('a', 'wb')
+        a.write('foo\n')
+        a.close()
+        b = open('b', 'wb')
+        b.write('baz\n')
+        b.close()
+
+        osutils._win32_rename('b', 'a')
+        self.failUnlessExists('a')
+        self.failIfExists('b')
+        self.assertFileEqual('baz\n', 'a')
+
+
 class TestSplitLines(TestCase):
 
     def test_split_unicode(self):

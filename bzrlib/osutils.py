@@ -31,6 +31,11 @@ import types
 import tempfile
 import unicodedata
 import urllib
+from ntpath import (abspath as _nt_abspath,
+                    join as _nt_join,
+                    normpath as _nt_normpath,
+                    realpath as _nt_realpath,
+                    )
 
 import bzrlib
 from bzrlib.errors import (BzrError,
@@ -235,8 +240,7 @@ def _win32_local_path_to_url(path):
     # importing directly from ntpath allows us to test this 
     # on non-win32 platforms
     # TODO: jam 20060426 consider moving this import outside of the function
-    from ntpath import normpath
-    win32_path = normpath(abspath(path)).replace('\\', '/')
+    win32_path = _nt_normpath(_win32_abspath(path)).replace('\\', '/')
     return 'file:///' + win32_path[0] + '|' + urlescape(win32_path[2:])
 
 
@@ -262,6 +266,11 @@ def _win32_local_path_from_url(url):
 _fs_enc = sys.getfilesystemencoding()
 def _posix_abspath(path):
     return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
+    # jam 20060426 This is another possibility which mimics 
+    # os.path.abspath, only uses unicode characters instead
+    # if not os.path.isabs(path):
+    #     return os.path.join(os.getcwdu(), path)
+    # return path
 
 
 def _posix_realpath(path):
@@ -269,19 +278,19 @@ def _posix_realpath(path):
 
 
 def _win32_abspath(path):
-    return _posix_abspath(path).replace('\\', '/')
+    return _nt_abspath(path.encode(_fs_enc)).decode(_fs_enc).replace('\\', '/')
 
 
 def _win32_realpath(path):
-    return _posix_realpath(path).replace('\\', '/')
+    return _nt_realpath(path.encode(_fs_enc)).decode(_fs_enc).replace('\\', '/')
 
 
 def _win32_pathjoin(*args):
-    return os.path.join(*args).replace('\\', '/')
+    return _nt_join(*args).replace('\\', '/')
 
 
 def _win32_normpath(path):
-    return os.path.normpath(path).replace('\\', '/')
+    return _nt_normpath(path).replace('\\', '/')
 
 
 def _win32_getcwd():
@@ -313,7 +322,6 @@ MIN_ABS_PATHLENGTH = 1
 MIN_ABS_URLPATHLENGTH = len('file:///')
 
 
-
 if sys.platform == 'win32':
     abspath = _win32_abspath
     realpath = _win32_realpath
@@ -328,6 +336,7 @@ if sys.platform == 'win32':
 
     MIN_ABS_PATHLENGTH = 3
     MIN_ABS_URLPATHLENGTH = len('file:///C|/')
+
 
 def normalizepath(f):
     if hasattr(os.path, 'realpath'):

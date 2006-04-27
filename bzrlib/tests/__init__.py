@@ -739,6 +739,7 @@ class TestCaseInTempDir(TestCase):
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.failUnless(osutils.lexists(path))
+        # TODO: jam 20060427 Shouldn't this be 'rb'?
         self.assertEqualDiff(content, open(path, 'r').read())
 
 
