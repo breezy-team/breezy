@@ -37,6 +37,7 @@ from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError,
 from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
+import bzrlib.osutils
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
@@ -424,7 +425,8 @@ class cmd_pull(Command):
             if stored_loc is None:
                 raise BzrCommandError("No pull location known or specified.")
             else:
-                self.outf.write("Using saved location: %s\n" % stored_loc)
+                self.outf.write("Using saved location: %s\n" 
+                    % bzrlib.osutils.urlfordisplay(stored_loc))
                 location = stored_loc
 
         branch_from = Branch.open(location)
@@ -501,7 +503,8 @@ class cmd_push(Command):
             if stored_loc is None:
                 raise BzrCommandError("No push location known or specified.")
             else:
-                self.outf.write("Using saved location: %s" % stored_loc)
+                self.outf.write("Using saved location: %s" 
+                    % bzrlib.osutils.urlfordisplay(stored_loc))
                 location = stored_loc
 
         transport = get_transport(location)
@@ -1950,7 +1953,8 @@ class cmd_merge(Command):
             if stored_loc is None:
                 raise BzrCommandError("No merge branch known or specified.")
             else:
-                print "Using saved branch: %s" % stored_loc
+                print (u"Using saved branch: %s" 
+                    % bzrlib.osutils.urlfordisplay(stored_loc))
                 branch = stored_loc
 
         if revision is None or len(revision) < 1:
