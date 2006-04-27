@@ -58,7 +58,7 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
                 format = self.repository_format._matchingbzrdir
             return format.initialize(url)
         except UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
+            raise TestSkipped("Format %s is not initializable." % format)
 
     def make_repository(self, relpath, format=None):
         made_control = self.make_bzrdir(relpath, format=format)
