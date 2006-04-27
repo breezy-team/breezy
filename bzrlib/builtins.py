@@ -496,12 +496,16 @@ class cmd_push(Command):
         tree_from = WorkingTree.open_containing(u'.')[0]
         br_from = tree_from.branch
         stored_loc = tree_from.branch.get_push_location()
+
         if location is None:
             if stored_loc is None:
                 raise BzrCommandError("No push location known or specified.")
             else:
                 self.outf.write("Using saved location: %s" % stored_loc)
                 location = stored_loc
+
+        transport = get_transport(location)
+        location_url = transport.base
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(location)
         try:
@@ -509,16 +513,16 @@ class cmd_push(Command):
             br_to = dir_to.open_branch()
         except NotBranchError:
             # create a branch.
-            transport = get_transport(location).clone('..')
+            transport = transport.clone('..')
             if not create_prefix:
                 try:
-                    transport.mkdir(transport.relpath(location))
+                    transport.mkdir(transport.relpath(location_url))
                 except NoSuchFile:
                     raise BzrCommandError("Parent directory of %s "
                                           "does not exist." % location)
             else:
                 current = transport.base
-                needed = [(transport, transport.relpath(location))]
+                needed = [(transport, transport.relpath(location_url))]
                 while needed:
                     try:
                         transport, relpath = needed[-1]
