@@ -154,7 +154,12 @@ class TestUrlToPath(TestCase):
         eq(u'http://host/r\xe4ksm\xf6rg\xe5s', disp('http://host/r%C3%A4ksm%C3%B6rg%C3%A5s'))
 
         # Make sure special escaped characters stay escaped
-        eq(u'http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C', disp('http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C'))
+        eq(u'http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C%23',
+            disp('http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C%23'))
+
+        # Can we handle sections that don't have utf-8 encoding?
+        eq(u'http://host/%EE%EE%EE/r\xe4ksm\xf6rg\xe5s',
+            disp('http://host/%EE%EE%EE/r%C3%A4ksm%C3%B6rg%C3%A5s'))
 
 
 class TestWin32Funcs(TestCase):
