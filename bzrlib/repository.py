@@ -536,17 +536,10 @@ class Repository(object):
         # use inventory as it was in that revision
         file_id = tree.inventory.path2id(file)
         if not file_id:
-            raise BzrError("%r is not present in revision %s" % (file, revno))
-            try:
-                revno = self.revision_id_to_revno(revision_id)
-            except errors.NoSuchRevision:
-                # TODO: This should not be BzrError,
-                # but NoSuchFile doesn't fit either
-                raise BzrError('%r is not present in revision %s' 
-                                % (file, revision_id))
-            else:
-                raise BzrError('%r is not present in revision %s'
-                                % (file, revno))
+            # TODO: jam 20060427 Write a test for this code path
+            #       it had a bug in it, and was raising the wrong
+            #       exception.
+            raise errors.BzrError("%r is not present in revision %s" % (file, revision_id))
         tree.print_file(file_id)
 
     def get_transaction(self):
