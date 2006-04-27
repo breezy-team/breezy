@@ -580,6 +580,7 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
+        from bzrlib.transport import get_transport
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -611,22 +612,25 @@ class cmd_branch(Command):
                 name = None
             else:
                 name = os.path.basename(to_location) + '\n'
+
+            to_transport = get_transport(to_location)
             try:
-                os.mkdir(to_location)
-            except OSError, e:
-                if e.errno == errno.EEXIST:
-                    raise BzrCommandError('Target directory "%s" already'
-                                          ' exists.' % to_location)
-                if e.errno == errno.ENOENT:
-                    raise BzrCommandError('Parent of "%s" does not exist.' %
-                                          to_location)
-                else:
-                    raise
+                to_transport.mkdir('.')
+            except bzrlib.errors.FileExists:
+                raise BzrCommandError('Target directory "%s" already'
+                                      ' exists.' % to_location)
+            except bzrlib.errors.NoSuchFile:
+                raise BzrCommandError('Parent of "%s" does not exist.' %
+                                      to_location)
             try:
                 # preserve whatever source format we have.
-                dir = br_from.bzrdir.sprout(to_location, revision_id, basis_dir)
+                dir = br_from.bzrdir.sprout(to_transport.base,
+                        revision_id, basis_dir)
                 branch = dir.open_branch()
             except bzrlib.errors.NoSuchRevision:
+                # TODO: jam 20060426 This only works on local paths
+                #       and it would be nice if 'bzr branch' could
+                #       work on a remote path
                 rmtree(to_location)
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
                 raise BzrCommandError(msg)

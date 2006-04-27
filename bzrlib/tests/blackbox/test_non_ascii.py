@@ -24,6 +24,7 @@ import os
 import bzrlib
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter, note
+from bzrlib.osutils import local_path_to_url
 
 
 class TestNonAscii(TestCaseInTempDir):
@@ -205,11 +206,14 @@ class TestNonAscii(TestCaseInTempDir):
         bzr('commit', '-m', 'mod a')
 
         pwd = os.getcwdu()
+        pwd_url = local_path_to_url(pwd)
 
         os.chdir(u'../' + dirname2)
         txt = bzr('pull')
 
-        self.assertEqual(u'Using saved location: %s/\n' % (pwd,), txt)
+        # TODO: jam 20060427 Should we be trying to print the original path
+        #       rather than the URL?
+        self.assertEqual(u'Using saved location: %s/\n' % (pwd_url,), txt)
 
         os.chdir('../' + dirname1)
         open('a', 'ab').write('and yet more\n')

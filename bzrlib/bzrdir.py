@@ -564,6 +564,8 @@ class BzrDir(object):
             source_branch.sprout(result, revision_id=revision_id)
         else:
             result.create_branch()
+        # TODO: jam 20060426 we probably need a test in here in the
+        #       case that the newly sprouted branch is a remote one
         if result_repo is None or result_repo.make_working_trees():
             result.create_workingtree()
         return result

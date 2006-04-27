@@ -187,7 +187,14 @@ def urlunescape(url):
 
     This returns a Unicode path from a URL
     """
-    unquoted = urllib.unquote(url)
+    # jam 20060427 URLs are supposed to be ASCII only strings
+    #       If they are passed in as unicode, urllib.unquote
+    #       will return a UNICODE string, which actually contains
+    #       utf-8 bytes. So we have to ensure that they are
+    #       plain ASCII strings, or the final .decode will
+    #       try to encode the UNICODE => ASCII, and then decode
+    #       it into utf-8.
+    unquoted = urllib.unquote(str(url))
     try:
         unicode_path = unquoted.decode('utf-8')
     except UnicodeError, e:
@@ -195,18 +202,18 @@ def urlunescape(url):
     return unicode_path
 
 
-def posix_local_path_to_url(path):
+def _posix_local_path_to_url(path):
     """Convert a local path like ./foo into a URL like file:///path/to/foo
 
     This also handles transforming escaping unicode characters, etc.
     """
     # importing directly from posixpath allows us to test this 
     # on non-posix platforms
-    from posixpath import abspath, normpath
-    return 'file://' + urlescape(normpath(abspath(path)))
+    from posixpath import normpath
+    return 'file://' + urlescape(normpath(_posix_abspath(path)))
 
 
-def posix_local_path_from_url(url):
+def _posix_local_path_from_url(url):
     """Convert a url like file:///path/to/foo into /path/to/foo"""
     if not url.startswith('file:///'):
         raise InvalidURL(url, 'local urls must start with file:///')
@@ -214,7 +221,7 @@ def posix_local_path_from_url(url):
     return urlunescape(url[len('file://'):])
 
 
-def win32_local_path_to_url(path):
+def _win32_local_path_to_url(path):
     """Convert a local path like ./foo into a URL like file:///C|/path/to/foo
 
     This also handles transforming escaping unicode characters, etc.
@@ -222,12 +229,12 @@ def win32_local_path_to_url(path):
     # importing directly from ntpath allows us to test this 
     # on non-win32 platforms
     # TODO: jam 20060426 consider moving this import outside of the function
-    from ntpath import normpath, abspath
+    from ntpath import normpath
     win32_path = normpath(abspath(path)).replace('\\', '/')
     return 'file:///' + win32_path[0] + '|' + urlescape(win32_path[2:])
 
 
-def win32_local_path_from_url(url):
+def _win32_local_path_from_url(url):
     """Convert a url like file:///C|/path/to/foo into C:/path/to/foo"""
     if not url.startswith('file:///'):
         raise InvalidURL(url, 'local urls must start with file:///')
@@ -242,9 +249,50 @@ def win32_local_path_from_url(url):
     return win32_url[0] + u':' + urlunescape(win32_url[2:])
 
 
+# In Python 2.4.2 and older, os.path.abspath and os.path.realpath
+# choke on a Unicode string containing a relative path if
+# os.getcwd() returns a non-sys.getdefaultencoding()-encoded
+# string.
+_fs_enc = sys.getfilesystemencoding()
+def _posix_abspath(path):
+    return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
+
+
+def _posix_realpath(path):
+    return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
+
+
+def _win32_abspath(path):
+    return _posix_abspath(path).replace('\\', '/')
+
+
+def _win32_realpath(path):
+    return _posix_realpath(path).replace('\\', '/')
+
+
+def _win32_pathjoin(*args):
+    return os.path.join(*args).replace('\\', '/')
+
+
+def _win32_normpath(path):
+    return os.path.normpath(path).replace('\\', '/')
+
+
+def _win32_getcwd():
+    return os.getcwdu().replace('\\', '/')
+
+
+def _win32_mkdtemp(*args, **kwargs):
+    return tempfile.mkdtemp(*args, **kwargs).replace('\\', '/')
+
+
+def _win32_rename(old, new):
+    fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+
+
 # Default is to just use the python builtins
-abspath = os.path.abspath
-realpath = os.path.realpath
+abspath = _posix_abspath
+realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = os.path.normpath
 getcwd = os.getcwdu
@@ -252,51 +300,25 @@ mkdtemp = tempfile.mkdtemp
 rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
-local_path_to_url = posix_local_path_to_url
-local_path_from_url = posix_local_path_from_url
+local_path_to_url = _posix_local_path_to_url
+local_path_from_url = _posix_local_path_from_url
 
 MIN_ABS_PATHLENGTH = 1
 MIN_ABS_URLPATHLENGTH = len('file:///')
 
 
-if os.name == "posix":
-    # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
-    # choke on a Unicode string containing a relative path if
-    # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
-    # string.
-    _fs_enc = sys.getfilesystemencoding()
-    def abspath(path):
-        return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
-
-    def realpath(path):
-        return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
 
 if sys.platform == 'win32':
-    # We need to use the Unicode-aware os.path.abspath and
-    # os.path.realpath on Windows systems.
-    def abspath(path):
-        return os.path.abspath(path).replace('\\', '/')
+    abspath = _win32_abspath
+    realpath = _win32_realpath
+    pathjoin = _win32_pathjoin
+    normpath = _win32_normpath
+    getcwd = _win32_getcwd
+    mkdtemp = _win32_mkdtemp
+    rename = _win32_rename
 
-    def realpath(path):
-        return os.path.realpath(path).replace('\\', '/')
-
-    def pathjoin(*args):
-        return os.path.join(*args).replace('\\', '/')
-
-    def normpath(path):
-        return os.path.normpath(path).replace('\\', '/')
-
-    def getcwd():
-        return os.getcwdu().replace('\\', '/')
-
-    def mkdtemp(*args, **kwargs):
-        return tempfile.mkdtemp(*args, **kwargs).replace('\\', '/')
-
-    def rename(old, new):
-        fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
-
-    local_path_to_url = win32_local_path_to_url
-    local_path_from_url = win32_local_path_from_url
+    local_path_to_url = _win32_local_path_to_url
+    local_path_from_url = _win32_local_path_from_url
 
     MIN_ABS_PATHLENGTH = 3
     MIN_ABS_URLPATHLENGTH = len('file:///C|/')
