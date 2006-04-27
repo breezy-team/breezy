@@ -228,6 +228,10 @@ class TestNonAscii(TestCaseInTempDir):
         # Make sure we can pull from paths that can't be encoded
         bzr = self.run_bzr_decode
 
+        # TODO: jam 20060427 For drastically improving performance, we probably
+        #       could create a local repository, so it wouldn't have to copy
+        #       the files around as much.
+
         dirname = self.info['directory']
         bzr('push', dirname)
 
@@ -248,6 +252,9 @@ class TestNonAscii(TestCaseInTempDir):
         bzr('push', '--verbose', dirname + '2')
 
         bzr('push', '--verbose', dirname + '3', encoding='ascii')
+
+        bzr('push', '--verbose', '--create-prefix', dirname + '4/' + dirname + '5')
+        bzr('push', '--verbose', '--create-prefix', dirname + '6/' + dirname + '7', encoding='ascii')
 
     def test_renames(self):
         bzr = self.run_bzr_decode

@@ -179,7 +179,9 @@ def urlescape(relpath):
     """Escape relpath to be a valid url."""
     if isinstance(relpath, unicode):
         relpath = relpath.encode('utf-8')
-    return urllib.quote(relpath)
+    # After quoting and encoding, the path should be perfectly
+    # safe as a plain ASCII string, str() just enforces this
+    return str(urllib.quote(relpath))
 
 
 def urlunescape(url):
@@ -731,7 +733,7 @@ def relpath(base, path):
 def urlrelpath(base, path):
     """Compute just the relative sub-portion of a url
     
-    This assumes that both paths are already fully specified URLs.
+    This assumes that both paths are already fully specified file:// URLs.
     """
     assert len(base) >= MIN_ABS_URLPATHLENGTH, ('Length of base must be equal or'
         ' exceed the platform minimum url length (which is %d)' % 
@@ -739,7 +741,7 @@ def urlrelpath(base, path):
 
     base = local_path_from_url(base)
     path = local_path_from_url(path)
-    return relpath(base, path)
+    return urlescape(relpath(base, path))
 
 
 def safe_unicode(unicode_or_utf8_string):

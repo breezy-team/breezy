@@ -507,16 +507,18 @@ class cmd_push(Command):
         transport = get_transport(location)
         location_url = transport.base
         if br_from.get_push_location() is None or remember:
-            br_from.set_push_location(location)
+            br_from.set_push_location(location_url)
         try:
-            dir_to = bzrlib.bzrdir.BzrDir.open(location)
+            dir_to = bzrlib.bzrdir.BzrDir.open(location_url)
             br_to = dir_to.open_branch()
         except NotBranchError:
             # create a branch.
             transport = transport.clone('..')
             if not create_prefix:
                 try:
-                    transport.mkdir(transport.relpath(location_url))
+                    relurl = transport.relpath(location_url)
+                    mutter('creating directory %s => %s', location_url, relurl)
+                    transport.mkdir(relurl)
                 except NoSuchFile:
                     raise BzrCommandError("Parent directory of %s "
                                           "does not exist." % location)
@@ -535,7 +537,7 @@ class cmd_push(Command):
                         if new_transport.base == transport.base:
                             raise BzrCommandError("Could not create "
                                                   "path prefix.")
-            dir_to = br_from.bzrdir.clone(location)
+            dir_to = br_from.bzrdir.clone(location_url)
             br_to = dir_to.open_branch()
         old_rh = br_to.revision_history()
         try:
