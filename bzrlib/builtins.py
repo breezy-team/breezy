@@ -427,10 +427,11 @@ class cmd_pull(Command):
                 self.outf.write("Using saved location: %s\n" % stored_loc)
                 location = stored_loc
 
-        if branch_to.get_parent() is None or remember:
-            branch_to.set_parent(location)
-
         branch_from = Branch.open(location)
+
+        if branch_to.get_parent() is None or remember:
+            branch_to.set_parent(branch_from.base)
+
 
         if revision is None:
             rev_id = None
@@ -1942,9 +1943,6 @@ class cmd_merge(Command):
                 print "Using saved branch: %s" % stored_loc
                 branch = stored_loc
 
-        if tree.branch.get_parent() is None or remember:
-            tree.branch.set_parent(branch)
-
         if revision is None or len(revision) < 1:
             base = [None, None]
             other = [branch, -1]
@@ -1960,10 +1958,14 @@ class cmd_merge(Command):
                 if None in revision:
                     raise BzrCommandError(
                         "Merge doesn't permit that revision specifier.")
-                b, path = Branch.open_containing(branch)
+                other_branch, path = Branch.open_containing(branch)
 
-                base = [branch, revision[0].in_history(b).revno]
-                other = [branch, revision[1].in_history(b).revno]
+                base = [branch, revision[0].in_history(other_branch).revno]
+                other = [branch, revision[1].in_history(other_branch).revno]
+
+        if tree.branch.get_parent() is None or remember:
+            tree.branch.set_parent(other_branch.base)
+
         if path != "":
             interesting_files = [path]
         else:
@@ -2218,7 +2220,7 @@ class cmd_missing(Command):
             try:
                 # handle race conditions - a parent might be set while we run.
                 if local_branch.get_parent() is None:
-                    local_branch.set_parent(other_branch)
+                    local_branch.set_parent(remote_branch.base)
             finally:
                 local_branch.unlock()
         return status_code

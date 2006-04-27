@@ -22,7 +22,6 @@ import os
 import sys
 
 from bzrlib.branch import Branch
-from bzrlib.osutils import abspath
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.uncommit import uncommit
 
@@ -249,13 +248,13 @@ class TestPull(ExternalBase):
         out = self.runbzr('pull ../branch_a', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: These branches have diverged.  Try merge.\n'))
-        self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
+        self.assertEquals(branch_b.get_parent(), parent)
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/d')
         self.runbzr('pull')
-        self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
+        self.assertEquals(branch_b.get_parent(), parent)
         # test explicit --remember
         self.runbzr('pull ../branch_c --remember')
-        self.assertEquals(abspath(branch_b.get_parent()),
-                          abspath(branch_c.bzrdir.root_transport.base))
+        self.assertEquals(branch_b.get_parent(),
+                          branch_c.bzrdir.root_transport.base)
