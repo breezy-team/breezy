@@ -196,11 +196,15 @@ def urlunescape(url):
     #       plain ASCII strings, or the final .decode will
     #       try to encode the UNICODE => ASCII, and then decode
     #       it into utf-8.
-    unquoted = urllib.unquote(str(url))
+    try:
+        url = str(url)
+    except UnicodeError, e:
+        raise InvalidURL(url, 'URL was not a plain ASCII url: %s' % (e,))
+    unquoted = urllib.unquote(url)
     try:
         unicode_path = unquoted.decode('utf-8')
     except UnicodeError, e:
-        raise InvalidURL(url, e)
+        raise InvalidURL(url, 'Unable to encode the URL as utf-8: %s' % (e,))
     return unicode_path
 
 
