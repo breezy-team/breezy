@@ -850,7 +850,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             mutter('relpath %r => url %r', relpath, url)
             segments = url.split('/')
             if segments and segments[-1] not in ('', '.'):
-                parent = self.get_url('/'.join(segments[:-1]))
+                parent = '/'.join(segments[:-1])
                 t = get_transport(parent)
                 try:
                     t.mkdir(segments[-1])
