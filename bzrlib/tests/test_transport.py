@@ -90,9 +90,11 @@ class TestTransport(TestCase):
         try:
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
                     'BadTransportHandler')
-            t = get_transport('foo://fooserver/foo')
-            # because we failed to load the transport
-            self.assertTrue(isinstance(t, LocalTransport))
+            # TODO: jam 20060427 Now we get InvalidURL because it looks like 
+            #       a URL but we have no support for it.
+            #       Is it better to always fall back to LocalTransport?
+            #       I think this is a better error than a future NoSuchFile
+            self.assertRaises(InvalidURL, get_transport, 'foo://fooserver/foo')
         finally:
             # restore original values
             _set_protocol_handlers(saved_handlers)

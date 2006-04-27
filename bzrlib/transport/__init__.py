@@ -671,7 +671,7 @@ def get_transport(base):
     if m:
         # This looks like a URL, but we weren't able to 
         # instantiate it as such raise an appropriate error
-        raise InvalidURL(base, 
+        raise errors.InvalidURL(base, 
             'Unable to access URL (protocol: %s)' % m.group('proto'))
     else:
         # This is a local unicode path, convert it to a url
