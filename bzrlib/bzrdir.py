@@ -444,6 +444,9 @@ class BzrDir(object):
         If there is one and it is either an unrecognised format or an unsupported 
         format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
+
+        :return: The BzrDir and the remaining portion of the URL 
+                which specifies the rest of the path.
         """
         # this gets the normalised url back. I.e. '.' -> the full path.
         url = a_transport.base
