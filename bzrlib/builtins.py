@@ -301,7 +301,7 @@ class cmd_mkdir(Command):
             os.mkdir(d)
             wt, dd = WorkingTree.open_containing(d)
             wt.add([dd])
-            print >>self.outf, 'added ', d
+            print >>self.outf, 'added', d
 
 
 class cmd_relpath(Command):
