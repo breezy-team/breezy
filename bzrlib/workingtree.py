@@ -102,6 +102,7 @@ from bzrlib.transport.local import LocalTransport
 import bzrlib.ui
 import bzrlib.xml5
 
+
 _non_word_re = None
 def _get_non_word_re():
     """Get the compiled regular expression for non-unicode words."""
