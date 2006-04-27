@@ -88,7 +88,6 @@ from bzrlib.osutils import (
                             rename,
                             supports_executable,
                             local_path_to_url,
-                            urlunescape,
                             )
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import NULL_REVISION
@@ -351,12 +350,9 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         if path is None:
             path = os.getcwdu()
-        control, relurlpath = bzrdir.BzrDir.open_containing(path)
+        control, relpath = bzrdir.BzrDir.open_containing(path)
 
-        # bzrdir returns a relative URL, we need to translate it back
-        # into a real path since WorkingTree works in paths, while
-        # Branch/BzrDir/Repository work in URLs.
-        return control.open_workingtree(), urlunescape(relurlpath)
+        return control.open_workingtree(), relpath
 
     @staticmethod
     def open_downlevel(path=None):

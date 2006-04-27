@@ -445,8 +445,8 @@ class BzrDir(object):
         format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
 
-        :return: The BzrDir and the remaining portion of the URL 
-                which specifies the rest of the path.
+        :return: The BzrDir that contains the path, and a Unicode path 
+                for the rest of the URL.
         """
         # this gets the normalised url back. I.e. '.' -> the full path.
         url = a_transport.base
@@ -454,7 +454,7 @@ class BzrDir(object):
             try:
                 format = BzrDirFormat.find_format(a_transport)
                 BzrDir._check_supported(format, False)
-                return format.open(a_transport), a_transport.relpath(url)
+                return format.open(a_transport), urlunescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
                 mutter('not a branch in: %r %s', a_transport.base, e)
             new_t = a_transport.clone('..')
