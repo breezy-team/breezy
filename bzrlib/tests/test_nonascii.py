@@ -74,8 +74,6 @@ class UnicodeFilename(TestCaseWithTransport):
     def test_access(self):
         # We should always be able to access files by the path returned
         # from unicode_filename
-        raise TestSkipped('This test is skipped until unicode filenames are worked out')
-        # FIXME: jam 20060425 Right now build_tree does not accept unicode filenames
         files = [a_circle_c, a_dots_c, z_umlat_c]
         self.build_tree(files)
 
