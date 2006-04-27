@@ -22,7 +22,7 @@ import os
 import tempfile
 
 from bzrlib.tests import ChrootedTestCase
-from bzrlib.osutils import getcwd
+from bzrlib.osutils import getcwd, local_path_to_url
 
 
 class TestOutsideWT(ChrootedTestCase):
@@ -30,7 +30,7 @@ class TestOutsideWT(ChrootedTestCase):
 
     def test_cwd_log(self):
         os.chdir(tempfile.mkdtemp())
-        cwd = getcwd()
+        cwd = local_path_to_url(getcwd())
         out, err = self.run_bzr('log', retcode=3)
 
         self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (cwd,),
