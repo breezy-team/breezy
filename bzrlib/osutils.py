@@ -213,6 +213,47 @@ def urlunescape(url):
     return unicode_path
 
 
+# These are characters that if escaped, should stay that way
+_no_decode_chars = ';/?:@&=+$,'
+_no_decode_ords = [ord(c) for c in _no_decode_chars]
+_no_decode_hex = (['%02x' % o for o in _no_decode_ords] 
+                + ['%02X' % o for o in _no_decode_ords])
+_hex_display_map = urllib._hextochr.copy()
+_hex_display_map.update((hex,'%'+hex) for hex in _no_decode_hex)
+#These entries get mapped to themselves
+
+
+def urlfordisplay(url):
+    """Decode what you can for a URL, so that we get a nice looking path.
+
+    This will turn file:// urls into local paths, and try to decode
+    any portions of a http:// style url that it can.
+    """
+    if url.startswith('file://'):
+        return local_path_from_url(url)
+
+    # First, translate % escapes into Unicode types
+    res = url.split('%')
+    for i in xrange(1, len(res)):
+        item = res[i]
+        try:
+            res[i] = _hex_display_map[item[:2]] + item[2:]
+        except KeyError:
+            # Put back the percent symbol
+            res[i] = '%' + item
+        except UnicodeDecodeError:
+            res[i] = unichr(int(item[:2], 16)) + item[2:]
+    # Now we want to decode utf-8 for any section that is
+    # valid utf-8
+    res = ''.join(res).split('/')
+    for i in xrange(1, len(res)):
+        try:
+            res[i] = res[i].decode('utf-8')
+        except UnicodeDecodeError:
+            pass # Leave it alone
+    return '/'.join(res)
+
+
 def _posix_local_path_to_url(path):
     """Convert a local path like ./foo into a URL like file:///path/to/foo
 

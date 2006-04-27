@@ -140,6 +140,22 @@ class TestUrlToPath(TestCase):
         # Not a valid _win32 url, no drive letter
         self.assertRaises(InvalidURL, from_url, 'file:///path/to/foo')
 
+    def test_urlfordisplay(self):
+        # Test that URLs are converted to nice unicode strings for display
+        disp = osutils.urlfordisplay
+        eq = self.assertEqual
+        eq('http://foo', disp('http://foo'))
+        if sys.platform == 'win32':
+            eq('C:/foo/path', disp('file:///C|foo/path'))
+        else:
+            eq('/foo/path', disp('file:///foo/path'))
+
+        eq('http://foo/%2Fbaz', disp('http://foo/%2Fbaz'))
+        eq(u'http://host/r\xe4ksm\xf6rg\xe5s', disp('http://host/r%C3%A4ksm%C3%B6rg%C3%A5s'))
+
+        # Make sure special escaped characters stay escaped
+        eq(u'http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C', disp('http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C'))
+
 
 class TestWin32Funcs(TestCase):
     """Test that the _win32 versions of os utilities return appropriate paths."""
