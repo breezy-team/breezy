@@ -26,7 +26,7 @@ from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
 from bzrlib.errors import (NotBranchError, NotVersionedError, 
                            UnsupportedOperation)
-from bzrlib.osutils import pathjoin, getcwd, has_symlinks
+from bzrlib.osutils import pathjoin, getcwd, has_symlinks, local_path_from_url
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
@@ -53,16 +53,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         branch = self.make_branch_and_tree('.').branch
         wt, relpath = WorkingTree.open_containing()
         self.assertEqual('', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', local_path_from_url(branch.base))
         wt, relpath = WorkingTree.open_containing(u'.')
         self.assertEqual('', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', local_path_from_url(branch.base))
         wt, relpath = WorkingTree.open_containing('./foo')
         self.assertEqual('foo', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', local_path_from_url(branch.base))
         wt, relpath = WorkingTree.open_containing('file://' + getcwd() + '/foo')
         self.assertEqual('foo', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', local_path_from_url(branch.base))
 
     def test_basic_relpath(self):
         # for comprehensive relpath tests, see whitebox.py.
