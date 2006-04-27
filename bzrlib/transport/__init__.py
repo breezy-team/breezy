@@ -660,6 +660,25 @@ def get_transport(base):
     global _protocol_handlers
     if base is None:
         base = '.'
+
+    def convert_path_to_url(base, error_str):
+        m = _urlRE.match(base)
+        if m:
+            # This looks like a URL, but we weren't able to 
+            # instantiate it as such raise an appropriate error
+            raise errors.InvalidURL(base, error_str % m.group('proto'))
+        # This doesn't look like a protocol, consider it a local path
+        new_base = osutils.local_path_to_url(base)
+        mutter('converting os path %r => url %s' , base, new_base)
+        return new_base
+
+    # Catch any URLs which are passing Unicode rather than ASCII
+    try:
+        base = base.encode('ascii')
+    except UnicodeError:
+        # Only local paths can be Unicode
+        base = convert_path_to_url(base,
+            'URLs must be properly escaped (protocol: %s)')
     
     for proto, factory_list in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
@@ -667,17 +686,9 @@ def get_transport(base):
             if t:
                 return t
 
-    m = _urlRE.match(base)
-    if m:
-        # This looks like a URL, but we weren't able to 
-        # instantiate it as such raise an appropriate error
-        raise errors.InvalidURL(base, 
-            'Unable to access URL (protocol: %s)' % m.group('proto'))
-    else:
-        # This is a local unicode path, convert it to a url
-        new_base = osutils.local_path_to_url(base)
-        mutter('converting os path %r => url %s' , base, new_base)
-        base = new_base
+    # We tried all the different protocols, now try one last time
+    # as a local protocol
+    base = convert_path_to_url(base, 'Unsupported protocol: %s')
 
     # The default handler is the filesystem handler, stored as protocol None
     return _try_transport_factories(base, _protocol_handlers[None])
