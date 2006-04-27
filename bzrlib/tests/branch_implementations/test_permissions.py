@@ -35,46 +35,12 @@ from StringIO import StringIO
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.lockable_files import LockableFiles
+from bzrlib.osutils import local_path_from_url
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests.test_permissions import chmod_r, check_mode_r
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
-
-# TODO RBC consolidate the helper methods here and in tests/test_permissions.py
-
-def chmod_r(base, file_mode, dir_mode):
-    """Recursively chmod from a base directory"""
-    assert os.path.isdir(base)
-    os.chmod(base, dir_mode)
-    for root, dirs, files in os.walk(base):
-        for d in dirs:
-            p = os.path.join(root, d)
-            os.chmod(p, dir_mode)
-        for f in files:
-            p = os.path.join(root, f)
-            os.chmod(p, file_mode)
-
-
-def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
-    """Check that all permissions match
-
-    :param test: The TestCase being run
-    :param base: The path to the root directory to check
-    :param file_mode: The mode for all files
-    :param dir_mode: The mode for all directories
-    :param include_base: If false, only check the subdirectories
-    """
-    assert os.path.isdir(base)
-    t = get_transport(".")
-    if include_base:
-        test.assertTransportMode(t, base, dir_mode)
-    for root, dirs, files in os.walk(base):
-        for d in dirs:
-            p = os.path.join(root, d)
-            test.assertTransportMode(t, p, dir_mode)
-        for f in files:
-            p = os.path.join(root, f)
-            test.assertTransportMode(t, p, file_mode)
 
 
 class TestPermissions(TestCaseWithTransport):
@@ -95,18 +61,18 @@ class TestPermissions(TestCaseWithTransport):
         b = self.make_branch('b')
         self.assertEqualMode(02777, b.control_files._dir_mode)
         self.assertEqualMode(00666, b.control_files._file_mode)
-        check_mode_r(self, b.control_files._transport.base, 00666, 02777)
+        check_mode_r(self, 'b/.bzr', 00666, 02777)
 
         os.mkdir('c')
         os.chmod('c', 02750)
         b = self.make_branch('c')
         self.assertEqualMode(02750, b.control_files._dir_mode)
         self.assertEqualMode(00640, b.control_files._file_mode)
-        check_mode_r(self, b.control_files._transport.base, 00640, 02750)
+        check_mode_r(self, 'c/.bzr', 00640, 02750)
 
         os.mkdir('d')
         os.chmod('d', 0700)
         b = self.make_branch('d')
         self.assertEqualMode(0700, b.control_files._dir_mode)
         self.assertEqualMode(0600, b.control_files._file_mode)
-        check_mode_r(self, b.control_files._transport.base, 00600, 00700)
+        check_mode_r(self, 'd/.bzr', 00600, 00700)
