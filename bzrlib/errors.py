@@ -103,8 +103,9 @@ class BzrNewError(BzrError):
 
     def __init__(self, *args, **kwds):
         # XXX: Use the underlying BzrError to always generate the args attribute
-        # if it doesn't exist. --bmc, 20060426
-        super(BzrError, self).__init__(*args)
+        # if it doesn't exist.  We can't use super here, because exceptions are
+        # old-style classes in python2.4 (but new in 2.5).  --bmc, 20060426
+        BzrError.__init__(self, *args)
         for key, value in kwds.items():
             setattr(self, key, value)
 
