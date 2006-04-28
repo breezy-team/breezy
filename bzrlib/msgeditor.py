@@ -93,7 +93,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
         if infotext is not None and infotext != "":
             hasinfo = True
             msgfile = file(msgfilename, "w")
-            msgfile.write("\n\n%s\n\n%s" % (ignoreline, infotext))
+            msgfile.write("\n%s\n\n%s" % (ignoreline, infotext))
             msgfile.close()
         else:
             hasinfo = False
