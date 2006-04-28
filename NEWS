@@ -98,6 +98,9 @@ bzr 0.8rc1  2006-04-14
     * Hitting CTRL-C while doing an SFTP push will no longer cause stale locks
       to be left in the SFTP repository. (Robert Collins, Martin Pool).
 
+    * New option 'diff --diff-prefix' to control how files are named in diff
+      output.  (Alexander Belchenko, Goffredo Baroncelli)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
