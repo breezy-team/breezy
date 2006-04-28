@@ -17,46 +17,23 @@
 """Implementation of Transport that adapts another transport to be readonly."""
 
 from bzrlib.errors import TransportNotPossible
-from bzrlib.transport import get_transport, Transport, Server
+from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
 
 
-class ReadonlyTransportDecorator(Transport):
+class ReadonlyTransportDecorator(TransportDecorator):
     """A decorator that can convert any transport to be readonly.
-    
-    This does not use __getattr__ hacks as we need to ensure that
-    new writable methods are overridden correctly.
+
+    This is requested via the 'readonly+' prefix to get_transport().
     """
-
-    def __init__(self, url, _decorated=None):
-        """Set the 'base' path where files will be stored.
-        
-        _decorated is a private parameter for cloning."""
-        assert url.startswith('readonly+')
-        decorated_url = url[len('readonly+'):]
-        if _decorated is None:
-            self._decorated = get_transport(decorated_url)
-        else:
-            self._decorated = _decorated
-        super(ReadonlyTransportDecorator, self).__init__(
-            "readonly+" + self._decorated.base)
-
-    def clone(self, offset=None):
-        """See Transport.clone()."""
-        decorated_clone = self._decorated.clone(offset)
-        return ReadonlyTransportDecorator("readonly+" + decorated_clone.base,
-                                          decorated_clone)
-
-    def abspath(self, relpath):
-        """See Transport.abspath()."""
-        return "readonly+" + self._decorated.abspath(relpath)
 
     def append(self, relpath, f):
         """See Transport.append()."""
         raise TransportNotPossible('readonly transport')
-
-    def has(self, relpath):
-        """See Transport.has()."""
-        return self._decorated.has(relpath)
+    
+    @classmethod
+    def _get_url_prefix(self):
+        """Readonly transport decorators are invoked via 'readonly+'"""
+        return 'readonly+'
 
     def delete(self, relpath):
         """See Transport.delete()."""
@@ -65,10 +42,6 @@ class ReadonlyTransportDecorator(Transport):
     def delete_tree(self, relpath):
         """See Transport.delete_tree()."""
         raise TransportNotPossible('readonly transport')
-
-    def get(self, relpath):
-        """See Transport.get()."""
-        return self._decorated.get(relpath)
 
     def put(self, relpath, f, mode=None):
         """See Transport.put()."""
@@ -82,69 +55,20 @@ class ReadonlyTransportDecorator(Transport):
         """See Transport.is_readonly."""
         return True
 
-    def listable(self):
-        """See Transport.listable."""
-        return self._decorated.listable()
-
-    def iter_files_recursive(self):
-        """See Transport.iter_files_recursive()."""
-        return self._decorated.iter_files_recursive()
-    
-    def list_dir(self, relpath):
-        """See Transport.list_dir()."""
-        return self._decorated.list_dir(relpath)
-    
     def rmdir(self, relpath):
         """See Transport.rmdir."""
         raise TransportNotPossible('readonly transport')
-
-    def should_cache(self):
-        """See Transport.should_cache()."""
-        return self._decorated.should_cache()
-
-    def stat(self, relpath):
-        """See Transport.stat()."""
-        return self._decorated.stat(relpath)
-
-    def lock_read(self, relpath):
-        """See Transport.lock_read."""
-        return self._decorated.lock_read(relpath)
 
     def lock_write(self, relpath):
         """See Transport.lock_write."""
         raise TransportNotPossible('readonly transport')
 
 
-class ReadonlyServer(Server):
+class ReadonlyServer(DecoratorServer):
     """Server for the ReadonlyTransportDecorator for testing with."""
 
-    def setUp(self, server=None):
-        """See bzrlib.transport.Server.setUp.
-
-        :server: decorate the urls given by server. If not provided a
-        LocalServer is created.
-        """
-        if server is not None:
-            self._made_server = False
-            self._server = server
-        else:
-            from bzrlib.transport.local import LocalRelpathServer
-            self._made_server = True
-            self._server = LocalRelpathServer()
-            self._server.setUp()
-
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
-        if self._made_server:
-            self._server.tearDown()
-
-    def get_bogus_url(self):
-        """See bzrlib.transport.Server.get_bogus_url."""
-        return "readonly+" + self._server.get_bogus_url()
-
-    def get_url(self):
-        """See bzrlib.transport.Server.get_url."""
-        return "readonly+" + self._server.get_url()
+    def get_decorator_class(self):
+        return ReadonlyTransportDecorator
 
 
 def get_test_permutations():

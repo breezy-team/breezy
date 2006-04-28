@@ -1,4 +1,5 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>, Canonical Ltd
+# Copyright (C) 2005 Robey Pointer <robey@lag.net>
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,11 +35,18 @@ from bzrlib.errors import (ConnectionError,
                            FileExists, 
                            TransportNotPossible, NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError, ParamikoNotPresent
+                           LockError, 
+                           PathError,
+                           ParamikoNotPresent,
                            )
 from bzrlib.osutils import pathjoin, fancy_rename
 from bzrlib.trace import mutter, warning, error
-from bzrlib.transport import Transport, Server, urlescape
+from bzrlib.transport import (
+    register_urlparse_netloc_protocol,
+    Server,
+    Transport,
+    urlescape,
+    )
 import bzrlib.ui
 
 try:
@@ -53,22 +61,51 @@ else:
     from paramiko.sftp_file import SFTPFile
     from paramiko.sftp_client import SFTPClient
 
-if 'sftp' not in urlparse.uses_netloc:
-    urlparse.uses_netloc.append('sftp')
+
+register_urlparse_netloc_protocol('sftp')
+
+
+def _ignore_sigint():
+    # TODO: This should possibly ignore SIGHUP as well, but bzr currently
+    # doesn't handle it itself.
+    # <https://launchpad.net/products/bzr/+bug/41433/+index>
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    
+
+def os_specific_subprocess_params():
+    """Get O/S specific subprocess parameters."""
+    if sys.platform == 'win32':
+        # setting the process group and closing fds is not supported on 
+        # win32
+        return {}
+    else:
+        # We close fds other than the pipes as the child process does not need 
+        # them to be open.
+        #
+        # We also set the child process to ignore SIGINT.  Normally the signal
+        # would be sent to every process in the foreground process group, but
+        # this causes it to be seen only by bzr and not by ssh.  Python will
+        # generate a KeyboardInterrupt in bzr, and we will then have a chance
+        # to release locks or do other cleanup over ssh before the connection
+        # goes away.  
+        # <https://launchpad.net/products/bzr/+bug/5987>
+        #
+        # Running it in a separate process group is not good because then it
+        # can't get non-echoed input of a password or passphrase.
+        # <https://launchpad.net/products/bzr/+bug/40508>
+        return {'preexec_fn': _ignore_sigint,
+                'close_fds': True,
+                }
+
 
 # don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
 _default_do_prefetch = False
-if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 2):
+if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 5):
     _default_do_prefetch = True
 
 
-_close_fds = True
-if sys.platform == 'win32':
-    # close_fds not supported on win32
-    _close_fds = False
-
 _ssh_vendor = None
-
 def _get_ssh_vendor():
     """Find out what version of SSH is on the system."""
     global _ssh_vendor
@@ -85,10 +122,10 @@ def _get_ssh_vendor():
 
     try:
         p = subprocess.Popen(['ssh', '-V'],
-                             close_fds=_close_fds,
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
+                             stderr=subprocess.PIPE,
+                             **os_specific_subprocess_params())
         returncode = p.returncode
         stdout, stderr = p.communicate()
     except OSError:
@@ -133,9 +170,10 @@ class SFTPSubprocess:
                 args.extend(['-l', user])
             args.extend(['-s', 'sftp', hostname])
 
-        self.proc = subprocess.Popen(args, close_fds=_close_fds,
+        self.proc = subprocess.Popen(args,
                                      stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE)
+                                     stdout=subprocess.PIPE,
+                                     **os_specific_subprocess_params())
 
     def send(self, data):
         return os.write(self.proc.stdin.fileno(), data)
@@ -183,6 +221,13 @@ BZR_HOSTKEYS = {}
 # sort of expiration policy, such as disconnect if inactive for
 # X seconds. But that requires a lot more fanciness.
 _connected_hosts = weakref.WeakValueDictionary()
+
+def clear_connection_cache():
+    """Remove all hosts from the SFTP connection cache.
+
+    Primarily useful for test cases wanting to force garbage collection.
+    """
+    _connected_hosts.clear()
 
 
 def load_host_keys():
@@ -267,7 +312,7 @@ class SFTPTransport (Transport):
         self._parse_url(base)
         base = self._unparse_url()
         if base[-1] != '/':
-            base = base + '/'
+            base += '/'
         super(SFTPTransport, self).__init__(base)
         if clone_from is None:
             self._sftp_connect()
@@ -356,7 +401,7 @@ class SFTPTransport (Transport):
         except IOError:
             return False
 
-    def get(self, relpath, decode=False):
+    def get(self, relpath):
         """
         Get the file at the given relative path.
 
@@ -417,7 +462,7 @@ class SFTPTransport (Transport):
                 self._sftp.chmod(tmp_abspath, mode)
             fout.close()
             closed = True
-            self._rename(tmp_abspath, abspath)
+            self._rename_and_overwrite(tmp_abspath, abspath)
         except Exception, e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception
@@ -464,7 +509,8 @@ class SFTPTransport (Transport):
             self._translate_io_exception(e, path, ': unable to mkdir',
                 failure_exc=FileExists)
 
-    def _translate_io_exception(self, e, path, more_info='', failure_exc=NoSuchFile):
+    def _translate_io_exception(self, e, path, more_info='', 
+                                failure_exc=PathError):
         """Translate a paramiko or IOError into a friendlier exception.
 
         :param e: The original exception
@@ -474,8 +520,8 @@ class SFTPTransport (Transport):
         :param failure_exc: Paramiko has the super fun ability to raise completely
                            opaque errors that just set "e.args = ('Failure',)" with
                            no more information.
-                           This sometimes means FileExists, but it also sometimes
-                           means NoSuchFile
+                           If this parameter is set, it defines the exception 
+                           to raise in these cases.
         """
         # paramiko seems to generate detailless errors.
         self._translate_error(e, path, raise_generic=False)
@@ -493,7 +539,7 @@ class SFTPTransport (Transport):
             mutter('Raising exception with errno %s', e.errno)
         raise e
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """
         Append the text in the file-like object into the final
         location.
@@ -501,11 +547,24 @@ class SFTPTransport (Transport):
         try:
             path = self._remote_path(relpath)
             fout = self._sftp.file(path, 'ab')
+            if mode is not None:
+                self._sftp.chmod(path, mode)
+            result = fout.tell()
             self._pump(f, fout)
+            return result
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, relpath, ': unable to append')
 
-    def _rename(self, abs_from, abs_to):
+    def rename(self, rel_from, rel_to):
+        """Rename without special overwriting"""
+        try:
+            self._sftp.rename(self._remote_path(rel_from),
+                              self._remote_path(rel_to))
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, rel_from,
+                    ': unable to rename to %r' % (rel_to))
+
+    def _rename_and_overwrite(self, abs_from, abs_to):
         """Do a fancy rename on the remote server.
         
         Using the implementation provided by osutils.
@@ -521,7 +580,7 @@ class SFTPTransport (Transport):
         """Move the item at rel_from to the location at rel_to"""
         path_from = self._remote_path(rel_from)
         path_to = self._remote_path(rel_to)
-        self._rename(path_from, path_to)
+        self._rename_and_overwrite(path_from, path_to)
 
     def delete(self, relpath):
         """Delete the item at relpath"""
@@ -600,7 +659,6 @@ class SFTPTransport (Transport):
             netloc = '%s@%s' % (urllib.quote(self._username), netloc)
         if self._port is not None:
             netloc = '%s:%d' % (netloc, self._port)
-
         return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
 
     def _split_url(self, url):

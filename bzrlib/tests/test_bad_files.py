@@ -22,12 +22,12 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.errors import BadFileKindError
 import os
 
-def verify_status(tester, branch, value):
-    from bzrlib.status import show_status
+def verify_status(tester, tree, value):
+    from bzrlib.status import show_tree_status
     from cStringIO import StringIO
 
     tof = StringIO()
-    show_status(branch, to_file=tof)
+    show_tree_status(tree, to_file=tof)
     tof.seek(0)
     tester.assertEquals(tof.readlines(), value)
 
@@ -61,12 +61,12 @@ class TestBadFiles(TestCaseWithTransport):
             return
 
         # status with nothing
-        verify_status(self, b, [])
+        verify_status(self, wt, [])
 
         os.mkfifo('a-fifo')
         self.build_tree(['six'])
 
-        verify_status(self, b,
+        verify_status(self, wt,
                           ['unknown:\n',
                            '  a-fifo\n',
                            '  six\n'
@@ -75,7 +75,7 @@ class TestBadFiles(TestCaseWithTransport):
         # Make sure smart_add can handle having a bogus
         # file in the way
         smart_add_tree(wt, '.')
-        verify_status(self, b,
+        verify_status(self, wt,
                           ['added:\n',
                            '  six\n',
                            'unknown:\n',
@@ -83,7 +83,7 @@ class TestBadFiles(TestCaseWithTransport):
                            ])
         wt.commit("Commit four", rev_id="a@u-0-3")
 
-        verify_status(self, b,
+        verify_status(self, wt,
                           ['unknown:\n',
                            '  a-fifo\n',
                            ])

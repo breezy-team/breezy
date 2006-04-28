@@ -24,21 +24,36 @@ Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/workingtree_implementations/*.py.
 """
 
-from bzrlib.workingtree import (WorkingTreeFormat,
-                                WorkingTreeTestProviderAdapter,
-                                _legacy_formats,
-                                )
+import bzrlib.errors as errors
+from bzrlib.transport import get_transport
 from bzrlib.tests import (
                           adapt_modules,
                           default_transport,
                           TestLoader,
                           TestSuite,
                           )
+from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.workingtree import (WorkingTreeFormat,
+                                WorkingTreeTestProviderAdapter,
+                                _legacy_formats,
+                                )
+
+
+class TestCaseWithWorkingTree(TestCaseWithBzrDir):
+
+    def make_branch_and_tree(self, relpath, format=None):
+        made_control = self.make_bzrdir(relpath, format=format)
+        made_control.create_repository()
+        made_control.create_branch()
+        return self.workingtree_format.initialize(made_control)
 
 
 def test_suite():
     result = TestSuite()
     test_workingtree_implementations = [
+        'bzrlib.tests.workingtree_implementations.test_basis_inventory',
+        'bzrlib.tests.workingtree_implementations.test_is_control_filename',
+        'bzrlib.tests.workingtree_implementations.test_pull',
         'bzrlib.tests.workingtree_implementations.test_workingtree',
         ]
     adapter = WorkingTreeTestProviderAdapter(

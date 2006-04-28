@@ -87,6 +87,7 @@ class TestDeprecationWarnings(TestCase):
             self.assertEqualDiff(expected_docstring, deprecated_callable.__doc__)
             self.assertEqualDiff(expected_name, deprecated_callable.__name__)
             self.assertEqualDiff(expected_module, deprecated_callable.__module__)
+            self.assertTrue(deprecated_callable.is_deprecated)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
     

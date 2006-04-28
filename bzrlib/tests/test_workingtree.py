@@ -1,4 +1,4 @@
-# (C) 2005,2006 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -22,10 +22,12 @@ import bzrlib
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.bzrdir import BzrDir
+from bzrlib.conflicts import *
 import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
+from bzrlib.lockdir import LockDir
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 import bzrlib.workingtree as workingtree
@@ -160,7 +162,6 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         tree = workingtree.WorkingTreeFormat3().initialize(control)
         # we want:
         # format 'Bazaar-NG Working Tree format 3'
-        # lock ''
         # inventory = blank inventory
         # pending-merges = ''
         # stat-cache = ??
@@ -168,7 +169,6 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         t = control.get_workingtree_transport(None)
         self.assertEqualDiff('Bazaar-NG Working Tree format 3',
                              t.get('format').read())
-        self.assertEqualDiff('', t.get('lock').read())
         self.assertEqualDiff('<inventory format="5">\n'
                              '</inventory>\n',
                              t.get('inventory').read())
@@ -179,3 +179,58 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertFalse(t.has('last-revision'))
         # TODO RBC 20060210 do a commit, check the inventory.basis is created 
         # correctly and last-revision file becomes present.
+
+    def test_uses_lockdir(self):
+        """WorkingTreeFormat3 uses its own LockDir:
+            
+            - lock is a directory
+            - when the WorkingTree is locked, LockDir can see that
+        """
+        t = self.get_transport()
+        url = self.get_url()
+        dir = bzrdir.BzrDirMetaFormat1().initialize(url)
+        repo = dir.create_repository()
+        branch = dir.create_branch()
+        try:
+            tree = workingtree.WorkingTreeFormat3().initialize(dir)
+        except errors.NotLocalUrl:
+            raise TestSkipped('Not a local URL')
+        self.assertIsDirectory('.bzr', t)
+        self.assertIsDirectory('.bzr/checkout', t)
+        self.assertIsDirectory('.bzr/checkout/lock', t)
+        our_lock = LockDir(t, '.bzr/checkout/lock')
+        self.assertEquals(our_lock.peek(), None)
+        tree.lock_write()
+        self.assertTrue(our_lock.peek())
+        tree.unlock()
+        self.assertEquals(our_lock.peek(), None)
+
+
+class TestFormat2WorkingTree(TestCaseWithTransport):
+    """Tests that are specific to format 2 trees."""
+
+    def create_format2_tree(self, url):
+        return self.make_branch_and_tree(
+            url, format=bzrlib.bzrdir.BzrDirFormat6())
+
+    def test_conflicts(self):
+        # test backwards compatability
+        tree = self.create_format2_tree('.')
+        self.assertRaises(errors.UnsupportedOperation, tree.set_conflicts,
+                          None)
+        file('lala.BASE', 'wb').write('labase')
+        expected = ContentsConflict('lala')
+        self.assertEqual(list(tree.conflicts()), [expected])
+        file('lala', 'wb').write('la')
+        tree.add('lala', 'lala-id')
+        expected = ContentsConflict('lala', file_id='lala-id')
+        self.assertEqual(list(tree.conflicts()), [expected])
+        file('lala.THIS', 'wb').write('lathis')
+        file('lala.OTHER', 'wb').write('laother')
+        # When "text conflict"s happen, stem, THIS and OTHER are text
+        expected = TextConflict('lala', file_id='lala-id')
+        self.assertEqual(list(tree.conflicts()), [expected])
+        os.unlink('lala.OTHER')
+        os.mkdir('lala.OTHER')
+        expected = ContentsConflict('lala', file_id='lala-id')
+        self.assertEqual(list(tree.conflicts()), [expected])

@@ -1,7 +1,8 @@
-"""\
-A plugin for displaying what revisions are in 'other' but not in local.
-"""
-from bzrlib.ui import ui_factory
+"""Display what revisions are missing in 'other' from 'this' and vice verca."""
+
+import bzrlib.ui as ui
+
+
 def iter_log_data(revisions, revision_source, verbose):
     from bzrlib.diff import compare_trees
     from bzrlib.tree import EmptyTree
@@ -26,7 +27,7 @@ def iter_log_data(revisions, revision_source, verbose):
 
 
 def find_unmerged(local_branch, remote_branch):
-    progress = ui_factory.progress_bar()
+    progress = ui.ui_factory.nested_progress_bar()
     local_branch.lock_read()
     try:
         remote_branch.lock_read()
@@ -60,7 +61,7 @@ def find_unmerged(local_branch, remote_branch):
             remote_branch.unlock()
     finally:
         local_branch.unlock()
-        progress.clear()
+        progress.finished()
     return (local_extra, remote_extra)
 
 def _shortcut(local_rev_history, remote_rev_history):

@@ -51,12 +51,13 @@ all the changes since the previous revision that touched hello.c.
 
 
 # TODO: option to show delta summaries for merged-in revisions
-
-import bzrlib.errors as errors
-from bzrlib.tree import EmptyTree
-from bzrlib.delta import compare_trees
-from bzrlib.trace import mutter
 import re
+
+from bzrlib.delta import compare_trees
+import bzrlib.errors as errors
+from bzrlib.trace import mutter
+from bzrlib.tree import EmptyTree
+from bzrlib.tsort import merge_sort
 
 
 def find_touching_revisions(branch, file_id):
@@ -202,55 +203,59 @@ def _show_log(branch,
 
     # list indexes are 0-based; revisions are 1-based
     cut_revs = which_revs[(start_revision-1):(end_revision)]
+    if not cut_revs:
+        return
+    # override the mainline to look like the revision history.
+    mainline_revs = [revision_id for index, revision_id in cut_revs]
+    if cut_revs[0][0] == 1:
+        mainline_revs.insert(0, None)
+    else:
+        mainline_revs.insert(0, which_revs[start_revision-2][1])
+
+    merge_sorted_revisions = merge_sort(
+        branch.repository.get_revision_graph(mainline_revs[-1]),
+        mainline_revs[-1],
+        mainline_revs)
 
     if direction == 'reverse':
         cut_revs.reverse()
     elif direction == 'forward':
-        pass
+        # forward means oldest first.
+        merge_sorted_revisions.reverse()
     else:
         raise ValueError('invalid direction %r' % direction)
 
     revision_history = branch.revision_history()
-    for revno, rev_id in cut_revs:
-        if verbose or specific_fileid:
-            delta = _get_revision_delta(branch, revno)
-            
-        if specific_fileid:
-            if not delta.touches_file_id(specific_fileid):
-                continue
 
-        if not verbose:
-            # although we calculated it, throw it away without display
-            delta = None
+    # convert the revision history to a dictionary:
+    rev_nos = {}
+    for index, rev_id in cut_revs:
+        rev_nos[rev_id] = index
 
+    # now we just print all the revisions
+    for sequence, rev_id, merge_depth, end_of_merge in merge_sorted_revisions:
         rev = branch.repository.get_revision(rev_id)
 
         if searchRE:
             if not searchRE.search(rev.message):
                 continue
 
-        lf.show(revno, rev, delta)
-        if hasattr(lf, 'show_merge'):
-            if revno == 1:
-                excludes = set()
-            else:
-                # revno is 1 based, so -2 to get back 1 less.
-                repository = branch.repository
-                excludes = repository.get_ancestry(revision_history[revno - 2])
-                excludes = set(excludes)
-            pending = list(rev.parent_ids)
-            while pending:
-                rev_id = pending.pop()
-                if rev_id in excludes:
+        if merge_depth == 0:
+            # a mainline revision.
+            if verbose or specific_fileid:
+                delta = _get_revision_delta(branch, rev_nos[rev_id])
+                
+            if specific_fileid:
+                if not delta.touches_file_id(specific_fileid):
                     continue
-                # prevent showing merged revs twice if they multi-path.
-                excludes.add(rev_id)
-                try:
-                    rev = branch.repository.get_revision(rev_id)
-                except errors.NoSuchRevision:
-                    continue
-                pending.extend(rev.parent_ids)
-                lf.show_merge(rev)
+    
+            if not verbose:
+                # although we calculated it, throw it away without display
+                delta = None
+
+            lf.show(rev_nos[rev_id], rev, delta)
+        elif hasattr(lf, 'show_merge'):
+            lf.show_merge(rev, merge_depth)
 
 
 def deltas_for_log_dummy(branch, which_revs):
@@ -354,11 +359,11 @@ class LongLogFormatter(LogFormatter):
     def show(self, revno, rev, delta):
         return self._show_helper(revno=revno, rev=rev, delta=delta)
 
-    def show_merge(self, rev):
-        return self._show_helper(rev=rev, indent='    ', merged=True, delta=None)
+    def show_merge(self, rev, merge_depth):
+        return self._show_helper(rev=rev, indent='    '*merge_depth, merged=True, delta=None)
 
     def _show_helper(self, rev=None, revno=None, indent='', merged=False, delta=None):
-	"""Show a revision, either merged or not."""
+        """Show a revision, either merged or not."""
         from bzrlib.osutils import format_date
         to_file = self.to_file
         print >>to_file,  indent+'-' * 60
@@ -450,11 +455,14 @@ def line_log(rev, max_chars):
     lf = LineLogFormatter(None)
     return lf.log_string(rev, max_chars)
 
-FORMATTERS = {'long': LongLogFormatter,
+FORMATTERS = {
+              'long': LongLogFormatter,
               'short': ShortLogFormatter,
               'line': LineLogFormatter,
               }
 
+def register_formatter(name, formatter):
+    FORMATTERS[name] = formatter
 
 def log_formatter(name, *args, **kwargs):
     """Construct a formatter from arguments.
@@ -465,7 +473,7 @@ def log_formatter(name, *args, **kwargs):
     from bzrlib.errors import BzrCommandError
     try:
         return FORMATTERS[name](*args, **kwargs)
-    except IndexError:
+    except KeyError:
         raise BzrCommandError("unknown log formatter: %r" % name)
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):

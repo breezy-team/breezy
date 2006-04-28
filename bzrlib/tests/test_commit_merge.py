@@ -22,7 +22,6 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
 from bzrlib.errors import PointlessCommit, BzrError, PointlessCommit
 from bzrlib.tests.test_revision import make_branches
-from bzrlib.fetch import fetch
 from bzrlib.check import check
 
 
@@ -43,9 +42,7 @@ class TestCommitMerge(TestCaseWithTransport):
         wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
         wty.commit('commit two', rev_id='y@u-0-1', allow_pointless=True)
 
-        fetcher = fetch(from_branch=bx, to_branch=by)
-        self.assertEqual(1, fetcher.count_copied)
-        self.assertEqual([], fetcher.failed_revisions)
+        self.assertEqual((1, []), by.fetch(bx))
         # just having the history there does nothing
         self.assertRaises(PointlessCommit,
                           wty.commit,
@@ -76,7 +73,7 @@ class TestCommitMerge(TestCaseWithTransport):
         wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
         wty.commit('commit two', rev_id='y@u-0-1', allow_pointless=True)
 
-        fetch(from_branch=bx, to_branch=by)
+        by.fetch(bx)
         # we haven't merged the texts, but let's fake it
         shutil.copyfile('x/ecks', 'y/ecks')
         wty.add(['ecks'], ['ecks-id'])

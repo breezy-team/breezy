@@ -16,6 +16,7 @@
 """UI tests for the test framework."""
 
 import bzrlib
+from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
                           TestCase,
                           TestCaseInTempDir,
@@ -30,7 +31,10 @@ class TestOptions(TestCase):
     def test_transport_set_to_sftp(self):
         # test the --transport option has taken effect from within the
         # test_transport test
-        import bzrlib.transport.sftp
+        try:
+            import bzrlib.transport.sftp
+        except ParamikoNotPresent:
+            raise TestSkipped("Paramiko not present")
         if TestOptions.current_test != "test_transport_set_to_sftp":
             return
         self.assertEqual(bzrlib.transport.sftp.SFTPAbsoluteServer,
@@ -47,8 +51,10 @@ class TestOptions(TestCase):
 
     def test_transport(self):
         # test that --transport=sftp works
-        # FIXME RBC 20060123 this should raise TestSkipped if sftp is not
-        # available.
+        try:
+            import bzrlib.transport.sftp
+        except ParamikoNotPresent:
+            raise TestSkipped("Paramiko not present")
         old_transport = bzrlib.tests.default_transport
         old_root = TestCaseInTempDir.TEST_ROOT
         TestCaseInTempDir.TEST_ROOT = None
