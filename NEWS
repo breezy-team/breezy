@@ -111,7 +111,9 @@ bzr 0.8rc1  2006-04-14
       (Olaf Conradi)
 
     * For compatability, make old format for weave repository inside metadir
-      available as 'metaweave' format.  (Olaf Conradi)
+      available as 'metaweave' format.  Rename format 'metadir' to 'default'.
+      Only mention format 'knit' in help for commands 'init' and 'init-repo'.
+      (Olaf Conradi)
 
   INTERNALS:
   

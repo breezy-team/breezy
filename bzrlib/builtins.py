@@ -85,7 +85,7 @@ def get_format_type(typestring):
     """Parse and return a format specifier."""
     if typestring == "weave":
         return bzrdir.BzrDirFormat6()
-    if typestring == "metadir":
+    if typestring == "default":
         return bzrdir.BzrDirMetaFormat1()
     if typestring == "metaweave":
         format = bzrdir.BzrDirMetaFormat1()
@@ -95,8 +95,8 @@ def get_format_type(typestring):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
         return format
-    msg = "No known bzr-dir format %s.\n" \
-          "Supported types are: metadir, knit, metaweave and weave\n" % typestring
+    msg = "Unknown bzr format %s.\n" \
+          "Known types are: default, knit, metaweave and weave" % typestring
     raise BzrCommandError(msg)
 
 
@@ -906,12 +906,14 @@ class cmd_init(Command):
     takes_options = [
                      Option('format', 
                             help='Create a specific format rather than the'
-                                 ' current default format. Currently this '
-                                 ' option only accepts "metadir"',
+                                 ' current default format. Currently, the'
+                                 ' only supported format is "knit"',
                             type=get_format_type),
                      ]
     def run(self, location=None, format=None):
         from bzrlib.branch import Branch
+        if format is None:
+            format = get_format_type('default')
         if location is None:
             location = u'.'
         else:
@@ -955,18 +957,17 @@ class cmd_init_repository(Command):
     takes_args = ["location"] 
     takes_options = [Option('format', 
                             help='Use a specific format rather than the'
-                            ' current default format. Currently this option'
-                            ' accepts "metadir" (default), "knit" and "metaweave"',
+                                 ' current default format. Currently, the'
+                                 ' only supported format is "knit"',
                             type=get_format_type),
                      Option('trees',
                              help='Allows branches in repository to have'
                              ' a working tree')]
     aliases = ["init-repo"]
     def run(self, location, format=None, trees=False):
-        from bzrlib.bzrdir import BzrDirMetaFormat1
         from bzrlib.transport import get_transport
         if format is None:
-            format = BzrDirMetaFormat1()
+            format = get_format_type('default')
         transport = get_transport(location)
         if not transport.has('.'):
             transport.mkdir('')
@@ -1643,15 +1644,17 @@ class cmd_upgrade(Command):
     takes_options = [
                      Option('format', 
                             help='Upgrade to a specific format rather than the'
-                                 ' current default format. Currently this'
-                                 ' option accepts "weave", "metadir" and'
-                                 ' "knit".',
+                                 ' current default format. This option accepts'
+                                 ' "default", "knit" (current default),'
+                                 ' "metaweave" and "weave"',
                             type=get_format_type),
                     ]
 
 
     def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
+        if format is None:
+            format = get_format_type('default')
         upgrade(url, format)
 
 
