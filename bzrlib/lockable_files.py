@@ -77,9 +77,11 @@ class LockableFiles(object):
         self._transport = transport
         self.lock_name = lock_name
         self._transaction = None
-        self._find_modes()
+        # Need to happen before _find_modes in case it throws an exception
+        # __del__ expects _lock_count to be available
         self._lock_mode = None
         self._lock_count = 0
+        self._find_modes()
         esc_name = self._escape(lock_name)
         self._lock = lock_class(transport, esc_name,
                                 file_modebits=self._file_mode,
