@@ -54,11 +54,11 @@ class MemoryTransport(Transport):
     def __init__(self, url=""):
         """Set the 'base' path where files will be stored."""
         if url == "":
-            url = "memory://"
+            url = "memory:///"
         if url[-1] != '/':
             url = url + '/'
         super(MemoryTransport, self).__init__(url)
-        self._cwd = url[url.find(':') + 2:]
+        self._cwd = url[url.find(':') + 3:]
         # dictionaries from absolute path to file mode
         self._dirs = {}
         self._files = {}
@@ -79,7 +79,7 @@ class MemoryTransport(Transport):
                     cwdsegments.pop()
                 continue
             cwdsegments.append(segment)
-        url = self.base[:self.base.find(':') + 2] + '/'.join(cwdsegments) + '/'
+        url = self.base[:self.base.find(':') + 3] + '/'.join(cwdsegments) + '/'
         result = MemoryTransport(url)
         result._dirs = self._dirs
         result._files = self._files
@@ -92,7 +92,7 @@ class MemoryTransport(Transport):
         # current environment - XXX RBC 20060404 move the clone '..' handling
         # into here and call abspath from clone
         temp_t = self.clone(relpath)
-        if temp_t.base.count('/') == 1:
+        if temp_t.base.count('/') == 3:
             return temp_t.base
         else:
             return temp_t.base[:-1]
@@ -276,7 +276,7 @@ class MemoryServer(Server):
         self._dirs = {}
         self._files = {}
         self._locks = {}
-        self._scheme = "memory+%s:" % id(self)
+        self._scheme = "memory+%s:///" % id(self)
         def memory_factory(url):
             result = MemoryTransport(url)
             result._dirs = self._dirs

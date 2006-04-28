@@ -280,7 +280,7 @@ class TestTransportImplementation(TestCaseInTempDir):
                                               transport_from, f)
 
         t = self.get_transport()
-        temp_transport = MemoryTransport('memory:/')
+        temp_transport = MemoryTransport('memory:///')
         simple_copy_files(t, temp_transport)
         if not t.is_readonly():
             t.mkdir('copy_to_simple')
@@ -300,7 +300,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         t.copy_to(['e/f'], temp_transport)
 
         del temp_transport
-        temp_transport = MemoryTransport('memory:/')
+        temp_transport = MemoryTransport('memory:///')
 
         files = ['a', 'b', 'c', 'd']
         t.copy_to(iter(files), temp_transport)
@@ -310,7 +310,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         del temp_transport
 
         for mode in (0666, 0644, 0600, 0400):
-            temp_transport = MemoryTransport("memory:/")
+            temp_transport = MemoryTransport("memory:///")
             t.copy_to(files, temp_transport, mode=mode)
             for f in files:
                 self.assertTransportMode(temp_transport, f, mode)

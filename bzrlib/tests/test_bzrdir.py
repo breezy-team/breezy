@@ -45,7 +45,7 @@ class TestDefaultFormat(TestCase):
         bzrdir.BzrDirFormat.set_default_format(SampleBzrDirFormat())
         # creating a bzr dir should now create an instrumented dir.
         try:
-            result = bzrdir.BzrDir.create('memory:/')
+            result = bzrdir.BzrDir.create('memory:///')
             self.failUnless(isinstance(result, SampleBzrDir))
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
