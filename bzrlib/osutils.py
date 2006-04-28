@@ -292,7 +292,7 @@ def _win32_local_path_from_url(url):
     # We strip off all 3 slashes
     win32_url = url[len('file:///'):]
     if (win32_url[0] not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-        or win32_url[1] != '|'
+        or win32_url[1] not in  '|:'
         or win32_url[2] != '/'):
         raise InvalidURL(url, 'Win32 file urls start with file:///X|/, where X is a valid drive letter')
     # TODO: jam 20060426, we could .upper() or .lower() the drive letter
