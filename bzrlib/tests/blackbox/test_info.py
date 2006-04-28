@@ -1126,3 +1126,104 @@ Revision store:
         self.assertEqual('', err)
 
         bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_info_locking(self):
+        transport = self.get_transport()
+        # Create shared repository with a branch
+        repo = self.make_repository('repo', shared=True,
+                                    format=bzrlib.bzrdir.BzrDirMetaFormat1())
+        repo.set_make_working_trees(False)
+        repo.bzrdir.root_transport.mkdir('branch')
+        repo_branch = repo.bzrdir.create_branch_convenience('repo/branch',
+                                    format=bzrlib.bzrdir.BzrDirMetaFormat1())
+        # Do a heavy checkout
+        transport.mkdir('tree')
+        transport.mkdir('tree/checkout')
+        co_branch = bzrlib.bzrdir.BzrDir.create_branch_convenience('tree/checkout',
+                                    format=bzrlib.bzrdir.BzrDirMetaFormat1())
+        co_branch.bind(repo_branch)
+        # Do a light checkout of the heavy one
+        transport.mkdir('tree/lightcheckout')
+        lco_dir = bzrlib.bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
+        bzrlib.branch.BranchReferenceFormat().initialize(lco_dir, co_branch)
+        lco_dir.create_workingtree()
+        lco_tree = lco_dir.open_workingtree()
+
+        # U U U
+        #out, err = self.runbzr('info tree/lightcheckout')
+        # U U L
+        lco_tree.branch.repository.lock_write()
+        #out, err = self.runbzr('info tree/lightcheckout')
+        lco_tree.branch.repository.unlock()
+        # U L L
+        lco_tree.branch.lock_write()
+        out, err = self.runbzr('info tree/lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+  light checkout root: %s
+   checkout of branch: %s
+
+Format:
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: %s
+
+Locked locations:
+  working tree: unlocked
+        branch: locked
+    repository: locked
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (lco_tree.bzrdir.root_transport.base,
+       lco_tree.branch.bzrdir.root_transport.base,
+       lco_tree.branch.repository._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
+        lco_tree.branch.unlock()
+        # L L L
+        lco_tree.lock_write()
+        #out, err = self.runbzr('info tree/lightcheckout')
+        lco_tree.unlock()
+        # L L U
+        lco_tree.lock_write()
+        lco_tree.branch.repository.unlock()
+        #out, err = self.runbzr('info tree/lightcheckout')
+        lco_tree.branch.repository.lock_write()
+        lco_tree.unlock()
+        # L U U
+        lco_tree.lock_write()
+        lco_tree.branch.unlock()
+        #out, err = self.runbzr('info tree/lightcheckout')
+        lco_tree.branch.lock_write()
+        lco_tree.unlock()
+        # L U L
+        lco_tree.lock_write()
+        lco_tree.branch.unlock()
+        lco_tree.branch.repository.lock_write()
+        #out, err = self.runbzr('info tree/lightcheckout')
+        lco_tree.branch.repository.unlock()
+        lco_tree.branch.lock_write()
+        lco_tree.unlock()
+        # U L U
+        lco_tree.branch.lock_write()
+        lco_tree.branch.repository.unlock()
+        #out, err = self.runbzr('info tree/lightcheckout')
+        lco_tree.branch.repository.lock_write()
+        lco_tree.branch.unlock()
+

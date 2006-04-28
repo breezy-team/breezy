@@ -1023,6 +1023,9 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         return self.branch.last_revision()
 
+    def is_locked(self):
+        return self._control_files.is_locked()
+
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock."""
         self.branch.lock_read()

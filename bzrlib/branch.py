@@ -154,10 +154,13 @@ class Branch(object):
         assert cfg.get_option("nickname") == nick
 
     nick = property(_get_nick, _set_nick)
-        
+
+    def is_locked(self):
+        raise NotImplementedError('is_locked is abstract')
+
     def lock_write(self):
         raise NotImplementedError('lock_write is abstract')
-        
+
     def lock_read(self):
         raise NotImplementedError('lock_read is abstract')
 
@@ -938,6 +941,9 @@ class BzrBranch(Branch):
         """See Branch.get_root_id."""
         tree = self.repository.revision_tree(self.last_revision())
         return tree.inventory.root.file_id
+
+    def is_locked(self):
+        return self.control_files.is_locked()
 
     def lock_write(self):
         # TODO: test for failed two phase locks. This is known broken.
