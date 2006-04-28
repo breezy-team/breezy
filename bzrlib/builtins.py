@@ -87,12 +87,16 @@ def get_format_type(typestring):
         return bzrdir.BzrDirFormat6()
     if typestring == "metadir":
         return bzrdir.BzrDirMetaFormat1()
+    if typestring == "metaweave":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = bzrlib.repository.RepositoryFormat7()
+        return format
     if typestring == "knit":
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
         return format
-    msg = "No known bzr-dir format %s. Supported types are: weave, metadir\n" %\
-        (typestring)
+    msg = "No known bzr-dir format %s.\n" \
+          "Supported types are: metadir, knit, metaweave and weave\n" % typestring
     raise BzrCommandError(msg)
 
 
@@ -951,8 +955,8 @@ class cmd_init_repository(Command):
     takes_args = ["location"] 
     takes_options = [Option('format', 
                             help='Use a specific format rather than the'
-                            ' current default format. Currently this'
-                            ' option accepts "weave", "metadir" and "knit"',
+                            ' current default format. Currently this option'
+                            ' accepts "metadir" (default), "knit" and "metaweave"',
                             type=get_format_type),
                      Option('trees',
                              help='Allows branches in repository to have'
