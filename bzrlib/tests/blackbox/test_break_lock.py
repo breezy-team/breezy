@@ -20,15 +20,62 @@ import os
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests.blackbox import ExternalBase
 
-class TestBreakLock(TestCaseInTempDir):
+
+class TestBreakLock(ExternalBase):
+
+    # General principal for break-lock: All the elements that might be locked
+    # by a bzr operation on PATH, are candidates that break-lock may unlock.
+    # so pathologically if we have a lightweight checkout A, of branch B, which
+    # is bound to location C, the following things should be checked for locks
+    # to break:
+    # wt = WorkingTree(A)
+    # wt.branch
+    # wt.branch.repository
+    # wt.branch.get_master_branch()
+    # wt.branch.get_master_branch().repository
+    # so for smoke tests all we need is a bound branch with a checkout of that
+    # and we can then use different urls to test individual cases, for as much
+    # granularity as needed.
+
+    def setUp(self):
+        super(TestBreakLock, self).setUp()
+        self.build_tree(
+            ['master-repo/',
+             'master-repo/master-branch/',
+             'repo/',
+             'repo/branch/',
+             'checkout/'])
+        bzrlib.bzrdir.BzrDir.create('master-repo').create_repository()
+        self.master_branch = bzrlib.bzrdir.create_branch_convenience(
+            'master-repo/master-branch')
+        bzrlib.bzrdir.BzrDir.create('repo').create_repository()
+        bzrlib.bzrdir.create_branch_convenience('repo/branch')
+        local_branch = bzrlib.bzrdir.create_branch_convenience('repo/branch')
+        local_branch.bind(self.master_branch)
+        checkoutdir = bzrlib.bzrdir.BzrDir.create('checkout')
+        bzrlib.branch.BranchReferenceFormat().initialize(
+            checkoutdir, local_branch)
+        self.wt = bzrlib.workingtree.WorkingTree.open('checkout')
+
     def test_break_lock_help(self):
-        self.run_bzr('break-lock', '--help')
-        # shouldn't fail
+        out, err = self.run_bzr('break-lock', '--help')
+        # shouldn't fail and should not produce error output
+        self.assertEqual('', err)
 
-    def test_show_no_lock(self):
-        wt = BzrDir.create_standalone_workingtree('.')
-        # out, err = self.run_bzr('break-lock', '--show', '.', retcode=3)
-        # shouldn't see any information
-        # self.assertContainsRe(err, 'not locked')
+    def test_break_lock_everything_locked(self):
+        ### if everything is locked, we should be able to unlock the lot.
+        # sketch of test:
+        # setup a ui factory with precanned answers to the 'should I break lock
+        # tests' 
+        bzrlib.ui.ui_factory = ...
+        # lock the lot:
+        self.wt.lock_write()
+        self.master_branch.lock_write()
+        # run the break-lock
+        self.run_bzr('break-lock', 'checkout')
+        # restore (in a finally) the ui
+        bzrlib.ui.ui_factory = originalfactory
+
+        etc.
