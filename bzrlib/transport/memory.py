@@ -60,7 +60,7 @@ class MemoryTransport(Transport):
         super(MemoryTransport, self).__init__(url)
         self._cwd = url[url.find(':') + 3:]
         # dictionaries from absolute path to file mode
-        self._dirs = {}
+        self._dirs = {'/':None}
         self._files = {}
         self._locks = {}
 
@@ -217,8 +217,6 @@ class MemoryTransport(Transport):
         if _abspath in self._files:
             return MemoryStat(len(self._files[_abspath][0]), False, 
                               self._files[_abspath][1])
-        elif _abspath == '':
-            return MemoryStat(0, True, None)
         elif _abspath in self._dirs:
             return MemoryStat(0, True, self._dirs[_abspath])
         else:
@@ -238,6 +236,8 @@ class MemoryTransport(Transport):
         if relpath.find('..') != -1:
             raise AssertionError('relpath contains ..')
         if relpath == '.':
+            if (self._cwd == '/'):
+                return self._cwd
             return self._cwd[:-1]
         if relpath.endswith('/'):
             relpath = relpath[:-1]
@@ -273,7 +273,7 @@ class MemoryServer(Server):
 
     def setUp(self):
         """See bzrlib.transport.Server.setUp."""
-        self._dirs = {}
+        self._dirs = {'/':None}
         self._files = {}
         self._locks = {}
         self._scheme = "memory+%s:///" % id(self)
