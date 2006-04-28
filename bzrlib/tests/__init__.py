@@ -815,7 +815,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # FIXME: make this use a single transport someday. RBC 20060418
             return format.initialize_on_transport(get_transport(relpath))
         except errors.UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
+            raise TestSkipped("Format %s is not initializable." % format)
 
     def make_repository(self, relpath, shared=False, format=None):
         """Create a repository on our default transport at relpath."""
