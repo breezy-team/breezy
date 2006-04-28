@@ -190,7 +190,8 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
 
 
 def diff_cmd_helper(tree, specific_files, external_diff_options, 
-                    old_revision_spec=None, new_revision_spec=None):
+                    old_revision_spec=None, new_revision_spec=None,
+                    old_label='a/', new_label='b/'):
     """Helper for cmd_diff.
 
    tree 
@@ -229,11 +230,13 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
         new_tree = spec_tree(new_revision_spec)
 
     return show_diff_trees(old_tree, new_tree, sys.stdout, specific_files,
-                           external_diff_options)
+                           external_diff_options,
+                           old_label=old_label, new_label=new_label)
 
 
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
-                    external_diff_options=None):
+                    external_diff_options=None,
+                    old_label='a/', new_label='b/'):
     """Show in text form the changes from one tree to another.
 
     to_files
@@ -247,7 +250,8 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         new_tree.lock_read()
         try:
             return _show_diff_trees(old_tree, new_tree, to_file,
-                                    specific_files, external_diff_options)
+                                    specific_files, external_diff_options,
+                                    old_label=old_label, new_label=new_label)
         finally:
             new_tree.unlock()
     finally:
@@ -255,12 +259,8 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
 
 def _show_diff_trees(old_tree, new_tree, to_file,
-                     specific_files, external_diff_options):
-
-    # TODO: Options to control putting on a prefix or suffix, perhaps
-    # as a format string?
-    old_label = 'a/'
-    new_label = 'b/'
+                     specific_files, external_diff_options, 
+                     old_label='a/', new_label='b/' ):
 
     DEVNULL = '/dev/null'
     # Windows users, don't panic about this filename -- it is a
