@@ -42,6 +42,7 @@ form.
 
 import sys
 import os
+import re
 import logging
 
 import bzrlib
@@ -263,6 +264,9 @@ def format_exception_short(exc_info):
     exc_info - typically an exception from sys.exc_info()
     """
     exc_type, exc_object, exc_tb = exc_info
+    if exc_type is not None:
+        exc_type = re.sub("<class '([A-Za-z0-9_.]+)'>", r'\1',
+                str(exc_type), 1)
     try:
         if exc_type is None:
             return '(no exception)'
