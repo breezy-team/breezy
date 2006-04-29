@@ -132,29 +132,29 @@ def _show_format_info(control=None, repository=None, branch=None, working=None):
 
 def _show_locking_info(repository, branch=None, working=None):
     """Show locking status of working, branch and repository."""
-# TODO: Only show when necessary.
-#    if (repository.is_locked() or (branch and branch.is_locked()) or
-#                                  (working and working.is_locked())):
-    print
-    print 'Locked locations:'
-    if working:
-        if working.is_locked():
-            status = 'locked'
-        else:
-            status = 'unlocked'
-        print '  working tree: %s' % status
-    if branch:
-        if branch.is_locked():
-            status = 'locked'
-        else:
-            status = 'unlocked'
-        print '        branch: %s' % status
-    if repository:
-        if repository.is_locked():
-            status = 'locked'
-        else:
-            status = 'unlocked'
-        print '    repository: %s' % status
+    if (repository.is_transport_locked() or
+       (branch and branch.is_transport_locked()) or
+       (working and working.is_transport_locked())):
+        print
+        print 'Lock status:'
+        if working:
+            if working.is_transport_locked():
+                status = 'locked'
+            else:
+                status = 'unlocked'
+            print '  working tree: %s' % status
+        if branch:
+            if branch.is_transport_locked():
+                status = 'locked'
+            else:
+                status = 'unlocked'
+            print '        branch: %s' % status
+        if repository:
+            if repository.is_transport_locked():
+                status = 'locked'
+            else:
+                status = 'unlocked'
+            print '    repository: %s' % status
 
 
 def _show_missing_revisions_branch(branch):
@@ -284,33 +284,33 @@ def show_bzrdir_info(a_bzrdir, verbose=False):
 # TODO: Move them to those functions that need it
     try:
         working = a_bzrdir.open_workingtree()
-#        working.lock_read()
-#        try:
-        show_tree_info(working, verbose)
-#        finally:
-#            working.unlock()
+        working.lock_read()
+        try:
+            show_tree_info(working, verbose)
+        finally:
+            working.unlock()
         return
     except (NoWorkingTree, NotLocalUrl):
         pass
 
     try:
         branch = a_bzrdir.open_branch()
-#        branch.lock_read()
-#        try:
-        show_branch_info(branch, verbose)
-#        finally:
-#            branch.unlock()
+        branch.lock_read()
+        try:
+            show_branch_info(branch, verbose)
+        finally:
+            branch.unlock()
         return
     except NotBranchError:
         pass
 
     try:
         repository = a_bzrdir.open_repository()
-#        repository.lock_read()
-#        try:
-        show_repository_info(repository, verbose)
-#        finally:
-#            repository.unlock()
+        repository.lock_read()
+        try:
+            show_repository_info(repository, verbose)
+        finally:
+            repository.unlock()
         return
     except NoRepositoryPresent:
         pass
@@ -344,7 +344,7 @@ def show_branch_info(branch, verbose):
     _show_location_info(repository, branch)
     _show_related_info(branch)
     _show_format_info(control, repository, branch)
-#    _show_locking_info(repository, branch)
+    _show_locking_info(repository, branch)
     _show_missing_revisions_branch(branch)
     _show_branch_stats(branch, verbose)
     _show_repository_stats(repository)
@@ -356,6 +356,6 @@ def show_repository_info(repository, verbose):
 
     _show_location_info(repository)
     _show_format_info(control, repository)
-#    _show_locking_info(repository)
+    _show_locking_info(repository)
     _show_repository_info(repository)
     _show_repository_stats(repository)

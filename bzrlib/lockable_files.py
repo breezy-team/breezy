@@ -22,6 +22,7 @@ import bzrlib
 from bzrlib.decorators import *
 import bzrlib.errors as errors
 from bzrlib.errors import LockError, ReadOnlyError
+from bzrlib.lockdir import LockDir
 from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, note
@@ -246,6 +247,11 @@ class LockableFiles(object):
             self._finish_transaction()
             self._lock.unlock()
             self._lock_mode = self._lock_count = None
+
+    def is_transport_locked(self):
+        """Return true if a lock exists on the transport."""
+        l = LockDir(self._transport, self.lock_name)
+        return l.peek() is not None
 
     def is_locked(self):
         """Return true if this LockableFiles group is locked"""

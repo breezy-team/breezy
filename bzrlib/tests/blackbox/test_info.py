@@ -1149,11 +1149,83 @@ Revision store:
         lco_dir.create_workingtree()
         lco_tree = lco_dir.open_workingtree()
 
+        # Test all permutations of locking the working tree, branch and repository
+        # W B R
+
         # U U U
-        #out, err = self.runbzr('info tree/lightcheckout')
+        out, err = self.runbzr('info tree/lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+  light checkout root: %s
+   checkout of branch: %s
+
+Format:
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: %s
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (lco_tree.bzrdir.root_transport.base,
+       lco_tree.branch.bzrdir.root_transport.base,
+       lco_tree.branch.repository._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
         # U U L
         lco_tree.branch.repository.lock_write()
-        #out, err = self.runbzr('info tree/lightcheckout')
+        out, err = self.runbzr('info tree/lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+  light checkout root: %s
+   checkout of branch: %s
+
+Format:
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: %s
+
+Lock status:
+  working tree: unlocked
+        branch: unlocked
+    repository: locked
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (lco_tree.bzrdir.root_transport.base,
+       lco_tree.branch.bzrdir.root_transport.base,
+       lco_tree.branch.repository._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
         lco_tree.branch.repository.unlock()
         # U L L
         lco_tree.branch.lock_write()
@@ -1169,7 +1241,7 @@ Format:
         branch: Branch format 5
     repository: %s
 
-Locked locations:
+Lock status:
   working tree: unlocked
         branch: locked
     repository: locked
@@ -1198,32 +1270,217 @@ Revision store:
         lco_tree.branch.unlock()
         # L L L
         lco_tree.lock_write()
-        #out, err = self.runbzr('info tree/lightcheckout')
+        out, err = self.runbzr('info tree/lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+  light checkout root: %s
+   checkout of branch: %s
+
+Format:
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: %s
+
+Lock status:
+  working tree: locked
+        branch: locked
+    repository: locked
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (lco_tree.bzrdir.root_transport.base,
+       lco_tree.branch.bzrdir.root_transport.base,
+       lco_tree.branch.repository._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
         lco_tree.unlock()
         # L L U
         lco_tree.lock_write()
         lco_tree.branch.repository.unlock()
-        #out, err = self.runbzr('info tree/lightcheckout')
+        out, err = self.runbzr('info tree/lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+  light checkout root: %s
+   checkout of branch: %s
+
+Format:
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: %s
+
+Lock status:
+  working tree: locked
+        branch: locked
+    repository: unlocked
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (lco_tree.bzrdir.root_transport.base,
+       lco_tree.branch.bzrdir.root_transport.base,
+       lco_tree.branch.repository._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
         lco_tree.branch.repository.lock_write()
         lco_tree.unlock()
         # L U U
         lco_tree.lock_write()
         lco_tree.branch.unlock()
-        #out, err = self.runbzr('info tree/lightcheckout')
+        out, err = self.runbzr('info tree/lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+  light checkout root: %s
+   checkout of branch: %s
+
+Format:
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: %s
+
+Lock status:
+  working tree: locked
+        branch: unlocked
+    repository: unlocked
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (lco_tree.bzrdir.root_transport.base,
+       lco_tree.branch.bzrdir.root_transport.base,
+       lco_tree.branch.repository._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
         lco_tree.branch.lock_write()
         lco_tree.unlock()
         # L U L
         lco_tree.lock_write()
         lco_tree.branch.unlock()
         lco_tree.branch.repository.lock_write()
-        #out, err = self.runbzr('info tree/lightcheckout')
+        out, err = self.runbzr('info tree/lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+  light checkout root: %s
+   checkout of branch: %s
+
+Format:
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: %s
+
+Lock status:
+  working tree: locked
+        branch: unlocked
+    repository: locked
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (lco_tree.bzrdir.root_transport.base,
+       lco_tree.branch.bzrdir.root_transport.base,
+       lco_tree.branch.repository._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
         lco_tree.branch.repository.unlock()
         lco_tree.branch.lock_write()
         lco_tree.unlock()
         # U L U
         lco_tree.branch.lock_write()
         lco_tree.branch.repository.unlock()
-        #out, err = self.runbzr('info tree/lightcheckout')
+        out, err = self.runbzr('info tree/lightcheckout')
+        self.assertEqualDiff(
+"""Location:
+  light checkout root: %s
+   checkout of branch: %s
+
+Format:
+       control: Meta directory format 1
+  working tree: Working tree format 3
+        branch: Branch format 5
+    repository: %s
+
+Lock status:
+  working tree: unlocked
+        branch: locked
+    repository: unlocked
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (lco_tree.bzrdir.root_transport.base,
+       lco_tree.branch.bzrdir.root_transport.base,
+       lco_tree.branch.repository._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
         lco_tree.branch.repository.lock_write()
         lco_tree.branch.unlock()
 

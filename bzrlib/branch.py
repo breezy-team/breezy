@@ -155,6 +155,9 @@ class Branch(object):
 
     nick = property(_get_nick, _set_nick)
 
+    def is_transport_locked(self):
+        raise NotImplementedError('is_transport_locked is abstract')
+
     def is_locked(self):
         raise NotImplementedError('is_locked is abstract')
 
@@ -941,6 +944,9 @@ class BzrBranch(Branch):
         """See Branch.get_root_id."""
         tree = self.repository.revision_tree(self.last_revision())
         return tree.inventory.root.file_id
+
+    def is_transport_locked(self):
+        return self.control_files.is_transport_locked()
 
     def is_locked(self):
         return self.control_files.is_locked()
