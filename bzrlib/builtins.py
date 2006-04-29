@@ -997,12 +997,22 @@ class cmd_diff(Command):
     # TODO: This probably handles non-Unix newlines poorly.
     
     takes_args = ['file*']
-    takes_options = ['revision', 'diff-options']
+    takes_options = ['revision', 'diff-options', 'diff-prefix']
     aliases = ['di', 'dif']
 
     @display_command
-    def run(self, revision=None, file_list=None, diff_options=None):
+    def run(self, revision=None, file_list=None, diff_options=None,
+       diff_prefix=None):
         from bzrlib.diff import diff_cmd_helper, show_diff_trees
+
+        if diff_prefix:
+            if not ':' in diff_prefix:
+                 raise BzrError("--diff-prefix expects two values separated by a colon")            
+            old_label,new_label=diff_prefix.split(":")
+        else:
+            old_label='a/'
+            new_label='b/'
+        
         try:
             tree1, file_list = internal_tree_files(file_list)
             tree2 = None
@@ -1023,19 +1033,23 @@ class cmd_diff(Command):
                 raise BzrCommandError("Can't specify -r with two branches")
             if (len(revision) == 1) or (revision[1].spec is None):
                 return diff_cmd_helper(tree1, file_list, diff_options,
-                                       revision[0])
+                                       revision[0], 
+                                       old_label=old_label, new_label=new_label)
             elif len(revision) == 2:
                 return diff_cmd_helper(tree1, file_list, diff_options,
-                                       revision[0], revision[1])
+                                       revision[0], revision[1],
+                                       old_label=old_label, new_label=new_label)
             else:
                 raise BzrCommandError('bzr diff --revision takes exactly one or two revision identifiers')
         else:
             if tree2 is not None:
                 return show_diff_trees(tree1, tree2, sys.stdout, 
                                        specific_files=file_list,
-                                       external_diff_options=diff_options)
+                                       external_diff_options=diff_options,
+                                       old_label=old_label, new_label=new_label)
             else:
-                return diff_cmd_helper(tree1, file_list, diff_options)
+                return diff_cmd_helper(tree1, file_list, diff_options,
+                                       old_label=old_label, new_label=new_label)
 
 
 class cmd_deleted(Command):
