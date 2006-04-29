@@ -642,7 +642,7 @@ class cmd_checkout(Command):
 
     --basis is to speed up checking out from remote branches.  When specified, it
     uses the inventory and file contents from the basis branch in preference to the
-    branch being checked out. [Not implemented yet.]
+    branch being checked out.
     """
     takes_args = ['branch_location?', 'to_location?']
     takes_options = ['revision', # , 'basis']
@@ -902,8 +902,8 @@ class cmd_init(Command):
     takes_options = [
                      Option('format', 
                             help='Create a specific format rather than the'
-                                 ' current default format. Currently this '
-                                 ' option only accepts "metadir"',
+                                 ' current default format. Currently supports:'
+                                 ' metadir, knit, and weave',
                             type=get_format_type),
                      ]
     def run(self, location=None, format=None):
