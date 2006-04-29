@@ -20,10 +20,10 @@
 """Commit message editor support."""
 
 
-import os
-import sys
 import errno
+import os
 from subprocess import call
+import sys
 
 import bzrlib.config as config
 from bzrlib.errors import BzrError
