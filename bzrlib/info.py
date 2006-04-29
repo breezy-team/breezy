@@ -132,25 +132,25 @@ def _show_format_info(control=None, repository=None, branch=None, working=None):
 
 def _show_locking_info(repository, branch=None, working=None):
     """Show locking status of working, branch and repository."""
-    if (repository.is_transport_locked() or
-       (branch and branch.is_transport_locked()) or
-       (working and working.is_transport_locked())):
+    if (repository.get_physical_lock_status() or
+       (branch and branch.get_physical_lock_status()) or
+       (working and working.get_physical_lock_status())):
         print
         print 'Lock status:'
         if working:
-            if working.is_transport_locked():
+            if working.get_physical_lock_status():
                 status = 'locked'
             else:
                 status = 'unlocked'
             print '  working tree: %s' % status
         if branch:
-            if branch.is_transport_locked():
+            if branch.get_physical_lock_status():
                 status = 'locked'
             else:
                 status = 'unlocked'
             print '        branch: %s' % status
         if repository:
-            if repository.is_transport_locked():
+            if repository.get_physical_lock_status():
                 status = 'locked'
             else:
                 status = 'unlocked'

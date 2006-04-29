@@ -159,9 +159,6 @@ class Repository(object):
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
 
-    def is_transport_locked(self):
-        return self.control_files.is_transport_locked()
-
     def is_locked(self):
         return self.control_files.is_locked()
 
@@ -170,6 +167,9 @@ class Repository(object):
 
     def lock_read(self):
         self.control_files.lock_read()
+
+    def get_physical_lock_status(self):
+        return self.control_files.get_physical_lock_status()
 
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None):

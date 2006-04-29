@@ -248,14 +248,14 @@ class LockableFiles(object):
             self._lock.unlock()
             self._lock_mode = self._lock_count = None
 
-    def is_transport_locked(self):
-        """Return true if a lock exists on the transport."""
-        l = LockDir(self._transport, self.lock_name)
-        return l.peek() is not None
-
     def is_locked(self):
         """Return true if this LockableFiles group is locked"""
         return self._lock_count >= 1
+
+    def get_physical_lock_status(self):
+        """Return true if a lock is held on the transport."""
+        l = LockDir(self._transport, self.lock_name)
+        return l.peek() is not None
 
     def get_transaction(self):
         """Return the current active transaction.

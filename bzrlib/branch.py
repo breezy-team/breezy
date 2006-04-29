@@ -155,9 +155,6 @@ class Branch(object):
 
     nick = property(_get_nick, _set_nick)
 
-    def is_transport_locked(self):
-        raise NotImplementedError('is_transport_locked is abstract')
-
     def is_locked(self):
         raise NotImplementedError('is_locked is abstract')
 
@@ -173,6 +170,9 @@ class Branch(object):
     def peek_lock_mode(self):
         """Return lock mode for the Branch: 'r', 'w' or None"""
         raise NotImplementedError(self.peek_lock_mode)
+
+    def get_physical_lock_status(self):
+        raise NotImplementedError('get_physical_lock_status is abstract')
 
     def abspath(self, name):
         """Return absolute filename for something in the branch
@@ -945,9 +945,6 @@ class BzrBranch(Branch):
         tree = self.repository.revision_tree(self.last_revision())
         return tree.inventory.root.file_id
 
-    def is_transport_locked(self):
-        return self.control_files.is_transport_locked()
-
     def is_locked(self):
         return self.control_files.is_locked()
 
@@ -971,6 +968,9 @@ class BzrBranch(Branch):
             return None
         else:
             return self.control_files._lock_mode
+
+    def get_physical_lock_status(self):
+        return self.control_files.get_physical_lock_status()
 
     @needs_read_lock
     def print_file(self, file, revision_id):
