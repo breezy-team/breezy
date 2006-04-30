@@ -1534,7 +1534,7 @@ Format:
     repository: %s
 
 Lock status:
-  working tree: unlocked
+  working tree: locked
         branch: locked
     repository: locked
 
