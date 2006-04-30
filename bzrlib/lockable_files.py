@@ -21,7 +21,7 @@ import codecs
 import bzrlib
 from bzrlib.decorators import *
 import bzrlib.errors as errors
-from bzrlib.lockdir import LockDir
+from bzrlib.errors import BzrError
 from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, note
@@ -208,7 +208,7 @@ class LockableFiles(object):
         # and potentially a remote locking protocol
         if self._lock_mode:
             if self._lock_mode != 'w' or not self.get_transaction().writeable():
-                raise ReadOnlyError(self)
+                raise errors.ReadOnlyError(self)
             self._lock_count += 1
         else:
             self._lock.lock_write()
