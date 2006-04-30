@@ -21,7 +21,6 @@ import codecs
 import bzrlib
 from bzrlib.decorators import *
 import bzrlib.errors as errors
-from bzrlib.errors import LockError, ReadOnlyError
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.symbol_versioning import *
@@ -253,9 +252,16 @@ class LockableFiles(object):
         return self._lock_count >= 1
 
     def get_physical_lock_status(self):
-        """Return true if a lock is held on the transport."""
-        l = LockDir(self._transport, self.lock_name)
-        return l.peek() is not None
+        """Return physical lock status.
+        
+        Returns true if a lock is held on the transport. If no lock is held, or
+        the underlying locking mechanism does not support querying lock
+        status, false is returned.
+        """
+        try:
+            return self._lock.peek() is not None
+        except NotImplementedError:
+            return False
 
     def get_transaction(self):
         """Return the current active transaction.
@@ -311,6 +317,9 @@ class TransportLock(object):
     def unlock(self):
         self._lock.unlock()
         self._lock = None
+
+    def peek(self):
+        raise NotImplementedError()
 
     def create(self, mode=None):
         """Create lock mechanism"""

@@ -1484,3 +1484,83 @@ Revision store:
         lco_tree.branch.repository.lock_write()
         lco_tree.branch.unlock()
 
+    def test_info_locking_oslocks(self):
+        raise TestSkipped('Not implemented yet')
+        tree = self.make_branch_and_tree('branch',
+                                         format=bzrlib.bzrdir.BzrDirFormat6())
+
+        # Test all permutations of locking the working tree, branch and repository
+        # Well not yet, as we can't query oslocks yet.
+        # W B R
+
+        # U U U
+        out, err = self.runbzr('info branch')
+        self.assertEqualDiff(
+"""Location:
+  branch root: %s
+
+Format:
+       control: All-in-one format 6
+  working tree: Working tree format 2
+        branch: Branch format 4
+    repository: %s
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (tree.bzrdir.root_transport.base,
+       tree.branch.repository._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
+        # L L L
+        tree.lock_write()
+        out, err = self.runbzr('info branch')
+        self.assertEqualDiff(
+"""Location:
+  branch root: %s
+
+Format:
+       control: All-in-one format 6
+  working tree: Working tree format 2
+        branch: Branch format 4
+    repository: %s
+
+Lock status:
+  working tree: unlocked
+        branch: locked
+    repository: locked
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (tree.bzrdir.root_transport.base,
+       tree.branch.repository._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
+        tree.unlock()
