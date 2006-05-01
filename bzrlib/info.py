@@ -29,14 +29,6 @@ import bzrlib.osutils as osutils
 from bzrlib.symbol_versioning import *
 
 
-def _countiter(it):
-    # surely there's a builtin for this?
-    i = 0
-    for j in it:
-        i += 1
-    return i        
-
-
 def plural(n, base='', pl=None):
     if n == 1:
         return base
