@@ -140,7 +140,7 @@ Revision store:
   checkout of branch: %s
 
 Related branches:
-      parent branch: %s
+  parent branch: %s
 
 Format:
        control: Meta directory format 1
@@ -333,7 +333,7 @@ Revision store:
   checkout of branch: %s
 
 Related branches:
-      parent branch: %s
+  parent branch: %s
 
 Format:
        control: Meta directory format 1
@@ -949,7 +949,7 @@ Revision store:
   repository checkout: branch2
 
 Related branches:
-      parent branch: %s
+  parent branch: %s
 
 Format:
        control: Meta directory format 1
@@ -993,7 +993,7 @@ Revision store:
   repository checkout: branch2
 
 Related branches:
-      parent branch: %s
+  parent branch: %s
 
 Format:
        control: Meta directory format 1

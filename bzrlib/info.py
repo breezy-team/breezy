@@ -103,7 +103,10 @@ def _show_related_info(branch):
         print
         print 'Related branches:'
         if branch.get_parent():
-            print '      parent branch: %s' % branch.get_parent()
+            if branch.get_push_location():
+                print '      parent branch: %s' % branch.get_parent()
+            else:
+                print '  parent branch: %s' % branch.get_parent()
         if branch.get_push_location():
             print '  publish to branch: %s' % branch.get_push_location()
 
