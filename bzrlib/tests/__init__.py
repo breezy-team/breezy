@@ -303,7 +303,8 @@ class TestCase(unittest.TestCase):
             raise AssertionError('string %r does not start with %r' % (s, prefix))
 
     def assertEndsWith(self, s, suffix):
-        if not s.endswith(prefix):
+        """Asserts that s ends with suffix."""
+        if not s.endswith(suffix):
             raise AssertionError('string %r does not end with %r' % (s, suffix))
 
     def assertContainsRe(self, haystack, needle_re):
