@@ -1480,7 +1480,7 @@ Revision store:
         lco_tree.branch.unlock()
 
     def test_info_locking_oslocks(self):
-        raise TestSkipped('Not implemented yet')
+        raise TestSkipped('Querying OS style locks not supported')
         tree = self.make_branch_and_tree('branch',
                                          format=bzrlib.bzrdir.BzrDirFormat6())
 

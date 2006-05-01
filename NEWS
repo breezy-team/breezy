@@ -70,7 +70,8 @@ bzr 0.8rc1  2006-04-14
       working tree, branch and repository. Use kibibytes for binary quantities.
       Fix off-by-one error in missing revisions of working tree.  Make 'info'
       work on branches, repositories and remote locations.  Show locations
-      relative to the shared repository, if applicable.  (Olaf Conradi)
+      relative to the shared repository, if applicable.  Show locking status
+      of locations.  (Olaf Conradi)
 
     * Diff and merge now safely handle binary files. (Aaron Bentley)
 
@@ -156,6 +157,9 @@ bzr 0.8rc1  2006-04-14
       (Olaf Conradi)
 
     * Deprecated BzrError AmbiguousBase.  (Olaf Conradi)
+
+    * New API method get_physical_lock_status() to query locks present on a
+      transport.  (Olaf Conradi)
 
   TESTING:
 
