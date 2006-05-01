@@ -1480,12 +1480,13 @@ Revision store:
         lco_tree.branch.unlock()
 
     def test_info_locking_oslocks(self):
-        raise TestSkipped('Querying OS style locks not supported')
         tree = self.make_branch_and_tree('branch',
                                          format=bzrlib.bzrdir.BzrDirFormat6())
 
         # Test all permutations of locking the working tree, branch and repository
-        # Well not yet, as we can't query oslocks yet.
+        # XXX: Well not yet, as we can't query oslocks yet. Currently, it's
+        # implemented by raising NotImplementedError and get_physical_lock_status()
+        # always returns false. This makes bzr info hide the lock status.  (Olaf)
         # W B R
 
         # U U U
@@ -1532,11 +1533,6 @@ Format:
   working tree: Working tree format 2
         branch: Branch format 4
     repository: %s
-
-Lock status:
-  working tree: locked
-        branch: locked
-    repository: locked
 
 In the working tree:
          0 unchanged
