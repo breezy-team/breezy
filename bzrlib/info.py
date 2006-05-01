@@ -133,8 +133,8 @@ def _show_format_info(control=None, repository=None, branch=None, working=None):
 def _show_locking_info(repository, branch=None, working=None):
     """Show locking status of working, branch and repository."""
     if (repository.get_physical_lock_status() or
-       (branch and branch.get_physical_lock_status()) or
-       (working and working.get_physical_lock_status())):
+        (branch and branch.get_physical_lock_status()) or
+        (working and working.get_physical_lock_status())):
         print
         print 'Lock status:'
         if working:
