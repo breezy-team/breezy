@@ -101,6 +101,8 @@ bzr 0.8rc1  2006-04-14
     * New option 'diff --diff-prefix' to control how files are named in diff
       output.  (Alexander Belchenko, Goffredo Baroncelli)
 
+    * Add --revision option to 'annotate' command.  (Olaf Conradi)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
