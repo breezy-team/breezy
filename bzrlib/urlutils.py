@@ -18,11 +18,40 @@
 
 """A collection of function for handling URL operations."""
 
+import os
+from posixpath import split as _posix_split
 import urllib
 import sys
 
 import bzrlib.errors as errors
 import bzrlib.osutils
+
+
+def basename(url, exclude_trailing_slash=True):
+    """Return the last component of a URL.
+
+    :param url: The URL in question
+    :param exclude_trailing_slash: If the url looks like "path/to/foo/"
+        ignore the final slash and return 'foo' rather than ''
+    :return: Just the final component of the URL. This can return ''
+        if you don't exclude_trailing_slash, or if you are at the
+        root of the URL.
+    """
+    return split(url, exclude_trailing_slash=exclude_trailing_slash)[1]
+
+
+def dirname(url, exclude_trailing_slash=True):
+    """Return the parent directory of the given path.
+
+    :param url: Relative or absolute URL
+    :param exclude_trailing_slash: Remove a final slash
+        (treat http://host/foo/ as http://host/foo, but
+        http://host/ stays http://host/)
+    :return: Everything in the URL except the last path chunk
+    """
+    # TODO: jam 20060502 This was named dirname to be consistent
+    #       with the os functions, but maybe "parent" would be better
+    return split(url, exclude_trailing_slash=exclude_trailing_slash)[0]
 
 
 def escape(relpath):
@@ -46,6 +75,24 @@ def file_relpath(base, path):
     base = local_path_from_url(base)
     path = local_path_from_url(path)
     return escape(bzrlib.osutils.relpath(base, path))
+
+
+def _find_scheme_and_separator(url):
+    """Find the scheme separator (://) and the first path separator
+
+    This is just a helper functions for other path utilities.
+    It could probably be replaced by urlparse
+    """
+    scheme_loc = url.find('://')
+    if scheme_loc == -1:
+        return None, None
+
+    # Find the path separating slash
+    # (first slash after the ://)
+    first_path_slash = url.find('/', scheme_loc+3)
+    if first_path_slash == -1:
+        return scheme_loc, None
+    return scheme_loc, first_path_slash
 
 
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
@@ -107,15 +154,43 @@ if sys.platform == 'win32':
     MIN_ABS_FILEURL_LENGTH = len('file:///C|/')
 
 
-def basename(url, exclude_trailing_slash=True):
-    """Return the last component of a URL.
+def split(url, exclude_trailing_slash=True):
+    """Split a URL into its parent directory and a child directory.
 
-    :param url: The URL in question
-    :param exclude_trailing_slash: If the url looks like "path/to/foo/"
-        ignore the final slash and return 'foo' rather than ''
+    :param url: A relative or absolute URL
+    :param exclude_trailing_slash: Strip off a final '/' if it is part
+        of the path (but not if it is part of the protocol specification)
     """
-    if exclude_trailing_slash:
-        url = strip_trailing_slash(url)
+    scheme_loc, first_path_slash = _find_scheme_and_separator(url)
+
+    if first_path_slash is None:
+        # We have either a relative path, or no separating slash
+        if scheme_loc is None:
+            # Relative path
+            if exclude_trailing_slash and url.endswith('/'):
+                url = url[:-1]
+            return _posix_split(url)
+        else:
+            # Scheme with no path
+            return url, ''
+
+    # We have a fully defined path
+    url_base = url[:first_path_slash] # http://host, file://
+    path = url[first_path_slash:] # /file/foo
+
+    if sys.platform == 'win32' and url.startswith('file:///'):
+        # Strip off the drive letter
+        if path[2:3] not in '\\/':
+            raise InvalidURL(url, 
+                'win32 file:/// paths need a drive letter')
+        url_base += path[1:4] # file:///C|/
+        path = path[3:]
+
+    if exclude_trailing_slash and len(path) > 1 and path.endswith('/'):
+        path = path[:-1]
+    head, tail = _posix_split(path)
+    return url_base + head, tail
+
 
 def strip_trailing_slash(url):
     """Strip trailing slash, except for root paths.
@@ -146,16 +221,13 @@ def strip_trailing_slash(url):
         # of a win32 path is actually the drive letter
         if len(url) > MIN_ABS_FILEURL_LENGTH:
             return url[:-1]
-    scheme_loc = url.find('://')
-    if scheme_loc == -1:
+    scheme_loc, first_path_slash = _find_scheme_and_separator(url)
+    if scheme_loc is None:
         # This is a relative path, as it has no scheme
         # so just chop off the last character
         return url[:-1]
 
-    # Find the path separating slash
-    # (first slash after the ://)
-    first_path_slash = url.find('/', scheme_loc+3)
-    if first_path_slash == -1 or first_path_slash == len(url)-1:
+    if first_path_slash is None or first_path_slash == len(url)-1:
         # Don't chop off anything if the only slash is the path
         # separating slash
         return url

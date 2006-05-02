@@ -27,6 +27,74 @@ from bzrlib.tests import TestCaseInTempDir, TestCase
 
 class TestUrlToPath(TestCase):
     
+    def test_basename(self):
+        # bzrlib.urlutils.basename
+        # Test bzrlib.urlutils.split()
+        basename = urlutils.basename
+        if sys.platform == 'win32':
+            self.assertRaises(InvalidURL, basename, 'file:///path/to/foo')
+            self.assertEqual('foo', basename('file:///C|/foo'))
+            self.assertEqual('', basename('file:///C|/'))
+        else:
+            self.assertEqual('foo', basename('file:///foo'))
+            self.assertEqual('', basename('file:///'))
+
+        self.assertEqual('foo', basename('http://host/path/to/foo'))
+        self.assertEqual('foo', basename('http://host/path/to/foo/'))
+        self.assertEqual('',
+            basename('http://host/path/to/foo/', exclude_trailing_slash=False))
+        self.assertEqual('path', basename('http://host/path'))
+        self.assertEqual('', basename('http://host/'))
+        self.assertEqual('', basename('http://host'))
+        self.assertEqual('path', basename('http:///nohost/path'))
+
+        self.assertEqual('path', basename('random+scheme://user:pass@ahost:port/path'))
+        self.assertEqual('path', basename('random+scheme://user:pass@ahost:port/path/'))
+        self.assertEqual('', basename('random+scheme://user:pass@ahost:port/'))
+
+        # relative paths
+        self.assertEqual('foo', basename('path/to/foo'))
+        self.assertEqual('foo', basename('path/to/foo/'))
+        self.assertEqual('', basename('path/to/foo/',
+            exclude_trailing_slash=False))
+        self.assertEqual('foo', basename('path/../foo'))
+        self.assertEqual('foo', basename('../path/foo'))
+
+    def test_dirname(self):
+        # Test bzrlib.urlutils.dirname()
+        dirname = urlutils.dirname
+        if sys.platform == 'win32':
+            self.assertRaises(InvalidURL, dirname, 'file:///path/to/foo')
+            self.assertEqual('file:///C|/', dirname('file:///C|/foo'))
+            self.assertEqual('file:///C|/', dirname('file:///C|/'))
+        else:
+            self.assertEqual('file:///', dirname('file:///foo'))
+            self.assertEqual('file:///', dirname('file:///'))
+
+        self.assertEqual('http://host/path/to', dirname('http://host/path/to/foo'))
+        self.assertEqual('http://host/path/to', dirname('http://host/path/to/foo/'))
+        self.assertEqual('http://host/path/to/foo',
+            dirname('http://host/path/to/foo/', exclude_trailing_slash=False))
+        self.assertEqual('http://host/', dirname('http://host/path'))
+        self.assertEqual('http://host/', dirname('http://host/'))
+        self.assertEqual('http://host', dirname('http://host'))
+        self.assertEqual('http:///nohost', dirname('http:///nohost/path'))
+
+        self.assertEqual('random+scheme://user:pass@ahost:port/',
+            dirname('random+scheme://user:pass@ahost:port/path'))
+        self.assertEqual('random+scheme://user:pass@ahost:port/',
+            dirname('random+scheme://user:pass@ahost:port/path/'))
+        self.assertEqual('random+scheme://user:pass@ahost:port/',
+            dirname('random+scheme://user:pass@ahost:port/'))
+
+        # relative paths
+        self.assertEqual('path/to', dirname('path/to/foo'))
+        self.assertEqual('path/to', dirname('path/to/foo/'))
+        self.assertEqual('path/to/foo',
+            dirname('path/to/foo/', exclude_trailing_slash=False))
+        self.assertEqual('path/..', dirname('path/../foo'))
+        self.assertEqual('../path', dirname('../path/foo'))
+
     def test_function_type(self):
         if sys.platform == 'win32':
             self.assertEqual(urlutils._win32_local_path_to_url, urlutils.local_path_to_url)
@@ -57,21 +125,56 @@ class TestUrlToPath(TestCase):
         to_url = urlutils._win32_local_path_to_url
         self.assertEqual('file:///C|/path/to/foo',
             to_url('C:/path/to/foo'))
-        self.assertEqual('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s',
+        self.assertEqual('file:///D|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s',
             to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s'))
 
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
         self.assertEqual('C:/path/to/foo',
             from_url('file:///C|/path/to/foo'))
-        self.assertEqual(u'd:/path/to/r\xe4ksm\xf6rg\xe5s',
+        self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
-        self.assertEqual(u'd:/path/to/r\xe4ksm\xf6rg\xe5s',
+        self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d|/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
 
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
         # Not a valid _win32 url, no drive letter
         self.assertRaises(InvalidURL, from_url, 'file:///path/to/foo')
+
+    def test_split(self):
+        # Test bzrlib.urlutils.split()
+        split = urlutils.split
+        if sys.platform == 'win32':
+            self.assertRaises(InvalidURL, split, 'file:///path/to/foo')
+            self.assertEqual(('file:///C|/', 'foo'), split('file:///C|/foo'))
+            self.assertEqual(('file:///C|/', ''), split('file:///C|/'))
+        else:
+            self.assertEqual(('file:///', 'foo'), split('file:///foo'))
+            self.assertEqual(('file:///', ''), split('file:///'))
+
+        self.assertEqual(('http://host/path/to', 'foo'), split('http://host/path/to/foo'))
+        self.assertEqual(('http://host/path/to', 'foo'), split('http://host/path/to/foo/'))
+        self.assertEqual(('http://host/path/to/foo', ''),
+            split('http://host/path/to/foo/', exclude_trailing_slash=False))
+        self.assertEqual(('http://host/', 'path'), split('http://host/path'))
+        self.assertEqual(('http://host/', ''), split('http://host/'))
+        self.assertEqual(('http://host', ''), split('http://host'))
+        self.assertEqual(('http:///nohost', 'path'), split('http:///nohost/path'))
+
+        self.assertEqual(('random+scheme://user:pass@ahost:port/', 'path'),
+            split('random+scheme://user:pass@ahost:port/path'))
+        self.assertEqual(('random+scheme://user:pass@ahost:port/', 'path'),
+            split('random+scheme://user:pass@ahost:port/path/'))
+        self.assertEqual(('random+scheme://user:pass@ahost:port/', ''),
+            split('random+scheme://user:pass@ahost:port/'))
+
+        # relative paths
+        self.assertEqual(('path/to', 'foo'), split('path/to/foo'))
+        self.assertEqual(('path/to', 'foo'), split('path/to/foo/'))
+        self.assertEqual(('path/to/foo', ''),
+            split('path/to/foo/', exclude_trailing_slash=False))
+        self.assertEqual(('path/..', 'foo'), split('path/../foo'))
+        self.assertEqual(('../path', 'foo'), split('../path/foo'))
 
     def test_strip_trailing_slash(self):
         sts = urlutils.strip_trailing_slash
