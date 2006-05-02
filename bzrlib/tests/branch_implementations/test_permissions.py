@@ -35,7 +35,6 @@ from StringIO import StringIO
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.lockable_files import LockableFiles
-from bzrlib.osutils import local_path_from_url
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.test_permissions import chmod_r, check_mode_r
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer

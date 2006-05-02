@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for the osutils wrapper.
-"""
+"""Tests for the osutils wrapper."""
 
 import os
 import sys
@@ -90,76 +89,6 @@ class TestSafeUnicode(TestCase):
         self.assertRaises(BzrBadParameterNotUnicode,
                           osutils.safe_unicode,
                           '\xbb\xbb')
-
-
-class TestUrlToPath(TestCase):
-    
-    def test_function_type(self):
-        if sys.platform == 'win32':
-            self.assertEqual(osutils._win32_local_path_to_url, osutils.local_path_to_url)
-            self.assertEqual(osutils._win32_local_path_from_url, osutils.local_path_from_url)
-        else:
-            self.assertEqual(osutils._posix_local_path_to_url, osutils.local_path_to_url)
-            self.assertEqual(osutils._posix_local_path_from_url, osutils.local_path_from_url)
-
-    def test_posix_local_path_to_url(self):
-        to_url = osutils._posix_local_path_to_url
-        self.assertEqual('file:///path/to/foo',
-            to_url('/path/to/foo'))
-        self.assertEqual('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s',
-            to_url(u'/path/to/r\xe4ksm\xf6rg\xe5s'))
-
-    def test_posix_local_path_from_url(self):
-        from_url = osutils._posix_local_path_from_url
-        self.assertEqual('/path/to/foo',
-            from_url('file:///path/to/foo'))
-        self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
-            from_url('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
-        self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
-            from_url('file:///path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
-
-        self.assertRaises(InvalidURL, from_url, '/path/to/foo')
-
-    def test_win32_local_path_to_url(self):
-        to_url = osutils._win32_local_path_to_url
-        self.assertEqual('file:///C|/path/to/foo',
-            to_url('C:/path/to/foo'))
-        self.assertEqual('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s',
-            to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s'))
-
-    def test_win32_local_path_from_url(self):
-        from_url = osutils._win32_local_path_from_url
-        self.assertEqual('C:/path/to/foo',
-            from_url('file:///C|/path/to/foo'))
-        self.assertEqual(u'd:/path/to/r\xe4ksm\xf6rg\xe5s',
-            from_url('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
-        self.assertEqual(u'd:/path/to/r\xe4ksm\xf6rg\xe5s',
-            from_url('file:///d|/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
-
-        self.assertRaises(InvalidURL, from_url, '/path/to/foo')
-        # Not a valid _win32 url, no drive letter
-        self.assertRaises(InvalidURL, from_url, 'file:///path/to/foo')
-
-    def test_urlfordisplay(self):
-        # Test that URLs are converted to nice unicode strings for display
-        disp = osutils.urlfordisplay
-        eq = self.assertEqual
-        eq('http://foo', disp('http://foo'))
-        if sys.platform == 'win32':
-            eq('C:/foo/path', disp('file:///C|foo/path'))
-        else:
-            eq('/foo/path', disp('file:///foo/path'))
-
-        eq('http://foo/%2Fbaz', disp('http://foo/%2Fbaz'))
-        eq(u'http://host/r\xe4ksm\xf6rg\xe5s', disp('http://host/r%C3%A4ksm%C3%B6rg%C3%A5s'))
-
-        # Make sure special escaped characters stay escaped
-        eq(u'http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C%23',
-            disp('http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C%23'))
-
-        # Can we handle sections that don't have utf-8 encoding?
-        eq(u'http://host/%EE%EE%EE/r\xe4ksm\xf6rg\xe5s',
-            disp('http://host/%EE%EE%EE/r%C3%A4ksm%C3%B6rg%C3%A5s'))
 
 
 class TestWin32Funcs(TestCase):

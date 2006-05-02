@@ -23,10 +23,11 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ExistingLimbo, ImmortalLimbo)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
-                            delete_any, local_path_from_url)
+                            delete_any)
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, warning
 import bzrlib.ui 
+import bzrlib.urlutils as urlutils
 
 
 ROOT_PARENT = "root-parent"
@@ -79,7 +80,7 @@ class TreeTransform(object):
         self._tree.lock_write()
         try:
             control_files = self._tree._control_files
-            self._limbodir = local_path_from_url(
+            self._limbodir = urlutils.local_path_from_url(
                 control_files.controlfilename('limbo'))
             try:
                 os.mkdir(self._limbodir)

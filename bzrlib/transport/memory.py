@@ -29,8 +29,8 @@ from cStringIO import StringIO
 
 from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
 from bzrlib.trace import mutter
-from bzrlib.transport import (Transport, register_transport, Server,
-                              urlescape, urlunescape)
+from bzrlib.transport import (Transport, register_transport, Server)
+import bzrlib.urlutils as urlutils
 
 
 
@@ -232,7 +232,7 @@ class MemoryTransport(Transport):
 
     def _abspath(self, relpath):
         """Generate an internal absolute path."""
-        relpath = urlunescape(relpath)
+        relpath = urlutils.unescape(relpath)
         if relpath.find('..') != -1:
             raise AssertionError('relpath contains ..')
         if relpath == '.':

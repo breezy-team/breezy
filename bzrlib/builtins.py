@@ -44,6 +44,7 @@ import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
 from bzrlib.transport.local import LocalTransport
 import bzrlib.ui
+import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
 
 
@@ -426,7 +427,7 @@ class cmd_pull(Command):
                 raise BzrCommandError("No pull location known or specified.")
             else:
                 self.outf.write("Using saved location: %s\n" 
-                    % bzrlib.osutils.urlfordisplay(stored_loc))
+                    % urlutils.unescape_for_display(stored_loc))
                 location = stored_loc
 
         branch_from = Branch.open(location)
@@ -504,7 +505,7 @@ class cmd_push(Command):
                 raise BzrCommandError("No push location known or specified.")
             else:
                 self.outf.write("Using saved location: %s" 
-                    % bzrlib.osutils.urlfordisplay(stored_loc))
+                    % urlutils.unescape_for_display(stored_loc))
                 location = stored_loc
 
         transport = get_transport(location)
@@ -1954,7 +1955,7 @@ class cmd_merge(Command):
                 raise BzrCommandError("No merge branch known or specified.")
             else:
                 print (u"Using saved branch: %s" 
-                    % bzrlib.osutils.urlfordisplay(stored_loc))
+                    % urlutils.unescape_for_display(stored_loc))
                 branch = stored_loc
 
         if revision is None or len(revision) < 1:

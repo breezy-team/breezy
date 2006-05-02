@@ -23,8 +23,9 @@ import os
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.osutils import abspath, local_path_from_url
+from bzrlib.osutils import abspath
 from bzrlib.tests.blackbox import ExternalBase
+import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
 
 
@@ -153,7 +154,7 @@ class TestMerge(ExternalBase):
         tree_b.commit('commit d')
         out, err = self.runbzr('merge')
         
-        base = local_path_from_url(branch_a.base)
+        base = urlutils.local_path_from_url(branch_a.base)
         self.assertEquals(out, 'Using saved branch: %s\n' % (base,))
         self.assertEquals(err, 'All changes applied successfully.\n')
         self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))

@@ -22,12 +22,13 @@ from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, CantMoveRoot, NotVersionedError,
                            ExistingLimbo, ImmortalLimbo, LockError)
-from bzrlib.osutils import file_kind, has_symlinks, pathjoin, local_path_from_url
+from bzrlib.osutils import file_kind, has_symlinks, pathjoin
 from bzrlib.merge import Merge3Merger
 from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name)
+import bzrlib.urlutils as urlutils
 
 class TestTreeTransform(TestCaseInTempDir):
     def setUp(self):
@@ -41,7 +42,7 @@ class TestTreeTransform(TestCaseInTempDir):
         return transform, transform.trans_id_tree_file_id(self.wt.get_root_id())
 
     def test_existing_limbo(self):
-        limbo_name = local_path_from_url(
+        limbo_name = urlutils.local_path_from_url(
             self.wt._control_files.controlfilename('limbo'))
         transform, root = self.get_transform()
         os.mkdir(pathjoin(limbo_name, 'hehe'))

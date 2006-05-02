@@ -45,10 +45,9 @@ from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     Server,
     Transport,
-    urlescape,
-    urlunescape,
     )
 import bzrlib.ui
+import bzrlib.urlutils as urlutils
 
 try:
     import paramiko
@@ -339,7 +338,7 @@ class SFTPTransport (Transport):
         """
         # FIXME: share the common code across transports
         assert isinstance(relpath, basestring)
-        relpath = urlunescape(relpath).split('/')
+        relpath = urlutils.unescape(relpath).split('/')
         basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
@@ -673,7 +672,7 @@ class SFTPTransport (Transport):
                 raise TransportError('%s: invalid port number' % port)
         host = urllib.unquote(host)
 
-        path = urlunescape(path)
+        path = urlutils.unescape(path)
 
         # the initial slash should be removed from the path, and treated
         # as a homedir relative path (the path begins with a double slash
@@ -986,7 +985,7 @@ class SFTPFullAbsoluteServer(SFTPServer):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlescape(self._homedir[1:]))
+        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
 
 
 class SFTPServerWithoutSSH(SFTPServer):
@@ -1018,7 +1017,7 @@ class SFTPAbsoluteServer(SFTPServerWithoutSSH):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlescape(self._homedir[1:]))
+        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
 
 
 class SFTPHomeDirServer(SFTPServerWithoutSSH):

@@ -1,7 +1,8 @@
 The Transport API in bzrlib provides URL based access to network resources.
 
    >>> import os
-   >>> from bzrlib.osutils import getcwd, dirname, local_path_from_url
+   >>> from bzrlib.osutils import getcwd, dirname
+   >>> from bzrlib.urlutils import local_path_from_url
    >>> import bzrlib.transport as transport
    >>> root = transport.get_transport("file:///")
    >>>

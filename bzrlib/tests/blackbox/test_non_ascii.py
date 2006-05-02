@@ -24,7 +24,7 @@ import os
 import bzrlib
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter, note
-from bzrlib.osutils import local_path_to_url, urlfordisplay
+import bzrlib.urlutils as urlutils
 
 
 class TestNonAscii(TestCaseInTempDir):

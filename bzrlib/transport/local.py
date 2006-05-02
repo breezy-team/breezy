@@ -24,12 +24,12 @@ import sys
 from stat import ST_MODE, S_ISDIR, ST_SIZE
 import tempfile
 
-from bzrlib.trace import mutter
-from bzrlib.transport import Transport, Server, urlescape, urlunescape
 from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename, 
-                            check_legal_path,
-                            local_path_to_url, local_path_from_url)
+                            check_legal_path)
 from bzrlib.symbol_versioning import warn
+from bzrlib.trace import mutter
+from bzrlib.transport import Transport, Server
+import bzrlib.urlutils as urlutils
 
 
 class LocalTransport(Transport):
@@ -45,11 +45,11 @@ class LocalTransport(Transport):
                  DeprecationWarning,
                  stacklevel=2
                  )
-            base = local_path_to_url(base)
+            base = urlutils.local_path_to_url(base)
         if base[-1] != '/':
             base = base + '/'
         super(LocalTransport, self).__init__(base)
-        self._local_base = local_path_from_url(base)
+        self._local_base = urlutils.local_path_from_url(base)
 
     def should_cache(self):
         return False
@@ -69,8 +69,8 @@ class LocalTransport(Transport):
         assert isinstance(relpath, basestring), (type(relpath), relpath)
         # jam 20060426 Using normpath on the real path, because that ensures
         #       proper handling of stuff like
-        path = normpath(pathjoin(self._local_base, urlunescape(relpath)))
-        return local_path_to_url(path)
+        path = normpath(pathjoin(self._local_base, urlutils.unescape(relpath)))
+        return urlutils.local_path_to_url(path)
 
     def local_abspath(self, relpath):
         """Transform the given relative path URL into the actual path on disk
@@ -82,17 +82,17 @@ class LocalTransport(Transport):
         """
         absurl = self.abspath(relpath)
         # mutter(u'relpath %s => base: %s, absurl %s', relpath, self.base, absurl)
-        return local_path_from_url(absurl)
+        return urlutils.local_path_from_url(absurl)
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
         """
-        from bzrlib.osutils import urlrelpath, strip_url_trailing_slash
         if abspath is None:
             abspath = u'.'
 
-        return urlrelpath(strip_url_trailing_slash(self.base), 
-                       strip_url_trailing_slash(abspath))
+        return urlutils.file_relpath(
+            urlutils.strip_trailing_slash(self.base), 
+            urlutils.strip_trailing_slash(abspath))
 
     def has(self, relpath):
         return os.access(self.local_abspath(relpath), os.F_OK)
@@ -251,7 +251,7 @@ class LocalTransport(Transport):
         """
         path = self.local_abspath(relpath)
         try:
-            return [urlescape(entry) for entry in os.listdir(path)]
+            return [urlutils.escape(entry) for entry in os.listdir(path)]
         except (IOError, OSError), e:
             self._translate_error(e, path)
 
@@ -341,7 +341,7 @@ class LocalURLServer(Server):
 
     def get_url(self):
         """See Transport.Server.get_url."""
-        return local_path_to_url('')
+        return urlutils.local_path_to_url('')
 
 
 def get_test_permutations():

@@ -40,6 +40,7 @@ from bzrlib.errors import DependencyNotPresent
 import bzrlib.osutils as osutils
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, warning
+import bzrlib.urlutils as urlutils
 
 # {prefix: [transport_classes]}
 # Transports are inserted onto the list LIFO and tried in order; as a result
@@ -645,8 +646,9 @@ class Transport(object):
 
 
 # jam 20060426 For compatibility we copy the functions here
-urlescape = osutils.urlescape
-urlunescape = osutils.urlunescape
+# TODO: The should be marked as deprecated
+urlescape = urlutils.escape
+urlunescape = urlutils.unescape
 _urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<path>.*)$')
 
 
@@ -668,7 +670,7 @@ def get_transport(base):
             # instantiate it as such raise an appropriate error
             raise errors.InvalidURL(base, error_str % m.group('proto'))
         # This doesn't look like a protocol, consider it a local path
-        new_base = osutils.local_path_to_url(base)
+        new_base = urlutils.local_path_to_url(base)
         mutter('converting os path %r => url %s' , base, new_base)
         return new_base
 

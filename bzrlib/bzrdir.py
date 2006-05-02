@@ -43,8 +43,9 @@ from bzrlib.store.versioned import WeaveStore
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 from bzrlib.transactions import WriteTransaction
-from bzrlib.transport import get_transport, urlunescape
+from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
+import bzrlib.urlutils as urlutils
 from bzrlib.weave import Weave
 from bzrlib.xml4 import serializer_v4
 from bzrlib.xml5 import serializer_v5
@@ -151,6 +152,8 @@ class BzrDir(object):
         segments = url.split('/')
         if segments and segments[-1] not in ('', '.'):
             parent = '/'.join(segments[:-1])
+            print '_make_tail(%s) => parent: %s, segment: %s' % (
+                url, parent, segments[-1])
             t = bzrlib.transport.get_transport(parent)
             try:
                 t.mkdir(segments[-1])
@@ -454,7 +457,7 @@ class BzrDir(object):
             try:
                 format = BzrDirFormat.find_format(a_transport)
                 BzrDir._check_supported(format, False)
-                return format.open(a_transport), urlunescape(a_transport.relpath(url))
+                return format.open(a_transport), urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
                 mutter('not a branch in: %r %s', a_transport.base, e)
             new_t = a_transport.clone('..')
@@ -1625,7 +1628,7 @@ class ConvertBzrDir5To6(Converter):
             store_transport = self.bzrdir.transport.clone(store_name)
             store = TransportStore(store_transport, prefixed=True)
             for urlfilename in store_transport.list_dir('.'):
-                filename = urlunescape(urlfilename)
+                filename = urlutils.unescape(urlfilename)
                 if (filename.endswith(".weave") or
                     filename.endswith(".gz") or
                     filename.endswith(".sig")):

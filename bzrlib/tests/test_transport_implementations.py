@@ -31,8 +31,9 @@ from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
                            InvalidURL)
 from bzrlib.osutils import getcwd
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
-from bzrlib.transport import memory, urlescape
+from bzrlib.transport import memory
 import bzrlib.transport
+import bzrlib.urlutils as urlutils
 
 
 def _append(fn, txt):
@@ -114,11 +115,11 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.build_tree(files, transport=t)
         self.assertEqual(True, t.has('a'))
         self.assertEqual(False, t.has('c'))
-        self.assertEqual(True, t.has(urlescape('%')))
+        self.assertEqual(True, t.has(urlutils.escape('%')))
         self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
                 [True, True, False, False, True, False, True, False])
         self.assertEqual(True, t.has_any(['a', 'b', 'c']))
-        self.assertEqual(False, t.has_any(['c', 'd', 'f', urlescape('%%')]))
+        self.assertEqual(False, t.has_any(['c', 'd', 'f', urlutils.escape('%%')]))
         self.assertEqual(list(t.has_multi(iter(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']))),
                 [True, True, False, False, True, False, True, False])
         self.assertEqual(False, t.has_any(['c', 'c', 'c']))
@@ -927,7 +928,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         for fname in files:
             fname_utf8 = fname.encode('utf-8')
             contents = 'contents of %s\n' % (fname_utf8,)
-            self.check_transport_contents(contents, t, urlescape(fname))
+            self.check_transport_contents(contents, t, urlutils.escape(fname))
 
     def test_connect_twice_is_same_content(self):
         # check that our server (whatever it is) is accessable reliably

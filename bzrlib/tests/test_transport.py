@@ -33,8 +33,6 @@ from bzrlib.transport import (_get_protocol_handlers,
                               get_transport,
                               register_lazy_transport,
                               _set_protocol_handlers,
-                              urlescape,
-                              urlunescape,
                               Transport,
                               )
 from bzrlib.transport.memory import MemoryTransport
@@ -43,23 +41,6 @@ from bzrlib.transport.local import LocalTransport
 
 class TestTransport(TestCase):
     """Test the non transport-concrete class functionality."""
-
-    def test_urlescape(self):
-        self.assertEqual('%25', urlescape('%'))
-        self.assertEqual('%C3%A5', urlescape(u'\xe5'))
-
-    def test_urlunescape(self):
-        self.assertEqual('%', urlunescape('%25'))
-        self.assertEqual(u'\xe5', urlunescape('%C3%A5'))
-        self.assertEqual('%', urlunescape(urlescape('%')))
-
-        self.assertRaises(InvalidURL, urlunescape, u'\xe5')
-        self.assertRaises(InvalidURL, urlunescape, '\xe5')
-        self.assertRaises(InvalidURL, urlunescape, '%E5')
-
-    def test_url_escape_unescape(self):
-        self.assertEqual(u'\xe5', urlunescape(urlescape(u'\xe5')))
-        self.assertEqual('%', urlunescape(urlescape('%')))
 
     def test__get_set_protocol_handlers(self):
         handlers = _get_protocol_handlers()

@@ -56,13 +56,14 @@ import bzrlib.plugin
 from bzrlib.revision import common_ancestor
 import bzrlib.store
 import bzrlib.trace
-from bzrlib.transport import urlescape, get_transport
+from bzrlib.transport import get_transport
 import bzrlib.transport
 from bzrlib.transport.local import LocalRelpathServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.tests.treeshape import build_tree_contents
+import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
 default_transport = LocalRelpathServer
@@ -714,7 +715,7 @@ class TestCaseInTempDir(TestCase):
         for name in shape:
             self.assert_(isinstance(name, basestring))
             if name[-1] == '/':
-                transport.mkdir(urlescape(name[:-1]))
+                transport.mkdir(urlutils.escape(name[:-1]))
             else:
                 if line_endings == 'binary':
                     end = '\n'
@@ -723,7 +724,7 @@ class TestCaseInTempDir(TestCase):
                 else:
                     raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
-                transport.put(urlescape(name), StringIO(content))
+                transport.put(urlutils.escape(name), StringIO(content))
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
@@ -821,7 +822,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         if relpath is not None and relpath != '.':
             if not base.endswith('/'):
                 base = base + '/'
-            base = base + urlescape(relpath)
+            base = base + urlutils.escape(relpath)
         return base
 
     def get_transport(self):
@@ -1052,6 +1053,7 @@ def test_suite():
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
                    'bzrlib.tests.test_upgrade',
+                   'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
