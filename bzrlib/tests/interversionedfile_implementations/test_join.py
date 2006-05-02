@@ -33,11 +33,11 @@ class TestJoin(TestCaseWithTransport):
                                           get_transport(self.get_url()),
                                           create=True)
 
-    def get_target(self, name='target'):
+    def get_target(self, name='target', create=True):
         """"Get an empty versioned file to join into."""
         return self.versionedfile_factory_to(name,
                                              get_transport(self.get_url()),
-                                             create=True)
+                                             create=create)
 
     def test_join(self):
         f1 = self.get_source()
@@ -317,3 +317,24 @@ class TestJoin(TestCaseWithTransport):
         target = self.get_target()
         target.join(source, version_ids=['select_me'])
         self.assertEqual(['inherit_me', 'select_me'], target.versions())
+
+    def test_join_odd_records(self):
+        # this tests that joining the 1st, 3rd and 5th records and not the
+        # 2nd and 4th works, particularly after reopening the file.
+        # this test is designed to test versioned files that perform
+        # optimisations on the join. Grabbing partial data and reopening the
+        # file make it likely to trigger a fault.
+        source = self.get_source()
+        source.add_lines('1', [], ['1st\n'])
+        source.add_lines('2', [], ['2nd\n'])
+        source.add_lines('3', ['1'], ['1st\n', '2nd\n'])
+        source.add_lines('4', ['2'], ['1st\n'])
+        source.add_lines('5', ['3'], ['1st\n', '2nd\n', '3rd\n'])
+        target = self.get_target()
+        target.join(source, version_ids=['1', '3', '5'])
+        target = self.get_target(create=False)
+        self.assertEqual(set(['1', '3', '5']), set(target.versions()))
+        self.assertEqual(3, len(target.versions()))
+        self.assertEqual(['1st\n'], target.get_lines('1'))
+        self.assertEqual(['1st\n', '2nd\n'], target.get_lines('3'))
+        self.assertEqual(['1st\n', '2nd\n', '3rd\n'], target.get_lines('5'))
