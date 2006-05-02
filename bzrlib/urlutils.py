@@ -107,6 +107,20 @@ if sys.platform == 'win32':
     MIN_ABS_URLPATHLENGTH = len('file:///C|/')
 
 
+def strip_trailing_slash(url):
+    """Strip trailing slash, except for root paths.
+
+    The definition of 'root path' is platform-dependent.
+    But the passed in URL must be a file:/// url.
+    """
+    assert url.startswith('file:///'), \
+        'strip_trailing_slash expects file:// urls (%s)' % url
+    if len(url) != MIN_ABS_URLPATHLENGTH and url[-1] == '/':
+        return url[:-1]
+    else:
+        return url
+
+
 def unescape(url):
     """Unescape relpath from url format.
 
@@ -171,19 +185,5 @@ def unescape_for_display(url):
             # after doing unescaping we will just leave it alone
             pass
     return '/'.join(res)
-
-
-def strip_trailing_slash(url):
-    """Strip trailing slash, except for root paths.
-
-    The definition of 'root path' is platform-dependent.
-    But the passed in URL must be a file:/// url.
-    """
-    assert url.startswith('file:///'), \
-        'strip_trailing_slash expects file:// urls (%s)' % url
-    if len(url) != MIN_ABS_URLPATHLENGTH and url[-1] == '/':
-        return url[:-1]
-    else:
-        return url
 
 
