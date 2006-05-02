@@ -34,6 +34,79 @@ def escape(relpath):
     return str(urllib.quote(relpath))
 
 
+def file_relpath(base, path):
+    """Compute just the relative sub-portion of a url
+    
+    This assumes that both paths are already fully specified file:// URLs.
+    """
+    assert len(base) >= MIN_ABS_URLPATHLENGTH, ('Length of base must be equal or'
+        ' exceed the platform minimum url length (which is %d)' % 
+        MIN_ABS_URLPATHLENGTH)
+
+    base = local_path_from_url(base)
+    path = local_path_from_url(path)
+    return escape(bzrlib.osutils.relpath(base, path))
+
+
+# jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
+def _posix_local_path_from_url(url):
+    """Convert a url like file:///path/to/foo into /path/to/foo"""
+    if not url.startswith('file:///'):
+        raise errors.InvalidURL(url, 'local urls must start with file:///')
+    # We only strip off 2 slashes
+    return unescape(url[len('file://'):])
+
+
+def _posix_local_path_to_url(path):
+    """Convert a local path like ./foo into a URL like file:///path/to/foo
+
+    This also handles transforming escaping unicode characters, etc.
+    """
+    # importing directly from posixpath allows us to test this 
+    # on non-posix platforms
+    from posixpath import normpath
+    return 'file://' + escape(normpath(bzrlib.osutils._posix_abspath(path)))
+
+
+def _win32_local_path_from_url(url):
+    """Convert a url like file:///C|/path/to/foo into C:/path/to/foo"""
+    if not url.startswith('file:///'):
+        raise errors.InvalidURL(url, 'local urls must start with file:///')
+    # We strip off all 3 slashes
+    win32_url = url[len('file:///'):]
+    if (win32_url[0] not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        or win32_url[1] not in  '|:'
+        or win32_url[2] != '/'):
+        raise errors.InvalidURL(url, 'Win32 file urls start with file:///X|/, where X is a valid drive letter')
+    # TODO: jam 20060426, we could .upper() or .lower() the drive letter
+    #       for better consistency.
+    return win32_url[0].upper() + u':' + unescape(win32_url[2:])
+
+
+def _win32_local_path_to_url(path):
+    """Convert a local path like ./foo into a URL like file:///C|/path/to/foo
+
+    This also handles transforming escaping unicode characters, etc.
+    """
+    # importing directly from ntpath allows us to test this 
+    # on non-win32 platforms
+    # TODO: jam 20060426 consider moving this import outside of the function
+    win32_path = bzrlib.osutils._nt_normpath(
+        bzrlib.osutils._win32_abspath(path)).replace('\\', '/')
+    return 'file:///' + win32_path[0].upper() + '|' + escape(win32_path[2:])
+
+
+local_path_to_url = _posix_local_path_to_url
+local_path_from_url = _posix_local_path_from_url
+MIN_ABS_URLPATHLENGTH = len('file:///')
+
+if sys.platform == 'win32':
+    local_path_to_url = _win32_local_path_to_url
+    local_path_from_url = _win32_local_path_from_url
+
+    MIN_ABS_URLPATHLENGTH = len('file:///C|/')
+
+
 def unescape(url):
     """Unescape relpath from url format.
 
@@ -56,34 +129,6 @@ def unescape(url):
     except UnicodeError, e:
         raise errors.InvalidURL(url, 'Unable to encode the URL as utf-8: %s' % (e,))
     return unicode_path
-
-
-def file_relpath(base, path):
-    """Compute just the relative sub-portion of a url
-    
-    This assumes that both paths are already fully specified file:// URLs.
-    """
-    assert len(base) >= MIN_ABS_URLPATHLENGTH, ('Length of base must be equal or'
-        ' exceed the platform minimum url length (which is %d)' % 
-        MIN_ABS_URLPATHLENGTH)
-
-    base = local_path_from_url(base)
-    path = local_path_from_url(path)
-    return escape(bzrlib.osutils.relpath(base, path))
-
-
-def strip_trailing_slash(url):
-    """Strip trailing slash, except for root paths.
-
-    The definition of 'root path' is platform-dependent.
-    But the passed in URL must be a file:/// url.
-    """
-    assert url.startswith('file:///'), \
-        'strip_trailing_slash expects file:// urls (%s)' % url
-    if len(url) != MIN_ABS_URLPATHLENGTH and url[-1] == '/':
-        return url[:-1]
-    else:
-        return url
 
 
 # These are characters that if escaped, should stay that way
@@ -127,59 +172,18 @@ def unescape_for_display(url):
             pass
     return '/'.join(res)
 
-def _posix_local_path_to_url(path):
-    """Convert a local path like ./foo into a URL like file:///path/to/foo
 
-    This also handles transforming escaping unicode characters, etc.
+def strip_trailing_slash(url):
+    """Strip trailing slash, except for root paths.
+
+    The definition of 'root path' is platform-dependent.
+    But the passed in URL must be a file:/// url.
     """
-    # importing directly from posixpath allows us to test this 
-    # on non-posix platforms
-    from posixpath import normpath
-    return 'file://' + escape(normpath(bzrlib.osutils._posix_abspath(path)))
+    assert url.startswith('file:///'), \
+        'strip_trailing_slash expects file:// urls (%s)' % url
+    if len(url) != MIN_ABS_URLPATHLENGTH and url[-1] == '/':
+        return url[:-1]
+    else:
+        return url
 
 
-def _posix_local_path_from_url(url):
-    """Convert a url like file:///path/to/foo into /path/to/foo"""
-    if not url.startswith('file:///'):
-        raise errors.InvalidURL(url, 'local urls must start with file:///')
-    # We only strip off 2 slashes
-    return unescape(url[len('file://'):])
-
-
-def _win32_local_path_to_url(path):
-    """Convert a local path like ./foo into a URL like file:///C|/path/to/foo
-
-    This also handles transforming escaping unicode characters, etc.
-    """
-    # importing directly from ntpath allows us to test this 
-    # on non-win32 platforms
-    # TODO: jam 20060426 consider moving this import outside of the function
-    win32_path = bzrlib.osutils._nt_normpath(
-        bzrlib.osutils._win32_abspath(path)).replace('\\', '/')
-    return 'file:///' + win32_path[0].upper() + '|' + escape(win32_path[2:])
-
-
-def _win32_local_path_from_url(url):
-    """Convert a url like file:///C|/path/to/foo into C:/path/to/foo"""
-    if not url.startswith('file:///'):
-        raise errors.InvalidURL(url, 'local urls must start with file:///')
-    # We strip off all 3 slashes
-    win32_url = url[len('file:///'):]
-    if (win32_url[0] not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-        or win32_url[1] not in  '|:'
-        or win32_url[2] != '/'):
-        raise errors.InvalidURL(url, 'Win32 file urls start with file:///X|/, where X is a valid drive letter')
-    # TODO: jam 20060426, we could .upper() or .lower() the drive letter
-    #       for better consistency.
-    return win32_url[0].upper() + u':' + unescape(win32_url[2:])
-
-
-local_path_to_url = _posix_local_path_to_url
-local_path_from_url = _posix_local_path_from_url
-MIN_ABS_URLPATHLENGTH = len('file:///')
-
-if sys.platform == 'win32':
-    local_path_to_url = _win32_local_path_to_url
-    local_path_from_url = _win32_local_path_from_url
-
-    MIN_ABS_URLPATHLENGTH = len('file:///C|/')
