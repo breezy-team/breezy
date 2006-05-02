@@ -39,9 +39,9 @@ def file_relpath(base, path):
     
     This assumes that both paths are already fully specified file:// URLs.
     """
-    assert len(base) >= MIN_ABS_URLPATHLENGTH, ('Length of base must be equal or'
+    assert len(base) >= MIN_ABS_FILEURL_LENGTH, ('Length of base must be equal or'
         ' exceed the platform minimum url length (which is %d)' % 
-        MIN_ABS_URLPATHLENGTH)
+        MIN_ABS_FILEURL_LENGTH)
 
     base = local_path_from_url(base)
     path = local_path_from_url(path)
@@ -98,27 +98,69 @@ def _win32_local_path_to_url(path):
 
 local_path_to_url = _posix_local_path_to_url
 local_path_from_url = _posix_local_path_from_url
-MIN_ABS_URLPATHLENGTH = len('file:///')
+MIN_ABS_FILEURL_LENGTH = len('file:///')
 
 if sys.platform == 'win32':
     local_path_to_url = _win32_local_path_to_url
     local_path_from_url = _win32_local_path_from_url
 
-    MIN_ABS_URLPATHLENGTH = len('file:///C|/')
+    MIN_ABS_FILEURL_LENGTH = len('file:///C|/')
 
+
+def basename(url, exclude_trailing_slash=True):
+    """Return the last component of a URL.
+
+    :param url: The URL in question
+    :param exclude_trailing_slash: If the url looks like "path/to/foo/"
+        ignore the final slash and return 'foo' rather than ''
+    """
+    if exclude_trailing_slash:
+        url = strip_trailing_slash(url)
 
 def strip_trailing_slash(url):
     """Strip trailing slash, except for root paths.
 
     The definition of 'root path' is platform-dependent.
-    But the passed in URL must be a file:/// url.
+    This assumes that all URLs are valid netloc urls, such that they
+    form:
+    scheme://host/path
+    It searches for ://, and then refuses to remove the next '/'.
+    It can also handle relative paths
+    Examples:
+        path/to/foo       => path/to/foo
+        path/to/foo/      => path/to/foo
+        http://host/path/ => http://host/path
+        http://host/path  => http://host/path
+        http://host/      => http://host/
+        file:///          => file:///
+        file:///foo/      => file:///foo
+        # This is unique on win32 platforms, and is the only URL
+        # format which does it differently.
+        file:///C|/       => file:///C|/
     """
-    assert url.startswith('file:///'), \
-        'strip_trailing_slash expects file:// urls (%s)' % url
-    if len(url) != MIN_ABS_URLPATHLENGTH and url[-1] == '/':
-        return url[:-1]
-    else:
+    if not url.endswith('/'):
+        # Nothing to do
         return url
+    if sys.platform == 'win32' and url.startswith('file:///'):
+        # This gets handled specially, because the 'top-level'
+        # of a win32 path is actually the drive letter
+        if len(url) > MIN_ABS_FILEURL_LENGTH:
+            return url[:-1]
+    scheme_loc = url.find('://')
+    if scheme_loc == -1:
+        # This is a relative path, as it has no scheme
+        # so just chop off the last character
+        return url[:-1]
+
+    # Find the path separating slash
+    # (first slash after the ://)
+    first_path_slash = url.find('/', scheme_loc+3)
+    if first_path_slash == -1 or first_path_slash == len(url)-1:
+        # Don't chop off anything if the only slash is the path
+        # separating slash
+        return url
+
+    return url[:-1]
 
 
 def unescape(url):

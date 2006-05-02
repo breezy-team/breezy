@@ -73,6 +73,39 @@ class TestUrlToPath(TestCase):
         # Not a valid _win32 url, no drive letter
         self.assertRaises(InvalidURL, from_url, 'file:///path/to/foo')
 
+    def test_strip_trailing_slash(self):
+        sts = urlutils.strip_trailing_slash
+        if sys.platform == 'win32':
+            self.assertEqual('file:///C|/', sts('file:///C|/'))
+            self.assertEqual('file:///C|/foo', sts('file:///C|/foo'))
+            self.assertEqual('file:///C|/foo', sts('file:///C|/foo/'))
+        else:
+            self.assertEqual('file:///', sts('file:///'))
+            self.assertEqual('file:///foo', sts('file:///foo'))
+            self.assertEqual('file:///foo', sts('file:///foo/'))
+
+        self.assertEqual('http://host/', sts('http://host/'))
+        self.assertEqual('http://host/foo', sts('http://host/foo'))
+        self.assertEqual('http://host/foo', sts('http://host/foo/'))
+
+        # No need to fail just because the slash is missing
+        self.assertEqual('http://host', sts('http://host'))
+        # TODO: jam 20060502 Should this raise InvalidURL?
+        self.assertEqual('file://', sts('file://'))
+
+        self.assertEqual('random+scheme://user:pass@ahost:port/path',
+            sts('random+scheme://user:pass@ahost:port/path'))
+        self.assertEqual('random+scheme://user:pass@ahost:port/path',
+            sts('random+scheme://user:pass@ahost:port/path/'))
+        self.assertEqual('random+scheme://user:pass@ahost:port/',
+            sts('random+scheme://user:pass@ahost:port/'))
+
+        # Make sure relative paths work too
+        self.assertEqual('path/to/foo', sts('path/to/foo'))
+        self.assertEqual('path/to/foo', sts('path/to/foo/'))
+        self.assertEqual('../to/foo', sts('../to/foo/'))
+        self.assertEqual('path/../foo', sts('path/../foo/'))
+
     def test_unescape_for_display(self):
         # Test that URLs are converted to nice unicode strings for display
         disp = urlutils.unescape_for_display
