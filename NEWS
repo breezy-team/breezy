@@ -101,6 +101,10 @@ bzr 0.8rc1  2006-04-14
     * New option 'diff --diff-prefix' to control how files are named in diff
       output.  (Alexander Belchenko, Goffredo Baroncelli)
 
+    * If bzr shows an unexpected revision-history after pulling (perhaps due
+      to a reweave) it can now be corrected by 'bzr reconcile'.
+      (Robert Collins)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 

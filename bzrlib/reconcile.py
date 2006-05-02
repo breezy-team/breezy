@@ -200,7 +200,9 @@ class RepoReconciler(object):
             else:
                 mutter('found ghost %s', parent)
         self._rev_graph[rev_id] = parents   
-        if set(self.inventory.get_parents(rev_id)) != set(parents):
+        if (set(self.inventory.get_parents(rev_id)) != set(parents) or
+            (len(self.inventory.get_parents(rev_id)) and len(parents) and
+             parents[0] != self.inventory.get_parents(rev_id)[0])):
             self.inconsistent_parents += 1
             mutter('Inconsistent inventory parents: id {%s} '
                    'inventory claims %r, '
@@ -299,29 +301,6 @@ class KnitReconciler(RepoReconciler):
         self.repo.control_weaves.delete('inventory.new', self.transaction)
         self.inventory = None
         self.pb.note('Inventory regenerated.')
-
-    def _graph_revision(self, rev_id):
-        """Load a revision into the revision graph."""
-        # pick a random revision
-        # analyse revision id rev_id and put it in the stack.
-        self._reweave_step('loading revisions')
-        rev = self.repo._revision_store.get_revision(rev_id, self.transaction)
-        assert rev.revision_id == rev_id
-        parents = list(rev.parent_ids)
-        for parent in rev.parent_ids:
-            # debug info only : not a problem for knits.
-            mutter('found ghost %s', parent)
-        self._rev_graph[rev_id] = parents   
-        if set(self.revisions.get_parents(rev_id)) != set(parents):
-            self.inconsistent_parents += 1
-            mutter('Inconsistent inventory parents: id {%s} '
-                   'inventory claims %r, '
-                   'available parents are %r, '
-                   'unavailable parents are %r',
-                   rev_id, 
-                   set(self.inventory.get_parents(rev_id)),
-                   set(parents),
-                   set(rev.parent_ids).difference(set(parents)))
 
     def _check_garbage_inventories(self):
         """Check for garbage inventories which we cannot trust
