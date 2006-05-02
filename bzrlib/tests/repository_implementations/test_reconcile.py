@@ -76,21 +76,34 @@ class TestsNeedingReweave(TestCaseWithRepository):
         rev.parent_ids = []
         repo.add_revision('the_ghost', rev)
 
-    def test_reweave_empty(self):
+    def checkNoBackupInventory(self, aBzrDir):
+        """Check that there is no backup inventory in aBzrDir."""
+        repo = aBzrDir.open_repository()
+        self.assertRaises(errors.NoSuchFile,
+                          repo.control_weaves.get_weave,
+                          'inventory.backup',
+                          repo.get_transaction())
+
+    def checkEmptyReconcile(self, **kwargs):
+        """Check a reconcile on an empty repository."""
         self.make_repository('empty')
         d = bzrlib.bzrdir.BzrDir.open('empty')
         # calling on a empty repository should do nothing
-        reconciler = d.find_repository().reconcile()
+        reconciler = d.find_repository().reconcile(**kwargs)
         # no inconsistent parents should have been found
         self.assertEqual(0, reconciler.inconsistent_parents)
         # and no garbage inventories
         self.assertEqual(0, reconciler.garbage_inventories)
         # and no backup weave should have been needed/made.
-        repo = d.open_repository()
-        self.assertRaises(errors.NoSuchFile,
-                          repo.control_weaves.get_weave,
-                          'inventory.backup',
-                          repo.get_transaction())
+        self.checkNoBackupInventory(d)
+
+    def test_reconile_empty(self):
+        # in an empty repo, theres nothing to do.
+        self.checkEmptyReconcile()
+
+    def test_reconcile_empty_thorough(self):
+        # reconcile should accept thorough=True
+        self.checkEmptyReconcile(thorough=True)
 
     def test_reweave_inventory_without_revision_reconcile(self):
         # smoke test for the all in one ui tool
@@ -104,28 +117,11 @@ class TestsNeedingReweave(TestCaseWithRepository):
         self.assertRaises(errors.RevisionNotPresent,
                           repo.get_inventory, 'missing')
 
-    def test_reweave_inventory_without_revision_reconciler(self):
-        # smoke test for the all in one Reconciler class,
-        # other tests use the lower level repo.reconcile()
-        d = bzrlib.bzrdir.BzrDir.open('inventory_without_revision')
-        reconciler = Reconciler(d)
-        reconciler.reconcile()
-        # no inconsistent parents should have been found
-        self.assertEqual(1, reconciler.inconsistent_parents)
-        # and one garbage inventories
-        self.assertEqual(1, reconciler.garbage_inventories)
-        # now the backup should have it but not the current inventory
-        repo = d.open_repository()
-        backup = repo.control_weaves.get_weave('inventory.backup',
-                                               repo.get_transaction())
-        self.assertTrue('missing' in backup.versions())
-        self.assertRaises(errors.RevisionNotPresent,
-                          repo.get_inventory, 'missing')
-
-    def test_reweave_inventory_without_revision(self):
+    def check_thorough_reweave_missing_revision(self, aBzrDir, reconcile,
+            **kwargs):
         # actual low level test.
         d = bzrlib.bzrdir.BzrDir.open('inventory_without_revision')
-        repo = d.open_repository()
+        repo = aBzrDir.open_repository()
         if ([None, 'missing', 'references_missing'] 
             != repo.get_ancestry('references_missing')):
             # the repo handles ghosts without corruption, so reconcile has
@@ -133,14 +129,14 @@ class TestsNeedingReweave(TestCaseWithRepository):
             expected_inconsistent_parents = 0
         else:
             expected_inconsistent_parents = 1
-        reconciler = repo.reconcile()
+        reconciler = reconcile(**kwargs)
         # some number of inconsistent parents should have been found
         self.assertEqual(expected_inconsistent_parents,
                          reconciler.inconsistent_parents)
         # and one garbage inventories
         self.assertEqual(1, reconciler.garbage_inventories)
         # now the backup should have it but not the current inventory
-        repo = d.open_repository()
+        repo = aBzrDir.open_repository()
         backup = repo.control_weaves.get_weave('inventory.backup',
                                                repo.get_transaction())
         self.assertTrue('missing' in backup.versions())
@@ -151,9 +147,30 @@ class TestsNeedingReweave(TestCaseWithRepository):
         self.assertEqual([None, 'references_missing'],
                          repo.get_ancestry('references_missing'))
 
+    def test_reweave_inventory_without_revision_reconciler(self):
+        # smoke test for the all in one Reconciler class,
+        # other tests use the lower level repo.reconcile()
+        d = bzrlib.bzrdir.BzrDir.open('inventory_without_revision')
+        def reconcile():
+            reconciler = Reconciler(d)
+            reconciler.reconcile()
+            return reconciler
+        self.check_thorough_reweave_missing_revision(d, reconcile)
+
+    def test_reweave_inventory_without_revision(self):
+        # actual low level test.
+        d = bzrlib.bzrdir.BzrDir.open('inventory_without_revision')
+        repo = d.open_repository()
+        repo.reconcile()
+        self.checkUnreconciled(d, repo.reconcile())
+        # nothing should have been altered yet : inventories without
+        # revisions are not data loss incurring for current format
+        self.check_thorough_reweave_missing_revision(d, repo.reconcile,
+            thorough=True)
+
     def test_reweave_inventory_preserves_a_revision_with_ghosts(self):
         d = bzrlib.bzrdir.BzrDir.open('inventory_one_ghost')
-        reconciler = d.open_repository().reconcile()
+        reconciler = d.open_repository().reconcile(thorough=True)
         # no inconsistent parents should have been found: 
         # the lack of a parent for ghost is normal
         self.assertEqual(0, reconciler.inconsistent_parents)
@@ -174,6 +191,9 @@ class TestsNeedingReweave(TestCaseWithRepository):
             return
         self.assertEqual([None, 'ghost'], ghost_ancestry)
         reconciler = repo.reconcile()
+        self.checkUnreconciled(d, reconciler)
+
+        reconciler = repo.reconcile(thorough=True)
         # one inconsistent parents should have been found : the
         # available but not reference parent for ghost.
         self.assertEqual(1, reconciler.inconsistent_parents)
@@ -185,3 +205,11 @@ class TestsNeedingReweave(TestCaseWithRepository):
         repo.get_inventory('the_ghost')
         self.assertEqual([None, 'the_ghost', 'ghost'], repo.get_ancestry('ghost'))
         self.assertEqual([None, 'the_ghost'], repo.get_ancestry('the_ghost'))
+
+    def checkUnreconciled(self, d, reconciler):
+        """Check that d did not get reconciled."""
+        # nothing should have been fixed yet:
+        self.assertEqual(0, reconciler.inconsistent_parents)
+        # and no garbage inventories
+        self.assertEqual(0, reconciler.garbage_inventories)
+        self.checkNoBackupInventory(d)

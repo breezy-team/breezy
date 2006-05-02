@@ -166,6 +166,10 @@ bzr 0.8rc1  2006-04-14
       useful for testing or for overriding the bzrlib.progress heuristic.
       (Robert Collins)
 
+    * Repository.reconcile now takes a thorough keyword parameter to allow
+      requesting an indepth reconciliation, rather than just a data-loss 
+      check. (Robert Collins)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
