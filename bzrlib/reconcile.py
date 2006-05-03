@@ -116,12 +116,17 @@ class RepoReconciler(object):
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
-        if self.thorough:
-            self._reweave_inventory()
+        self._reweave_inventory()
 
     def _reweave_inventory(self):
-        """Regenerate the inventory weave for the repository from scratch."""
-        # local because its really a wart we want to hide
+        """Regenerate the inventory weave for the repository from scratch.
+        
+        This is a smart function: it will only do the reweave if doing it 
+        will correct data issues. The self.thorough flag controls whether
+        only data-loss causing issues (!self.thorough) or all issues
+        (self.thorough) are treated as requiring the reweave.
+        """
+        # local because needing to know about WeaveFile is a wart we want to hide
         from bzrlib.weave import WeaveFile, Weave
         transaction = self.repo.get_transaction()
         self.pb.update('Reading inventory data.')
@@ -139,7 +144,10 @@ class RepoReconciler(object):
             # put a revision into the graph.
             self._graph_revision(rev_id)
         self._check_garbage_inventories()
-        if not self.inconsistent_parents and not self.garbage_inventories:
+        # if there are no inconsistent_parents and 
+        # (no garbage inventories or we are not doing a thorough check)
+        if (not self.inconsistent_parents and 
+            (not self.garbage_inventories or not self.thorough)):
             self.pb.note('Inventory ok.')
             return
         self.pb.update('Backing up inventory...', 0, 0)
@@ -200,9 +208,7 @@ class RepoReconciler(object):
             else:
                 mutter('found ghost %s', parent)
         self._rev_graph[rev_id] = parents   
-        if (set(self.inventory.get_parents(rev_id)) != set(parents) or
-            (len(self.inventory.get_parents(rev_id)) and len(parents) and
-             parents[0] != self.inventory.get_parents(rev_id)[0])):
+        if self._parents_are_inconsistent(rev_id, parents):
             self.inconsistent_parents += 1
             mutter('Inconsistent inventory parents: id {%s} '
                    'inventory claims %r, '
@@ -213,12 +219,32 @@ class RepoReconciler(object):
                    set(parents),
                    set(rev.parent_ids).difference(set(parents)))
 
+    def _parents_are_inconsistent(self, rev_id, parents):
+        """Return True if the parents list of rev_id does not match the weave.
+
+        This detect inconsistences based on the self.thorough value:
+        if thorough is on, the first parent value is checked as well as ghost
+        differences.
+        Otherwise only the ghost differences are evaluated.
+        """
+        weave_parents = self.inventory.get_parents(rev_id)
+        weave_missing_old_ghosts = set(weave_parents) != set(parents)
+        first_parent_is_wrong = (
+            len(weave_parents) and len(parents) and
+            parents[0] != weave_parents[0])
+        if self.thorough:
+            return weave_missing_old_ghosts or first_parent_is_wrong
+        else:
+            return weave_missing_old_ghosts
+
     def _check_garbage_inventories(self):
         """Check for garbage inventories which we cannot trust
 
         We cant trust them because their pre-requisite file data may not
         be present - all we know is that their revision was not installed.
         """
+        if not self.thorough:
+            return
         inventories = set(self.inventory.versions())
         revisions = set(self._rev_graph.keys())
         garbage = inventories.difference(revisions)
