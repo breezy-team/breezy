@@ -223,7 +223,7 @@ class WorkingTree(bzrlib.tree.Tree):
                  DeprecationWarning,
                  stacklevel=2)
             wt = WorkingTree.open(basedir)
-            self.branch = wt.branch
+            self._branch = wt.branch
             self.basedir = wt.basedir
             self._control_files = wt._control_files
             self._hashcache = wt._hashcache
@@ -244,9 +244,9 @@ class WorkingTree(bzrlib.tree.Tree):
                      DeprecationWarning,
                      stacklevel=2
                      )
-            self.branch = branch
+            self._branch = branch
         else:
-            self.branch = self.bzrdir.open_branch()
+            self._branch = self.bzrdir.open_branch()
         assert isinstance(self.branch, Branch), \
             "branch %r is not a Branch" % self.branch
         self.basedir = realpath(basedir)
@@ -281,6 +281,14 @@ class WorkingTree(bzrlib.tree.Tree):
             self._set_inventory(self.read_working_inventory())
         else:
             self._set_inventory(_inventory)
+
+    branch = property(
+        fget=lambda self: self._branch,
+        doc="""The branch this WorkingTree is connected to.
+
+            This cannot be set - it is reflective of the actual disk structure
+            the working tree has been constructed from.
+            """)
 
     def _set_inventory(self, inv):
         self._inventory = inv
@@ -1577,6 +1585,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         transport = a_bzrdir.get_workingtree_transport(self)
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
+        control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
         branch = a_bzrdir.open_branch()
         if revision_id is None:
@@ -1589,11 +1598,16 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          _format=self,
                          _bzrdir=a_bzrdir,
                          _control_files=control_files)
-        wt._write_inventory(inv)
-        wt.set_root_id(inv.root.file_id)
-        wt.set_last_revision(revision_id)
-        wt.set_pending_merges([])
-        build_tree(wt.basis_tree(), wt)
+        wt.lock_write()
+        try:
+            wt._write_inventory(inv)
+            wt.set_root_id(inv.root.file_id)
+            wt.set_last_revision(revision_id)
+            wt.set_pending_merges([])
+            build_tree(wt.basis_tree(), wt)
+        finally:
+            wt.unlock()
+            control_files.unlock()
         return wt
 
     def __init__(self):

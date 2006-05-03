@@ -90,3 +90,16 @@ class TestSafeUnicode(TestCase):
         self.assertRaises(BzrBadParameterNotUnicode,
                           osutils.safe_unicode,
                           '\xbb\xbb')
+
+
+class TestSplitLines(TestCase):
+
+    def test_split_unicode(self):
+        self.assertEqual([u'foo\n', u'bar\xae'],
+                         osutils.split_lines(u'foo\nbar\xae'))
+        self.assertEqual([u'foo\n', u'bar\xae\n'],
+                         osutils.split_lines(u'foo\nbar\xae\n'))
+
+    def test_split_with_carriage_returns(self):
+        self.assertEqual(['foo\rbar\n'],
+                         osutils.split_lines('foo\rbar\n'))

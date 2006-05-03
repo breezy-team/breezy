@@ -21,12 +21,13 @@ import os
 from StringIO import StringIO
 import sys
 
-
+import bzrlib
 import bzrlib.errors as errors
 from bzrlib.progress import TTYProgressBar, ProgressBarStack
 from bzrlib.tests import TestCase
 from bzrlib.ui import SilentUIFactory
 from bzrlib.ui.text import TextUIFactory
+
 
 class UITests(TestCase):
 
@@ -107,3 +108,11 @@ class UITests(TestCase):
         self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
         pb2.finished()
         pb1.finished()
+
+    def test_text_factory_setting_progress_bar(self):
+        # we should be able to choose the progress bar type used.
+        factory = bzrlib.ui.text.TextUIFactory(
+            bar_type=bzrlib.progress.DotsProgressBar)
+        bar = factory.nested_progress_bar()
+        bar.finished()
+        self.assertIsInstance(bar, bzrlib.progress.DotsProgressBar)

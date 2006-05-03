@@ -1330,23 +1330,14 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
     def initialize(self, a_bzrdir, shared=False):
         """Create a knit format 1 repository.
 
+        :param a_bzrdir: bzrdir to contain the new repository; must already
+            be initialized.
         :param shared: If true the repository will be initialized as a shared
                        repository.
-        XXX NOTE that this current uses a Weave for testing and will become 
-            A Knit in due course.
         """
-        from bzrlib.weavefile import write_weave_v5
-        from bzrlib.weave import Weave
-
-        # Create an empty weave
-        sio = StringIO()
-        bzrlib.weavefile.write_weave_v5(Weave(), sio)
-        empty_weave = sio.getvalue()
-
         mutter('creating repository in %s.', a_bzrdir.transport.base)
-        dirs = ['revision-store', 'knits', 'control']
-        files = [('control/inventory.weave', StringIO(empty_weave)), 
-                 ]
+        dirs = ['revision-store', 'knits']
+        files = []
         utf8_files = [('format', self.get_format_string())]
         
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
@@ -1389,9 +1380,9 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-_default_format = RepositoryFormat7()
+RepositoryFormat.register_format(RepositoryFormat7())
+_default_format = RepositoryFormatKnit1()
 RepositoryFormat.register_format(_default_format)
-RepositoryFormat.register_format(RepositoryFormatKnit1())
 RepositoryFormat.set_default_format(_default_format)
 _legacy_formats = [RepositoryFormat4(),
                    RepositoryFormat5(),
@@ -1520,7 +1511,7 @@ class InterRepository(InterObject):
 class InterWeaveRepo(InterRepository):
     """Optimised code paths between Weave based repositories."""
 
-    _matching_repo_format = _default_format
+    _matching_repo_format = RepositoryFormat7()
     """Repository format for testing with."""
 
     @staticmethod

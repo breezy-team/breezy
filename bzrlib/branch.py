@@ -1150,7 +1150,10 @@ class BzrBranch(Branch):
         # FIXUP this and get_parent in a future branch format bump:
         # read and rewrite the file, and have the new format code read
         # using .get not .get_utf8. RBC 20060125
-        self.control_files.put_utf8('parent', url + '\n')
+        if url is None:
+            self.control_files._transport.delete('parent')
+        else:
+            self.control_files.put_utf8('parent', url + '\n')
 
     def tree_config(self):
         return TreeConfig(self)

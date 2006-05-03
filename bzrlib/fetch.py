@@ -163,26 +163,13 @@ class RepoFetcher(object):
             for file_id in file_ids:
                 texts_pb.update("fetch texts", count, num_file_ids)
                 count +=1
-                try:
-                    to_weave = self.to_weaves.get_weave(file_id,
-                        self.to_repository.get_transaction())
-                except errors.NoSuchFile:
-                    # destination is empty, just copy it.
-                    # this copies all the texts, which is useful and 
-                    # on per-file basis quite cheap.
-                    self.to_weaves.copy_multi(
-                        self.from_weaves,
-                        [file_id],
-                        None,
-                        self.from_repository.get_transaction(),
-                        self.to_repository.get_transaction())
-                else:
-                    # destination has contents, must merge
-                    from_weave = self.from_weaves.get_weave(file_id,
-                        self.from_repository.get_transaction())
-                    # we fetch all the texts, because texts do
-                    # not reference anything, and its cheap enough
-                    to_weave.join(from_weave)
+                to_weave = self.to_weaves.get_weave_or_empty(file_id,
+                    self.to_repository.get_transaction())
+                from_weave = self.from_weaves.get_weave(file_id,
+                    self.from_repository.get_transaction())
+                # we fetch all the texts, because texts do
+                # not reference anything, and its cheap enough
+                to_weave.join(from_weave)
         finally:
             texts_pb.finished()
 

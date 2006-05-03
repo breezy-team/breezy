@@ -44,8 +44,7 @@ class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
         old_format = repository.RepositoryFormat.get_default_format()
-        # default is None - we cannot create a Repository independently yet
-        self.assertTrue(isinstance(old_format, repository.RepositoryFormat7))
+        self.assertTrue(isinstance(old_format, repository.RepositoryFormatKnit1))
         repository.RepositoryFormat.set_default_format(SampleRepositoryFormat())
         # creating a repository should now create an instrumented dir.
         try:
@@ -268,7 +267,7 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def assertHasKnit(self, t, knit_name):
         """Assert that knit_name exists on t."""
-        self.assertEqualDiff('# bzr knit index 7\n',
+        self.assertEqualDiff('# bzr knit index 8\n',
                              t.get(knit_name + '.kndx').read())
         # no default content
         self.assertTrue(t.has(knit_name + '.knit'))

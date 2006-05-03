@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ import os
 
 from bzrlib.tests import TestCaseInTempDir
 import bzrlib.bzrdir
+from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
 
 class TestSharedRepo(TestCaseInTempDir):
@@ -32,6 +33,15 @@ class TestSharedRepo(TestCaseInTempDir):
         self.assertIs(dir.open_repository().is_shared(), True)
         self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)        
+
+    def test_init_repo_existing_dir(self):
+        """Make repo in existing directory.
+        
+        (Malone #38331)
+        """
+        out, err = self.run_bzr("init-repository", ".")
+        dir = BzrDir.open('.')
+        self.assertTrue(dir.open_repository())
 
     def test_init(self):
         self.run_bzr("init-repo", "a")

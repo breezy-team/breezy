@@ -375,6 +375,7 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertRaises(AssertionError, self.assertIsDirectory, 'a_file', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'not_here', t)
 
+
 class TestChrootedTest(ChrootedTestCase):
 
     def test_root_is_root(self):
@@ -392,3 +393,17 @@ class TestExtraAssertions(TestCase):
         self.assertIsInstance(u'', basestring)
         self.assertRaises(AssertionError, self.assertIsInstance, None, int)
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
+
+
+class TestConvenienceMakers(TestCaseWithTransport):
+    """Test for the make_* convenience functions."""
+
+    def test_make_branch_and_tree_with_format(self):
+        # we should be able to supply a format to make_branch_and_tree
+        self.make_branch_and_tree('a', format=bzrlib.bzrdir.BzrDirMetaFormat1())
+        self.make_branch_and_tree('b', format=bzrlib.bzrdir.BzrDirFormat6())
+        self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('a')._format,
+                              bzrlib.bzrdir.BzrDirMetaFormat1)
+        self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
+                              bzrlib.bzrdir.BzrDirFormat6)
+        
