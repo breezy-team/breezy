@@ -68,3 +68,23 @@ class TestAnnotate(TestCaseWithTransport):
         self.assertEqualDiff(out, '''\
     2 no mail | nomail
 ''')
+
+    def test_annotate_cmd_revision(self):
+        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r 1'])
+        self.assertEquals(err, '')
+        self.assertEqualDiff(out, '''\
+    1 test@us | my helicopter
+''')
+
+    def test_annotate_cmd_unknown_revision(self):
+        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r 10'],
+                                         retcode=3)
+        self.assertEquals(out, '')
+        self.assertContainsRe(err, 'has no revision 10')
+
+    def test_annotate_cmd_two_revisions(self):
+        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r 1..2'],
+                                         retcode=3)
+        self.assertEquals(out, '')
+        self.assertEquals(err, 'bzr: ERROR: bzr annotate --revision takes'
+                               ' exactly 1 argument\n')
