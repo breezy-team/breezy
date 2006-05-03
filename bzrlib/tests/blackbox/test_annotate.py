@@ -46,10 +46,11 @@ class TestAnnotate(TestCaseWithTransport):
         self.build_tree_contents([('hello.txt', 'my helicopter\n'),
                                   ('nomail.txt', 'nomail\n')])
         wt.add(['hello.txt'])
-        wt.commit('add hello', 
-                                committer='test@user')
+        wt.commit('add hello', committer='test@user')
         wt.add(['nomail.txt'])
         wt.commit('add nomail', committer='no mail')
+        file('hello.txt', 'ab').write('your helicopter')
+        wt.commit('mod hello', committer='user@test')
 
     def test_help_annotate(self):
         """Annotate command exists"""
@@ -60,6 +61,7 @@ class TestAnnotate(TestCaseWithTransport):
         self.assertEquals(err, '')
         self.assertEqualDiff(out, '''\
     1 test@us | my helicopter
+    3 user@te | your helicopter
 ''')
 
     def test_no_mail(self):
@@ -74,6 +76,14 @@ class TestAnnotate(TestCaseWithTransport):
         self.assertEquals(err, '')
         self.assertEqualDiff(out, '''\
     1 test@us | my helicopter
+''')
+
+    def test_annotate_cmd_revision3(self):
+        out, err = self.run_bzr_captured(['annotate', 'hello.txt', '-r 3'])
+        self.assertEquals(err, '')
+        self.assertEqualDiff(out, '''\
+    1 test@us | my helicopter
+    3 user@te | your helicopter
 ''')
 
     def test_annotate_cmd_unknown_revision(self):
