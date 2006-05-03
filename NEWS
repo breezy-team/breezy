@@ -101,6 +101,10 @@ bzr 0.8rc1  2006-04-14
     * New option 'diff --diff-prefix' to control how files are named in diff
       output.  (Alexander Belchenko, Goffredo Baroncelli)
 
+    * If bzr shows an unexpected revision-history after pulling (perhaps due
+      to a reweave) it can now be corrected by 'bzr reconcile'.
+      (Robert Collins)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
@@ -165,6 +169,10 @@ bzr 0.8rc1  2006-04-14
       can be None or a factory that will create a progress bar. This is
       useful for testing or for overriding the bzrlib.progress heuristic.
       (Robert Collins)
+
+    * Repository.reconcile now takes a thorough keyword parameter to allow
+      requesting an indepth reconciliation, rather than just a data-loss 
+      check. (Robert Collins)
 
   TESTING:
 

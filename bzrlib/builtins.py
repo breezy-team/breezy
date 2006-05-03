@@ -476,9 +476,8 @@ class cmd_push(Command):
         # command.
         from bzrlib.transport import get_transport
         
-        tree_from = WorkingTree.open_containing(u'.')[0]
-        br_from = tree_from.branch
-        stored_loc = tree_from.branch.get_push_location()
+        br_from = Branch.open_containing('.')[0]
+        stored_loc = br_from.get_push_location()
         if location is None:
             if stored_loc is None:
                 raise BzrCommandError("No push location known or specified.")
