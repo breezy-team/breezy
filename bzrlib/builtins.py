@@ -2279,13 +2279,13 @@ class cmd_annotate(Command):
         branch.lock_read()
         try:
             if revision is None:
-                rev_id = branch.last_revision()
+                revision_id = branch.last_revision()
             elif len(revision) != 1:
                 raise BzrCommandError('bzr annotate --revision takes exactly 1 argument')
             else:
-                rev_id = revision[0].in_history(branch).rev_id
+                revision_id = revision[0].in_history(branch).rev_id
             file_id = tree.inventory.path2id(relpath)
-            tree = branch.repository.revision_tree(rev_id)
+            tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, sys.stdout)
         finally:
