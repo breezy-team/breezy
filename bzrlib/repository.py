@@ -489,10 +489,10 @@ class Repository(object):
         raise NotImplementedError(self.is_shared)
 
     @needs_write_lock
-    def reconcile(self):
+    def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from bzrlib.reconcile import RepoReconciler
-        reconciler = RepoReconciler(self)
+        reconciler = RepoReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
     
@@ -806,10 +806,10 @@ class KnitRepository(MetaDirRepository):
         return vf
 
     @needs_write_lock
-    def reconcile(self):
+    def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from bzrlib.reconcile import KnitReconciler
-        reconciler = KnitReconciler(self)
+        reconciler = KnitReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
     
