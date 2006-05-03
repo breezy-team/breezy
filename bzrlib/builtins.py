@@ -95,8 +95,8 @@ def get_format_type(typestring):
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
         return format
-    msg = "Unknown bzr format %s.\n" \
-          "Known types are: default, knit, metaweave and weave" % typestring
+    msg = "Unknown bzr format %s. Current formats are: default, knit,\n" \
+          "metaweave and weave" % typestring
     raise BzrCommandError(msg)
 
 
@@ -905,9 +905,10 @@ class cmd_init(Command):
     takes_args = ['location?']
     takes_options = [
                      Option('format', 
-                            help='Create a specific format rather than the'
-                                 ' current default format. Currently, the'
-                                 ' only supported format is "knit"',
+                            help='Specify a format for this branch. Current'
+                                 ' formats are: default, knit, metaweave and'
+                                 ' weave. Default is knit; metaweave and'
+                                 ' weave are deprecated',
                             type=get_format_type),
                      ]
     def run(self, location=None, format=None):
@@ -956,9 +957,10 @@ class cmd_init_repository(Command):
     """
     takes_args = ["location"] 
     takes_options = [Option('format', 
-                            help='Use a specific format rather than the'
-                                 ' current default format. Currently, the'
-                                 ' only supported format is "knit"',
+                            help='Specify a format for this repository.'
+                                 ' Current formats are: default, knit,'
+                                 ' metaweave and weave. Default is knit;'
+                                 ' metaweave and weave are deprecated',
                             type=get_format_type),
                      Option('trees',
                              help='Allows branches in repository to have'
@@ -1643,10 +1645,10 @@ class cmd_upgrade(Command):
     takes_args = ['url?']
     takes_options = [
                      Option('format', 
-                            help='Upgrade to a specific format rather than the'
-                                 ' current default format. This option accepts'
-                                 ' "default", "knit" (current default),'
-                                 ' "metaweave" and "weave"',
+                            help='Upgrade to a specific format. Current formats'
+                                 ' are: default, knit, metaweave and weave.'
+                                 ' Default is knit; metaweave and weave are'
+                                 ' deprecated',
                             type=get_format_type),
                     ]
 

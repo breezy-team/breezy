@@ -110,10 +110,10 @@ bzr 0.8rc1  2006-04-14
     * Make 'pull' and 'push' remember location on failure using --remember.
       (Olaf Conradi)
 
-    * For compatability, make old format for weave repository inside metadir
+    * For compatibility, make old format for using weaves inside metadir
       available as 'metaweave' format.  Rename format 'metadir' to 'default'.
-      Only mention format 'knit' in help for commands 'init' and 'init-repo'.
-      (Olaf Conradi)
+      Clean up help for option --format in commands 'init', 'init-repo' and
+      'upgrade'.  (Olaf Conradi)
 
   INTERNALS:
   
