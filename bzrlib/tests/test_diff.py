@@ -1,8 +1,9 @@
 from cStringIO import StringIO
 
-from bzrlib.diff import internal_diff
+from bzrlib.diff import internal_diff, external_diff
 from bzrlib.errors import BinaryFile
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestCaseInTempDir
+from tempfile import TemporaryFile
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -10,6 +11,15 @@ def udiff_lines(old, new, allow_binary=False):
     internal_diff('old', old, 'new', new, output, allow_binary)
     output.seek(0, 0)
     return output.readlines()
+
+def external_udiff_lines(old, new):
+    output = TemporaryFile()
+    external_diff('old', old, 'new', new, output, diff_opts=['-u'])
+    output.seek(0, 0)
+    lines = output.readlines()
+    output.close()
+    return lines
+
 
 class TestDiff(TestCase):
     def test_add_nl(self):
@@ -56,3 +66,8 @@ class TestDiff(TestCase):
         self.assertRaises(BinaryFile, udiff_lines, [], [1023 * 'a' + '\x00'])
         udiff_lines([1023 * 'a' + '\x00'], [], allow_binary=True)
         udiff_lines([], [1023 * 'a' + '\x00'], allow_binary=True)
+
+    def test_external_diff(self):
+        lines = external_udiff_lines(['boo\n'], ['goo\n'])
+        self.check_patch(lines)
+        
