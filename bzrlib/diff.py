@@ -74,17 +74,15 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
-    import sys
+    if not hasattr(to_file, 'fileno'):
+        raise NotImplementedError("sorry, can't send external diff other "
+                                  "than to a file descriptor", to_file)
     
-    if to_file != sys.stdout:
-        raise NotImplementedError("sorry, can't send external diff other than to stdout yet",
-                                  to_file)
-
     # make sure our own output is properly ordered before the diff
     to_file.flush()
 
     from tempfile import NamedTemporaryFile
-    import os
+    import subprocess
 
     oldtmpf = NamedTemporaryFile()
     newtmpf = NamedTemporaryFile()
@@ -135,7 +133,11 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         if diff_opts:
             diffcmd.extend(diff_opts)
 
-        rc = os.spawnvp(os.P_WAIT, 'diff', diffcmd)
+        pipe = subprocess.Popen(diffcmd,
+                                stdin=subprocess.PIPE,
+                                stdout=to_file)
+        pipe.stdin.close()
+        rc = pipe.wait()
         
         if rc != 0 and rc != 1:
             # returns 1 if files differ; that's OK
