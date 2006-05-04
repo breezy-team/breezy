@@ -51,14 +51,47 @@ class TestDiff(ExternalBase):
         self.runbzr('diff')
 
     def test_diff_prefix(self):
+        """diff --prefix appends to filenames in output"""
         self.make_example_branch()
         file('hello', 'wt').write('hello world!\n')
-        out, err = self.runbzr('diff --diff-prefix old/:new/', retcode=1)
+        out, err = self.runbzr('diff --prefix old/:new/', retcode=1)
         self.assertEquals(err, '')
         self.assertEqualDiff(out, '''\
 === modified file 'old/hello'
 --- old/hello\t
 +++ new/hello\t
+@@ -1,1 +1,1 @@
+-foo
++hello world!
+
+''')
+
+    def test_diff_p1(self):
+        """diff -p1 produces lkml-style diffs"""
+        self.make_example_branch()
+        file('hello', 'wt').write('hello world!\n')
+        out, err = self.runbzr('diff -p1', retcode=1)
+        self.assertEquals(err, '')
+        self.assertEqualDiff(out, '''\
+=== modified file 'old/hello'
+--- old/hello\t
++++ new/hello\t
+@@ -1,1 +1,1 @@
+-foo
++hello world!
+
+''')
+
+    def test_diff_p0(self):
+        """diff -p0 produces diffs with no prefix"""
+        self.make_example_branch()
+        file('hello', 'wt').write('hello world!\n')
+        out, err = self.runbzr('diff -p0', retcode=1)
+        self.assertEquals(err, '')
+        self.assertEqualDiff(out, '''\
+=== modified file 'hello'
+--- hello\t
++++ hello\t
 @@ -1,1 +1,1 @@
 -foo
 +hello world!

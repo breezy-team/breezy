@@ -98,8 +98,9 @@ bzr 0.8rc1  2006-04-14
     * Hitting CTRL-C while doing an SFTP push will no longer cause stale locks
       to be left in the SFTP repository. (Robert Collins, Martin Pool).
 
-    * New option 'diff --diff-prefix' to control how files are named in diff
-      output.  (Alexander Belchenko, Goffredo Baroncelli)
+    * New option 'diff --prefix' to control how files are named in diff
+      output, with shortcuts '-p0' and '-p1' corresponding to the options for 
+      GNU patch.  (Alexander Belchenko, Goffredo Baroncelli, Martin Pool)
 
     * If bzr shows an unexpected revision-history after pulling (perhaps due
       to a reweave) it can now be corrected by 'bzr reconcile'.
