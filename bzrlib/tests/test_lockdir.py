@@ -338,6 +338,8 @@ class TestLockDir(TestCaseWithTransport):
         ld2 = self.get_lock()
         ld1.create()
         ld1.lock_write()
+        # do this without IO redirection to ensure it doesn't prompt.
+        self.assertRaises(AssertionError, ld1.break_lock)
         orig_factory = bzrlib.ui.ui_factory
         # silent ui - no need for stdout
         bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()

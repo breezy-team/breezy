@@ -232,6 +232,7 @@ class LockDir(object):
         prompt for input if a lock is detected and there is any doubt about
         it possibly being still active.
         """
+        self._check_not_locked()
         holder_info = self.peek()
         if holder_info is not None:
             if bzrlib.ui.ui_factory.get_boolean(
@@ -241,7 +242,6 @@ class LockDir(object):
                     holder_info["hostname"])):
                 self.force_break(holder_info)
         
-    
     def force_break(self, dead_holder_info):
         """Release a lock held by another process.
 
@@ -260,8 +260,7 @@ class LockDir(object):
         """
         if not isinstance(dead_holder_info, dict):
             raise ValueError("dead_holder_info: %r" % dead_holder_info)
-        if self._lock_held:
-            raise AssertionError("can't break own lock: %r" % self)
+        self._check_not_locked()
         current_info = self.peek()
         if current_info is None:
             # must have been recently released
@@ -279,6 +278,11 @@ class LockDir(object):
             raise LockBreakMismatch(self, broken_info, dead_holder_info)
         self.transport.delete(broken_info_path)
         self.transport.rmdir(tmpname)
+
+    def _check_not_locked(self):
+        """If the lock is held by this instance, raise an error."""
+        if self._lock_held:
+            raise AssertionError("can't break own lock: %r" % self)
 
     def confirm(self):
         """Make sure that the lock is still held by this locker.
