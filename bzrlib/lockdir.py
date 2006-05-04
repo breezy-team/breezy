@@ -218,6 +218,8 @@ class LockDir(object):
         # rename before deleting, because we can't atomically remove the whole
         # tree
         tmpname = '%s/releasing.%s.tmp' % (self.path, rand_chars(20))
+        # gotta own it to unlock
+        self.confirm()
         self.transport.rename(self._held_dir, tmpname)
         self._lock_held = False
         self.transport.delete(tmpname + self.__INFO_NAME)

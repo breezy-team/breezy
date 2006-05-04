@@ -56,6 +56,17 @@ class TestLockDir(TestCaseWithTransport):
         lf = LockDir(self.get_transport(), 'test_lock')
         self.assertEqual(lf.peek(), None)
 
+    def get_lock(self):
+        return LockDir(self.get_transport(), 'test_lock')
+
+    def test_unlock_after_break_raises(self):
+        ld = self.get_lock()
+        ld2 = self.get_lock()
+        ld.create()
+        ld.attempt_lock()
+        ld2.force_break(ld2.peek())
+        self.assertRaises(LockBroken, ld.unlock)
+
     def test_03_readonly_peek(self):
         lf = LockDir(self.get_readonly_transport(), 'test_lock')
         self.assertEqual(lf.peek(), None)
