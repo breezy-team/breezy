@@ -85,14 +85,18 @@ def get_format_type(typestring):
     """Parse and return a format specifier."""
     if typestring == "weave":
         return bzrdir.BzrDirFormat6()
-    if typestring == "metadir":
+    if typestring == "default":
         return bzrdir.BzrDirMetaFormat1()
+    if typestring == "metaweave":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = bzrlib.repository.RepositoryFormat7()
+        return format
     if typestring == "knit":
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
         return format
-    msg = "No known bzr-dir format %s. Supported types are: weave, metadir\n" %\
-        (typestring)
+    msg = "Unknown bzr format %s. Current formats are: default, knit,\n" \
+          "metaweave and weave" % typestring
     raise BzrCommandError(msg)
 
 
@@ -765,15 +769,22 @@ class cmd_update(Command):
 
 
 class cmd_info(Command):
-    """Show statistical information about a branch."""
-    takes_args = ['branch?']
+    """Show information about a working tree, branch or repository.
+
+    This command will show all known locations and formats associated to the
+    tree, branch or repository.  Statistical information is included with
+    each report.
+
+    Branches and working trees will also report any missing revisions.
+    """
+    takes_args = ['location?']
     takes_options = ['verbose']
-    
+
     @display_command
-    def run(self, branch=None, verbose=False):
-        import bzrlib.info
-        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0],
-                                     verbose=verbose)
+    def run(self, location=None, verbose=False):
+        from bzrlib.info import show_bzrdir_info
+        show_bzrdir_info(bzrdir.BzrDir.open_containing(location)[0],
+                         verbose=verbose)
 
 
 class cmd_remove(Command):
@@ -900,13 +911,16 @@ class cmd_init(Command):
     takes_args = ['location?']
     takes_options = [
                      Option('format', 
-                            help='Create a specific format rather than the'
-                                 ' current default format. Currently supports:'
-                                 ' metadir, knit, and weave',
+                            help='Specify a format for this branch. Current'
+                                 ' formats are: default, knit, metaweave and'
+                                 ' weave. Default is knit; metaweave and'
+                                 ' weave are deprecated',
                             type=get_format_type),
                      ]
     def run(self, location=None, format=None):
         from bzrlib.branch import Branch
+        if format is None:
+            format = get_format_type('default')
         if location is None:
             location = u'.'
         else:
@@ -949,19 +963,19 @@ class cmd_init_repository(Command):
     """
     takes_args = ["location"] 
     takes_options = [Option('format', 
-                            help='Use a specific format rather than the'
-                            ' current default format. Currently this'
-                            ' option accepts "weave", "metadir" and "knit"',
+                            help='Specify a format for this repository.'
+                                 ' Current formats are: default, knit,'
+                                 ' metaweave and weave. Default is knit;'
+                                 ' metaweave and weave are deprecated',
                             type=get_format_type),
                      Option('trees',
                              help='Allows branches in repository to have'
                              ' a working tree')]
     aliases = ["init-repo"]
     def run(self, location, format=None, trees=False):
-        from bzrlib.bzrdir import BzrDirMetaFormat1
         from bzrlib.transport import get_transport
         if format is None:
-            format = BzrDirMetaFormat1()
+            format = get_format_type('default')
         transport = get_transport(location)
         if not transport.has('.'):
             transport.mkdir('')
@@ -1651,16 +1665,18 @@ class cmd_upgrade(Command):
     takes_args = ['url?']
     takes_options = [
                      Option('format', 
-                            help='Upgrade to a specific format rather than the'
-                                 ' current default format. Currently this'
-                                 ' option accepts "weave", "metadir" and'
-                                 ' "knit".',
+                            help='Upgrade to a specific format. Current formats'
+                                 ' are: default, knit, metaweave and weave.'
+                                 ' Default is knit; metaweave and weave are'
+                                 ' deprecated',
                             type=get_format_type),
                     ]
 
 
     def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
+        if format is None:
+            format = get_format_type('default')
         upgrade(url, format)
 
 
