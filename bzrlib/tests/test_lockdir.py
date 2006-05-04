@@ -16,9 +16,11 @@
 
 """Tests for LockDir"""
 
+from cStringIO import StringIO
 from threading import Thread
 import time
 
+import bzrlib
 from bzrlib.errors import (
         LockBreakMismatch,
         LockContention, LockError, UnlockableTransport,
@@ -329,3 +331,19 @@ class TestLockDir(TestCaseWithTransport):
         self.assertTrue(t.has('test_lock/held/info'))
         lf1.unlock()
         self.assertFalse(t.has('test_lock/held/info'))
+
+    def test_break_lock(self):
+        # the ui based break_lock routine should Just Work (tm)
+        ld1 = self.get_lock()
+        ld2 = self.get_lock()
+        ld1.create()
+        ld1.lock_write()
+        orig_factory = bzrlib.ui.ui_factory
+        # silent ui - no need for stdout
+        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
+        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        try:
+            ld2.break_lock()
+            self.assertRaises(LockBroken, ld1.unlock)
+        finally:
+            bzrlib.ui.ui_factory = orig_factory

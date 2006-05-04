@@ -225,6 +225,23 @@ class LockDir(object):
         self.transport.delete(tmpname + self.__INFO_NAME)
         self.transport.rmdir(tmpname)
 
+    def break_lock(self):
+        """Break a lock not held by this instance of LockDir.
+
+        This is a UI centric function: it uses the bzrlib.ui.ui_factory to
+        prompt for input if a lock is detected and there is any doubt about
+        it possibly being still active.
+        """
+        holder_info = self.peek()
+        if holder_info is not None:
+            if bzrlib.ui.ui_factory.get_boolean(
+                "Break lock %s held by %s@%s" % (
+                    self.transport,
+                    holder_info["user"],
+                    holder_info["hostname"])):
+                self.force_break(holder_info)
+        
+    
     def force_break(self, dead_holder_info):
         """Release a lock held by another process.
 
