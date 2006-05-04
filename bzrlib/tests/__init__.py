@@ -303,7 +303,8 @@ class TestCase(unittest.TestCase):
             raise AssertionError('string %r does not start with %r' % (s, prefix))
 
     def assertEndsWith(self, s, suffix):
-        if not s.endswith(prefix):
+        """Asserts that s ends with suffix."""
+        if not s.endswith(suffix):
             raise AssertionError('string %r does not end with %r' % (s, suffix))
 
     def assertContainsRe(self, haystack, needle_re):
@@ -942,7 +943,6 @@ def test_suite():
 
     testmod_names = [ \
                    'bzrlib.tests.test_ancestry',
-                   'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',

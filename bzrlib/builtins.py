@@ -480,9 +480,8 @@ class cmd_push(Command):
         # command.
         from bzrlib.transport import get_transport
         
-        tree_from = WorkingTree.open_containing(u'.')[0]
-        br_from = tree_from.branch
-        stored_loc = tree_from.branch.get_push_location()
+        br_from = Branch.open_containing('.')[0]
+        stored_loc = br_from.get_push_location()
         if location is None:
             if stored_loc is None:
                 raise BzrCommandError("No push location known or specified.")
@@ -2278,24 +2277,30 @@ class cmd_annotate(Command):
     shown only at the top, unless the --all option is given.
     """
     # TODO: annotate directories; showing when each file was last changed
-    # TODO: annotate a previous version of a file
     # TODO: if the working copy is modified, show annotations on that 
     #       with new uncommitted lines marked
     aliases = ['blame', 'praise']
     takes_args = ['filename']
     takes_options = [Option('all', help='show annotations on all lines'),
                      Option('long', help='show date in annotations'),
+                     'revision'
                      ]
 
     @display_command
-    def run(self, filename, all=False, long=False):
+    def run(self, filename, all=False, long=False, revision=None):
         from bzrlib.annotate import annotate_file
         tree, relpath = WorkingTree.open_containing(filename)
         branch = tree.branch
         branch.lock_read()
         try:
+            if revision is None:
+                revision_id = branch.last_revision()
+            elif len(revision) != 1:
+                raise BzrCommandError('bzr annotate --revision takes exactly 1 argument')
+            else:
+                revision_id = revision[0].in_history(branch).rev_id
             file_id = tree.inventory.path2id(relpath)
-            tree = branch.repository.revision_tree(branch.last_revision())
+            tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, sys.stdout)
         finally:

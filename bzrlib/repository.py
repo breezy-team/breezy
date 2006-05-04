@@ -298,89 +298,46 @@ class Repository(object):
                                                          signature,
                                                          self.get_transaction())
 
-    def fileid_involved_between_revs(self, from_revid, to_revid):
-        """Find file_id(s) which are involved in the changes between revisions.
+    def fileids_altered_by_revision_ids(self, revision_ids):
+        """Find the file ids and versions affected by revisions.
 
-        This determines the set of revisions which are involved, and then
-        finds all file ids affected by those revisions.
-        """
-        w = self.get_inventory_weave()
-        from_set = set(w.get_ancestry(from_revid))
-        to_set = set(w.get_ancestry(to_revid))
-        changed = to_set.difference(from_set)
-        return self._fileid_involved_by_set(changed)
-
-    def fileid_involved(self, last_revid=None):
-        """Find all file_ids modified in the ancestry of last_revid.
-
-        :param last_revid: If None, last_revision() will be used.
-        """
-        w = self.get_inventory_weave()
-        if not last_revid:
-            changed = set(w.versions())
-        else:
-            changed = set(w.get_ancestry(last_revid))
-        return self._fileid_involved_by_set(changed)
-
-    def fileid_involved_by_set(self, changes):
-        """Find all file_ids modified by the set of revisions passed in.
-
-        :param changes: A set() of revision ids
-        """
-        # TODO: jam 20060119 This line does *nothing*, remove it.
-        #       or better yet, change _fileid_involved_by_set so
-        #       that it takes the inventory weave, rather than
-        #       pulling it out by itself.
-        return self._fileid_involved_by_set(changes)
-
-    def _fileid_involved_by_set(self, changes):
-        """Find the set of file-ids affected by the set of revisions.
-
-        :param changes: A set() of revision ids.
-        :return: A set() of file ids.
-        
-        This peaks at the Weave, interpreting each line, looking to
-        see if it mentions one of the revisions. And if so, includes
-        the file id mentioned.
-        This expects both the Weave format, and the serialization
-        to have a single line per file/directory, and to have
-        fileid="" and revision="" on that line.
+        :param revisions: an iterable containing revision ids.
+        :return: a dictionary mapping altered file-ids to an iterable of
+        revision_ids. Each altered file-ids has the exact revision_ids that
+        altered it listed explicitly.
         """
         assert isinstance(self._format, (RepositoryFormat5,
                                          RepositoryFormat6,
                                          RepositoryFormat7,
                                          RepositoryFormatKnit1)), \
             "fileid_involved only supported for branches which store inventory as unnested xml"
-
+        selected_revision_ids = set(revision_ids)
         w = self.get_inventory_weave()
-        file_ids = set()
+        result = {}
 
-        # this code needs to read every line in every inventory for the
-        # inventories [changes]. Seeing a line twice is ok. Seeing a line
-        # not pesent in one of those inventories is unnecessary and not 
+        # this code needs to read every new line in every inventory for the
+        # inventories [revision_ids]. Seeing a line twice is ok. Seeing a line
+        # not pesent in one of those inventories is unnecessary but not 
         # harmful because we are filtering by the revision id marker in the
-        # inventory lines to only select file ids altered in one of those  
+        # inventory lines : we only select file ids altered in one of those  
         # revisions. We dont need to see all lines in the inventory because
         # only those added in an inventory in rev X can contain a revision=X
         # line.
-        for line in w.iter_lines_added_or_present_in_versions(changes):
+        for line in w.iter_lines_added_or_present_in_versions(selected_revision_ids):
             start = line.find('file_id="')+9
             if start < 9: continue
             end = line.find('"', start)
             assert end>= 0
             file_id = _unescape_xml(line[start:end])
 
-            # check if file_id is already present
-            if file_id in file_ids: continue
-
             start = line.find('revision="')+10
             if start < 10: continue
             end = line.find('"', start)
             assert end>= 0
             revision_id = _unescape_xml(line[start:end])
-            if revision_id in changes:
-                file_ids.add(file_id)
-        return file_ids
+            if revision_id in selected_revision_ids:
+                result.setdefault(file_id, set()).add(revision_id)
+        return result
 
     @needs_read_lock
     def get_inventory_weave(self):
@@ -492,10 +449,10 @@ class Repository(object):
         raise NotImplementedError(self.is_shared)
 
     @needs_write_lock
-    def reconcile(self):
+    def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from bzrlib.reconcile import RepoReconciler
-        reconciler = RepoReconciler(self)
+        reconciler = RepoReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
     
@@ -809,10 +766,10 @@ class KnitRepository(MetaDirRepository):
         return vf
 
     @needs_write_lock
-    def reconcile(self):
+    def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from bzrlib.reconcile import KnitReconciler
-        reconciler = KnitReconciler(self)
+        reconciler = KnitReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
     
