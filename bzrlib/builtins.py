@@ -984,6 +984,8 @@ class cmd_diff(Command):
         bzr diff -r1
         bzr diff -r1..2
         bzr diff --diff-prefix old/:new/
+        bzr diff bzr.mine bzr.dev
+        bzr diff foo.c
     """
     # TODO: Option to use external diff command; could be GNU diff, wdiff,
     #       or a graphical diff.
@@ -995,10 +997,6 @@ class cmd_diff(Command):
     #       deleted files.
 
     # TODO: This probably handles non-Unix newlines poorly.
-    
-    # TODO: When a prefix is given, it's also shown in the summary lines, e.g.
-    # "modified file new/foo.c"; perhaps it would be better to omit it from
-    # there?
     
     takes_args = ['file*']
     takes_options = ['revision', 'diff-options', 'prefix']

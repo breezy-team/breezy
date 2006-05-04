@@ -57,7 +57,7 @@ class TestDiff(ExternalBase):
         out, err = self.runbzr('diff --prefix old/:new/', retcode=1)
         self.assertEquals(err, '')
         self.assertEqualDiff(out, '''\
-=== modified file 'old/hello'
+=== modified file 'hello'
 --- old/hello\t
 +++ new/hello\t
 @@ -1,1 +1,1 @@
@@ -73,7 +73,7 @@ class TestDiff(ExternalBase):
         out, err = self.runbzr('diff -p1', retcode=1)
         self.assertEquals(err, '')
         self.assertEqualDiff(out, '''\
-=== modified file 'old/hello'
+=== modified file 'hello'
 --- old/hello\t
 +++ new/hello\t
 @@ -1,1 +1,1 @@
