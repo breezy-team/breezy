@@ -95,6 +95,17 @@ class Branch(object):
     def __init__(self, *ignored, **ignored_too):
         raise NotImplementedError('The Branch class is abstract')
 
+    def break_lock(self):
+        """Break a lock if one is present from another instance.
+
+        Uses the ui factory to ask for confirmation if the lock may be from
+        an active process.
+
+        This will probe the repository for its lock as well.
+        """
+        self.control_files.break_lock()
+        self.repository.break_lock()
+
     @staticmethod
     @deprecated_method(zero_eight)
     def open_downlevel(base):
@@ -951,8 +962,10 @@ class BzrBranch(Branch):
 
     def unlock(self):
         # TODO: test for failed two phase locks. This is known broken.
-        self.repository.unlock()
-        self.control_files.unlock()
+        try:
+            self.repository.unlock()
+        finally:
+            self.control_files.unlock()
         
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:
