@@ -105,6 +105,9 @@ class Branch(object):
         """
         self.control_files.break_lock()
         self.repository.break_lock()
+        master = self.get_master_branch()
+        if master is not None:
+            master.break_lock()
 
     @staticmethod
     @deprecated_method(zero_eight)

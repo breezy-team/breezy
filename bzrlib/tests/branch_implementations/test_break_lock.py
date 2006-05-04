@@ -28,7 +28,7 @@ class TestBreakLock(TestCaseWithBranch):
 
     def setUp(self):
         super(TestBreakLock, self).setUp()
-        self.unused_branch = self.make_branch('.')
+        self.unused_branch = self.make_branch('branch')
         self.branch = self.unused_branch.bzrdir.open_branch()
         # we want a UI factory that accepts canned input for the tests:
         # while SilentUIFactory still accepts stdin, we need to customise
@@ -49,7 +49,6 @@ class TestBreakLock(TestCaseWithBranch):
     def test_unlocked_repo_locked(self):
         # break lock on the branch should try on the repository even
         # if the branch isn't locked
-        # break_lock when locked should
         self.branch.repository.lock_write()
         bzrlib.ui.ui_factory.stdin = StringIO("y\n")
         try:
@@ -61,7 +60,7 @@ class TestBreakLock(TestCaseWithBranch):
         self.assertRaises(errors.LockBroken, self.branch.repository.unlock)
 
     def test_locked(self):
-        # break_lock when locked should
+        # break_lock when locked should unlock the branch and repo
         self.branch.lock_write()
         bzrlib.ui.ui_factory.stdin = StringIO("y\ny\n")
         try:
@@ -71,3 +70,26 @@ class TestBreakLock(TestCaseWithBranch):
             self.branch.unlock()
             return
         self.assertRaises(errors.LockBroken, self.branch.unlock)
+
+    def test_unlocks_master_branch(self):
+        # break_lock when when the master branch is locked should offer to
+        # unlock it.
+        master = self.make_branch('master')
+        try:
+            self.branch.bind(master)
+        except errors.UpgradeRequired:
+            # this branch does not support binding.
+            return
+        master.lock_write()
+        bzrlib.ui.ui_factory.stdin = StringIO("y\ny\n")
+        try:
+            self.unused_branch.break_lock()
+        except NotImplementedError:
+            # branch does not support break_lock
+            master.unlock()
+            return
+        self.assertRaises(errors.LockBroken, master.unlock)
+        # can we lock it now ?
+        master.lock_write()
+        master.unlock()
+
