@@ -2,7 +2,7 @@ from cStringIO import StringIO
 
 from bzrlib.diff import internal_diff, external_diff
 from bzrlib.errors import BinaryFile
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCase
 from tempfile import TemporaryFile
 
 
