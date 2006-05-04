@@ -95,6 +95,7 @@ class TestRunBzrCaptured(ExternalBase):
     def apply_redirected(self, stdin=None, stdout=None, stderr=None,
                          a_callable=None, *args, **kwargs):
         self.stdin = stdin
+        self.factory_stdin = getattr(bzrlib.ui.ui_factory, "stdin", None)
         return 0
 
     def test_stdin(self):
@@ -102,5 +103,7 @@ class TestRunBzrCaptured(ExternalBase):
         # apply_redirected as a StringIO
         self.run_bzr_captured(['foo', 'bar'], stdin='gam')
         self.assertEqual('gam', self.stdin.read())
+        self.assertTrue(self.stdin is self.factory_stdin)
         self.run_bzr_captured(['foo', 'bar'], stdin='zippy')
         self.assertEqual('zippy', self.stdin.read())
+        self.assertTrue(self.stdin is self.factory_stdin)
