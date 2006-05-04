@@ -30,10 +30,10 @@ class TestDiff(ExternalBase):
     def make_example_branch(test):
         # FIXME: copied from test_too_much -- share elsewhere?
         test.runbzr('init')
-        file('hello', 'wt').write('foo')
+        file('hello', 'wt').write('foo\n')
         test.runbzr('add hello')
         test.runbzr('commit -m setup hello')
-        file('goodbye', 'wt').write('baz')
+        file('goodbye', 'wt').write('baz\n')
         test.runbzr('add goodbye')
         test.runbzr('commit -m setup goodbye')
 
@@ -49,6 +49,21 @@ class TestDiff(ExternalBase):
         self.runbzr('add moo')
         os.unlink('moo')
         self.runbzr('diff')
+
+    def test_diff_prefix(self):
+        self.make_example_branch()
+        file('hello', 'wt').write('hello world!\n')
+        out, err = self.runbzr('diff --diff-prefix old/:new/', retcode=1)
+        self.assertEquals(err, '')
+        self.assertEqualDiff(out, '''\
+=== modified file 'old/hello'
+--- old/hello\t
++++ new/hello\t
+@@ -1,1 +1,1 @@
+-foo
++hello world!
+
+''')
 
     def test_diff_nonexistent(self):
         # Get an error from a file that does not exist at all
