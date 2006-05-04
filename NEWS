@@ -163,6 +163,9 @@ bzr 0.8rc1  2006-04-14
       useful for testing or for overriding the bzrlib.progress heuristic.
       (Robert Collins)
 
+    * bzrlib.ui.ui_factory protocol now supports 'get_boolean' to prompt
+      the user for yes/no style input. (Robert Collins)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead

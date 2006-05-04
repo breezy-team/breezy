@@ -18,6 +18,8 @@
 
 import os
 
+import bzrlib
+import bzrlib.errors as errors
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests.blackbox import ExternalBase
@@ -48,16 +50,15 @@ class TestBreakLock(ExternalBase):
              'repo/branch/',
              'checkout/'])
         bzrlib.bzrdir.BzrDir.create('master-repo').create_repository()
-        self.master_branch = bzrlib.bzrdir.create_branch_convenience(
+        self.master_branch = bzrlib.bzrdir.BzrDir.create_branch_convenience(
             'master-repo/master-branch')
         bzrlib.bzrdir.BzrDir.create('repo').create_repository()
-        bzrlib.bzrdir.create_branch_convenience('repo/branch')
-        local_branch = bzrlib.bzrdir.create_branch_convenience('repo/branch')
+        local_branch = bzrlib.bzrdir.BzrDir.create_branch_convenience('repo/branch')
         local_branch.bind(self.master_branch)
         checkoutdir = bzrlib.bzrdir.BzrDir.create('checkout')
         bzrlib.branch.BranchReferenceFormat().initialize(
             checkoutdir, local_branch)
-        self.wt = bzrlib.workingtree.WorkingTree.open('checkout')
+        self.wt = checkoutdir.create_workingtree()
 
     def test_break_lock_help(self):
         out, err = self.run_bzr('break-lock', '--help')
@@ -67,13 +68,19 @@ class TestBreakLock(ExternalBase):
     def test_break_lock_everything_locked(self):
         ### if everything is locked, we should be able to unlock the lot.
         # sketch of test:
-        # setup a ui factory with precanned answers to the 'should I break lock
-        # tests' 
-        ### bzrlib.ui.ui_factory = ...
         # lock the lot:
         self.wt.lock_write()
         self.master_branch.lock_write()
         # run the break-lock
-        self.run_bzr('break-lock', 'checkout')
-        # restore (in a finally) the ui
-        bzrlib.ui.ui_factory = originalfactory
+        # we need 5 yes's - wt, branch, repo, bound branch, bound repo.
+        self.run_bzr('break-lock', 'checkout', stdin="y\ny\ny\ny\ny\n")
+        # a new tree instance should be lockable
+        wt = bzrlib.workingtree.WorkingTree.open('checkout')
+        wt.lock_write()
+        wt.unlock()
+        # and a new instance of the master branch 
+        mb = wt.branch.get_master_branch()
+        mb.lock_write()
+        mb.unlock()
+        self.assertRaises(errors.LockBroken, self.wt.unlock)
+        self.assertRaises(errors.LockBroken, self.master_branch.unlock)
