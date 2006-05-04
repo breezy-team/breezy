@@ -1006,11 +1006,11 @@ class cmd_diff(Command):
 
         if diff_prefix:
             if not ':' in diff_prefix:
-                 raise BzrError("--diff-prefix expects two values separated by a colon")            
-            old_label,new_label=diff_prefix.split(":")
+                 raise BzrError("--diff-prefix expects two values separated by a colon")
+            old_label, new_label = diff_prefix.split(":")
         else:
-            old_label='a/'
-            new_label='b/'
+            old_label = ''
+            new_label = ''
         
         try:
             tree1, file_list = internal_tree_files(file_list)
