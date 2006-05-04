@@ -115,6 +115,11 @@ bzr 0.8rc1  2006-04-14
     * Make 'pull' and 'push' remember location on failure using --remember.
       (Olaf Conradi)
 
+    * For compatibility, make old format for using weaves inside metadir
+      available as 'metaweave' format.  Rename format 'metadir' to 'default'.
+      Clean up help for option --format in commands 'init', 'init-repo' and
+      'upgrade'.  (Olaf Conradi)
+
   INTERNALS:
   
     * The internal storage of history, and logical branch identity have now
