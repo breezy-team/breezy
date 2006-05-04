@@ -69,7 +69,7 @@ class TestBreakLock(ExternalBase):
         # sketch of test:
         # setup a ui factory with precanned answers to the 'should I break lock
         # tests' 
-        bzrlib.ui.ui_factory = ...
+        ### bzrlib.ui.ui_factory = ...
         # lock the lot:
         self.wt.lock_write()
         self.master_branch.lock_write()
@@ -77,5 +77,3 @@ class TestBreakLock(ExternalBase):
         self.run_bzr('break-lock', 'checkout')
         # restore (in a finally) the ui
         bzrlib.ui.ui_factory = originalfactory
-
-        etc.
