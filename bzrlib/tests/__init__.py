@@ -303,7 +303,8 @@ class TestCase(unittest.TestCase):
             raise AssertionError('string %r does not start with %r' % (s, prefix))
 
     def assertEndsWith(self, s, suffix):
-        if not s.endswith(prefix):
+        """Asserts that s ends with suffix."""
+        if not s.endswith(suffix):
             raise AssertionError('string %r does not end with %r' % (s, suffix))
 
     def assertContainsRe(self, haystack, needle_re):
@@ -824,7 +825,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # FIXME: make this use a single transport someday. RBC 20060418
             return format.initialize_on_transport(get_transport(relpath))
         except errors.UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
+            raise TestSkipped("Format %s is not initializable." % format)
 
     def make_repository(self, relpath, shared=False, format=None):
         """Create a repository on our default transport at relpath."""

@@ -16,11 +16,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Black-box tests for bzr push.
-"""
+"""Black-box tests for bzr push."""
 
 import os
 
+import bzrlib
 from bzrlib.branch import Branch
 from bzrlib.osutils import abspath
 from bzrlib.tests.blackbox import ExternalBase
@@ -71,3 +71,12 @@ class TestPush(ExternalBase):
         self.runbzr('push ../branch_c --remember')
         self.assertEquals(abspath(branch_a.get_push_location()),
                           abspath(branch_c.bzrdir.root_transport.base))
+    
+    def test_push_without_tree(self):
+        # bzr push from a branch that does not have a checkout should work.
+        b = self.make_branch('.')
+        out, err = self.run_bzr('push', 'pushed-location')
+        self.assertEqual('', out)
+        self.assertEqual('0 revision(s) pushed.\n', err)
+        b2 = bzrlib.branch.Branch.open('pushed-location')
+        self.assertEndsWith(b2.base, 'pushed-location/')

@@ -157,10 +157,10 @@ class RepoFetcher(object):
     def _fetch_weave_texts(self, revs):
         texts_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            file_ids = self.from_repository.fileid_involved_by_set(revs)
+            file_ids = self.from_repository.fileids_altered_by_revision_ids(revs)
             count = 0
             num_file_ids = len(file_ids)
-            for file_id in file_ids:
+            for file_id, required_versions in file_ids.items():
                 texts_pb.update("fetch texts", count, num_file_ids)
                 count +=1
                 to_weave = self.to_weaves.get_weave_or_empty(file_id,
@@ -169,7 +169,7 @@ class RepoFetcher(object):
                     self.from_repository.get_transaction())
                 # we fetch all the texts, because texts do
                 # not reference anything, and its cheap enough
-                to_weave.join(from_weave)
+                to_weave.join(from_weave, version_ids=required_versions)
         finally:
             texts_pb.finished()
 
