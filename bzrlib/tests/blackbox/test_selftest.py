@@ -83,7 +83,10 @@ class TestRunBzr(ExternalBase):
 
     def test_stdin(self):
         # test that the stdin keyword to run_bzr is passed through to
-        # run_bzr_captured as-is.
+        # run_bzr_captured as-is. We do this by overriding
+        # run_bzr_captured in this class, and then calling run_bzr,
+        # which is a convenience function for run_bzr_captured, so 
+        # should invoke it.
         self.run_bzr('foo', 'bar', stdin='gam')
         self.assertEqual('gam', self.stdin)
         self.run_bzr('foo', 'bar', stdin='zippy')
@@ -100,7 +103,9 @@ class TestRunBzrCaptured(ExternalBase):
 
     def test_stdin(self):
         # test that the stdin keyword to run_bzr_captured is passed through to
-        # apply_redirected as a StringIO
+        # apply_redirected as a StringIO. We do this by overriding
+        # apply_redirected in this class, and then calling run_bzr_captured,
+        # which calls apply_redirected. 
         self.run_bzr_captured(['foo', 'bar'], stdin='gam')
         self.assertEqual('gam', self.stdin.read())
         self.assertTrue(self.stdin is self.factory_stdin)

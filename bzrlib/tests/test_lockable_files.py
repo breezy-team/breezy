@@ -139,6 +139,8 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
 
     def tearDown(self):
         super(TestLockableFiles_TransportLock, self).tearDown()
+        # free the subtransport so that we do not get a 5 second
+        # timeout due to the SFTP connection cache.
         del self.sub_transport
 
     def get_lockable(self):

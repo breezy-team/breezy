@@ -34,9 +34,10 @@ class TestBreakLock(TestCaseWithBranch):
         # while SilentUIFactory still accepts stdin, we need to customise
         # ours
         self.old_factory = bzrlib.ui.ui_factory
+        self.addCleanup(self.restoreFactory)
         bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
 
-    def tearDown(self):
+    def restoreFactory(self):
         bzrlib.ui.ui_factory = self.old_factory
 
     def test_unlocked(self):

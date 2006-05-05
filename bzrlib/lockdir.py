@@ -236,10 +236,11 @@ class LockDir(object):
         holder_info = self.peek()
         if holder_info is not None:
             if bzrlib.ui.ui_factory.get_boolean(
-                "Break lock %s held by %s@%s" % (
+                "Break lock %s held by %s@%s [process #%s]" % (
                     self.transport,
                     holder_info["user"],
-                    holder_info["hostname"])):
+                    holder_info["hostname"],
+                    holder_info["pid"])):
                 self.force_break(holder_info)
         
     def force_break(self, dead_holder_info):
