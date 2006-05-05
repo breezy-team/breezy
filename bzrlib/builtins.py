@@ -2460,18 +2460,23 @@ class cmd_break_lock(Command):
 
     CAUTION: Locks should only be broken when you are sure that the process
     holding the lock has been stopped.
+
+    You can get information on what locks are open via the 'bzr info' command.
     
     example:
-        bzr break-lock .
+        bzr break-lock
     """
-    takes_args = ['location']
-    takes_options = [Option('show',
-                            help="just show information on the lock, " \
-                                 "don't break it"),
-                    ]
-    def run(self, location, show=False):
-        raise NotImplementedError("sorry, break-lock is not complete yet; "
-                "you can remove the 'held' directory manually to break the lock")
+    takes_args = ['location?']
+
+    def run(self, location=None, show=False):
+        if location is None:
+            location = u'.'
+        control, relpath = bzrdir.BzrDir.open_containing(location)
+        try:
+            control.break_lock()
+        except NotImplementedError:
+            pass
+        
 
 
 # command-line interpretation helper for merge-related commands

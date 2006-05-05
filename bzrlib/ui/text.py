@@ -24,10 +24,10 @@ import sys
 
 import bzrlib.progress
 from bzrlib.symbol_versioning import *
-from bzrlib.ui import UIFactory
+from bzrlib.ui import CLIUIFactory
 
 
-class TextUIFactory(UIFactory):
+class TextUIFactory(CLIUIFactory):
     """A UI factory for Text user interefaces."""
 
     def __init__(self, bar_type=None):
@@ -39,7 +39,12 @@ class TextUIFactory(UIFactory):
         """
         super(TextUIFactory, self).__init__()
         self._bar_type = bar_type
+        self.stdout = sys.stdout
 
+    def prompt(self, prompt):
+        """Emit prompt on the CLI."""
+        self.stdout.write(prompt + "? [y/n]:")
+        
     @deprecated_method(zero_eight)
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""

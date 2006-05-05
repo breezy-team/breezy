@@ -186,6 +186,9 @@ bzr 0.8rc1  2006-04-14
       requesting an indepth reconciliation, rather than just a data-loss 
       check. (Robert Collins)
 
+    * bzrlib.ui.ui_factory protocol now supports 'get_boolean' to prompt
+      the user for yes/no style input. (Robert Collins)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
@@ -207,6 +210,9 @@ bzr 0.8rc1  2006-04-14
       preventing shutdown from closing it twice.  (Olaf Conradi)
 
     * Move test case for uncommit to blackbox tests.  (Olaf Conradi)
+
+    * run_bzr and run_bzr_captured now accept a 'stdin="foo"' parameter which
+      will provide String("foo") to the command as its stdin.
 
 bzr 0.7rc1 2006-01-09
 

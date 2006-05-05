@@ -62,6 +62,24 @@ class BzrDir(object):
         a transport connected to the directory this bzr was opened from.
     """
 
+    def break_lock(self):
+        """Invoke break_lock on the first object in the bzrdir.
+
+        If there is a tree, the tree is opened and break_lock() called.
+        Otherwise, branch is tried, and finally repository.
+        """
+        try:
+            thing_to_unlock = self.open_workingtree()
+        except (errors.NotLocalUrl, errors.NoWorkingTree):
+            try:
+                thing_to_unlock = self.open_branch()
+            except errors.NotBranchError:
+                try:
+                    thing_to_unlock = self.open_repository()
+                except errors.NoRepositoryPresent:
+                    return
+        thing_to_unlock.break_lock()
+
     def can_convert_format(self):
         """Return true if this bzrdir is one whose format we can convert from."""
         return True
@@ -580,6 +598,10 @@ class BzrDirPreSplitOut(BzrDir):
         self._control_files = LockableFiles(self.get_branch_transport(None),
                                             self._format._lock_file_name,
                                             self._format._lock_class)
+
+    def break_lock(self):
+        """Pre-splitout bzrdirs do not suffer from stale locks."""
+        raise NotImplementedError(self.break_lock)
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         """See BzrDir.clone()."""

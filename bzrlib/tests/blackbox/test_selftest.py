@@ -22,6 +22,7 @@ from bzrlib.tests import (
                           TestCaseInTempDir,
                           TestSkipped,
                           )
+from bzrlib.tests.blackbox import ExternalBase
 
 
 class TestOptions(TestCase):
@@ -73,3 +74,41 @@ class TestOptions(TestCase):
             bzrlib.tests.default_transport = old_transport
             TestOptions.current_test = None
             TestCaseInTempDir.TEST_ROOT = old_root
+
+
+class TestRunBzr(ExternalBase):
+
+    def run_bzr_captured(self, argv, retcode=0, stdin=None):
+        self.stdin = stdin
+
+    def test_stdin(self):
+        # test that the stdin keyword to run_bzr is passed through to
+        # run_bzr_captured as-is. We do this by overriding
+        # run_bzr_captured in this class, and then calling run_bzr,
+        # which is a convenience function for run_bzr_captured, so 
+        # should invoke it.
+        self.run_bzr('foo', 'bar', stdin='gam')
+        self.assertEqual('gam', self.stdin)
+        self.run_bzr('foo', 'bar', stdin='zippy')
+        self.assertEqual('zippy', self.stdin)
+
+
+class TestRunBzrCaptured(ExternalBase):
+
+    def apply_redirected(self, stdin=None, stdout=None, stderr=None,
+                         a_callable=None, *args, **kwargs):
+        self.stdin = stdin
+        self.factory_stdin = getattr(bzrlib.ui.ui_factory, "stdin", None)
+        return 0
+
+    def test_stdin(self):
+        # test that the stdin keyword to run_bzr_captured is passed through to
+        # apply_redirected as a StringIO. We do this by overriding
+        # apply_redirected in this class, and then calling run_bzr_captured,
+        # which calls apply_redirected. 
+        self.run_bzr_captured(['foo', 'bar'], stdin='gam')
+        self.assertEqual('gam', self.stdin.read())
+        self.assertTrue(self.stdin is self.factory_stdin)
+        self.run_bzr_captured(['foo', 'bar'], stdin='zippy')
+        self.assertEqual('zippy', self.stdin.read())
+        self.assertTrue(self.stdin is self.factory_stdin)
