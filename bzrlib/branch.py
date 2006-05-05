@@ -45,6 +45,7 @@ from bzrlib.osutils import (isdir, quotefn,
                             rename, splitpath, sha_file,
                             file_kind, abspath, normpath, pathjoin,
                             safe_unicode,
+                            rmtree,
                             )
 from bzrlib.textui import show_status
 from bzrlib.trace import mutter, note
@@ -886,7 +887,7 @@ class BzrBranch(Branch):
         # XXX: cache_root seems to be unused, 2006-01-13 mbp
         if hasattr(self, 'cache_root') and self.cache_root is not None:
             try:
-                shutil.rmtree(self.cache_root)
+                rmtree(self.cache_root)
             except:
                 pass
             self.cache_root = None

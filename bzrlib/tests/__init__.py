@@ -33,7 +33,6 @@ import errno
 import logging
 import os
 import re
-import shutil
 import stat
 import sys
 import tempfile
@@ -908,7 +907,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         if test_root is not None:
             print 'Deleting test root %s...' % test_root
             try:
-                shutil.rmtree(test_root)
+                osutils.rmtree(test_root)
             finally:
                 print
     else:
