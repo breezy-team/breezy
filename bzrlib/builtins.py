@@ -990,19 +990,22 @@ class cmd_diff(Command):
     If files are listed, only the changes in those files are listed.
     Otherwise, all changes for the tree are listed.
 
+    "bzr diff -p1" is equivalent to "bzr diff --prefix old/:new/", and
+    produces patches suitable for "patch -p1".
+
     examples:
         bzr diff
         bzr diff -r1
         bzr diff -r1..2
+        bzr diff --diff-prefix old/:new/
+        bzr diff bzr.mine bzr.dev
+        bzr diff foo.c
     """
-    # TODO: Allow diff across branches.
     # TODO: Option to use external diff command; could be GNU diff, wdiff,
     #       or a graphical diff.
 
     # TODO: Python difflib is not exactly the same as unidiff; should
     #       either fix it up or prefer to use an external diff.
-
-    # TODO: If a directory is given, diff everything under that.
 
     # TODO: Selected-file diff is inefficient and doesn't show you
     #       deleted files.
@@ -1010,21 +1013,25 @@ class cmd_diff(Command):
     # TODO: This probably handles non-Unix newlines poorly.
     
     takes_args = ['file*']
-    takes_options = ['revision', 'diff-options', 'diff-prefix']
+    takes_options = ['revision', 'diff-options', 'prefix']
     aliases = ['di', 'dif']
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-       diff_prefix=None):
+            prefix=None):
         from bzrlib.diff import diff_cmd_helper, show_diff_trees
 
-        if diff_prefix:
-            if not ':' in diff_prefix:
-                 raise BzrError("--diff-prefix expects two values separated by a colon")            
-            old_label,new_label=diff_prefix.split(":")
+        if (prefix is None) or (prefix == '0'):
+            # diff -p0 format
+            old_label = ''
+            new_label = ''
+        elif prefix == '1':
+            old_label = 'old/'
+            new_label = 'new/'
         else:
-            old_label='a/'
-            new_label='b/'
+            if not ':' in prefix:
+                 raise BzrError("--diff-prefix expects two values separated by a colon")
+            old_label, new_label = prefix.split(":")
         
         try:
             tree1, file_list = internal_tree_files(file_list)

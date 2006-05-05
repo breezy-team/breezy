@@ -123,10 +123,6 @@ from bzrlib.rio import RioWriter, read_stanza, Stanza
 # lock at the same time they should *both* get it.  But then that's unlikely
 # to be a good idea.
 
-# TODO: Transport could offer a simpler put() method that avoids the
-# rename-into-place for cases like creating the lock template, where there is
-# no chance that the file already exists.
-
 # TODO: Perhaps store some kind of note like the bzr command line in the lock
 # info?
 
@@ -199,7 +195,11 @@ class LockDir(object):
             sio = StringIO()
             self._prepare_info(sio)
             sio.seek(0)
-            self.transport.put(tmpname + self.__INFO_NAME, sio)
+            # append will create a new file; we use append rather than put
+            # because we don't want to write to a temporary file and rename
+            # into place, because that's going to happen to the whole
+            # directory
+            self.transport.append(tmpname + self.__INFO_NAME, sio)
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
             self.confirm()
