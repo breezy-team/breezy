@@ -442,7 +442,7 @@ class TestCase(unittest.TestCase):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
 
-    def run_bzr_captured(self, argv, retcode=0):
+    def run_bzr_captured(self, argv, retcode=0, stdin=None):
         """Invoke bzr and return (stdout, stderr).
 
         Useful for code that wants to check the contents of the
@@ -461,7 +461,10 @@ class TestCase(unittest.TestCase):
 
         argv -- arguments to invoke bzr
         retcode -- expected return code, or None for don't-care.
+        :param stdin: A string to be used as stdin for the command.
         """
+        if stdin is not None:
+            stdin = StringIO(stdin)
         stdout = StringIO()
         stderr = StringIO()
         self.log('run bzr: %s', ' '.join(argv))
@@ -471,12 +474,15 @@ class TestCase(unittest.TestCase):
         handler.setLevel(logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
+        old_stdin = getattr(bzrlib.ui.ui_factory, "stdin", None)
+        bzrlib.ui.ui_factory.stdin = stdin
         try:
-            result = self.apply_redirected(None, stdout, stderr,
+            result = self.apply_redirected(stdin, stdout, stderr,
                                            bzrlib.commands.run_bzr_catch_errors,
                                            argv)
         finally:
             logger.removeHandler(handler)
+            bzrlib.ui.ui_factory.stdin = old_stdin
         out = stdout.getvalue()
         err = stderr.getvalue()
         if out:
@@ -496,9 +502,12 @@ class TestCase(unittest.TestCase):
 
         This sends the stdout/stderr results into the test's log,
         where it may be useful for debugging.  See also run_captured.
+
+        :param stdin: A string to be used as stdin for the command.
         """
         retcode = kwargs.pop('retcode', 0)
-        return self.run_bzr_captured(args, retcode)
+        stdin = kwargs.pop('stdin', None)
+        return self.run_bzr_captured(args, retcode, stdin)
 
     def check_inventory_shape(self, inv, shape):
         """Compare an inventory to a list of expected names.

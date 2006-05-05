@@ -116,6 +116,14 @@ class Repository(object):
         result = self._all_possible_ids()
         return self._eliminate_revisions_not_present(result)
 
+    def break_lock(self):
+        """Break a lock if one is present from another instance.
+
+        Uses the ui factory to ask for confirmation if the lock may be from
+        an active process.
+        """
+        self.control_files.break_lock()
+
     @needs_read_lock
     def _eliminate_revisions_not_present(self, revision_ids):
         """Check every revision id in revision_ids to see if we have it.

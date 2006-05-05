@@ -107,6 +107,13 @@ class LockableFiles(object):
             warn("file group %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
+    def break_lock(self):
+        """Break the lock of this lockable files group if it is held.
+
+        The current ui factory will be used to prompt for user conformation.
+        """
+        self._lock.break_lock()
+
     def _escape(self, file_or_path):
         if not isinstance(file_or_path, basestring):
             file_or_path = '/'.join(file_or_path)
@@ -244,8 +251,10 @@ class LockableFiles(object):
             #note('unlocking %s', self)
             #traceback.print_stack()
             self._finish_transaction()
-            self._lock.unlock()
-            self._lock_mode = self._lock_count = None
+            try:
+                self._lock.unlock()
+            finally:
+                self._lock_mode = self._lock_count = None
 
     def is_locked(self):
         """Return true if this LockableFiles group is locked"""
@@ -307,6 +316,9 @@ class TransportLock(object):
         self._escaped_name = escaped_name
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
+
+    def break_lock(self):
+        raise NotImplementedError(self.break_lock)
 
     def lock_write(self):
         self._lock = self._transport.lock_write(self._escaped_name)
