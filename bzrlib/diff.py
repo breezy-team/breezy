@@ -14,6 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import sys
+import subprocess
+from tempfile import NamedTemporaryFile
+
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 import bzrlib.errors as errors
@@ -80,9 +84,6 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
     
     # make sure our own output is properly ordered before the diff
     to_file.flush()
-
-    from tempfile import NamedTemporaryFile
-    import subprocess
 
     oldtmpf = NamedTemporaryFile()
     newtmpf = NamedTemporaryFile()
@@ -169,7 +170,6 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
     supplies any two trees.
     """
     if output is None:
-        import sys
         output = sys.stdout
 
     if from_spec is None:
@@ -216,7 +216,6 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
-    import sys
     output = sys.stdout
     def spec_tree(spec):
         revision_id = spec.in_store(tree.branch).rev_id
