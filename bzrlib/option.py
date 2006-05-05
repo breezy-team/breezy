@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: For things like --diff-prefix, we want a way to customize the display
+# of the option argument.
 
 import re
 
@@ -163,6 +165,8 @@ _global_option('overwrite', help='Ignore differences between branches and '
 _global_option('basis', type=str)
 _global_option('bound')
 _global_option('diff-options', type=str)
+_global_option('diff-prefix', type=str, 
+               help='Set prefixes to added to old and new filenames, as two values separated by a colon')
 _global_option('help',
                help='show help message')
 _global_option('file', type=unicode)
@@ -174,7 +178,6 @@ _global_option('no-recurse')
 _global_option('profile',
                help='show performance profiling information')
 _global_option('revision', type=_parse_revision_str)
-_global_option('short')
 _global_option('show-ids', 
                help='show internal object ids')
 _global_option('timezone', 

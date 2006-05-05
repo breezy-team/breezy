@@ -91,6 +91,12 @@ def fetch_steps(self, br_a, br_b, writable_a):
     # from its own revision history
     br_a2.append_revision('a-b-c')
     self.assertRaises(bzrlib.errors.InstallFailed, br_a3.fetch, br_a2)
+
+    # TODO: jam 20051218 Branch should no longer allow append_revision for revisions
+    #       which don't exist. So this test needs to be rewritten
+    #       RBC 20060403 the way to do this is to uncommit the revision from the
+    #           repository after the commit
+
     #TODO: test that fetch correctly does reweaving when needed. RBC 20051008
     # Note that this means - updating the weave when ghosts are filled in to 
     # add the right parents.
@@ -102,6 +108,10 @@ class TestFetch(TestCaseWithTransport):
         #highest indices a: 5, b: 7
         br_a, br_b = make_branches(self)
         fetch_steps(self, br_a, br_b, br_a)
+
+    def test_fetch_self(self):
+        wt = self.make_branch_and_tree('br')
+        self.assertEqual(wt.branch.fetch(wt.branch), (0, []))
 
 
 class TestMergeFetch(TestCaseWithTransport):
@@ -216,8 +226,13 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.log("web server logs are:")
         http_logs = self.get_readonly_server().logs
         self.log('\n'.join(http_logs))
-        self.assertEqual(1, self._count_log_matches('weaves/ce/id.weave', http_logs))
-        self.assertEqual(1, self._count_log_matches('inventory.weave', http_logs))
+        # unfortunately this log entry is branch format specific. We could 
+        # factor out the 'what files does this format use' to a method on the 
+        # repository, which would let us to this generically. RBC 20060419
+        self.assertEqual(1, self._count_log_matches('/ce/id.kndx', http_logs))
+        self.assertEqual(1, self._count_log_matches('/ce/id.knit', http_logs))
+        self.assertEqual(1, self._count_log_matches('inventory.kndx', http_logs))
+        self.assertEqual(1, self._count_log_matches('inventory.knit', http_logs))
         # this r-h check test will prevent regressions, but it currently already 
         # passes, before the patch to cache-rh is applied :[
         self.assertEqual(1, self._count_log_matches('revision-history', http_logs))
@@ -230,6 +245,8 @@ class TestHttpFetch(TestCaseWithWebserver):
         http_logs = self.get_readonly_server().logs
         self.log("web server logs are:")
         self.log('\n'.join(http_logs))
-        self.assertEqual(1, self._count_log_matches('branch-format', http_logs[0:1]))
-        self.assertEqual(1, self._count_log_matches('revision-history', http_logs[1:2]))
-        self.assertEqual(2, len(http_logs))
+        self.assertEqual(1, self._count_log_matches('branch-format', http_logs))
+        self.assertEqual(1, self._count_log_matches('branch/format', http_logs))
+        self.assertEqual(1, self._count_log_matches('repository/format', http_logs))
+        self.assertEqual(1, self._count_log_matches('revision-history', http_logs))
+        self.assertEqual(4, len(http_logs))

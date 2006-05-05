@@ -17,7 +17,7 @@
 """Reconcilers are able to fix some potential data errors in a branch."""
 
 
-__all__ = ['reconcile', 'Reconciler', 'RepoReconciler']
+__all__ = ['reconcile', 'Reconciler', 'RepoReconciler', 'KnitReconciler']
 
 
 import bzrlib.branch
@@ -28,7 +28,7 @@ from bzrlib.tsort import TopoSorter
 import bzrlib.ui as ui
 
 
-def reconcile(dir):
+def reconcile(dir, other=None):
     """Reconcile the data in dir.
 
     Currently this is limited to a inventory 'reweave'.
@@ -37,15 +37,18 @@ def reconcile(dir):
 
     Directly using Reconciler is recommended for library users that
     desire fine grained control or analysis of the found issues.
+
+    :param other: another bzrdir to reconcile against.
     """
-    reconciler = Reconciler(dir)
+    reconciler = Reconciler(dir, other=other)
     reconciler.reconcile()
 
 
 class Reconciler(object):
     """Reconcilers are used to reconcile existing data."""
 
-    def __init__(self, dir):
+    def __init__(self, dir, other=None):
+        """Create a Reconciler."""
         self.bzrdir = dir
 
     def reconcile(self):
@@ -68,8 +71,7 @@ class Reconciler(object):
         self.repo = self.bzrdir.find_repository()
         self.pb.note('Reconciling repository %s',
                      self.repo.bzrdir.root_transport.base)
-        repo_reconciler = RepoReconciler(self.repo)
-        repo_reconciler.reconcile()
+        repo_reconciler = self.repo.reconcile(thorough=True)
         self.inconsistent_parents = repo_reconciler.inconsistent_parents
         self.garbage_inventories = repo_reconciler.garbage_inventories
         self.pb.note('Reconciliation complete.')
@@ -81,8 +83,17 @@ class RepoReconciler(object):
     Currently this consists of an inventory reweave with revision cross-checks.
     """
 
-    def __init__(self, repo):
+    def __init__(self, repo, other=None, thorough=False):
+        """Construct a RepoReconciler.
+
+        :param thorough: perform a thorough check which may take longer but
+                         will correct non-data loss issues such as incorrect
+                         cached data.
+        """
+        self.garbage_inventories = 0
+        self.inconsistent_parents = 0
         self.repo = repo
+        self.thorough = thorough
 
     def reconcile(self):
         """Perform reconciliation.
@@ -108,8 +119,14 @@ class RepoReconciler(object):
         self._reweave_inventory()
 
     def _reweave_inventory(self):
-        """Regenerate the inventory weave for the repository from scratch."""
-        # local because its really a wart we want to hide
+        """Regenerate the inventory weave for the repository from scratch.
+        
+        This is a smart function: it will only do the reweave if doing it 
+        will correct data issues. The self.thorough flag controls whether
+        only data-loss causing issues (!self.thorough) or all issues
+        (self.thorough) are treated as requiring the reweave.
+        """
+        # local because needing to know about WeaveFile is a wart we want to hide
         from bzrlib.weave import WeaveFile, Weave
         transaction = self.repo.get_transaction()
         self.pb.update('Reading inventory data.')
@@ -127,14 +144,17 @@ class RepoReconciler(object):
             # put a revision into the graph.
             self._graph_revision(rev_id)
         self._check_garbage_inventories()
-        if not self.inconsistent_parents and not self.garbage_inventories:
+        # if there are no inconsistent_parents and 
+        # (no garbage inventories or we are not doing a thorough check)
+        if (not self.inconsistent_parents and 
+            (not self.garbage_inventories or not self.thorough)):
             self.pb.note('Inventory ok.')
             return
         self.pb.update('Backing up inventory...', 0, 0)
         self.repo.control_weaves.copy(self.inventory, 'inventory.backup', self.repo.get_transaction())
         self.pb.note('Backup Inventory created.')
         # asking for '' should never return a non-empty weave
-        new_inventory = self.repo.control_weaves.get_empty('inventory.new',
+        new_inventory_vf = self.repo.control_weaves.get_empty('inventory.new',
             self.repo.get_transaction())
 
         # we have topological order of revisions and non ghost parents ready.
@@ -142,24 +162,29 @@ class RepoReconciler(object):
         for rev_id in TopoSorter(self._rev_graph.items()).iter_topo_order():
             parents = self._rev_graph[rev_id]
             # double check this really is in topological order.
-            unavailable = [p for p in parents if p not in new_inventory]
+            unavailable = [p for p in parents if p not in new_inventory_vf]
             assert len(unavailable) == 0
             # this entry has all the non ghost parents in the inventory
             # file already.
             self._reweave_step('adding inventories')
-            # ugly but needed, weaves are just way tooooo slow else.
-            if isinstance(new_inventory, WeaveFile):
-                Weave.add_lines(new_inventory, rev_id, parents, self.inventory.get_lines(rev_id))
+            if isinstance(new_inventory_vf, WeaveFile):
+                # It's really a WeaveFile, but we call straight into the
+                # Weave's add method to disable the auto-write-out behaviour.
+                # This is done to avoid a revision_count * time-to-write additional overhead on 
+                # reconcile.
+                new_inventory_vf._check_write_ok()
+                Weave._add_lines(new_inventory_vf, rev_id, parents, self.inventory.get_lines(rev_id),
+                                 None)
             else:
-                new_inventory.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
+                new_inventory_vf.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
 
-        if isinstance(new_inventory, WeaveFile):
-            new_inventory._save()
-        # if this worked, the set of new_inventory.names should equal
+        if isinstance(new_inventory_vf, WeaveFile):
+            new_inventory_vf._save()
+        # if this worked, the set of new_inventory_vf.names should equal
         # self.pending
-        assert set(new_inventory.versions()) == self.pending
+        assert set(new_inventory_vf.versions()) == self.pending
         self.pb.update('Writing weave')
-        self.repo.control_weaves.copy(new_inventory, 'inventory', self.repo.get_transaction())
+        self.repo.control_weaves.copy(new_inventory_vf, 'inventory', self.repo.get_transaction())
         self.repo.control_weaves.delete('inventory.new', self.repo.get_transaction())
         self.inventory = None
         self.pb.note('Inventory regenerated.')
@@ -183,7 +208,7 @@ class RepoReconciler(object):
             else:
                 mutter('found ghost %s', parent)
         self._rev_graph[rev_id] = parents   
-        if set(self.inventory.get_parents(rev_id)) != set(parents):
+        if self._parents_are_inconsistent(rev_id, parents):
             self.inconsistent_parents += 1
             mutter('Inconsistent inventory parents: id {%s} '
                    'inventory claims %r, '
@@ -194,12 +219,32 @@ class RepoReconciler(object):
                    set(parents),
                    set(rev.parent_ids).difference(set(parents)))
 
+    def _parents_are_inconsistent(self, rev_id, parents):
+        """Return True if the parents list of rev_id does not match the weave.
+
+        This detect inconsistences based on the self.thorough value:
+        if thorough is on, the first parent value is checked as well as ghost
+        differences.
+        Otherwise only the ghost differences are evaluated.
+        """
+        weave_parents = self.inventory.get_parents(rev_id)
+        weave_missing_old_ghosts = set(weave_parents) != set(parents)
+        first_parent_is_wrong = (
+            len(weave_parents) and len(parents) and
+            parents[0] != weave_parents[0])
+        if self.thorough:
+            return weave_missing_old_ghosts or first_parent_is_wrong
+        else:
+            return weave_missing_old_ghosts
+
     def _check_garbage_inventories(self):
         """Check for garbage inventories which we cannot trust
 
         We cant trust them because their pre-requisite file data may not
         be present - all we know is that their revision was not installed.
         """
+        if not self.thorough:
+            return
         inventories = set(self.inventory.versions())
         revisions = set(self._rev_graph.keys())
         garbage = inventories.difference(revisions)
@@ -232,10 +277,10 @@ class KnitReconciler(RepoReconciler):
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
-        self._load_indexes()
-        # knits never suffer this
-        self.inconsistent_parents = 0
-        self._gc_inventory()
+        if self.thorough:
+            self._load_indexes()
+            # knits never suffer this
+            self._gc_inventory()
 
     def _load_indexes(self):
         """Load indexes for the reconciliation."""
@@ -258,7 +303,7 @@ class KnitReconciler(RepoReconciler):
         self.repo.control_weaves.copy(self.inventory, 'inventory.backup', self.transaction)
         self.pb.note('Backup Inventory created.')
         # asking for '' should never return a non-empty weave
-        new_inventory = self.repo.control_weaves.get_empty('inventory.new',
+        new_inventory_vf = self.repo.control_weaves.get_empty('inventory.new',
             self.transaction)
 
         # we have topological order of revisions and non ghost parents ready.
@@ -266,72 +311,22 @@ class KnitReconciler(RepoReconciler):
         for rev_id in TopoSorter(self.revisions.get_graph().items()).iter_topo_order():
             parents = self.revisions.get_parents(rev_id)
             # double check this really is in topological order.
-            unavailable = [p for p in parents if p not in new_inventory]
+            unavailable = [p for p in parents if p not in new_inventory_vf]
             assert len(unavailable) == 0
             # this entry has all the non ghost parents in the inventory
             # file already.
             self._reweave_step('adding inventories')
             # ugly but needed, weaves are just way tooooo slow else.
-            new_inventory.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
+            new_inventory_vf.add_lines(rev_id, parents, self.inventory.get_lines(rev_id))
 
-        # if this worked, the set of new_inventory.names should equal
+        # if this worked, the set of new_inventory_vf.names should equal
         # self.pending
-        assert set(new_inventory.versions()) == set(self.revisions.versions())
+        assert set(new_inventory_vf.versions()) == set(self.revisions.versions())
         self.pb.update('Writing weave')
-        self.repo.control_weaves.copy(new_inventory, 'inventory', self.transaction)
+        self.repo.control_weaves.copy(new_inventory_vf, 'inventory', self.transaction)
         self.repo.control_weaves.delete('inventory.new', self.transaction)
         self.inventory = None
         self.pb.note('Inventory regenerated.')
-
-    def _reinsert_revisions(self):
-        """Correct the revision history for revisions in the revision knit."""
-        # the total set of revisions to process
-        self.pending = set(self.revisions.versions())
-
-        # mapping from revision_id to parents
-        self._rev_graph = {}
-        # errors that we detect
-        self.inconsistent_parents = 0
-        # we need the revision id of each revision and its available parents list
-        self._setup_steps(len(self.pending))
-        for rev_id in self.pending:
-            # put a revision into the graph.
-            self._graph_revision(rev_id)
-
-        if not self.inconsistent_parents:
-            self.pb.note('Revision history accurate.')
-            return
-        self._setup_steps(len(self._rev_graph))
-        for rev_id, parents in self._rev_graph.items():
-            if parents != self.revisions.get_parents(rev_id):
-                self.revisions.fix_parents(rev_id, parents)
-            self._reweave_step('Fixing parents')
-        self.pb.note('Ancestry corrected.')
-
-    def _graph_revision(self, rev_id):
-        """Load a revision into the revision graph."""
-        # pick a random revision
-        # analyse revision id rev_id and put it in the stack.
-        self._reweave_step('loading revisions')
-        rev = self.repo._revision_store.get_revision(rev_id, self.transaction)
-        assert rev.revision_id == rev_id
-        parents = []
-        for parent in rev.parent_ids:
-            if self.revisions.has_version(parent):
-                parents.append(parent)
-            else:
-                mutter('found ghost %s', parent)
-        self._rev_graph[rev_id] = parents   
-        if set(self.inventory.get_parents(rev_id)) != set(parents):
-            self.inconsistent_parents += 1
-            mutter('Inconsistent inventory parents: id {%s} '
-                   'inventory claims %r, '
-                   'available parents are %r, '
-                   'unavailable parents are %r',
-                   rev_id, 
-                   set(self.inventory.get_parents(rev_id)),
-                   set(parents),
-                   set(rev.parent_ids).difference(set(parents)))
 
     def _check_garbage_inventories(self):
         """Check for garbage inventories which we cannot trust

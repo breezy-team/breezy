@@ -19,9 +19,13 @@ import urllib, urllib2
 import bzrlib  # for the version
 from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
+from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError)
+
+
+register_urlparse_netloc_protocol('http+urllib')
 
 
 class Request(urllib2.Request):
@@ -83,6 +87,8 @@ class HttpTransport_urllib(HttpTransportBase):
         opener = urllib2.build_opener(auth_handler)
         request = Request(url)
         request.method = method
+        request.add_header('Pragma', 'no-cache')
+        request.add_header('Cache-control', 'max-age=0')
         request.add_header('User-Agent', 'bzr/%s (urllib)' % bzrlib.__version__)
         if ranges:
             assert len(ranges) == 1

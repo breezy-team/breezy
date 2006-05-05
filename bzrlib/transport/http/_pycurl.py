@@ -18,6 +18,12 @@
 
 # TODO: test reporting of http errors
 
+# TODO: Transport option to control caching of particular requests; broadly we
+# would want to offer "caching allowed" or "must revalidate", depending on
+# whether we expect a particular file will be modified after it's committed.
+# It's probably safer to just always revalidate.  mbp 20060321
+
+import os
 from StringIO import StringIO
 
 import bzrlib
@@ -25,7 +31,7 @@ from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError,
                            DependencyNotPresent)
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport
+from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
 
 try:
@@ -33,6 +39,24 @@ try:
 except ImportError, e:
     mutter("failed to import pycurl: %s", e)
     raise DependencyNotPresent('pycurl', e)
+
+try:
+    # see if we can actually initialize PyCurl - sometimes it will load but
+    # fail to start up due to this bug:
+    #  
+    #   32. (At least on Windows) If libcurl is built with c-ares and there's
+    #   no DNS server configured in the system, the ares_init() call fails and
+    #   thus curl_easy_init() fails as well. This causes weird effects for
+    #   people who use numerical IP addresses only.
+    #
+    # reported by Alexander Belchenko, 2006-04-26
+    pycurl.Curl()
+except pycurl.error, e:
+    mutter("failed to initialize pycurl: %s", e)
+    raise DependencyNotPresent('pycurl', e)
+
+
+register_urlparse_netloc_protocol('http+pycurl')
 
 
 class PyCurlTransport(HttpTransportBase):
@@ -68,9 +92,10 @@ class PyCurlTransport(HttpTransportBase):
             return False
         elif code in (200, 302): # "ok", "found"
             return True
+        elif code == 0:
+            self._raise_curl_connection_error(curl)
         else:
-            raise TransportError('http error %d probing for %s' %
-                    (code, curl.getinfo(pycurl.EFFECTIVE_URL)))
+            self._raise_curl_http_error(curl)
         
     def _get(self, relpath, ranges):
         curl = pycurl.Curl()
@@ -95,20 +120,33 @@ class PyCurlTransport(HttpTransportBase):
         elif code == 206 and (ranges is not None):
             sio.seek(0)
             return code, sio
+        elif code == 0:
+            self._raise_curl_connection_error(curl)
         else:
-            raise TransportError('http error %d acccessing %s' % 
-                    (code, curl.getinfo(pycurl.EFFECTIVE_URL)))
+            self._raise_curl_http_error(curl)
+
+    def _raise_curl_connection_error(self, curl):
+        curl_errno = curl.getinfo(pycurl.OS_ERRNO)
+        url = curl.getinfo(pycurl.EFFECTIVE_URL)
+        raise ConnectionError('curl connection error (%s) on %s'
+                              % (os.strerror(curl_errno), url))
+
+    def _raise_curl_http_error(self, curl):
+        code = curl.getinfo(pycurl.HTTP_CODE)
+        url = curl.getinfo(pycurl.EFFECTIVE_URL)
+        raise TransportError('http error %d probing for %s' %
+                             (code, url))
 
     def _set_curl_options(self, curl):
         """Set options for all requests"""
         # There's no way in http/1.0 to say "must revalidate"; we don't want
         # to force it to always retrieve.  so just turn off the default Pragma
         # provided by Curl.
-        headers = ['Cache-control: must-revalidate',
-                   'Pragma:']
+        headers = ['Cache-control: max-age=0',
+                   'Pragma: no-cache']
         ## curl.setopt(pycurl.VERBOSE, 1)
-        # TODO: maybe show a summary of the pycurl version
-        ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__) 
+        # TODO: maybe include a summary of the pycurl version
+        ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__)
         curl.setopt(pycurl.USERAGENT, ua_str)
         curl.setopt(pycurl.HTTPHEADER, headers)
         curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses

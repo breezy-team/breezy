@@ -682,106 +682,6 @@ class Khayyam(TestBase):
         self.check_read_write(k)
 
 
-class MergeCases(TestBase):
-    def doMerge(self, base, a, b, mp):
-        from cStringIO import StringIO
-        from textwrap import dedent
-
-        def addcrlf(x):
-            return x + '\n'
-        
-        w = Weave()
-        w.add_lines('text0', [], map(addcrlf, base))
-        w.add_lines('text1', ['text0'], map(addcrlf, a))
-        w.add_lines('text2', ['text0'], map(addcrlf, b))
-
-        self.log('weave is:')
-        tmpf = StringIO()
-        write_weave(w, tmpf)
-        self.log(tmpf.getvalue())
-
-        self.log('merge plan:')
-        p = list(w.plan_merge('text1', 'text2'))
-        for state, line in p:
-            if line:
-                self.log('%12s | %s' % (state, line[:-1]))
-
-        self.log('merge:')
-        mt = StringIO()
-        mt.writelines(w.weave_merge(p))
-        mt.seek(0)
-        self.log(mt.getvalue())
-
-        mp = map(addcrlf, mp)
-        self.assertEqual(mt.readlines(), mp)
-        
-        
-    def testOneInsert(self):
-        self.doMerge([],
-                     ['aa'],
-                     [],
-                     ['aa'])
-
-    def testSeparateInserts(self):
-        self.doMerge(['aaa', 'bbb', 'ccc'],
-                     ['aaa', 'xxx', 'bbb', 'ccc'],
-                     ['aaa', 'bbb', 'yyy', 'ccc'],
-                     ['aaa', 'xxx', 'bbb', 'yyy', 'ccc'])
-
-    def testSameInsert(self):
-        self.doMerge(['aaa', 'bbb', 'ccc'],
-                     ['aaa', 'xxx', 'bbb', 'ccc'],
-                     ['aaa', 'xxx', 'bbb', 'yyy', 'ccc'],
-                     ['aaa', 'xxx', 'bbb', 'yyy', 'ccc'])
-
-    def testOverlappedInsert(self):
-        self.doMerge(['aaa', 'bbb'],
-                     ['aaa', 'xxx', 'yyy', 'bbb'],
-                     ['aaa', 'xxx', 'bbb'],
-                     ['aaa', '<<<<<<< ', 'xxx', 'yyy', '=======', 'xxx', 
-                      '>>>>>>> ', 'bbb'])
-
-        # really it ought to reduce this to 
-        # ['aaa', 'xxx', 'yyy', 'bbb']
-
-
-    def testClashReplace(self):
-        self.doMerge(['aaa'],
-                     ['xxx'],
-                     ['yyy', 'zzz'],
-                     ['<<<<<<< ', 'xxx', '=======', 'yyy', 'zzz', 
-                      '>>>>>>> '])
-
-    def testNonClashInsert(self):
-        self.doMerge(['aaa'],
-                     ['xxx', 'aaa'],
-                     ['yyy', 'zzz'],
-                     ['<<<<<<< ', 'xxx', 'aaa', '=======', 'yyy', 'zzz', 
-                      '>>>>>>> '])
-
-        self.doMerge(['aaa'],
-                     ['aaa'],
-                     ['yyy', 'zzz'],
-                     ['yyy', 'zzz'])
-
-
-    def testDeleteAndModify(self):
-        """Clashing delete and modification.
-
-        If one side modifies a region and the other deletes it then
-        there should be a conflict with one side blank.
-        """
-
-        #######################################
-        # skippd, not working yet
-        return
-        
-        self.doMerge(['aaa', 'bbb', 'ccc'],
-                     ['aaa', 'ddd', 'ccc'],
-                     ['aaa', 'ccc'],
-                     ['<<<<<<<< ', 'aaa', '=======', '>>>>>>> ', 'ccc'])
-
-
 class JoinWeavesTests(TestBase):
     def setUp(self):
         super(JoinWeavesTests, self).setUp()
@@ -974,7 +874,7 @@ class JoinOptimization(TestCase):
         w2.join(w1) # extract 3b to add txt1 
 
 
-class TestNeedsRweave(TestCase):
+class TestNeedsReweave(TestCase):
     """Internal corner cases for when reweave is needed."""
 
     def test_compatible_parents(self):
@@ -990,5 +890,3 @@ class TestNeedsRweave(TestCase):
         self.assertFalse(w1._compatible_parents(set(), set([1])))
         self.assertFalse(w1._compatible_parents(my_parents, set([1, 2, 3, 4])))
         self.assertFalse(w1._compatible_parents(my_parents, set([4])))
-        
-

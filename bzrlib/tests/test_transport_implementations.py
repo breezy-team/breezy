@@ -132,7 +132,7 @@ class TestTransportImplementation(TestCaseInTempDir):
                     'contents of e\n',
                     'contents of g\n',
                     ]
-        self.build_tree(files, transport=t)
+        self.build_tree(files, transport=t, line_endings='binary')
         self.check_transport_contents('contents of a\n', t, 'a')
         content_f = t.get_multi(files)
         for content, f in zip(contents, content_f):
@@ -246,6 +246,9 @@ class TestTransportImplementation(TestCaseInTempDir):
     def test_mkdir_permissions(self):
         t = self.get_transport()
         if t.is_readonly():
+            return
+        if not t._can_roundtrip_unix_modebits():
+            # no sense testing on this transport
             return
         # Test mkdir with a mode
         t.mkdir('dmode755', mode=0755)
@@ -503,6 +506,13 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.check_transport_contents(t.get('f2').read(), t, 'c')
         self.check_transport_contents(t.get('f3').read(), t, 'd')
 
+    def test_append_mode(self):
+        # check append accepts a mode
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        t.append('f', StringIO('f'), mode=None)
+        
     def test_delete(self):
         # TODO: Test Transport.delete
         t = self.get_transport()
@@ -712,7 +722,7 @@ class TestTransportImplementation(TestCaseInTempDir):
 
         paths = ['a', 'b/', 'b/c', 'b/d/', 'b/d/e']
         sizes = [14, 0, 16, 0, 18] 
-        self.build_tree(paths, transport=t)
+        self.build_tree(paths, transport=t, line_endings='binary')
 
         for path, size in zip(paths, sizes):
             st = t.stat(path)
@@ -778,9 +788,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertEqual([u'a', u'c', u'c2'], sorted_list('.'))
         self.assertEqual([u'e'], sorted_list(u'c'))
 
-        self.assertListRaises(NoSuchFile, t.list_dir, 'q')
-        self.assertListRaises(NoSuchFile, t.list_dir, 'c/f')
-        self.assertListRaises(NoSuchFile, t.list_dir, 'a')
+        self.assertListRaises(PathError, t.list_dir, 'q')
+        self.assertListRaises(PathError, t.list_dir, 'c/f')
+        self.assertListRaises(PathError, t.list_dir, 'a')
 
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem
@@ -825,6 +835,18 @@ class TestTransportImplementation(TestCaseInTempDir):
         # trailing slash should be the same.
         self.assertEqual('foo', t.relpath(t.base + 'foo/'))
 
+    def test_relpath_at_root(self):
+        t = self.get_transport()
+        # clone all the way to the top
+        new_transport = t.clone('..')
+        while new_transport.base != t.base:
+            t = new_transport
+            new_transport = t.clone('..')
+        # we must be able to get a relpath below the root
+        self.assertEqual('', t.relpath(t.base))
+        # and a deeper one should work too
+        self.assertEqual('foo/bar', t.relpath(t.base + 'foo/bar'))
+
     def test_abspath(self):
         # smoke test for abspath. Corner cases for backends like unix fs's
         # that have aliasing problems like symlinks should go in backend
@@ -835,6 +857,23 @@ class TestTransportImplementation(TestCaseInTempDir):
         # the abspath - eg http+pycurl-> just http -- mbp 20060308 
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
+
+    def test_abspath_at_root(self):
+        t = self.get_transport()
+        # clone all the way to the top
+        new_transport = t.clone('..')
+        while new_transport.base != t.base:
+            t = new_transport
+            new_transport = t.clone('..')
+        # we must be able to get a abspath of the root when we ask for
+        # t.abspath('..') - this due to our choice that clone('..')
+        # should return the root from the root, combined with the desire that
+        # the url from clone('..') and from abspath('..') should be the same.
+        self.assertEqual(t.base, t.abspath('..'))
+        # '' should give us the root
+        self.assertEqual(t.base, t.abspath(''))
+        # and a path should append to the url
+        self.assertEqual(t.base + 'foo', t.abspath('foo'))
 
     def test_iter_files_recursive(self):
         transport = self.get_transport()

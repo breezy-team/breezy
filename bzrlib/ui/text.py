@@ -28,6 +28,17 @@ from bzrlib.ui import UIFactory
 
 
 class TextUIFactory(UIFactory):
+    """A UI factory for Text user interefaces."""
+
+    def __init__(self, bar_type=None):
+        """Create a TextUIFactory.
+
+        :param bar_type: The type of progress bar to create. It defaults to 
+                         letting the bzrlib.progress.ProgressBar factory auto
+                         select.
+        """
+        super(TextUIFactory, self).__init__()
+        self._bar_type = bar_type
 
     @deprecated_method(zero_eight)
     def progress_bar(self):
@@ -60,5 +71,17 @@ class TextUIFactory(UIFactory):
         may return a tty or dots bar depending on the terminal.
         """
         if self._progress_bar_stack is None:
-            self._progress_bar_stack = bzrlib.progress.ProgressBarStack()
+            self._progress_bar_stack = bzrlib.progress.ProgressBarStack(
+                klass=self._bar_type)
         return self._progress_bar_stack.get_nested()
+
+    def clear_term(self):
+        """Prepare the terminal for output.
+
+        This will, clear any progress bars, and leave the cursor at the
+        leftmost position."""
+        if self._progress_bar_stack is None:
+            return
+        overall_pb = self._progress_bar_stack.bottom()
+        if overall_pb is not None:
+            overall_pb.clear()

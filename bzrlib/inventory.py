@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,9 +37,9 @@ import types
 import bzrlib
 from bzrlib.osutils import (pumpfile, quotefn, splitpath, joinpath,
                             pathjoin, sha_strings)
-from bzrlib.trace import mutter
 from bzrlib.errors import (NotVersionedError, InvalidEntryName,
-                           BzrError, BzrCheckError)
+                           BzrError, BzrCheckError, BinaryFile)
+from bzrlib.trace import mutter
 
 
 class InventoryEntry(object):
@@ -119,8 +119,10 @@ class InventoryEntry(object):
                  'revision']
 
     def _add_text_to_weave(self, new_lines, parents, weave_store, transaction):
-        versionedfile = weave_store.get_weave(self.file_id, transaction)
+        versionedfile = weave_store.get_weave_or_empty(self.file_id,
+                                                       transaction)
         versionedfile.add_lines(self.revision, parents, new_lines)
+        versionedfile.clear_cache()
 
     def detect_changes(self, old_entry):
         """Return a (text_modified, meta_modified) from this to old_entry.
@@ -151,7 +153,10 @@ class InventoryEntry(object):
              output_to, reverse=False):
         """Perform a diff between two entries of the same kind."""
 
-    def find_previous_heads(self, previous_inventories, entry_weave):
+    def find_previous_heads(self, previous_inventories,
+                            versioned_file_store,
+                            transaction,
+                            entry_vf=None):
         """Return the revisions and entries that directly preceed this.
 
         Returned as a map from revision to inventory entry.
@@ -159,44 +164,79 @@ class InventoryEntry(object):
         This is a map containing the file revisions in all parents
         for which the file exists, and its revision is not a parent of
         any other. If the file is new, the set will be empty.
+
+        :param versioned_file_store: A store where ancestry data on this
+                                     file id can be queried.
+        :param transaction: The transaction that queries to the versioned 
+                            file store should be completed under.
+        :param entry_vf: The entry versioned file, if its already available.
         """
         def get_ancestors(weave, entry):
             return set(weave.get_ancestry(entry.revision))
+        # revision:ie mapping for each ie found in previous_inventories.
+        candidates = {}
+        # revision:ie mapping with one revision for each head.
         heads = {}
+        # revision: ancestor list for each head
         head_ancestors = {}
+        # identify candidate head revision ids.
         for inv in previous_inventories:
             if self.file_id in inv:
                 ie = inv[self.file_id]
                 assert ie.file_id == self.file_id
-                if ie.revision in heads:
-                    # fixup logic, there was a bug in revision updates.
-                    # with x bit support.
+                if ie.revision in candidates:
+                    # same revision value in two different inventories:
+                    # correct possible inconsistencies:
+                    #     * there was a bug in revision updates with 'x' bit 
+                    #       support.
                     try:
-                        if heads[ie.revision].executable != ie.executable:
-                            heads[ie.revision].executable = False
+                        if candidates[ie.revision].executable != ie.executable:
+                            candidates[ie.revision].executable = False
                             ie.executable = False
                     except AttributeError:
                         pass
-                    assert heads[ie.revision] == ie
+                    # must now be the same.
+                    assert candidates[ie.revision] == ie
                 else:
-                    # may want to add it.
-                    # may already be covered:
-                    already_present = 0 != len(
-                        [head for head in heads 
-                         if ie.revision in head_ancestors[head]])
-                    if already_present:
-                        # an ancestor of a known head.
-                        continue
-                    # definately a head:
-                    ancestors = get_ancestors(entry_weave, ie)
-                    # may knock something else out:
-                    check_heads = list(heads.keys())
-                    for head in check_heads:
-                        if head in ancestors:
-                            # this head is not really a head
-                            heads.pop(head)
-                    head_ancestors[ie.revision] = ancestors
-                    heads[ie.revision] = ie
+                    # add this revision as a candidate.
+                    candidates[ie.revision] = ie
+
+        # common case optimisation
+        if len(candidates) == 1:
+            # if there is only one candidate revision found
+            # then we can opening the versioned file to access ancestry:
+            # there cannot be any ancestors to eliminate when there is 
+            # only one revision available.
+            heads[ie.revision] = ie
+            return heads
+
+        # eliminate ancestors amongst the available candidates:
+        # heads are those that are not an ancestor of any other candidate
+        # - this provides convergence at a per-file level.
+        for ie in candidates.values():
+            # may be an ancestor of a known head:
+            already_present = 0 != len(
+                [head for head in heads 
+                 if ie.revision in head_ancestors[head]])
+            if already_present:
+                # an ancestor of an analyzed candidate.
+                continue
+            # not an ancestor of a known head:
+            # load the versioned file for this file id if needed
+            if entry_vf is None:
+                entry_vf = versioned_file_store.get_weave_or_empty(
+                    self.file_id, transaction)
+            ancestors = get_ancestors(entry_vf, ie)
+            # may knock something else out:
+            check_heads = list(heads.keys())
+            for head in check_heads:
+                if head in ancestors:
+                    # this previously discovered 'head' is not
+                    # really a head - its an ancestor of the newly 
+                    # found head,
+                    heads.pop(head)
+            head_ancestors[ie.revision] = ancestors
+            heads[ie.revision] = ie
         return heads
 
     def get_tar_item(self, root, dp, now, tree):
@@ -289,6 +329,14 @@ class InventoryEntry(object):
 
         This is a template method, override _check for kind specific
         tests.
+
+        :param checker: Check object providing context for the checks; 
+             can be used to find out what parts of the repository have already
+             been checked.
+        :param rev_id: Revision id from which this InventoryEntry was loaded.
+             Not necessarily the last-changed revision for this file.
+        :param inv: Inventory from which the entry was loaded.
+        :param tree: RevisionTree for this entry.
         """
         if self.parent_id != None:
             if not inv.has_id(self.parent_id):
@@ -301,18 +349,36 @@ class InventoryEntry(object):
         raise BzrCheckError('unknown entry kind %r in revision {%s}' % 
                             (self.kind, rev_id))
 
-
     def copy(self):
         """Clone this inventory entry."""
         raise NotImplementedError
 
-    def _get_snapshot_change(self, previous_entries):
+    def _describe_snapshot_change(self, previous_entries):
+        """Describe how this entry will have changed in a new commit.
+
+        :param previous_entries: Dictionary from revision_id to inventory entry.
+
+        :returns: One-word description: "merged", "added", "renamed", "modified".
+        """
+        # XXX: This assumes that the file *has* changed -- it should probably
+        # be fused with whatever does that detection.  Why not just a single
+        # thing to compare the entries?
+        #
+        # TODO: Return some kind of object describing all the possible
+        # dimensions that can change, not just a string.  That can then give
+        # both old and new names for renames, etc.
+        #
         if len(previous_entries) > 1:
             return 'merged'
         elif len(previous_entries) == 0:
             return 'added'
-        else:
-            return 'modified/renamed/reparented'
+        the_parent, = previous_entries.values()
+        if self.parent_id != the_parent.parent_id:
+            # actually, moved to another directory
+            return 'renamed'
+        elif self.name != the_parent.name:
+            return 'renamed'
+        return 'modified'
 
     def __repr__(self):
         return ("%s(%r, %r, parent_id=%r)"
@@ -337,15 +403,23 @@ class InventoryEntry(object):
                 mutter("found unchanged entry")
                 self.revision = parent_ie.revision
                 return "unchanged"
-        return self.snapshot_revision(revision, previous_entries, 
-                                      work_tree, weave_store, transaction)
+        return self._snapshot_into_revision(revision, previous_entries, 
+                                            work_tree, weave_store, transaction)
 
-    def snapshot_revision(self, revision, previous_entries, work_tree,
-                          weave_store, transaction):
-        """Record this revision unconditionally."""
-        mutter('new revision for {%s}', self.file_id)
+    def _snapshot_into_revision(self, revision, previous_entries, work_tree,
+                                weave_store, transaction):
+        """Record this revision unconditionally into a store.
+
+        The entry's last-changed revision property (`revision`) is updated to 
+        that of the new revision.
+        
+        :param revision: id of the new revision that is being recorded.
+
+        :returns: String description of the commit (e.g. "merged", "modified"), etc.
+        """
+        mutter('new revision {%s} for {%s}', revision, self.file_id)
         self.revision = revision
-        change = self._get_snapshot_change(previous_entries)
+        change = self._describe_snapshot_change(previous_entries)
         self._snapshot_text(previous_entries, work_tree, weave_store,
                             transaction)
         return change
@@ -472,15 +546,14 @@ class InventoryDirectory(InventoryEntry):
 class InventoryFile(InventoryEntry):
     """A file in an inventory."""
 
-    def _check(self, checker, rev_id, tree):
+    def _check(self, checker, tree_revision_id, tree):
         """See InventoryEntry._check"""
-        revision = self.revision
-        t = (self.file_id, revision)
+        t = (self.file_id, self.revision)
         if t in checker.checked_texts:
-            prev_sha = checker.checked_texts[t] 
+            prev_sha = checker.checked_texts[t]
             if prev_sha != self.text_sha1:
                 raise BzrCheckError('mismatched sha1 on {%s} in {%s}' %
-                                    (self.file_id, rev_id))
+                                    (self.file_id, tree_revision_id))
             else:
                 checker.repeated_text_cnt += 1
                 return
@@ -496,8 +569,8 @@ class InventoryFile(InventoryEntry):
         else:
             w = tree.get_weave(self.file_id)
 
-        mutter('check version {%s} of {%s}', rev_id, self.file_id)
-        checker.checked_text_cnt += 1 
+        mutter('check version {%s} of {%s}', tree_revision_id, self.file_id)
+        checker.checked_text_cnt += 1
         # We can't check the length, because Weave doesn't store that
         # information, and the whole point of looking at the weave's
         # sha1sum is that we don't have to extract the text.
@@ -526,17 +599,24 @@ class InventoryFile(InventoryEntry):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """See InventoryEntry._diff."""
-        from_text = tree.get_file(self.file_id).readlines()
-        if to_entry:
-            to_text = to_tree.get_file(to_entry.file_id).readlines()
-        else:
-            to_text = []
-        if not reverse:
-            text_diff(from_label, from_text,
-                      to_label, to_text, output_to)
-        else:
-            text_diff(to_label, to_text,
-                      from_label, from_text, output_to)
+        try:
+            from_text = tree.get_file(self.file_id).readlines()
+            if to_entry:
+                to_text = to_tree.get_file(to_entry.file_id).readlines()
+            else:
+                to_text = []
+            if not reverse:
+                text_diff(from_label, from_text,
+                          to_label, to_text, output_to)
+            else:
+                text_diff(to_label, to_text,
+                          from_label, from_text, output_to)
+        except BinaryFile:
+            if reverse:
+                label_pair = (to_label, from_label)
+            else:
+                label_pair = (from_label, to_label)
+            print >> output_to, "Binary files %s and %s differ" % label_pair
 
     def has_text(self):
         """See InventoryEntry.has_text."""
@@ -733,7 +813,7 @@ class Inventory(object):
     >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
     InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678')
     """
-    def __init__(self, root_id=ROOT_ID):
+    def __init__(self, root_id=ROOT_ID, revision_id=None):
         """Create or read an inventory.
 
         If a working directory is specified, the inventory is read
@@ -748,10 +828,12 @@ class Inventory(object):
         #if root_id is None:
         #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
         self.root = RootEntry(root_id)
+        self.revision_id = revision_id
         self._byid = {self.root.file_id: self.root}
 
 
     def copy(self):
+        # TODO: jam 20051218 Should copy also copy the revision_id?
         other = Inventory(self.root.file_id)
         # copy recursively so we know directories will be added before
         # their children.  There are more efficient ways than this...
@@ -980,6 +1062,15 @@ class Inventory(object):
     def __hash__(self):
         raise ValueError('not hashable')
 
+    def _iter_file_id_parents(self, file_id):
+        """Yield the parents of file_id up to the root."""
+        while file_id != None:
+            try:
+                ie = self._byid[file_id]
+            except KeyError:
+                raise BzrError("file_id {%s} not found in inventory" % file_id)
+            yield ie
+            file_id = ie.parent_id
 
     def get_idpath(self, file_id):
         """Return a list of file_ids for the path to an entry.
@@ -990,18 +1081,12 @@ class Inventory(object):
         root directory as depth 1.
         """
         p = []
-        while file_id != None:
-            try:
-                ie = self._byid[file_id]
-            except KeyError:
-                raise BzrError("file_id {%s} not found in inventory" % file_id)
-            p.insert(0, ie.file_id)
-            file_id = ie.parent_id
+        for parent in self._iter_file_id_parents(file_id):
+            p.insert(0, parent.file_id)
         return p
 
-
     def id2path(self, file_id):
-        """Return as a list the path to file_id.
+        """Return as a string the path to file_id.
         
         >>> i = Inventory()
         >>> e = i.add(InventoryDirectory('src-id', 'src', ROOT_ID))
@@ -1010,14 +1095,10 @@ class Inventory(object):
         src/foo.c
         """
         # get all names, skipping root
-        p = [self._byid[fid].name for fid in self.get_idpath(file_id)[1:]]
-        if p:
-            return pathjoin(*p)
-        else:
-            return ''
+        return '/'.join(reversed(
+            [parent.name for parent in 
+             self._iter_file_id_parents(file_id)][:-1]))
             
-
-
     def path2id(self, name):
         """Walk down through directories to return entry of last component.
 

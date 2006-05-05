@@ -137,7 +137,7 @@ class TestHttpConnections_pycurl(TestCaseWithWebserver, TestHttpMixins):
     def _get_pycurl_maybe(self):
         try:
             from bzrlib.transport.http._pycurl import PyCurlTransport
-            self._transport = PyCurlTransport
+            return PyCurlTransport
         except DependencyNotPresent:
             raise TestSkipped('pycurl not present')
 

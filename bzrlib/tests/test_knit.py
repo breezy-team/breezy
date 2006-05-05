@@ -21,15 +21,31 @@ import difflib
 
 
 from bzrlib.errors import KnitError, RevisionAlreadyPresent
-from bzrlib.knit import KnitVersionedFile, KnitPlainFactory, KnitAnnotateFactory
+from bzrlib.knit import (
+    KnitVersionedFile,
+    KnitPlainFactory,
+    KnitAnnotateFactory,
+    WeaveToKnit)
 from bzrlib.osutils import split_lines
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transport import TransportLogger
 from bzrlib.transport.local import LocalTransport
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.weave import Weave
 
 
-class KnitTests(TestCaseInTempDir):
+class KnitTests(TestCaseWithTransport):
+    """Class containing knit test helper routines."""
+
+    def make_test_knit(self, annotate=False):
+        if not annotate:
+            factory = KnitPlainFactory()
+        else:
+            factory = None
+        return KnitVersionedFile('test', LocalTransport('.'), access_mode='w', factory=factory, create=True)
+
+
+class BasicKnitTests(KnitTests):
 
     def add_stock_one_and_one_a(self, k):
         k.add_lines('text-1', [], split_lines(TEXT_1))
@@ -39,13 +55,6 @@ class KnitTests(TestCaseInTempDir):
         """Construct empty k"""
         self.make_test_knit()
 
-    def make_test_knit(self, annotate=False):
-        if not annotate:
-            factory = KnitPlainFactory()
-        else:
-            factory = None
-        return KnitVersionedFile('test', LocalTransport('.'), access_mode='w', factory=factory, create=True)
-
     def test_knit_add(self):
         """Store one text in knit and retrieve"""
         k = self.make_test_knit()
@@ -54,7 +63,7 @@ class KnitTests(TestCaseInTempDir):
         self.assertEqualDiff(''.join(k.get_lines('text-1')), TEXT_1)
 
     def test_knit_reload(self):
-        """Store and reload a knit"""
+        # test that the content in a reloaded knit is correct
         k = self.make_test_knit()
         k.add_lines('text-1', [], split_lines(TEXT_1))
         del k
@@ -89,6 +98,8 @@ class KnitTests(TestCaseInTempDir):
         k = KnitVersionedFile('test', LocalTransport('.'), delta=False, create=True)
         k.add_lines('text-1', [], ['a\n',    'b'  ])
         k.add_lines('text-2', ['text-1'], ['a\rb\n', 'b\n'])
+        # reopening ensures maximum room for confusion
+        k = KnitVersionedFile('test', LocalTransport('.'), delta=False, create=True)
         self.assertEquals(k.get_lines('text-1'), ['a\n',    'b'  ])
         self.assertEquals(k.get_lines('text-2'), ['a\rb\n', 'b\n'])
 
@@ -322,7 +333,7 @@ class KnitTests(TestCaseInTempDir):
         instrumented_t._calls = []
         # request a last-first iteration
         results = list(k1.iter_lines_added_or_present_in_versions(['base2', 'base']))
-        self.assertEqual([('id.knit', [(0, 87), (87, 90)])], instrumented_t._calls)
+        self.assertEqual([('id.knit', [(0, 87), (87, 89)])], instrumented_t._calls)
         self.assertEqual(['text\n', 'text2\n'], results)
 
     def test_create_empty_annotated(self):
@@ -333,6 +344,49 @@ class KnitTests(TestCaseInTempDir):
         self.assertTrue(isinstance(k2.factory, KnitAnnotateFactory))
         self.assertEqual(k1.delta, k2.delta)
         # the generic test checks for empty content and file class
+
+    def test_knit_format(self):
+        # this tests that a new knit index file has the expected content
+        # and that is writes the data we expect as records are added.
+        knit = self.make_test_knit(True)
+        self.assertFileEqual("# bzr knit index 8\n", 'test.kndx')
+        knit.add_lines_with_ghosts('revid', ['a_ghost'], ['a\n'])
+        self.assertFileEqual(
+            "# bzr knit index 8\n"
+            "\n"
+            "revid fulltext 0 84 .a_ghost :",
+            'test.kndx')
+        knit.add_lines_with_ghosts('revid2', ['revid'], ['a\n'])
+        self.assertFileEqual(
+            "# bzr knit index 8\n"
+            "\nrevid fulltext 0 84 .a_ghost :"
+            "\nrevid2 line-delta 84 82 0 :",
+            'test.kndx')
+        # we should be able to load this file again
+        knit = KnitVersionedFile('test', LocalTransport('.'), access_mode='r')
+        self.assertEqual(['revid', 'revid2'], knit.versions())
+        # write a short write to the file and ensure that its ignored
+        indexfile = file('test.kndx', 'at')
+        indexfile.write('\nrevid3 line-delta 166 82 1 2 3 4 5 .phwoar:demo ')
+        indexfile.close()
+        # we should be able to load this file again
+        knit = KnitVersionedFile('test', LocalTransport('.'), access_mode='w')
+        self.assertEqual(['revid', 'revid2'], knit.versions())
+        # and add a revision with the same id the failed write had
+        knit.add_lines('revid3', ['revid2'], ['a\n'])
+        # and when reading it revid3 should now appear.
+        knit = KnitVersionedFile('test', LocalTransport('.'), access_mode='r')
+        self.assertEqual(['revid', 'revid2', 'revid3'], knit.versions())
+        self.assertEqual(['revid2'], knit.get_parents('revid3'))
+
+    def test_plan_merge(self):
+        my_knit = self.make_test_knit(annotate=True)
+        my_knit.add_lines('text1', [], split_lines(TEXT_1))
+        my_knit.add_lines('text1a', ['text1'], split_lines(TEXT_1A))
+        my_knit.add_lines('text1b', ['text1'], split_lines(TEXT_1B))
+        plan = list(my_knit.plan_merge('text1a', 'text1b'))
+        for plan_line, expected_line in zip(plan, AB_MERGE):
+            self.assertEqual(plan_line, expected_line)
 
 
 TEXT_1 = """\
@@ -353,6 +407,14 @@ Banana cup cake recipe
 - self-raising flour
 """
 
+TEXT_1B = """\
+Banana cup cake recipe
+
+- bananas (do not use plantains!!!)
+- broken tea cups
+- flour
+"""
+
 delta_1_1a = """\
 0,1,2
 Banana cup cake recipe
@@ -370,6 +432,19 @@ Boeuf bourguignon
 - carrot
 - mushrooms
 """
+
+AB_MERGE_TEXT="""unchanged|Banana cup cake recipe
+new-a|(serves 6)
+unchanged|
+killed-b|- bananas
+killed-b|- eggs
+new-b|- bananas (do not use plantains!!!)
+unchanged|- broken tea cups
+new-a|- self-raising flour
+new-b|- flour
+"""
+AB_MERGE=[tuple(l.split('|')) for l in AB_MERGE_TEXT.splitlines(True)]
+
 
 def line_delta(from_lines, to_lines):
     """Generate line-based delta from one text to another"""
@@ -399,3 +474,16 @@ def apply_line_delta(basis_lines, delta_lines):
         i = i + c
         offset = offset + (b - a) + c
     return out
+
+
+class TestWeaveToKnit(KnitTests):
+
+    def test_weave_to_knit_matches(self):
+        # check that the WeaveToKnit is_compatible function
+        # registers True for a Weave to a Knit.
+        w = Weave()
+        k = self.make_test_knit()
+        self.failUnless(WeaveToKnit.is_compatible(w, k))
+        self.failIf(WeaveToKnit.is_compatible(k, w))
+        self.failIf(WeaveToKnit.is_compatible(w, w))
+        self.failIf(WeaveToKnit.is_compatible(k, k))

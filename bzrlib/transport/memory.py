@@ -31,6 +31,7 @@ from bzrlib.trace import mutter
 from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
 from bzrlib.transport import Transport, register_transport, Server
 
+
 class MemoryStat(object):
 
     def __init__(self, size, is_dir, perms):
@@ -63,7 +64,7 @@ class MemoryTransport(Transport):
 
     def clone(self, offset=None):
         """See Transport.clone()."""
-        if offset is None:
+        if offset is None or offset == '':
             return copy(self)
         segments = offset.split('/')
         cwdsegments = self._cwd.split('/')[:-1]
@@ -85,14 +86,23 @@ class MemoryTransport(Transport):
 
     def abspath(self, relpath):
         """See Transport.abspath()."""
-        return self.base[:-1] + self._abspath(relpath)[len(self._cwd) - 1:]
+        # while a little slow, this is sufficiently fast to not matter in our
+        # current environment - XXX RBC 20060404 move the clone '..' handling
+        # into here and call abspath from clone
+        temp_t = self.clone(relpath)
+        if temp_t.base.count('/') == 1:
+            return temp_t.base
+        else:
+            return temp_t.base[:-1]
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """See Transport.append()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
         orig_content, orig_mode = self._files.get(_abspath, ("", None))
-        self._files[_abspath] = (orig_content + f.read(), orig_mode)
+        if mode is None:
+            mode = orig_mode
+        self._files[_abspath] = (orig_content + f.read(), mode)
         return len(orig_content)
 
     def _check_parent(self, _abspath):

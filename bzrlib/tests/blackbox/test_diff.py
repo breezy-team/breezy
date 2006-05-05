@@ -1,5 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +26,8 @@ from bzrlib.tests.blackbox import ExternalBase
 
 
 class TestDiff(ExternalBase):
-    def example_branch(test):
+
+    def make_example_branch(test):
         # FIXME: copied from test_too_much -- share elsewhere?
         test.runbzr('init')
         file('hello', 'wt').write('foo')
@@ -38,7 +38,7 @@ class TestDiff(ExternalBase):
         test.runbzr('commit -m setup goodbye')
 
     def test_diff(self):
-        self.example_branch()
+        self.make_example_branch()
         file('hello', 'wt').write('hello world!')
         self.runbzr('commit -m fixing hello')
         output = self.runbzr('diff -r 2..3', backtick=1, retcode=1)
@@ -49,6 +49,23 @@ class TestDiff(ExternalBase):
         self.runbzr('add moo')
         os.unlink('moo')
         self.runbzr('diff')
+
+    def test_diff_nonexistent(self):
+        # Get an error from a file that does not exist at all
+        # (Malone #3619)
+        self.make_example_branch()
+        out, err = self.runbzr('diff does-not-exist', retcode=3)
+        self.assertContainsRe(err, 'not versioned.*does-not-exist')
+
+    def test_diff_unversioned(self):
+        # Get an error when diffing a non-versioned file.
+        # (Malone #3619)
+        self.make_example_branch()
+        self.build_tree(['unversioned-file'])
+        out, err = self.runbzr('diff unversioned-file', retcode=3)
+        self.assertContainsRe(err, 'not versioned.*unversioned-file')
+
+    # TODO: What should diff say for a file deleted in working tree?
 
     def example_branches(self):
         self.build_tree(['branch1/', 'branch1/file'], line_endings='binary')
@@ -102,8 +119,8 @@ class TestDiff(ExternalBase):
 
 class TestCheckoutDiff(TestDiff):
 
-    def example_branch(self):
-        super(TestCheckoutDiff, self).example_branch()
+    def make_example_branch(self):
+        super(TestCheckoutDiff, self).make_example_branch()
         self.runbzr('checkout . checkout')
         os.chdir('checkout')
 
@@ -120,29 +137,30 @@ class TestCheckoutDiff(TestDiff):
         self.runbzr('checkout branch2 checkouts/branch2')
         os.chdir('checkouts')
 
+
 class TestDiffLabels(TestDiff):
 
     def test_diff_label_removed(self):
-        super(TestDiffLabels, self).example_branch()
+        super(TestDiffLabels, self).make_example_branch()
         self.runbzr('remove hello')
         diff = self.run_bzr_captured(['diff'], retcode=1)
         self.assertTrue("=== removed file 'a/hello'" in diff[0])
 
     def test_diff_label_added(self):
-        super(TestDiffLabels, self).example_branch()
+        super(TestDiffLabels, self).make_example_branch()
         file('barbar', 'wt').write('barbar')
         self.runbzr('add barbar')
         diff = self.run_bzr_captured(['diff'], retcode=1)
         self.assertTrue("=== added file 'b/barbar'" in diff[0])
 
     def test_diff_label_modified(self):
-        super(TestDiffLabels, self).example_branch()
+        super(TestDiffLabels, self).make_example_branch()
         file('hello', 'wt').write('barbar')
         diff = self.run_bzr_captured(['diff'], retcode=1)
         self.assertTrue("=== modified file 'a/hello'" in diff[0])
 
     def test_diff_label_renamed(self):
-        super(TestDiffLabels, self).example_branch()
+        super(TestDiffLabels, self).make_example_branch()
         self.runbzr('rename hello gruezi')
         diff = self.run_bzr_captured(['diff'], retcode=1)
         self.assertTrue("=== renamed file 'a/hello' => 'b/gruezi'" in diff[0])

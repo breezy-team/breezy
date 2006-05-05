@@ -143,8 +143,11 @@ class HttpTransportBase(Transport):
         # I'm concerned about when it chooses to strip the last
         # portion of the path, and when it doesn't.
         path = '/'.join(basepath)
-        return urlparse.urlunparse((self._qualified_proto,
+        if path == '':
+            path = '/'
+        result = urlparse.urlunparse((self._qualified_proto,
                                     self._host, path, '', '', ''))
+        return result
 
     def _real_abspath(self, relpath):
         """Produce absolute path, adjusting protocol if needed"""
@@ -339,6 +342,7 @@ class HttpTransportBase(Transport):
 
 #---------------- test server facilities ----------------
 # TODO: load these only when running tests
+
 
 class WebserverNotAvailable(Exception):
     pass

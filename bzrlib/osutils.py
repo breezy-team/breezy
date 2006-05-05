@@ -35,6 +35,7 @@ from bzrlib.errors import (BzrError,
                            BzrBadParameterNotUnicode,
                            NoSuchFile,
                            PathNotChild,
+                           IllegalPath,
                            )
 from bzrlib.trace import mutter
 
@@ -181,6 +182,8 @@ rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
 
+MIN_ABS_PATHLENGTH = 1
+
 if os.name == "posix":
     # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
     # choke on a Unicode string containing a relative path if
@@ -217,6 +220,7 @@ if sys.platform == 'win32':
     def rename(old, new):
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
 
+    MIN_ABS_PATHLENGTH = 3
 
 def normalizepath(f):
     if hasattr(os.path, 'realpath'):
@@ -530,7 +534,11 @@ def appendpath(p1, p2):
 
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
-    return StringIO(s).readlines()
+    lines = s.split('\n')
+    result = [line + '\n' for line in lines[:-1]]
+    if lines[-1]:
+        result.append(lines[-1])
+    return result
 
 
 def hardlinks_good():
@@ -548,6 +556,16 @@ def link_or_copy(src, dest):
         if e.errno != errno.EXDEV:
             raise
         copyfile(src, dest)
+
+def delete_any(full_path):
+    """Delete a file or directory."""
+    try:
+        os.unlink(full_path)
+    except OSError, e:
+    # We may be renaming a dangling inventory id
+        if e.errno not in (errno.EISDIR, errno.EACCES, errno.EPERM):
+            raise
+        os.rmdir(full_path)
 
 
 def has_symlinks():
@@ -583,7 +601,12 @@ def relpath(base, path):
 
     os.path.commonprefix (python2.4) has a bad bug that it works just
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
-    avoids that problem."""
+    avoids that problem.
+    """
+
+    assert len(base) >= MIN_ABS_PATHLENGTH, ('Length of base must be equal or'
+        ' exceed the platform minimum length (which is %d)' % 
+        MIN_ABS_PATHLENGTH)
     rp = abspath(path)
 
     s = []
@@ -636,3 +659,27 @@ def terminal_width():
 
 def supports_executable():
     return sys.platform != "win32"
+
+
+def strip_trailing_slash(path):
+    """Strip trailing slash, except for root paths.
+    The definition of 'root path' is platform-dependent.
+    """
+    if len(path) != MIN_ABS_PATHLENGTH and path[-1] == '/':
+        return path[:-1]
+    else:
+        return path
+
+
+_validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
+
+
+def check_legal_path(path):
+    """Check whether the supplied path is legal.  
+    This is only required on Windows, so we don't test on other platforms
+    right now.
+    """
+    if sys.platform != "win32":
+        return
+    if _validWin32PathRE.match(path) is None:
+        raise IllegalPath(path)

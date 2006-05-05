@@ -20,13 +20,15 @@ This is a fairly thin wrapper on regular file IO."""
 
 import os
 import shutil
+import sys
 from stat import ST_MODE, S_ISDIR, ST_SIZE
 import tempfile
 import urllib
 
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, Server
-from bzrlib.osutils import abspath, realpath, normpath, pathjoin, rename
+from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename, 
+                            check_legal_path)
 
 
 class LocalTransport(Transport):
@@ -57,21 +59,22 @@ class LocalTransport(Transport):
             return LocalTransport(self.abspath(offset))
 
     def abspath(self, relpath):
-        """Return the full url to the given relative URL.
-        This can be supplied with a string or a list
-        """
+        """Return the full url to the given relative URL."""
         assert isinstance(relpath, basestring), (type(relpath), relpath)
-        return pathjoin(self.base, urllib.unquote(relpath))
+        result = normpath(pathjoin(self.base, urllib.unquote(relpath)))
+        #if result[-1] != '/':
+        #    result += '/'
+        return result
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
         """
-        from bzrlib.osutils import relpath
+        from bzrlib.osutils import relpath, strip_trailing_slash
         if abspath is None:
             abspath = u'.'
-        if abspath.endswith('/'):
-            abspath = abspath[:-1]
-        return relpath(self.base[:-1], abspath)
+
+        return relpath(strip_trailing_slash(self.base), 
+                       strip_trailing_slash(abspath))
 
     def has(self, relpath):
         return os.access(self.abspath(relpath), os.F_OK)
@@ -98,6 +101,7 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self.abspath(relpath)
+            check_legal_path(path)
             fp = AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
@@ -130,14 +134,18 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """
         try:
             fp = open(self.abspath(relpath), 'ab')
+            if mode is not None:
+                os.chmod(self.abspath(relpath), mode)
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
+        # win32 workaround (tell on an unwritten file returns 0)
+        fp.seek(0, 2)
         result = fp.tell()
         self._pump(f, fp)
         return result
@@ -225,7 +233,7 @@ class LocalTransport(Transport):
         path = self.abspath(relpath)
         try:
             return [urllib.quote(entry) for entry in os.listdir(path)]
-        except (IOError, OSError),e:
+        except (IOError, OSError), e:
             self._translate_error(e, path)
 
     def stat(self, relpath):
@@ -267,6 +275,13 @@ class LocalTransport(Transport):
             os.rmdir(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
+
+    def _can_roundtrip_unix_modebits(self):
+        if sys.platform == 'win32':
+            # anyone else?
+            return False
+        else:
+            return True
 
 
 class ScratchTransport(LocalTransport):

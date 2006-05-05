@@ -23,6 +23,7 @@ import bzrlib.errors as errors
 from bzrlib.graph import node_distances, select_farthest, all_descendants, Graph
 from bzrlib.osutils import contains_whitespace
 from bzrlib.progress import DummyProgress
+from bzrlib.symbol_versioning import *
 
 NULL_REVISION="null:"
 
@@ -250,9 +251,20 @@ def common_ancestor(revision_a, revision_b, revision_source,
             for root in graph.roots:
                 descendants[NULL_REVISION][root] = 1
                 ancestors[root].append(NULL_REVISION)
-            if len(graph.roots) == 0:
-                # no reachable roots - not handled yet.
-                raise bzrlib.errors.NoCommonAncestor(revision_a, revision_b)
+            for ghost in graph.ghosts:
+                # ghosts act as roots for the purpose of finding 
+                # the longest paths from the root: any ghost *might*
+                # be directly attached to the root, so we treat them
+                # as being such.
+                # ghost now descends from NULL
+                descendants[NULL_REVISION][ghost] = 1
+                # that is it has an ancestor of NULL
+                ancestors[ghost] = [NULL_REVISION]
+                # ghost is common if any of ghosts descendants are common:
+                for ghost_descendant in descendants[ghost]:
+                    if ghost_descendant in common:
+                        common.add(ghost)
+                
             root = NULL_REVISION
             common.add(NULL_REVISION)
         except bzrlib.errors.NoCommonRoot:
@@ -389,6 +401,7 @@ class MultipleRevisionSources(object):
             source.unlock()
 
 
+@deprecated_method(zero_eight)
 def get_intervening_revisions(ancestor_id, rev_id, rev_source, 
                               revision_history=None):
     """Find the longest line of descent from maybe_ancestor to revision.

@@ -1,15 +1,15 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
-
+# Copyright (C) 2006 by Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -18,11 +18,12 @@
 # TODO: probably should say which arguments are candidates for glob
 # expansion on windows and do that at the command level.
 
-# TODO: Help messages for options.
-
 # TODO: Define arguments by objects, rather than just using names.
 # Those objects can specify the expected type of the argument, which
-# would help with validation and shell completion.
+# would help with validation and shell completion.  They could also provide
+# help/explanation for that argument in a structured way.
+
+# TODO: Specific "examples" property on commands for consistent formatting.
 
 # TODO: "--profile=cum", to change sort order.  Is there any value in leaving
 # the profile output behind so it can be interactively examined?
@@ -30,11 +31,10 @@
 import sys
 import os
 from warnings import warn
-from inspect import getdoc
 import errno
 
 import bzrlib
-from bzrlib.errors import (BzrError, 
+from bzrlib.errors import (BzrError,
                            BzrCheckError,
                            BzrCommandError,
                            BzrOptionError,
@@ -49,7 +49,13 @@ plugin_cmds = {}
 
 
 def register_command(cmd, decorate=False):
-    "Utility function to help register a command"
+    """Utility function to help register a command
+
+    :param cmd: Command subclass to register
+    :param decorate: If true, allow overriding an existing command
+        of the same name; the old command is returned by this function.
+        Otherwise it is an error to try to override an existing command.
+    """
     global plugin_cmds
     k = cmd.__name__
     if k.startswith("cmd_"):
@@ -58,7 +64,7 @@ def register_command(cmd, decorate=False):
         k_unsquished = k
     if not plugin_cmds.has_key(k_unsquished):
         plugin_cmds[k_unsquished] = cmd
-        mutter('registered plugin command %s', k_unsquished)      
+        mutter('registered plugin command %s', k_unsquished)
         if decorate and k_unsquished in builtin_command_names():
             return _builtin_commands()[k_unsquished]
     elif decorate:
@@ -85,10 +91,9 @@ def _builtin_commands():
     builtins = bzrlib.builtins.__dict__
     for name in builtins:
         if name.startswith("cmd_"):
-            real_name = _unsquish_command_name(name)        
+            real_name = _unsquish_command_name(name)
             r[real_name] = builtins[name]
     return r
-
             
 
 def builtin_command_names():
@@ -250,11 +255,12 @@ class Command(object):
         shell error code if not.  It's OK for this method to allow
         an exception to raise up.
         """
-        raise NotImplementedError()
-
+        raise NotImplementedError('no implementation of command %r' 
+                                  % self.name())
 
     def help(self):
         """Return help message for this class."""
+        from inspect import getdoc
         if self.__doc__ is Command.__doc__:
             return None
         return getdoc(self)
@@ -562,12 +568,9 @@ def run_bzr(argv):
         i += 1
 
     argv = argv_copy
-    if (not argv) or (argv[0] == '--help'):
-        from bzrlib.help import help
-        if len(argv) > 1:
-            help(argv[1])
-        else:
-            help()
+    if (not argv):
+        from bzrlib.builtins import cmd_help
+        cmd_help().run_argv_aliases([])
         return 0
 
     if argv[0] == '--version':

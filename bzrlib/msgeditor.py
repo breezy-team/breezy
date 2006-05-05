@@ -1,6 +1,4 @@
-# Bazaar-NG -- distributed version control
-
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,12 +17,15 @@
 
 """Commit message editor support."""
 
-import os
+
 import errno
+import os
 from subprocess import call
+import sys
 
 import bzrlib.config as config
 from bzrlib.errors import BzrError
+
 
 def _get_editor():
     """Return a sequence of possible editor binaries for the current platform"""
@@ -42,10 +43,12 @@ def _get_editor():
     except KeyError:
         pass
 
-    if os.name == "nt":
-        yield "notepad.exe"
-    elif os.name == "posix":
-        yield "/usr/bin/vi"
+    if sys.platform == 'win32':
+        for editor in 'wordpad.exe', 'notepad.exe':
+            yield editor
+    else:
+        for editor in ['vi', 'pico', 'nano', 'joe']:
+            yield editor
 
 
 def _run_editor(filename):
@@ -55,8 +58,8 @@ def _run_editor(filename):
         try:
             x = call(edargs + [filename])
         except OSError, e:
-           # ENOENT means no such editor
-           if e.errno == errno.ENOENT:
+           # We're searching for an editor, so catch safe errors and continue
+           if e.errno in (errno.ENOENT, ):
                continue
            raise
         if x == 0:
@@ -65,11 +68,16 @@ def _run_editor(filename):
             continue
         else:
             break
-    raise BzrError("Could not start any editor. "
-                   "Please specify $EDITOR or use ~/.bzr.conf/editor")
-                          
+    raise BzrError("Could not start any editor.\nPlease specify one with:\n"
+                   " - $BZR_EDITOR\n - editor=/some/path in %s\n - $EDITOR" % \
+                    config.config_filename())
 
-def edit_commit_message(infotext, ignoreline=None):
+
+DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \
+    { 'bar' : '-' * 14, 'msg' : 'This line and the following will be ignored' }
+
+
+def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
     """Let the user edit a commit message in a temp file.
 
     This is run if they don't give a message or
@@ -81,17 +89,14 @@ def edit_commit_message(infotext, ignoreline=None):
         'bzr status'.
     """
     import tempfile
-    
-    if ignoreline is None:
-        ignoreline = "-- This line and the following will be ignored --"
-        
+
     try:
         tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
         msgfile = os.close(tmp_fileno)
         if infotext is not None and infotext != "":
             hasinfo = True
             msgfile = file(msgfilename, "w")
-            msgfile.write("\n\n%s\n\n%s" % (ignoreline, infotext))
+            msgfile.write("\n%s\n\n%s" % (ignoreline, infotext))
             msgfile.close()
         else:
             hasinfo = False

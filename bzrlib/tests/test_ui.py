@@ -21,12 +21,13 @@ import os
 from StringIO import StringIO
 import sys
 
-
+import bzrlib
 import bzrlib.errors as errors
 from bzrlib.progress import TTYProgressBar, ProgressBarStack
 from bzrlib.tests import TestCase
 from bzrlib.ui import SilentUIFactory
 from bzrlib.ui.text import TextUIFactory
+
 
 class UITests(TestCase):
 
@@ -62,14 +63,20 @@ class UITests(TestCase):
     def test_progress_note(self):
         stderr = StringIO()
         stdout = StringIO()
-        pb = TTYProgressBar(to_file=stderr, to_messages_file=stdout)
-        result = pb.note('t')
-        self.assertEqual(None, result)
-        self.assertEqual("t\n", stdout.getvalue())
-        # the exact contents will depend on the terminal width and we don't
-        # care about that right now - but you're probably running it on at
-        # least a 10-character wide terminal :)
-        self.assertContainsRe(stderr.getvalue(), r'^\r {10,}\r$')
+        ui_factory = TextUIFactory()
+        pb = ui_factory.nested_progress_bar()
+        try:
+            pb.to_messages_file = stdout
+            ui_factory._progress_bar_stack.bottom().to_file = stderr
+            result = pb.note('t')
+            self.assertEqual(None, result)
+            self.assertEqual("t\n", stdout.getvalue())
+            # the exact contents will depend on the terminal width and we don't
+            # care about that right now - but you're probably running it on at
+            # least a 10-character wide terminal :)
+            self.assertContainsRe(stderr.getvalue(), r'^\r {10,}\r$')
+        finally:
+            pb.finished()
 
     def test_progress_nested(self):
         # test factory based nested and popping.
@@ -101,3 +108,11 @@ class UITests(TestCase):
         self.assertRaises(errors.MissingProgressBarFinish, pb1.finished)
         pb2.finished()
         pb1.finished()
+
+    def test_text_factory_setting_progress_bar(self):
+        # we should be able to choose the progress bar type used.
+        factory = bzrlib.ui.text.TextUIFactory(
+            bar_type=bzrlib.progress.DotsProgressBar)
+        bar = factory.nested_progress_bar()
+        bar.finished()
+        self.assertIsInstance(bar, bzrlib.progress.DotsProgressBar)

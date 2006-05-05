@@ -32,6 +32,8 @@ from copy import deepcopy
 from stat import *
 import sys
 from unittest import TestSuite
+import urllib
+import urlparse
 
 from bzrlib.trace import mutter, warning
 import bzrlib.errors as errors
@@ -118,6 +120,12 @@ def _get_transport_modules():
     return result
 
 
+def register_urlparse_netloc_protocol(protocol):
+    """Ensure that protocol is setup to be used with urlparse netloc parsing."""
+    if protocol not in urlparse.uses_netloc:
+        urlparse.uses_netloc.append(protocol)
+
+
 class Transport(object):
     """This class encapsulates methods for retrieving or putting a file
     from/to a storage location.
@@ -154,6 +162,8 @@ class Transport(object):
                 raise errors.PermissionDenied(path, extra=e)
             if e.errno == errno.ENOTEMPTY:
                 raise errors.DirectoryNotEmpty(path, extra=e)
+            if e.errno == errno.EBUSY:
+                raise errors.ResourceBusy(path, extra=e)
         if raise_generic:
             raise errors.TransportError(orig_error=e)
 
@@ -606,6 +616,22 @@ class Transport(object):
         """Return true if this connection cannot be written to."""
         return False
 
+    def _can_roundtrip_unix_modebits(self):
+        """Return true if this transport can store and retrieve unix modebits.
+
+        (For example, 0700 to make a directory owner-private.)
+        
+        Note: most callers will not want to switch on this, but should rather 
+        just try and set permissions and let them be either stored or not.
+        This is intended mainly for the use of the test suite.
+        
+        Warning: this is not guaranteed to be accurate as sometimes we can't 
+        be sure: for example with vfat mounted on unix, or a windows sftp
+        server."""
+        # TODO: Perhaps return a e.g. TransportCharacteristics that can answer
+        # several questions about the transport.
+        return False
+
 
 def get_transport(base):
     """Open a transport to access a URL or directory.
@@ -641,14 +667,13 @@ def _try_transport_factories(base, factory_list):
 
 def urlescape(relpath):
     """Escape relpath to be a valid url."""
-    # TODO utf8 it first. utf8relpath = relpath.encode('utf8')
-    import urllib
+    if isinstance(relpath, unicode):
+        relpath = relpath.encode('utf-8')
     return urllib.quote(relpath)
 
 
 def urlunescape(relpath):
     """Unescape relpath from url format."""
-    import urllib
     return urllib.unquote(relpath)
     # TODO de-utf8 it last. relpath = utf8relpath.decode('utf8')
 
@@ -779,3 +804,7 @@ register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('memory:/', 'bzrlib.transport.memory', 'MemoryTransport')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
+register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
+register_lazy_transport('vfat+', 
+                        'bzrlib.transport.fakevfat',
+                        'FakeVFATTransportDecorator')
