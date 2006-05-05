@@ -101,3 +101,13 @@ class TestBreakLock(ExternalBase):
         # unlock our branches normally.
         self.wt.unlock()
         self.master_branch.unlock()
+
+
+class TestBreakLockOldBranch(ExternalBase):
+
+    def test_break_lock_format_5_bzrdir(self):
+        # break lock on a format 5 bzrdir should just return
+        self.make_branch_and_tree('foo', format=bzrlib.bzrdir.BzrDirFormat5())
+        out, err = self.run_bzr('break-lock', 'foo')
+        self.assertEqual('', out)
+        self.assertEqual('', err)

@@ -2472,7 +2472,10 @@ class cmd_break_lock(Command):
         if location is None:
             location = u'.'
         control, relpath = bzrdir.BzrDir.open_containing(location)
-        control.break_lock()
+        try:
+            control.break_lock()
+        except NotImplementedError:
+            pass
         
 
 
