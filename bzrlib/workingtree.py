@@ -1031,6 +1031,9 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         return self.branch.last_revision()
 
+    def is_locked(self):
+        return self._control_files.is_locked()
+
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock."""
         self.branch.lock_read()
@@ -1048,6 +1051,9 @@ class WorkingTree(bzrlib.tree.Tree):
         except:
             self.branch.unlock()
             raise
+
+    def get_physical_lock_status(self):
+        return self._control_files.get_physical_lock_status()
 
     def _basis_inventory_name(self):
         return 'basis-inventory'
