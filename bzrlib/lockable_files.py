@@ -21,7 +21,7 @@ import codecs
 import bzrlib
 from bzrlib.decorators import *
 import bzrlib.errors as errors
-from bzrlib.errors import LockError, ReadOnlyError
+from bzrlib.errors import BzrError
 from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, note
@@ -215,7 +215,7 @@ class LockableFiles(object):
         # and potentially a remote locking protocol
         if self._lock_mode:
             if self._lock_mode != 'w' or not self.get_transaction().writeable():
-                raise ReadOnlyError(self)
+                raise errors.ReadOnlyError(self)
             self._lock_count += 1
         else:
             self._lock.lock_write()
@@ -259,6 +259,18 @@ class LockableFiles(object):
     def is_locked(self):
         """Return true if this LockableFiles group is locked"""
         return self._lock_count >= 1
+
+    def get_physical_lock_status(self):
+        """Return physical lock status.
+        
+        Returns true if a lock is held on the transport. If no lock is held, or
+        the underlying locking mechanism does not support querying lock
+        status, false is returned.
+        """
+        try:
+            return self._lock.peek() is not None
+        except NotImplementedError:
+            return False
 
     def get_transaction(self):
         """Return the current active transaction.
@@ -317,6 +329,9 @@ class TransportLock(object):
     def unlock(self):
         self._lock.unlock()
         self._lock = None
+
+    def peek(self):
+        raise NotImplementedError()
 
     def create(self, mode=None):
         """Create lock mechanism"""

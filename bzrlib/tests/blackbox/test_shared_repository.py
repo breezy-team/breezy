@@ -45,7 +45,7 @@ class TestSharedRepo(TestCaseInTempDir):
 
     def test_init(self):
         self.run_bzr("init-repo", "a")
-        self.run_bzr("init", "--format=metadir", "a/b")
+        self.run_bzr("init", "--format=default", "a/b")
         dir = bzrlib.bzrdir.BzrDir.open('a')
         self.assertIs(dir.open_repository().is_shared(), True)
         self.assertRaises(errors.NotBranchError, dir.open_branch)
@@ -57,7 +57,7 @@ class TestSharedRepo(TestCaseInTempDir):
 
     def test_branch(self):
         self.run_bzr("init-repo", "a")
-        self.run_bzr("init", "--format=metadir", "a/b")
+        self.run_bzr("init", "--format=default", "a/b")
         self.run_bzr('branch', 'a/b', 'a/c')
         cdir = bzrlib.bzrdir.BzrDir.open('a/c')
         cdir.open_branch()
@@ -66,7 +66,7 @@ class TestSharedRepo(TestCaseInTempDir):
 
     def test_branch_tree(self):
         self.run_bzr("init-repo", "--trees", "a")
-        self.run_bzr("init", "--format=metadir", "b")
+        self.run_bzr("init", "--format=default", "b")
         file('b/hello', 'wt').write('bar')
         self.run_bzr("add", "b/hello")
         self.run_bzr("commit", "-m", "bar", "b/hello")
