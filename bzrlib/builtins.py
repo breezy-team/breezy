@@ -19,7 +19,6 @@
 
 import errno
 import os
-from shutil import rmtree
 import sys
 
 import bzrlib
@@ -565,6 +564,7 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
+        from bzrlib.osutils import rmtree
         if revision is None:
             revision = [None]
         elif len(revision) > 1:

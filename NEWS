@@ -1,4 +1,39 @@
-bzr 0.8rc1  2006-04-14
+bzr 0.8rc2  2006-05-05
+
+  NOTES WHEN UPGRADING:
+
+    Release 0.8 of bzr introduces a new format for history storage, called
+    'knit', as an evolution of to the 'weave' format used in 0.7.  Local 
+    and remote operations are faster using weaves than knits.  Several
+    operations including 'init', 'init-repo', and 'upgrade' take a 
+    --format option that controls this.  Branching from an existing branch
+    will keep the same format.
+
+    It is possible to merge, pull and push between branches of different
+    formats but this is slower than moving data between homogenous
+    branches.  It is therefore recommended (but not required) that you
+    upgrade all branches for a project at the same time.  Information on
+    formats is shown by 'bzr info'.
+
+    bzr 0.8 now allows creation of 'repositories', which hold the history 
+    of files and revisions for several branches.  Previously bzr kept all
+    the history for a branch within the .bzr directory at the root of the
+    branch, and this is still the default.  To create a repository, use
+    the new 'bzr init-repo' command.  Branches exist as directories under
+    the repository and contain just a small amount of information
+    indicating the current revision of the branch.
+
+    bzr 0.8 also supports 'checkouts', which are similar to in cvs and
+    subversion.  Checkouts are associated with a branch (optionally in a
+    repository), which contains all the historical information.  The
+    result is that a checkout can be deleted without losing any
+    already-committed revisions.
+
+    Repositories and checkouts are not supported with the 0.7 storage
+    format.  To use them you must upgrad to either knits, or to the
+    'metaweave' format, which uses weaves but changes the .bzr directory
+    arrangement.
+    
 
   IMPROVEMENTS:
 
@@ -208,7 +243,7 @@ bzr 0.8rc1  2006-04-14
 
     * Move test case for uncommit to blackbox tests.  (Olaf Conradi)
 
-bzr 0.7rc1 2006-01-09
+bzr 0.7 2006-01-09
 
   CHANGES:
 
