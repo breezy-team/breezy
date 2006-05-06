@@ -41,27 +41,27 @@ class TestHttpUrls(TestCase):
         url = extract_auth('http://example.com', f)
         self.assertEquals('http://example.com', url)
         self.assertEquals(0, len(f.credentials))
-        url = extract_auth('http://user:pass@www.bazaar-ng.org/bzr/bzr.dev', f)
-        self.assertEquals('http://www.bazaar-ng.org/bzr/bzr.dev', url)
+        url = extract_auth('http://user:pass@www.bazaar-vcs.org/bzr/bzr.dev', f)
+        self.assertEquals('http://www.bazaar-vcs.org/bzr/bzr.dev', url)
         self.assertEquals(1, len(f.credentials))
-        self.assertEquals([None, 'www.bazaar-ng.org', 'user', 'pass'], f.credentials[0])
+        self.assertEquals([None, 'www.bazaar-vcs.org', 'user', 'pass'], f.credentials[0])
         
     def test_abs_url(self):
         """Construction of absolute http URLs"""
-        t = HttpTransport_urllib('http://bazaar-ng.org/bzr/bzr.dev/')
+        t = HttpTransport_urllib('http://bazaar-vcs.org/bzr/bzr.dev/')
         eq = self.assertEqualDiff
         eq(t.abspath('.'),
-           'http://bazaar-ng.org/bzr/bzr.dev')
+           'http://bazaar-vcs.org/bzr/bzr.dev')
         eq(t.abspath('foo/bar'), 
-           'http://bazaar-ng.org/bzr/bzr.dev/foo/bar')
+           'http://bazaar-vcs.org/bzr/bzr.dev/foo/bar')
         eq(t.abspath('.bzr'),
-           'http://bazaar-ng.org/bzr/bzr.dev/.bzr')
+           'http://bazaar-vcs.org/bzr/bzr.dev/.bzr')
         eq(t.abspath('.bzr/1//2/./3'),
-           'http://bazaar-ng.org/bzr/bzr.dev/.bzr/1/2/3')
+           'http://bazaar-vcs.org/bzr/bzr.dev/.bzr/1/2/3')
 
     def test_invalid_http_urls(self):
         """Trap invalid construction of urls"""
-        t = HttpTransport_urllib('http://bazaar-ng.org/bzr/bzr.dev/')
+        t = HttpTransport_urllib('http://bazaar-vcs.org/bzr/bzr.dev/')
         self.assertRaises(ValueError,
             t.abspath,
             '.bzr/')
