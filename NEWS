@@ -27,7 +27,7 @@ bzr 0.8rc2  2006-05-05
     subversion.  Checkouts are associated with a branch (optionally in a
     repository), which contains all the historical information.  The
     result is that a checkout can be deleted without losing any
-    already-committed revisions.
+    already-committed revisions.  A new 'update' command is also available. 
 
     Repositories and checkouts are not supported with the 0.7 storage
     format.  To use them you must upgrad to either knits, or to the
