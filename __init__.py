@@ -21,11 +21,11 @@ BzrDirFormat.register_format(format.SvnFormat())
 
 def test_suite():
     from unittest import TestSuite, TestLoader
-    import test_svnbranch
+    import tests.test_repos
 
     suite = TestSuite()
 
-    suite.addTest(TestLoader().loadTestsFromModule(test_svnbranch))
+    suite.addTest(TestLoader().loadTestsFromModule(tests.test_repos))
 
     return suite
 
