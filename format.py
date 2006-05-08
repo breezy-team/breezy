@@ -27,10 +27,13 @@ class SvnRemoteAccess(BzrDir):
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         raise NotImplementedError(SvnRemoteAccess.clone)
 
-    def find_repository(self):
+    def open_repository(self):
         repos = SvnRepository(self, self.url)
         repos._format = self._format
         return repos
+
+    # Subversion has all-in-one, so a repository is always present
+    find_repository = open_repository
 
     def open_workingtree(self):
         return None
