@@ -18,7 +18,9 @@ import os
 
 from bzrlib.add import smart_add
 from bzrlib.builtins import merge
+from bzrlib.errors import IllegalPath
 from bzrlib.delta import compare_trees
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.workingtree import WorkingTree
 
@@ -55,6 +57,16 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         #  \           /      /
         #   \---> E---/----> F                 (branch1)
 
+        # A changes: 
+        # B changes: 'a-file-id-2006-01-01-abcd'
+        # C changes:  Nothing (perfect merge)
+        # D changes: 'b-file-id-2006-01-01-defg'
+        # E changes: 'file-d'
+        # F changes: 'file-d'
+        # G changes: 'b-file-id-2006-01-01-defg'
+        # J changes: 'b-file-id-2006-01-01-defg'
+        # K changes: 'c-funky<file-id> quiji%bo'
+
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
         self.build_tree(["main/a","main/b","main/c"])
@@ -62,14 +74,20 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
                                  'c-funky<file-id> quiji%bo'])
-        main_wt.commit("Commit one", rev_id="rev-A")
+        try:
+            main_wt.commit("Commit one", rev_id="rev-A")
+        except IllegalPath:
+            # ("File-id with <> not supported with this format")
+            # this is not a skip because newer formats do support this,
+            # and nothin can done to correct this test - its not a bug.
+            return
         #-------- end A -----------
 
         d1 = main_branch.bzrdir.clone('branch1')
         b1 = d1.open_branch()
         self.build_tree(["branch1/d"])
         bt1 = d1.open_workingtree()
-        bt1.add('d')
+        bt1.add(['d'], ['file-d'])
         bt1.commit("branch1, Commit one", rev_id="rev-E")
 
         #-------- end E -----------
@@ -115,51 +133,62 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         # end G
         self.branch = main_branch
 
+    def test_fileids_altered_between_two_revs(self):
+        def foo(old, new):
+            print set(self.branch.repository.get_ancestry(new)).difference(set(self.branch.repository.get_ancestry(old)))
 
-    def test_fileid_involved_all_revs(self):
+        self.assertEqual(
+            {'b-file-id-2006-01-01-defg':set(['rev-J']),
+             'c-funky<file-id> quiji%bo':set(['rev-K'])
+             },
+            self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"]))
 
-        l = self.branch.repository.fileid_involved( )
-        self.assertEquals( sorted(map( lambda x: x[0], l )), ["a","b","c","d"])
+        self.assertEqual(
+            {'b-file-id-2006-01-01-defg': set(['rev-<D>']),
+             'file-d': set(['rev-F']),
+             },
+            self.branch.repository.fileids_altered_by_revision_ids(['rev-<D>', 'rev-F']))
 
-    def test_fileid_involved_one_rev(self):
+        self.assertEqual(
+            {
+             'b-file-id-2006-01-01-defg': set(['rev-<D>', 'rev-G', 'rev-J']), 
+             'c-funky<file-id> quiji%bo': set(['rev-K']),
+             'file-d': set(['rev-F']), 
+             },
+            self.branch.repository.fileids_altered_by_revision_ids(
+                ['rev-<D>', 'rev-G', 'rev-F', 'rev-K', 'rev-J']))
 
-        l = self.branch.repository.fileid_involved("rev-B" )
-        self.assertEquals( sorted(map( lambda x: x[0], l )), ["a","b","c"])
+        self.assertEqual(
+            {'a-file-id-2006-01-01-abcd': set(['rev-B']),
+             'b-file-id-2006-01-01-defg': set(['rev-<D>', 'rev-G', 'rev-J']),
+             'c-funky<file-id> quiji%bo': set(['rev-K']),
+             'file-d': set(['rev-F']),
+             },
+            self.branch.repository.fileids_altered_by_revision_ids(
+                ['rev-G', 'rev-F', 'rev-C', 'rev-B', 'rev-<D>', 'rev-K', 'rev-J']))
 
-    def test_fileid_involved_two_revs(self):
+    def test_fileids_altered_by_revision_ids(self):
+        self.assertEqual(
+            {'a-file-id-2006-01-01-abcd':set(['rev-A']),
+             'b-file-id-2006-01-01-defg': set(['rev-A']),
+             'c-funky<file-id> quiji%bo': set(['rev-A']),
+             }, 
+            self.branch.repository.fileids_altered_by_revision_ids(["rev-A"]))
+        self.assertEqual(
+            {'a-file-id-2006-01-01-abcd':set(['rev-B'])
+             }, 
+            self.branch.repository.fileids_altered_by_revision_ids(["rev-B"]))
+        self.assertEqual(
+            {'b-file-id-2006-01-01-defg':set(['rev-<D>'])
+             },
+            self.branch.repository.fileids_altered_by_revision_ids(["rev-<D>"]))
 
-        l = self.branch.repository.fileid_involved_between_revs("rev-B","rev-K" )
-        self.assertEquals( sorted(map( lambda x: x[0], l )), ["b","c"])
-
-        l = self.branch.repository.fileid_involved_between_revs("rev-C","rev-<D>" )
-        self.assertEquals( sorted(map( lambda x: x[0], l )), ["b","d"])
-
-        l = self.branch.repository.fileid_involved_between_revs("rev-C","rev-G" )
-        self.assertEquals( sorted(map( lambda x: x[0], l )), ["b","c","d"])
-
-        l = self.branch.repository.fileid_involved_between_revs("rev-E","rev-G" )
-        self.assertEquals( sorted(map( lambda x: x[0], l )), ["a", "b","c","d"])
-
-    def test_fileid_involved_sets(self):
-
-        l = self.branch.repository.fileid_involved_by_set(set(["rev-B"]))
-        self.assertEquals( sorted(map( lambda x: x[0], l )), ["a"])
-
-        l = self.branch.repository.fileid_involved_by_set(set(["rev-<D>"]))
-        self.assertEquals( sorted(map( lambda x: x[0], l )), ["b"])
-
-    def test_fileid_involved_compare(self):
-
-        l1 = self.branch.repository.fileid_involved_between_revs("rev-E", "rev-<D>")
-        l2 = self.branch.repository.fileid_involved_by_set(set(["rev-<D>","rev-F","rev-C","rev-B"]))
-        self.assertEquals( l1, l2 )
-
-        l1 = self.branch.repository.fileid_involved_between_revs("rev-C", "rev-G")
-        l2 = self.branch.repository.fileid_involved_by_set(
-            set(["rev-G","rev-<D>","rev-F","rev-K","rev-J"]))
-        self.assertEquals( l1, l2 )
-
-    def test_fileid_involved_full_compare(self):
+    def test_fileids_involved_full_compare(self):
+        # this tests that the result of each fileid_involved calculation 
+        # along a revision history selects only the fileids selected by
+        # comparing the trees - no less, and no more. This is correct 
+        # because in our sample data we do not revert any file ids along
+        # the revision history.
         pp=[]
         history = self.branch.revision_history( )
 
@@ -169,8 +198,12 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             start_id = history[start]
             for end in range(start+1,len(history)):
                 end_id = history[end]
-                l1 = self.branch.repository.fileid_involved_between_revs(
-                    start_id, end_id)
+                old_revs = set(self.branch.repository.get_ancestry(start_id))
+                new_revs = set(self.branch.repository.get_ancestry(end_id))
+                l1 = self.branch.repository.fileids_altered_by_revision_ids(
+                    new_revs.difference(old_revs))
+                l1 = set(l1.keys())
+
                 l2 = self.compare_tree_fileids(self.branch, start_id, end_id)
                 self.assertEquals(l1, l2)
 
@@ -187,7 +220,10 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         main_wt.add(['a', 'b', 'c'], ['a-file-id-2006-01-01-abcd',
                                  'b-file-id-2006-01-01-defg',
                                  'c-funky<file-id> quiji%bo'])
-        main_wt.commit("Commit one", rev_id="rev-A")
+        try:
+            main_wt.commit("Commit one", rev_id="rev-A")
+        except IllegalPath: 
+            return # not an error, and not fixable. New formats are fixed.
 
         branch2_bzrdir = main_branch.bzrdir.sprout("branch2")
         branch2_branch = branch2_bzrdir.open_branch()
@@ -203,11 +239,18 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         self.branch = main_branch
 
     def test_fileid_involved_full_compare2(self):
+        # this tests that fileids_alteted_by_revision_ids returns 
+        # more information than compare_tree can, because it 
+        # sees each change rather than the aggregate delta.
         history = self.branch.revision_history()
         old_rev = history[0]
         new_rev = history[1]
+        old_revs = set(self.branch.repository.get_ancestry(old_rev))
+        new_revs = set(self.branch.repository.get_ancestry(new_rev))
 
-        l1 = self.branch.repository.fileid_involved_between_revs(old_rev, new_rev)
+        l1 = self.branch.repository.fileids_altered_by_revision_ids(
+            new_revs.difference(old_revs))
+        l1 = set(l1.keys())
 
         l2 = self.compare_tree_fileids(self.branch, old_rev, new_rev)
         self.assertNotEqual(l2, l1)

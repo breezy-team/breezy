@@ -17,14 +17,12 @@
 
 """Tests for the commit CLI of bzr."""
 
-from cStringIO import StringIO
 import os
 import re
-import shutil
 import sys
 
 from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
+from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrCommandError
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
@@ -50,12 +48,54 @@ class TestCommit(ExternalBase):
                          'Committed revision 1.\n',
                          err)
 
-    def test_15_verbose_commit_with_unknown(self):
+    def prepare_simple_history(self):
+        """Prepare and return a working tree with one commit of one file"""
+        # Commit with modified file should say so
+        wt = BzrDir.create_standalone_workingtree('.')
+        self.build_tree(['hello.txt', 'extra.txt'])
+        wt.add(['hello.txt'])
+        wt.commit(message='added')
+        return wt
+
+    def test_verbose_commit_modified(self):
+        # Verbose commit of modified file should say so
+        wt = self.prepare_simple_history()
+        self.build_tree_contents([('hello.txt', 'new contents')])
+        out, err = self.run_bzr("commit", "-m", "modified")
+        self.assertEqual('', out)
+        self.assertEqual('modified hello.txt\n'
+                         'Committed revision 2.\n',
+                         err)
+
+    def test_verbose_commit_renamed(self):
+        # Verbose commit of renamed file should say so
+        wt = self.prepare_simple_history()
+        wt.rename_one('hello.txt', 'gutentag.txt')
+        out, err = self.run_bzr("commit", "-m", "renamed")
+        self.assertEqual('', out)
+        self.assertEqual('renamed gutentag.txt\n'
+                         'Committed revision 2.\n',
+                         err)
+
+    def test_verbose_commit_moved(self):
+        # Verbose commit of file moved to new directory should say so
+        wt = self.prepare_simple_history()
+        os.mkdir('subdir')
+        wt.add(['subdir'])
+        wt.rename_one('hello.txt', 'subdir/hello.txt')
+        out, err = self.run_bzr("commit", "-m", "renamed")
+        self.assertEqual('', out)
+        self.assertEqualDiff('added subdir\n'
+                             'renamed subdir/hello.txt\n'
+                             'Committed revision 2.\n',
+                             err)
+
+    def test_verbose_commit_with_unknown(self):
         """Unknown files should not be listed by default in verbose output"""
         # Is that really the best policy?
-        self.runbzr("init")
+        wt = BzrDir.create_standalone_workingtree('.')
         self.build_tree(['hello.txt', 'extra.txt'])
-        self.runbzr("add hello.txt")
+        wt.add(['hello.txt'])
         out,err = self.run_bzr("commit", "-m", "added")
         self.assertEqual('', out)
         self.assertEqual('added hello.txt\n'

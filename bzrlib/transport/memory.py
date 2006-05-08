@@ -95,12 +95,14 @@ class MemoryTransport(Transport):
         else:
             return temp_t.base[:-1]
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """See Transport.append()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
         orig_content, orig_mode = self._files.get(_abspath, ("", None))
-        self._files[_abspath] = (orig_content + f.read(), orig_mode)
+        if mode is None:
+            mode = orig_mode
+        self._files[_abspath] = (orig_content + f.read(), mode)
         return len(orig_content)
 
     def _check_parent(self, _abspath):

@@ -21,15 +21,31 @@ import difflib
 
 
 from bzrlib.errors import KnitError, RevisionAlreadyPresent
-from bzrlib.knit import KnitVersionedFile, KnitPlainFactory, KnitAnnotateFactory
+from bzrlib.knit import (
+    KnitVersionedFile,
+    KnitPlainFactory,
+    KnitAnnotateFactory,
+    WeaveToKnit)
 from bzrlib.osutils import split_lines
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transport import TransportLogger
 from bzrlib.transport.local import LocalTransport
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.weave import Weave
 
 
-class KnitTests(TestCaseInTempDir):
+class KnitTests(TestCaseWithTransport):
+    """Class containing knit test helper routines."""
+
+    def make_test_knit(self, annotate=False):
+        if not annotate:
+            factory = KnitPlainFactory()
+        else:
+            factory = None
+        return KnitVersionedFile('test', LocalTransport('.'), access_mode='w', factory=factory, create=True)
+
+
+class BasicKnitTests(KnitTests):
 
     def add_stock_one_and_one_a(self, k):
         k.add_lines('text-1', [], split_lines(TEXT_1))
@@ -38,13 +54,6 @@ class KnitTests(TestCaseInTempDir):
     def test_knit_constructor(self):
         """Construct empty k"""
         self.make_test_knit()
-
-    def make_test_knit(self, annotate=False):
-        if not annotate:
-            factory = KnitPlainFactory()
-        else:
-            factory = None
-        return KnitVersionedFile('test', LocalTransport('.'), access_mode='w', factory=factory, create=True)
 
     def test_knit_add(self):
         """Store one text in knit and retrieve"""
@@ -89,6 +98,8 @@ class KnitTests(TestCaseInTempDir):
         k = KnitVersionedFile('test', LocalTransport('.'), delta=False, create=True)
         k.add_lines('text-1', [], ['a\n',    'b'  ])
         k.add_lines('text-2', ['text-1'], ['a\rb\n', 'b\n'])
+        # reopening ensures maximum room for confusion
+        k = KnitVersionedFile('test', LocalTransport('.'), delta=False, create=True)
         self.assertEquals(k.get_lines('text-1'), ['a\n',    'b'  ])
         self.assertEquals(k.get_lines('text-2'), ['a\rb\n', 'b\n'])
 
@@ -338,16 +349,16 @@ class KnitTests(TestCaseInTempDir):
         # this tests that a new knit index file has the expected content
         # and that is writes the data we expect as records are added.
         knit = self.make_test_knit(True)
-        self.assertFileEqual("# bzr knit index 7\n", 'test.kndx')
+        self.assertFileEqual("# bzr knit index 8\n", 'test.kndx')
         knit.add_lines_with_ghosts('revid', ['a_ghost'], ['a\n'])
         self.assertFileEqual(
-            "# bzr knit index 7\n"
+            "# bzr knit index 8\n"
             "\n"
             "revid fulltext 0 84 .a_ghost :",
             'test.kndx')
         knit.add_lines_with_ghosts('revid2', ['revid'], ['a\n'])
         self.assertFileEqual(
-            "# bzr knit index 7\n"
+            "# bzr knit index 8\n"
             "\nrevid fulltext 0 84 .a_ghost :"
             "\nrevid2 line-delta 84 82 0 :",
             'test.kndx')
@@ -368,6 +379,14 @@ class KnitTests(TestCaseInTempDir):
         self.assertEqual(['revid', 'revid2', 'revid3'], knit.versions())
         self.assertEqual(['revid2'], knit.get_parents('revid3'))
 
+    def test_plan_merge(self):
+        my_knit = self.make_test_knit(annotate=True)
+        my_knit.add_lines('text1', [], split_lines(TEXT_1))
+        my_knit.add_lines('text1a', ['text1'], split_lines(TEXT_1A))
+        my_knit.add_lines('text1b', ['text1'], split_lines(TEXT_1B))
+        plan = list(my_knit.plan_merge('text1a', 'text1b'))
+        for plan_line, expected_line in zip(plan, AB_MERGE):
+            self.assertEqual(plan_line, expected_line)
 
 
 TEXT_1 = """\
@@ -388,6 +407,14 @@ Banana cup cake recipe
 - self-raising flour
 """
 
+TEXT_1B = """\
+Banana cup cake recipe
+
+- bananas (do not use plantains!!!)
+- broken tea cups
+- flour
+"""
+
 delta_1_1a = """\
 0,1,2
 Banana cup cake recipe
@@ -405,6 +432,19 @@ Boeuf bourguignon
 - carrot
 - mushrooms
 """
+
+AB_MERGE_TEXT="""unchanged|Banana cup cake recipe
+new-a|(serves 6)
+unchanged|
+killed-b|- bananas
+killed-b|- eggs
+new-b|- bananas (do not use plantains!!!)
+unchanged|- broken tea cups
+new-a|- self-raising flour
+new-b|- flour
+"""
+AB_MERGE=[tuple(l.split('|')) for l in AB_MERGE_TEXT.splitlines(True)]
+
 
 def line_delta(from_lines, to_lines):
     """Generate line-based delta from one text to another"""
@@ -434,3 +474,16 @@ def apply_line_delta(basis_lines, delta_lines):
         i = i + c
         offset = offset + (b - a) + c
     return out
+
+
+class TestWeaveToKnit(KnitTests):
+
+    def test_weave_to_knit_matches(self):
+        # check that the WeaveToKnit is_compatible function
+        # registers True for a Weave to a Knit.
+        w = Weave()
+        k = self.make_test_knit()
+        self.failUnless(WeaveToKnit.is_compatible(w, k))
+        self.failIf(WeaveToKnit.is_compatible(k, w))
+        self.failIf(WeaveToKnit.is_compatible(w, w))
+        self.failIf(WeaveToKnit.is_compatible(k, k))
