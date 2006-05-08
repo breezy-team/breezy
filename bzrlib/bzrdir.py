@@ -588,7 +588,8 @@ class BzrDirPreSplitOut(BzrDir):
         result = self._format._initialize_for_clone(url)
         basis_repo, basis_branch, basis_tree = self._get_basis_components(basis)
         self.open_repository().clone(result, revision_id=revision_id, basis=basis_repo)
-        self.open_branch().clone(result, revision_id=revision_id)
+        from_branch = self.open_branch()
+        from_branch.clone(result, revision_id=revision_id)
         try:
             self.open_workingtree().clone(result, basis=basis_tree)
         except errors.NotLocalUrl:
@@ -596,8 +597,9 @@ class BzrDirPreSplitOut(BzrDir):
             try:
                 WorkingTreeFormat2().initialize(result)
             except errors.NotLocalUrl:
-                # but we canot do it for remote trees.
-                pass
+                # but we cannot do it for remote trees.
+                to_branch = result.open_branch()
+                WorkingTreeFormat2().stub_initialize_remote(to_branch.control_files)
         return result
 
     def create_branch(self):
