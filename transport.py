@@ -7,6 +7,11 @@ from bzrlib.transport import Transport
 from cStringIO import StringIO
 import os
 
+# Don't run any tests on SvnTransport as it is not intended to be 
+# a full implementation of Transport
+def get_test_permutations():
+    return []
+
 class SvnTransport(Transport):
     def __init__(self, url=""):
         Transport.__init__(self,url)
