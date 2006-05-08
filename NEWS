@@ -4,7 +4,7 @@ bzr 0.8rc2  2006-05-05
 
     Release 0.8 of bzr introduces a new format for history storage, called
     'knit', as an evolution of to the 'weave' format used in 0.7.  Local 
-    and remote operations are faster using weaves than knits.  Several
+    and remote operations are faster using knits than weaves.  Several
     operations including 'init', 'init-repo', and 'upgrade' take a 
     --format option that controls this.  Branching from an existing branch
     will keep the same format.
