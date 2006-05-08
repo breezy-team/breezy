@@ -2376,9 +2376,10 @@ class cmd_bind(Command):
 
 
 class cmd_unbind(Command):
-    """Bind the current branch to its parent.
+    """Unbind the current branch from its master branch.
 
     After unbinding, the local branch is considered independent.
+    All subsequent commits will be local.
     """
 
     takes_args = []
