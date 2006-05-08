@@ -1,0 +1,147 @@
+Location of configuration file
+==============================
+Each user gets a pair of configurations files in $HOME/.bazaar. The first
+one, named bazaar.conf, includes default configuration options. The other
+file, branches.conf, contains configuration information for specific
+branches.
+
+General Format
+==============
+An ini file has three types of contructs: section headers, section
+variables and comments.
+
+comment
+-------
+A comment is any line that starts with a "#" (sometimes called a "hash
+mark", "pound sign" or "number sign"). Comment lines are ignored by
+Bazaar-NG when parsing ini files.
+
+section header
+--------------
+A section header is a word enclosed in brackets that starts at the begining
+of a line, typical section headers look like this::
+
+    [DEFAULT]
+
+The only valid section header for bazaar.conf is [DEFAULT], which is case
+senstive. The default section provides for setting variables which can be
+overridden with the branch config file.
+
+For branches.conf, the variables from the section with the longest matching
+section header are used to the exclusion of other potentially valid section
+headers. A section header uses the path for the branch as the section
+header. Some examples include::
+
+    [http://mybranches.isp.com/~jdoe/branchdir]
+    [/home/jdoe/branches/]
+
+
+
+section variables
+-----------------
+
+A section variable resides within a section. A section variable contains a
+variable name, an equals sign and a value and generally takes the following
+form::
+
+    email            = John Doe <jdoe@isp.com>
+    check_signatures = require
+
+
+The main configuration file, bazaar.conf
+----------------------------------------
+
+The main configuration file, $HOME/.bazaar/bazaar.conf, only allows one
+section called '''[DEFAULT]'''. This default section contains the default
+configuration options for all branches. The default section can be
+overriden by providing a branch specific section in branches.conf.
+
+A typical bazaar.conf section often looks like the following::
+
+    [DEFAULT]
+    email             = John Doe <jdoe@isp.com>
+    editor            = /usr/bin/vim
+    check_signatures  = check-available
+    create_signatures = when-required
+
+$HOME/.bazaar/branches.conf allows one to specify overriding settings for a
+specific branch. The format is almost identical to the default section in
+bazaar.conf with one significant change: The section header, instead of
+saying default, will be the path to a branch that you wish to override a
+value for. The ? and * wildcards are supported::
+
+    [/home/jdoe/branches/nethack]
+    email = Nethack Admin <nethack@nethack.com>
+
+    [http://hypothetical.site.com/branches/devel-branch]
+    create_signatures = always
+    check_signatures  = always
+
+    [http://bazaar-ng.org/bzr/*]
+    check_signatures  = require
+
+Common Variable options
+=======================
+
+email
+-----
+The email address to use when committing a branch. Typically takes the form
+of::
+
+    email = Full Name <account@hostname.tld>
+
+editor
+------
+The path of the editor that you wish to use if *bzr commit* is run without
+a commit log message. This setting is trumped by the environment variables
+$BZREDITOR or $EDITOR.
+
+check_signatures
+----------------
+Defines the behavior for signatures.
+
+require
+    the gnupg signature for revisions must be present and must be valid
+
+ignore
+    Do not check gnupg signatures of revisions. 
+
+check-available
+    (default) If gnupg signatures for revisions are present, check them.
+    Bazaar-NG will fail if it finds a bad signature, but will not fail if
+    no signature is present
+
+create_signatures
+-----------------
+Defines the behaviour of signing revisions. Has three possible values:
+always, never and when-requied.
+
+always
+    sign every new revision that is committed
+
+when-required
+    (default) Sign newly committed revisions only when the branch requires
+    signed revisions
+
+never
+    Refuse to sign newly committed revisions, even if the branch requires signatures
+
+recurse
+-------
+Only useful in branches.conf. Defines whether or not the configuration for
+this section applies to subdirectories:
+
+true
+    (default) This section applies to subdirectories as well
+
+false
+    This section only applies to the branch at this directory and not
+    branches 
+
+gpg_signing_command
+-------------------
+(Default: "gpg"). Which program should be used to sign and check revisions.
+example::
+
+    gpg_signing_command = /usr/bin/gnpg
+

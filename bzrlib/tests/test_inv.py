@@ -24,6 +24,7 @@ from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.inventory as inventory
 from bzrlib.osutils import has_symlinks, rename, pathjoin
 from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.transform import TreeTransform
 from bzrlib.uncommit import uncommit
 
 
@@ -405,12 +406,11 @@ class TestExecutable(TestCaseWithTransport):
         b_id = "b-20051208024829-849e76f7968d7a86"
         wt = self.make_branch_and_tree('b1')
         b = wt.branch
-        open('b1/a', 'wb').write('a test\n')
-        open('b1/b', 'wb').write('b test\n')
-        os.chmod('b1/a', 0755)
-        os.chmod('b1/b', 0644)
-        wt.add(['a', 'b'], [a_id, b_id])
-        wt.inventory[a_id].executable = True
+        tt = TreeTransform(wt)
+        tt.new_file('a', tt.root, 'a test\n', a_id, True)
+        tt.new_file('b', tt.root, 'b test\n', b_id, False)
+        tt.apply()
+
         self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
 
         # reopen the tree and ensure it stuck.

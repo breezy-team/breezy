@@ -129,8 +129,11 @@ Revision store:
 
         # Branch and bind to standalone, needs upgrade to metadir
         # (creates backup as unknown)
-        branch3 = branch1.bzrdir.sprout('bound').open_branch()
-        bzrlib.upgrade.upgrade('bound', bzrlib.bzrdir.BzrDirMetaFormat1())
+        # XXX: I can't get this to work through API
+        self.runbzr('branch standalone bound')
+        #branch3 = branch1.bzrdir.sprout('bound').open_branch()
+        self.runbzr('upgrade --format=metaweave bound')
+        #bzrlib.upgrade.upgrade('bound', bzrlib.bzrdir.BzrDirMetaFormat1())
         branch3 = bzrlib.bzrdir.BzrDir.open('bound').open_branch()
         branch3.bind(branch1)
         out, err = self.runbzr('info bound')

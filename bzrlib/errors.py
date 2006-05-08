@@ -236,7 +236,7 @@ class BranchExistsWithoutWorkingTree(PathError):
 
 
 class NoRepositoryPresent(BzrNewError):
-    """Not repository present: %(path)r"""
+    """No repository present: %(path)r"""
     def __init__(self, bzrdir):
         BzrNewError.__init__(self)
         self.path = bzrdir.transport.clone('..').base
@@ -894,3 +894,11 @@ class UnsupportedOperation(BzrNewError):
 
 class BinaryFile(BzrNewError):
     """File is binary but should be text."""
+
+
+class IllegalPath(BzrNewError):
+    """The path %(path)s is not permitted on this platform"""
+
+    def __init__(self, path):
+        BzrNewError.__init__(self)
+        self.path = path

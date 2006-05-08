@@ -590,3 +590,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         text = tree._format.get_format_description()
         self.failUnless(len(text))
+
+    def test_branch_attribute_is_not_settable(self):
+        # the branch attribute is an aspect of the working tree, not a
+        # configurable attribute
+        tree = self.make_branch_and_tree('tree')
+        def set_branch():
+            tree.branch = tree.branch
+        self.assertRaises(AttributeError, set_branch)
+

@@ -223,7 +223,7 @@ class WorkingTree(bzrlib.tree.Tree):
                  DeprecationWarning,
                  stacklevel=2)
             wt = WorkingTree.open(basedir)
-            self.branch = wt.branch
+            self._branch = wt.branch
             self.basedir = wt.basedir
             self._control_files = wt._control_files
             self._hashcache = wt._hashcache
@@ -244,9 +244,9 @@ class WorkingTree(bzrlib.tree.Tree):
                      DeprecationWarning,
                      stacklevel=2
                      )
-            self.branch = branch
+            self._branch = branch
         else:
-            self.branch = self.bzrdir.open_branch()
+            self._branch = self.bzrdir.open_branch()
         assert isinstance(self.branch, Branch), \
             "branch %r is not a Branch" % self.branch
         self.basedir = realpath(basedir)
@@ -281,6 +281,25 @@ class WorkingTree(bzrlib.tree.Tree):
             self._set_inventory(self.read_working_inventory())
         else:
             self._set_inventory(_inventory)
+
+    branch = property(
+        fget=lambda self: self._branch,
+        doc="""The branch this WorkingTree is connected to.
+
+            This cannot be set - it is reflective of the actual disk structure
+            the working tree has been constructed from.
+            """)
+
+    def break_lock(self):
+        """Break a lock if one is present from another instance.
+
+        Uses the ui factory to ask for confirmation if the lock may be from
+        an active process.
+
+        This will probe the repository for its lock as well.
+        """
+        self._control_files.break_lock()
+        self.branch.break_lock()
 
     def _set_inventory(self, inv):
         self._inventory = inv
@@ -1227,11 +1246,10 @@ class WorkingTree(bzrlib.tree.Tree):
              self._control_files._lock_count==3)):
             self._hashcache.write()
         # reverse order of locking.
-        result = self._control_files.unlock()
         try:
-            self.branch.unlock()
+            return self._control_files.unlock()
         finally:
-            return result
+            self.branch.unlock()
 
     @needs_write_lock
     def update(self):
@@ -1491,6 +1509,22 @@ class WorkingTreeFormat2(WorkingTreeFormat):
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 2"
+
+    def stub_initialize_remote(self, control_files):
+        """As a special workaround create critical control files for a remote working tree
+        
+        This ensures that it can later be updated and dealt with locally,
+        since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with 
+        no working tree.  (See bug #43064).
+        """
+        sio = StringIO()
+        inv = Inventory()
+        bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
+        sio.seek(0)
+        control_files.put('inventory', sio)
+
+        control_files.put_utf8('pending-merges', '')
+        
 
     def initialize(self, a_bzrdir, revision_id=None):
         """See WorkingTreeFormat.initialize()."""

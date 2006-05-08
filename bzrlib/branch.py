@@ -45,6 +45,7 @@ from bzrlib.osutils import (isdir, quotefn,
                             rename, splitpath, sha_file,
                             file_kind, abspath, normpath, pathjoin,
                             safe_unicode,
+                            rmtree,
                             )
 from bzrlib.textui import show_status
 from bzrlib.trace import mutter, note
@@ -94,6 +95,20 @@ class Branch(object):
 
     def __init__(self, *ignored, **ignored_too):
         raise NotImplementedError('The Branch class is abstract')
+
+    def break_lock(self):
+        """Break a lock if one is present from another instance.
+
+        Uses the ui factory to ask for confirmation if the lock may be from
+        an active process.
+
+        This will probe the repository for its lock as well.
+        """
+        self.control_files.break_lock()
+        self.repository.break_lock()
+        master = self.get_master_branch()
+        if master is not None:
+            master.break_lock()
 
     @staticmethod
     @deprecated_method(zero_eight)
@@ -886,7 +901,7 @@ class BzrBranch(Branch):
         # XXX: cache_root seems to be unused, 2006-01-13 mbp
         if hasattr(self, 'cache_root') and self.cache_root is not None:
             try:
-                shutil.rmtree(self.cache_root)
+                rmtree(self.cache_root)
             except:
                 pass
             self.cache_root = None
@@ -960,8 +975,10 @@ class BzrBranch(Branch):
 
     def unlock(self):
         # TODO: test for failed two phase locks. This is known broken.
-        self.repository.unlock()
-        self.control_files.unlock()
+        try:
+            self.repository.unlock()
+        finally:
+            self.control_files.unlock()
         
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:

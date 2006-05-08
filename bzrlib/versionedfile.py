@@ -17,10 +17,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# Remaing to do is to figure out if get_graph should return a simple
-# map, or a graph object of some kind.
-
-
 """Versioned text file storage api."""
 
 
@@ -286,14 +282,29 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_ancestry_with_ghosts)
         
-    def get_graph(self):
-        """Return a graph for the entire versioned file.
+    def get_graph(self, version_ids=None):
+        """Return a graph from the versioned file. 
         
         Ghosts are not listed or referenced in the graph.
+        :param version_ids: Versions to select.
+                            None means retreive all versions.
         """
         result = {}
-        for version in self.versions():
-            result[version] = self.get_parents(version)
+        if version_ids is None:
+            for version in self.versions():
+                result[version] = self.get_parents(version)
+        else:
+            pending = set(version_ids)
+            while pending:
+                version = pending.pop()
+                if version in result:
+                    continue
+                parents = self.get_parents(version)
+                for parent in parents:
+                    if parent in result:
+                        continue
+                    pending.add(parent)
+                result[version] = parents
         return result
 
     def get_graph_with_ghosts(self):
@@ -550,7 +561,8 @@ class InterVersionedFile(InterObject):
             # Make a new target-format versioned file. 
             temp_source = self.target.create_empty("temp", MemoryTransport())
             target = temp_source
-        graph = self.source.get_graph()
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
+        graph = self.source.get_graph(version_ids)
         order = topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
         parent_texts = {}
@@ -595,6 +607,33 @@ class InterVersionedFile(InterObject):
         finally:
             pb.finished()
 
+    def _get_source_version_ids(self, version_ids, ignore_missing):
+        """Determine the version ids to be used from self.source.
+
+        :param version_ids: The caller-supplied version ids to check. (None 
+                            for all). If None is in version_ids, it is stripped.
+        :param ignore_missing: if True, remove missing ids from the version 
+                               list. If False, raise RevisionNotPresent on
+                               a missing version id.
+        :return: A set of version ids.
+        """
+        if version_ids is None:
+            # None cannot be in source.versions
+            return set(self.source.versions())
+        else:
+            if ignore_missing:
+                return set(self.source.versions()).intersection(set(version_ids))
+            else:
+                new_version_ids = set()
+                for version in version_ids:
+                    if version is None:
+                        continue
+                    if not self.source.has_version(version):
+                        raise errors.RevisionNotPresent(version, str(self.source))
+                    else:
+                        new_version_ids.add(version)
+                return new_version_ids
+
 
 class InterVersionedFileTestProviderAdapter(object):
     """A tool to generate a suite testing multiple inter versioned-file classes.
@@ -634,14 +673,14 @@ class InterVersionedFileTestProviderAdapter(object):
         from bzrlib.weave import WeaveFile
         from bzrlib.knit import KnitVersionedFile
         result = []
-        # test the fallback InterVersionedFile from weave to annotated knits
+        # test the fallback InterVersionedFile from annotated knits to weave
         result.append((InterVersionedFile, 
-                       WeaveFile,
-                       KnitVersionedFile))
+                       KnitVersionedFile,
+                       WeaveFile))
         for optimiser in InterVersionedFile._optimisers:
             result.append((optimiser,
-                           optimiser._matching_file_factory,
-                           optimiser._matching_file_factory
+                           optimiser._matching_file_from_factory,
+                           optimiser._matching_file_to_factory
                            ))
         # if there are specific combinations we want to use, we can add them 
         # here.
