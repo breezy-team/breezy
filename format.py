@@ -18,7 +18,7 @@ class SvnRemoteAccess(BzrDir):
         if _transport.url.startswith("svn://") or \
            _transport.url.startswith("svn+ssh://"):
             self.url = _transport.url
-        elif _transport.url.startswith("file://"):
+        elif _transport.url.startswith("svn+wc://"):
             self.working_dir = _transport.url
             self.url= svn.client.url_from_path(self.working_dir.encode('utf8'),self.pool)
         else:

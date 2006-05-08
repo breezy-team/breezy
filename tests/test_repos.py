@@ -1,4 +1,4 @@
-import svn.repos
+import svn
 import format
 from tests import TestCaseWithSubversionRepository
 from bzrlib.bzrdir import BzrDir
@@ -8,9 +8,16 @@ class TestRepositoryWorks(TestCaseWithSubversionRepository):
     def setUp(self):
         TestCaseWithSubversionRepository.setUp(self)
 
-    def test_uuid(self):
+    def test_url(self):
+        """ Test repository URL is kept """
         bzrdir = self.open_bzrdir()
         self.assertTrue(isinstance(bzrdir, BzrDir))
-        #self.assertTrue(isinstance(bzrdir, format.SvnRemoteAccess))
         repository = bzrdir.open_repository()
-        self.assertEqual(svn.repos.get_uuid(self.repos), repository.uuid)
+        self.assertEqual(repository.url, self.repos_url)
+
+    def test_uuid(self):
+        """ Test UUID is retrieved correctly """
+        bzrdir = self.open_bzrdir()
+        self.assertTrue(isinstance(bzrdir, BzrDir))
+        repository = bzrdir.open_repository()
+        self.assertEqual(svn.fs.get_uuid(self.fs), repository.uuid)
