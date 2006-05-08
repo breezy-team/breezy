@@ -24,6 +24,7 @@ import errno
 import os
 import re
 import sha
+import shutil
 import string
 import sys
 import time
@@ -171,7 +172,8 @@ def fancy_rename(old, new, rename_func, unlink_func):
             else:
                 rename_func(tmp_name, new)
 
-# Default is to just use the python builtins
+# Default is to just use the python builtins, but these can be rebound on
+# particular platforms.
 abspath = os.path.abspath
 realpath = os.path.realpath
 pathjoin = os.path.join
@@ -181,6 +183,7 @@ mkdtemp = tempfile.mkdtemp
 rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
+rmtree = shutil.rmtree
 
 MIN_ABS_PATHLENGTH = 1
 
@@ -221,6 +224,24 @@ if sys.platform == 'win32':
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
 
     MIN_ABS_PATHLENGTH = 3
+
+    def _win32_delete_readonly(function, path, excinfo):
+        """Error handler for shutil.rmtree function [for win32]
+        Helps to remove files and dirs marked as read-only.
+        """
+        type_, value = excinfo[:2]
+        if function in (os.remove, os.rmdir) \
+            and type_ == OSError \
+            and value.errno == errno.EACCES:
+            bzrlib.osutils.make_writable(path)
+            function(path)
+        else:
+            raise
+
+    def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
+        """Replacer for shutil.rmtree: could remove readonly dirs/files"""
+        return shutil.rmtree(path, ignore_errors, onerror)
+
 
 def normalizepath(f):
     if hasattr(os.path, 'realpath'):

@@ -30,7 +30,7 @@ class TestInit(ExternalBase):
     def test_init_with_format(self):
         # Verify bzr init --format constructs something plausible
         t = self.get_transport()
-        self.runbzr('init --format metadir')
+        self.runbzr('init --format default')
         self.assertIsDirectory('.bzr', t)
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)

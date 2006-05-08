@@ -17,12 +17,15 @@
 
 """Commit message editor support."""
 
-import os
+
 import errno
+import os
 from subprocess import call
+import sys
 
 import bzrlib.config as config
 from bzrlib.errors import BzrError
+
 
 def _get_editor():
     """Return a sequence of possible editor binaries for the current platform"""
