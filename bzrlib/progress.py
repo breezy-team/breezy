@@ -181,6 +181,7 @@ class _BaseProgressBar(object):
     def child_progress(self, **kwargs):
         return ChildProgress(**kwargs)
 
+
 class DummyProgress(_BaseProgressBar):
     """Progress-bar standin that does nothing.
 

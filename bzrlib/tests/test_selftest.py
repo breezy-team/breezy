@@ -13,8 +13,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for the test framework
-"""
+"""Tests for the test framework."""
 
 import os
 import sys
@@ -66,24 +65,6 @@ class TestTreeShape(TestCaseInTempDir):
             raise TestSkipped("can't build unicode working tree in "
                 "filesystem encoding %s" % sys.getfilesystemencoding())
         self.failUnlessExists(filename)
-
-
-class TestSkippedTest(TestCase):
-    """Try running a test which is skipped, make sure it's reported properly."""
-
-    def test_skipped_test(self):
-        # skipping_test must be hidden in here so it's not run as a real test
-        def skipping_test():
-            raise TestSkipped('test intentionally skipped')
-        runner = TextTestRunner(stream=self._log_file, keep_output=True)
-        test = unittest.FunctionTestCase(skipping_test)
-        old_root = TestCaseInTempDir.TEST_ROOT
-        try:
-            TestCaseInTempDir.TEST_ROOT = None
-            result = runner.run(test)
-        finally:
-            TestCaseInTempDir.TEST_ROOT = old_root
-        self.assertTrue(result.wasSuccessful())
 
 
 class TestTransportProviderAdapter(TestCase):
@@ -465,12 +446,28 @@ class TestRunner(TestCase):
     def dummy_test(self):
         pass
 
+    def run_test_runner(self, testrunner, test):
+        """Run suite in testrunner, saving global state and restoring it.
+
+        This current saves and restores:
+        TestCaseInTempDir.TEST_ROOT
+        
+        There should be no tests in this file that use bzrlib.tests.TextTestRunner
+        without using this convenience method, because of our use of global state.
+        """
+        old_root = TestCaseInTempDir.TEST_ROOT
+        try:
+            TestCaseInTempDir.TEST_ROOT = None
+            return testrunner.run(test)
+        finally:
+            TestCaseInTempDir.TEST_ROOT = old_root
+
     def test_accepts_and_uses_pb_parameter(self):
         test = TestRunner('dummy_test')
         mypb = MockProgress()
         self.assertEqual([], mypb.calls)
-        runner = TextTestRunner(stream=self._log_file, pb=mypb, keep_output=True)
-        result = runner.run(test)
+        runner = TextTestRunner(stream=self._log_file, pb=mypb)
+        result = self.run_test_runner(runner, test)
         self.assertEqual(1, result.testsRun)
         self.assertEqual(('update', 'Running tests', 0, 1), mypb.calls[0])
         self.assertEqual(('update', '...dummy_test', 0, None), mypb.calls[1])
@@ -479,6 +476,55 @@ class TestRunner(TestCase):
         self.assertEqual(('clear',), mypb.calls[4])
         self.assertEqual(5, len(mypb.calls))
 
+    def test_skipped_test(self):
+        # run a test that is skipped, and check the suite as a whole still
+        # succeeds.
+        # skipping_test must be hidden in here so it's not run as a real test
+        def skipping_test():
+            raise TestSkipped('test intentionally skipped')
+        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        test = unittest.FunctionTestCase(skipping_test)
+        result = self.run_test_runner(runner, test)
+        self.assertTrue(result.wasSuccessful())
+
+
+class TestTestCase(TestCase):
+    """Tests that test the core bzrlib TestCase."""
+
+    def inner_test(self):
+        # the inner child test
+        note("inner_test")
+
+    def outer_child(self):
+        # the outer child test
+        note("outer_start")
+        self.inner_test = TestTestCase("inner_child")
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1)
+        self.inner_test.run(result)
+        note("outer finish")
+
+    def test_trace_nesting(self):
+        # this tests that each test case nests its trace facility correctly.
+        # we do this by running a test case manually. That test case (A)
+        # should setup a new log, log content to it, setup a child case (B),
+        # which should log independently, then case (A) should log a trailer
+        # and return.
+        # we do two nested children so that we can verify the state of the 
+        # logs after the outer child finishes is correct, which a bad clean
+        # up routine in tearDown might trigger a fault in our test with only
+        # one child, we should instead see the bad result inside our test with
+        # the two children.
+        # the outer child test
+        original_trace = bzrlib.trace._trace_file
+        outer_test = TestTestCase("outer_child")
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1)
+        outer_test.run(result)
+        self.assertEqual(original_trace, bzrlib.trace._trace_file)
+        
 
 class TestExtraAssertions(TestCase):
     """Tests for new test assertions in bzrlib test suite"""
