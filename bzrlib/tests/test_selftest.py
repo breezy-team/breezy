@@ -484,6 +484,10 @@ class TestExtraAssertions(TestCase):
         self.assertRaises(AssertionError, self.assertIsInstance, None, int)
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
 
+    def test_assertEndsWith(self):
+        self.assertEndsWith('foo', 'oo')
+        self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
+
 
 class TestConvenienceMakers(TestCaseWithTransport):
     """Test for the make_* convenience functions."""

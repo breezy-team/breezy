@@ -290,6 +290,17 @@ class WorkingTree(bzrlib.tree.Tree):
             the working tree has been constructed from.
             """)
 
+    def break_lock(self):
+        """Break a lock if one is present from another instance.
+
+        Uses the ui factory to ask for confirmation if the lock may be from
+        an active process.
+
+        This will probe the repository for its lock as well.
+        """
+        self._control_files.break_lock()
+        self.branch.break_lock()
+
     def _set_inventory(self, inv):
         self._inventory = inv
         self.path2id = self._inventory.path2id
@@ -1031,6 +1042,9 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         return self.branch.last_revision()
 
+    def is_locked(self):
+        return self._control_files.is_locked()
+
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock."""
         self.branch.lock_read()
@@ -1048,6 +1062,9 @@ class WorkingTree(bzrlib.tree.Tree):
         except:
             self.branch.unlock()
             raise
+
+    def get_physical_lock_status(self):
+        return self._control_files.get_physical_lock_status()
 
     def _basis_inventory_name(self):
         return 'basis-inventory'
@@ -1229,11 +1246,10 @@ class WorkingTree(bzrlib.tree.Tree):
              self._control_files._lock_count==3)):
             self._hashcache.write()
         # reverse order of locking.
-        result = self._control_files.unlock()
         try:
-            self.branch.unlock()
+            return self._control_files.unlock()
         finally:
-            return result
+            self.branch.unlock()
 
     @needs_write_lock
     def update(self):

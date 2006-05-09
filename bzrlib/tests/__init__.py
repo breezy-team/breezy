@@ -33,7 +33,6 @@ import errno
 import logging
 import os
 import re
-import shutil
 import stat
 import sys
 import tempfile
@@ -294,7 +293,7 @@ class TextTestRunner(object):
             if test_root is not None:
                 print 'Deleting test root %s...' % test_root
                 try:
-                    shutil.rmtree(test_root)
+                    osutils.rmtree(test_root)
                 finally:
                     print
         else:
@@ -399,7 +398,8 @@ class TestCase(unittest.TestCase):
             raise AssertionError('string %r does not start with %r' % (s, prefix))
 
     def assertEndsWith(self, s, suffix):
-        if not s.endswith(prefix):
+        """Asserts that s ends with suffix."""
+        if not s.endswith(suffix):
             raise AssertionError('string %r does not end with %r' % (s, suffix))
 
     def assertContainsRe(self, haystack, needle_re):
@@ -538,7 +538,7 @@ class TestCase(unittest.TestCase):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
 
-    def run_bzr_captured(self, argv, retcode=0):
+    def run_bzr_captured(self, argv, retcode=0, stdin=None):
         """Invoke bzr and return (stdout, stderr).
 
         Useful for code that wants to check the contents of the
@@ -557,7 +557,10 @@ class TestCase(unittest.TestCase):
 
         argv -- arguments to invoke bzr
         retcode -- expected return code, or None for don't-care.
+        :param stdin: A string to be used as stdin for the command.
         """
+        if stdin is not None:
+            stdin = StringIO(stdin)
         stdout = StringIO()
         stderr = StringIO()
         self.log('run bzr: %s', ' '.join(argv))
@@ -567,12 +570,18 @@ class TestCase(unittest.TestCase):
         handler.setLevel(logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
+        old_ui_factory = bzrlib.ui.ui_factory
+        bzrlib.ui.ui_factory = bzrlib.tests.blackbox.TestUIFactory(
+            stdout=stdout,
+            stderr=stderr)
+        bzrlib.ui.ui_factory.stdin = stdin
         try:
-            result = self.apply_redirected(None, stdout, stderr,
+            result = self.apply_redirected(stdin, stdout, stderr,
                                            bzrlib.commands.run_bzr_catch_errors,
                                            argv)
         finally:
             logger.removeHandler(handler)
+            bzrlib.ui.ui_factory = old_ui_factory
         out = stdout.getvalue()
         err = stderr.getvalue()
         if out:
@@ -592,9 +601,12 @@ class TestCase(unittest.TestCase):
 
         This sends the stdout/stderr results into the test's log,
         where it may be useful for debugging.  See also run_captured.
+
+        :param stdin: A string to be used as stdin for the command.
         """
         retcode = kwargs.pop('retcode', 0)
-        return self.run_bzr_captured(args, retcode)
+        stdin = kwargs.pop('stdin', None)
+        return self.run_bzr_captured(args, retcode, stdin)
 
     def check_inventory_shape(self, inv, shape):
         """Compare an inventory to a list of expected names.
@@ -911,7 +923,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # FIXME: make this use a single transport someday. RBC 20060418
             return format.initialize_on_transport(get_transport(relpath))
         except errors.UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
+            raise TestSkipped("Format %s is not initializable." % format)
 
     def make_repository(self, relpath, shared=False, format=None):
         """Create a repository on our default transport at relpath."""
@@ -1029,7 +1041,6 @@ def test_suite():
 
     testmod_names = [ \
                    'bzrlib.tests.test_ancestry',
-                   'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',
