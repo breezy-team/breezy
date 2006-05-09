@@ -289,16 +289,18 @@ class TextTestRunner(object):
         # but only a little. Folk not using our testrunner will
         # have to delete their temp directories themselves.
         test_root = TestCaseInTempDir.TEST_ROOT
-        if result.wasSuccessful() and not self.keep_output:
+        if result.wasSuccessful() or not self.keep_output:
             if test_root is not None:
-                print 'Deleting test root %s...' % test_root
-                try:
                     osutils.rmtree(test_root)
-                finally:
-                    print
         else:
-            self.stream.write("Failed tests working directories are in '%s'\n"
-                              % TestCaseInTempDir.TEST_ROOT)
+            if self.pb is not None:
+                self.pb.note("Failed tests working directories are in '%s'\n",
+                             test_root)
+            else:
+                self.stream.writeln(
+                    "Failed tests working directories are in '%s'\n" %
+                    test_root)
+        TestCaseInTempDir.TEST_ROOT = None
         if self.pb is not None:
             self.pb.clear()
         return result

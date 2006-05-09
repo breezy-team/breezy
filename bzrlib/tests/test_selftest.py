@@ -72,12 +72,17 @@ class TestSkippedTest(TestCase):
     """Try running a test which is skipped, make sure it's reported properly."""
 
     def test_skipped_test(self):
-        # must be hidden in here so it's not run as a real test
+        # skipping_test must be hidden in here so it's not run as a real test
         def skipping_test():
             raise TestSkipped('test intentionally skipped')
         runner = TextTestRunner(stream=self._log_file, keep_output=True)
         test = unittest.FunctionTestCase(skipping_test)
-        result = runner.run(test)
+        old_root = TestCaseInTempDir.TEST_ROOT
+        try:
+            TestCaseInTempDir.TEST_ROOT = None
+            result = runner.run(test)
+        finally:
+            TestCaseInTempDir.TEST_ROOT = old_root
         self.assertTrue(result.wasSuccessful())
 
 
