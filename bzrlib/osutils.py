@@ -39,6 +39,7 @@ from bzrlib.errors import (BzrError,
                            IllegalPath,
                            )
 from bzrlib.trace import mutter
+import bzrlib.win32console
 
 
 def make_readonly(filename):
@@ -667,15 +668,10 @@ def safe_unicode(unicode_or_utf8_string):
 
 def terminal_width():
     """Return estimated terminal width."""
-
-    # TODO: Do something smart on Windows?
-
-    # TODO: Is there anything that gets a better update when the window
-    # is resized while the program is running? We could use the Python termcap
-    # library.
-
+    if sys.platform == 'win32':
+        import bzrlib.win32console
+        return bzrlib.win32console.get_console_size()[0]
     width = 0
-    
     try:
         import struct, fcntl, termios
         s = struct.pack('HHHH', 0, 0, 0, 0)

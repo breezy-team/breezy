@@ -7,6 +7,9 @@ IN DEVELOPMENT
      pending-merge display.  (Robert Widhopf-Fenk, Gustavo Niemeyer)
      (Malone #3507)
 
+   * On Windows, detect terminal widht using GetConsoleScreenBufferInfo.
+     (Alexander Belchenko)
+
 
 bzr 0.8  2006-05-08
 
