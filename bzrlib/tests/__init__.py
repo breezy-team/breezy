@@ -474,7 +474,10 @@ class TestCase(unittest.TestCase):
         handler.setLevel(logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
-        old_stdin = getattr(bzrlib.ui.ui_factory, "stdin", None)
+        old_ui_factory = bzrlib.ui.ui_factory
+        bzrlib.ui.ui_factory = bzrlib.tests.blackbox.TestUIFactory(
+            stdout=stdout,
+            stderr=stderr)
         bzrlib.ui.ui_factory.stdin = stdin
         try:
             result = self.apply_redirected(stdin, stdout, stderr,
@@ -482,7 +485,7 @@ class TestCase(unittest.TestCase):
                                            argv)
         finally:
             logger.removeHandler(handler)
-            bzrlib.ui.ui_factory.stdin = old_stdin
+            bzrlib.ui.ui_factory = old_ui_factory
         out = stdout.getvalue()
         err = stderr.getvalue()
         if out:
