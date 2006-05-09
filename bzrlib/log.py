@@ -443,7 +443,8 @@ class LineLogFormatter(LogFormatter):
             return rev.message
 
     def show(self, revno, rev, delta):
-        print >> self.to_file, self.log_string(rev, 79) 
+        from bzrlib.osutils import terminal_width
+        print >> self.to_file, self.log_string(rev, terminal_width() - 1) 
 
     def log_string(self, rev, max_chars):
         out = [self.truncate(self.short_committer(rev), 20)]

@@ -1,3 +1,13 @@
+IN DEVELOPMENT
+
+  IMPROVEMENTS:
+
+   * On Unix, detect terminal width using an ioctl not just $COLUMNS.
+     Use terminal width for single-line logs from ``bzr log --line`` and
+     pending-merge display.  (Robert Widhopf-Fenk, Gustavo Niemeyer)
+     (Malone #3507)
+
+
 bzr 0.8  2006-05-08
 
   NOTES WHEN UPGRADING:

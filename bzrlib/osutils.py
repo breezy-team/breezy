@@ -673,10 +673,25 @@ def terminal_width():
     # TODO: Is there anything that gets a better update when the window
     # is resized while the program is running? We could use the Python termcap
     # library.
+
+    width = 0
+    
     try:
-        return int(os.environ['COLUMNS'])
-    except (IndexError, KeyError, ValueError):
-        return 80
+        import struct, fcntl, termios
+        s = struct.pack('HHHH', 0, 0, 0, 0)
+        x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
+        width = struct.unpack('HHHH', x)[1]
+    except IOError:
+        pass
+    if width <= 0:
+        try:
+            width = int(os.environ['COLUMNS'])
+        except:
+            pass
+    if width <= 0:
+        width = 80
+
+    return width
 
 def supports_executable():
     return sys.platform != "win32"
