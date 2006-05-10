@@ -84,16 +84,19 @@ def _find_scheme_and_separator(url):
     This is just a helper functions for other path utilities.
     It could probably be replaced by urlparse
     """
-    scheme_loc = url.find('://')
-    if scheme_loc == -1:
+    m = _url_scheme_re.match(url)
+    if not m:
         return None, None
+
+    scheme = m.group('scheme')
+    path = m.group('path')
 
     # Find the path separating slash
     # (first slash after the ://)
-    first_path_slash = url.find('/', scheme_loc+3)
+    first_path_slash = path.find('/')
     if first_path_slash == -1:
         return scheme_loc, None
-    return scheme_loc, first_path_slash
+    return scheme_loc, first_path_slash+len(scheme)+3
 
 
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
@@ -177,9 +180,25 @@ def normalize_url(url):
     :param url: Either a hybrid URL or a local path
     :return: A normalized URL which only includes 7-bit ASCII characters.
     """
-    if '://' not in url:
-        return local_path_from_url(url)
+    m = _url_scheme_re.match(url)
+    if not m:
+        return local_path_to_url(url)
+    if not isinstance(url, unicode):
+        # TODO: jam 20060510 We need to test for ascii characters that
+        #       shouldn't be allowed in URLs
+        for c in url:
+            if c not in _url_safe_characters:
+                raise errors.InvalidURL(url, 'URLs can only contain specific safe characters')
+        return url
+    # We have a unicode (hybrid) url
+    scheme = m.group('scheme')
+    path = list(m.group('path'))
 
+    for i in xrange(len(path)):
+        if path[i] not in _url_safe_characters:
+            chars = path[i].encode('utf-8')
+            path[i] = ''.join(['%%%02X' % ord(c) for c in path[i].encode('utf-8')])
+    return scheme + '://' + ''.join(path)
 
 
 def split(url, exclude_trailing_slash=True):
@@ -209,7 +228,7 @@ def split(url, exclude_trailing_slash=True):
     if sys.platform == 'win32' and url.startswith('file:///'):
         # Strip off the drive letter
         if path[2:3] not in '\\/':
-            raise InvalidURL(url, 
+            raise errors.InvalidURL(url, 
                 'win32 file:/// paths need a drive letter')
         url_base += path[1:4] # file:///C|/
         path = path[3:]
@@ -249,6 +268,8 @@ def strip_trailing_slash(url):
         # of a win32 path is actually the drive letter
         if len(url) > MIN_ABS_FILEURL_LENGTH:
             return url[:-1]
+        else:
+            return url
     scheme_loc, first_path_slash = _find_scheme_and_separator(url)
     if scheme_loc is None:
         # This is a relative path, as it has no scheme
@@ -294,8 +315,14 @@ _no_decode_hex = (['%02x' % o for o in _no_decode_ords]
                 + ['%02X' % o for o in _no_decode_ords])
 _hex_display_map = dict(([('%02x' % o, chr(o)) for o in range(256)]
                     + [('%02X' % o, chr(o)) for o in range(256)]))
-_hex_display_map.update((hex,'%'+hex) for hex in _no_decode_hex)
 #These entries get mapped to themselves
+_hex_display_map.update((hex,'%'+hex) for hex in _no_decode_hex)
+
+# These characters should not be escaped
+_url_safe_characters = set('abcdefghijklmnopqrstuvwxyz'
+                        'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                        '0123456789' '_.-/'
+                        ';?:@&=+$,%#')
 
 
 def unescape_for_display(url):

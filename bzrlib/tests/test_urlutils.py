@@ -60,8 +60,54 @@ class TestUrlToPath(TestCase):
         self.assertEqual('foo', basename('path/../foo'))
         self.assertEqual('foo', basename('../path/foo'))
 
-    def test_normalize_url(self):
-        pass
+    def test_normalize_url_files(self):
+        # Test that local paths are properly normalized
+        normalize_url = urlutils.normalize_url
+
+        def norm_file(expected, path):
+            url = normalize_url(path)
+            self.assertStartsWith(url, 'file:///')
+            if sys.platform == 'win32':
+                url = url[len('file:///C:'):]
+            else:
+                url = url[len('file://'):]
+
+            self.assertEndsWith(path, expected)
+
+        norm_file('path/to/foo', 'path/to/foo')
+        norm_file('/path/to/foo', '/path/to/foo')
+        norm_file('path/to/foo', '../path/to/foo')
+
+        # Local paths are assumed to *not* be escaped at all
+        norm_file('uni/%C2%B5', u'uni/\xb5')
+        norm_file('uni/%25C2%25B5', u'uni/%C2%B5')
+        norm_file('uni/%20b', u'uni/ b')
+        # All the crazy characters get escaped in local paths => file:/// urls
+        norm_file('%27%3B/%3F%3A%40%26%3D%2B%24%2C%23%20', "';/?:@&=+$,#")
+
+    def test_normalize_url_hybrid(self):
+        # Anything with a scheme:// should be treated as a hybrid url
+        # which changes what characters get escaped.
+        normalize_url = urlutils.normalize_url
+
+        eq = self.assertEqual
+        eq('file:///foo/', normalize_url(u'file:///foo/'))
+        eq('file:///foo/%20', normalize_url(u'file:///foo/ '))
+        eq('file:///foo/%20', normalize_url(u'file:///foo/%20'))
+        # Don't escape reserved characters
+        eq('file:///ab_c.d-e/%f:?g&h=i+j;k,L#M$',
+            normalize_url('file:///ab_c.d-e/%f:?g&h=i+j;k,L#M$'))
+        eq('http://ab_c.d-e/%f:?g&h=i+j;k,L#M$',
+            normalize_url('http://ab_c.d-e/%f:?g&h=i+j;k,L#M$'))
+
+        # Escape unicode characters, but not already escaped chars
+        eq('http://host/ab/%C2%B5/%C2%B5',
+            normalize_url(u'http://host/ab/%C2%B5/\xb5'))
+
+        # Normalize verifies URLs when they are not unicode
+        # (indicating they did not come from the user)
+        self.assertRaises(InvalidURL, normalize_url, 'http://host/\xb5')
+        self.assertRaises(InvalidURL, normalize_url, 'http://host/ ')
 
     def test_url_scheme_re(self):
         # Test paths that may be URLs
