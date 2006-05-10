@@ -29,17 +29,12 @@ class SvnFileWeave(VersionedFile):
     def get_lines(self, version_id):
         assert version_id != None
 
-        file = self.repository.filename_from_file_id(version_id, self.file_id)
-        
-        (path,revnum) = self.repository.parse_revision_id(version_id)
+        (path,revnum) = self.repository.filename_from_file_id(version_id, self.file_id)
 
-        file_path = "%s/%s" % (path,file)
-
-        mutter('svn cat %r' % file_path)
+        mutter('svn cat %r' % path)
 
         stream = StringIO()
-        ret = svn.ra.get_file(self.repository.ra, file_path.encode('utf8'), revnum, stream)
-        print ret
+        (revnum,props) = svn.ra.get_file(self.repository.ra, path.encode('utf8'), revnum, stream)
         stream.seek(0)
 
         return stream.readlines()
@@ -99,7 +94,7 @@ class SvnRepository(Repository):
         def read_directory(inv,id,path):
             mutter("svn ls -r %d '%r'" % (revnum, path))
 
-            (dirents,last_revnum,props) = svn.ra.get_dir2(self.ra, path.encode('utf8'), svn.core.SVN_DIRENT_KIND, revnum)
+            (dirents,last_revnum,props) = svn.ra.get_dir2(self.ra, path.encode('utf8'), revnum, svn.core.SVN_DIRENT_KIND)
 
             recurse = []
 
@@ -132,12 +127,13 @@ class SvnRepository(Repository):
     
         inv = Inventory()
 
-        read_directory(inv,ROOT_ID,"")
+        read_directory(inv,ROOT_ID,path)
 
         return inv
 
     def filename_from_file_id(self,revision_id,file_id):
         """Generate a Subversion filename from a bzr file id."""
+        
         return self.fileid_map[revision_id][file_id]
 
     def filename_to_file_id(self,revision_id,filename):
@@ -146,7 +142,9 @@ class SvnRepository(Repository):
         if not self.fileid_map.has_key(revision_id):
             self.fileid_map[revision_id] = {}
 
-        self.fileid_map[revision_id][file_id] = filename
+        (_,revnum) = self.parse_revision_id(revision_id)
+
+        self.fileid_map[revision_id][file_id] = (filename,revnum)
         return file_id
 
     def all_revision_ids(self):
