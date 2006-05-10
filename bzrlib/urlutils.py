@@ -20,8 +20,9 @@
 
 import os
 from posixpath import split as _posix_split
-import urllib
+import re
 import sys
+import urllib
 
 import bzrlib.errors as errors
 import bzrlib.osutils
@@ -154,6 +155,33 @@ if sys.platform == 'win32':
     MIN_ABS_FILEURL_LENGTH = len('file:///C|/')
 
 
+_url_scheme_re = re.compile(r'^(?P<scheme>[^:/]{2,})://(?P<path>.*)$')
+
+
+def normalize_url(url):
+    """Make sure that a path string is in fully normalized URL form.
+    
+    This handles URLs which have unicode characters, spaces, 
+    special characters, etc.
+
+    It has two basic modes of operation, depending on whether the
+    supplied string starts with a url specifier (scheme://) or not.
+    If it does not have a specifier it is considered a local path,
+    and will be converted into a file:/// url. Non-ascii characters
+    will be encoded using utf-8.
+    If it does have a url specifier, it will be treated as a "hybrid"
+    URL. Basically, a URL that should have URL special characters already
+    escaped (like +?&# etc), but may have unicode characters, etc
+    which would not be valid in a real URL.
+
+    :param url: Either a hybrid URL or a local path
+    :return: A normalized URL which only includes 7-bit ASCII characters.
+    """
+    if '://' not in url:
+        return local_path_from_url(url)
+
+
+
 def split(url, exclude_trailing_slash=True):
     """Split a URL into its parent directory and a child directory.
 
@@ -264,7 +292,8 @@ _no_decode_chars = ';/?:@&=+$,#'
 _no_decode_ords = [ord(c) for c in _no_decode_chars]
 _no_decode_hex = (['%02x' % o for o in _no_decode_ords] 
                 + ['%02X' % o for o in _no_decode_ords])
-_hex_display_map = urllib._hextochr.copy()
+_hex_display_map = dict(([('%02x' % o, chr(o)) for o in range(256)]
+                    + [('%02X' % o, chr(o)) for o in range(256)]))
 _hex_display_map.update((hex,'%'+hex) for hex in _no_decode_hex)
 #These entries get mapped to themselves
 
