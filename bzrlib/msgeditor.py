@@ -1,6 +1,4 @@
-# Bazaar-NG -- distributed version control
-
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,13 +18,15 @@
 """Commit message editor support."""
 
 import codecs
-import os
 import errno
+import os
 from subprocess import call
+import sys
 
 import bzrlib
 import bzrlib.config as config
 from bzrlib.errors import BzrError
+
 
 def _get_editor():
     """Return a sequence of possible editor binaries for the current platform"""
@@ -44,10 +44,12 @@ def _get_editor():
     except KeyError:
         pass
 
-    if os.name == "nt":
-        yield "notepad.exe"
-    elif os.name == "posix":
-        yield "/usr/bin/vi"
+    if sys.platform == 'win32':
+        for editor in 'wordpad.exe', 'notepad.exe':
+            yield editor
+    else:
+        for editor in ['vi', 'pico', 'nano', 'joe']:
+            yield editor
 
 
 def _run_editor(filename):
@@ -57,8 +59,8 @@ def _run_editor(filename):
         try:
             x = call(edargs + [filename])
         except OSError, e:
-           # ENOENT means no such editor
-           if e.errno == errno.ENOENT:
+           # We're searching for an editor, so catch safe errors and continue
+           if e.errno in (errno.ENOENT, ):
                continue
            raise
         if x == 0:
@@ -67,8 +69,9 @@ def _run_editor(filename):
             continue
         else:
             break
-    raise BzrError("Could not start any editor. "
-                   "Please specify $EDITOR or use ~/.bzr.conf/editor")
+    raise BzrError("Could not start any editor.\nPlease specify one with:\n"
+                   " - $BZR_EDITOR\n - editor=/some/path in %s\n - $EDITOR" % \
+                    config.config_filename())
 
 
 DEFAULT_IGNORE_LINE = "%(bar)s %(msg)s %(bar)s" % \

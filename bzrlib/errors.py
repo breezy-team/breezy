@@ -240,7 +240,7 @@ class BranchExistsWithoutWorkingTree(PathError):
 
 
 class NoRepositoryPresent(BzrNewError):
-    """Not repository present: %(path)r"""
+    """No repository present: %(path)r"""
     def __init__(self, bzrdir):
         BzrNewError.__init__(self)
         self.path = bzrdir.transport.clone('..').base

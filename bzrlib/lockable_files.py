@@ -21,7 +21,7 @@ import codecs
 import bzrlib
 from bzrlib.decorators import *
 import bzrlib.errors as errors
-from bzrlib.errors import LockError, ReadOnlyError
+from bzrlib.errors import BzrError
 from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, note
@@ -110,6 +110,13 @@ class LockableFiles(object):
             from warnings import warn
             warn("file group %r was not explicitly unlocked" % self)
             self._lock.unlock()
+
+    def break_lock(self):
+        """Break the lock of this lockable files group if it is held.
+
+        The current ui factory will be used to prompt for user conformation.
+        """
+        self._lock.break_lock()
 
     def _escape(self, file_or_path):
         if not isinstance(file_or_path, basestring):
@@ -212,7 +219,7 @@ class LockableFiles(object):
         # and potentially a remote locking protocol
         if self._lock_mode:
             if self._lock_mode != 'w' or not self.get_transaction().writeable():
-                raise ReadOnlyError(self)
+                raise errors.ReadOnlyError(self)
             self._lock_count += 1
         else:
             self._lock.lock_write()
@@ -248,12 +255,26 @@ class LockableFiles(object):
             #note('unlocking %s', self)
             #traceback.print_stack()
             self._finish_transaction()
-            self._lock.unlock()
-            self._lock_mode = self._lock_count = None
+            try:
+                self._lock.unlock()
+            finally:
+                self._lock_mode = self._lock_count = None
 
     def is_locked(self):
         """Return true if this LockableFiles group is locked"""
         return self._lock_count >= 1
+
+    def get_physical_lock_status(self):
+        """Return physical lock status.
+        
+        Returns true if a lock is held on the transport. If no lock is held, or
+        the underlying locking mechanism does not support querying lock
+        status, false is returned.
+        """
+        try:
+            return self._lock.peek() is not None
+        except NotImplementedError:
+            return False
 
     def get_transaction(self):
         """Return the current active transaction.
@@ -300,6 +321,9 @@ class TransportLock(object):
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
 
+    def break_lock(self):
+        raise NotImplementedError(self.break_lock)
+
     def lock_write(self):
         self._lock = self._transport.lock_write(self._escaped_name)
 
@@ -309,6 +333,9 @@ class TransportLock(object):
     def unlock(self):
         self._lock.unlock()
         self._lock = None
+
+    def peek(self):
+        raise NotImplementedError()
 
     def create(self, mode=None):
         """Create lock mechanism"""

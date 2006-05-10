@@ -22,11 +22,7 @@ import os
 from cStringIO import StringIO
 
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import (BzrDir,
-                           BzrDirFormat,
-                           BzrDirFormat6,
-                           BzrDirMetaFormat1,
-                           )
+from bzrlib.bzrdir import (BzrDir, BzrDirFormat, BzrDirMetaFormat1)
 from bzrlib.osutils import getcwd
 from bzrlib.tests import TestCaseWithTransport
 import bzrlib.urlutils as urlutils
@@ -39,12 +35,7 @@ class TestLegacyFormats(TestCaseWithTransport):
         super(TestLegacyFormats, self).setUp()
         self.build_tree(['master/', 'child/'])
         self.run_bzr('init', 'master')
-        old_format = BzrDirFormat.get_default_format()
-        BzrDirFormat.set_default_format(BzrDirFormat6())
-        try:
-            self.run_bzr('init', 'child')
-        finally:
-            BzrDirFormat.set_default_format(old_format)
+        self.run_bzr('init', '--format=weave', 'child')
         os.chdir('child')
     
     def test_bind_format_6_bzrdir(self):

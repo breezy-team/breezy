@@ -33,7 +33,6 @@ import errno
 import logging
 import os
 import re
-import shutil
 import stat
 import sys
 import tempfile
@@ -331,7 +330,8 @@ class TestCase(unittest.TestCase):
             raise AssertionError('string %r does not start with %r' % (s, prefix))
 
     def assertEndsWith(self, s, suffix):
-        if not s.endswith(prefix):
+        """Asserts that s ends with suffix."""
+        if not s.endswith(suffix):
             raise AssertionError('string %r does not end with %r' % (s, suffix))
 
     def assertContainsRe(self, haystack, needle_re):
@@ -470,7 +470,7 @@ class TestCase(unittest.TestCase):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
 
-    def run_bzr_captured(self, argv, retcode=0, encoding=None):
+    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None):
         """Invoke bzr and return (stdout, stderr).
 
         Useful for code that wants to check the contents of the
@@ -490,9 +490,12 @@ class TestCase(unittest.TestCase):
         :param argv: arguments to invoke bzr
         :param retcode: expected return code, or None for don't-care.
         :param encoding: encoding for sys.stdout and sys.stderr
+        :param stdin: A string to be used as stdin for the command.
         """
         if encoding is None:
             encoding = bzrlib.user_encoding
+        if stdin is not None:
+            stdin = StringIO(stdin)
         stdout = StringIOWrapper()
         stderr = StringIOWrapper()
         stdout.encoding = encoding
@@ -505,12 +508,15 @@ class TestCase(unittest.TestCase):
         handler.setLevel(logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
+        old_stdin = getattr(bzrlib.ui.ui_factory, "stdin", None)
+        bzrlib.ui.ui_factory.stdin = stdin
         try:
-            result = self.apply_redirected(None, stdout, stderr,
+            result = self.apply_redirected(stdin, stdout, stderr,
                                            bzrlib.commands.run_bzr_catch_errors,
                                            argv)
         finally:
             logger.removeHandler(handler)
+            bzrlib.ui.ui_factory.stdin = old_stdin
         # TODO: jam 20060105 Because we theoretically know the encoding
         #       of stdout and stderr, we could decode them at this time
         #       but for now, we will assume that the output of all
@@ -534,10 +540,13 @@ class TestCase(unittest.TestCase):
 
         This sends the stdout/stderr results into the test's log,
         where it may be useful for debugging.  See also run_captured.
+
+        :param stdin: A string to be used as stdin for the command.
         """
         retcode = kwargs.pop('retcode', 0)
         encoding = kwargs.pop('encoding', None)
-        return self.run_bzr_captured(args, retcode=retcode, encoding=encoding)
+        stdin = kwargs.pop('stdin', None)
+        return self.run_bzr_captured(args, retcode=retcode, encoding=encoding, stdin=stdin)
 
     def run_bzr_decode(self, *args, **kwargs):
         if kwargs.has_key('encoding'):
@@ -863,7 +872,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # FIXME: make this use a single transport someday. RBC 20060418
             return format.initialize_on_transport(get_transport(relpath))
         except errors.UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
+            raise TestSkipped("Format %s is not initializable." % format)
 
     def make_repository(self, relpath, shared=False, format=None):
         """Create a repository on our default transport at relpath."""
@@ -955,7 +964,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         if test_root is not None:
             print 'Deleting test root %s...' % test_root
             try:
-                shutil.rmtree(test_root)
+                osutils.rmtree(test_root)
             finally:
                 print
     else:
@@ -990,7 +999,6 @@ def test_suite():
 
     testmod_names = [ \
                    'bzrlib.tests.test_ancestry',
-                   'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',

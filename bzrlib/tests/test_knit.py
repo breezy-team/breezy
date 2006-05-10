@@ -21,14 +21,30 @@ import difflib
 
 
 from bzrlib.errors import KnitError, RevisionAlreadyPresent
-from bzrlib.knit import KnitVersionedFile, KnitPlainFactory, KnitAnnotateFactory
+from bzrlib.knit import (
+    KnitVersionedFile,
+    KnitPlainFactory,
+    KnitAnnotateFactory,
+    WeaveToKnit)
 from bzrlib.osutils import split_lines
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transport import TransportLogger, get_transport
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.weave import Weave
 
 
-class KnitTests(TestCaseInTempDir):
+class KnitTests(TestCaseWithTransport):
+    """Class containing knit test helper routines."""
+
+    def make_test_knit(self, annotate=False):
+        if not annotate:
+            factory = KnitPlainFactory()
+        else:
+            factory = None
+        return KnitVersionedFile('test', get_transport('.'), access_mode='w', factory=factory, create=True)
+
+
+class BasicKnitTests(KnitTests):
 
     def add_stock_one_and_one_a(self, k):
         k.add_lines('text-1', [], split_lines(TEXT_1))
@@ -37,13 +53,6 @@ class KnitTests(TestCaseInTempDir):
     def test_knit_constructor(self):
         """Construct empty k"""
         self.make_test_knit()
-
-    def make_test_knit(self, annotate=False):
-        if not annotate:
-            factory = KnitPlainFactory()
-        else:
-            factory = None
-        return KnitVersionedFile('test', get_transport('.'), access_mode='w', factory=factory, create=True)
 
     def test_knit_add(self):
         """Store one text in knit and retrieve"""
@@ -464,3 +473,16 @@ def apply_line_delta(basis_lines, delta_lines):
         i = i + c
         offset = offset + (b - a) + c
     return out
+
+
+class TestWeaveToKnit(KnitTests):
+
+    def test_weave_to_knit_matches(self):
+        # check that the WeaveToKnit is_compatible function
+        # registers True for a Weave to a Knit.
+        w = Weave()
+        k = self.make_test_knit()
+        self.failUnless(WeaveToKnit.is_compatible(w, k))
+        self.failIf(WeaveToKnit.is_compatible(k, w))
+        self.failIf(WeaveToKnit.is_compatible(w, w))
+        self.failIf(WeaveToKnit.is_compatible(k, k))

@@ -113,7 +113,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         # check --format takes effect
         bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirFormat5())
         (out, err) = self.run_bzr_captured(
-            ['upgrade', '--format=metadir', url])
+            ['upgrade', '--format=metaweave', url])
         self.assertEqualDiff("""starting upgrade of %s
 making backup of tree history
 %s.bzr has been backed up to %s.bzr.backup
@@ -155,7 +155,7 @@ finished
                                    repository.RepositoryFormatKnit1))
 
     def test_upgrade_repo(self):
-        self.run_bzr('init-repository', '--format=metadir', 'repo')
+        self.run_bzr('init-repository', '--format=metaweave', 'repo')
         self.run_bzr('upgrade', '--format=knit', 'repo')
 
 
