@@ -2394,10 +2394,6 @@ class cmd_unbind(Command):
 class cmd_uncommit(bzrlib.commands.Command):
     """Remove the last committed revision.
 
-    By supplying the --all flag, it will not only remove the entry 
-    from revision_history, but also remove all of the entries in the
-    stores.
-
     --verbose will print out what is being removed.
     --dry-run will go through all the motions, but not actually
     remove anything.
