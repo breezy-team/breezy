@@ -5,10 +5,10 @@
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from repository import SvnRepository
 from branch import SvnBranch
-import svn.client
 from libsvn._core import SubversionException
 from bzrlib.errors import NotBranchError
 from bzrlib.lockable_files import TransportLock
+import svn.core
 
 class SvnRemoteAccess(BzrDir):
     def __init__(self, _transport, _format):
@@ -20,6 +20,7 @@ class SvnRemoteAccess(BzrDir):
             self.url = _transport.url
         elif _transport.url.startswith("file://"):
             self.working_dir = _transport.url
+            import svn.client
             self.url= svn.client.url_from_path(self.working_dir.encode('utf8'),self.pool)
         else:
             self.url = _transport.url[4:] # Skip svn+
@@ -46,9 +47,9 @@ class SvnRemoteAccess(BzrDir):
                num == svn.core.SVN_ERR_WC_NOT_DIRECTORY or \
                num == svn.core.SVN_ERR_RA_NO_REPOS_UUID or \
                num == svn.core.SVN_ERR_RA_SVN_REPOS_NOT_FOUND or \
+               num == svn.core.SVN_ERR_FS_NOT_FOUND or \
                num == svn.core.SVN_ERR_RA_DAV_REQUEST_FAILED:
                raise NotBranchError(path=self.url)
-        except:
             raise
  
         branch.bzrdir = self

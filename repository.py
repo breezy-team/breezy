@@ -15,6 +15,7 @@ from libsvn._core import SubversionException
 import svn.core
 import bzrlib
 from branch import auth_baton
+import branch
 from bzrlib.weave import Weave
 from cStringIO import StringIO
 
@@ -41,7 +42,7 @@ class SvnFileWeave(VersionedFile):
         mutter('svn cat %r' % file_url)
 
         stream = StringIO()
-        svn.client.cat(stream,file_url.encode('utf8'),revt,self.repository.client,self.repository.pool)
+        svn.ra.get_file(stream,file_url.encode('utf8'),revt,self.repository.ra,self.repository.pool)
         stream.seek(0)
 
         return stream.readlines()
@@ -52,6 +53,10 @@ class SvnFileStore(object):
 
     def get_weave(self,file_id,transaction):
         return SvnFileWeave(self.repository,file_id)
+
+class BzrCallbacks(svn.ra.callbacks2_t):
+    def __init__(self):
+        svn.ra.callbacks2_t.__init__(self)
 
 """
 Provides a simplified interface to a Subversion repository 
@@ -70,18 +75,14 @@ class SvnRepository(Repository):
 
         self.pool = svn.core.svn_pool_create(None)
 
-        self.client = svn.client.svn_client_create_context(self.pool)
-        self.client.config = svn.core.svn_config_get_config(None)
-        self.client.auth_baton = auth_baton
+        callbacks = BzrCallbacks()
 
-        def rcvr(path,info,pool):
-            self.url = info.repos_root_URL
-            self.uuid = info.repos_UUID
+        self.ra = svn.ra.open2(url.encode('utf8'), callbacks, None, None)
 
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_head
+        self.uuid = svn.ra.get_uuid(self.ra)
+        self.url = svn.ra.get_repos_root(self.ra)
 
-        svn.client.info(url.encode('utf8'), revt, revt, rcvr, False, self.client, self.pool)
+        svn.ra.reparent(self.ra, self.url)
 
         self.fileid_map = {}
 
@@ -98,19 +99,10 @@ class SvnRepository(Repository):
         (path,revnum) = self.parse_revision_id(revision_id)
         mutter('getting inventory %r for branch %r' % (revnum, path))
 
-        url = self.url + "/" + path
+        mutter("svn ls -r %d '%r'" % (revnum, path))
 
-        mutter("svn ls -r %d '%r'" % (revnum, url))
-
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_number
-        revt.value.number = revnum
-
-        remote_ls = svn.client.ls(url.encode('utf8'),
-                                         revt,
-                                         True, # recurse
-                                         self.client, 
-                                         self.pool)
+        remote_ls = svn.ra.get_dir(self.ra, path.encode('utf8'),
+                                         revnum)
 
         # Make sure a directory is always added before its contents
         names = remote_ls.keys()
@@ -188,10 +180,10 @@ class SvnRepository(Repository):
             revid = self.generate_revision_id(rev,path)
             self._ancestry.append(revid)
 
-        mutter("log3 %s" % url)
-        svn.client.log3([url.encode('utf8')], revt_peg, revt_begin, \
-                revt_end, 1, False, False, rcvr, 
-                self.client, self.pool)
+        mutter("log %s" % url)
+        svn.ra.log(self.ra, [url.encode('utf8')], 0, \
+                revnum - 1, 1, False, False, rcvr, 
+                self.ra, self.pool)
 
         return self._ancestry
 
@@ -200,19 +192,14 @@ class SvnRepository(Repository):
 
         url = self.url + "/" + path
 
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_number
-        revt.value.number = revnum
-
         self._found = False
 
         def rcvr(paths,rev,author,date,message,pool):
             self._found = True
 
-        mutter("log3 %s" % url)
-        svn.client.log3([url.encode('utf8')], revt, revt, \
-                revt, 1, False, False, rcvr, 
-                self.client, self.pool)
+        mutter("log %s" % url)
+        svn.ra.log(self.ra, [url.encode('utf8')], revnum, \
+                revnum, 1, False, False, rcvr, self.pool)
 
         return self._found
 
@@ -229,20 +216,7 @@ class SvnRepository(Repository):
         rev.kind = svn.core.svn_opt_revision_number
         rev.value.number = revnum
         mutter('svn proplist -r %r %r' % (revnum,url))
-        (svn_props, actual_rev) = svn.client.revprop_list(url.encode('utf8'), rev, self.client, self.pool)
-        assert actual_rev == revnum
-
-        revt_peg = svn.core.svn_opt_revision_t()
-        revt_peg.kind = svn.core.svn_opt_revision_number
-        revt_peg.value.number = revnum
-
-        revt_begin = svn.core.svn_opt_revision_t()
-        revt_begin.kind = svn.core.svn_opt_revision_number
-        revt_begin.value.number = revnum - 1
-
-        revt_end = svn.core.svn_opt_revision_t()
-        revt_end.kind = svn.core.svn_opt_revision_number
-        revt_end.value.number = 0
+        svn_props = svn.ra.revprop_list(relf.ra, rev, self.pool)
 
         parent_ids = []
 
@@ -250,11 +224,10 @@ class SvnRepository(Repository):
             revid = self.generate_revision_id(rev,path)
             parent_ids.append(revid)
 
-        mutter("log3 -r%d:0 %s" % (revnum-1,url))
+        mutter("log -r%d:0 %s" % (revnum-1,url))
         try:
-            svn.client.log3([url.encode('utf8')], revt_peg, revt_begin, \
-                revt_end, 1, False, False, rcvr, 
-                self.client, self.pool)
+            svn.ra.log(self.ra, [url.encode('utf8')], revnum - 1, \
+                0, 1, False, False, rcvr, self.pool)
 
         except SubversionException, (_,num):
             if num != 195012:
@@ -346,14 +319,6 @@ class SvnRepository(Repository):
 
         (path,revnum) = self.parse_revision_id(revision_id)
 
-        revt_begin = svn.core.svn_opt_revision_t()
-        revt_begin.kind = svn.core.svn_opt_revision_number
-        revt_begin.value.number = revnum - 1
-
-        revt_end = svn.core.svn_opt_revision_t()
-        revt_end.kind = svn.core.svn_opt_revision_number
-        revt_end.value.number = 0
-
         self._previous = revision_id
         self._ancestry = {}
         
@@ -364,10 +329,9 @@ class SvnRepository(Repository):
 
         url = self.url + "/" + path
 
-        mutter("log3 %s" % (url))
-        svn.client.log3([url.encode('utf8')], revt_begin, revt_begin, \
-                revt_end, 0, False, False, rcvr, 
-                self.client, self.pool)
+        mutter("log %s" % (url))
+        svn.ra.log(self.ra, [url.encode('utf8')], revnum - 1, \
+                0, 0, False, False, rcvr, self.pool)
 
         self._ancestry[self._previous] = [None]
         self._ancestry[None] = []

@@ -33,16 +33,18 @@ from bzrlib.trace import mutter, note
 from bzrlib.workingtree import WorkingTree
 import bzrlib
 
-import svn.core, svn.client, svn.wc
+import svn.core, svn.wc, svn.ra
 import os
 from libsvn._core import SubversionException
 
 # Initialize APR (required for all SVN calls)
 svn.core.apr_initialize()
+svn.ra.initialize()
 
-global_pool = svn.core.svn_pool_create(None)
+_global_pool = svn.core.svn_pool_create(None)
 
 def _create_auth_baton(pool):
+    import svn.client
     # Give the client context baton a suite of authentication
     # providers.
     providers = [
@@ -54,7 +56,7 @@ def _create_auth_baton(pool):
         ]
     return svn.core.svn_auth_open(providers, pool)
 
-auth_baton = _create_auth_baton(global_pool)
+auth_baton = _create_auth_baton(_global_pool)
 
 class SvnRevisionTree(Tree):
     def __init__(self,branch,revision_id):
@@ -69,7 +71,7 @@ class SvnRevisionTree(Tree):
     def is_executable(self,file_id):
         filename = self.branch.url_from_file_id(self.revision_id,file_id)
         mutter("svn propget %r %r" % (svn.core.SVN_PROP_EXECUTABLE, filename))
-        values = svn.client.propget(svn.core.SVN_PROP_EXECUTABLE, filename, self.revnum, False, self.repository.client, self.repository.pool)
+        values = svn.ra.propget(svn.core.SVN_PROP_EXECUTABLE, filename, self.revnum, False, self.repository.ra, self.repository.pool)
         if len(values) == 1 and values.pop() == svn.core.SVN_PROP_EXECUTABLE_VALUE:
             return True
         return False 
@@ -78,7 +80,7 @@ class SvnRevisionTree(Tree):
         stream = svn.core.svn_stream_empty(self.repository.pool)
         url = self.branch.url_from_file_id(self.revision_id,file_id)
         mutter("svn cat -r %r %r" % (self.revnum.value.number,url))
-        svn.repository.client.cat(stream,url.encode('utf8'),self.revnum,self.repository.client,self.repository.pool)
+        svn.repository.ra.get_file(stream,url.encode('utf8'),self.revnum,self.repository.ra,self.repository.pool)
         return Stream(stream).read()
 
 class SvnBranch(Branch):
@@ -90,8 +92,7 @@ class SvnBranch(Branch):
 
         self.branch_path = base[len(repos.url):].strip("/")
         self.base = base 
-        self.base_revt = svn.core.svn_opt_revision_t()
-        self.base_revt.kind = svn.core.svn_opt_revision_head
+        self.base_revnum = svn.ra.get_latest_revnum(self.repository.ra)
         self.control_files = "FIXME"
         self._generate_revnum_map()
         
@@ -103,24 +104,16 @@ class SvnBranch(Branch):
         #FIXME: Revids should be globally unique, so we should include the 
         # branch path somehow. If we don't do this there might be revisions 
         # that have the same id because they were created in the same commit.
-        # This requires finding out the URL of the root of the repository, 
-        # but this is not possible at the moment since svn.client.info() does
-        # not work.
         self._revision_history = []
-
-        revt_begin = svn.core.svn_opt_revision_t()
-        revt_begin.kind = svn.core.svn_opt_revision_number
-        revt_begin.value.number = 0
 
         def rcvr(paths,rev,author,date,message,pool):
             revid = self.repository.generate_revision_id(rev,self.branch_path)
             self._revision_history.append(revid)
 
-        url = "%s/%s" % (self.repository.url, self.branch_path)
-
-        svn.client.log3([url.encode('utf8')], self.base_revt, revt_begin, \
-                self.base_revt, 0, False, False, rcvr, 
-                self.repository.client, self.repository.pool)
+        svn.ra.get_log(self.repository.ra, [self.branch_path.encode('utf8')], 0, \
+                self.base_revnum, \
+                0, False, False, rcvr, 
+                self.repository.pool)
  
     def set_root_id(self, file_id):
         raise NotImplementedError('set_root_id not supported on Subversion Branches')
