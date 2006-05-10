@@ -1580,6 +1580,12 @@ class cmd_commit(Command):
         # TODO: if the commit *does* happen to fail, then save the commit 
         # message to a temporary file where it can be recovered
         tree, selected_list = tree_files(selected_list)
+        if selected_list == ['']:
+            # workaround - commit of root of tree should be exactly the same
+            # as just default commit in that tree, and succeed even though
+            # selected-file merge commit is not done yet
+            selected_list = []
+
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
         if message is None and not file:

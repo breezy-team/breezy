@@ -296,7 +296,8 @@ class Commit(object):
 
             self._gather_parents()
             if len(self.parents) > 1 and self.specific_files:
-                raise NotImplementedError('selected-file commit of merges is not supported yet')
+                raise NotImplementedError('selected-file commit of merges is not supported yet: files %r',
+                        self.specific_files)
             self._check_parents_present()
             
             self._remove_deleted()
