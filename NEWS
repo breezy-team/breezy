@@ -140,7 +140,7 @@ bzr 0.8  2006-05-08
       and allows checkouts over SFTP to perform acceptably. 
       The initial Knit code was contributed by Johan Rydberg based on a
       specification by Martin Pool.
-      (Robert Collins, Aaron Bentley, John Rydberg, Martin Pool).
+      (Robert Collins, Aaron Bentley, Johan Rydberg, Martin Pool).
 
     * New tool to generate all-in-one html version of the manual.  (Alexander
       Belchenko)
