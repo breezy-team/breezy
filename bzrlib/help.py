@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,8 +25,6 @@ import textwrap
 global_help = \
 """Bazaar-NG -- a free distributed version-control tool
 http://bazaar-vcs.org/
-
-Please remember to keep backups!
 
 Basic commands:
 

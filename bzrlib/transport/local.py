@@ -28,7 +28,7 @@ import urllib
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, Server
 from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename, 
-                            check_legal_path)
+                            check_legal_path, rmtree)
 
 
 class LocalTransport(Transport):
@@ -152,7 +152,6 @@ class LocalTransport(Transport):
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
-        import shutil
         path_from = self.abspath(rel_from)
         path_to = self.abspath(rel_to)
         try:
@@ -202,8 +201,6 @@ class LocalTransport(Transport):
             # Both from & to are on the local filesystem
             # Unfortunately, I can't think of anything faster than just
             # copying them across, one by one :(
-            import shutil
-
             total = self._get_total(relpaths)
             count = 0
             for path in relpaths:
@@ -297,7 +294,7 @@ class ScratchTransport(LocalTransport):
         super(ScratchTransport, self).__init__(base)
 
     def __del__(self):
-        shutil.rmtree(self.base, ignore_errors=True)
+        rmtree(self.base, ignore_errors=True)
         mutter("%r destroyed" % self)
 
 

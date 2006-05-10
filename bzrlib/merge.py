@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 
 import os
 import errno
-from shutil import rmtree
 from tempfile import mkdtemp
 
 import bzrlib
@@ -39,7 +38,7 @@ from bzrlib.errors import (BzrCommandError,
                            )
 from bzrlib.merge3 import Merge3
 import bzrlib.osutils
-from bzrlib.osutils import rename, pathjoin
+from bzrlib.osutils import rename, pathjoin, rmtree
 from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
 from bzrlib.symbol_versioning import *
