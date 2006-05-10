@@ -69,7 +69,7 @@ class SvnRevisionTree(Tree):
         return bzrlib.osutils.sha_string(self.get_file(file_id))
 
     def is_executable(self,file_id):
-        filename = self.branch.url_from_file_id(self.revision_id,file_id)
+        filename = self.branch.path_from_file_id(self.revision_id,file_id)
         mutter("svn propget %r %r" % (svn.core.SVN_PROP_EXECUTABLE, filename))
         values = svn.ra.propget(svn.core.SVN_PROP_EXECUTABLE, filename, self.revnum, False, self.repository.ra, self.repository.pool)
         if len(values) == 1 and values.pop() == svn.core.SVN_PROP_EXECUTABLE_VALUE:
@@ -78,9 +78,9 @@ class SvnRevisionTree(Tree):
     
     def get_file(self,file_id):
         stream = svn.core.svn_stream_empty(self.repository.pool)
-        url = self.branch.url_from_file_id(self.revision_id,file_id)
-        mutter("svn cat -r %r %r" % (self.revnum.value.number,url))
-        svn.repository.ra.get_file(stream,url.encode('utf8'),self.revnum,self.repository.ra,self.repository.pool)
+        path = self.branch.path_from_file_id(self.revision_id,file_id)
+        mutter("svn cat -r %r %r" % (self.revnum.value.number,path))
+        svn.repository.ra.get_file(stream,path.encode('utf8'),self.revnum,self.repository.ra,self.repository.pool)
         return Stream(stream).read()
 
 class SvnBranch(Branch):
@@ -96,8 +96,8 @@ class SvnBranch(Branch):
         self.control_files = "FIXME"
         self._generate_revnum_map()
         
-    def url_from_file_id(self,revision_id,file_id):
-        """Generate a full Subversion URL from a bzr file id."""
+    def path_from_file_id(self,revision_id,file_id):
+        """Generate a full Subversion path from a bzr file id."""
         return self.base+"/"+self.filename_from_file_id(revision_id,file_id)
 
     def _generate_revnum_map(self):
