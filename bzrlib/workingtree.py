@@ -1510,6 +1510,22 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 2"
 
+    def stub_initialize_remote(self, control_files):
+        """As a special workaround create critical control files for a remote working tree
+        
+        This ensures that it can later be updated and dealt with locally,
+        since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with 
+        no working tree.  (See bug #43064).
+        """
+        sio = StringIO()
+        inv = Inventory()
+        bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
+        sio.seek(0)
+        control_files.put('inventory', sio)
+
+        control_files.put_utf8('pending-merges', '')
+        
+
     def initialize(self, a_bzrdir, revision_id=None):
         """See WorkingTreeFormat.initialize()."""
         if not isinstance(a_bzrdir.transport, LocalTransport):
