@@ -174,16 +174,10 @@ class SvnRepository(Repository):
     def has_revision(self,revision_id):
         (path,revnum) = self.parse_revision_id(revision_id)
 
-        self._found = False
+        mutter("svn check_path -r%d %s" % (revnum,revnum,path))
+        kind = svn.ra.check_path(self.ra, [path.encode('utf8')], revnum)
 
-        def rcvr(paths,rev,author,date,message,pool):
-            self._found = True
-
-        mutter("svn log -r%d:%d %s" % (revnum,revnum,path))
-        svn.ra.log(self.ra, [path.encode('utf8')], revnum, \
-                revnum, 1, False, False, rcvr, self.pool)
-
-        return self._found
+        return (kind != svn.core.svn_node_none)
 
     def get_revision(self,revision_id):
         if not revision_id or not isinstance(revision_id, basestring):
@@ -204,13 +198,9 @@ class SvnRepository(Repository):
             parent_ids.append(revid)
 
         mutter("log -r%d:0 %s" % (revnum-1,path))
-        try:
-            svn.ra.get_log(self.ra, [path.encode('utf8')], revnum - 1, \
-                0, 1, False, False, rcvr)
 
-        except SubversionException, (_,num):
-            if num != 195012:
-                raise
+        svn.ra.get_log(self.ra, [path.encode('utf8')], revnum - 1, \
+                0, 1, False, False, rcvr)
 
         # Commit SVN revision properties to a Revision object
         bzr_props = {}
