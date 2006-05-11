@@ -656,21 +656,21 @@ class InventoryFile(InventoryEntry):
         self.text_sha1 = None
         self.executable = None
 
-    def _snapshot_text(self, file_parents, work_tree, weave_store, transaction):
+    def _snapshot_text(self, file_parents, work_tree, versionedfile_store, transaction):
         """See InventoryEntry._snapshot_text."""
-        mutter('storing file {%s} in revision {%s}',
-               self.file_id, self.revision)
+        mutter('storing text of file {%s} in revision {%s} into %r',
+               self.file_id, self.revision, versionedfile_store)
         # special case to avoid diffing on renames or 
         # reparenting
         if (len(file_parents) == 1
             and self.text_sha1 == file_parents.values()[0].text_sha1
             and self.text_size == file_parents.values()[0].text_size):
             previous_ie = file_parents.values()[0]
-            versionedfile = weave_store.get_weave(self.file_id, transaction)
+            versionedfile = versionedfile_store.get_weave(self.file_id, transaction)
             versionedfile.clone_text(self.revision, previous_ie.revision, file_parents.keys())
         else:
             new_lines = work_tree.get_file(self.file_id).readlines()
-            self._add_text_to_weave(new_lines, file_parents.keys(), weave_store,
+            self._add_text_to_weave(new_lines, file_parents.keys(), versionedfile_store,
                                     transaction)
             self.text_sha1 = sha_strings(new_lines)
             self.text_size = sum(map(len, new_lines))

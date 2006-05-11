@@ -186,3 +186,35 @@ class TestCommit(ExternalBase):
         self.assertEqualDiff('', out)
         self.assertEqualDiff('bzr: ERROR: Cannot perform local-only commits '
                              'on unbound branches.\n', err)
+
+    def test_commit_a_text_merge_in_a_checkout(self):
+        # checkouts perform multiple actions in a transaction across bond
+        # branches and their master, and have been observed to fail in the
+        # past. This is a user story reported to fail in bug #43959 where 
+        # a merge done in a checkout (using the update command) failed to
+        # commit correctly.
+        self.run_bzr('init', 'trunk')
+
+        self.run_bzr('checkout', 'trunk', 'u1')
+        self.build_tree_contents([('u1/hosts', 'initial contents')])
+        self.run_bzr('add', 'u1/hosts')
+        self.run_bzr('commit', '-m', 'add hosts', 'u1')
+
+        self.run_bzr('checkout', 'trunk', 'u2')
+        self.build_tree_contents([('u2/hosts', 'altered in u2')])
+        self.run_bzr('commit', '-m', 'checkin from u2', 'u2')
+
+        # make an offline commits
+        self.build_tree_contents([('u1/hosts', 'first offline change in u1')])
+        self.run_bzr('commit', '-m', 'checkin offline', '--local', 'u1')
+
+        # now try to pull in online work from u2, and then commit our offline
+        # work as a merge
+        # retcode 1 as we expect a text conflict
+        self.run_bzr('update', 'u1', retcode=1)
+        self.run_bzr('resolved', 'u1/hosts')
+        # add a text change here to represent resolving the merge conflicts in
+        # favour of a new version of the file not identical to either the u1
+        # version or the u2 version.
+        self.build_tree_contents([('u1/hosts', 'merge resolution\n')])
+        self.run_bzr('commit', '-m', 'checkin merge of the offline work from u1', 'u1')

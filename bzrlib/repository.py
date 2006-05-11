@@ -167,6 +167,10 @@ class Repository(object):
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, 
+                           self.bzrdir.transport.base)
+
     def is_locked(self):
         return self.control_files.is_locked()
 
