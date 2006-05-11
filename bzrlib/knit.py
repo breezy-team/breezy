@@ -81,6 +81,7 @@ from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
      sha_strings
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 from bzrlib.tsort import topo_sort
+import bzrlib.weave
 
 
 # TODO: Split out code specific to this format into an associated object.
@@ -350,6 +351,22 @@ class KnitVersionedFile(VersionedFile):
 
         where, size = self._data.add_record(version_id, digest, store_lines)
         self._index.add_version(version_id, options, where, size, parents)
+
+    def _add_raw_records(self, records, data):
+        """Add all the records 'records' with data pre-joined in 'data'.
+
+        :param records: A list of tuples(version_id, options, parents, size).
+        :param data: The data for the records. When it is written, the records
+                     are adjusted to have pos pointing into data by the sum of
+                     the preceeding records sizes.
+        """
+        # write all the data
+        pos = self._data.add_raw_record(data)
+        index_entries = []
+        for (version_id, options, parents, size) in records:
+            index_entries.append((version_id, options, pos, size, parents))
+            pos += size
+        self._index.add_versions(index_entries)
 
     def clear_cache(self):
         """Clear the data cache only."""
@@ -1139,16 +1156,32 @@ class _KnitIndex(_KnitComponentFile):
 
     def add_version(self, version_id, options, pos, size, parents):
         """Add a version record to the index."""
-        self._cache_version(version_id, options, pos, size, parents)
+        self.add_versions(((version_id, options, pos, size, parents),))
 
-        content = "\n%s %s %s %s %s :" % (version_id.encode('utf-8'),
-                                        ','.join(options),
-                                        pos,
-                                        size,
-                                        self._version_list_to_index(parents))
-        assert isinstance(content, str), 'content must be utf-8 encoded'
-        self._transport.append(self._filename, StringIO(content))
-
+    def add_versions(self, versions):
+        """Add multiple versions to the index.
+        
+        :param versions: a list of tuples:
+                         (version_id, options, pos, size, parents).
+        """
+        lines = []
+        for version_id, options, pos, size, parents in versions:
+            line = "\n%s %s %s %s %s :" % (version_id.encode('utf-8'),
+                                           ','.join(options),
+                                           pos,
+                                           size,
+                                           self._version_list_to_index(parents))
+            assert isinstance(line, str), \
+                'content must be utf-8 encoded: %r' % (line,)
+            lines.append(line)
+        self._transport.append(self._filename, StringIO(''.join(lines)))
+        # cache after writing, so that a failed write leads to missing cache
+        # entries not extra ones. XXX TODO: RBC 20060502 in the event of a 
+        # failure, reload the index or flush it or some such, to prevent
+        # writing records that did complete twice.
+        for version_id, options, pos, size, parents in versions:
+            self._cache_version(version_id, options, pos, size, parents)
+        
     def has_version(self, version_id):
         """True if the version is in the index."""
         return self._cache.has_key(version_id)
@@ -1234,10 +1267,12 @@ class _KnitData(_KnitComponentFile):
         return length, sio
 
     def add_raw_record(self, raw_data):
-        """Append a prepared record to the data file."""
+        """Append a prepared record to the data file.
+        
+        :return: the offset in the data file raw_data was written.
+        """
         assert isinstance(raw_data, str), 'data must be plain bytes'
-        start_pos = self._transport.append(self._filename, StringIO(raw_data))
-        return start_pos, len(raw_data)
+        return self._transport.append(self._filename, StringIO(raw_data))
         
     def add_record(self, version_id, digest, lines):
         """Write new text record to disk.  Returns the position in the
@@ -1357,7 +1392,8 @@ class _KnitData(_KnitComponentFile):
 class InterKnit(InterVersionedFile):
     """Optimised code paths for knit to knit operations."""
     
-    _matching_file_factory = KnitVersionedFile
+    _matching_file_from_factory = KnitVersionedFile
+    _matching_file_to_factory = KnitVersionedFile
     
     @staticmethod
     def is_compatible(source, target):
@@ -1373,14 +1409,7 @@ class InterKnit(InterVersionedFile):
         assert isinstance(self.source, KnitVersionedFile)
         assert isinstance(self.target, KnitVersionedFile)
 
-        if version_ids is None:
-            version_ids = self.source.versions()
-        else:
-            if not ignore_missing:
-                self.source._check_versions_present(version_ids)
-            else:
-                version_ids = set(self.source.versions()).intersection(
-                    set(version_ids))
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
 
         if not version_ids:
             return 0
@@ -1417,7 +1446,7 @@ class InterKnit(InterVersionedFile):
                     needed_versions.update(new_parents.difference(this_versions))
                     mismatched_versions.add(version)
     
-            if not needed_versions and not cross_check_versions:
+            if not needed_versions and not mismatched_versions:
                 return 0
             full_list = topo_sort(self.source.get_graph())
     
@@ -1448,10 +1477,8 @@ class InterKnit(InterVersionedFile):
             # data suck the join:
             count = 0
             total = len(version_list)
-            # we want the raw gzip for bulk copying, but the record validated
-            # just enough to be sure its the right one.
-            # TODO: consider writev or write combining to reduce 
-            # death of a thousand cuts feeling.
+            raw_datum = []
+            raw_records = []
             for (version_id, raw_data), \
                 (version_id2, options, parents) in \
                 izip(self.source._data.read_records_iter_raw(copy_queue_records),
@@ -1459,8 +1486,9 @@ class InterKnit(InterVersionedFile):
                 assert version_id == version_id2, 'logic error, inconsistent results'
                 count = count + 1
                 pb.update("Joining knit", count, total)
-                pos, size = self.target._data.add_raw_record(raw_data)
-                self.target._index.add_version(version_id, options, pos, size, parents)
+                raw_records.append((version_id, options, parents, len(raw_data)))
+                raw_datum.append(raw_data)
+            self.target._add_raw_records(raw_records, ''.join(raw_datum))
 
             for version in mismatched_versions:
                 # FIXME RBC 20060309 is this needed?
@@ -1476,6 +1504,99 @@ class InterKnit(InterVersionedFile):
 
 
 InterVersionedFile.register_optimiser(InterKnit)
+
+
+class WeaveToKnit(InterVersionedFile):
+    """Optimised code paths for weave to knit operations."""
+    
+    _matching_file_from_factory = bzrlib.weave.WeaveFile
+    _matching_file_to_factory = KnitVersionedFile
+    
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with weaves to knits."""
+        try:
+            return (isinstance(source, bzrlib.weave.Weave) and
+                    isinstance(target, KnitVersionedFile))
+        except AttributeError:
+            return False
+
+    def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
+        """See InterVersionedFile.join."""
+        assert isinstance(self.source, bzrlib.weave.Weave)
+        assert isinstance(self.target, KnitVersionedFile)
+
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
+
+        if not version_ids:
+            return 0
+
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        try:
+            version_ids = list(version_ids)
+    
+            self.source_ancestry = set(self.source.get_ancestry(version_ids))
+            this_versions = set(self.target._index.get_versions())
+            needed_versions = self.source_ancestry - this_versions
+            cross_check_versions = self.source_ancestry.intersection(this_versions)
+            mismatched_versions = set()
+            for version in cross_check_versions:
+                # scan to include needed parents.
+                n1 = set(self.target.get_parents_with_ghosts(version))
+                n2 = set(self.source.get_parents(version))
+                # if all of n2's parents are in n1, then its fine.
+                if n2.difference(n1):
+                    # FIXME TEST this check for cycles being introduced works
+                    # the logic is we have a cycle if in our graph we are an
+                    # ancestor of any of the n2 revisions.
+                    for parent in n2:
+                        if parent in n1:
+                            # safe
+                            continue
+                        else:
+                            parent_ancestors = self.source.get_ancestry(parent)
+                            if version in parent_ancestors:
+                                raise errors.GraphCycleError([parent, version])
+                    # ensure this parent will be available later.
+                    new_parents = n2.difference(n1)
+                    needed_versions.update(new_parents.difference(this_versions))
+                    mismatched_versions.add(version)
+    
+            if not needed_versions and not mismatched_versions:
+                return 0
+            full_list = topo_sort(self.source.get_graph())
+    
+            version_list = [i for i in full_list if (not self.target.has_version(i)
+                            and i in needed_versions)]
+    
+            # do the join:
+            count = 0
+            total = len(version_list)
+            for version_id in version_list:
+                pb.update("Converting to knit", count, total)
+                parents = self.source.get_parents(version_id)
+                # check that its will be a consistent copy:
+                for parent in parents:
+                    # if source has the parent, we must already have it
+                    assert (self.target.has_version(parent))
+                self.target.add_lines(
+                    version_id, parents, self.source.get_lines(version_id))
+                count = count + 1
+
+            for version in mismatched_versions:
+                # FIXME RBC 20060309 is this needed?
+                n1 = set(self.target.get_parents_with_ghosts(version))
+                n2 = set(self.source.get_parents(version))
+                # write a combined record to our history preserving the current 
+                # parents as first in the list
+                new_parents = self.target.get_parents_with_ghosts(version) + list(n2.difference(n1))
+                self.target.fix_parents(version, new_parents)
+            return count
+        finally:
+            pb.finished()
+
+
+InterVersionedFile.register_optimiser(WeaveToKnit)
 
 
 class SequenceMatcher(difflib.SequenceMatcher):
