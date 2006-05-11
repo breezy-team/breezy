@@ -18,7 +18,7 @@
 from cStringIO import StringIO
 from unittest import TestLoader
 
-from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 import bzrlib.config as config
 from bzrlib.tests import TestCaseInTempDir
 from bzrlib.plugins.email import post_commit, EmailSender
@@ -85,13 +85,14 @@ class TestGetTo(TestCaseInTempDir):
                          sender.subject())
 
     def get_sender(self, text=sample_config):
-        self.branch = Branch.initialize('.')
-        self.branch.working_tree().commit('foo bar baz\nfuzzy\rwuzzy', rev_id='A',
-                           allow_pointless=True,
-                           timestamp=1,
-                           timezone=0,
-                           committer="Sample <john@example.com>",
-                           )
+        self.branch = BzrDir.create_branch_convenience('.')
+        tree = self.branch.bzrdir.open_workingtree()
+        tree.commit('foo bar baz\nfuzzy\rwuzzy', rev_id='A',
+            allow_pointless=True,
+            timestamp=1,
+            timezone=0,
+            committer="Sample <john@example.com>",
+            )
         my_config = config.BranchConfig(self.branch)
         config_file = StringIO(text)
         (my_config._get_location_config().
