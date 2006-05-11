@@ -30,17 +30,13 @@ class SvnRemoteAccess(BzrDir):
 
         assert isinstance(_transport, SvnTransport)
 
-        if _transport.url.startswith("svn://") or \
-           _transport.url.startswith("svn+ssh://"):
-            self.url = _transport.url
-        else:
-            self.url = _transport.url[4:] # Skip svn+
+        self.url = _transport.url
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         raise NotImplementedError(SvnRemoteAccess.clone)
 
     def open_repository(self):
-        repos = SvnRepository(self, self.url)
+        repos = SvnRepository(self, self.transport.root_url)
         repos._format = self._format
         return repos
 

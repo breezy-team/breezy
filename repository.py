@@ -87,7 +87,7 @@ class SvnRepository(Repository):
         assert self.url
         assert self.uuid
 
-        mutter("Connected to repository at %s, UUID %s" % (self.url, self.uuid))
+        mutter("Connected to repository at %s, UUID %s" % (bzrdir.transport.svn_root_url, self.uuid))
 
 
     def __del__(self):

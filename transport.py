@@ -47,26 +47,37 @@ def get_test_permutations():
     return []
 
 class SvnTransport(Transport):
-    def __init__(self, url="", ra=None, scheme=None):
+    def __init__(self, url="", ra=None, root_url=None, scheme=None):
         Transport.__init__(self,url)
-        self.url = url
-        
+
+        if url.startswith("svn://") or \
+           url.startswith("svn+ssh://"):
+            self.svn_url = url
+        else:
+            self.svn_url = url[4:] # Skip svn+
+
         # The SVN libraries don't like trailing slashes...
-        url = url.rstrip('/')
+        self.svn_url = self.svn_url.rstrip('/')
+
+        self.url = url
 
         callbacks = BzrCallbacks()
 
-        if ra:
-            self.ra = ra
-            svn.ra.reparent(self.ra, url.encode('utf8'))
+        if not ra:
+            self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, None, None)
+            self.svn_root_url = svn.ra.get_repos_root(self.ra)
+            svn.ra.reparent(self.ra, self.svn_root_url.encode('utf8'))
         else:
-            self.ra = svn.ra.open2(url.encode('utf8'), callbacks, None, None)
+            self.ra = ra
+            self.svn_root_url = root_url
 
-        self.root_url = svn.ra.get_repos_root(self.ra)
+        self.root_url = self.svn_root_url
+        if not self.root_url.startswith("svn+"):
+            self.root_url = "svn+%s" % self.root_url
 
-        assert url.startswith(self.root_url)
+        assert self.svn_url.startswith(self.svn_root_url)
 
-        self.path = url[len(self.root_url)+1:]
+        self.path = self.svn_url[len(self.svn_root_url)+1:]
 
         if not scheme:
             scheme = DefaultBranchingScheme()
@@ -95,7 +106,7 @@ class SvnTransport(Transport):
         return PhonyLock()
 
     def clone(self,path):
-        parts = self.url.split("/")
+        parts = self.svn_url.split("/")
         
         # FIXME: Handle more complicated paths
         if path == '..':
@@ -103,4 +114,4 @@ class SvnTransport(Transport):
         elif path != '.':
             parts.append(path)
 
-        return SvnTransport("/".join(parts),self.ra)
+        return SvnTransport("/".join(parts),ra=self.ra,root_url=self.svn_root_url)
