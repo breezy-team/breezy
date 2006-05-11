@@ -18,6 +18,7 @@ from branch import auth_baton
 import branch
 from bzrlib.weave import Weave
 from cStringIO import StringIO
+from bzrlib.graph import Graph
 
 class SvnFileWeave(VersionedFile):
     def __init__(self,repository,weave_name,access_mode='w'):
@@ -189,8 +190,6 @@ class SvnRepository(Repository):
         mutter('svn proplist -r %r' % revnum)
         svn_props = svn.ra.rev_proplist(self.ra, revnum)
 
-        print svn_props
-
         parent_ids = []
 
         def rcvr(paths,rev,*args):
@@ -199,8 +198,15 @@ class SvnRepository(Repository):
 
         mutter("log -r%d:0 %s" % (revnum-1,path))
 
-        svn.ra.get_log(self.ra, [path.encode('utf8')], revnum - 1, \
+        try:
+            svn.ra.get_log(self.ra, [path.encode('utf8')], revnum - 1, \
                 0, 1, False, False, rcvr)
+        except SubversionException, (_, num):
+            # If this is the first revision, there are no parents
+            if num == svn.core.SVN_ERR_FS_NOT_FOUND:
+                parent_ids.append(None)
+            else:
+                raise
 
         # Commit SVN revision properties to a Revision object
         bzr_props = {}
