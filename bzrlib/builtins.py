@@ -2177,7 +2177,7 @@ class cmd_missing(Command):
         if other_branch is None:
             other_branch = parent
             if other_branch is None:
-                raise BzrCommandError("No missing location known or specified.")
+                raise BzrCommandError("No peer location known or specified.")
             print "Using last location: " + local_branch.get_parent()
         remote_branch = bzrlib.branch.Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
