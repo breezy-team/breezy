@@ -52,7 +52,6 @@ class SvnTransport(Transport):
         self.url = url
         
         # The SVN libraries don't like trailing slashes...
-        print url
         url = url.rstrip('/')
 
         callbacks = BzrCallbacks()

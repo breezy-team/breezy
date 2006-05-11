@@ -102,6 +102,7 @@ class SvnBranch(Branch):
         self.base_revnum = svn.ra.get_latest_revnum(self.repository.ra)
         self.control_files = "FIXME"
         self._generate_revnum_map()
+        self.base = "%s/%s" % (repos.url, branch_path)
         
     def path_from_file_id(self,revision_id,file_id):
         """Generate a full Subversion path from a bzr file id."""

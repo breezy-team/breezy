@@ -18,7 +18,7 @@ from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from repository import SvnRepository
 from branch import SvnBranch
 from libsvn._core import SubversionException
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, NotLocalUrl
 from bzrlib.lockable_files import TransportLock
 import svn.core
 from transport import SvnTransport
@@ -49,7 +49,7 @@ class SvnRemoteAccess(BzrDir):
 
     # Working trees never exist on Subversion repositories
     def open_workingtree(self):
-        return None
+        raise NotLocalUrl(self.url)
 
     def create_workingtree(self):
         raise NotImplementedError(SvnRemoteAccess.create_workingtree)
