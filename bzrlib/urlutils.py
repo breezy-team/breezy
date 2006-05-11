@@ -188,7 +188,8 @@ def normalize_url(url):
         #       shouldn't be allowed in URLs
         for c in url:
             if c not in _url_safe_characters:
-                raise errors.InvalidURL(url, 'URLs can only contain specific safe characters')
+                raise errors.InvalidURL(url, 'URLs can only contain specific'
+                                            ' safe characters (not %r)' % c)
         return url
     # We have a unicode (hybrid) url
     scheme = m.group('scheme')

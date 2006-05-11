@@ -72,7 +72,7 @@ class TestUrlToPath(TestCase):
             else:
                 url = url[len('file://'):]
 
-            self.assertEndsWith(path, expected)
+            self.assertEndsWith(url, expected)
 
         norm_file('path/to/foo', 'path/to/foo')
         norm_file('/path/to/foo', '/path/to/foo')
@@ -83,7 +83,7 @@ class TestUrlToPath(TestCase):
         norm_file('uni/%25C2%25B5', u'uni/%C2%B5')
         norm_file('uni/%20b', u'uni/ b')
         # All the crazy characters get escaped in local paths => file:/// urls
-        norm_file('%27%3B/%3F%3A%40%26%3D%2B%24%2C%23%20', "';/?:@&=+$,#")
+        norm_file('%27%3B/%3F%3A%40%26%3D%2B%24%2C%23%20', "';/?:@&=+$,# ")
 
     def test_normalize_url_hybrid(self):
         # Anything with a scheme:// should be treated as a hybrid url
