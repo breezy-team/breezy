@@ -18,7 +18,7 @@ from bzrlib.repository import Repository
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.trace import mutter
 from bzrlib.revision import Revision
-from bzrlib.errors import NoSuchRevision, InvalidRevisionId
+from bzrlib.errors import NoSuchRevision, InvalidRevisionId, BzrError
 from bzrlib.versionedfile import VersionedFile
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
             ROOT_ID
@@ -26,8 +26,10 @@ from libsvn._core import SubversionException
 import svn.core
 import bzrlib
 from branch import auth_baton
+import branch
 from bzrlib.weave import Weave
 from cStringIO import StringIO
+from bzrlib.graph import Graph
 
 class SvnFileWeave(VersionedFile):
     def __init__(self,repository,weave_name,access_mode='w'):
@@ -39,20 +41,12 @@ class SvnFileWeave(VersionedFile):
     def get_lines(self, version_id):
         assert version_id != None
 
-        file = self.repository.filename_from_file_id(version_id, self.file_id)
-        
-        (path,revnum) = self.repository.parse_revision_id(version_id)
+        (path,revnum) = self.repository.filename_from_file_id(version_id, self.file_id)
 
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_number
-        revt.value.number = revnum
-
-        file_url = "%s/%s/%s" % (self.repository.url,path,file)
-
-        mutter('svn cat %r' % file_url)
 
         stream = StringIO()
-        svn.client.cat(stream,file_url.encode('utf8'),revt,self.repository.client,self.repository.pool)
+        mutter('svn cat -r %r %s' % (revnum, path))
+        (revnum,props) = svn.ra.get_file(self.repository.ra, path.encode('utf8'), revnum, stream)
         stream.seek(0)
 
         return stream.readlines()
@@ -63,6 +57,10 @@ class SvnFileStore(object):
 
     def get_weave(self,file_id,transaction):
         return SvnFileWeave(self.repository,file_id)
+
+class BzrCallbacks(svn.ra.callbacks2_t):
+    def __init__(self):
+        svn.ra.callbacks2_t.__init__(self)
 
 """
 Provides a simplified interface to a Subversion repository 
@@ -81,18 +79,14 @@ class SvnRepository(Repository):
 
         self.pool = svn.core.svn_pool_create(None)
 
-        self.client = svn.client.svn_client_create_context(self.pool)
-        self.client.config = svn.core.svn_config_get_config(None)
-        self.client.auth_baton = auth_baton
+        callbacks = BzrCallbacks()
 
-        def rcvr(path,info,pool):
-            self.url = info.repos_root_URL
-            self.uuid = info.repos_UUID
+        self.ra = svn.ra.open2(url.encode('utf8'), callbacks, None, None)
 
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_head
+        self.uuid = svn.ra.get_uuid(self.ra)
+        self.url = svn.ra.get_repos_root(self.ra)
 
-        svn.client.info(url.encode('utf8'), revt, revt, rcvr, False, self.client, self.pool)
+        svn.ra.reparent(self.ra, self.url)
 
         self.fileid_map = {}
 
@@ -109,54 +103,49 @@ class SvnRepository(Repository):
         (path,revnum) = self.parse_revision_id(revision_id)
         mutter('getting inventory %r for branch %r' % (revnum, path))
 
-        url = self.url + "/" + path
+        def read_directory(inv,id,path):
+            mutter("svn ls -r %d '%r'" % (revnum, path))
 
-        mutter("svn ls -r %d '%r'" % (revnum, url))
+            (dirents,last_revnum,props) = svn.ra.get_dir2(self.ra, path.encode('utf8'), revnum, svn.core.SVN_DIRENT_KIND)
 
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_number
-        revt.value.number = revnum
+            recurse = []
 
-        remote_ls = svn.client.ls(url.encode('utf8'),
-                                         revt,
-                                         True, # recurse
-                                         self.client, 
-                                         self.pool)
+            for child_name in dirents:
+                dirent = dirents[child_name]
 
-        # Make sure a directory is always added before its contents
-        names = remote_ls.keys()
-        names.sort(lambda a,b: len(a) - len(b))
+                if path:
+                    child_path = "%s/%s" % (path,child_name)
+                else:
+                    child_path = child_name
 
+                child_id = self.filename_to_file_id(revision_id, child_path)
+
+                if dirent.kind == svn.core.svn_node_dir:
+                    inventry = InventoryDirectory(child_id,child_name,id)
+                    recurse.append(child_path)
+                elif dirent.kind == svn.core.svn_node_file:
+                    inventry = InventoryFile(child_id,child_name,id)
+                    inventry.text_sha1 = "FIXME" 
+                else:
+                    raise BzrError("Unknown entry kind for '%s': %s" % (child_path, dirent.kind))
+
+                # FIXME: shouldn't this be last changed revision?
+                inventry.revision = revision_id
+                inv.add(inventry)
+
+            for child_path in recurse:
+                child_id = self.filename_to_file_id(revision_id, child_path)
+                read_directory(inv,child_id,child_path)
+    
         inv = Inventory()
-        for entry in names:
-            ri = entry.rfind('/')
-            if ri == -1:
-                top = entry
-                parent = ''
-            else:
-                top = entry[ri+1:]
-                parent = entry[0:ri]
 
-            parent_id = inv.path2id(parent)
-            assert not parent_id is None
-            
-            id = self.filename_to_file_id(revision_id, entry)
-
-            if remote_ls[entry].kind == svn.core.svn_node_dir:
-                entry = InventoryDirectory(id,top,parent_id=parent_id)
-            elif remote_ls[entry].kind == svn.core.svn_node_file:
-                entry = InventoryFile(id,top,parent_id=parent_id)
-                entry.text_sha1 = "FIXME" 
-            else:
-                raise BzrError("Unknown entry kind for '%s': %d" % (entry, remote_ls[entry].kind))
-
-            entry.revision = revision_id # FIXME: shouldn't this be last changed revision?
-            inv.add(entry)
+        read_directory(inv,ROOT_ID,path)
 
         return inv
 
     def filename_from_file_id(self,revision_id,file_id):
         """Generate a Subversion filename from a bzr file id."""
+        
         return self.fileid_map[revision_id][file_id]
 
     def filename_to_file_id(self,revision_id,filename):
@@ -165,7 +154,9 @@ class SvnRepository(Repository):
         if not self.fileid_map.has_key(revision_id):
             self.fileid_map[revision_id] = {}
 
-        self.fileid_map[revision_id][file_id] = filename
+        (_,revnum) = self.parse_revision_id(revision_id)
+
+        self.fileid_map[revision_id][file_id] = (filename,revnum)
         return file_id
 
     def all_revision_ids(self):
@@ -179,53 +170,26 @@ class SvnRepository(Repository):
     def get_ancestry(self, revision_id):
         (path,revnum) = self.parse_revision_id(revision_id)
 
-        url = self.url + "/" + path
-
-        revt_begin = svn.core.svn_opt_revision_t()
-        revt_begin.kind = svn.core.svn_opt_revision_number
-        revt_begin.value.number = 0
-
-        revt_peg = svn.core.svn_opt_revision_t()
-        revt_peg.kind = svn.core.svn_opt_revision_number
-        revt_peg.value.number = revnum
-
-        revt_end = svn.core.svn_opt_revision_t()
-        revt_end.kind = svn.core.svn_opt_revision_number
-        revt_end.value.number = revnum - 1
-
         self._ancestry = [None]
 
         def rcvr(paths,rev,author,date,message,pool):
             revid = self.generate_revision_id(rev,path)
             self._ancestry.append(revid)
 
-        mutter("log3 %s" % url)
-        svn.client.log3([url.encode('utf8')], revt_peg, revt_begin, \
-                revt_end, 1, False, False, rcvr, 
-                self.client, self.pool)
+        mutter("svn log -r 0:%d %s" % (revnum-1,path))
+        svn.ra.log(self.ra, [path.encode('utf8')], 0, \
+                revnum - 1, 1, False, False, rcvr, 
+                self.ra, self.pool)
 
         return self._ancestry
 
     def has_revision(self,revision_id):
         (path,revnum) = self.parse_revision_id(revision_id)
 
-        url = self.url + "/" + path
+        mutter("svn check_path -r%d %s" % (revnum,revnum,path))
+        kind = svn.ra.check_path(self.ra, [path.encode('utf8')], revnum)
 
-        revt = svn.core.svn_opt_revision_t()
-        revt.kind = svn.core.svn_opt_revision_number
-        revt.value.number = revnum
-
-        self._found = False
-
-        def rcvr(paths,rev,author,date,message,pool):
-            self._found = True
-
-        mutter("log3 %s" % url)
-        svn.client.log3([url.encode('utf8')], revt, revt, \
-                revt, 1, False, False, rcvr, 
-                self.client, self.pool)
-
-        return self._found
+        return (kind != svn.core.svn_node_none)
 
     def get_revision(self,revision_id):
         if not revision_id or not isinstance(revision_id, basestring):
@@ -234,41 +198,25 @@ class SvnRepository(Repository):
         mutter("retrieving %s" % revision_id)
         (path,revnum) = self.parse_revision_id(revision_id)
         
-        url = self.url + "/" + path
-
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_number
-        rev.value.number = revnum
-        mutter('svn proplist -r %r %r' % (revnum,url))
-        (svn_props, actual_rev) = svn.client.revprop_list(url.encode('utf8'), rev, self.client, self.pool)
-        assert actual_rev == revnum
-
-        revt_peg = svn.core.svn_opt_revision_t()
-        revt_peg.kind = svn.core.svn_opt_revision_number
-        revt_peg.value.number = revnum
-
-        revt_begin = svn.core.svn_opt_revision_t()
-        revt_begin.kind = svn.core.svn_opt_revision_number
-        revt_begin.value.number = revnum - 1
-
-        revt_end = svn.core.svn_opt_revision_t()
-        revt_end.kind = svn.core.svn_opt_revision_number
-        revt_end.value.number = 0
+        mutter('svn proplist -r %r' % revnum)
+        svn_props = svn.ra.rev_proplist(self.ra, revnum)
 
         parent_ids = []
 
-        def rcvr(paths,rev,author,date,message,pool):
+        def rcvr(paths,rev,*args):
             revid = self.generate_revision_id(rev,path)
             parent_ids.append(revid)
 
-        mutter("log3 -r%d:0 %s" % (revnum-1,url))
-        try:
-            svn.client.log3([url.encode('utf8')], revt_peg, revt_begin, \
-                revt_end, 1, False, False, rcvr, 
-                self.client, self.pool)
+        mutter("log -r%d:0 %s" % (revnum-1,path))
 
-        except SubversionException, (_,num):
-            if num != 195012:
+        try:
+            svn.ra.get_log(self.ra, [path.encode('utf8')], revnum - 1, \
+                0, 1, False, False, rcvr)
+        except SubversionException, (_, num):
+            # If this is the first revision, there are no parents
+            if num == svn.core.SVN_ERR_FS_NOT_FOUND:
+                parent_ids.append(None)
+            else:
                 raise
 
         # Commit SVN revision properties to a Revision object
@@ -357,14 +305,6 @@ class SvnRepository(Repository):
 
         (path,revnum) = self.parse_revision_id(revision_id)
 
-        revt_begin = svn.core.svn_opt_revision_t()
-        revt_begin.kind = svn.core.svn_opt_revision_number
-        revt_begin.value.number = revnum - 1
-
-        revt_end = svn.core.svn_opt_revision_t()
-        revt_end.kind = svn.core.svn_opt_revision_number
-        revt_end.value.number = 0
-
         self._previous = revision_id
         self._ancestry = {}
         
@@ -373,14 +313,18 @@ class SvnRepository(Repository):
             self._ancestry[self._previous] = [revid]
             self._previous = revid
 
-        url = self.url + "/" + path
-
-        mutter("log3 %s" % (url))
-        svn.client.log3([url.encode('utf8')], revt_begin, revt_begin, \
-                revt_end, 0, False, False, rcvr, 
-                self.client, self.pool)
+        mutter("svn log -r%d:0 %s" % (revnum-1,path))
+        svn.ra.get_log(self.ra, [path.encode('utf8')], revnum - 1, \
+                0, 0, False, False, rcvr)
 
         self._ancestry[self._previous] = [None]
         self._ancestry[None] = []
 
         return self._ancestry
+
+    def is_shared(self):
+        """Return True if this repository is flagged as a shared repository."""
+        return True
+
+    def get_physical_lock_status(self):
+        return False
