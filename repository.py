@@ -31,9 +31,9 @@ class SvnFileWeave(VersionedFile):
 
         (path,revnum) = self.repository.filename_from_file_id(version_id, self.file_id)
 
-        mutter('svn cat %r' % path)
 
         stream = StringIO()
+        mutter('svn cat -r %r %s' % (revnum, path))
         (revnum,props) = svn.ra.get_file(self.repository.ra, path.encode('utf8'), revnum, stream)
         stream.seek(0)
 
@@ -164,7 +164,7 @@ class SvnRepository(Repository):
             revid = self.generate_revision_id(rev,path)
             self._ancestry.append(revid)
 
-        mutter("log %s" % path)
+        mutter("svn log -r 0:%d %s" % (revnum-1,path))
         svn.ra.log(self.ra, [path.encode('utf8')], 0, \
                 revnum - 1, 1, False, False, rcvr, 
                 self.ra, self.pool)
@@ -179,7 +179,7 @@ class SvnRepository(Repository):
         def rcvr(paths,rev,author,date,message,pool):
             self._found = True
 
-        mutter("log %s" % path)
+        mutter("svn log -r%d:%d %s" % (revnum,revnum,path))
         svn.ra.log(self.ra, [path.encode('utf8')], revnum, \
                 revnum, 1, False, False, rcvr, self.pool)
 
@@ -192,22 +192,21 @@ class SvnRepository(Repository):
         mutter("retrieving %s" % revision_id)
         (path,revnum) = self.parse_revision_id(revision_id)
         
-        rev = svn.core.svn_opt_revision_t()
-        rev.kind = svn.core.svn_opt_revision_number
-        rev.value.number = revnum
-        mutter('svn proplist -r %r %r' % (revnum,path))
-        svn_props = svn.ra.revprop_list(relf.ra, rev, self.pool)
+        mutter('svn proplist -r %r' % revnum)
+        svn_props = svn.ra.rev_proplist(self.ra, revnum)
+
+        print svn_props
 
         parent_ids = []
 
-        def rcvr(paths,rev,author,date,message,pool):
+        def rcvr(paths,rev,*args):
             revid = self.generate_revision_id(rev,path)
             parent_ids.append(revid)
 
         mutter("log -r%d:0 %s" % (revnum-1,path))
         try:
-            svn.ra.log(self.ra, [path.encode('utf8')], revnum - 1, \
-                0, 1, False, False, rcvr, self.pool)
+            svn.ra.get_log(self.ra, [path.encode('utf8')], revnum - 1, \
+                0, 1, False, False, rcvr)
 
         except SubversionException, (_,num):
             if num != 195012:
@@ -307,11 +306,18 @@ class SvnRepository(Repository):
             self._ancestry[self._previous] = [revid]
             self._previous = revid
 
-        mutter("log %s" % (path))
-        svn.ra.log(self.ra, [path.encode('utf8')], revnum - 1, \
-                0, 0, False, False, rcvr, self.pool)
+        mutter("svn log -r%d:0 %s" % (revnum-1,path))
+        svn.ra.get_log(self.ra, [path.encode('utf8')], revnum - 1, \
+                0, 0, False, False, rcvr)
 
         self._ancestry[self._previous] = [None]
         self._ancestry[None] = []
 
         return self._ancestry
+
+    def is_shared(self):
+        """Return True if this repository is flagged as a shared repository."""
+        return True
+
+    def get_physical_lock_status(self):
+        return False

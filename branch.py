@@ -211,3 +211,6 @@ class SvnBranch(Branch):
 
     def append_revision(self, *revision_ids):
         raise NotImplementedError('append_revision is abstract') #FIXME
+
+    def get_physical_lock_status(self):
+        return False
