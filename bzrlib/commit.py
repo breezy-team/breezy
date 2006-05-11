@@ -511,7 +511,7 @@ class Commit(object):
             if ie.revision is None:
                 change = ie.snapshot(self.rev_id, path, previous_entries,
                                      self.work_tree, self.weave_store,
-                                     self.branch.get_transaction())
+                                     self.branch.repository.get_transaction())
             else:
                 change = "unchanged"
             self.reporter.snapshot_change(change, path)
