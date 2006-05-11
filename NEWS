@@ -1,4 +1,47 @@
-bzr 0.8rc1  2006-04-14
+In development:
+
+  CHANGES:
+  
+    'bzr selftest' now shows a progress bar with the number of tests, and 
+    progress made. 'make check' shows tests in -v mode, to be more useful
+    for the PQM status window. (Robert Collins).
+
+bzr 0.8  2006-05-08
+
+  NOTES WHEN UPGRADING:
+
+    Release 0.8 of bzr introduces a new format for history storage, called
+    'knit', as an evolution of to the 'weave' format used in 0.7.  Local 
+    and remote operations are faster using knits than weaves.  Several
+    operations including 'init', 'init-repo', and 'upgrade' take a 
+    --format option that controls this.  Branching from an existing branch
+    will keep the same format.
+
+    It is possible to merge, pull and push between branches of different
+    formats but this is slower than moving data between homogenous
+    branches.  It is therefore recommended (but not required) that you
+    upgrade all branches for a project at the same time.  Information on
+    formats is shown by 'bzr info'.
+
+    bzr 0.8 now allows creation of 'repositories', which hold the history 
+    of files and revisions for several branches.  Previously bzr kept all
+    the history for a branch within the .bzr directory at the root of the
+    branch, and this is still the default.  To create a repository, use
+    the new 'bzr init-repo' command.  Branches exist as directories under
+    the repository and contain just a small amount of information
+    indicating the current revision of the branch.
+
+    bzr 0.8 also supports 'checkouts', which are similar to in cvs and
+    subversion.  Checkouts are associated with a branch (optionally in a
+    repository), which contains all the historical information.  The
+    result is that a checkout can be deleted without losing any
+    already-committed revisions.  A new 'update' command is also available. 
+
+    Repositories and checkouts are not supported with the 0.7 storage
+    format.  To use them you must upgrad to either knits, or to the
+    'metaweave' format, which uses weaves but changes the .bzr directory
+    arrangement.
+    
 
   IMPROVEMENTS:
 
@@ -69,7 +112,9 @@ bzr 0.8rc1  2006-04-14
     * Improve output of 'info' command. Show all relevant locations related to
       working tree, branch and repository. Use kibibytes for binary quantities.
       Fix off-by-one error in missing revisions of working tree.  Make 'info'
-      work on branches, repositories and remote locations.  (Olaf Conradi)
+      work on branches, repositories and remote locations.  Show locations
+      relative to the shared repository, if applicable.  Show locking status
+      of locations.  (Olaf Conradi)
 
     * Diff and merge now safely handle binary files. (Aaron Bentley)
 
@@ -98,6 +143,18 @@ bzr 0.8rc1  2006-04-14
     * Hitting CTRL-C while doing an SFTP push will no longer cause stale locks
       to be left in the SFTP repository. (Robert Collins, Martin Pool).
 
+    * New option 'diff --prefix' to control how files are named in diff
+      output, with shortcuts '-p0' and '-p1' corresponding to the options for 
+      GNU patch.  (Alexander Belchenko, Goffredo Baroncelli, Martin Pool)
+
+    * Add --revision option to 'annotate' command.  (Olaf Conradi)
+
+    * Add --revision option to 'annotate' command.  (Olaf Conradi)
+
+    * If bzr shows an unexpected revision-history after pulling (perhaps due
+      to a reweave) it can now be corrected by 'bzr reconcile'.
+      (Robert Collins)
+
   CHANGES:
 
     * Commit is now verbose by default, and shows changed filenames and the 
@@ -109,6 +166,11 @@ bzr 0.8rc1  2006-04-14
 
     * Make 'pull' and 'push' remember location on failure using --remember.
       (Olaf Conradi)
+
+    * For compatibility, make old format for using weaves inside metadir
+      available as 'metaweave' format.  Rename format 'metadir' to 'default'.
+      Clean up help for option --format in commands 'init', 'init-repo' and
+      'upgrade'.  (Olaf Conradi)
 
   INTERNALS:
   
@@ -156,6 +218,23 @@ bzr 0.8rc1  2006-04-14
 
     * Deprecated BzrError AmbiguousBase.  (Olaf Conradi)
 
+    * WorkingTree.branch is now a read only property.  (Robert Collins)
+
+    * bzrlib.ui.text.TextUIFactory now accepts a bar_type parameter which
+      can be None or a factory that will create a progress bar. This is
+      useful for testing or for overriding the bzrlib.progress heuristic.
+      (Robert Collins)
+
+    * New API method get_physical_lock_status() to query locks present on a
+      transport.  (Olaf Conradi)
+
+    * Repository.reconcile now takes a thorough keyword parameter to allow
+      requesting an indepth reconciliation, rather than just a data-loss 
+      check. (Robert Collins)
+
+    * bzrlib.ui.ui_factory protocol now supports 'get_boolean' to prompt
+      the user for yes/no style input. (Robert Collins)
+
   TESTING:
 
     * SFTP tests now shortcut the SSH negotiation, reducing test overhead
@@ -178,7 +257,10 @@ bzr 0.8rc1  2006-04-14
 
     * Move test case for uncommit to blackbox tests.  (Olaf Conradi)
 
-bzr 0.7rc1 2006-01-09
+    * run_bzr and run_bzr_captured now accept a 'stdin="foo"' parameter which
+      will provide String("foo") to the command as its stdin.
+
+bzr 0.7 2006-01-09
 
   CHANGES:
 

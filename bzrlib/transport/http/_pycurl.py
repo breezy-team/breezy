@@ -40,6 +40,21 @@ except ImportError, e:
     mutter("failed to import pycurl: %s", e)
     raise DependencyNotPresent('pycurl', e)
 
+try:
+    # see if we can actually initialize PyCurl - sometimes it will load but
+    # fail to start up due to this bug:
+    #  
+    #   32. (At least on Windows) If libcurl is built with c-ares and there's
+    #   no DNS server configured in the system, the ares_init() call fails and
+    #   thus curl_easy_init() fails as well. This causes weird effects for
+    #   people who use numerical IP addresses only.
+    #
+    # reported by Alexander Belchenko, 2006-04-26
+    pycurl.Curl()
+except pycurl.error, e:
+    mutter("failed to initialize pycurl: %s", e)
+    raise DependencyNotPresent('pycurl', e)
+
 
 register_urlparse_netloc_protocol('http+pycurl')
 

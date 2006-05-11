@@ -23,6 +23,8 @@ command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
+import sys
+
 from bzrlib.tests import (
                           _load_module_by_name,
                           TestCaseWithTransport,
@@ -37,6 +39,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_added',
                      'bzrlib.tests.blackbox.test_aliases',
                      'bzrlib.tests.blackbox.test_ancestry',
+                     'bzrlib.tests.blackbox.test_annotate',
                      'bzrlib.tests.blackbox.test_break_lock',
                      'bzrlib.tests.blackbox.test_bound_branches',
                      'bzrlib.tests.blackbox.test_cat',
@@ -91,11 +94,27 @@ class ExternalBase(TestCaseWithTransport):
             return self.run_bzr_captured(args, retcode=retcode)
 
 
-class TestUIFactory(ui.UIFactory):
+class TestUIFactory(ui.CLIUIFactory):
     """A UI Factory for testing - hide the progress bar but emit note()s."""
+
+    def __init__(self,
+                 stdout=None,
+                 stderr=None):
+        super(TestUIFactory, self).__init__()
+        if stdout is None:
+            self.stdout = sys.stdout
+        else:
+            self.stdout = stdout
+        if stderr is None:
+            self.stderr = sys.stderr
+        else:
+            self.stderr = stderr
 
     def clear(self):
         """See progress.ProgressBar.clear()."""
+
+    def clear_term(self):
+        """See progress.ProgressBar.clear_term()."""
 
     def clear_term(self):
         """See progress.ProgressBar.clear_term()."""
@@ -105,7 +124,7 @@ class TestUIFactory(ui.UIFactory):
 
     def note(self, fmt_string, *args, **kwargs):
         """See progress.ProgressBar.note()."""
-        print fmt_string % args
+        self.stdout.write((fmt_string + "\n") % args)
 
     def progress_bar(self):
         return self
