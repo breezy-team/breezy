@@ -51,6 +51,11 @@ class SvnFileWeave(VersionedFile):
 
         return stream.readlines()
 
+class SvnInventoryWeave(VersionedFile):
+    def __init__(self,repository,access_mode='w'):
+        VersionedFile.__init__(self,access_mode)
+        self.repository = repository
+
 class SvnFileStore(object):
     def __init__(self,repository):
         self.repository = repository
@@ -58,17 +63,11 @@ class SvnFileStore(object):
     def get_weave(self,file_id,transaction):
         return SvnFileWeave(self.repository,file_id)
 
-class BzrCallbacks(svn.ra.callbacks2_t):
-    def __init__(self):
-        svn.ra.callbacks2_t.__init__(self)
-
 """
 Provides a simplified interface to a Subversion repository 
 by using the RA (remote access) API from subversion
 """
 class SvnRepository(Repository):
-    branch_paths = [".","branches","tags"]
-
     def __init__(self, bzrdir, url):
         _revision_store = None
         control_store = None
@@ -79,15 +78,10 @@ class SvnRepository(Repository):
 
         self.pool = svn.core.svn_pool_create(None)
 
-        callbacks = BzrCallbacks()
-
-        self.ra = svn.ra.open2(url.encode('utf8'), callbacks, None, None)
+        self.ra = bzrdir.transport.ra
 
         self.uuid = svn.ra.get_uuid(self.ra)
-        self.url = svn.ra.get_repos_root(self.ra)
-
-        svn.ra.reparent(self.ra, self.url)
-
+        self.url = url
         self.fileid_map = {}
 
         assert self.url
@@ -163,9 +157,7 @@ class SvnRepository(Repository):
         raise NotImplementedError()
 
     def get_inventory_weave(self):
-        weave = Weave('inventory','w')
-        raise NotImplementedError
-        return weave
+        return SvnInventoryWeave(self,'w')
 
     def get_ancestry(self, revision_id):
         (path,revnum) = self.parse_revision_id(revision_id)
@@ -177,9 +169,8 @@ class SvnRepository(Repository):
             self._ancestry.append(revid)
 
         mutter("svn log -r 0:%d %s" % (revnum-1,path))
-        svn.ra.log(self.ra, [path.encode('utf8')], 0, \
-                revnum - 1, 1, False, False, rcvr, 
-                self.ra, self.pool)
+        svn.ra.get_log(self.ra, [path.encode('utf8')], 0, \
+                revnum - 1, 1, False, False, rcvr)
 
         return self._ancestry
 
@@ -246,6 +237,10 @@ class SvnRepository(Repository):
         raise NotImplementedError()
 
     def fileid_involved(self, last_revid=None):
+        raise NotImplementedError()
+
+    def fileids_altered_by_revision_ids(self, revision_ids):
+        print revision_ids
         raise NotImplementedError()
 
     def fileid_involved_by_set(self, changes):

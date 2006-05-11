@@ -96,14 +96,9 @@ class SvnRevisionTree(Tree):
         return Stream(stream).read()
 
 class SvnBranch(Branch):
-    def __init__(self,repos,base):
+    def __init__(self,repos,branch_path):
         self.repository = repos
-
-        if not base.startswith(repos.url):
-            raise CorruptRepository(repos)
-
-        self.branch_path = base[len(repos.url):].strip("/")
-        self.base = base 
+        self.branch_path = branch_path
         self.base_revnum = svn.ra.get_latest_revnum(self.repository.ra)
         self.control_files = "FIXME"
         self._generate_revnum_map()
@@ -126,7 +121,7 @@ class SvnBranch(Branch):
                 self.base_revnum, \
                 0, False, False, rcvr, 
                 self.repository.pool)
- 
+
     def set_root_id(self, file_id):
         raise NotImplementedError('set_root_id not supported on Subversion Branches')
             

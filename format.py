@@ -21,19 +21,18 @@ from libsvn._core import SubversionException
 from bzrlib.errors import NotBranchError
 from bzrlib.lockable_files import TransportLock
 import svn.core
+from transport import SvnTransport
 
 class SvnRemoteAccess(BzrDir):
     def __init__(self, _transport, _format):
         self.root_transport = self.transport = _transport
         self._format = _format
 
+        assert isinstance(_transport, SvnTransport)
+
         if _transport.url.startswith("svn://") or \
            _transport.url.startswith("svn+ssh://"):
             self.url = _transport.url
-        elif _transport.url.startswith("svn+wc://"):
-            self.working_dir = _transport.url
-            import svn.client
-            self.url= svn.client.url_from_path(self.working_dir.encode('utf8'),self.pool)
         else:
             self.url = _transport.url[4:] # Skip svn+
 
@@ -48,15 +47,23 @@ class SvnRemoteAccess(BzrDir):
     # Subversion has all-in-one, so a repository is always present
     find_repository = open_repository
 
+    # Working trees never exist on Subversion repositories
     def open_workingtree(self):
         return None
 
     def create_workingtree(self):
-        return None #FIXME
+        raise NotImplementedError(SvnRemoteAccess.create_workingtree)
 
     def open_branch(self, unsupported=True):
+        repos = self.open_repository()
+
+        if not self.url.startswith(repos.url):
+            raise CorruptRepository(repos)
+
+        branch_path = self.url[len(repos.url):].strip("/")
+
         try:
-            branch = SvnBranch(self.find_repository(),self.url)
+            branch = SvnBranch(repos, branch_path)
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_RA_ILLEGAL_URL or \
                num == svn.core.SVN_ERR_WC_NOT_DIRECTORY or \
@@ -83,4 +90,8 @@ class SvnFormat(BzrDirFormat):
 
     def get_format_description(self):
         return 'Subversion Smart Server'
+
+    def initialize(self,url):
+        raise NotImplementedError(SvnFormat.initialize)
+
 
