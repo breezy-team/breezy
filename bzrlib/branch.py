@@ -52,7 +52,6 @@ from bzrlib.trace import mutter, note
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.repository import Repository
 from bzrlib.revision import (
-                             get_intervening_revisions,
                              is_ancestor,
                              NULL_REVISION,
                              Revision,
@@ -1098,25 +1097,6 @@ class BzrBranch(Branch):
         finally:
             other.unlock()
 
-    @deprecated_method(zero_eight)
-    def pullable_revisions(self, other, stop_revision):
-        """Please use bzrlib.missing instead."""
-        other_revno = other.revision_id_to_revno(stop_revision)
-        try:
-            return self.missing_revisions(other, other_revno)
-        except DivergedBranches, e:
-            try:
-                pullable_revs = get_intervening_revisions(self.last_revision(),
-                                                          stop_revision, 
-                                                          self.repository)
-                assert self.last_revision() not in pullable_revs
-                return pullable_revs
-            except bzrlib.errors.NotAncestor:
-                if is_ancestor(self.last_revision(), stop_revision, self):
-                    return []
-                else:
-                    raise e
-        
     def basis_tree(self):
         """See Branch.basis_tree."""
         return self.repository.revision_tree(self.last_revision())
