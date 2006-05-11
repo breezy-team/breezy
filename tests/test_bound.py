@@ -14,24 +14,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import svn.repos
+import svn
 import os
-from bzrlib import osutils
+import format
+from tests import TestCaseWithSubversionRepository
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.bzrdir import BzrDirTestProviderAdapter, BzrDirFormat
 
-class TestCaseWithSubversionRepository(TestCaseInTempDir):
+class WorkingBoundSubversionBranch(TestCaseWithSubversionRepository):
     def setUp(self):
-        TestCaseInTempDir.setUp(self)
+        TestCaseWithSubversionRepository(self)
 
-        self.repos_path = os.path.join(self.test_dir, "svn_repos")
-        self.repos = svn.repos.create(self.repos_path, '', '', None, None)
-        self.repos_url = "file://%s" % self.repos_path
+    def test_light_checkout(self):
+        source = self.open_branch()
 
-        self.fs = svn.repos.fs(self.repos)
+        to_location = os.path.join(self.test_dir, "checkout")
 
-    def open_bzrdir(self):
-        return BzrDir.open("svn+"+self.repos_url)
+        checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
+        bzrlib.branch.BranchReferenceFormat().initialize(checkout, source)
 
-    def open_branch(self):
-        return self.open_bzrdir().open_branch()
+        checkout.create_workingtree(source.last_revision())

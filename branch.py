@@ -51,9 +51,6 @@ import svn.core, svn.client, svn.wc
 import os
 from libsvn._core import SubversionException
 
-# Initialize APR (required for all SVN calls)
-svn.core.apr_initialize()
-
 global_pool = svn.core.svn_pool_create(None)
 
 def _create_auth_baton(pool):

@@ -14,24 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import svn.repos
-import os
-from bzrlib import osutils
+import svn
+import format
+from tests import TestCaseWithSubversionRepository
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.bzrdir import BzrDirTestProviderAdapter, BzrDirFormat
 
-class TestCaseWithSubversionRepository(TestCaseInTempDir):
+class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def setUp(self):
-        TestCaseInTempDir.setUp(self)
+        TestCaseWithSubversionRepository.setUp(self)
 
-        self.repos_path = os.path.join(self.test_dir, "svn_repos")
-        self.repos = svn.repos.create(self.repos_path, '', '', None, None)
-        self.repos_url = "file://%s" % self.repos_path
-
-        self.fs = svn.repos.fs(self.repos)
-
-    def open_bzrdir(self):
-        return BzrDir.open("svn+"+self.repos_url)
-
-    def open_branch(self):
-        return self.open_bzrdir().open_branch()
+    def test_num_revnums(self):
+        branch = self.open_branch()
+        assertEqual(None,branch.last_revision())
