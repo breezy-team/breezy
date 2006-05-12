@@ -3,6 +3,8 @@
 Just some work for generating a changeset.
 """
 
+from sha import sha
+
 import bzrlib
 import os
 
@@ -12,6 +14,7 @@ from bzrlib.trace import warning, mutter
 from collections import deque
 from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
                              get_intervening_revisions, NULL_REVISION)
+from bzrlib.testament import Testament
 from bzrlib.diff import internal_diff, compare_trees
 
 class MetaInfoHeader(object):
@@ -20,7 +23,7 @@ class MetaInfoHeader(object):
     """
 
     def __init__(self,
-            base_branch, base_rev_id, base_tree,
+            base_repository, base_rev_id, base_tree,
             target_branch, target_rev_id, target_tree,
             delta,
             starting_rev_id=None,
@@ -32,11 +35,12 @@ class MetaInfoHeader(object):
         :param full_rename: Include an add+delete patch for a rename
 
         """
-        self.base_branch = base_branch
+        self.base_repository = base_repository
         self.base_rev_id = base_rev_id
         self.base_tree = base_tree
         if self.base_rev_id is not None:
-            self.base_revision = self.base_branch.get_revision(self.base_rev_id)
+            self.base_revision = \
+                testament_sha1(self.base_repository, self.base_rev_id)
         else:
             self.base_revision = None
 
@@ -75,9 +79,10 @@ class MetaInfoHeader(object):
         # Performance, without locking here, a new lock is taken and
         # broken for every revision (6k+ total locks for the bzr.dev tree)
         self.target_branch.lock_read()
-        self.base_branch.lock_read()
+        self.base_repository.lock_read()
         try:
-            source = MultipleRevisionSources(self.target_branch, self.base_branch)
+            source = MultipleRevisionSources(self.target_branch.repository,
+                                             self.base_repository)
             if self.starting_rev_id is None:
                 if self.base_rev_id is None:
                     self.starting_rev_id = NULL_REVISION
@@ -86,11 +91,13 @@ class MetaInfoHeader(object):
                         self.base_rev_id, source)
 
             rev_id_list = get_intervening_revisions(self.starting_rev_id,
-                self.target_rev_id, source, self.target_branch.revision_history())
+                self.target_rev_id, source, 
+                self.target_branch.revision_history())
 
-            self.revision_list = [source.get_revision(rid) for rid in rev_id_list]
+            self.revision_list = [source.get_revision(rid) for rid in
+                                  rev_id_list]
         finally:
-            self.base_branch.unlock()
+            self.base_repository.unlock()
             self.target_branch.unlock()
 
     def _write(self, txt, key=None, encode=True, indent=1):
@@ -166,7 +173,8 @@ class MetaInfoHeader(object):
                 and self.base_revision.revision_id != assumed_base):
             base = self.base_revision.revision_id
             write(base, key='base')
-            write(self.base_branch.get_revision_sha1(base), key='base sha1')
+            write(testament_sha1(base_repository, base), 
+                  key='base sha1')
 
         self._write_revisions()
 
@@ -179,8 +187,8 @@ class MetaInfoHeader(object):
         for rev in self.revision_list:
             rev_id = rev.revision_id
             write(rev_id, key='revision')
-            write(self.target_branch.get_revision_sha1(rev_id),
-                    key = 'sha1', indent=4)
+            write(testament_sha1(self.target_branch.repository, rev_id),
+                  key = 'sha1', indent=4)
             if rev.committer != self.committer:
                 write(rev.committer, key='committer', indent=4)
             date = format_highres_date(rev.timestamp, rev.timezone)
@@ -190,7 +198,8 @@ class MetaInfoHeader(object):
             if len(rev.parent_ids) > 0:
                 write(txt='', key='parents', indent=4)
                 for p_id in rev.parent_ids:
-                    p_sha1 = self.target_branch.get_revision_sha1(p_id)
+                    p_sha1 = testament_sha1(self.target_branch.repository, 
+                                            p_id)
                     if p_sha1 is not None:
                         write(p_id + '\t' + p_sha1, indent=7)
                     else:
@@ -286,7 +295,7 @@ class MetaInfoHeader(object):
                         text_modified, kind, to_file, diff_file)
  
 
-def show_changeset(base_branch, base_rev_id,
+def show_changeset(base_repository, base_rev_id,
         target_branch, target_rev_id,
         starting_rev_id = None,
         to_file=None, include_full_diff=False,
@@ -295,12 +304,12 @@ def show_changeset(base_branch, base_rev_id,
     if to_file is None:
         import sys
         to_file = sys.stdout
-    base_tree = base_branch.revision_tree(base_rev_id)
-    target_tree = target_branch.revision_tree(target_rev_id)
+    base_tree = base_repository.revision_tree(base_rev_id)
+    target_tree = target_branch.repository.revision_tree(target_rev_id)
 
     delta = compare_trees(base_tree, target_tree, want_unchanged=False)
 
-    meta = MetaInfoHeader(base_branch, base_rev_id, base_tree,
+    meta = MetaInfoHeader(base_repository, base_rev_id, base_tree,
             target_branch, target_rev_id, target_tree,
             delta,
             starting_rev_id=starting_rev_id,
@@ -308,3 +317,8 @@ def show_changeset(base_branch, base_rev_id,
             message=message)
     meta.write_meta_info(to_file)
 
+def testament_sha1(repository, revision_id):
+    text = Testament.from_revision(repository, revision_id).as_short_text()
+    s = sha(text)
+    return s.hexdigest()
+    

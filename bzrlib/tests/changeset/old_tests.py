@@ -292,17 +292,17 @@ class CSetTester(TestCaseInTempDir):
         :return: The in-memory changeset
         """
         from cStringIO import StringIO
-        from gen_changeset import show_changeset
-        from read_changeset import read_changeset
+        from bzrlib.changeset.gen_changeset import show_changeset
+        from bzrlib.changeset.read_changeset import read_changeset
 
         cset_txt = StringIO()
-        show_changeset(self.b1, base_rev_id, self.b1, rev_id, to_file=cset_txt,
-                message=message)
+        show_changeset(self.b1.repository, base_rev_id, self.b1, rev_id, 
+                       to_file=cset_txt, message=message)
         cset_txt.seek(0)
         self.assertEqual(cset_txt.readline(), '# Bazaar-NG changeset v0.1.0\n')
         self.assertEqual(cset_txt.readline(), '# \n')
 
-        rev = self.b1.get_revision(rev_id)
+        rev = self.b1.repository.get_revision(rev_id)
         self.assertEqual(cset_txt.readline().decode('utf-8'),
                 u'# committer: %s\n' % rev.committer)
 
@@ -400,17 +400,17 @@ class CSetTester(TestCaseInTempDir):
             #         to_tree.get_file(fileid).read())
 
     def test_changeset(self):
-        from bzrlib.branch import Branch
+        from bzrlib.bzrdir import BzrDir
 
         import os, sys
         pjoin = os.path.join
 
-        os.mkdir('b1')
-        self.b1 = Branch.initialize('b1')
+        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.b1 = self.tree1.branch
 
         open(pjoin('b1/one'), 'wb').write('one\n')
-        self.b1.add('one')
-        self.b1.commit('add one', rev_id='a@cset-0-1')
+        self.tree1.add('one')
+        self.tree1.commit('add one', rev_id='a@cset-0-1')
 
         cset = self.get_valid_cset(None, 'a@cset-0-1')
         cset = self.get_valid_cset(None, 'a@cset-0-1',
@@ -432,7 +432,7 @@ class CSetTester(TestCaseInTempDir):
                 ])
         open('b1/sub/sub/emptyfile.txt', 'wb').close()
         open('b1/dir/nolastnewline.txt', 'wb').write('bloop')
-        self.b1.add([
+        self.tree1.add([
                 'with space.txt'
                 , 'dir'
                 , 'dir/filein subdir.c'
@@ -444,7 +444,7 @@ class CSetTester(TestCaseInTempDir):
                 , 'sub/sub/nonempty.txt'
                 , 'sub/sub/emptyfile.txt'
                 ])
-        self.b1.commit('add whitespace', rev_id='a@cset-0-2')
+        self.tree1.commit('add whitespace', rev_id='a@cset-0-2')
 
         cset = self.get_valid_cset('a@cset-0-1', 'a@cset-0-2')
         ##cset = self.get_valid_cset('a@cset-0-1', 'a@cset-0-2', auto_commit=True)
