@@ -156,7 +156,7 @@ class Testament(object):
             assert ie.symlink_target
             l += ' ' + self._escape_path(ie.symlink_target)
         l += '\n'
-        return l
+        return l.decode('utf-8')
 
     def as_text(self):
         return ''.join(self.as_text_lines())
