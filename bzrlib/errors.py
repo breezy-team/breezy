@@ -214,6 +214,15 @@ class InvalidURL(PathError):
     """Invalid url supplied to transport: %(path)r%(extra)s"""
 
 
+class InvalidURLJoin(PathError):
+    """Invalid URL join request: %(args)s%(extra)s"""
+
+    def __init__(self, msg, base, args):
+        PathError.__init__(self, base, msg)
+        self.args = [base]
+        self.args.extend(args)
+
+
 class PathNotChild(BzrNewError):
     """Path %(path)r is not a child of path %(base)r%(extra)s"""
     def __init__(self, path, base, extra=None):

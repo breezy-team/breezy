@@ -99,6 +99,50 @@ def _find_scheme_and_separator(url):
     return scheme_loc, first_path_slash+len(scheme)+3
 
 
+def join(base, *args):
+    """Create a URL by joining sections.
+
+    This will normalize '..', assuming that paths are absolute
+    (it assumes no symlinks in either path)
+
+    If any of *args is an absolute URL, it will be treated correctly.
+    Example:
+        join('http://foo', 'http://bar') => 'http://bar'
+        join('http://foo', 'bar') => 'http://foo/bar'
+        join('http://foo', 'bar', '../baz') => 'http://foo/baz'
+    """
+    m = _url_scheme_re.match(base)
+    scheme = None
+    if m:
+        scheme = m.group('scheme')
+        path = m.group('path').split('/')
+    else:
+        path = base.split('/')
+
+    for arg in args:
+        m = _url_scheme_re.match(arg)
+        if m:
+            # Absolute URL
+            scheme = m.group('scheme')
+            path = m.group('path').split('/')
+        else:
+            for chunk in arg.split('/'):
+                if chunk == '.':
+                    continue
+                elif chunk == '..':
+                    if len(path) >= 2:
+                        # Don't pop off the host portion
+                        path.pop()
+                    else:
+                        raise errors.InvalidURLJoin('Cannot go above root',
+                                base, args)
+                else:
+                    path.append(chunk)
+    if scheme is None:
+        return '/'.join(path)
+    return scheme + '://' + '/'.join(path)
+
+
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
 def _posix_local_path_from_url(url):
     """Convert a url like file:///path/to/foo into /path/to/foo"""

@@ -20,7 +20,7 @@ import os
 import sys
 
 import bzrlib
-from bzrlib.errors import InvalidURL
+from bzrlib.errors import InvalidURL, InvalidURLJoin
 import bzrlib.urlutils as urlutils
 from bzrlib.tests import TestCaseInTempDir, TestCase
 
@@ -180,6 +180,32 @@ class TestUrlToPath(TestCase):
             dirname('path/to/foo/', exclude_trailing_slash=False))
         self.assertEqual('path/..', dirname('path/../foo'))
         self.assertEqual('../path', dirname('../path/foo'))
+
+    def test_join(self):
+        def test(expected, *args):
+            joined = urlutils.join(*args)
+            self.assertEqual(expected, joined)
+
+        # Test a single element
+        test('foo', 'foo')
+
+        # Test relative path joining
+        test('foo/bar', 'foo', 'bar')
+        test('http://foo/bar', 'http://foo', 'bar')
+        test('http://foo/bar', 'http://foo', '.', 'bar')
+        test('http://foo/baz', 'http://foo', 'bar', '../baz')
+        test('http://foo/bar/baz', 'http://foo', 'bar/baz')
+        test('http://foo/baz', 'http://foo', 'bar/../baz')
+
+        # Absolute paths
+        test('http://bar', 'http://foo', 'http://bar')
+        test('sftp://bzr/foo', 'http://foo', 'bar', 'sftp://bzr/foo')
+        test('file:///bar', 'foo', 'file:///bar')
+        
+        # Invalid joinings
+        # Cannot go above root
+        self.assertRaises(InvalidURLJoin, urlutils.join,
+                'http://foo', '../baz')
 
     def test_function_type(self):
         if sys.platform == 'win32':
