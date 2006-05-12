@@ -262,4 +262,8 @@ class TestCommit(ExternalBase):
         # favour of a new version of the file not identical to either the u1
         # version or the u2 version.
         self.build_tree_contents([('u1/hosts', 'merge resolution\n')])
-        self.run_bzr('commit', '-m', 'checkin merge of the offline work from u1', 'u1')
+        os.chdir('u1')
+        try:
+            self.run_bzr('commit', '-m', 'checkin merge of the offline work from u1')
+        finally:
+            os.chdir('..')
