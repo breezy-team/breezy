@@ -1836,7 +1836,7 @@ def show_version():
         if rh:
             print "  revid: %s" % (rh[-1],)
     print bzrlib.__copyright__
-    print "http://bazaar-ng.org/"
+    print "http://bazaar-vcs.org/"
     print
     print "bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and"
     print "you may use, modify and redistribute it under the terms of the GNU"
