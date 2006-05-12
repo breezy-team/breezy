@@ -113,6 +113,14 @@ class InventoryEntry(object):
     >>> i.id2path('2326')
     'src/wibble/wibble.c'
     """
+
+    # Constants returned by describe_change()
+    #
+    # TODO: These should probably move to some kind of FileChangeDescription 
+    # class; that's like what's inside a TreeDelta but we want to be able to 
+    # generate them just for one file at a time.
+    RENAMED = 'renamed'
+    MODIFIED_AND_RENAMED = 'modified and renamed'
     
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
                  'text_id', 'parent_id', 'children', 'executable', 
@@ -353,32 +361,45 @@ class InventoryEntry(object):
         """Clone this inventory entry."""
         raise NotImplementedError
 
-    def _describe_snapshot_change(self, previous_entries):
-        """Describe how this entry will have changed in a new commit.
+    @staticmethod
+    def describe_change(old_entry, new_entry):
+        """Describe the change between old_entry and this.
+        
+        This smells of being an InterInventoryEntry situation, but as its
+        the first one, we're making it a static method for now.
 
-        :param previous_entries: Dictionary from revision_id to inventory entry.
-
-        :returns: One-word description: "merged", "added", "renamed", "modified".
+        An entry with a different parent, or different name is considered 
+        to be renamed. Reparenting is an internal detail.
+        Note that renaming the parent does not trigger a rename for the
+        child entry itself.
         """
-        # XXX: This assumes that the file *has* changed -- it should probably
-        # be fused with whatever does that detection.  Why not just a single
-        # thing to compare the entries?
-        #
-        # TODO: Return some kind of object describing all the possible
-        # dimensions that can change, not just a string.  That can then give
-        # both old and new names for renames, etc.
-        #
-        if len(previous_entries) > 1:
-            return 'merged'
-        elif len(previous_entries) == 0:
+        # TODO: Perhaps return an object rather than just a string
+        if old_entry is new_entry:
+            # also the case of both being None
+            return 'unchanged'
+        elif old_entry is None:
             return 'added'
-        the_parent, = previous_entries.values()
-        if self.parent_id != the_parent.parent_id:
-            # actually, moved to another directory
-            return 'renamed'
-        elif self.name != the_parent.name:
-            return 'renamed'
-        return 'modified'
+        elif new_entry is None:
+            return 'removed'
+        text_modified, meta_modified = new_entry.detect_changes(old_entry)
+        if text_modified or meta_modified:
+            modified = True
+        else:
+            modified = False
+        # TODO 20060511 (mbp, rbc) factor out 'detect_rename' here.
+        if old_entry.parent_id != new_entry.parent_id:
+            renamed = True
+        elif old_entry.name != new_entry.name:
+            renamed = True
+        else:
+            renamed = False
+        if renamed and not modified:
+            return InventoryEntry.RENAMED
+        if modified and not renamed:
+            return 'modified'
+        if modified and renamed:
+            return InventoryEntry.MODIFIED_AND_RENAMED
+        return 'unchanged'
 
     def __repr__(self):
         return ("%s(%r, %r, parent_id=%r)"
@@ -419,10 +440,8 @@ class InventoryEntry(object):
         """
         mutter('new revision {%s} for {%s}', revision, self.file_id)
         self.revision = revision
-        change = self._describe_snapshot_change(previous_entries)
         self._snapshot_text(previous_entries, work_tree, weave_store,
                             transaction)
-        return change
 
     def _snapshot_text(self, file_parents, work_tree, weave_store, transaction): 
         """Record the 'text' of this entry, whatever form that takes.

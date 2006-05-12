@@ -89,7 +89,7 @@ from bzrlib.revision import Revision
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
 from bzrlib.symbol_versioning import *
 from bzrlib.workingtree import WorkingTree
 
@@ -124,8 +124,16 @@ class NullCommitReporter(object):
     def missing(self, path):
         pass
 
+    def renamed(self, change, old_path, new_path):
+        pass
+
 
 class ReportCommitToLog(NullCommitReporter):
+
+    # this may be more useful if 'note' was replaced by an overridable
+    # method on self, which would allow more trivial subclassing.
+    # alternative, a callable could be passed in, allowing really trivial
+    # reuse for some uis. RBC 20060511
 
     def snapshot_change(self, change, path):
         if change == 'unchanged':
@@ -143,6 +151,9 @@ class ReportCommitToLog(NullCommitReporter):
 
     def missing(self, path):
         note('missing %s', path)
+
+    def renamed(self, change, old_path, new_path):
+        note('%s %s => %s', change, old_path, new_path)
 
 
 class Commit(object):
@@ -509,12 +520,24 @@ class Commit(object):
                 self.weave_store,
                 self.branch.repository.get_transaction())
             if ie.revision is None:
-                change = ie.snapshot(self.rev_id, path, previous_entries,
-                                     self.work_tree, self.weave_store,
-                                     self.branch.repository.get_transaction())
+                # we are creating a new revision for ie in the history store
+                # and inventory.
+                ie.snapshot(self.rev_id, path, previous_entries,
+                    self.work_tree, self.weave_store,
+                    self.branch.repository.get_transaction())
+            # describe the nature of the change that has occured relative to
+            # the basis inventory.
+            if (self.basis_inv.has_id(ie.file_id)):
+                basis_ie = self.basis_inv[ie.file_id]
             else:
-                change = "unchanged"
-            self.reporter.snapshot_change(change, path)
+                basis_ie = None
+            change = ie.describe_change(basis_ie, ie)
+            if change in (InventoryEntry.RENAMED, 
+                InventoryEntry.MODIFIED_AND_RENAMED):
+                old_path = self.basis_inv.id2path(ie.file_id)
+                self.reporter.renamed(change, old_path, path)
+            else:
+                self.reporter.snapshot_change(change, path)
 
     def _populate_new_inv(self):
         """Build revision inventory.
@@ -567,9 +590,9 @@ class Commit(object):
             self.new_inv.add(self.basis_inv[file_id].copy())
 
     def _report_deletes(self):
-        for file_id in self.basis_inv:
-            if file_id not in self.new_inv:
-                self.reporter.deleted(self.basis_inv.id2path(file_id))
+        for path, ie in self.basis_inv.iter_entries():
+            if ie.file_id not in self.new_inv:
+                self.reporter.deleted(path)
 
 def _gen_revision_id(config, when):
     """Return new revision-id."""

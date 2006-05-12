@@ -5,6 +5,15 @@ bzr 0.8.1  2006-05-11
     * Fix failure to commit a merge in a checkout.  (Martin Pool, 
       Robert Collins, Erik Bågfors, #43959)
 
+    * Nicer messages from 'commit' in the case of renames, and correct
+      messages when a merge has occured. (Robert Collins, Martin Pool)
+
+  INTERNALS:
+
+    * New public api in InventoryEntry - 'describe_change(old, new)' which
+      provides a human description of the changes between two old and
+      new. (Robert Collins, Martin Pool)
+
 bzr 0.8  2006-05-08
 
   NOTES WHEN UPGRADING:
