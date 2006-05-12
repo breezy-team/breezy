@@ -19,6 +19,7 @@
 
 import os
 from StringIO import StringIO
+import re
 import sys
 
 import bzrlib
@@ -163,7 +164,13 @@ class UITests(TestCase):
             self.apply_redirected(
                 None, factory.stdout, factory.stdout, factory.get_boolean, "what do you want")
             )
-        self.assertEqual(
-            "\r/ [                                                                   ] foo 0/1"
-            "\r                                                                               "
-            "\rwhat do you want? [y/n]:what do you want? [y/n]:", factory.stdout.getvalue())
+        # use a regular expression so that we don't depend on the particular
+        # screen width - could also set and restore $COLUMN if that has
+        # priority on all platforms, but it doesn't at present.
+        output = factory.stdout.getvalue()
+        if not re.match(
+            "\r/ \\[    *\\] foo 0/1"
+            "\r   *" 
+            "\rwhat do you want\\? \\[y/n\\]:what do you want\\? \\[y/n\\]:", 
+            output):
+            self.fail("didn't match factory output %r" % factory)

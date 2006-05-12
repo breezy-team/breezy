@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -392,3 +392,33 @@ class TestCommit(TestCaseWithTransport):
             self.assertRaises(LockContention, wt.commit, 'silly')
         finally:
             master_branch.unlock()
+
+    def test_commit_bound_merge(self):
+        # see bug #43959; commit of a merge in a bound branch fails to push
+        # the new commit into the master
+        master_branch = self.make_branch('master')
+        bound_tree = self.make_branch_and_tree('bound')
+        bound_tree.branch.bind(master_branch)
+
+        self.build_tree_contents([('bound/content_file', 'initial contents\n')])
+        bound_tree.add(['content_file'])
+        bound_tree.commit(message='woo!')
+
+        other_bzrdir = master_branch.bzrdir.sprout('other')
+        other_tree = other_bzrdir.open_workingtree()
+
+        # do a commit to the the other branch changing the content file so
+        # that our commit after merging will have a merged revision in the
+        # content file history.
+        self.build_tree_contents([('other/content_file', 'change in other\n')])
+        other_tree.commit('change in other')
+
+        # do a merge into the bound branch from other, and then change the
+        # content file locally to force a new revision (rather than using the
+        # revision from other). This forces extra processing in commit.
+        self.merge(other_tree.branch, bound_tree)
+        self.build_tree_contents([('bound/content_file', 'change in bound\n')])
+
+        # before #34959 was fixed, this failed with 'revision not present in
+        # weave' when trying to implicitly push from the bound branch to the master
+        bound_tree.commit(message='commit of merge in bound tree')
