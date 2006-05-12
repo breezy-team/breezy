@@ -460,7 +460,7 @@ class CSetTester(TestCaseInTempDir):
                 , 'sub/sub/emptyfile.txt'
                 , 'sub/sub'
                 ])
-        self.b1.commit('removed', rev_id='a@cset-0-3')
+        self.tree1.commit('removed', rev_id='a@cset-0-3')
         
         cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-3')
         ##cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-3', auto_commit=True)
@@ -470,8 +470,8 @@ class CSetTester(TestCaseInTempDir):
 
 
         # Now move the directory
-        self.b1.rename_one('dir', 'sub/dir')
-        self.b1.commit('rename dir', rev_id='a@cset-0-4')
+        self.tree1.rename_one('dir', 'sub/dir')
+        self.tree1.commit('rename dir', rev_id='a@cset-0-4')
 
         cset = self.get_valid_cset('a@cset-0-3', 'a@cset-0-4')
         # Check a rollup changeset
@@ -485,8 +485,9 @@ class CSetTester(TestCaseInTempDir):
         open('b1/sub/dir/WithCaps.txt', 'ab').write('\nAdding some text\n')
         open('b1/sub/dir/trailing space ', 'ab').write('\nAdding some\nDOS format lines\n')
         open('b1/sub/dir/nolastnewline.txt', 'ab').write('\n')
-        self.b1.rename_one('sub/dir/trailing space ', 'sub/ start and end space ')
-        self.b1.commit('Modified files', rev_id='a@cset-0-5')
+        self.tree1.rename_one('sub/dir/trailing space ', 
+                              'sub/ start and end space ')
+        self.tree1.commit('Modified files', rev_id='a@cset-0-5')
         cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5')
         ##cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5', auto_commit=True)
         ##cset = self.get_valid_cset(None, 'a@cset-0-5', auto_commit=True)
@@ -496,11 +497,12 @@ class CSetTester(TestCaseInTempDir):
         f.write((u'A file\n'
             u'With international man of mystery\n'
             u'William Dod\xe9\n').encode('utf-8'))
-        self.b1.add([u'with Dod\xe9'])
+        self.tree1.add([u'with Dod\xe9'])
         # BUG: (sort of) You must set verbose=False, so that python doesn't try
         #       and print the name of William Dode as part of the commit
-        self.b1.commit(u'i18n commit from William Dod\xe9', rev_id='a@cset-0-6',
-                committer=u'William Dod\xe9', verbose=False)
+        self.tree1.commit(u'i18n commit from William Dod\xe9', 
+                          rev_id='a@cset-0-6', committer=u'William Dod\xe9',
+                          verbose=False)
         cset = self.get_valid_cset('a@cset-0-5', 'a@cset-0-6')
         ##cset = self.get_valid_cset('a@cset-0-5', 'a@cset-0-6', auto_commit=True)
         ##cset = self.get_valid_cset(None, 'a@cset-0-6', auto_commit=True)
