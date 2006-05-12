@@ -17,7 +17,7 @@
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.merge3 import Merge3
-from bzrlib.errors import CantReprocessAndShowBase
+from bzrlib.errors import CantReprocessAndShowBase, BinaryFile
 
 def split_lines(t):
     from cStringIO import StringIO
@@ -324,3 +324,6 @@ bbb
         m_lines = m3.merge_lines('OTHER', 'THIS', reprocess=True, 
                                  base_marker='|||||||')
         self.assertRaises(CantReprocessAndShowBase, list, m_lines)
+
+    def test_binary(self):
+        self.assertRaises(BinaryFile, Merge3, ['\x00'], ['a'], ['b'])

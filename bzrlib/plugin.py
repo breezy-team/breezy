@@ -66,6 +66,17 @@ def all_plugins():
     return result
 
 
+def disable_plugins():
+    """Disable loading plugins.
+
+    Future calls to load_plugins() will be ignored.
+    """
+    # TODO: jam 20060131 This should probably also disable
+    #       load_from_dirs()
+    global _loaded
+    _loaded = True
+
+
 def load_plugins():
     """Load bzrlib plugins.
 

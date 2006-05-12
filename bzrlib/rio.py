@@ -1,7 +1,7 @@
 # Copyright (C) 2005 by Canonical Ltd
 #
 # Distributed under the GNU General Public Licence v2
-#
+
 # \subsection{\emph{rio} - simple text metaformat}
 # 
 # \emph{r} stands for `restricted', `reproducible', or `rfc822-like'.
@@ -18,11 +18,9 @@
 # stream representation of an object and vice versa, and that this relation
 # will continue to hold for future versions of bzr.
 
-# In comments, $\min(1,10)$
-
-min(1,10)
- 
 import re
+
+from bzrlib.iterablefile import IterableFile
 
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
 # through a writer object.  
@@ -55,6 +53,22 @@ class RioReader(object):
                 break
             else:
                 yield s
+
+
+def rio_file(stanzas, header=None):
+    """Produce a rio IterableFile from an iterable of stanzas"""
+    def str_iter():
+        if header is not None:
+            yield header + '\n'
+        first_stanza = True
+        for s in stanzas:
+            if first_stanza is not True:
+                yield '\n'
+            for line in s.to_lines():
+                yield line
+            first_stanza = False
+    return IterableFile(str_iter())
+
 
 def read_stanzas(from_file):
     while True:
@@ -92,12 +106,15 @@ class Stanza(object):
         """Append a name and value to the stanza."""
         assert valid_tag(tag), \
             ("invalid tag %r" % tag)
-        if isinstance(value, (str, unicode)):
+        if isinstance(value, str):
+            value = unicode(value)
+        elif isinstance(value, unicode):
             pass
         ## elif isinstance(value, (int, long)):
         ##    value = str(value)           # XXX: python2.4 without L-suffix
         else:
-            raise ValueError("invalid value %r" % value)
+            raise TypeError("invalid type for rio value: %r of type %s"
+                            % (value, type(value)))
         self.items.append((tag, value))
         
     def __contains__(self, find_tag):
@@ -127,23 +144,27 @@ class Stanza(object):
         return iter(self.items)
 
     def to_lines(self):
-        """Generate sequence of lines for external version of this file."""
+        """Generate sequence of lines for external version of this file.
+        
+        The lines are always utf-8 encoded strings.
+        """
         if not self.items:
             # max() complains if sequence is empty
             return []
         result = []
         for tag, value in self.items:
-            assert isinstance(value, (str, unicode))
+            assert isinstance(tag, str), type(tag)
+            assert isinstance(value, unicode)
             if value == '':
                 result.append(tag + ': \n')
             elif '\n' in value:
                 # don't want splitlines behaviour on empty lines
                 val_lines = value.split('\n')
-                result.append(tag + ': ' + val_lines[0] + '\n')
+                result.append(tag + ': ' + val_lines[0].encode('utf-8') + '\n')
                 for line in val_lines[1:]:
-                    result.append('\t' + line + '\n')
+                    result.append('\t' + line.encode('utf-8') + '\n')
             else:
-                result.append(tag + ': ' + value + '\n')
+                result.append(tag + ': ' + value.encode('utf-8') + '\n')
         return result
 
     def to_string(self):
@@ -174,6 +195,15 @@ class Stanza(object):
             if t == tag:
                 r.append(v)
         return r
+
+    def as_dict(self):
+        """Return a dict containing the unique values of the stanza.
+        """
+        d = {}
+        for tag, value in self.items:
+            assert tag not in d
+            d[tag] = value
+        return d
          
 _tag_re = re.compile(r'^[-a-zA-Z0-9_]+$')
 def valid_tag(tag):
@@ -190,6 +220,8 @@ def read_stanza(line_iter):
 
     Only the stanza lines and the trailing blank (if any) are consumed
     from the line_iter.
+
+    The raw lines must be in utf-8 encoding.
     """
     items = []
     stanza = Stanza()
@@ -200,6 +232,7 @@ def read_stanza(line_iter):
             break       # end of file
         if line == '\n':
             break       # end of stanza
+        line = line.decode('utf-8')
         assert line[-1] == '\n'
         real_l = line
         if line[0] == '\t': # continues previous value
@@ -213,7 +246,7 @@ def read_stanza(line_iter):
                 colon_index = line.index(': ')
             except ValueError:
                 raise ValueError('tag/value separator not found in line %r' % real_l)
-            tag = line[:colon_index]
+            tag = str(line[:colon_index])
             assert valid_tag(tag), \
                     "invalid rio tag %r" % tag
             accum_value = line[colon_index+2:-1]

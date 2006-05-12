@@ -1,7 +1,8 @@
-"""\
-A plugin for displaying what revisions are in 'other' but not in local.
-"""
-from bzrlib.ui import ui_factory
+"""Display what revisions are missing in 'other' from 'this' and vice verca."""
+
+import bzrlib.ui as ui
+
+
 def iter_log_data(revisions, revision_source, verbose):
     from bzrlib.diff import compare_trees
     from bzrlib.tree import EmptyTree
@@ -10,6 +11,7 @@ def iter_log_data(revisions, revision_source, verbose):
     for revno, rev_id in revisions:
         rev = revision_source.get_revision(rev_id)
         if verbose:
+            remote_tree = revision_source.revision_tree(rev_id)
             parent_rev_id = rev.parent_ids[0]
             if last_rev_id == parent_rev_id:
                 parent_tree = last_tree
@@ -25,7 +27,7 @@ def iter_log_data(revisions, revision_source, verbose):
 
 
 def find_unmerged(local_branch, remote_branch):
-    progress = ui_factory.progress_bar()
+    progress = ui.ui_factory.nested_progress_bar()
     local_branch.lock_read()
     try:
         remote_branch.lock_read()
@@ -43,10 +45,10 @@ def find_unmerged(local_branch, remote_branch):
                                                 remote_rev_history_map)
                 return local_extra, remote_extra
 
-            local_ancestry = _get_ancestry(local_branch, progress, "local",
-                                           2, local_rev_history)
-            remote_ancestry = _get_ancestry(remote_branch, progress, "remote",
-                                            3, remote_rev_history)
+            local_ancestry = _get_ancestry(local_branch.repository, progress, 
+                                           "local", 2, local_rev_history)
+            remote_ancestry = _get_ancestry(remote_branch.repository, progress,
+                                            "remote", 3, remote_rev_history)
             progress.update('pondering', 4, 5)
             extras = local_ancestry.symmetric_difference(remote_ancestry) 
             local_extra = extras.intersection(set(local_rev_history))
@@ -59,7 +61,7 @@ def find_unmerged(local_branch, remote_branch):
             remote_branch.unlock()
     finally:
         local_branch.unlock()
-        progress.clear()
+        progress.finished()
     return (local_extra, remote_extra)
 
 def _shortcut(local_rev_history, remote_rev_history):
@@ -87,10 +89,10 @@ def _get_history(branch, progress, label, step):
          for rev in rev_history])
     return rev_history, rev_history_map
 
-def _get_ancestry(branch, progress, label, step, rev_history):
+def _get_ancestry(repository, progress, label, step, rev_history):
     progress.update('%s ancestry' % label, step, 5)
     if len(rev_history) > 0:
-        ancestry = set(branch.get_ancestry(rev_history[-1]))
+        ancestry = set(repository.get_ancestry(rev_history[-1]))
     else:
         ancestry = set()
     return ancestry

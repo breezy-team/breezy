@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+# TODO: For things like --diff-prefix, we want a way to customize the display
+# of the option argument.
 
 import re
 
@@ -71,6 +73,10 @@ def _parse_revision_str(revstr):
     BzrError: No namespace registered for string: 'abc'
     >>> _parse_revision_str('branch:../branch2')
     [<RevisionSpec_branch branch:../branch2>]
+    >>> _parse_revision_str('branch:../../branch2')
+    [<RevisionSpec_branch branch:../../branch2>]
+    >>> _parse_revision_str('branch:../../branch2..23')
+    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_int 23>]
     """
     # TODO: Maybe move this into revisionspec.py
     old_format_re = re.compile('\d*:\d*')
@@ -85,20 +91,9 @@ def _parse_revision_str(revstr):
             else:
                 revs.append(RevisionSpec(None))
     else:
-        next_prefix = None
-        for x in revstr.split('..'):
-            if not x:
-                revs.append(RevisionSpec(None))
-            elif x[-1] == ':':
-                # looks like a namespace:.. has happened
-                next_prefix = x + '..'
-            else:
-                if next_prefix is not None:
-                    x = next_prefix + x
-                revs.append(RevisionSpec(x))
-                next_prefix = None
-        if next_prefix is not None:
-            revs.append(RevisionSpec(next_prefix))
+        sep = re.compile("\\.\\.(?!/)")
+        for x in sep.split(revstr):
+            revs.append(RevisionSpec(x or None))
     return revs
 
 
@@ -168,6 +163,7 @@ _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally')
 _global_option('basis', type=str)
+_global_option('bound')
 _global_option('diff-options', type=str)
 _global_option('help',
                help='show help message')
@@ -177,23 +173,27 @@ _global_option('format', type=unicode)
 _global_option('forward')
 _global_option('message', type=unicode)
 _global_option('no-recurse')
+_global_option('prefix', type=str, 
+               help='Set prefixes to added to old and new filenames, as '
+                    'two values separated by a colon.')
 _global_option('profile',
                help='show performance profiling information')
 _global_option('revision', type=_parse_revision_str)
-_global_option('short')
 _global_option('show-ids', 
                help='show internal object ids')
 _global_option('timezone', 
                type=str,
                help='display timezone as local, original, or utc')
+_global_option('unbound')
 _global_option('verbose',
                help='display more information')
 _global_option('version')
 _global_option('email')
 _global_option('update')
-_global_option('long', help='Use detailed log format')
-_global_option('short', help='Use moderately short log format')
-_global_option('line', help='Use log format with one line per revision')
+_global_option('log-format', type=str, help="Use this log format")
+_global_option('long', help='Use detailed log format. Same as --log-format long')
+_global_option('short', help='Use moderately short log format. Same as --log-format short')
+_global_option('line', help='Use log format with one line per revision. Same as --log-format line')
 _global_option('root', type=str)
 _global_option('no-backup')
 _global_option('merge-type', type=_parse_merge_type)
@@ -219,3 +219,4 @@ Option.SHORT_OPTIONS['r'] = Option.OPTIONS['revision']
 Option.SHORT_OPTIONS['v'] = Option.OPTIONS['verbose']
 Option.SHORT_OPTIONS['l'] = Option.OPTIONS['long']
 Option.SHORT_OPTIONS['q'] = Option.OPTIONS['quiet']
+Option.SHORT_OPTIONS['p'] = Option.OPTIONS['prefix']

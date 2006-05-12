@@ -16,7 +16,6 @@
 
 """bzr library"""
 
-BZRDIR = ".bzr"
 
 # please keep these sorted (in C locale order) to aid merging
 DEFAULT_IGNORE = [
@@ -37,15 +36,17 @@ DEFAULT_IGNORE = [
                   '*.py[oc]',
                   '*.so',
                   '*.tmp',
+                  '.*.tmp',
                   '*~',
                   '.#*',
                   '.*.sw[nop]',
-                  '.*.tmp',
+                  '.sw[nop]',    # vim editing nameless file
                   '.DS_Store',
                   '.arch-ids',
                   '.arch-inventory',
                   '.bzr.log',
                   '.del-*',
+                  '.hg',
                   '.git',
                   '.jamdeps'
                   '.libs',
@@ -56,7 +57,6 @@ DEFAULT_IGNORE = [
                   'BitKeeper',
                   'CVS',
                   'CVS.adm',
-                  'Makefile.in',
                   'RCS',
                   'SCCS',
                   'TAGS',
@@ -88,14 +88,22 @@ else:
 user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
-__copyright__ = "Copyright 2005 Canonical Development Ltd."
-__version__ = version_string = '0.7pre'
-# same format as sys.version_info
-version_info = (0, 7, 0, 'pre', 0)
+__copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
+__version__ = version_string = '0.8'
+
+# same format as sys.version_info: A tuple containing the five components of
+# the version number: major, minor, micro, releaselevel, and serial. All
+# values except releaselevel are integers; the release level is 'alpha',
+# 'beta', 'candidate', or 'final'. The version_info value corresponding to the
+# Python version 2.0 is (2, 0, 0, 'final', 0).
+version_info = (0, 8, 0, 'final', 0)
 
 
+from bzrlib.symbol_versioning import deprecated_function, zero_seven
+
+@deprecated_function(zero_seven)
 def get_bzr_revision():
-    """If bzr is run from a branch, return (revno,revid) or None"""
+    """If bzr is run from a branch, return (revno,revid) or None."""
     import bzrlib.errors
     from bzrlib.branch import Branch
     

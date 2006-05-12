@@ -22,20 +22,21 @@ import os
 from sha import sha
 import sys
 
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter
 from bzrlib.osutils import has_symlinks
 
 
-class TestamentTests(TestCaseInTempDir):
+class TestamentTests(TestCaseWithTransport):
 
     def setUp(self):
         super(TestamentTests, self).setUp()
-        b = self.b = Branch.initialize(u'.')
+        self.wt = self.make_branch_and_tree('.')
+        b = self.b = self.wt.branch
         b.nick = "test branch"
-        b.working_tree().commit(message='initial null commit',
+        self.wt.commit(message='initial null commit',
                  committer='test@user',
                  timestamp=1129025423, # 'Tue Oct 11 20:10:23 2005'
                  timezone=0,
@@ -43,9 +44,9 @@ class TestamentTests(TestCaseInTempDir):
         self.build_tree_contents([('hello', 'contents of hello file'),
                              ('src/', ),
                              ('src/foo.c', 'int main()\n{\n}\n')])
-        b.working_tree().add(['hello', 'src', 'src/foo.c'],
+        self.wt.add(['hello', 'src', 'src/foo.c'],
                              ['hello-id', 'src-id', 'foo.c-id'])
-        b.working_tree().commit(message='add files and directories',
+        self.wt.commit(message='add files and directories',
                  timestamp=1129025483,
                  timezone=36000,
                  rev_id='test@user-2',
@@ -53,7 +54,7 @@ class TestamentTests(TestCaseInTempDir):
 
     def test_null_testament(self):
         """Testament for a revision with no contents."""
-        t = Testament.from_revision(self.b, 'test@user-1')
+        t = Testament.from_revision(self.b.repository, 'test@user-1')
         ass = self.assertTrue
         eq = self.assertEqual
         ass(isinstance(t, Testament))
@@ -64,14 +65,14 @@ class TestamentTests(TestCaseInTempDir):
 
     def test_testment_text_form(self):
         """Conversion of testament to canonical text form."""
-        t = Testament.from_revision(self.b, 'test@user-1')
+        t = Testament.from_revision(self.b.repository, 'test@user-1')
         text_form = t.as_text()
         self.log('testament text form:\n' + text_form)
         self.assertEqual(text_form, REV_1_TESTAMENT)
 
     def test_testament_with_contents(self):
         """Testament containing a file and a directory."""
-        t = Testament.from_revision(self.b, 'test@user-2')
+        t = Testament.from_revision(self.b.repository, 'test@user-2')
         text_form = t.as_text()
         self.log('testament text form:\n' + text_form)
         self.assertEqualDiff(text_form, REV_2_TESTAMENT)
@@ -95,33 +96,44 @@ class TestamentTests(TestCaseInTempDir):
         if not has_symlinks():
             return
         os.symlink('wibble/linktarget', 'link')
-        self.b.working_tree().add(['link'], ['link-id'])
-        self.b.working_tree().commit(message='add symlink',
+        self.wt.add(['link'], ['link-id'])
+        self.wt.commit(message='add symlink',
                  timestamp=1129025493,
                  timezone=36000,
                  rev_id='test@user-3',
                  committer='test@user')
-        t = Testament.from_revision(self.b, 'test@user-3')
+        t = Testament.from_revision(self.b.repository, 'test@user-3')
         self.assertEqualDiff(t.as_text(), REV_3_TESTAMENT)
 
     def test_testament_revprops(self):
         """Testament to revision with extra properties"""
         props = dict(flavor='sour cherry\ncream cheese',
                      size='medium')
-        self.b.working_tree().commit(message='revision with properties',
+        self.wt.commit(message='revision with properties',
                       timestamp=1129025493,
                       timezone=36000,
                       rev_id='test@user-3',
                       committer='test@user',
                       revprops=props)
-        t = Testament.from_revision(self.b, 'test@user-3')
+        t = Testament.from_revision(self.b.repository, 'test@user-3')
         self.assertEqualDiff(t.as_text(), REV_PROPS_TESTAMENT)
 
+    def test_testament_unicode_commit_message(self):
+        self.wt.commit(
+            message=u'non-ascii commit \N{COPYRIGHT SIGN} me',
+            timestamp=1129025493,
+            timezone=36000,
+            rev_id='test@user-3',
+            committer='test@user')
+        t = Testament.from_revision(self.b.repository, 'test@user-3')
+        self.assertEqualDiff(
+            SAMPLE_UNICODE_TESTAMENT.encode('utf-8'), t.as_text())
+
     def test___init__(self):
-        revision = self.b.get_revision('test@user-2')
-        inventory = self.b.get_inventory('test@user-2')
+        revision = self.b.repository.get_revision('test@user-2')
+        inventory = self.b.repository.get_inventory('test@user-2')
         testament_1 = Testament(revision, inventory).as_short_text()
-        testament_2 = Testament.from_revision(self.b, 
+        testament_2 = Testament.from_revision(self.b.repository, 
                                               'test@user-2').as_short_text()
         self.assertEqual(testament_1, testament_2)
                     
@@ -213,6 +225,26 @@ message:
 inventory:
   file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73
   symlink link link-id wibble/linktarget
+  directory src src-id
+  file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
+properties:
+  branch-nick:
+    test branch
+"""
+
+
+SAMPLE_UNICODE_TESTAMENT = u"""\
+bazaar-ng testament version 1
+revision-id: test@user-3
+committer: test@user
+timestamp: 1129025493
+timezone: 36000
+parents:
+  test@user-2
+message:
+  non-ascii commit \N{COPYRIGHT SIGN} me
+inventory:
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73
   directory src src-id
   file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24
 properties:

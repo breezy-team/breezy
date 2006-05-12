@@ -37,5 +37,10 @@ def dir_exporter(tree, dest, root):
     mutter('export version %r', tree)
     inv = tree.inventory
     for dp, ie in inv.iter_entries():
+        # .bzrignore has no meaning outside of a working tree
+        # so do not export it
+        if dp == ".bzrignore":
+            continue
+        
         ie.put_on_disk(dest, dp, tree)
 

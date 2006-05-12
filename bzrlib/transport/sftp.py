@@ -1,4 +1,5 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>, Canonical Ltd
+# Copyright (C) 2005 Robey Pointer <robey@lag.net>
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,31 +20,39 @@
 import errno
 import getpass
 import os
+import random
 import re
 import stat
+import subprocess
 import sys
+import time
 import urllib
 import urlparse
-import time
-import random
-import subprocess
 import weakref
 
-from bzrlib.errors import (FileExists, 
+from bzrlib.config import config_dir, ensure_config_dir_exists
+from bzrlib.errors import (ConnectionError,
+                           FileExists, 
                            TransportNotPossible, NoSuchFile, PathNotChild,
                            TransportError,
-                           LockError)
-from bzrlib.config import config_dir, ensure_config_dir_exists
-from bzrlib.trace import mutter, warning, error
-from bzrlib.transport import Transport, register_transport
+                           LockError, 
+                           PathError,
+                           ParamikoNotPresent,
+                           )
 from bzrlib.osutils import pathjoin, fancy_rename
+from bzrlib.trace import mutter, warning, error
+from bzrlib.transport import (
+    register_urlparse_netloc_protocol,
+    Server,
+    Transport,
+    urlescape,
+    )
 import bzrlib.ui
 
 try:
     import paramiko
-except ImportError:
-    error('The SFTP transport requires paramiko.')
-    raise
+except ImportError, e:
+    raise ParamikoNotPresent(e)
 else:
     from paramiko.sftp import (SFTP_FLAG_WRITE, SFTP_FLAG_CREATE,
                                SFTP_FLAG_EXCL, SFTP_FLAG_TRUNC,
@@ -52,13 +61,49 @@ else:
     from paramiko.sftp_file import SFTPFile
     from paramiko.sftp_client import SFTPClient
 
-if 'sftp' not in urlparse.uses_netloc: urlparse.uses_netloc.append('sftp')
+
+register_urlparse_netloc_protocol('sftp')
 
 
-_close_fds = True
-if sys.platform == 'win32':
-    # close_fds not supported on win32
-    _close_fds = False
+def _ignore_sigint():
+    # TODO: This should possibly ignore SIGHUP as well, but bzr currently
+    # doesn't handle it itself.
+    # <https://launchpad.net/products/bzr/+bug/41433/+index>
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    
+
+def os_specific_subprocess_params():
+    """Get O/S specific subprocess parameters."""
+    if sys.platform == 'win32':
+        # setting the process group and closing fds is not supported on 
+        # win32
+        return {}
+    else:
+        # We close fds other than the pipes as the child process does not need 
+        # them to be open.
+        #
+        # We also set the child process to ignore SIGINT.  Normally the signal
+        # would be sent to every process in the foreground process group, but
+        # this causes it to be seen only by bzr and not by ssh.  Python will
+        # generate a KeyboardInterrupt in bzr, and we will then have a chance
+        # to release locks or do other cleanup over ssh before the connection
+        # goes away.  
+        # <https://launchpad.net/products/bzr/+bug/5987>
+        #
+        # Running it in a separate process group is not good because then it
+        # can't get non-echoed input of a password or passphrase.
+        # <https://launchpad.net/products/bzr/+bug/40508>
+        return {'preexec_fn': _ignore_sigint,
+                'close_fds': True,
+                }
+
+
+# don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
+_default_do_prefetch = False
+if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 5):
+    _default_do_prefetch = True
+
 
 _ssh_vendor = None
 def _get_ssh_vendor():
@@ -69,12 +114,18 @@ def _get_ssh_vendor():
 
     _ssh_vendor = 'none'
 
+    if 'BZR_SSH' in os.environ:
+        _ssh_vendor = os.environ['BZR_SSH']
+        if _ssh_vendor == 'paramiko':
+            _ssh_vendor = 'none'
+        return _ssh_vendor
+
     try:
         p = subprocess.Popen(['ssh', '-V'],
-                             close_fds=_close_fds,
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
+                             stderr=subprocess.PIPE,
+                             **os_specific_subprocess_params())
         returncode = p.returncode
         stdout, stderr = p.communicate()
     except OSError:
@@ -99,8 +150,7 @@ def _get_ssh_vendor():
 
 class SFTPSubprocess:
     """A socket-like object that talks to an ssh subprocess via pipes."""
-    def __init__(self, hostname, port=None, user=None):
-        vendor = _get_ssh_vendor()
+    def __init__(self, hostname, vendor, port=None, user=None):
         assert vendor in ['openssh', 'ssh']
         if vendor == 'openssh':
             args = ['ssh',
@@ -120,9 +170,10 @@ class SFTPSubprocess:
                 args.extend(['-l', user])
             args.extend(['-s', 'sftp', hostname])
 
-        self.proc = subprocess.Popen(args, close_fds=_close_fds,
+        self.proc = subprocess.Popen(args,
                                      stdin=subprocess.PIPE,
-                                     stdout=subprocess.PIPE)
+                                     stdout=subprocess.PIPE,
+                                     **os_specific_subprocess_params())
 
     def send(self, data):
         return os.write(self.proc.stdin.fileno(), data)
@@ -143,6 +194,25 @@ class SFTPSubprocess:
         self.proc.wait()
 
 
+class LoopbackSFTP(object):
+    """Simple wrapper for a socket that pretends to be a paramiko Channel."""
+
+    def __init__(self, sock):
+        self.__socket = sock
+ 
+    def send(self, data):
+        return self.__socket.send(data)
+
+    def recv(self, n):
+        return self.__socket.recv(n)
+
+    def recv_ready(self):
+        return True
+
+    def close(self):
+        self.__socket.close()
+
+
 SYSTEM_HOSTKEYS = {}
 BZR_HOSTKEYS = {}
 
@@ -151,6 +221,14 @@ BZR_HOSTKEYS = {}
 # sort of expiration policy, such as disconnect if inactive for
 # X seconds. But that requires a lot more fanciness.
 _connected_hosts = weakref.WeakValueDictionary()
+
+def clear_connection_cache():
+    """Remove all hosts from the SFTP connection cache.
+
+    Primarily useful for test cases wanting to force garbage collection.
+    """
+    _connected_hosts.clear()
+
 
 def load_host_keys():
     """
@@ -168,6 +246,7 @@ def load_host_keys():
     except Exception, e:
         mutter('failed to load bzr host keys: ' + str(e))
         save_host_keys()
+
 
 def save_host_keys():
     """
@@ -199,7 +278,8 @@ class SFTPLock(object):
         self.lock_path = path + '.write-lock'
         self.transport = transport
         try:
-            abspath = transport._abspath(self.lock_path)
+            # RBC 20060103 FIXME should we be using private methods here ?
+            abspath = transport._remote_path(self.lock_path)
             self.lock_file = transport._sftp_open_exclusive(abspath)
         except FileExists:
             raise LockError('File %r already locked' % (self.path,))
@@ -207,7 +287,7 @@ class SFTPLock(object):
     def __del__(self):
         """Should this warn, or actually try to cleanup?"""
         if self.lock_file:
-            warn("SFTPLock %r not explicitly unlocked" % (self.path,))
+            warning("SFTPLock %r not explicitly unlocked" % (self.path,))
             self.unlock()
 
     def unlock(self):
@@ -225,12 +305,14 @@ class SFTPTransport (Transport):
     """
     Transport implementation for SFTP access.
     """
-    _do_prefetch = False # Right now Paramiko's prefetch support causes things to hang
+    _do_prefetch = _default_do_prefetch
 
     def __init__(self, base, clone_from=None):
         assert base.startswith('sftp://')
         self._parse_url(base)
         base = self._unparse_url()
+        if base[-1] != '/':
+            base += '/'
         super(SFTPTransport, self).__init__(base)
         if clone_from is None:
             self._sftp_connect()
@@ -263,13 +345,16 @@ class SFTPTransport (Transport):
         @param relpath: the relative path or path components
         @type relpath: str or list
         """
-        return self._unparse_url(self._abspath(relpath))
+        return self._unparse_url(self._remote_path(relpath))
     
-    def _abspath(self, relpath):
-        """Return the absolute path segment without the SFTP URL."""
+    def _remote_path(self, relpath):
+        """Return the path to be passed along the sftp protocol for relpath.
+        
+        relpath is a urlencoded string.
+        """
         # FIXME: share the common code across transports
         assert isinstance(relpath, basestring)
-        relpath = [urllib.unquote(relpath)]
+        relpath = urllib.unquote(relpath).split('/')
         basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
@@ -287,7 +372,6 @@ class SFTPTransport (Transport):
                 basepath.append(p)
 
         path = '/'.join(basepath)
-        # could still be a "relative" path here, but relative on the sftp server
         return path
 
     def relpath(self, abspath):
@@ -305,28 +389,28 @@ class SFTPTransport (Transport):
             extra = ': ' + ', '.join(error)
             raise PathNotChild(abspath, self.base, extra=extra)
         pl = len(self._path)
-        return path[pl:].lstrip('/')
+        return path[pl:].strip('/')
 
     def has(self, relpath):
         """
         Does the target location exist?
         """
         try:
-            self._sftp.stat(self._abspath(relpath))
+            self._sftp.stat(self._remote_path(relpath))
             return True
         except IOError:
             return False
 
-    def get(self, relpath, decode=False):
+    def get(self, relpath):
         """
         Get the file at the given relative path.
 
         :param relpath: The relative path to the file
         """
         try:
-            path = self._abspath(relpath)
+            path = self._remote_path(relpath)
             f = self._sftp.file(path, mode='rb')
-            if self._do_prefetch and hasattr(f, 'prefetch'):
+            if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
                 f.prefetch()
             return f
         except (IOError, paramiko.SSHException), e:
@@ -359,7 +443,7 @@ class SFTPTransport (Transport):
         :param f:       File-like or string object.
         :param mode: The final mode for the file
         """
-        final_path = self._abspath(relpath)
+        final_path = self._remote_path(relpath)
         self._put(final_path, f, mode=mode)
 
     def _put(self, abspath, f, mode=None):
@@ -378,7 +462,7 @@ class SFTPTransport (Transport):
                 self._sftp.chmod(tmp_abspath, mode)
             fout.close()
             closed = True
-            self._rename(tmp_abspath, abspath)
+            self._rename_and_overwrite(tmp_abspath, abspath)
         except Exception, e:
             # If we fail, try to clean up the temporary file
             # before we throw the exception
@@ -392,8 +476,10 @@ class SFTPTransport (Transport):
                     fout.close()
                 self._sftp.remove(tmp_abspath)
             except:
-                pass
-            raise e
+                # raise the saved except
+                raise e
+            # raise the original with its traceback if we can.
+            raise
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
@@ -410,7 +496,7 @@ class SFTPTransport (Transport):
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         try:
-            path = self._abspath(relpath)
+            path = self._remote_path(relpath)
             # In the paramiko documentation, it says that passing a mode flag 
             # will filtered against the server umask.
             # StubSFTPServer does not do this, which would be nice, because it is
@@ -423,7 +509,8 @@ class SFTPTransport (Transport):
             self._translate_io_exception(e, path, ': unable to mkdir',
                 failure_exc=FileExists)
 
-    def _translate_io_exception(self, e, path, more_info='', failure_exc=NoSuchFile):
+    def _translate_io_exception(self, e, path, more_info='', 
+                                failure_exc=PathError):
         """Translate a paramiko or IOError into a friendlier exception.
 
         :param e: The original exception
@@ -433,8 +520,8 @@ class SFTPTransport (Transport):
         :param failure_exc: Paramiko has the super fun ability to raise completely
                            opaque errors that just set "e.args = ('Failure',)" with
                            no more information.
-                           This sometimes means FileExists, but it also sometimes
-                           means NoSuchFile
+                           If this parameter is set, it defines the exception 
+                           to raise in these cases.
         """
         # paramiko seems to generate detailless errors.
         self._translate_error(e, path, raise_generic=False)
@@ -452,67 +539,32 @@ class SFTPTransport (Transport):
             mutter('Raising exception with errno %s', e.errno)
         raise e
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """
         Append the text in the file-like object into the final
         location.
         """
         try:
-            path = self._abspath(relpath)
+            path = self._remote_path(relpath)
             fout = self._sftp.file(path, 'ab')
+            if mode is not None:
+                self._sftp.chmod(path, mode)
+            result = fout.tell()
             self._pump(f, fout)
+            return result
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, relpath, ': unable to append')
 
-    def copy(self, rel_from, rel_to):
-        """Copy the item at rel_from to the location at rel_to"""
-        path_from = self._abspath(rel_from)
-        path_to = self._abspath(rel_to)
-        self._copy_abspaths(path_from, path_to)
-
-    def _copy_abspaths(self, path_from, path_to, mode=None):
-        """Copy files given an absolute path
-
-        :param path_from: Path on remote server to read
-        :param path_to: Path on remote server to write
-        :return: None
-
-        TODO: Should the destination location be atomically created?
-              This has not been specified
-        TODO: This should use some sort of remote copy, rather than
-              pulling the data locally, and then writing it remotely
-        """
+    def rename(self, rel_from, rel_to):
+        """Rename without special overwriting"""
         try:
-            fin = self._sftp.file(path_from, 'rb')
-            try:
-                self._put(path_to, fin, mode=mode)
-            finally:
-                fin.close()
+            self._sftp.rename(self._remote_path(rel_from),
+                              self._remote_path(rel_to))
         except (IOError, paramiko.SSHException), e:
-            self._translate_io_exception(e, path_from, ': unable copy to: %r' % path_to)
+            self._translate_io_exception(e, rel_from,
+                    ': unable to rename to %r' % (rel_to))
 
-    def copy_to(self, relpaths, other, mode=None, pb=None):
-        """Copy a set of entries from self into another Transport.
-
-        :param relpaths: A list/generator of entries to be copied.
-        """
-        if isinstance(other, SFTPTransport) and other._sftp is self._sftp:
-            # Both from & to are on the same remote filesystem
-            # We can use a remote copy, instead of pulling locally, and pushing
-
-            total = self._get_total(relpaths)
-            count = 0
-            for path in relpaths:
-                path_from = self._abspath(relpath)
-                path_to = other._abspath(relpath)
-                self._update_pb(pb, 'copy-to', count, total)
-                self._copy_abspaths(path_from, path_to, mode=mode)
-                count += 1
-            return count
-        else:
-            return super(SFTPTransport, self).copy_to(relpaths, other, mode=mode, pb=pb)
-
-    def _rename(self, abs_from, abs_to):
+    def _rename_and_overwrite(self, abs_from, abs_to):
         """Do a fancy rename on the remote server.
         
         Using the implementation provided by osutils.
@@ -526,13 +578,13 @@ class SFTPTransport (Transport):
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
-        path_from = self._abspath(rel_from)
-        path_to = self._abspath(rel_to)
-        self._rename(path_from, path_to)
+        path_from = self._remote_path(rel_from)
+        path_to = self._remote_path(rel_to)
+        self._rename_and_overwrite(path_from, path_to)
 
     def delete(self, relpath):
         """Delete the item at relpath"""
-        path = self._abspath(relpath)
+        path = self._remote_path(relpath)
         try:
             self._sftp.remove(path)
         except (IOError, paramiko.SSHException), e:
@@ -547,15 +599,23 @@ class SFTPTransport (Transport):
         Return a list of all files at the given location.
         """
         # does anything actually use this?
-        path = self._abspath(relpath)
+        path = self._remote_path(relpath)
         try:
             return self._sftp.listdir(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
 
+    def rmdir(self, relpath):
+        """See Transport.rmdir."""
+        path = self._remote_path(relpath)
+        try:
+            return self._sftp.rmdir(path)
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, path, ': failed to rmdir')
+
     def stat(self, relpath):
         """Return the stat information for a file."""
-        path = self._abspath(relpath)
+        path = self._remote_path(relpath)
         try:
             return self._sftp.stat(path)
         except (IOError, paramiko.SSHException), e:
@@ -587,21 +647,18 @@ class SFTPTransport (Transport):
         # that we have taken the lock.
         return SFTPLock(relpath, self)
 
-
     def _unparse_url(self, path=None):
         if path is None:
             path = self._path
         path = urllib.quote(path)
-        if path.startswith('/'):
-            path = '/%2F' + path[1:]
-        else:
-            path = '/' + path
+        # handle homedir paths
+        if not path.startswith('/'):
+            path = "/~/" + path
         netloc = urllib.quote(self._host)
         if self._username is not None:
             netloc = '%s@%s' % (urllib.quote(self._username), netloc)
         if self._port is not None:
             netloc = '%s:%d' % (netloc, self._port)
-
         return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
 
     def _split_url(self, url):
@@ -635,9 +692,13 @@ class SFTPTransport (Transport):
         # as a homedir relative path (the path begins with a double slash
         # if it is absolute).
         # see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
-        if path.startswith('/'):
-            path = path[1:]
-
+        # RBC 20060118 we are not using this as its too user hostile. instead
+        # we are following lftp and using /~/foo to mean '~/foo'.
+        # handle homedir paths
+        if path.startswith('/~/'):
+            path = path[3:]
+        elif path == '/~':
+            path = ''
         return (username, password, host, port, path)
 
     def _parse_url(self, url):
@@ -661,8 +722,13 @@ class SFTPTransport (Transport):
             pass
         
         vendor = _get_ssh_vendor()
-        if vendor != 'none':
-            sock = SFTPSubprocess(self._host, self._port, self._username)
+        if vendor == 'loopback':
+            sock = socket.socket()
+            sock.connect((self._host, self._port))
+            self._sftp = SFTPClient(LoopbackSFTP(sock))
+        elif vendor != 'none':
+            sock = SFTPSubprocess(self._host, vendor, self._port,
+                                  self._username)
             self._sftp = SFTPClient(sock)
         else:
             self._paramiko_connect()
@@ -676,6 +742,7 @@ class SFTPTransport (Transport):
 
         try:
             t = paramiko.Transport((self._host, self._port or 22))
+            t.set_log_channel('bzr.paramiko')
             t.start_client()
         except paramiko.SSHException, e:
             raise ConnectionError('Unable to reach SSH host %s:%d' %
@@ -741,7 +808,6 @@ class SFTPTransport (Transport):
             return
         if self._try_pkey_auth(transport, paramiko.DSSKey, username, 'id_dsa'):
             return
-
 
         if self._password:
             try:
@@ -815,3 +881,178 @@ class SFTPTransport (Transport):
             self._translate_io_exception(e, abspath, ': unable to open',
                 failure_exc=FileExists)
 
+
+# ------------- server test implementation --------------
+import socket
+import threading
+
+from bzrlib.tests.stub_sftp import StubServer, StubSFTPServer
+
+STUB_SERVER_KEY = """
+-----BEGIN RSA PRIVATE KEY-----
+MIICWgIBAAKBgQDTj1bqB4WmayWNPB+8jVSYpZYk80Ujvj680pOTh2bORBjbIAyz
+oWGW+GUjzKxTiiPvVmxFgx5wdsFvF03v34lEVVhMpouqPAYQ15N37K/ir5XY+9m/
+d8ufMCkjeXsQkKqFbAlQcnWMCRnOoPHS3I4vi6hmnDDeeYTSRvfLbW0fhwIBIwKB
+gBIiOqZYaoqbeD9OS9z2K9KR2atlTxGxOJPXiP4ESqP3NVScWNwyZ3NXHpyrJLa0
+EbVtzsQhLn6rF+TzXnOlcipFvjsem3iYzCpuChfGQ6SovTcOjHV9z+hnpXvQ/fon
+soVRZY65wKnF7IAoUwTmJS9opqgrN6kRgCd3DASAMd1bAkEA96SBVWFt/fJBNJ9H
+tYnBKZGw0VeHOYmVYbvMSstssn8un+pQpUm9vlG/bp7Oxd/m+b9KWEh2xPfv6zqU
+avNwHwJBANqzGZa/EpzF4J8pGti7oIAPUIDGMtfIcmqNXVMckrmzQ2vTfqtkEZsA
+4rE1IERRyiJQx6EJsz21wJmGV9WJQ5kCQQDwkS0uXqVdFzgHO6S++tjmjYcxwr3g
+H0CoFYSgbddOT6miqRskOQF3DZVkJT3kyuBgU2zKygz52ukQZMqxCb1fAkASvuTv
+qfpH87Qq5kQhNKdbbwbmd2NxlNabazPijWuphGTdW0VfJdWfklyS2Kr+iqrs/5wV
+HhathJt636Eg7oIjAkA8ht3MQ+XSl9yIJIS8gVpbPxSw5OMfw0PjVE7tBdQruiSc
+nvuQES5C9BMHjF39LZiGH1iLQy7FgdHyoP+eodI7
+-----END RSA PRIVATE KEY-----
+"""
+    
+
+class SingleListener(threading.Thread):
+
+    def __init__(self, callback):
+        threading.Thread.__init__(self)
+        self._callback = callback
+        self._socket = socket.socket()
+        self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._socket.bind(('localhost', 0))
+        self._socket.listen(1)
+        self.port = self._socket.getsockname()[1]
+        self.stop_event = threading.Event()
+
+    def run(self):
+        s, _ = self._socket.accept()
+        # now close the listen socket
+        self._socket.close()
+        try:
+            self._callback(s, self.stop_event)
+        except socket.error:
+            pass #Ignore socket errors
+        except Exception, x:
+            # probably a failed test
+            warning('Exception from within unit test server thread: %r' % x)
+
+    def stop(self):
+        self.stop_event.set()
+        # use a timeout here, because if the test fails, the server thread may
+        # never notice the stop_event.
+        self.join(5.0)
+
+
+class SFTPServer(Server):
+    """Common code for SFTP server facilities."""
+
+    def __init__(self):
+        self._original_vendor = None
+        self._homedir = None
+        self._server_homedir = None
+        self._listener = None
+        self._root = None
+        self._vendor = 'none'
+        # sftp server logs
+        self.logs = []
+
+    def _get_sftp_url(self, path):
+        """Calculate an sftp url to this server for path."""
+        return 'sftp://foo:bar@localhost:%d/%s' % (self._listener.port, path)
+
+    def log(self, message):
+        """StubServer uses this to log when a new server is created."""
+        self.logs.append(message)
+
+    def _run_server(self, s, stop_event):
+        ssh_server = paramiko.Transport(s)
+        key_file = os.path.join(self._homedir, 'test_rsa.key')
+        file(key_file, 'w').write(STUB_SERVER_KEY)
+        host_key = paramiko.RSAKey.from_private_key_file(key_file)
+        ssh_server.add_server_key(host_key)
+        server = StubServer(self)
+        ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer,
+                                         StubSFTPServer, root=self._root,
+                                         home=self._server_homedir)
+        event = threading.Event()
+        ssh_server.start_server(event, server)
+        event.wait(5.0)
+        stop_event.wait(30.0)
+    
+    def setUp(self):
+        global _ssh_vendor
+        self._original_vendor = _ssh_vendor
+        _ssh_vendor = self._vendor
+        self._homedir = os.getcwdu()
+        if self._server_homedir is None:
+            self._server_homedir = self._homedir
+        self._root = '/'
+        # FIXME WINDOWS: _root should be _server_homedir[0]:/
+        self._listener = SingleListener(self._run_server)
+        self._listener.setDaemon(True)
+        self._listener.start()
+
+    def tearDown(self):
+        """See bzrlib.transport.Server.tearDown."""
+        global _ssh_vendor
+        self._listener.stop()
+        _ssh_vendor = self._original_vendor
+
+
+class SFTPFullAbsoluteServer(SFTPServer):
+    """A test server for sftp transports, using absolute urls and ssh."""
+
+    def get_url(self):
+        """See bzrlib.transport.Server.get_url."""
+        return self._get_sftp_url(urlescape(self._homedir[1:]))
+
+
+class SFTPServerWithoutSSH(SFTPServer):
+    """An SFTP server that uses a simple TCP socket pair rather than SSH."""
+
+    def __init__(self):
+        super(SFTPServerWithoutSSH, self).__init__()
+        self._vendor = 'loopback'
+
+    def _run_server(self, sock, stop_event):
+        class FakeChannel(object):
+            def get_transport(self):
+                return self
+            def get_log_channel(self):
+                return 'paramiko'
+            def get_name(self):
+                return '1'
+            def get_hexdump(self):
+                return False
+
+        server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
+                                     root=self._root, home=self._server_homedir)
+        server.start_subsystem('sftp', None, sock)
+        server.finish_subsystem()
+
+
+class SFTPAbsoluteServer(SFTPServerWithoutSSH):
+    """A test server for sftp transports, using absolute urls."""
+
+    def get_url(self):
+        """See bzrlib.transport.Server.get_url."""
+        return self._get_sftp_url(urlescape(self._homedir[1:]))
+
+
+class SFTPHomeDirServer(SFTPServerWithoutSSH):
+    """A test server for sftp transports, using homedir relative urls."""
+
+    def get_url(self):
+        """See bzrlib.transport.Server.get_url."""
+        return self._get_sftp_url("~/")
+
+
+class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
+    """A test servere for sftp transports, using absolute urls to non-home."""
+
+    def setUp(self):
+        self._server_homedir = '/dev/noone/runs/tests/here'
+        super(SFTPSiblingAbsoluteServer, self).setUp()
+
+
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    return [(SFTPTransport, SFTPAbsoluteServer),
+            (SFTPTransport, SFTPHomeDirServer),
+            (SFTPTransport, SFTPSiblingAbsoluteServer),
+            ]

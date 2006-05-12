@@ -1,35 +1,37 @@
 import os
 import unittest
 
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.add import smart_add, smart_add_tree
+from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.branch import Branch
 from bzrlib.errors import NotBranchError, NoSuchFile
 from bzrlib.inventory import InventoryFile, Inventory
 from bzrlib.workingtree import WorkingTree
-from bzrlib.add import smart_add
 
-class TestSmartAdd(TestCaseInTempDir):
+class TestSmartAdd(TestCaseWithTransport):
 
     def test_add_dot_from_root(self):
         """Test adding . from the root of the tree.""" 
         from bzrlib.add import smart_add
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
-        branch = Branch.initialize(u".")
-        smart_add((u".",))
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
+        smart_add_tree(wt, (u".",))
         for path in paths:
-            self.assertNotEqual(branch.working_tree().path2id(path), None)
+            self.assertNotEqual(wt.path2id(path), None)
 
     def test_add_dot_from_subdir(self):
         """Test adding . from a subdir of the tree.""" 
         from bzrlib.add import smart_add
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
-        branch = Branch.initialize(u".")
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
         os.chdir("original")
-        smart_add((u".",))
+        smart_add_tree(wt, (u".",))
         for path in paths:
-            self.assertNotEqual(branch.working_tree().path2id(path), None)
+            self.assertNotEqual(wt.path2id(path), None)
 
     def test_add_tree_from_above_tree(self):
         """Test adding a tree from above the tree.""" 
@@ -38,10 +40,11 @@ class TestSmartAdd(TestCaseInTempDir):
         branch_paths = ("branch/", "branch/original/", "branch/original/file1",
                         "branch/original/file2")
         self.build_tree(branch_paths)
-        branch = Branch.initialize("branch")
-        smart_add(("branch",))
+        wt = self.make_branch_and_tree('branch')
+        branch = wt.branch
+        smart_add_tree(wt, ("branch",))
         for path in paths:
-            self.assertNotEqual(branch.working_tree().path2id(path), None)
+            self.assertNotEqual(wt.path2id(path), None)
 
     def test_add_above_tree_preserves_tree(self):
         """Test nested trees are not affect by an add above them."""
@@ -53,84 +56,86 @@ class TestSmartAdd(TestCaseInTempDir):
                        "original/child/", "original/child/path")
         
         self.build_tree(build_paths)
-        branch = Branch.initialize(u".")
-        child_branch = Branch.initialize("original/child")
-        smart_add((u".",))
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
+        child_tree = self.make_branch_and_tree('original/child')
+        smart_add_tree(wt, (u".",))
         for path in paths:
-            self.assertNotEqual((path, branch.working_tree().path2id(path)),
+            self.assertNotEqual((path, wt.path2id(path)),
                                 (path, None))
         for path in full_child_paths:
-            self.assertEqual((path, branch.working_tree().path2id(path)),
+            self.assertEqual((path, wt.path2id(path)),
                              (path, None))
         for path in child_paths:
-            self.assertEqual(child_branch.working_tree().path2id(path), None)
+            self.assertEqual(child_tree.path2id(path), None)
 
     def test_add_paths(self):
         """Test smart-adding a list of paths."""
         from bzrlib.add import smart_add
         paths = ("file1", "file2")
         self.build_tree(paths)
-        branch = Branch.initialize(u".")
-        smart_add(paths)
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
+        smart_add_tree(wt, paths)
         for path in paths:
-            self.assertNotEqual(branch.working_tree().path2id(path), None)
+            self.assertNotEqual(wt.path2id(path), None)
 
     def test_add_dry_run(self):
         """Test a dry run add, make sure nothing is added."""
         from bzrlib.commands import run_bzr
         eq = self.assertEqual
-        b = Branch.initialize(u'.')
-        t = b.working_tree()
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
         self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        eq(list(t.unknowns()), ['inertiatic'])
+        eq(list(wt.unknowns()), ['inertiatic'])
         self.capture('add --dry-run .')
-        eq(list(t.unknowns()), ['inertiatic'])
+        eq(list(wt.unknowns()), ['inertiatic'])
 
     def test_add_non_existant(self):
         """Test smart-adding a file that does not exist."""
         from bzrlib.add import smart_add
-        branch = Branch.initialize(u".")
-        self.assertRaises(NoSuchFile, smart_add, 'non-existant-file')
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
+        self.assertRaises(NoSuchFile, smart_add_tree, wt, 'non-existant-file')
 
     def test_returns(self):
         """Correctly returns added/ignored files"""
         from bzrlib.commands import run_bzr
-        b = Branch.initialize(u'.')
-        t = b.working_tree()
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
         self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS', 
                         'inertiatic/foo.pyc'])
-        added, ignored = smart_add(u'.')
-        self.AssertSubset(('inertiatic', 'inertiatic/esp'), added)
-        self.AssertSubset(('CVS', '*.py[oc]'), ignored)
-        self.AssertSubset(('inertiatic/CVS',), ignored['CVS'])
-        self.AssertSubset(('inertiatic/foo.pyc',), ignored['*.py[oc]'])
+        added, ignored = smart_add_tree(wt, u'.')
+        self.assertSubset(('inertiatic', 'inertiatic/esp'), added)
+        self.assertSubset(('CVS', '*.py[oc]'), ignored)
+        self.assertSubset(('inertiatic/CVS',), ignored['CVS'])
+        self.assertSubset(('inertiatic/foo.pyc',), ignored['*.py[oc]'])
 
 
-class TestSmartAddBranch(TestCaseInTempDir):
+class TestSmartAddBranch(TestCaseWithTransport):
     """Test smart adds with a specified branch."""
 
     def test_add_dot_from_root(self):
         """Test adding . from the root of the tree.""" 
-        from bzrlib.add import smart_add_tree
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
-        Branch.initialize(u".")
-        tree = WorkingTree()
-        smart_add_tree(tree, (u".",))
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
+        smart_add_tree(wt, (u".",))
         for path in paths:
-            self.assertNotEqual(tree.path2id(path), None)
+            self.assertNotEqual(wt.path2id(path), None)
 
     def test_add_dot_from_subdir(self):
         """Test adding . from a subdir of the tree.""" 
         from bzrlib.add import smart_add_tree
         paths = ("original/", "original/file1", "original/file2")
         self.build_tree(paths)
-        Branch.initialize(u".")
-        tree = WorkingTree()
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
         os.chdir("original")
-        smart_add_tree(tree, (u".",))
+        smart_add_tree(wt, (u".",))
         for path in paths:
-            self.assertNotEqual(tree.path2id(path), None)
+            self.assertNotEqual(wt.path2id(path), None)
 
     def test_add_tree_from_above_tree(self):
         """Test adding a tree from above the tree.""" 
@@ -139,8 +144,8 @@ class TestSmartAddBranch(TestCaseInTempDir):
         branch_paths = ("branch/", "branch/original/", "branch/original/file1",
                         "branch/original/file2")
         self.build_tree(branch_paths)
-        Branch.initialize("branch")
-        tree = WorkingTree("branch")
+        tree = self.make_branch_and_tree('branch')
+        branch = tree.branch
         smart_add_tree(tree, ("branch",))
         for path in paths:
             self.assertNotEqual(tree.path2id(path), None)
@@ -154,9 +159,9 @@ class TestSmartAddBranch(TestCaseInTempDir):
         build_paths = ("original/", "original/file1", "original/file2", 
                        "original/child/", "original/child/path")
         self.build_tree(build_paths)
-        Branch.initialize(u".")
-        tree = WorkingTree()
-        child_branch = Branch.initialize("original/child")
+        tree = self.make_branch_and_tree('.')
+        branch = tree.branch
+        child_tree = self.make_branch_and_tree("original/child")
         smart_add_tree(tree, (u".",))
         for path in paths:
             self.assertNotEqual((path, tree.path2id(path)),
@@ -165,21 +170,21 @@ class TestSmartAddBranch(TestCaseInTempDir):
             self.assertEqual((path, tree.path2id(path)),
                              (path, None))
         for path in child_paths:
-            self.assertEqual(child_branch.working_tree().path2id(path), None)
+            self.assertEqual(child_tree.path2id(path), None)
 
     def test_add_paths(self):
         """Test smart-adding a list of paths."""
         from bzrlib.add import smart_add_tree
         paths = ("file1", "file2")
         self.build_tree(paths)
-        Branch.initialize(u".")
-        tree = WorkingTree()
-        smart_add_tree(tree, paths)
+        wt = self.make_branch_and_tree('.')
+        branch = wt.branch
+        smart_add_tree(wt, paths)
         for path in paths:
-            self.assertNotEqual(tree.path2id(path), None)
+            self.assertNotEqual(wt.path2id(path), None)
 
 
-class TestAddActions(TestCaseInTempDir):
+class TestAddActions(TestCase):
 
     def test_null(self):
         from bzrlib.add import add_action_null

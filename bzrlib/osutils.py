@@ -24,6 +24,7 @@ import errno
 import os
 import re
 import sha
+import shutil
 import string
 import sys
 import time
@@ -31,7 +32,12 @@ import types
 import tempfile
 
 import bzrlib
-from bzrlib.errors import BzrError, PathNotChild, NoSuchFile
+from bzrlib.errors import (BzrError,
+                           BzrBadParameterNotUnicode,
+                           NoSuchFile,
+                           PathNotChild,
+                           IllegalPath,
+                           )
 from bzrlib.trace import mutter
 
 
@@ -125,7 +131,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     import random
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
-    tmp_name = u'tmp.%s.%.9f.%d.%d' % (base, time.time(), os.getpid(), random.randint(0, 0x7FFFFFFF))
+    tmp_name = u'tmp.%s.%.9f.%d.%s' % (base, time.time(), os.getpid(), rand_chars(10))
     tmp_name = pathjoin(dirname, tmp_name)
 
     # Rename the file out of the way, but keep track if it didn't exist
@@ -138,6 +144,12 @@ def fancy_rename(old, new, rename_func, unlink_func):
         rename_func(new, tmp_name)
     except (NoSuchFile,), e:
         pass
+    except IOError, e:
+        # RBC 20060103 abstraction leakage: the paramiko SFTP clients rename
+        # function raises an IOError with errno == None when a rename fails.
+        # This then gets caught here.
+        if e.errno not in (None, errno.ENOENT, errno.ENOTDIR):
+            raise
     except Exception, e:
         if (not hasattr(e, 'errno') 
             or e.errno not in (errno.ENOENT, errno.ENOTDIR)):
@@ -160,7 +172,8 @@ def fancy_rename(old, new, rename_func, unlink_func):
             else:
                 rename_func(tmp_name, new)
 
-# Default is to just use the python builtins
+# Default is to just use the python builtins, but these can be rebound on
+# particular platforms.
 abspath = os.path.abspath
 realpath = os.path.realpath
 pathjoin = os.path.join
@@ -170,6 +183,9 @@ mkdtemp = tempfile.mkdtemp
 rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
+rmtree = shutil.rmtree
+
+MIN_ABS_PATHLENGTH = 1
 
 if os.name == "posix":
     # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
@@ -206,6 +222,26 @@ if sys.platform == 'win32':
 
     def rename(old, new):
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+
+    MIN_ABS_PATHLENGTH = 3
+
+    def _win32_delete_readonly(function, path, excinfo):
+        """Error handler for shutil.rmtree function [for win32]
+        Helps to remove files and dirs marked as read-only.
+        """
+        type_, value = excinfo[:2]
+        if function in (os.remove, os.rmdir) \
+            and type_ == OSError \
+            and value.errno == errno.EACCES:
+            bzrlib.osutils.make_writable(path)
+            function(path)
+        else:
+            raise
+
+    def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
+        """Replacer for shutil.rmtree: could remove readonly dirs/files"""
+        return shutil.rmtree(path, ignore_errors, onerror)
+
 
 def normalizepath(f):
     if hasattr(os.path, 'realpath'):
@@ -325,6 +361,14 @@ def pumpfile(fromfile, tofile):
         tofile.write(b)
 
 
+def file_iterator(input_file, readsize=32768):
+    while True:
+        b = input_file.read(readsize)
+        if len(b) == 0:
+            break
+        yield b
+
+
 def sha_file(f):
     if hasattr(f, 'tell'):
         assert f.tell() == 0
@@ -422,6 +466,7 @@ def filesize(f):
     """Return size of given open file."""
     return os.fstat(f.fileno())[ST_SIZE]
 
+
 # Define rand_bytes based on platform.
 try:
     # Python 2.4 and later have os.urandom,
@@ -443,6 +488,20 @@ except (NotImplementedError, AttributeError):
                 s += chr(random.randint(0, 255))
                 n -= 1
             return s
+
+
+ALNUM = '0123456789abcdefghijklmnopqrstuvwxyz'
+def rand_chars(num):
+    """Return a random string of num alphanumeric characters
+    
+    The result only contains lowercase chars because it may be used on 
+    case-insensitive filesystems.
+    """
+    s = ''
+    for raw_byte in rand_bytes(num):
+        s += ALNUM[ord(raw_byte) % 36]
+    return s
+
 
 ## TODO: We could later have path objects that remember their list
 ## decomposition (might be too tricksy though.)
@@ -496,7 +555,11 @@ def appendpath(p1, p2):
 
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
-    return StringIO(s).readlines()
+    lines = s.split('\n')
+    result = [line + '\n' for line in lines[:-1]]
+    if lines[-1]:
+        result.append(lines[-1])
+    return result
 
 
 def hardlinks_good():
@@ -514,6 +577,16 @@ def link_or_copy(src, dest):
         if e.errno != errno.EXDEV:
             raise
         copyfile(src, dest)
+
+def delete_any(full_path):
+    """Delete a file or directory."""
+    try:
+        os.unlink(full_path)
+    except OSError, e:
+    # We may be renaming a dangling inventory id
+        if e.errno not in (errno.EISDIR, errno.EACCES, errno.EPERM):
+            raise
+        os.rmdir(full_path)
 
 
 def has_symlinks():
@@ -549,7 +622,12 @@ def relpath(base, path):
 
     os.path.commonprefix (python2.4) has a bad bug that it works just
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
-    avoids that problem."""
+    avoids that problem.
+    """
+
+    assert len(base) >= MIN_ABS_PATHLENGTH, ('Length of base must be equal or'
+        ' exceed the platform minimum length (which is %d)' % 
+        MIN_ABS_PATHLENGTH)
     rp = abspath(path)
 
     s = []
@@ -571,6 +649,22 @@ def relpath(base, path):
         return ''
 
 
+def safe_unicode(unicode_or_utf8_string):
+    """Coerce unicode_or_utf8_string into unicode.
+
+    If it is unicode, it is returned.
+    Otherwise it is decoded from utf-8. If a decoding error
+    occurs, it is wrapped as a If the decoding fails, the exception is wrapped 
+    as a BzrBadParameter exception.
+    """
+    if isinstance(unicode_or_utf8_string, unicode):
+        return unicode_or_utf8_string
+    try:
+        return unicode_or_utf8_string.decode('utf8')
+    except UnicodeDecodeError:
+        raise BzrBadParameterNotUnicode(unicode_or_utf8_string)
+
+
 def terminal_width():
     """Return estimated terminal width."""
 
@@ -583,3 +677,30 @@ def terminal_width():
         return int(os.environ['COLUMNS'])
     except (IndexError, KeyError, ValueError):
         return 80
+
+def supports_executable():
+    return sys.platform != "win32"
+
+
+def strip_trailing_slash(path):
+    """Strip trailing slash, except for root paths.
+    The definition of 'root path' is platform-dependent.
+    """
+    if len(path) != MIN_ABS_PATHLENGTH and path[-1] == '/':
+        return path[:-1]
+    else:
+        return path
+
+
+_validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
+
+
+def check_legal_path(path):
+    """Check whether the supplied path is legal.  
+    This is only required on Windows, so we don't test on other platforms
+    right now.
+    """
+    if sys.platform != "win32":
+        return
+    if _validWin32PathRE.match(path) is None:
+        raise IllegalPath(path)

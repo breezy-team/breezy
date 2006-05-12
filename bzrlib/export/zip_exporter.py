@@ -39,6 +39,10 @@ def zip_exporter(tree, dest, root):
 
     try:
         for dp, ie in inv.iter_entries():
+            # .bzrignore has no meaning outside of a working tree
+            # so do not export it
+            if dp == ".bzrignore":
+                continue
 
             file_id = ie.file_id
             mutter("  export {%s} kind %s to %s", file_id, ie.kind, dest)
