@@ -167,3 +167,22 @@ class TestMerge(ExternalBase):
         # re-open tree as external runbzr modified it
         tree_b = branch_b.bzrdir.open_workingtree()
         tree_b.commit('merge branch_c')
+
+    def test_merge_changeset(self):
+        # Changesets actually represent a revision plus its ancestors, so
+        # they can be merged.
+        tree_a = self.make_branch_and_tree('branch_a')
+        f = file('branch_a/a', 'wb')
+        f.write('hello')
+        f.close()
+        tree_a.add('a')
+        # f.close()
+        tree_a.commit('message')
+
+        tree_b = tree_a.bzrdir.sprout('branch_b').open_workingtree()
+        f = file('branch_b/a', 'wb')
+        f.write('goodbye')
+        f.close()
+        tree_b.commit('message')
+        os.chdir('branch_b')
+        file('cset', 'wb').write(self.runbzr('changeset ../branch_a')[0])

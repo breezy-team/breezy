@@ -111,7 +111,7 @@ class cmd_changeset(Command):
             raise errors.BzrCommandError('--revision takes 1 or 2 parameters')
 
         if base_revision is None:
-            rev = target_branch.get_revision(target_revision)
+            rev = target_branch.repository.get_revision(target_revision)
             if rev.parent_ids:
                 base_revision = rev.parent_ids[0]
             else:
@@ -120,10 +120,12 @@ class cmd_changeset(Command):
         if base_branch is not None:
             fetch(target_branch, base_branch, base_revision)
             del base_branch
-        revision_id_list = get_intervening_revisions(target_revision, base_revision,
-                target_branch, target_branch.revision_history())
+        revision_id_list = get_intervening_revisions(base_revision,
+                                                     target_revision,
+                                                     target_branch.repository,
+                                             target_branch.revision_history())
                 
-        write(target_branch, revision_id_list, sys.stdout)
+        write(target_branch.repository, revision_id_list, sys.stdout)
 
 
 class cmd_verify_changeset(Command):
