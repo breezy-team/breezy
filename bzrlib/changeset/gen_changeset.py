@@ -40,7 +40,7 @@ class MetaInfoHeader(object):
         self.base_tree = base_tree
         if self.base_rev_id is not None:
             self.base_revision = \
-                testament_sha1(self.base_repository, self.base_rev_id)
+                self.base_repository.get_revision(self.base_rev_id)
         else:
             self.base_revision = None
 
