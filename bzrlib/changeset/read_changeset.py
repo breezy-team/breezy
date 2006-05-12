@@ -17,7 +17,7 @@ from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
                               InventoryLink)
 
-from common import decode, get_header, header_str
+from bzrlib.changeset.common import decode, get_header, header_str
 
 class BadChangeset(Exception): pass
 class MalformedHeader(BadChangeset): pass
@@ -110,7 +110,7 @@ class ChangesetInfo(object):
         split up, based on the assumptions that can be made
         when information is missing.
         """
-        from common import unpack_highres_date
+        from bzrlib.changeset.common import unpack_highres_date
         # Put in all of the guessable information.
         if not self.timestamp and self.date:
             self.timestamp, self.timezone = unpack_highres_date(self.date)
@@ -909,8 +909,8 @@ class ChangesetTree(Tree):
 
 def patched_file(file_patch, original):
     """Produce a file-like object with the patched version of a text"""
-    from patches import iter_patched
-    from iterablefile import IterableFile
+    from bzrlib.patches import iter_patched
+    from bzrlib.iterablefile import IterableFile
     if file_patch == "":
         return IterableFile(())
     return IterableFile(iter_patched(original, file_patch.splitlines(True)))

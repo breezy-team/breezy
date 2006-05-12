@@ -20,7 +20,7 @@ from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.errors import BzrError
 
 from bzrlib.diff import internal_diff
-from read_changeset import ChangesetTree
+from bzrlib.changeset.read_changeset import ChangesetTree
 
 class MockTree(object):
     def __init__(self):
@@ -401,7 +401,6 @@ class CSetTester(TestCaseInTempDir):
 
     def test_changeset(self):
         from bzrlib.branch import Branch
-        import common
 
         import os, sys
         pjoin = os.path.join
