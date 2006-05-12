@@ -79,7 +79,6 @@ class cmd_changeset(Command):
     def run(self, base=None, revision=None):
         from bzrlib import user_encoding
         from bzrlib.changeset.serializer import write
-        from bzrlib.fetch import fetch
 
         if base is None:
             base_branch = None
@@ -118,7 +117,8 @@ class cmd_changeset(Command):
                 base_revision = NULL_REVISION
 
         if base_branch is not None:
-            fetch(target_branch, base_branch, base_revision)
+            target_branch.repository.fetch(base_branch.repository, 
+                                           revision_id=base_revision)
             del base_branch
         revision_id_list = get_intervening_revisions(base_revision,
                                                      target_revision,

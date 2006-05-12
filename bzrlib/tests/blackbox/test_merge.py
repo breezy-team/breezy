@@ -176,10 +176,14 @@ class TestMerge(ExternalBase):
         f.write('hello')
         f.close()
         tree_a.add('a')
-        # f.close()
         tree_a.commit('message')
 
         tree_b = tree_a.bzrdir.sprout('branch_b').open_workingtree()
+        f = file('branch_a/a', 'wb')
+        f.write('hey there')
+        f.close()
+        tree_a.commit('message')
+
         f = file('branch_b/a', 'wb')
         f.write('goodbye')
         f.close()
