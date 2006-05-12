@@ -321,13 +321,13 @@ class Commit(object):
                     or self.new_inv != self.basis_inv):
                 raise PointlessCommit()
 
-            self._update()
+            self._emit_progress_update()
             self.inv_sha1 = self.branch.repository.add_inventory(
                 self.rev_id,
                 self.new_inv,
                 self.present_parents
                 )
-            self._update()
+            self._emit_progress_update()
             self._make_revision()
             # revision data is in the local branch now.
             
@@ -357,7 +357,7 @@ class Commit(object):
                                   {'branch':self.branch,
                                    'bzrlib':bzrlib,
                                    'rev_id':self.rev_id})
-            self._update()
+            self._emit_progress_update()
         finally:
             self._cleanup()
 
@@ -539,10 +539,10 @@ class Commit(object):
         # mark-merge.  
 
         # iter_entries does not visit the ROOT_ID node so we need to call
-        # self._update once by hand.
-        self._update()
+        # self._emit_progress_update once by hand.
+        self._emit_progress_update()
         for path, ie in self.new_inv.iter_entries():
-            self._update()
+            self._emit_progress_update()
             previous_entries = ie.find_previous_heads(
                 self.parent_invs,
                 self.weave_store,
@@ -568,10 +568,10 @@ class Commit(object):
         mutter("Selecting files for commit with filter %s", self.specific_files)
         self.new_inv = Inventory(revision_id=self.rev_id)
         # iter_entries does not visit the ROOT_ID node so we need to call
-        # self._update once by hand.
-        self._update()
+        # self._emit_progress_update once by hand.
+        self._emit_progress_update()
         for path, new_ie in self.work_inv.iter_entries():
-            self._update()
+            self._emit_progress_update()
             file_id = new_ie.file_id
             mutter('check %s {%s}', path, new_ie.file_id)
             if self.specific_files:
@@ -597,7 +597,7 @@ class Commit(object):
             mutter('%s selected for commit', path)
             self._select_entry(new_ie)
 
-    def _update(self):
+    def _emit_progress_update(self):
         """Emit an update to the progress bar."""
         self.pb.update("Committing", self.pb_count, self.pb_total)
         self.pb_count += 1
