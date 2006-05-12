@@ -21,6 +21,7 @@ from bzrlib.errors import BzrError
 
 from bzrlib.diff import internal_diff
 from bzrlib.changeset.read_changeset import ChangesetTree
+from bzrlib.workingtree import WorkingTree
 
 class MockTree(object):
     def __init__(self):
@@ -316,7 +317,7 @@ class CSetTester(TestCaseInTempDir):
             # since it computes the sha1 hash for the revision, which
             # only will match if everything is okay, but lets be
             # explicit about it
-            branch_rev = self.b1.get_revision(cset_rev.revision_id)
+            branch_rev = self.b1.repository.get_revision(cset_rev.revision_id)
             for a in ('inventory_sha1', 'revision_id', 'parent_ids'
                     , 'timestamp', 'timezone', 'message', 'committer'):
                 self.assertEqual(getattr(branch_rev, a), getattr(cset_rev, a))
@@ -330,7 +331,6 @@ class CSetTester(TestCaseInTempDir):
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.
         """
-        from bzrlib.clone import copy_branch
         from bzrlib.branch import Branch
         import tempfile
 
@@ -340,26 +340,27 @@ class CSetTester(TestCaseInTempDir):
             import os
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)
-        copy_branch(self.b1, checkout_dir, None)
-        return Branch.open(checkout_dir)
+        self.tree1.bzrdir.clone(checkout_dir)
+        return WorkingTree.open(checkout_dir)
 
     def valid_apply_changeset(self, base_rev_id, cset,
             auto_commit=False, checkout_dir=None):
         """Get the base revision, apply the changes, and make
         sure everything matches the builtin branch.
         """
-        from apply_changeset import _apply_cset
+        from bzrlib.changeset.apply_changeset import _apply_cset
 
-        to_branch = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
-        auto_committed = _apply_cset(to_branch, cset, auto_commit=auto_commit)
+        to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
+        auto_committed = _apply_cset(to_tree, cset, auto_commit=auto_commit)
 
         info = cset[0]
+        repository = to_tree.branch.repository
         for rev in info.real_revisions:
-            self.assert_(rev.revision_id in to_branch.revision_store,
+            self.assert_(repository.has_revision(rev.revision_id),
                 'Missing revision {%s} after applying changeset' 
                 % rev.revision_id)
 
-        self.assert_(to_branch.has_revision(info.target))
+        self.assert_(to_tree.branch.repository.has_revision(info.target))
         # Do we also want to verify that all the texts have been added?
 
 
@@ -371,14 +372,14 @@ class CSetTester(TestCaseInTempDir):
             # We might also check that all revisions are in the
             # history for some changeset applications which
             # merge multiple revisions.
-            self.assertEqual(to_branch.last_patch(), info.target)
+            self.assertEqual(to_tree.branch.last_patch(), info.target)
         else:
-            self.assert_(info.target in to_branch.pending_merges())
+            self.assert_(info.target in to_tree.pending_merges())
 
 
         rev = info.real_revisions[-1]
-        base_tree = self.b1.revision_tree(rev.revision_id)
-        to_tree = to_branch.revision_tree(rev.revision_id)
+        base_tree = self.b1.repository.revision_tree(rev.revision_id)
+        to_tree = to_tree.branch.repository.revision_tree(rev.revision_id)
         
         # TODO: make sure the target tree is identical to base tree
         #       we might also check the working tree.

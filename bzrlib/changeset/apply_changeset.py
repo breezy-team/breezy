@@ -19,7 +19,7 @@ from bzrlib.diff import compare_trees
 from bzrlib.osutils import sha_string, split_lines
 
 
-def _install_info(branch, cset_info, cset_tree):
+def _install_info(repository, cset_info, cset_tree):
     """Make sure that there is a text entry for each 
     file in the changeset.
 
@@ -32,8 +32,8 @@ def _install_info(branch, cset_info, cset_tree):
           as ghost revisions)
     """
 
-    if not branch.has_revision(cset_info.target):
-        branch.lock_write()
+    if not repository.has_revision(cset_info.target):
+        repository.lock_write()
         try:
             # install the inventory
             # TODO: Figure out how to handle ghosted revisions
@@ -41,35 +41,36 @@ def _install_info(branch, cset_info, cset_tree):
             parent_invs = []
             rev = cset_info.real_revisions[-1]
             for p_id in rev.parent_ids:
-                if branch.has_revision(p_id):
+                if repository.has_revision(p_id):
                     present_parents.append(p_id)
-                    parent_invs.append(branch.get_inventory(revision))
+                    parent_invs.append(repository.get_inventory(revision))
 
             inv = cset_tree.inventory
             
             # Add the texts that are not already present
             for path, ie in inv.iter_entries():
-                w = branch.weave_store.get_weave_or_empty(ie.file_id,
-                        branch.get_transaction())
+                w = repository.weave_store.get_weave_or_empty(ie.file_id,
+                        repository.get_transaction())
                 if ie.revision not in w._name_map:
-                    branch.weave_store.add_text(ie.file_id, rev.revision_id,
-                        cset_tree.get_file(ie.file_id).readlines(),
-                        present_parents, branch.get_transaction())
+                    repository.weave_store.add_text(ie.file_id, 
+                                                    rev.revision_id,
+                    cset_tree.get_file(ie.file_id).readlines(),
+                    present_parents, repository.get_transaction())
 
             # Now add the inventory information
             txt = serializer_v5.write_inventory_to_string(inv)
             sha1 = sha_string(txt)
-            branch.control_weaves.add_text('inventory', 
+            repository.control_weaves.add_text('inventory', 
                 rev.revision_id, 
                 split_lines(txt), 
                 present_parents,
-                branch.get_transaction())
+                repository.get_transaction())
 
             # And finally, insert the revision
             rev_tmp = StringIO()
             serializer_v5.write_revision(rev, rev_tmp)
             rev_tmp.seek(0)
-            branch.revision_store.add(rev_tmp, rev.revision_id)
+            repository.revision_store.add(rev_tmp, rev.revision_id)
         finally:
             branch.unlock()
 
@@ -85,17 +86,17 @@ def apply_changeset(branch, from_file, reverse=False, auto_commit=False):
     if reverse:
         raise Exception('reverse not implemented yet')
 
-    cset = read_changeset.read_changeset(from_file, branch)
+    cset = read_changeset.read_changeset(from_file, branch.repository)
 
     return _apply_cset(branch, cset, reverse=reverse, auto_commit=auto_commit)
         
-def _apply_cset(branch, cset, reverse=False, auto_commit=False):
+def _apply_cset(tree, cset, reverse=False, auto_commit=False):
     """Apply an in-memory changeset to a given branch.
     """
 
     cset_info, cset_tree = cset
 
-    _install_info(branch, cset_info, cset_tree)
+    _install_info(tree.branch.repository, cset_info, cset_tree)
 
     # We could technically optimize more, by using the ChangesetTree
     # we already have in memory, but after installing revisions
@@ -107,12 +108,14 @@ def _apply_cset(branch, cset, reverse=False, auto_commit=False):
     #   for the merge, the merge code should pick the best merge
     #   based on the ancestry of both trees.
     #
-    if branch.last_revision() is None:
+    if tree.last_revision() is None:
         base = None
     else:
-        base = common_ancestor(branch.last_revision(), cset_info.target, branch)
-    merge_inner(branch, branch.revision_tree(cset_info.target),
-                branch.revision_tree(base))
+        base = common_ancestor(tree.last_revision(), cset_info.target, 
+                               tree.branch.repository)
+    merge_inner(tree.branch, 
+                tree.branch.repository.revision_tree(cset_info.target),
+                tree.branch.repository.revision_tree(base), this_tree=tree)
 
     auto_committed = False
     
@@ -189,7 +192,7 @@ def _apply_cset(branch, cset, reverse=False, auto_commit=False):
                 print '** Could not auto-commit.'
 
     if not auto_committed:
-        branch.add_pending_merge(cset_info.target)
+        tree.add_pending_merge(cset_info.target)
 
     return auto_committed
 
