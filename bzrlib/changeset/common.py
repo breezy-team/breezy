@@ -3,7 +3,10 @@
 Common entries, like strings, etc, for the changeset reading + writing code.
 """
 
+from sha import sha
+
 import bzrlib
+from bzrlib.testament import Testament
 
 header_str = 'Bazaar-NG changeset v'
 version = (0, 1, 0)
@@ -206,6 +209,13 @@ def unpack_highres_date(date):
     # Add back in the fractional seconds
     timestamp += fract_seconds
     return (timestamp, offset)
+
+
+def testament_sha1(repository, revision_id):
+    text = Testament.from_revision(repository, revision_id).as_short_text()
+    s = sha(text)
+    return s.hexdigest()
+ 
 
 if __name__ == '__main__':
     import doctest

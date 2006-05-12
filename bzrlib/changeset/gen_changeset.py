@@ -8,13 +8,13 @@ from sha import sha
 import bzrlib
 import os
 
+from bzrlib.changeset.common import testament_sha1
 from bzrlib.inventory import ROOT_ID
 from bzrlib.errors import BzrCommandError, NotAncestor
 from bzrlib.trace import warning, mutter
 from collections import deque
 from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
                              get_intervening_revisions, NULL_REVISION)
-from bzrlib.testament import Testament
 from bzrlib.diff import internal_diff, compare_trees
 
 class MetaInfoHeader(object):
@@ -316,9 +316,3 @@ def show_changeset(base_repository, base_rev_id,
             full_rename=include_full_diff, full_remove=include_full_diff,
             message=message)
     meta.write_meta_info(to_file)
-
-def testament_sha1(repository, revision_id):
-    text = Testament.from_revision(repository, revision_id).as_short_text()
-    s = sha(text)
-    return s.hexdigest()
-    

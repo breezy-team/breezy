@@ -309,7 +309,7 @@ class CSetTester(TestCaseInTempDir):
         open(',,cset', 'wb').write(cset_txt.getvalue())
         cset_txt.seek(0)
         # This should also validate the generate changeset
-        cset = read_changeset(cset_txt, self.b1)
+        cset = read_changeset(cset_txt, self.b1.repository)
         info, tree = cset
         for cset_rev in info.real_revisions:
             # These really should have already been checked in read_changeset

@@ -17,7 +17,8 @@ from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
                               InventoryLink)
 
-from bzrlib.changeset.common import decode, get_header, header_str
+from bzrlib.changeset.common import (decode, get_header, header_str,
+                                     testament_sha1)
 
 class BadChangeset(Exception): pass
 class MalformedHeader(BadChangeset): pass
@@ -199,13 +200,14 @@ class ChangesetReader(object):
         for rev, rev_info in zip(self.info.real_revisions, self.info.revisions):
             assert rev.revision_id == rev_info.revision_id
             sio = StringIO()
-            serializer_v5.write_revision(rev, sio)
-            sio.seek(0)
-            sha1 = sha_file(sio)
-            if sha1 != rev_info.sha1:
-                raise BzrError('Revision checksum mismatch.'
-                    ' For revision_id {%s} supplied sha1 (%s) != measured (%s)'
-                    % (rev.revision_id, rev_info.sha1, sha1))
+            # serializer_v5.write_revision(rev, sio)
+            # sio.seek(0)
+            # sha1 = sha_file(sio)
+            # if sha1 != rev_info.sha1:
+            #     raise BzrError('Revision checksum mismatch.'
+            #         ' For revision_id {%s} supplied sha1 (%s) != measured (%s)'
+            #         % (rev.revision_id, rev_info.sha1, sha1))
+            sha1 = rev_info.sha1
             if rev_to_sha1.has_key(rev.revision_id):
                 raise BzrError('Revision {%s} given twice in the list'
                         % (rev.revision_id))
@@ -226,8 +228,8 @@ class ChangesetReader(object):
         ##                                     parent.revision_sha1,
         ##                                     rev_to_sha1[parent.revision_id]))
 
-    def _validate_references_from_branch(self, branch):
-        """Now that we have a branch which should have some of the
+    def _validate_references_from_repository(self, repository):
+        """Now that we have a repository which should have some of the
         revisions we care about, go through and validate all of them
         that we can.
         """
@@ -265,8 +267,8 @@ class ChangesetReader(object):
         count = 0
         missing = {}
         for revision_id, sha1 in rev_to_sha.iteritems():
-            if branch.has_revision(revision_id):
-                local_sha1 = branch.get_revision_sha1(revision_id)
+            if repository.has_revision(revision_id):
+                local_sha1 = testament_sha1(repository, revision_id)
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For revision id {%s}' 
                             'local: %s, cset: %s' % (revision_id, local_sha1, sha1))
@@ -276,12 +278,12 @@ class ChangesetReader(object):
                 missing[revision_id] = sha1
 
         for inv_id, sha1 in inv_to_sha.iteritems():
-            if branch.has_revision(inv_id):
+            if repository.has_revision(inv_id):
                 # TODO: Currently branch.get_inventory_sha1() just returns the value
                 # that is stored in the revision text. Which is *really* bogus, because
                 # that means we aren't validating the actual text, just that we wrote 
                 # and read the string. But for now, what the hell.
-                local_sha1 = branch.get_inventory_sha1(inv_id)
+                local_sha1 = repository.get_inventory_sha1(inv_id)
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For inventory id {%s}' 
                             'local: %s, cset: %s' % (inv_id, local_sha1, sha1))
@@ -311,12 +313,12 @@ class ChangesetReader(object):
             raise BzrError('Inventory sha hash mismatch.')
 
         
-    def get_changeset(self, branch):
+    def get_changeset(self, repository):
         """Return the meta information, and a Changeset tree which can
         be used to populate the local stores and working tree, respectively.
         """
-        self._validate_references_from_branch(branch)
-        cset_tree = ChangesetTree(branch.revision_tree(self.info.base))
+        self._validate_references_from_repository(repository)
+        cset_tree = ChangesetTree(repository.revision_tree(self.info.base))
         self._update_tree(cset_tree)
 
         inv = cset_tree.inventory
@@ -626,16 +628,17 @@ class ChangesetReader(object):
                         ' (unrecognized action): %r' % action_line)
             valid_actions[action](kind, extra, lines)
 
-def read_changeset(from_file, branch):
+def read_changeset(from_file, repository):
     """Read in a changeset from a iterable object (such as a file object)
 
     :param from_file: A file-like object to read the changeset information.
-    :param branch: This will be used to build the changeset tree, it needs
-                   to contain the base of the changeset. (Which you probably
-                   won't know about until after the changeset is parsed.)
+    :param repository: This will be used to build the changeset tree, it needs
+                       to contain the base of the changeset. (Which you
+                       probably won't know about until after the changeset is
+                       parsed.)
     """
     cr = ChangesetReader(from_file)
-    return cr.get_changeset(branch)
+    return cr.get_changeset(repository)
 
 class ChangesetTree(Tree):
     def __init__(self, base_tree):
