@@ -41,20 +41,49 @@ class SvnFileWeave(VersionedFile):
     def get_lines(self, version_id):
         assert version_id != None
 
-        (path,revnum) = self.repository.filename_from_file_id(version_id, self.file_id)
-
+        (path,revnum) = self.repository.path_from_file_id(version_id, self.file_id)
 
         stream = StringIO()
         mutter('svn cat -r %r %s' % (revnum, path))
-        (revnum,props) = svn.ra.get_file(self.repository.ra, path.encode('utf8'), revnum, stream)
+        try:
+            (revnum,props) = svn.ra.get_file(self.repository.ra, path.encode('utf8'), revnum, stream)
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_FS_NOT_FILE:
+                return []
+            raise
+
         stream.seek(0)
 
         return stream.readlines()
+
+    def has_version(self,version):
+        #FIXME
+        print "HAS_VERSION: %s,%s" % (version,self.file_id)
+        return True # FIXME
+
+    def get_parents(self,version):
+        #FIXME
+        print "GET_PARENTS: %s,%s" % (version,self.file_id)
+        return []
 
 class SvnInventoryWeave(VersionedFile):
     def __init__(self,repository,access_mode='w'):
         VersionedFile.__init__(self,access_mode)
         self.repository = repository
+
+    def has_version(self,version):
+        #FIXME
+        print "inventory.HAS_VERSION: %s" % version
+        return True
+        
+    def get_parents(self,version):
+        #FIXME
+        print "inventory.GET_PARENTS: %s" % version
+        return []
+
+    def get_lines(self, version_id):
+        #FIXME
+        return []
 
 class SvnFileStore(object):
     def __init__(self,repository):
@@ -102,7 +131,7 @@ class SvnRepository(Repository):
 
             (dirents,last_revnum,props) = svn.ra.get_dir2(self.ra, path.encode('utf8'), revnum, svn.core.SVN_DIRENT_KIND)
 
-            recurse = []
+            recurse = {}
 
             for child_name in dirents:
                 dirent = dirents[child_name]
@@ -112,11 +141,11 @@ class SvnRepository(Repository):
                 else:
                     child_path = child_name
 
-                child_id = self.filename_to_file_id(revision_id, child_path)
+                (child_id,_) = self.path_to_file_id(revnum, child_path)
 
                 if dirent.kind == svn.core.svn_node_dir:
                     inventry = InventoryDirectory(child_id,child_name,id)
-                    recurse.append(child_path)
+                    recurse[child_path] = revnum
                 elif dirent.kind == svn.core.svn_node_file:
                     inventry = InventoryFile(child_id,child_name,id)
                     inventry.text_sha1 = "FIXME" 
@@ -128,7 +157,7 @@ class SvnRepository(Repository):
                 inv.add(inventry)
 
             for child_path in recurse:
-                child_id = self.filename_to_file_id(revision_id, child_path)
+                (child_id,_) = self.path_to_file_id(recurse[child_path], child_path)
                 read_directory(inv,child_id,child_path)
     
         inv = Inventory()
@@ -137,21 +166,37 @@ class SvnRepository(Repository):
 
         return inv
 
-    def filename_from_file_id(self,revision_id,file_id):
-        """Generate a Subversion filename from a bzr file id."""
+    def unprefix(self,path):
+        #FIXME: Needs to use BranchingScheme
+        parts = path.lstrip("/").split("/")
+        if parts[0] == "trunk" or parts[0] == "hooks":
+            return (parts[0],"/".join(parts[1:]))
+        elif parts[0] == "tags" or parts[0] == "branches":
+            return ("/".join(parts[0:2]),"/".join(parts[2:]))
+        else:
+            raise BzrError("Unable to unprefix path %s" % path)
+
+    def path_from_file_id(self,revision_id,file_id):
+        """Generate a Subversion path from a bzr file id."""
         
         return self.fileid_map[revision_id][file_id]
 
-    def filename_to_file_id(self,revision_id,filename):
+    def path_to_file_id(self,revnum,path):
         """Generate a bzr file id from a Subversion file name."""
-        file_id = filename.replace('/','@')
+
+        (path_branch, filename) = self.unprefix(path)
+
+        revision_id = self.generate_revision_id(revnum,path_branch)
+
         if not self.fileid_map.has_key(revision_id):
             self.fileid_map[revision_id] = {}
 
-        (_,revnum) = self.parse_revision_id(revision_id)
+        file_id = filename.replace('/','@')
+        if file_id == "":
+            file_id = ROOT_ID
 
-        self.fileid_map[revision_id][file_id] = (filename,revnum)
-        return file_id
+        self.fileid_map[revision_id][file_id] = (path,revnum)
+        return (file_id,revision_id)
 
     def all_revision_ids(self):
         raise NotImplementedError()
@@ -240,8 +285,47 @@ class SvnRepository(Repository):
         raise NotImplementedError()
 
     def fileids_altered_by_revision_ids(self, revision_ids):
-        print revision_ids
-        raise NotImplementedError()
+        ranges = {}
+        interested = {}
+
+        # First, figure out for which revisions to fetch 
+        # the logs. Keeps the range as narrow as possible to 
+        # save bandwidth (and thus increase speed)
+        for revid in revision_ids:
+            (path,revnum) = self.parse_revision_id(revid)
+
+            if not ranges.has_key(path):
+                ranges[path] = (revnum,revnum)
+                interested[path] = [revnum]
+            else:
+                (min,max) = ranges[path]
+                
+                if revnum < min: 
+                    min = revnum
+                if revnum > max:
+                    max = revnum
+                
+                interested.append(revnum)
+
+        result = {}
+
+        def rcvr(paths,revnum,*args):
+            if not revnum in interested[self._tmp]:
+                return
+            for path in paths:
+                (file_id,revid) = self.path_to_file_id(revnum, path)
+                if not result.has_key(file_id):
+                    result[file_id] = []
+                result[file_id].append(revid)
+
+        for path in ranges:
+            self._tmp = path
+            (min,max) = ranges[path]
+            mutter("svn log -r%d:%d %s" % (min,max,path))
+            svn.ra.get_log(self.ra, [path.encode('utf8')], min, \
+                max, 0, True, False, rcvr)
+
+        return result
 
     def fileid_involved_by_set(self, changes):
         ids = []

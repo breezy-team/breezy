@@ -30,7 +30,8 @@ class SvnRemoteAccess(BzrDir):
 
         assert isinstance(_transport, SvnTransport)
 
-        self.url = _transport.url
+        self.url = _transport.base
+        self.branch_path = _transport.path
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         raise NotImplementedError(SvnRemoteAccess.clone)
@@ -53,13 +54,8 @@ class SvnRemoteAccess(BzrDir):
     def open_branch(self, unsupported=True):
         repos = self.open_repository()
 
-        if not self.url.startswith(repos.url):
-            raise CorruptRepository(repos)
-
-        branch_path = self.url[len(repos.url):].strip("/")
-
         try:
-            branch = SvnBranch(repos, branch_path)
+            branch = SvnBranch(repos, self.branch_path)
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_RA_ILLEGAL_URL or \
                num == svn.core.SVN_ERR_WC_NOT_DIRECTORY or \
