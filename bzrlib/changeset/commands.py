@@ -94,8 +94,6 @@ class cmd_changeset(Command):
         base_revision = None
         if revision is None:
             target_revision = target_branch.last_revision()
-            if base_branch is not None:
-                base_revision = base_branch.last_revision()
         elif len(revision) == 1:
             target_revision = revision[0].in_history(target_branch).rev_id
             if base_branch is not None:
@@ -108,6 +106,14 @@ class cmd_changeset(Command):
                 base_revision = revision[1].in_history(target_branch).rev_id
         else:
             raise errors.BzrCommandError('--revision takes 1 or 2 parameters')
+
+        if revision is None or len(revision) == 1:
+            if base_branch is not None:
+                target_branch.repository.fetch(base_branch.repository, 
+                                               base_branch.last_revision())
+                base_revision = common_ancestor(base_branch.last_revision(),
+                                                target_revision,
+                                                target_branch.repository)
 
         if base_revision is None:
             rev = target_branch.repository.get_revision(target_revision)
