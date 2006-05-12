@@ -326,14 +326,24 @@ _url_safe_characters = set('abcdefghijklmnopqrstuvwxyz'
                         ';?:@&=+$,%#')
 
 
-def unescape_for_display(url):
+def unescape_for_display(url, encoding):
     """Decode what you can for a URL, so that we get a nice looking path.
 
     This will turn file:// urls into local paths, and try to decode
     any portions of a http:// style url that it can.
+
+    :param url: A 7-bit ASCII URL
+    :param encoding: The final output encoding
+    :return: A string which is encoded in the local encoding, suitable
+        for displaying on the terminal. Any section which cannot be
+        encoded in the given encoding will remain URL escaped.
     """
     if url.startswith('file://'):
-        return local_path_from_url(url)
+        try:
+            path = local_path_from_url(url)
+            return path.encode(encoding)
+        except UnicodeError:
+            return url
 
     # Split into sections to try to decode utf-8
     res = url.split('/')
@@ -350,11 +360,18 @@ def unescape_for_display(url):
                 escaped_chunks[j] = unichr(int(item[:2], 16)) + item[2:]
         unescaped = ''.join(escaped_chunks)
         try:
-            res[i] = unescaped.decode('utf-8')
+            decoded = unescaped.decode('utf-8')
         except UnicodeDecodeError:
             # If this path segment cannot be properly utf-8 decoded
             # after doing unescaping we will just leave it alone
             pass
+        else:
+            try:
+                res[i] = decoded.encode(encoding)
+            except UnicodeEncodeError:
+                # If this chunk cannot be encoded in the local
+                # encoding, then we should leave it alone
+                pass
     return '/'.join(res)
 
 
