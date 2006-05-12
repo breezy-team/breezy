@@ -120,7 +120,7 @@ class CTreeTester(TestCase):
         mtree.add_dir("b", "grandparent/parent")
         mtree.add_file("c", "grandparent/parent/file", "Hello\n")
         mtree.add_dir("d", "grandparent/alt_parent")
-        return ChangesetTree(mtree), mtree
+        return ChangesetTree(mtree, ''), mtree
         
     def test_renames(self):
         """Ensure that file renames have the proper effect on children"""

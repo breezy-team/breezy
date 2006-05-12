@@ -318,7 +318,8 @@ class ChangesetReader(object):
         be used to populate the local stores and working tree, respectively.
         """
         self._validate_references_from_repository(repository)
-        cset_tree = ChangesetTree(repository.revision_tree(self.info.base))
+        cset_tree = ChangesetTree(repository.revision_tree(self.info.base),
+                                  self.info.target)
         self._update_tree(cset_tree)
 
         inv = cset_tree.inventory
@@ -641,7 +642,7 @@ def read_changeset(from_file, repository):
     return cr.get_changeset(repository)
 
 class ChangesetTree(Tree):
-    def __init__(self, base_tree):
+    def __init__(self, base_tree, revision_id):
         self.base_tree = base_tree
         self._renamed = {} # Mapping from old_path => new_path
         self._renamed_r = {} # new_path => old_path
@@ -652,6 +653,7 @@ class ChangesetTree(Tree):
         self.patches = {}
         self.deleted = []
         self.contents_by_id = True
+        self.revision_id = revision_id
         self._inventory = None
 
     def __str__(self):
@@ -845,9 +847,9 @@ class ChangesetTree(Tree):
         root_id = base_inv.root.file_id
         try:
             # New inventories have a unique root_id
-            inv = Inventory(root_id)
+            inv = Inventory(root_id, self.revision_id)
         except TypeError:
-            inv = Inventory()
+            inv = Inventory(revision_id=self.revision_id)
 
         def add_entry(file_id):
             path = self.id2path(file_id)
