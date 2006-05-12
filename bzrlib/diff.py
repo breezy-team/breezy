@@ -264,6 +264,10 @@ def _show_diff_trees(old_tree, new_tree, to_file,
                      specific_files, external_diff_options, 
                      old_label='a/', new_label='b/' ):
 
+    # GNU Patch uses the epoch date to detect files that are being added
+    # or removed in a diff.
+    EPOCH_DATE = '1970-01-01 00:00:00 +0000'
+
     # TODO: Generation of pseudo-diffs for added/deleted files could
     # be usefully made into a much faster special case.
 
@@ -284,19 +288,17 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     for path, file_id, kind in delta.removed:
         has_changes = 1
         print >>to_file, '=== removed %s %r' % (kind, path)
-        old_date = time.strftime('%Y-%m-%d %H:%M:%S +0000',
-                                 time.gmtime(old_tree.get_file_mtime(file_id)))
-        old_name = '%s%s\t%s' % (old_label, path, old_date)
-        new_name = '%s%s\t1970-01-01 00:00:00 +0000' % (new_label, path)
+        old_name = '%s%s\t%s' % (old_label, path,
+                                 _patch_header_date(old_tree, file_id))
+        new_name = '%s%s\t%s' % (new_label, path, EPOCH_DATE)
         old_tree.inventory[file_id].diff(diff_file, old_name, old_tree,
                                          new_name, None, None, to_file)
     for path, file_id, kind in delta.added:
         has_changes = 1
         print >>to_file, '=== added %s %r' % (kind, path)
-        old_name = '%s%s\t1970-01-01 00:00:00 +0000' % (old_label, path)
-        new_date = time.strftime('%Y-%m-%d %H:%M:%S +0000',
-                                 time.gmtime(new_tree.get_file_mtime(file_id)))
-        new_name = '%s%s\t%s' % (new_label, path, new_date)
+        old_name = '%s%s\t%s' % (old_label, path, EPOCH_DATE)
+        new_name = '%s%s\t%s' % (new_label, path,
+                                 _patch_header_date(new_tree, file_id))
         new_tree.inventory[file_id].diff(diff_file, new_name, new_tree,
                                          old_name, None, None, to_file, 
                                          reverse=True)
@@ -306,12 +308,10 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== renamed %s %r => %r%s' % (
                     kind, old_path, new_path, prop_str)
-        old_date = time.strftime('%Y-%m-%d %H:%M:%S +0000',
-                                 time.gmtime(old_tree.get_file_mtime(file_id)))
-        old_name = '%s%s\t%s' % (old_label, old_path, old_date)
-        new_date = time.strftime('%Y-%m-%d %H:%M:%S +0000',
-                                 time.gmtime(new_tree.get_file_mtime(file_id)))
-        new_name = '%s%s\t%s' % (new_label, new_path, new_date)
+        old_name = '%s%s\t%s' % (old_label, old_path,
+                                 _patch_header_date(old_tree, file_id))
+        new_name = '%s%s\t%s' % (new_label, new_path,
+                                 _patch_header_date(new_tree, file_id))
         _maybe_diff_file_or_symlink(old_name, old_tree, file_id,
                                     new_name, new_tree,
                                     text_modified, kind, to_file, diff_file)
@@ -319,18 +319,22 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== modified %s %r%s' % (kind, path, prop_str)
-        old_date = time.strftime('%Y-%m-%d %H:%M:%S +0000',
-                                 time.gmtime(old_tree.get_file_mtime(file_id)))
-        old_name = '%s%s\t%s' % (old_label, path, old_date)
-        new_date = time.strftime('%Y-%m-%d %H:%M:%S +0000',
-                                 time.gmtime(new_tree.get_file_mtime(file_id)))
-        new_name = '%s%s\t%s' % (new_label, path, new_date)
+        old_name = '%s%s\t%s' % (old_label, path,
+                                 _patch_header_date(old_tree, file_id))
+        new_name = '%s%s\t%s' % (new_label, path,
+                                 _patch_header_date(new_tree, file_id))
         if text_modified:
             _maybe_diff_file_or_symlink(old_name, old_tree, file_id,
                                         new_name, new_tree,
                                         True, kind, to_file, diff_file)
 
     return has_changes
+
+
+def _patch_header_date(tree, file_id):
+    """Returns a timestamp suitable for use in a patch header."""
+    tm = time.gmtime(tree.get_file_mtime(file_id))
+    return time.strftime('%Y-%m-%d %H:%M:%S +0000', tm)
 
 
 def _raise_if_doubly_unversioned(specific_files, old_tree, new_tree):
