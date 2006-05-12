@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import time
+
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 import bzrlib.errors as errors
@@ -50,8 +52,8 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
         check_text_lines(newlines)
 
     ud = difflib.unified_diff(oldlines, newlines,
-                              fromfile=old_filename+'\t', 
-                              tofile=new_filename+'\t')
+                              fromfile=old_filename, 
+                              tofile=new_filename)
 
     ud = list(ud)
     # work-around for difflib being too smart for its own good
@@ -106,9 +108,9 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         if not diff_opts:
             diff_opts = []
         diffcmd = ['diff',
-                   '--label', old_filename+'\t',
+                   '--label', old_filename,
                    oldtmpf.name,
-                   '--label', new_filename+'\t',
+                   '--label', new_filename,
                    newtmpf.name]
 
         # diff only allows one style to be specified; they don't override.
@@ -262,11 +264,6 @@ def _show_diff_trees(old_tree, new_tree, to_file,
                      specific_files, external_diff_options, 
                      old_label='a/', new_label='b/' ):
 
-    DEVNULL = '/dev/null'
-    # Windows users, don't panic about this filename -- it is a
-    # special signal to GNU patch that the file should be created or
-    # deleted respectively.
-
     # TODO: Generation of pseudo-diffs for added/deleted files could
     # be usefully made into a much faster special case.
 
@@ -287,13 +284,21 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     for path, file_id, kind in delta.removed:
         has_changes = 1
         print >>to_file, '=== removed %s %r' % (kind, path)
-        old_tree.inventory[file_id].diff(diff_file, old_label + path, old_tree,
-                                         DEVNULL, None, None, to_file)
+        old_date = time.strftime('%Y-%m-%d %H:%M:%S +0000',
+                                 time.gmtime(old_tree.get_file_mtime(file_id)))
+        old_name = '%s%s\t%s' % (old_label, path, old_date)
+        new_name = '%s%s\t1970-01-01 00:00:00 +0000' % (new_label, path)
+        old_tree.inventory[file_id].diff(diff_file, old_name, old_tree,
+                                         new_name, None, None, to_file)
     for path, file_id, kind in delta.added:
         has_changes = 1
         print >>to_file, '=== added %s %r' % (kind, path)
-        new_tree.inventory[file_id].diff(diff_file, new_label + path, new_tree,
-                                         DEVNULL, None, None, to_file, 
+        old_name = '%s%s\t1970-01-01 00:00:00 +0000' % (old_label, path)
+        new_date = time.strftime('%Y-%m-%d %H:%M:%S +0000',
+                                 time.gmtime(new_tree.get_file_mtime(file_id)))
+        new_name = '%s%s\t%s' % (new_label, path, new_date)
+        new_tree.inventory[file_id].diff(diff_file, new_name, new_tree,
+                                         old_name, None, None, to_file, 
                                          reverse=True)
     for (old_path, new_path, file_id, kind,
          text_modified, meta_modified) in delta.renamed:
@@ -301,16 +306,28 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== renamed %s %r => %r%s' % (
                     kind, old_path, new_path, prop_str)
-        _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
-                                    new_label, new_path, new_tree,
+        old_date = time.strftime('%Y-%m-%d %H:%M:%S +0000',
+                                 time.gmtime(old_tree.get_file_mtime(file_id)))
+        old_name = '%s%s\t%s' % (old_label, old_path, old_date)
+        new_date = time.strftime('%Y-%m-%d %H:%M:%S +0000',
+                                 time.gmtime(new_tree.get_file_mtime(file_id)))
+        new_name = '%s%s\t%s' % (new_label, new_path, new_date)
+        _maybe_diff_file_or_symlink(old_name, old_tree, file_id,
+                                    new_name, new_tree,
                                     text_modified, kind, to_file, diff_file)
     for path, file_id, kind, text_modified, meta_modified in delta.modified:
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== modified %s %r%s' % (kind, path, prop_str)
+        old_date = time.strftime('%Y-%m-%d %H:%M:%S +0000',
+                                 time.gmtime(old_tree.get_file_mtime(file_id)))
+        old_name = '%s%s\t%s' % (old_label, path, old_date)
+        new_date = time.strftime('%Y-%m-%d %H:%M:%S +0000',
+                                 time.gmtime(new_tree.get_file_mtime(file_id)))
+        new_name = '%s%s\t%s' % (new_label, path, new_date)
         if text_modified:
-            _maybe_diff_file_or_symlink(old_label, path, old_tree, file_id,
-                                        new_label, path, new_tree,
+            _maybe_diff_file_or_symlink(old_name, old_tree, file_id,
+                                        new_name, new_tree,
                                         True, kind, to_file, diff_file)
 
     return has_changes
@@ -353,12 +370,12 @@ def get_prop_change(meta_modified):
         return  ""
 
 
-def _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
-                                new_label, new_path, new_tree, text_modified,
+def _maybe_diff_file_or_symlink(old_path, old_tree, file_id,
+                                new_path, new_tree, text_modified,
                                 kind, to_file, diff_file):
     if text_modified:
         new_entry = new_tree.inventory[file_id]
         old_tree.inventory[file_id].diff(diff_file,
-                                         old_label + old_path, old_tree,
-                                         new_label + new_path, new_entry, 
+                                         old_path, old_tree,
+                                         new_path, new_entry, 
                                          new_tree, to_file)
