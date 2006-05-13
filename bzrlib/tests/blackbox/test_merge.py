@@ -189,4 +189,6 @@ class TestMerge(ExternalBase):
         f.close()
         tree_b.commit('message')
         os.chdir('branch_b')
-        file('cset', 'wb').write(self.runbzr('changeset ../branch_a')[0])
+        file('../cset', 'wb').write(self.runbzr('changeset ../branch_a')[0])
+        os.chdir('../branch_a')
+        self.runbzr('merge ../cset')
