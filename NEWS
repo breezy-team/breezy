@@ -8,11 +8,19 @@ bzr 0.8.1  2006-05-12
     * Nicer messages from 'commit' in the case of renames, and correct
       messages when a merge has occured. (Robert Collins, Martin Pool)
 
+    * Add info on standalone branches without a working tree.
+      (#44155, Olaf Conradi)
+
   INTERNALS:
 
     * New public api in InventoryEntry - 'describe_change(old, new)' which
       provides a human description of the changes between two old and
       new. (Robert Collins, Martin Pool)
+
+  TESTING:
+
+    * Fix test case for bzr info in upgrading a standalone branch to metadir,
+      uses bzrlib api now. (Olaf Conradi)
 
 bzr 0.8  2006-05-08
 
