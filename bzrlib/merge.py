@@ -205,6 +205,9 @@ class Merger(object):
         if other_branch.base != self.this_branch.base:
             self.this_branch.fetch(other_branch, last_revision=self.other_basis)
 
+    def find_base(self):
+        set_base([None, None])
+
     def set_base(self, base_revision):
         mutter("doing merge() with no base_revision specified")
         if base_revision == [None, None]:

@@ -25,6 +25,8 @@ import bzrlib
 import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
+from bzrlib.changeset.read_changeset import read_changeset, BadChangeset
+from bzrlib.changeset.apply_changeset import _install_info
 from bzrlib.commands import Command, display_command
 from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
@@ -1940,7 +1942,26 @@ class cmd_merge(Command):
         if merge_type is None:
             merge_type = Merge3Merger
 
+
         tree = WorkingTree.open_containing(u'.')[0]
+        try:
+            cset_info, cset_tree = read_changeset(file(branch, 'rb'),
+                                                  tree.branch.repository)
+
+        except IOError, e:
+            if e != errno.ENOENT:
+                raise
+            cset_info=None
+        except BadChangeset:
+            cset_info=None
+        if cset_info is not None:
+            conflicts = merge_changeset(cset_info, tree, not force, merge_type,
+                                        reprocess, show_base)
+            if conflicts == 0:
+                return 0
+            else:
+                return 1
+
         stored_loc = tree.branch.get_parent()
         if branch is None:
             if stored_loc is None:
@@ -2551,6 +2572,34 @@ def merge(other_revision, base_revision,
         conflicts = merger.do_merge()
         if file_list is None:
             merger.set_pending()
+    finally:
+        pb.clear()
+    return conflicts
+
+
+def merge_changeset(cset_info, cset_tree, tree, check_clean, merge_type, 
+                    reprocess, show_base):
+    """Merge a changeset's revision into the current tree."""
+    pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    try:
+        _install_info(tree.branch.repository, cset_info, cset_tree)
+        other_revision_id = cset_info.revision[0].revision_id
+        merger = Merger(this_branch, this_tree=this_tree, pb=pb)
+        merger.pp = ProgressPhase("Merge phase", 5, pb)
+        merger.pp.next_phase()
+        merger.check_basis(check_clean)
+        merger.other_rev_id = other_revision_id
+        merger.other_basis = other_revision_id
+        merger.pp.next_phase()
+        merger.find_base()
+        if merger.base_rev_id == merger.other_rev_id:
+            note("Nothing to do.")
+            return 0
+        merger.merge_type = merge_type
+        merger.show_base = show_base
+        merger.reprocess = reprocess
+        conflicts = merger.do_merge()
+        merger.set_pending()
     finally:
         pb.clear()
     return conflicts
