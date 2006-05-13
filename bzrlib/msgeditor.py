@@ -39,6 +39,11 @@ def _get_editor():
         yield e
         
     try:
+        yield os.environ["VISUAL"]
+    except KeyError:
+        pass
+        
+    try:
         yield os.environ["EDITOR"]
     except KeyError:
         pass
@@ -47,7 +52,7 @@ def _get_editor():
         for editor in 'wordpad.exe', 'notepad.exe':
             yield editor
     else:
-        for editor in ['vi', 'pico', 'nano', 'joe']:
+        for editor in ['/usr/bin/editor', 'vi', 'pico', 'nano', 'joe']:
             yield editor
 
 
