@@ -520,7 +520,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return self._hashcache.get_sha1(path)
 
     def get_file_mtime(self, file_id):
-        return os.path.getmtime(self.id2abspath(file_id))
+        return os.lstat(self.id2abspath(file_id)).st_mtime
 
     def is_executable(self, file_id):
         if not supports_executable():
