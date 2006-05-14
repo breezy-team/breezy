@@ -6,9 +6,11 @@ Read in a changeset output, and process it into a Changeset object.
 import os
 import pprint
 from cStringIO import StringIO
+from sha import sha
 
 from bzrlib.tree import Tree
 from bzrlib.trace import mutter, warning
+from bzrlib.testament import Testament
 from bzrlib.errors import BzrError
 from bzrlib.xml5 import serializer_v5
 from bzrlib.osutils import sha_file, sha_string
@@ -184,9 +186,8 @@ class ChangesetReader(object):
         # Fill in all the missing blanks for the revisions
         # and generate the real_revisions list.
         self.info.complete_info()
-        self._validate_revisions()
 
-    def _validate_revisions(self):
+    def _validate_revisions(self, inventory):
         """Make sure all revision entries match their checksum."""
 
         # This is a mapping from each revision id to it's sha hash
@@ -194,15 +195,11 @@ class ChangesetReader(object):
 
         for rev, rev_info in zip(self.info.real_revisions, self.info.revisions):
             assert rev.revision_id == rev_info.revision_id
-            sio = StringIO()
-            # serializer_v5.write_revision(rev, sio)
-            # sio.seek(0)
-            # sha1 = sha_file(sio)
-            # if sha1 != rev_info.sha1:
-            #     raise BzrError('Revision checksum mismatch.'
-            #         ' For revision_id {%s} supplied sha1 (%s) != measured (%s)'
-            #         % (rev.revision_id, rev_info.sha1, sha1))
-            sha1 = rev_info.sha1
+            sha1 = sha(Testament(rev, inventory).as_short_text()).hexdigest()
+            if sha1 != rev_info.sha1:
+                raise BzrError('Revision checksum mismatch.'
+                    ' For revision_id {%s} supplied sha1 (%s) != measured (%s)'
+                    % (rev.revision_id, rev_info.sha1, sha1))
             if rev_to_sha1.has_key(rev.revision_id):
                 raise BzrError('Revision {%s} given twice in the list'
                         % (rev.revision_id))
@@ -317,6 +314,7 @@ class ChangesetReader(object):
 
         inv = cset_tree.inventory
         self._validate_inventory(inv)
+        self._validate_revisions(inv)
 
         return self.info, cset_tree
 
