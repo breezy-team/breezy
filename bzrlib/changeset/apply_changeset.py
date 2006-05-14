@@ -43,7 +43,7 @@ def _install_info(repository, cset_info, cset_tree):
             for p_id in rev.parent_ids:
                 if repository.has_revision(p_id):
                     present_parents.append(p_id)
-                    parent_invs.append(repository.get_inventory(revision))
+                    parent_invs.append(repository.get_inventory(p_id))
 
             inv = cset_tree.inventory
             
@@ -51,28 +51,15 @@ def _install_info(repository, cset_info, cset_tree):
             for path, ie in inv.iter_entries():
                 w = repository.weave_store.get_weave_or_empty(ie.file_id,
                         repository.get_transaction())
-                if ie.revision not in w._name_map:
+                if ie.revision not in w:
                     repository.weave_store.add_text(ie.file_id, 
                                                     rev.revision_id,
                     cset_tree.get_file(ie.file_id).readlines(),
                     present_parents, repository.get_transaction())
 
-            # Now add the inventory information
-            txt = serializer_v5.write_inventory_to_string(inv)
-            sha1 = sha_string(txt)
-            repository.control_weaves.add_text('inventory', 
-                rev.revision_id, 
-                split_lines(txt), 
-                present_parents,
-                repository.get_transaction())
-
-            # And finally, insert the revision
-            rev_tmp = StringIO()
-            serializer_v5.write_revision(rev, rev_tmp)
-            rev_tmp.seek(0)
-            repository.revision_store.add(rev_tmp, rev.revision_id)
+            repository.add_revision(rev.revision_id, rev, inv)
         finally:
-            branch.unlock()
+            repository.unlock()
 
 def apply_changeset(branch, from_file, reverse=False, auto_commit=False):
     """Read in a changeset from the given file, and apply it to

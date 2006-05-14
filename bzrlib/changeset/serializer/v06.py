@@ -139,6 +139,7 @@ class ChangesetSerializerV06(ChangesetSerializer):
         t = Testament.from_revision(self.source, rev.revision_id)
         map(s.update, t.as_text_lines())
         w('sha1', s.hexdigest())
+        w('inventory sha1', rev.inventory_sha1)
         if rev.parent_ids:
             w('parent ids', rev.parent_ids)
         if rev.properties:

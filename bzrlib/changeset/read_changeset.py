@@ -302,7 +302,8 @@ class ChangesetReader(object):
         rev = self.info.real_revisions[-1]
         if sha1 != rev.inventory_sha1:
             open(',,bogus-inv', 'wb').write(s)
-            raise BzrError('Inventory sha hash mismatch.')
+            raise BzrError('Inventory sha hash mismatch. %s != %s' % (sha1,
+            rev.inventory_sha1))
 
         
     def get_changeset(self, repository):

@@ -1955,8 +1955,8 @@ class cmd_merge(Command):
         except BadChangeset:
             cset_info=None
         if cset_info is not None:
-            conflicts = merge_changeset(cset_info, tree, not force, merge_type,
-                                        reprocess, show_base)
+            conflicts = merge_changeset(cset_info, cset_tree, tree, not force, 
+                                        merge_type, reprocess, show_base)
             if conflicts == 0:
                 return 0
             else:
@@ -2580,15 +2580,17 @@ def merge(other_revision, base_revision,
 def merge_changeset(cset_info, cset_tree, tree, check_clean, merge_type, 
                     reprocess, show_base):
     """Merge a changeset's revision into the current tree."""
+    from bzrlib.merge import Merger
     pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
         _install_info(tree.branch.repository, cset_info, cset_tree)
-        other_revision_id = cset_info.revision[0].revision_id
-        merger = Merger(this_branch, this_tree=this_tree, pb=pb)
+        other_revision_id = cset_info.revisions[0].revision_id
+        merger = Merger(tree.branch, this_tree=tree, pb=pb)
         merger.pp = ProgressPhase("Merge phase", 5, pb)
         merger.pp.next_phase()
         merger.check_basis(check_clean)
         merger.other_rev_id = other_revision_id
+        merger.other_tree = merger.revision_tree(other_revision_id)
         merger.other_basis = other_revision_id
         merger.pp.next_phase()
         merger.find_base()

@@ -169,7 +169,7 @@ class TestMerge(ExternalBase):
         tree_b.commit('merge branch_c')
 
     def test_merge_changeset(self):
-        # Changesets actually represent a revision plus its ancestors, so
+        # Changesets actually represent a revision (plus its ancestors), so
         # they can be merged.
         tree_a = self.make_branch_and_tree('branch_a')
         f = file('branch_a/a', 'wb')
@@ -191,4 +191,4 @@ class TestMerge(ExternalBase):
         os.chdir('branch_b')
         file('../cset', 'wb').write(self.runbzr('changeset ../branch_a')[0])
         os.chdir('../branch_a')
-        self.runbzr('merge ../cset')
+        self.runbzr('merge ../cset', retcode=1)
