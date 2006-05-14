@@ -27,6 +27,7 @@ from sha import sha
 from bzrlib.diff import internal_diff
 from bzrlib.delta import compare_trees
 from bzrlib.rio import RioWriter, read_stanzas
+from bzrlib.revision import NULL_REVISION
 from bzrlib.osutils import pathjoin
 
 
@@ -108,15 +109,15 @@ class ChangesetSerializerV06(ChangesetSerializer):
                     break
             if base_id is None and rev.parent_ids:
                 base_id = rev.parent_ids[0]
+            else:
+                base_id = NULL_REVISION
 
             if base_id == last_rev_id:
-                base_rev = last_rev
                 base_tree = last_rev_tree
             else:
-                base_rev = self.source.get_revision(base_id)
                 base_tree = self.source.revision_tree(base_id)
 
-            self._write_revision(rev, rev_tree, base_rev, base_tree)
+            self._write_revision(rev, rev_tree, None, base_tree)
 
             last_rev_id = rev_id
             last_rev = rev
