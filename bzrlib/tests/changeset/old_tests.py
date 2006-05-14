@@ -295,17 +295,17 @@ class CSetTester(TestCaseInTempDir):
         from cStringIO import StringIO
         from bzrlib.changeset.gen_changeset import show_changeset
         from bzrlib.changeset.read_changeset import read_changeset
+        from bzrlib.changeset.serializer import write
 
         cset_txt = StringIO()
-        show_changeset(self.b1.repository, base_rev_id, self.b1, rev_id, 
-                       to_file=cset_txt, message=message)
+        write(self.b1.repository, [rev_id], cset_txt)
         cset_txt.seek(0)
-        self.assertEqual(cset_txt.readline(), '# Bazaar-NG changeset v0.1.0\n')
-        self.assertEqual(cset_txt.readline(), '# \n')
+        self.assertEqual(cset_txt.readline(), '# Bazaar changeset v0.6\n')
+        self.assertEqual(cset_txt.readline(), '#\n')
 
         rev = self.b1.repository.get_revision(rev_id)
         self.assertEqual(cset_txt.readline().decode('utf-8'),
-                u'# committer: %s\n' % rev.committer)
+                u'# revision id: %s\n' % rev.revision_id)
 
         open(',,cset', 'wb').write(cset_txt.getvalue())
         cset_txt.seek(0)
