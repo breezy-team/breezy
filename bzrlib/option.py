@@ -165,8 +165,6 @@ _global_option('overwrite', help='Ignore differences between branches and '
 _global_option('basis', type=str)
 _global_option('bound')
 _global_option('diff-options', type=str)
-_global_option('diff-prefix', type=str, 
-               help='Set prefixes to added to old and new filenames, as two values separated by a colon')
 _global_option('help',
                help='show help message')
 _global_option('file', type=unicode)
@@ -175,6 +173,9 @@ _global_option('format', type=unicode)
 _global_option('forward')
 _global_option('message', type=unicode)
 _global_option('no-recurse')
+_global_option('prefix', type=str, 
+               help='Set prefixes to added to old and new filenames, as '
+                    'two values separated by a colon.')
 _global_option('profile',
                help='show performance profiling information')
 _global_option('revision', type=_parse_revision_str)
@@ -218,3 +219,4 @@ Option.SHORT_OPTIONS['r'] = Option.OPTIONS['revision']
 Option.SHORT_OPTIONS['v'] = Option.OPTIONS['verbose']
 Option.SHORT_OPTIONS['l'] = Option.OPTIONS['long']
 Option.SHORT_OPTIONS['q'] = Option.OPTIONS['quiet']
+Option.SHORT_OPTIONS['p'] = Option.OPTIONS['prefix']

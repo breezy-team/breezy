@@ -37,14 +37,13 @@ rather starts again from the run_bzr function.
 from cStringIO import StringIO
 import os
 import re
-import shutil
 import sys
 
 import bzrlib
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
-from bzrlib.osutils import has_symlinks, pathjoin
+from bzrlib.osutils import has_symlinks, pathjoin, rmtree
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
@@ -491,7 +490,7 @@ class TestCommands(ExternalBase):
         self.runbzr('pull')
         self.runbzr('pull ../c')
         self.runbzr('branch ../c ../d')
-        shutil.rmtree('../c')
+        rmtree('../c')
         self.runbzr('pull')
         os.chdir('../b')
         self.runbzr('pull')

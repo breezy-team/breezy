@@ -60,4 +60,3 @@ class TrivialTest(TestCaseWithTransport):
                                   "Reconciliation complete.\n" %
                                   t.bzrdir.root_transport.base)
         self.assertEqualDiff(err, "")
-

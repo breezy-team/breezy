@@ -123,10 +123,6 @@ from bzrlib.rio import RioWriter, read_stanza, Stanza
 # lock at the same time they should *both* get it.  But then that's unlikely
 # to be a good idea.
 
-# TODO: Transport could offer a simpler put() method that avoids the
-# rename-into-place for cases like creating the lock template, where there is
-# no chance that the file already exists.
-
 # TODO: Perhaps store some kind of note like the bzr command line in the lock
 # info?
 
@@ -199,7 +195,11 @@ class LockDir(object):
             sio = StringIO()
             self._prepare_info(sio)
             sio.seek(0)
-            self.transport.put(tmpname + self.__INFO_NAME, sio)
+            # append will create a new file; we use append rather than put
+            # because we don't want to write to a temporary file and rename
+            # into place, because that's going to happen to the whole
+            # directory
+            self.transport.append(tmpname + self.__INFO_NAME, sio)
             self.transport.rename(tmpname, self._held_dir)
             self._lock_held = True
             self.confirm()
@@ -218,11 +218,31 @@ class LockDir(object):
         # rename before deleting, because we can't atomically remove the whole
         # tree
         tmpname = '%s/releasing.%s.tmp' % (self.path, rand_chars(20))
+        # gotta own it to unlock
+        self.confirm()
         self.transport.rename(self._held_dir, tmpname)
         self._lock_held = False
         self.transport.delete(tmpname + self.__INFO_NAME)
         self.transport.rmdir(tmpname)
 
+    def break_lock(self):
+        """Break a lock not held by this instance of LockDir.
+
+        This is a UI centric function: it uses the bzrlib.ui.ui_factory to
+        prompt for input if a lock is detected and there is any doubt about
+        it possibly being still active.
+        """
+        self._check_not_locked()
+        holder_info = self.peek()
+        if holder_info is not None:
+            if bzrlib.ui.ui_factory.get_boolean(
+                "Break lock %s held by %s@%s [process #%s]" % (
+                    self.transport,
+                    holder_info["user"],
+                    holder_info["hostname"],
+                    holder_info["pid"])):
+                self.force_break(holder_info)
+        
     def force_break(self, dead_holder_info):
         """Release a lock held by another process.
 
@@ -241,8 +261,7 @@ class LockDir(object):
         """
         if not isinstance(dead_holder_info, dict):
             raise ValueError("dead_holder_info: %r" % dead_holder_info)
-        if self._lock_held:
-            raise AssertionError("can't break own lock: %r" % self)
+        self._check_not_locked()
         current_info = self.peek()
         if current_info is None:
             # must have been recently released
@@ -260,6 +279,11 @@ class LockDir(object):
             raise LockBreakMismatch(self, broken_info, dead_holder_info)
         self.transport.delete(broken_info_path)
         self.transport.rmdir(tmpname)
+
+    def _check_not_locked(self):
+        """If the lock is held by this instance, raise an error."""
+        if self._lock_held:
+            raise AssertionError("can't break own lock: %r" % self)
 
     def confirm(self):
         """Make sure that the lock is still held by this locker.

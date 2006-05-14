@@ -246,6 +246,11 @@ passing options.  For example::
 
     % bzr diff --diff-options --side-by-side foo
 
+Some projects prefer patches to show a prefix at the start of the path for
+old and new files.  The --prefix option can be used to provide such a prefix. 
+As a shortcut, ``bzr diff -p1`` produces a form that works with the 
+command ``patch -p1``.
+
 Committing changes
 ==================
 

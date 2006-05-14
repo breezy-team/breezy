@@ -24,6 +24,7 @@ import errno
 import os
 import re
 import sha
+import shutil
 import string
 import sys
 import time
@@ -38,6 +39,7 @@ from bzrlib.errors import (BzrError,
                            IllegalPath,
                            )
 from bzrlib.trace import mutter
+import bzrlib.win32console
 
 
 def make_readonly(filename):
@@ -171,7 +173,8 @@ def fancy_rename(old, new, rename_func, unlink_func):
             else:
                 rename_func(tmp_name, new)
 
-# Default is to just use the python builtins
+# Default is to just use the python builtins, but these can be rebound on
+# particular platforms.
 abspath = os.path.abspath
 realpath = os.path.realpath
 pathjoin = os.path.join
@@ -181,6 +184,7 @@ mkdtemp = tempfile.mkdtemp
 rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
+rmtree = shutil.rmtree
 
 MIN_ABS_PATHLENGTH = 1
 
@@ -221,6 +225,24 @@ if sys.platform == 'win32':
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
 
     MIN_ABS_PATHLENGTH = 3
+
+    def _win32_delete_readonly(function, path, excinfo):
+        """Error handler for shutil.rmtree function [for win32]
+        Helps to remove files and dirs marked as read-only.
+        """
+        type_, value = excinfo[:2]
+        if function in (os.remove, os.rmdir) \
+            and type_ == OSError \
+            and value.errno == errno.EACCES:
+            bzrlib.osutils.make_writable(path)
+            function(path)
+        else:
+            raise
+
+    def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
+        """Replacer for shutil.rmtree: could remove readonly dirs/files"""
+        return shutil.rmtree(path, ignore_errors, onerror)
+
 
 def normalizepath(f):
     if hasattr(os.path, 'realpath'):
@@ -646,16 +668,26 @@ def safe_unicode(unicode_or_utf8_string):
 
 def terminal_width():
     """Return estimated terminal width."""
-
-    # TODO: Do something smart on Windows?
-
-    # TODO: Is there anything that gets a better update when the window
-    # is resized while the program is running? We could use the Python termcap
-    # library.
+    if sys.platform == 'win32':
+        import bzrlib.win32console
+        return bzrlib.win32console.get_console_size()[0]
+    width = 0
     try:
-        return int(os.environ['COLUMNS'])
-    except (IndexError, KeyError, ValueError):
-        return 80
+        import struct, fcntl, termios
+        s = struct.pack('HHHH', 0, 0, 0, 0)
+        x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
+        width = struct.unpack('HHHH', x)[1]
+    except IOError:
+        pass
+    if width <= 0:
+        try:
+            width = int(os.environ['COLUMNS'])
+        except:
+            pass
+    if width <= 0:
+        width = 80
+
+    return width
 
 def supports_executable():
     return sys.platform != "win32"
