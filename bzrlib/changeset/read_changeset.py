@@ -55,9 +55,9 @@ class RevisionInfo(object):
         self.timezone = None
         self.inventory_sha1 = None
 
-        self.parents = None
-        self.parent_sha1s = {}
+        self.parent_ids = None
         self.message = None
+        self.properties = None
 
     def __str__(self):
         return pprint.pformat(self.__dict__)
@@ -411,16 +411,18 @@ class ChangesetReader(object):
         if key is None:
             return
 
-        if key == 'revision':
+        if key == 'revision_id':
             self._read_revision(value)
-        elif hasattr(self.info, key):
-            if getattr(self.info, key) is None:
-                setattr(self.info, key, value)
-            else:
-                raise MalformedHeader('Duplicated Key: %s' % key)
         else:
-            # What do we do with a key we don't recognize
-            raise MalformedHeader('Unknown Key: %s' % key)
+            revision_info = self.info.revisions[-1]
+            if hasattr(revision_info, key):
+                if getattr(revision_info, key) is None:
+                    setattr(revision_info, key, value)
+                else:
+                    raise MalformedHeader('Duplicated Key: %s' % key)
+            else:
+                # What do we do with a key we don't recognize
+                raise MalformedHeader('Unknown Key: "%s"' % key)
         
     def _read_many(self, indent):
         """If a line ends with no entry, that means that it should be
@@ -486,7 +488,7 @@ class ChangesetReader(object):
         rev_info = RevisionInfo(revision_id)
         start = '#    '
         for line in self._next():
-            key,value = self._read_next_entry(line, indent=4)
+            key,value = self._read_next_entry(line, indent=1)
             #if key is None:
             #    continue
             if hasattr(rev_info, key):
