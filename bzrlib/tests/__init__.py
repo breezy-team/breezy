@@ -959,7 +959,7 @@ def test_suite():
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_bzrdir',
-                   'bzrlib.tests.changeset.old_tests',
+                   'bzrlib.tests.test_changeset',
                    'bzrlib.tests.test_command',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
