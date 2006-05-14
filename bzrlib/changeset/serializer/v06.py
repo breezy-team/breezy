@@ -19,10 +19,10 @@
 
 import os
 import bzrlib.errors as errors
-from bzrlib.testament import Testament
 from bzrlib.changeset.serializer import (ChangesetSerializer, 
         CHANGESET_HEADER,
         format_highres_date, unpack_highres_date)
+from bzrlib.changeset.common import testament_sha1
 from sha import sha
 from bzrlib.diff import internal_diff
 from bzrlib.delta import compare_trees
@@ -82,7 +82,7 @@ class ChangesetSerializerV06(ChangesetSerializer):
             f.write(':\n')
             for entry in value:
                 f.write('#' + (' ' * (indent+2)))
-                f.write(entry)
+                f.write(entry.encode('utf-8'))
                 f.write('\n')
 
     def _write_revisions(self):
@@ -131,15 +131,12 @@ class ChangesetSerializerV06(ChangesetSerializer):
         w('revision id', rev.revision_id)
         w('committer', rev.committer)
         w('date', format_highres_date(rev.timestamp, rev.timezone))
-        w('message', rev.message)
+        w('message', rev.message.split('\n'))
         self.to_file.write('\n')
 
         self._write_delta(rev_tree, base_tree)
 
-        s = sha()
-        t = Testament.from_revision(self.source, rev.revision_id)
-        map(s.update, t.as_text_lines())
-        w('sha1', s.hexdigest())
+        w('sha1', testament_sha1(self.source, rev.revision_id))
         w('inventory sha1', rev.inventory_sha1)
         if rev.parent_ids:
             w('parent ids', rev.parent_ids)
@@ -174,7 +171,8 @@ class ChangesetSerializerV06(ChangesetSerializer):
 
         delta = compare_trees(old_tree, new_tree, want_unchanged=False)
 
-        w = self.to_file.write
+        def w(text):
+            self.to_file.write(text.encode('utf-8'))
 
         for path, file_id, kind in delta.removed:
             w('=== removed %s %s\n' % (kind, path))
