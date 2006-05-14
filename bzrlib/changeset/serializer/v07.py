@@ -31,14 +31,14 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.osutils import pathjoin
 
 
-class ChangesetSerializerV06(ChangesetSerializer):
+class ChangesetSerializerV07(ChangesetSerializer):
     def read(self, f):
         """Read the rest of the changesets from the supplied file.
 
         :param f: The file to read from
         :return: A list of changesets
         """
-        assert self.version == '0.6'
+        assert self.version == '0.7'
         # The first line of the header should have been read
         raise NotImplementedError
 
@@ -63,7 +63,7 @@ class ChangesetSerializerV06(ChangesetSerializer):
         """Write the header for the changes"""
         f = self.to_file
         f.write(CHANGESET_HEADER)
-        f.write('0.6\n')
+        f.write('0.7\n')
         f.write('#\n')
 
     def _write(self, key, value, indent=1):

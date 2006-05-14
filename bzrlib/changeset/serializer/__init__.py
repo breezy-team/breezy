@@ -233,6 +233,6 @@ def register_lazy(version, module, classname, overwrite=False):
     register(version, _loader, overwrite=overwrite)
 
 
-register_lazy('0.6', 'bzrlib.changeset.serializer.v06', 'ChangesetSerializerV06')
-register_lazy(None, 'bzrlib.changeset.serializer.v06', 'ChangesetSerializerV06')
+register_lazy('0.7', 'bzrlib.changeset.serializer.v07', 'ChangesetSerializerV07')
+register_lazy(None, 'bzrlib.changeset.serializer.v07', 'ChangesetSerializerV07')
 

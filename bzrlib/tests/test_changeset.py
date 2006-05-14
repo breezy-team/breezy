@@ -300,7 +300,7 @@ class CSetTester(TestCaseInTempDir):
         cset_txt = StringIO()
         write(self.b1.repository, [rev_id], cset_txt)
         cset_txt.seek(0)
-        self.assertEqual(cset_txt.readline(), '# Bazaar changeset v0.6\n')
+        self.assertEqual(cset_txt.readline(), '# Bazaar changeset v0.7\n')
         self.assertEqual(cset_txt.readline(), '#\n')
 
         rev = self.b1.repository.get_revision(rev_id)

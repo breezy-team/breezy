@@ -9,7 +9,7 @@ import bzrlib
 from bzrlib.testament import Testament
 
 header_str = 'Bazaar changeset v'
-version = (0, 6)
+version = (0, 7)
 
 def get_header():
     return [
