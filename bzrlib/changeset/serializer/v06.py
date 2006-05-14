@@ -73,15 +73,15 @@ class ChangesetSerializerV06(ChangesetSerializer):
         f.write(key.encode('utf-8'))
         if not value:
             f.write(':\n')
-        elif '\n' not in value:
+        elif isinstance(value, basestring):
             f.write(': ')
             f.write(value.encode('utf-8'))
             f.write('\n')
         else:
             f.write(':\n')
-            for line in value.split('\n'):
+            for entry in value:
                 f.write('#' + (' ' * (indent+2)))
-                f.write(line)
+                f.write(entry)
                 f.write('\n')
 
     def _write_revisions(self):
@@ -140,7 +140,7 @@ class ChangesetSerializerV06(ChangesetSerializer):
         map(s.update, t.as_text_lines())
         w('sha1', s.hexdigest())
         if rev.parent_ids:
-            w('parent ids', '\n'.join(rev.parent_ids))
+            w('parent ids', rev.parent_ids)
         if rev.properties:
             self._write('properties', None, indent=1)
             for name, value in rev.properties.items():

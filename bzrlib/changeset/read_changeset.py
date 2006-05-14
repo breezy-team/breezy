@@ -70,12 +70,8 @@ class RevisionInfo(object):
             inventory_sha1=self.inventory_sha1,
             message='\n'.join(self.message))
 
-        if self.parents:
-            for parent in self.parents:
-                revision_id, sha1 = parent.split()
-                rev.parent_ids.append(revision_id)
-                self.parent_sha1s[revision_id] = sha1
-
+        if self.parent_ids:
+            rev.parent_ids.extend(self.parent_ids)
         return rev
 
 class ChangesetInfo(object):
@@ -144,7 +140,6 @@ class ChangesetInfo(object):
                 self.base_sha1 = None
             else:
                 self.base = rev.parent_ids[0]
-                self.base_sha1 = self.revisions[0].parent_sha1s[self.base]
 
     def _get_target(self):
         """Return the target revision."""
@@ -251,7 +246,6 @@ class ChangesetReader(object):
             else:
                 d[revision_id] = sha1
 
-        add_sha(rev_to_sha, self.info.base, self.info.base_sha1)
         # All of the contained revisions were checked
         # in _validate_revisions
         checked = {}
@@ -261,8 +255,6 @@ class ChangesetReader(object):
                 
         for (rev, rev_info) in zip(self.info.real_revisions, self.info.revisions):
             add_sha(inv_to_sha, rev_info.revision_id, rev_info.inventory_sha1)
-            for p_id, sha1 in rev_info.parent_sha1s.iteritems():
-                add_sha(rev_to_sha, p_id, sha1)
 
         count = 0
         missing = {}
@@ -393,10 +385,10 @@ class ChangesetReader(object):
             key = line[:loc]
             value = line[loc+2:]
             if not value:
-                value = self._read_many(indent=indent+3)
+                value = self._read_many(indent=indent+2)
         elif line[-1:] == ':':
             key = line[:-1]
-            value = self._read_many(indent=indent+3)
+            value = self._read_many(indent=indent+2)
         else:
             raise MalformedHeader('While looking for key: value pairs,'
                     ' did not find the colon %r' % (line))
