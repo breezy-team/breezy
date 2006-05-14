@@ -2584,14 +2584,13 @@ def merge_changeset(cset_info, cset_tree, tree, check_clean, merge_type,
     pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
         _install_info(tree.branch.repository, cset_info, cset_tree)
-        other_revision_id = cset_info.revisions[0].revision_id
         merger = Merger(tree.branch, this_tree=tree, pb=pb)
         merger.pp = ProgressPhase("Merge phase", 5, pb)
         merger.pp.next_phase()
         merger.check_basis(check_clean)
-        merger.other_rev_id = other_revision_id
-        merger.other_tree = merger.revision_tree(other_revision_id)
-        merger.other_basis = other_revision_id
+        merger.other_rev_id = cset_info.target
+        merger.other_tree = merger.revision_tree(cset_info.target)
+        merger.other_basis = cset_info.target
         merger.pp.next_phase()
         merger.find_base()
         if merger.base_rev_id == merger.other_rev_id:
