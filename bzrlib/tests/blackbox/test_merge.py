@@ -171,6 +171,7 @@ class TestMerge(ExternalBase):
     def test_merge_changeset(self):
         # Changesets actually represent a revision (plus its ancestors), so
         # they can be merged.
+        from bzrlib.testament import Testament
         tree_a = self.make_branch_and_tree('branch_a')
         f = file('branch_a/a', 'wb')
         f.write('hello')
@@ -192,3 +193,9 @@ class TestMerge(ExternalBase):
         file('../cset', 'wb').write(self.runbzr('changeset ../branch_a')[0])
         os.chdir('../branch_a')
         self.runbzr('merge ../cset', retcode=1)
+        testament_a = Testament.from_revision(tree_a.branch.repository, 
+                                              tree_b.last_revision())
+        testament_b = Testament.from_revision(tree_b.branch.repository,
+                                              tree_b.last_revision())
+        self.assertEqualDiff(testament_a.as_text(),
+                         testament_b.as_text())

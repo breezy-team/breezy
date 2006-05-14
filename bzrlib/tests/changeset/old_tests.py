@@ -318,8 +318,9 @@ class CSetTester(TestCaseInTempDir):
             # only will match if everything is okay, but lets be
             # explicit about it
             branch_rev = self.b1.repository.get_revision(cset_rev.revision_id)
-            for a in ('inventory_sha1', 'revision_id', 'parent_ids'
-                    , 'timestamp', 'timezone', 'message', 'committer'):
+            for a in ('inventory_sha1', 'revision_id', 'parent_ids',
+                      'timestamp', 'timezone', 'message', 'committer', 
+                      'parent_ids', 'properties'):
                 self.assertEqual(getattr(branch_rev, a), getattr(cset_rev, a))
             self.assertEqual(len(branch_rev.parent_ids), len(cset_rev.parent_ids))
 
