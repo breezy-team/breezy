@@ -184,8 +184,10 @@ class ChangesetReader(object):
 
     def _read(self):
         self._read_header()
-        self._read_patches()
-        self._read_footer()
+        while self._next_line is not None:
+            self._read_revision_header()
+            self._read_patches()
+            self._read_footer()
 
     def _validate(self):
         """Make sure that the information read in makes sense
@@ -369,6 +371,7 @@ class ChangesetReader(object):
         else:
             raise MalformedHeader('Did not find an opening header')
 
+    def _read_revision_header(self):
         for line in self._next():
             # The bzr header is terminated with a blank line
             # which does not start with '#'

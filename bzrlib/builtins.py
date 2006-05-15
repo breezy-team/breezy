@@ -1949,9 +1949,9 @@ class cmd_merge(Command):
         except IOError, e:
             if e != errno.ENOENT:
                 raise
-            reader=None
+            reader = None
         except BadChangeset:
-            reeader=None
+            reader = None
         if reader is not None:
             conflicts = merge_changeset(reader, tree, not force, merge_type,
                                         reprocess, show_base)
