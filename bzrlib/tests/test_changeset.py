@@ -302,7 +302,10 @@ class CSetTester(TestCaseInTempDir):
         from bzrlib.changeset.read_changeset import read_changeset
 
         cset_txt = StringIO()
-        serializer.write(self.b1.repository, [rev_id], cset_txt)
+        base_ancestry = set(self.b1.repository.get_ancestry(base_rev_id))
+        rev_ids = [r for r in self.b1.repository.get_ancestry(rev_id) if r
+                   not in base_ancestry]
+        serializer.write(self.b1.repository, reversed(rev_ids), cset_txt)
         cset_txt.seek(0)
         self.assertEqual(cset_txt.readline(), '# Bazaar changeset v0.7\n')
         self.assertEqual(cset_txt.readline(), '#\n')
