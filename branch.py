@@ -45,6 +45,7 @@ from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.tree import Tree, EmptyTree
 from bzrlib.trace import mutter, note
 from bzrlib.workingtree import WorkingTree
+from bzrlib.delta import compare_trees
 import bzrlib
 
 import svn.core, svn.wc, svn.ra
@@ -224,6 +225,28 @@ class SvnBranch(Branch):
 
     def get_physical_lock_status(self):
         return False
+
+    def get_revision_delta(self, revno):
+        """Return the delta for one revision.
+
+        The delta is relative to its mainline predecessor, or the
+        empty tree for revision 1.
+        """
+
+        assert isinstance(revno, int)
+        rh = self.revision_history()
+        if not (1 <= revno <= len(rh)):
+            raise InvalidRevisionNumber(revno)
+
+        # revno is 1-based; list is 0-based
+
+        new_tree = self.repository.revision_tree(rh[revno-1])
+        if revno == 1:
+            old_tree = EmptyTree()
+        else:
+            old_tree = self.repository.revision_tree(rh[revno-2])
+        return compare_trees(old_tree, new_tree)
+
 
 class SvnBranchFormat(BranchFormat):
     def __init__(self):

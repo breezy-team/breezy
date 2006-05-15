@@ -56,10 +56,14 @@ class SvnFileWeave(VersionedFile):
 
         return stream.readlines()
 
-    def has_version(self,version):
-        #FIXME
-        mutter("HAS_VERSION: %s,%s" % (version,self.file_id))
-        return True
+    def has_version(self,version_id):
+        assert version_id != None
+        (path,path_revnum) = self.repository.path_from_file_id(version_id, self.file_id)
+
+        mutter("svn check_path -r%d %s" % (path_revnum,path))
+        kind = svn.ra.check_path(self.repository.ra, path.encode('utf8'), path_revnum)
+
+        return (kind != svn.core.svn_node_none)
 
     def get_parents(self,version):
         #FIXME
@@ -83,8 +87,44 @@ class SvnInventoryWeave(VersionedFile):
         return []
 
     def get_graph(self,versions=None):
-        #FIXME
-        return {}
+        assert versions
+
+        paths = []
+        max = 0
+        prev = {}
+
+        for version in versions:
+            (path,revnum) = self.repository.parse_revision_id(version)
+            if revnum > max:
+                max = revnum
+            paths.append(path.encode('utf8'))
+
+        result = {}
+
+        def rcvr(cpaths,revnum,author,date,message,pool):
+            for path in cpaths:
+                (_,revid) = self.repository.path_to_file_id(revnum,path)
+                (path,_) = self.repository.parse_revision_id(revid)
+
+                if not path in paths:
+                    continue
+
+                if result.has_key(revid):
+                    continue
+
+                #FIXME: Check if this version was maybe copied 
+                # from some other branch ?
+                if prev.has_key(path):
+                    result[revid] = [prev[path]]
+                else:
+                    result[revid] = []
+
+                prev[path] = revid
+
+        mutter("svn log -r 0:%d %s" % (max,paths))
+        svn.ra.get_log(self.repository.ra, paths, 0, max, 0, True, False, rcvr)
+
+        return result
 
 class SvnFileStore(object):
     def __init__(self,repository):
@@ -206,6 +246,8 @@ class SvnRepository(Repository):
         return SvnInventoryWeave(self,'w')
 
     def get_ancestry(self, revision_id):
+        #FIXME: Find not just direct predecessors 
+        # but also branches from which this branch was copied
         (path,revnum) = self.parse_revision_id(revision_id)
 
         self._ancestry = [None]
@@ -215,8 +257,12 @@ class SvnRepository(Repository):
             self._ancestry.append(revid)
 
         mutter("svn log -r 0:%d %s" % (revnum-1,path))
-        svn.ra.get_log(self.ra, [path.encode('utf8')], 0, \
+        try:
+            svn.ra.get_log(self.ra, [path.encode('utf8')], 0, \
                 revnum - 1, 1, False, False, rcvr)
+        except SubversionException, (_, num):
+            if num != svn.core.SVN_ERR_FS_NOT_FOUND:
+                raise
 
         return self._ancestry
 
