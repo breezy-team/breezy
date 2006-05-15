@@ -40,7 +40,11 @@ def _install_info(repository, cset_info, cset_tree):
             repository.unlock()
 
 def install_changeset(repository, changeset_reader):
-    pass 
+    assert len(changeset_reader.info.real_revisions) <= 1
+    for revision in changeset_reader.info.real_revisions:
+        print "installed %s" % revision.revision_id
+        cset_info, cset_tree = changeset_reader.get_changeset(repository)
+        install_revision(repository, revision, cset_tree)
 
 def install_revision(repository, rev, cset_tree):
     # install the inventory

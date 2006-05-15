@@ -802,7 +802,6 @@ class ChangesetTree(Tree):
             patch_original = None
         file_patch = self.patches.get(self.id2path(file_id))
         if file_patch is None:
-            assert patch_original is not None
             return patch_original
 
         assert not file_patch.startswith('\\'), \

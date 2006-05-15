@@ -345,11 +345,23 @@ class CSetTester(TestCaseInTempDir):
                 os.mkdir(checkout_dir)
         tree = BzrDir.create_standalone_workingtree(checkout_dir)
         s = StringIO()
-        ancestors = [a for a in tree.branch.repository.get_ancestry(rev_id) if
+        ancestors = [a for a in self.b1.repository.get_ancestry(rev_id) if
                      a is not None]
-        serializer.write(tree.branch.repository, ancestors, s)
+        serializer.write(self.b1.repository, ancestors, s)
         s.seek(0)
         install_changeset(tree.branch.repository, ChangesetReader(s))
+        for ancestor in ancestors:
+            old = self.b1.repository.revision_tree(ancestor)
+            new = tree.branch.repository.revision_tree(ancestor)
+            for inventory_id in old:
+                try:
+                    old_file = old.get_file(inventory_id)
+                except:
+                    continue
+                if old_file is None:
+                    continue
+                self.assertEqual(old_file.read(),
+                                 new.get_file(inventory_id).read())
         return tree
 
     def valid_apply_changeset(self, base_rev_id, cset,
@@ -361,6 +373,7 @@ class CSetTester(TestCaseInTempDir):
 
         to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
         repository = to_tree.branch.repository
+        self.assertIs(repository.has_revision(base_rev_id), True)
         info = cset[0]
         for rev in info.real_revisions:
             self.assert_(not repository.has_revision(rev.revision_id),
