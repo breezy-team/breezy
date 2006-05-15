@@ -30,7 +30,10 @@ from bzrlib.ui import CLIUIFactory
 class TextUIFactory(CLIUIFactory):
     """A UI factory for Text user interefaces."""
 
-    def __init__(self, bar_type=None):
+    def __init__(self,
+                 bar_type=None,
+                 stdout=None,
+                 stderr=None):
         """Create a TextUIFactory.
 
         :param bar_type: The type of progress bar to create. It defaults to 
@@ -39,7 +42,14 @@ class TextUIFactory(CLIUIFactory):
         """
         super(TextUIFactory, self).__init__()
         self._bar_type = bar_type
-        self.stdout = sys.stdout
+        if stdout is None:
+            self.stdout = sys.stdout
+        else:
+            self.stdout = stdout
+        if stderr is None:
+            self.stderr = sys.stderr
+        else:
+            self.stderr = stderr
 
     def prompt(self, prompt):
         """Emit prompt on the CLI."""
