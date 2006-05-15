@@ -353,7 +353,7 @@ class CSetTester(TestCaseInTempDir):
         s = StringIO()
         ancestors = [a for a in self.b1.repository.get_ancestry(rev_id) if
                      a is not None]
-        serializer.write(self.b1.repository, ancestors, s)
+        serializer.write(self.b1.repository, list(reversed(ancestors)), s)
         s.seek(0)
         install_changeset(tree.branch.repository, ChangesetReader(s))
         for ancestor in ancestors:
