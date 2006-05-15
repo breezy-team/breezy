@@ -16,6 +16,7 @@
 
 from StringIO import StringIO
 
+from bzrlib.builtins import merge_changeset
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrError
@@ -24,6 +25,7 @@ from bzrlib.diff import internal_diff
 from bzrlib.changeset.apply_changeset import install_changeset
 from bzrlib.changeset.read_changeset import ChangesetTree, ChangesetReader
 from bzrlib.changeset import serializer 
+from bzrlib.merge import Merge3Merger
 from bzrlib.workingtree import WorkingTree
 
 class MockTree(object):
@@ -362,6 +364,10 @@ class CSetTester(TestCaseInTempDir):
                     continue
                 self.assertEqual(old_file.read(),
                                  new.get_file(inventory_id).read())
+        if rev_id is not None:
+            rh = self.b1.revision_history()
+            tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
+            tree.update()
         return tree
 
     def valid_apply_changeset(self, base_rev_id, cset,
@@ -379,7 +385,8 @@ class CSetTester(TestCaseInTempDir):
             self.assert_(not repository.has_revision(rev.revision_id),
                 'Revision {%s} present before applying changeset' 
                 % rev.revision_id)
-        auto_committed = _apply_cset(to_tree, cset, auto_commit=auto_commit)
+        merge_changeset(cset[0], cset[1], to_tree, True, Merge3Merger, False, 
+                        False)
 
         for rev in info.real_revisions:
             self.assert_(repository.has_revision(rev.revision_id),
@@ -389,18 +396,7 @@ class CSetTester(TestCaseInTempDir):
         self.assert_(to_tree.branch.repository.has_revision(info.target))
         # Do we also want to verify that all the texts have been added?
 
-
-        # Don't call get_valid_cset(auto_commit=True) unless you
-        # expect the auto-commit to succeed.
-        self.assertEqual(auto_commit, auto_committed)
-
-        if auto_committed:
-            # We might also check that all revisions are in the
-            # history for some changeset applications which
-            # merge multiple revisions.
-            self.assertEqual(to_tree.branch.last_patch(), info.target)
-        else:
-            self.assert_(info.target in to_tree.pending_merges())
+        self.assert_(info.target in to_tree.pending_merges())
 
 
         rev = info.real_revisions[-1]

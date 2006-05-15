@@ -2587,7 +2587,7 @@ def merge_changeset(cset_info, cset_tree, tree, check_clean, merge_type,
         merger = Merger(tree.branch, this_tree=tree, pb=pb)
         merger.pp = ProgressPhase("Merge phase", 5, pb)
         merger.pp.next_phase()
-        merger.check_basis(check_clean)
+        merger.check_basis(check_clean, require_commits=False)
         merger.other_rev_id = cset_info.target
         merger.other_tree = merger.revision_tree(cset_info.target)
         merger.other_basis = cset_info.target
