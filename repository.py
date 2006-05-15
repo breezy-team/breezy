@@ -474,14 +474,27 @@ class SvnRepository(Repository):
 
     def get_physical_lock_status(self):
         return False
-    
-    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
-        # FIXME: Honor force_new_repo
-        result = Repository.create(a_bzrdir)
-        self.copy_content_into(result, revision_id, basis)
 
     def copy_content_into(self, destination, revision_id=None, basis=None):
-        print "COPY INTO"
+        # FIXME: Loop over all the revnums until revision_id
+        # (or youngest_revnum) and call destination.add_revision() 
+        # or destination.add_inventory() each time
+
+        if revision_id is None:
+            path = ""
+            revnum = svn.ra.get_latest_revnum(self.ra)
+        else:
+            (path,revnum) = self.parse_revision_id(revision_id)
+
+        mutter("svn log -r0:%d %s" % (revnum,path))
+        def rcvr(paths,rev,author,date,message,pool):
+            revid = self.generate_revision_id(rev,path)
+            inv = self.get_inventory(revid)
+            rev = self.get_revision(revid)
+            destination.add_revision(revid, rev, inv)
+
+        svn.ra.get_log(self.ra, [path.encode('utf8')], 0, revnum, 
+                0, True, False, rcvr)
 
     def fetch(self, source, revision_id=None, pb=None):
         raise NotImplementedError(self.fetch)

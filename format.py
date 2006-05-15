@@ -37,10 +37,10 @@ class SvnRemoteAccess(BzrDir):
         raise NotImplementedError(SvnRemoteAccess.clone)
 
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
+        # FIXME: honor force_new_repo
         result = BzrDirFormat.get_default_format().initialize(url)
         repo = self.open_repository()
-        result_repo = result.create_repository()
-        result_repo.fetch(repo, revision_id)
+        result_repo = repo.clone(result, revision_id, basis)
         branch = self.open_branch()
         branch.sprout(result,revision_id)
         result.create_workingtree()
@@ -93,9 +93,4 @@ class SvnFormat(BzrDirFormat):
         return 'Subversion Smart Server'
 
     def initialize(self,url):
-        assert isinstance(url, basestring)
-        #FIXME: bzr itself should fall back here
-        return BzrDirFormat.get_default_format().initialize(url)
         raise NotImplementedError(SvnFormat.initialize)
-
-

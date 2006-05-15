@@ -254,7 +254,17 @@ class SvnBranch(Branch):
         return result
 
     def copy_content_into(self, destination, revision_id=None):
-        print "COPY CONTENT INTO %s" % destination
+        new_history = self.revision_history()
+        if revision_id is not None:
+            try:
+                new_history = new_history[:new_history.index(revision_id) + 1]
+            except ValueError:
+                rev = self.repository.get_revision(revision_id)
+                new_history = rev.get_history(self.repository)[1:]
+        destination.set_revision_history(new_history)
+        parent = self.get_parent()
+        if parent:
+            destination.set_parent(parent)
 
 class SvnBranchFormat(BranchFormat):
     def __init__(self):
