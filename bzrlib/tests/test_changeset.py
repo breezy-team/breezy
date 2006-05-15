@@ -298,7 +298,6 @@ class CSetTester(TestCaseInTempDir):
         :return: The in-memory changeset
         """
         from cStringIO import StringIO
-        from bzrlib.changeset.gen_changeset import show_changeset
         from bzrlib.changeset.read_changeset import read_changeset
 
         cset_txt = StringIO()
