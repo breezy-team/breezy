@@ -802,6 +802,10 @@ class ChangesetTree(Tree):
             patch_original = None
         file_patch = self.patches.get(self.id2path(file_id))
         if file_patch is None:
+            if (patch_original is None and 
+                self.get_kind(file_id) == 'directory'):
+                return StringIO()
+            assert patch_original is not None, "None: %s" % file_id
             return patch_original
 
         assert not file_patch.startswith('\\'), \
