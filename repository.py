@@ -254,7 +254,7 @@ class SvnRepository(Repository):
         if not self.fileid_map.has_key(revision_id):
             self.fileid_map[revision_id] = {}
 
-        file_id = filename.replace('/','@')
+        file_id = filename.replace("/", "@")
         if file_id == "":
             file_id = ROOT_ID
 
@@ -485,13 +485,50 @@ class SvnRepository(Repository):
             revnum = svn.ra.get_latest_revnum(self.ra)
         else:
             (path,revnum) = self.parse_revision_id(revision_id)
+        
+        weave_store = destination.weave_store
+
+        current = {}
+
+        transact = destination.get_transaction()
 
         mutter("svn log -r0:%d %s" % (revnum,path))
-        def rcvr(paths,rev,author,date,message,pool):
-            revid = self.generate_revision_id(rev,path)
+        def rcvr(paths,revnum,author,date,message,pool):
+            revid = self.generate_revision_id(revnum,path)
             inv = self.get_inventory(revid)
             rev = self.get_revision(revid)
             destination.add_revision(revid, rev, inv)
+
+            for item in paths:
+                (fileid,revid) = self.path_to_file_id(revnum,item)
+                branch_path = self.parse_revision_id(revid)[0]
+                if branch_path != path:
+                    continue
+
+                if paths[item].action == 'A':
+                    weave = weave_store.get_weave_or_empty(fileid, transact)
+                elif paths[item].action == 'M' or paths[item].action == 'R':
+                    weave = weave_store.get_weave(fileid, transact)
+                elif paths[item].action == 'D':
+                    continue
+                else:
+                    raise BzrError("Unknown SVN action '%s'" % paths[item].action)
+
+                parents = []
+                if current.has_key(fileid):
+                    parents = [current[fileid]]
+                
+                stream = StringIO()
+                mutter('svn cat -r %r %s' % (revnum, item))
+                try:
+                    svn.ra.get_file(self.ra, item.encode('utf8'), revnum, stream)
+                except SubversionException, (_, num):
+                    if num != svn.core.SVN_ERR_FS_NOT_FILE:
+                        raise
+
+                stream.seek(0)
+
+                weave.add_lines(revid, parents, stream.readlines())
 
         svn.ra.get_log(self.ra, [path.encode('utf8')], 0, revnum, 
                 0, True, False, rcvr)
