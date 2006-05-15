@@ -290,6 +290,10 @@ class KnitVersionedFile(VersionedFile):
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
             access_mode, create=create and not len(self), file_mode=file_mode)
 
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, 
+                           self.transport.abspath(self.filename))
+    
     def _add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
         """See VersionedFile._add_delta()."""
         self._check_add(version_id, []) # should we check the lines ?

@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Development Ltd
+# Copyright (C) 2005, 2006 Canonical Development Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -89,14 +89,18 @@ user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
 __copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
-__version__ = version_string = '0.8'
+__version__ = version_string = '0.9'
 
-# same format as sys.version_info: A tuple containing the five components of
+# same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
 # values except releaselevel are integers; the release level is 'alpha',
 # 'beta', 'candidate', or 'final'. The version_info value corresponding to the
-# Python version 2.0 is (2, 0, 0, 'final', 0).
-version_info = (0, 8, 0, 'final', 0)
+# Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
+# releaselevel of 'dev' for unreleased under-development code.
+
+version_info = (0, 9, 0, 'dev', 0)
+
+__version__ = '%d.%d.%d%s%d' % version_info
 
 
 from bzrlib.symbol_versioning import deprecated_function, zero_seven

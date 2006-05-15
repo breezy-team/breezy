@@ -52,6 +52,7 @@ import bzrlib.merge3
 import bzrlib.osutils
 import bzrlib.osutils as osutils
 import bzrlib.plugin
+import bzrlib.progress as progress
 from bzrlib.revision import common_ancestor
 import bzrlib.store
 import bzrlib.trace
@@ -113,9 +114,32 @@ class _MyResult(unittest._TextTestResult):
     Shows output in a different format, including displaying runtime for tests.
     """
     stop_early = False
+    
+    def __init__(self, stream, descriptions, verbosity, pb=None):
+        unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
+        self.pb = pb
 
     def _elapsedTime(self):
         return "%5dms" % (1000 * (time.time() - self._start_time))
+
+    def _ellipsise_unimportant_words(self, a_string, final_width,
+                                   keep_start=False):
+        """Add ellipsese (sp?) for overly long strings.
+        
+        :param keep_start: If true preserve the start of a_string rather
+                           than the end of it.
+        """
+        if keep_start:
+            if len(a_string) > final_width:
+                result = a_string[:final_width-3] + '...'
+            else:
+                result = a_string
+        else:
+            if len(a_string) > final_width:
+                result = '...' + a_string[3-final_width:]
+            else:
+                result = a_string
+        return result.ljust(final_width)
 
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
@@ -123,23 +147,26 @@ class _MyResult(unittest._TextTestResult):
         # the beginning, but in an id, the important words are
         # at the end
         SHOW_DESCRIPTIONS = False
+
+        if not self.showAll and self.dots and self.pb is not None:
+            final_width = 13
+        else:
+            final_width = osutils.terminal_width()
+            final_width = final_width - 15
+        what = None
+        if SHOW_DESCRIPTIONS:
+            what = test.shortDescription()
+            if what:
+                what = self._ellipsise_unimportant_words(what, final_width, keep_start=True)
+        if what is None:
+            what = test.id()
+            if what.startswith('bzrlib.tests.'):
+                what = what[13:]
+            what = self._ellipsise_unimportant_words(what, final_width)
         if self.showAll:
-            width = osutils.terminal_width()
-            name_width = width - 15
-            what = None
-            if SHOW_DESCRIPTIONS:
-                what = test.shortDescription()
-                if what:
-                    if len(what) > name_width:
-                        what = what[:name_width-3] + '...'
-            if what is None:
-                what = test.id()
-                if what.startswith('bzrlib.tests.'):
-                    what = what[13:]
-                if len(what) > name_width:
-                    what = '...' + what[3-name_width:]
-            what = what.ljust(name_width)
             self.stream.write(what)
+        elif self.dots and self.pb is not None:
+            self.pb.update(what, self.testsRun - 1, None)
         self.stream.flush()
         self._start_time = time.time()
 
@@ -149,8 +176,10 @@ class _MyResult(unittest._TextTestResult):
         unittest.TestResult.addError(self, test, err)
         if self.showAll:
             self.stream.writeln("ERROR %s" % self._elapsedTime())
-        elif self.dots:
+        elif self.dots and self.pb is None:
             self.stream.write('E')
+        elif self.dots:
+            self.pb.update(self._ellipsise_unimportant_words('ERROR', 13), self.testsRun, None)
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -159,8 +188,10 @@ class _MyResult(unittest._TextTestResult):
         unittest.TestResult.addFailure(self, test, err)
         if self.showAll:
             self.stream.writeln(" FAIL %s" % self._elapsedTime())
-        elif self.dots:
+        elif self.dots and self.pb is None:
             self.stream.write('F')
+        elif self.dots:
+            self.pb.update(self._ellipsise_unimportant_words('FAIL', 13), self.testsRun, None)
         self.stream.flush()
         if self.stop_early:
             self.stop()
@@ -168,8 +199,10 @@ class _MyResult(unittest._TextTestResult):
     def addSuccess(self, test):
         if self.showAll:
             self.stream.writeln('   OK %s' % self._elapsedTime())
-        elif self.dots:
+        elif self.dots and self.pb is None:
             self.stream.write('~')
+        elif self.dots:
+            self.pb.update(self._ellipsise_unimportant_words('OK', 13), self.testsRun, None)
         self.stream.flush()
         unittest.TestResult.addSuccess(self, test)
 
@@ -177,8 +210,10 @@ class _MyResult(unittest._TextTestResult):
         if self.showAll:
             print >>self.stream, ' SKIP %s' % self._elapsedTime()
             print >>self.stream, '     %s' % skip_excinfo[1]
-        elif self.dots:
+        elif self.dots and self.pb is None:
             self.stream.write('S')
+        elif self.dots:
+            self.pb.update(self._ellipsise_unimportant_words('SKIP', 13), self.testsRun, None)
         self.stream.flush()
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
@@ -199,12 +234,75 @@ class _MyResult(unittest._TextTestResult):
             self.stream.writeln("%s" % err)
 
 
-class TextTestRunner(unittest.TextTestRunner):
+class TextTestRunner(object):
     stop_on_failure = False
 
+    def __init__(self,
+                 stream=sys.stderr,
+                 descriptions=0,
+                 verbosity=1,
+                 keep_output=False,
+                 pb=None):
+        self.stream = unittest._WritelnDecorator(stream)
+        self.descriptions = descriptions
+        self.verbosity = verbosity
+        self.keep_output = keep_output
+        self.pb = pb
+
     def _makeResult(self):
-        result = _MyResult(self.stream, self.descriptions, self.verbosity)
+        result = _MyResult(self.stream,
+                           self.descriptions,
+                           self.verbosity,
+                           pb=self.pb)
         result.stop_early = self.stop_on_failure
+        return result
+
+    def run(self, test):
+        "Run the given test case or test suite."
+        result = self._makeResult()
+        startTime = time.time()
+        if self.pb is not None:
+            self.pb.update('Running tests', 0, test.countTestCases())
+        test.run(result)
+        stopTime = time.time()
+        timeTaken = stopTime - startTime
+        result.printErrors()
+        self.stream.writeln(result.separator2)
+        run = result.testsRun
+        self.stream.writeln("Ran %d test%s in %.3fs" %
+                            (run, run != 1 and "s" or "", timeTaken))
+        self.stream.writeln()
+        if not result.wasSuccessful():
+            self.stream.write("FAILED (")
+            failed, errored = map(len, (result.failures, result.errors))
+            if failed:
+                self.stream.write("failures=%d" % failed)
+            if errored:
+                if failed: self.stream.write(", ")
+                self.stream.write("errors=%d" % errored)
+            self.stream.writeln(")")
+        else:
+            self.stream.writeln("OK")
+        if self.pb is not None:
+            self.pb.update('Cleaning up', 0, 1)
+        # This is still a little bogus, 
+        # but only a little. Folk not using our testrunner will
+        # have to delete their temp directories themselves.
+        test_root = TestCaseInTempDir.TEST_ROOT
+        if result.wasSuccessful() or not self.keep_output:
+            if test_root is not None:
+                    osutils.rmtree(test_root)
+        else:
+            if self.pb is not None:
+                self.pb.note("Failed tests working directories are in '%s'\n",
+                             test_root)
+            else:
+                self.stream.writeln(
+                    "Failed tests working directories are in '%s'\n" %
+                    test_root)
+        TestCaseInTempDir.TEST_ROOT = None
+        if self.pb is not None:
+            self.pb.clear()
         return result
 
 
@@ -474,7 +572,10 @@ class TestCase(unittest.TestCase):
         handler.setLevel(logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
-        old_stdin = getattr(bzrlib.ui.ui_factory, "stdin", None)
+        old_ui_factory = bzrlib.ui.ui_factory
+        bzrlib.ui.ui_factory = bzrlib.tests.blackbox.TestUIFactory(
+            stdout=stdout,
+            stderr=stderr)
         bzrlib.ui.ui_factory.stdin = stdin
         try:
             result = self.apply_redirected(stdin, stdout, stderr,
@@ -482,7 +583,7 @@ class TestCase(unittest.TestCase):
                                            argv)
         finally:
             logger.removeHandler(handler)
-            bzrlib.ui.ui_factory.stdin = old_stdin
+            bzrlib.ui.ui_factory = old_ui_factory
         out = stdout.getvalue()
         err = stderr.getvalue()
         if out:
@@ -899,28 +1000,19 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
+        pb = None
     else:
         verbosity = 1
+        pb = progress.ProgressBar()
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
-                            verbosity=verbosity)
+                            verbosity=verbosity,
+                            keep_output=keep_output,
+                            pb=pb)
     runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
         suite = filter_suite_by_re(suite, pattern)
     result = runner.run(suite)
-    # This is still a little bogus, 
-    # but only a little. Folk not using our testrunner will
-    # have to delete their temp directories themselves.
-    test_root = TestCaseInTempDir.TEST_ROOT
-    if result.wasSuccessful() or not keep_output:
-        if test_root is not None:
-            print 'Deleting test root %s...' % test_root
-            try:
-                osutils.rmtree(test_root)
-            finally:
-                print
-    else:
-        print "Failed tests working directories are in '%s'\n" % TestCaseInTempDir.TEST_ROOT
     return result.wasSuccessful()
 
 
