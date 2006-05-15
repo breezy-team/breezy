@@ -36,6 +36,16 @@ class SvnRemoteAccess(BzrDir):
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         raise NotImplementedError(SvnRemoteAccess.clone)
 
+    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
+        result = BzrDirFormat.get_default_format().initialize(url)
+        repo = self.open_repository()
+        result_repo = result.create_repository()
+        result_repo.fetch(repo, revision_id)
+        branch = self.open_branch()
+        branch.sprout(result,revision_id)
+        result.create_workingtree()
+        return result
+
     def open_repository(self):
         repos = SvnRepository(self, self.transport.root_url)
         repos._format = self._format

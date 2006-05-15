@@ -247,6 +247,14 @@ class SvnBranch(Branch):
             old_tree = self.repository.revision_tree(rh[revno-2])
         return compare_trees(old_tree, new_tree)
 
+    def sprout(self, to_bzrdir, revision_id=None):
+        result = BranchFormat.get_default_format().initialize(to_bzrdir)
+        self.copy_content_into(result, revision_id=revision_id)
+        result.set_parent(self.bzrdir.root_transport.base)
+        return result
+
+    def copy_content_into(self, destination, revision_id=None):
+        print "COPY CONTENT INTO %s" % destination
 
 class SvnBranchFormat(BranchFormat):
     def __init__(self):
@@ -256,5 +264,5 @@ class SvnBranchFormat(BranchFormat):
         return 'Subversion Smart Server'
 
     def initialize(self,to_bzrdir):
-        return BranchFormat.get_default_format().initialize(to_bzrdir)              
+        raise NotImplementedError(self.initialize)
 

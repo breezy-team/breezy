@@ -105,17 +105,8 @@ class SvnInventoryWeave(VersionedFile):
         raise NotImplementedError(self.versions)
 
     def get_lines(self, version_id):
-        (path,revnum) = self.repository.parse_revision_id(version_id)
-
-        result = []
-
-        def rcvr(paths,revnum,author,date,message,pool):
-            result.append(self.repository.generate_revision_id(revnum, path))
-
-        mutter("svn log -r 0:%d %s" % (revnum,path))
-        svn.ra.get_log(self.repository.ra, [path.encode('utf8')], 0, revnum, 0, False, False, rcvr)
-
-        return result
+        assert version_id
+        return self.repository.get_inventory_xml(version_id).splitlines()
 
     def get_graph(self,versions=None):
         assert versions
@@ -483,3 +474,14 @@ class SvnRepository(Repository):
 
     def get_physical_lock_status(self):
         return False
+    
+    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
+        # FIXME: Honor force_new_repo
+        result = Repository.create(a_bzrdir)
+        self.copy_content_into(result, revision_id, basis)
+
+    def copy_content_into(self, destination, revision_id=None, basis=None):
+        print "COPY INTO"
+
+    def fetch(self, source, revision_id=None, pb=None):
+        raise NotImplementedError(self.fetch)
