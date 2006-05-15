@@ -25,8 +25,8 @@ import bzrlib
 import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
-from bzrlib.changeset.read_changeset import read_changeset, BadChangeset
-from bzrlib.changeset.apply_changeset import _install_info
+from bzrlib.changeset.read_changeset import BadChangeset, ChangesetReader
+from bzrlib.changeset.apply_changeset import install_changeset
 from bzrlib.commands import Command, display_command
 from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
@@ -1945,18 +1945,16 @@ class cmd_merge(Command):
 
         tree = WorkingTree.open_containing(u'.')[0]
         try:
-            cset_info, cset_tree = read_changeset(file(branch, 'rb'),
-                                                  tree.branch.repository)
-
+            reader = ChangesetReader(file(branch, 'rb'))
         except IOError, e:
             if e != errno.ENOENT:
                 raise
-            cset_info=None
+            reader=None
         except BadChangeset:
-            cset_info=None
-        if cset_info is not None:
-            conflicts = merge_changeset(cset_info, cset_tree, tree, not force, 
-                                        merge_type, reprocess, show_base)
+            reeader=None
+        if reader is not None:
+            conflicts = merge_changeset(reader, tree, not force, merge_type,
+                                        reprocess, show_base)
             if conflicts == 0:
                 return 0
             else:
@@ -2577,20 +2575,20 @@ def merge(other_revision, base_revision,
     return conflicts
 
 
-def merge_changeset(cset_info, cset_tree, tree, check_clean, merge_type, 
+def merge_changeset(reader, tree, check_clean, merge_type, 
                     reprocess, show_base):
     """Merge a changeset's revision into the current tree."""
     from bzrlib.merge import Merger
     pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
-        _install_info(tree.branch.repository, cset_info, cset_tree)
+        install_changeset(tree.branch.repository, reader)
         merger = Merger(tree.branch, this_tree=tree, pb=pb)
         merger.pp = ProgressPhase("Merge phase", 5, pb)
         merger.pp.next_phase()
         merger.check_basis(check_clean, require_commits=False)
-        merger.other_rev_id = cset_info.target
-        merger.other_tree = merger.revision_tree(cset_info.target)
-        merger.other_basis = cset_info.target
+        merger.other_rev_id = reader.info.target
+        merger.other_tree = merger.revision_tree(reader.info.target)
+        merger.other_basis = reader.info.target
         merger.pp.next_phase()
         merger.find_base()
         if merger.base_rev_id == merger.other_rev_id:

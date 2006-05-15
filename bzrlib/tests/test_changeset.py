@@ -314,9 +314,8 @@ class CSetTester(TestCaseInTempDir):
         open(',,cset', 'wb').write(cset_txt.getvalue())
         cset_txt.seek(0)
         # This should also validate the generate changeset
-        cset = read_changeset(cset_txt, self.b1.repository)
-        info, tree = cset
-        for cset_rev in info.real_revisions:
+        cset = ChangesetReader(cset_txt)
+        for cset_rev in cset.info.real_revisions:
             # These really should have already been checked in read_changeset
             # since it computes the sha1 hash for the revision, which
             # only will match if everything is okay, but lets be
@@ -370,7 +369,7 @@ class CSetTester(TestCaseInTempDir):
             tree.update()
         return tree
 
-    def valid_apply_changeset(self, base_rev_id, cset,
+    def valid_apply_changeset(self, base_rev_id, reader,
             auto_commit=False, checkout_dir=None):
         """Get the base revision, apply the changes, and make
         sure everything matches the builtin branch.
@@ -380,13 +379,12 @@ class CSetTester(TestCaseInTempDir):
         to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
         repository = to_tree.branch.repository
         self.assertIs(repository.has_revision(base_rev_id), True)
-        info = cset[0]
+        info = reader.info
         for rev in info.real_revisions:
             self.assert_(not repository.has_revision(rev.revision_id),
                 'Revision {%s} present before applying changeset' 
                 % rev.revision_id)
-        merge_changeset(cset[0], cset[1], to_tree, True, Merge3Merger, False, 
-                        False)
+        merge_changeset(reader, to_tree, True, Merge3Merger, False, False)
 
         for rev in info.real_revisions:
             self.assert_(repository.has_revision(rev.revision_id),
