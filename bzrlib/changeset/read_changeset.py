@@ -98,7 +98,7 @@ class ChangesetInfo(object):
         # A list of RevisionInfo objects
         self.revisions = []
 
-        self.actions = []
+        self.actions = {}
 
         # The next entries are created during complete_info() and
         # other post-read functions.
@@ -141,22 +141,24 @@ class ChangesetInfo(object):
             # When we don't have a base, then the real base
             # is the first parent of the first revision listed
             rev = self.real_revisions[0]
-            if len(rev.parent_ids) == 0:
-                # There is no base listed, and
-                # the lowest revision doesn't have a parent
-                # so this is probably against the empty tree
-                # and thus base truly is None
-                self.base = None
-                self.base_sha1 = None
-            else:
-                self.base = rev.parent_ids[0]
+            self.base = self.get_base(rev)
+
+    def get_base(self, revision):
+        if len(revision.parent_ids) == 0:
+            # There is no base listed, and
+            # the lowest revision doesn't have a parent
+            # so this is probably against the empty tree
+            # and thus base truly is None
+            return None
+        else:
+            return revision.parent_ids[0]
 
     def _get_target(self):
         """Return the target revision."""
         if len(self.real_revisions) > 0:
-            return self.real_revisions[-1].revision_id
+            return self.real_revisions[0].revision_id
         elif len(self.revisions) > 0:
-            return self.revisions[-1].revision_id
+            return self.revisions[0].revision_id
         return None
 
     target = property(_get_target, doc='The target revision id')
@@ -186,6 +188,8 @@ class ChangesetReader(object):
         self._read_header()
         while self._next_line is not None:
             self._read_revision_header()
+            if self._next_line is None:
+                break
             self._read_patches()
             self._read_footer()
 
@@ -317,16 +321,27 @@ class ChangesetReader(object):
         """Return the meta information, and a Changeset tree which can
         be used to populate the local stores and working tree, respectively.
         """
+        return self.info, self.revision_tree(repository, self.info.target)
+
+    def revision_tree(self, repository, revision_id, base=None):
+        for revision in self.info.real_revisions:
+            if revision.revision_id == revision_id:
+                break
+        assert revision.revision_id == revision_id
+        if revision_id == self.info.target:
+            base = self.info.base
+        else:
+            base = self.info.get_base(revision)
+        assert base != revision_id
         self._validate_references_from_repository(repository)
-        cset_tree = ChangesetTree(repository.revision_tree(self.info.base),
-                                  self.info.target)
-        self._update_tree(cset_tree)
+        cset_tree = ChangesetTree(repository.revision_tree(base), revision_id)
+        self._update_tree(cset_tree, revision_id)
 
         inv = cset_tree.inventory
         self._validate_inventory(inv)
         self._validate_revisions(inv)
 
-        return self.info, cset_tree
+        return cset_tree
 
     def _next(self):
         """yield the next line, but secretly
@@ -481,10 +496,13 @@ class ChangesetReader(object):
             
     def _read_patches(self):
         do_continue = True
+        revision_actions = []
         while do_continue:
             action, lines, do_continue = self._read_one_patch()
             if action is not None:
-                self.info.actions.append((action, lines))
+                revision_actions.append((action, lines))
+        self.info.actions[self.info.revisions[-1].revision_id] = \
+            revision_actions
 
     def _read_revision(self, revision_id):
         """Revision entries have extra information associated.
@@ -520,7 +538,7 @@ class ChangesetReader(object):
             if self._next_line is None or not self._next_line.startswith('#'):
                 break
 
-    def _update_tree(self, cset_tree):
+    def _update_tree(self, cset_tree, revision_id):
         """This fills out a ChangesetTree based on the information
         that was read in.
 
@@ -614,7 +632,7 @@ class ChangesetReader(object):
             'added':added,
             'modified':modified
         }
-        for action_line, lines in self.info.actions:
+        for action_line, lines in self.info.actions[revision_id]:
             first = action_line.find(' ')
             if first == -1:
                 raise BzrError('Bogus action line'
