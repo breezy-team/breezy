@@ -22,6 +22,7 @@ import os.path
 import transport
 import format
 import branch
+import submit
 
 sys.path.append(os.path.dirname(__file__))
 
