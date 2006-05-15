@@ -81,6 +81,16 @@ def write(source, revision_ids, f, version=None):
     return serializer.write(source, revision_ids, f) 
 
 
+def write_changeset(repository, revision_id, base_revision_id, out):
+    """"""
+    base_ancestry = set(repository.get_ancestry(base_revision_id))
+    revision_ids = [r for r in repository.get_ancestry(revision_id) if r
+                    not in base_ancestry]
+    revision_ids = list(reversed(revision_ids))
+    write(repository, revision_ids, out)
+    return revision_ids
+
+
 def format_highres_date(t, offset=0):
     """Format a date, such that it includes higher precision in the
     seconds field.

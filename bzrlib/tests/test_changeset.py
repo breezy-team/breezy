@@ -24,7 +24,7 @@ from bzrlib.errors import BzrError
 from bzrlib.diff import internal_diff
 from bzrlib.changeset.apply_changeset import install_changeset
 from bzrlib.changeset.read_changeset import ChangesetTree, ChangesetReader
-from bzrlib.changeset import serializer 
+from bzrlib.changeset.serializer import write_changeset
 from bzrlib.merge import Merge3Merger
 from bzrlib.workingtree import WorkingTree
 
@@ -302,11 +302,8 @@ class CSetTester(TestCaseInTempDir):
         from bzrlib.changeset.read_changeset import read_changeset
 
         cset_txt = StringIO()
-        base_ancestry = set(self.b1.repository.get_ancestry(base_rev_id))
-        rev_ids = [r for r in self.b1.repository.get_ancestry(rev_id) if r
-                   not in base_ancestry]
-        rev_ids = list(reversed(rev_ids))
-        serializer.write(self.b1.repository, rev_ids, cset_txt)
+        rev_ids = write_changeset(self.b1.repository, rev_id, base_rev_id, 
+                                  cset_txt)
         cset_txt.seek(0)
         self.assertEqual(cset_txt.readline(), '# Bazaar changeset v0.7\n')
         self.assertEqual(cset_txt.readline(), '#\n')
@@ -351,9 +348,7 @@ class CSetTester(TestCaseInTempDir):
                 os.mkdir(checkout_dir)
         tree = BzrDir.create_standalone_workingtree(checkout_dir)
         s = StringIO()
-        ancestors = [a for a in self.b1.repository.get_ancestry(rev_id) if
-                     a is not None]
-        serializer.write(self.b1.repository, list(reversed(ancestors)), s)
+        ancestors = write_changeset(self.b1.repository, rev_id, None, s)
         s.seek(0)
         install_changeset(tree.branch.repository, ChangesetReader(s))
         for ancestor in ancestors:

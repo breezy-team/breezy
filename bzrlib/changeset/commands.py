@@ -78,7 +78,7 @@ class cmd_changeset(Command):
 
     def run(self, base=None, revision=None):
         from bzrlib import user_encoding
-        from bzrlib.changeset.serializer import write
+        from bzrlib.changeset.serializer import write_changeset
 
         if base is None:
             base_branch = None
@@ -126,12 +126,8 @@ class cmd_changeset(Command):
             target_branch.repository.fetch(base_branch.repository, 
                                            revision_id=base_revision)
             del base_branch
-        revision_id_list = get_intervening_revisions(base_revision,
-                                                     target_revision,
-                                                     target_branch.repository,
-                                             target_branch.revision_history())
-                
-        write(target_branch.repository, revision_id_list, sys.stdout)
+        write_changeset(target_branch.repository, target_revision,
+                        base_revision, sys.stdout)
 
 
 class cmd_verify_changeset(Command):
