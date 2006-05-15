@@ -137,7 +137,7 @@ class ChangesetInfo(object):
                 rev.committer = self.committer
             self.real_revisions.append(rev.as_revision())
 
-        if self.base is None:
+        if self.base is None and len(self.real_revisions) > 0:
             # When we don't have a base, then the real base
             # is the first parent of the first revision listed
             rev = self.real_revisions[0]
@@ -372,7 +372,7 @@ class ChangesetReader(object):
         for line in self._next():
             # The bzr header is terminated with a blank line
             # which does not start with '#'
-            if line == '\n':
+            if line is None or line == '\n':
                 break
             self._handle_next(line)
 
@@ -405,6 +405,8 @@ class ChangesetReader(object):
         return key, value
 
     def _handle_next(self, line):
+        if line is None:
+            return
         key, value = self._read_next_entry(line, indent=1)
         mutter('_handle_next %r => %r' % (key, value))
         if key is None:
@@ -800,6 +802,7 @@ class ChangesetTree(Tree):
             patch_original = None
         file_patch = self.patches.get(self.id2path(file_id))
         if file_patch is None:
+            assert patch_original is not None
             return patch_original
 
         assert not file_patch.startswith('\\'), \

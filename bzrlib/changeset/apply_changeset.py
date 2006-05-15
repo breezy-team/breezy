@@ -31,35 +31,40 @@ def _install_info(repository, cset_info, cset_tree):
           the bottom of a changeset (though I would like to add them all
           as ghost revisions)
     """
-
     if not repository.has_revision(cset_info.target):
+        rev = cset_info.real_revisions[-1]
         repository.lock_write()
         try:
-            # install the inventory
-            # TODO: Figure out how to handle ghosted revisions
-            present_parents = []
-            parent_invs = []
-            rev = cset_info.real_revisions[-1]
-            for p_id in rev.parent_ids:
-                if repository.has_revision(p_id):
-                    present_parents.append(p_id)
-                    parent_invs.append(repository.get_inventory(p_id))
-
-            inv = cset_tree.inventory
-            
-            # Add the texts that are not already present
-            for path, ie in inv.iter_entries():
-                w = repository.weave_store.get_weave_or_empty(ie.file_id,
-                        repository.get_transaction())
-                if ie.revision not in w:
-                    repository.weave_store.add_text(ie.file_id, 
-                                                    rev.revision_id,
-                    cset_tree.get_file(ie.file_id).readlines(),
-                    present_parents, repository.get_transaction())
-
-            repository.add_revision(rev.revision_id, rev, inv)
+            return install_revision(repository, rev, cset_tree)
         finally:
             repository.unlock()
+
+def install_changeset(repository, changeset_reader):
+    pass 
+
+def install_revision(repository, rev, cset_tree):
+    # install the inventory
+    # TODO: Figure out how to handle ghosted revisions
+    present_parents = []
+    parent_invs = []
+    for p_id in rev.parent_ids:
+        if repository.has_revision(p_id):
+            present_parents.append(p_id)
+            parent_invs.append(repository.get_inventory(p_id))
+
+    inv = cset_tree.inventory
+    
+    # Add the texts that are not already present
+    for path, ie in inv.iter_entries():
+        w = repository.weave_store.get_weave_or_empty(ie.file_id,
+                repository.get_transaction())
+        if ie.revision not in w:
+            repository.weave_store.add_text(ie.file_id, 
+                                            rev.revision_id,
+            cset_tree.get_file(ie.file_id).readlines(),
+            present_parents, repository.get_transaction())
+
+    repository.add_revision(rev.revision_id, rev, inv)
 
 def apply_changeset(branch, from_file, reverse=False, auto_commit=False):
     """Read in a changeset from the given file, and apply it to

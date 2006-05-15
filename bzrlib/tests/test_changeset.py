@@ -17,10 +17,13 @@
 from StringIO import StringIO
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrError
 
 from bzrlib.diff import internal_diff
-from bzrlib.changeset.read_changeset import ChangesetTree
+from bzrlib.changeset.apply_changeset import install_changeset
+from bzrlib.changeset.read_changeset import ChangesetTree, ChangesetReader
+from bzrlib.changeset import serializer 
 from bzrlib.workingtree import WorkingTree
 
 class MockTree(object):
@@ -295,10 +298,9 @@ class CSetTester(TestCaseInTempDir):
         from cStringIO import StringIO
         from bzrlib.changeset.gen_changeset import show_changeset
         from bzrlib.changeset.read_changeset import read_changeset
-        from bzrlib.changeset.serializer import write
 
         cset_txt = StringIO()
-        write(self.b1.repository, [rev_id], cset_txt)
+        serializer.write(self.b1.repository, [rev_id], cset_txt)
         cset_txt.seek(0)
         self.assertEqual(cset_txt.readline(), '# Bazaar changeset v0.7\n')
         self.assertEqual(cset_txt.readline(), '#\n')
@@ -341,8 +343,14 @@ class CSetTester(TestCaseInTempDir):
             import os
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)
-        self.tree1.bzrdir.clone(checkout_dir)
-        return WorkingTree.open(checkout_dir)
+        tree = BzrDir.create_standalone_workingtree(checkout_dir)
+        s = StringIO()
+        ancestors = [a for a in tree.branch.repository.get_ancestry(rev_id) if
+                     a is not None]
+        serializer.write(tree.branch.repository, ancestors, s)
+        s.seek(0)
+        install_changeset(tree.branch.repository, ChangesetReader(s))
+        return tree
 
     def valid_apply_changeset(self, base_rev_id, cset,
             auto_commit=False, checkout_dir=None):
@@ -352,10 +360,14 @@ class CSetTester(TestCaseInTempDir):
         from bzrlib.changeset.apply_changeset import _apply_cset
 
         to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
+        repository = to_tree.branch.repository
+        info = cset[0]
+        for rev in info.real_revisions:
+            self.assert_(not repository.has_revision(rev.revision_id),
+                'Revision {%s} present before applying changeset' 
+                % rev.revision_id)
         auto_committed = _apply_cset(to_tree, cset, auto_commit=auto_commit)
 
-        info = cset[0]
-        repository = to_tree.branch.repository
         for rev in info.real_revisions:
             self.assert_(repository.has_revision(rev.revision_id),
                 'Missing revision {%s} after applying changeset' 
@@ -402,7 +414,6 @@ class CSetTester(TestCaseInTempDir):
             #         to_tree.get_file(fileid).read())
 
     def test_changeset(self):
-        from bzrlib.bzrdir import BzrDir
 
         import os, sys
         pjoin = os.path.join
