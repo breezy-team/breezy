@@ -77,14 +77,45 @@ class SvnInventoryWeave(VersionedFile):
 
     def has_version(self,version):
         return self.repository.has_revision(version)
-        
+
     def get_parents(self,version):
+        (path,revnum) = self.repository.parse_revision_id(version)
+        parent_ids = []
+
+        def rcvr(paths,rev,*args):
+            revid = self.repository.generate_revision_id(rev,path)
+            parent_ids.append(revid)
+
+        mutter("log -r%d:0 %s" % (revnum-1,path))
+
+        try:
+            svn.ra.get_log(self.repository.ra, [path.encode('utf8')], \
+                revnum - 1, 0, 1, False, False, rcvr)
+        except SubversionException, (_, num):
+            # If this is the first revision, there are no parents
+            if num != svn.core.SVN_ERR_FS_NOT_FOUND:
+                raise
+
+        return parent_ids
+
+    def get_ancestry(self,version):
         return self.repository.get_ancestry(version)
 
+    def versions(self):
+        raise NotImplementedError(self.versions)
+
     def get_lines(self, version_id):
-        #FIXME
-        mutter("GET_LINES: INVENTORY,%s" % version_id)
-        return []
+        (path,revnum) = self.repository.parse_revision_id(version_id)
+
+        result = []
+
+        def rcvr(paths,revnum,author,date,message,pool):
+            result.append(self.repository.generate_revision_id(revnum, path))
+
+        mutter("svn log -r 0:%d %s" % (revnum,path))
+        svn.ra.get_log(self.repository.ra, [path.encode('utf8')], 0, revnum, 0, False, False, rcvr)
+
+        return result
 
     def get_graph(self,versions=None):
         assert versions
