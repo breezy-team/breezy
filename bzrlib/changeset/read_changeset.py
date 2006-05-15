@@ -163,6 +163,19 @@ class ChangesetInfo(object):
 
     target = property(_get_target, doc='The target revision id')
 
+    def get_revision(self, revision_id):
+        for r in self.real_revisions:
+            if r.revision_id == revision_id:
+                return r
+        raise KeyError(revision_id)
+
+    def get_revision_info(self, revision_id):
+        for r in self.revisions:
+            if r.revision_id == revision_id:
+                return r
+        raise KeyError(revision_id)
+
+
 class ChangesetReader(object):
     """This class reads in a changeset from a file, and returns
     a Changeset object, which can then be applied against a tree.
@@ -201,23 +214,24 @@ class ChangesetReader(object):
         # and generate the real_revisions list.
         self.info.complete_info()
 
-    def _validate_revisions(self, inventory):
+    def _validate_revision(self, inventory, revision_id):
         """Make sure all revision entries match their checksum."""
 
         # This is a mapping from each revision id to it's sha hash
         rev_to_sha1 = {}
-
-        for rev, rev_info in zip(self.info.real_revisions, self.info.revisions):
-            assert rev.revision_id == rev_info.revision_id
-            sha1 = sha(Testament(rev, inventory).as_short_text()).hexdigest()
-            if sha1 != rev_info.sha1:
-                raise BzrError('Revision checksum mismatch.'
-                    ' For revision_id {%s} supplied sha1 (%s) != measured (%s)'
-                    % (rev.revision_id, rev_info.sha1, sha1))
-            if rev_to_sha1.has_key(rev.revision_id):
-                raise BzrError('Revision {%s} given twice in the list'
-                        % (rev.revision_id))
-            rev_to_sha1[rev.revision_id] = sha1
+        
+        rev = self.info.get_revision(revision_id)
+        rev_info = self.info.get_revision_info(revision_id)
+        assert rev.revision_id == rev_info.revision_id
+        sha1 = sha(Testament(rev, inventory).as_short_text()).hexdigest()
+        if sha1 != rev_info.sha1:
+            raise BzrError('Revision checksum mismatch.'
+                ' For revision_id {%s} supplied sha1 (%s) != measured (%s)'
+                % (rev.revision_id, rev_info.sha1, sha1))
+        if rev_to_sha1.has_key(rev.revision_id):
+            raise BzrError('Revision {%s} given twice in the list'
+                    % (rev.revision_id))
+        rev_to_sha1[rev.revision_id] = sha1
 
         # Now that we've checked all the sha1 sums, we can make sure that
         # at least for the small list we have, all of the references are
@@ -299,7 +313,7 @@ class ChangesetReader(object):
                     ' Unable validate %d hashes' % len(missing))
         mutter('Verified %d sha hashes for the changeset.' % count)
 
-    def _validate_inventory(self, inv):
+    def _validate_inventory(self, inv, revision_id):
         """At this point we should have generated the ChangesetTree,
         so build up an inventory, and make sure the hashes match.
         """
@@ -310,7 +324,8 @@ class ChangesetReader(object):
         s = serializer_v5.write_inventory_to_string(inv)
         sha1 = sha_string(s)
         # Target revision is the last entry in the real_revisions list
-        rev = self.info.real_revisions[-1]
+        rev = self.info.get_revision(revision_id)
+        assert rev.revision_id == revision_id
         if sha1 != rev.inventory_sha1:
             open(',,bogus-inv', 'wb').write(s)
             raise BzrError('Inventory sha hash mismatch. %s != %s' % (sha1,
@@ -324,10 +339,7 @@ class ChangesetReader(object):
         return self.info, self.revision_tree(repository, self.info.target)
 
     def revision_tree(self, repository, revision_id, base=None):
-        for revision in self.info.real_revisions:
-            if revision.revision_id == revision_id:
-                break
-        assert revision.revision_id == revision_id
+        revision = self.info.get_revision(revision_id)
         if revision_id == self.info.target:
             base = self.info.base
         else:
@@ -338,8 +350,8 @@ class ChangesetReader(object):
         self._update_tree(cset_tree, revision_id)
 
         inv = cset_tree.inventory
-        self._validate_inventory(inv)
-        self._validate_revisions(inv)
+        self._validate_inventory(inv, revision_id)
+        self._validate_revision(inv, revision_id)
 
         return cset_tree
 
@@ -550,13 +562,13 @@ class ChangesetReader(object):
                 if not info.startswith('last-changed:'):
                     raise BzrError("Last changed revision should start with 'last-changed:'"
                         ': %r' % info)
-                revision_id = decode(info[13:])
+                changed_revision_id = decode(info[13:])
             elif cset_tree._last_changed.has_key(file_id):
                 return cset_tree._last_changed[file_id]
             else:
-                revision_id = self.info.target
-            cset_tree.note_last_changed(file_id, revision_id)
-            return revision_id
+                changed_revision_id = revision_id
+            cset_tree.note_last_changed(file_id, changed_revision_id)
+            return changed_revision_id
 
         def renamed(kind, extra, lines):
             info = extra.split(' // ')
