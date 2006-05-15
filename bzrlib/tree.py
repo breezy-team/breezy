@@ -163,10 +163,8 @@ class RevisionTree(Tree):
             return ie.text_sha1
 
     def get_file_mtime(self, file_id):
-        # Ideally this would return the date of the earliest revision
-        # containing this version of the file, but we'll just return
-        # the date of the revision for now.
-        revision = self._branch.get_revision(self._revision_id)
+        ie = self._inventory[file_id]
+        revision = self._branch.get_revision(ie.revision)
         return revision.timestamp
 
     def is_executable(self, file_id):
