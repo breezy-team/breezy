@@ -10,9 +10,12 @@ IN DEVELOPMENT
    * On Windows, detect terminal widht using GetConsoleScreenBufferInfo.
      (Alexander Belchenko)
   
-    'bzr selftest' now shows a progress bar with the number of tests, and 
-    progress made. 'make check' shows tests in -v mode, to be more useful
-    for the PQM status window. (Robert Collins).
+   * 'bzr selftest' now shows a progress bar with the number of tests, and 
+     progress made. 'make check' shows tests in -v mode, to be more useful
+     for the PQM status window. (Robert Collins).
+
+   * Show the correct number of revisions pushed when pushing a new branch.
+     (Robert Collins).
 
 bzr 0.8  2006-05-08
 
