@@ -12,7 +12,7 @@ from bzrlib.branch import Branch
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.option import Option
 from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
-                             get_intervening_revisions, NULL_REVISION)
+                             NULL_REVISION)
 import bzrlib.errors as errors
 
 class cmd_send_changeset(Command):
