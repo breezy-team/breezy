@@ -43,7 +43,12 @@ import bzrlib
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
-from bzrlib.osutils import has_symlinks, pathjoin, rmtree
+from bzrlib.osutils import (
+    has_symlinks,
+    pathjoin,
+    rmtree,
+    terminal_width,
+    )
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
@@ -952,10 +957,11 @@ class OldTests(ExternalBase):
         self.assert_('revision-id' in capture('log --show-ids -m commit'))
 
         log_out = capture('log --line')
+        # determine the widest line we want
+        max_width = terminal_width() - 1
         for line in log_out.splitlines():
-            self.assert_(len(line) <= 79, len(line))
+            self.assert_(len(line) <= max_width, len(line))
         self.assert_("this is my new commit and" in log_out)
-
 
         progress("file with spaces in name")
         mkdir('sub directory')
