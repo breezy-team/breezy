@@ -186,7 +186,7 @@ class ChangesetReader(object):
         :param from_file: A file-like object (must have iterator support).
         """
         object.__init__(self)
-        self.from_file = from_file
+        self.from_file = iter(from_file)
         self._next_line = None
         
         self.info = ChangesetInfo()
@@ -223,6 +223,7 @@ class ChangesetReader(object):
         rev = self.info.get_revision(revision_id)
         rev_info = self.info.get_revision_info(revision_id)
         assert rev.revision_id == rev_info.revision_id
+        assert rev.revision_id == revision_id
         sha1 = sha(Testament(rev, inventory).as_short_text()).hexdigest()
         if sha1 != rev_info.sha1:
             raise BzrError('Revision checksum mismatch.'
@@ -513,8 +514,9 @@ class ChangesetReader(object):
             action, lines, do_continue = self._read_one_patch()
             if action is not None:
                 revision_actions.append((action, lines))
-        self.info.actions[self.info.revisions[-1].revision_id] = \
-            revision_actions
+        if self.info.revisions[-1].revision_id not in self.info.actions:
+            self.info.actions[self.info.revisions[-1].revision_id] = \
+                revision_actions
 
     def _read_revision(self, revision_id):
         """Revision entries have extra information associated.
