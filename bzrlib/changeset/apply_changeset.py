@@ -42,12 +42,8 @@ def _install_info(repository, cset_info, cset_tree):
 
 def install_changeset(repository, changeset_reader):
     for revision in reversed(changeset_reader.info.real_revisions):
-        print "installed %s" % revision.revision_id
-        try:
-            cset_tree = changeset_reader.revision_tree(repository,
+        cset_tree = changeset_reader.revision_tree(repository,
                                                    revision.revision_id)
-        except Exception, e:
-            raise repr((revision.revision_id, e))
         install_revision(repository, revision, cset_tree)
 
 def install_revision(repository, rev, cset_tree):

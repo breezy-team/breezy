@@ -107,10 +107,11 @@ class ChangesetSerializerV07(ChangesetSerializer):
                 if p_id in self.revision_ids:
                     base_id = p_id
                     break
-            if base_id is None and rev.parent_ids:
-                base_id = rev.parent_ids[0]
-            else:
-                base_id = NULL_REVISION
+            if base_id is None:
+                if rev.parent_ids:
+                    base_id = rev.parent_ids[0]
+                else:
+                    base_id = NULL_REVISION
 
             if base_id == last_rev_id:
                 base_tree = last_rev_tree
