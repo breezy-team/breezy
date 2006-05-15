@@ -58,12 +58,12 @@ class SvnFileWeave(VersionedFile):
 
     def has_version(self,version):
         #FIXME
-        print "HAS_VERSION: %s,%s" % (version,self.file_id)
-        return True # FIXME
+        mutter("HAS_VERSION: %s,%s" % (version,self.file_id))
+        return True
 
     def get_parents(self,version):
         #FIXME
-        print "GET_PARENTS: %s,%s" % (version,self.file_id)
+        mutter("GET_PARENTS: %s,%s" % (version,self.file_id))
         return []
 
 class SvnInventoryWeave(VersionedFile):
@@ -72,18 +72,19 @@ class SvnInventoryWeave(VersionedFile):
         self.repository = repository
 
     def has_version(self,version):
-        #FIXME
-        print "inventory.HAS_VERSION: %s" % version
-        return True
+        return self.repository.has_revision(version)
         
     def get_parents(self,version):
-        #FIXME
-        print "inventory.GET_PARENTS: %s" % version
-        return []
+        return self.repository.get_ancestry(version)
 
     def get_lines(self, version_id):
         #FIXME
+        mutter("GET_LINES: INVENTORY,%s" % version_id)
         return []
+
+    def get_graph(self,versions=None):
+        #FIXME
+        return {}
 
 class SvnFileStore(object):
     def __init__(self,repository):
@@ -222,8 +223,8 @@ class SvnRepository(Repository):
     def has_revision(self,revision_id):
         (path,revnum) = self.parse_revision_id(revision_id)
 
-        mutter("svn check_path -r%d %s" % (revnum,revnum,path))
-        kind = svn.ra.check_path(self.ra, [path.encode('utf8')], revnum)
+        mutter("svn check_path -r%d %s" % (revnum,path))
+        kind = svn.ra.check_path(self.ra, path.encode('utf8'), revnum)
 
         return (kind != svn.core.svn_node_none)
 
@@ -250,9 +251,7 @@ class SvnRepository(Repository):
                 0, 1, False, False, rcvr)
         except SubversionException, (_, num):
             # If this is the first revision, there are no parents
-            if num == svn.core.SVN_ERR_FS_NOT_FOUND:
-                parent_ids.append(None)
-            else:
+            if num != svn.core.SVN_ERR_FS_NOT_FOUND:
                 raise
 
         # Commit SVN revision properties to a Revision object

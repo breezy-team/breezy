@@ -67,7 +67,6 @@ class SvnRemoteAccess(BzrDir):
             raise
  
         branch.bzrdir = self
-        branch._format = self._format
         return branch
 
 class SvnFormat(BzrDirFormat):
@@ -84,6 +83,9 @@ class SvnFormat(BzrDirFormat):
         return 'Subversion Smart Server'
 
     def initialize(self,url):
+        assert isinstance(url, basestring)
+        #FIXME: bzr itself should fall back here
+        return BzrDirFormat.get_default_format().initialize(url)
         raise NotImplementedError(SvnFormat.initialize)
 
 

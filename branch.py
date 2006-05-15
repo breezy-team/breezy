@@ -37,7 +37,7 @@ revisions:
 - revnum: svn revision number
 """
 
-from bzrlib.branch import Branch
+from bzrlib.branch import Branch, BranchFormat
 from bzrlib.errors import NotBranchError,NoWorkingTree,NoSuchRevision
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
             ROOT_ID
@@ -103,6 +103,7 @@ class SvnBranch(Branch):
         self.control_files = "FIXME"
         self._generate_revnum_map()
         self.base = "%s/%s" % (repos.url, branch_path)
+        self._format = SvnBranchFormat()
         mutter("Connected to branch at %s" % branch_path)
         
     def path_from_file_id(self,revision_id,file_id):
@@ -223,3 +224,14 @@ class SvnBranch(Branch):
 
     def get_physical_lock_status(self):
         return False
+
+class SvnBranchFormat(BranchFormat):
+    def __init__(self):
+        BranchFormat.__init__(self)
+
+    def get_format_description(self):
+        return 'Subversion Smart Server'
+
+    def initialize(self,to_bzrdir):
+        return BranchFormat.get_default_format().initialize(to_bzrdir)              
+
