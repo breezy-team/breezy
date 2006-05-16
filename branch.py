@@ -84,11 +84,17 @@ class SvnRevisionTree(Tree):
     def is_executable(self,file_id):
         filename = self.branch.path_from_file_id(self.revision_id,file_id)
         mutter("svn propget %r %r" % (svn.core.SVN_PROP_EXECUTABLE, filename))
-        values = svn.ra.propget(svn.core.SVN_PROP_EXECUTABLE, filename, self.revnum, False, self.repository.ra, self.repository.pool)
+        values = svn.ra.propget(svn.core.SVN_PROP_EXECUTABLE, filename, self.revnum, False, self.repository.ra)
         if len(values) == 1 and values.pop() == svn.core.SVN_PROP_EXECUTABLE_VALUE:
             return True
         return False 
     
+    def get_symlink_target(self,file_id):
+        data = self.get_file(file_id)
+        if not data.startswith("link "):
+            raise BzrError("Improperly formatted symlink file")
+        return data[len("link "):]
+   
     def get_file(self,file_id):
         stream = svn.core.svn_stream_empty(self.repository.pool)
         path = self.branch.path_from_file_id(self.revision_id,file_id)
