@@ -43,6 +43,7 @@ def _install_info(repository, cset_info, cset_tree):
 
 def install_changeset(repository, changeset_reader):
     pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    repository.lock_write()
     try:
         real_revisions = changeset_reader.info.real_revisions
         for i, revision in enumerate(reversed(real_revisions)):
@@ -53,6 +54,7 @@ def install_changeset(repository, changeset_reader):
                                                        revision.revision_id)
             install_revision(repository, revision, cset_tree)
     finally:
+        repository.unlock()
         pb.finished()
 
 def install_revision(repository, rev, cset_tree):
