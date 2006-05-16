@@ -14,7 +14,7 @@ from bzrlib.xml5 import serializer_v5
 from bzrlib.trace import mutter, warning
 from bzrlib.revision import common_ancestor
 from bzrlib.merge import merge_inner
-from bzrlib.errors import BzrCommandError
+from bzrlib.errors import BzrCommandError, RevisionAlreadyPresent
 from bzrlib.diff import compare_trees
 from bzrlib.osutils import sha_string, split_lines
 from bzrlib.tree import EmptyTree
@@ -42,6 +42,8 @@ def _install_info(repository, cset_info, cset_tree):
 
 def install_changeset(repository, changeset_reader):
     for revision in reversed(changeset_reader.info.real_revisions):
+        if repository.has_revision(revision.revision_id):
+            continue
         cset_tree = changeset_reader.revision_tree(repository,
                                                    revision.revision_id)
         install_revision(repository, revision, cset_tree)
@@ -78,8 +80,10 @@ def install_revision(repository, rev, cset_tree):
                                             rev.revision_id,
             cset_tree.get_file(ie.file_id).readlines(),
             text_parents, repository.get_transaction())
-    
-    repository.add_inventory(rev.revision_id, inv, present_parents)
+    try:
+        repository.add_inventory(rev.revision_id, inv, present_parents)
+    except RevisionAlreadyPresent:
+        pass
     repository.add_revision(rev.revision_id, rev, inv)
 
 def apply_changeset(branch, from_file, reverse=False, auto_commit=False):
