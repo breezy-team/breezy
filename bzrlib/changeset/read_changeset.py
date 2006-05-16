@@ -56,6 +56,7 @@ class RevisionInfo(object):
         self.timestamp = None
         self.timezone = None
         self.inventory_sha1 = None
+        self.inventory_has_revision = None
 
         self.parent_ids = None
         self.message = None
@@ -348,7 +349,13 @@ class ChangesetReader(object):
             base = self.info.get_base(revision)
         assert base != revision_id
         self._validate_references_from_repository(repository)
-        cset_tree = ChangesetTree(repository.revision_tree(base), revision_id)
+        revision_info = self.info.get_revision_info(revision_id)
+        if revision_info.inventory_has_revision == 'yes':
+            inventory_revision_id = revision_id
+        else:
+            inventory_revision_id = None
+        cset_tree = ChangesetTree(repository.revision_tree(base), 
+                                  inventory_revision_id)
         self._update_tree(cset_tree, revision_id)
 
         inv = cset_tree.inventory

@@ -141,6 +141,10 @@ class ChangesetSerializerV07(ChangesetSerializer):
         w('inventory sha1', rev.inventory_sha1)
         if rev.parent_ids:
             w('parent ids', rev.parent_ids)
+        if rev_tree.inventory.revision_id is None:
+            w('inventory has revision', 'no')
+        else:
+            w('inventory has revision', 'yes')
         if rev.properties:
             self._write('properties', None, indent=1)
             for name, value in rev.properties.items():
