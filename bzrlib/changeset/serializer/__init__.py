@@ -20,6 +20,7 @@
 import re
 
 import bzrlib.errors as errors
+from bzrlib.revision import NULL_REVISION
 
 # New changesets should try to use this header format
 CHANGESET_HEADER = '# Bazaar changeset v'
@@ -83,6 +84,8 @@ def write(source, revision_ids, f, version=None):
 
 def write_changeset(repository, revision_id, base_revision_id, out):
     """"""
+    if base_revision_id is NULL_REVISION:
+        base_revision_id = None
     base_ancestry = set(repository.get_ancestry(base_revision_id))
     revision_ids = [r for r in repository.get_ancestry(revision_id) if r
                     not in base_ancestry]

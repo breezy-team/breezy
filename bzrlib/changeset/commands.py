@@ -114,6 +114,8 @@ class cmd_changeset(Command):
                 base_revision = common_ancestor(base_branch.last_revision(),
                                                 target_revision,
                                                 target_branch.repository)
+                if base_revision is None:
+                    base_revision = NULL_REVISION
 
         if base_revision is None:
             rev = target_branch.repository.get_revision(target_revision)
