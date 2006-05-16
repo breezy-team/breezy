@@ -91,6 +91,9 @@ class FtpTransport(Transport):
     def __init__(self, base, _provided_instance=None):
         """Set the base path where files will be stored."""
         assert base.startswith('ftp://') or base.startswith('aftp://')
+        if not base.endswith('/'):
+            mutter('FtpTransport adding / to %s', base)
+            base += '/'
         super(FtpTransport, self).__init__(base)
         self.is_active = base.startswith('aftp://')
         if self.is_active:
@@ -138,11 +141,7 @@ class FtpTransport(Transport):
     def _abspath(self, relpath):
         assert isinstance(relpath, basestring)
         relpath = urllib.unquote(relpath)
-        if isinstance(relpath, basestring):
-            relpath_parts = relpath.split('/')
-        else:
-            # TODO: Don't call this with an array - no magic interfaces
-            relpath_parts = relpath[:]
+        relpath_parts = relpath.split('/')
         if len(relpath_parts) > 1:
             if relpath_parts[0] == '':
                 raise ValueError("path %r within branch %r seems to be absolute"
@@ -439,6 +438,19 @@ class _test_authorizer(object):
         return 1, 'OK.', medusa.filesys.os_filesystem(self.root)
 
 
+if _have_medusa:
+    class _ftp_server(medusa.ftp_server.ftp_server):
+        """Customize the behavior of the Medusa ftp_server.
+
+        There are a few warts on the ftp_server, based on how it expects
+        to be used.
+        """
+
+        def log_info(self, message, type='info'):
+            """Override the asyncore.log_info so we don't stipple the screen."""
+            return
+
+
 class FtpServer(Server):
     """Common code for SFTP server facilities."""
 
@@ -464,7 +476,7 @@ class FtpServer(Server):
             raise RuntimeError('Must have medusa to run the FtpServer')
 
         self._root = os.getcwdu()
-        self._ftp_server = medusa.ftp_server.ftp_server(
+        self._ftp_server = _ftp_server(
             authorizer=_test_authorizer(root=self._root),
             ip='localhost',
             port=0, # bind to a random port
