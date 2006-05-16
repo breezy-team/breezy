@@ -571,7 +571,8 @@ if _have_medusa:
                 self.respond('550 RNTO failed')
                 # For a test server, we will go ahead and just die
                 raise
-            self.respond('250 Rename successful.')
+            else:
+                self.respond('250 Rename successful.')
 
         def cmd_size(self, line):
             """Return the size of a file
@@ -579,7 +580,6 @@ if _have_medusa:
             This is overloaded to help the test suite determine if the 
             target is a directory.
             """
-            mutter('cmd_size for %s', line)
             filename = line[1]
             if not self.filesystem.isfile(filename):
                 if self.filesystem.isdir(filename):
