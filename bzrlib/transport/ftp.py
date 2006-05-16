@@ -208,19 +208,23 @@ class FtpTransport(Transport):
         return self._unparse_url(path)
 
     def has(self, relpath):
-        """Does the target location exist?
-
-        XXX: I assume we're never asked has(dirname) and thus I use
-        the FTP size command and assume that if it doesn't raise,
-        all is good.
-        """
+        """Does the target location exist?"""
+        # FIXME jam 20060516 We *do* ask about directories in the test suite
+        #       We don't seem to in the actual codebase
+        # XXX: I assume we're never asked has(dirname) and thus I use
+        # the FTP size command and assume that if it doesn't raise,
+        # all is good.
+        abspath = self._abspath(relpath)
         try:
             f = self._get_FTP()
-            s = f.size(self._abspath(relpath))
-            mutter("FTP has: %s", self._abspath(relpath))
+            s = f.size(abspath)
+            mutter("FTP has: %s", abspath)
             return True
-        except ftplib.error_perm:
-            mutter("FTP has not: %s", self._abspath(relpath))
+        except ftplib.error_perm, e:
+            if ('is a directory' in str(e).lower()):
+                mutter("FTP has dir: %s: %s", abspath, e)
+                return True
+            mutter("FTP has not: %s: %s", abspath, e)
             return False
 
     def get(self, relpath, decode=False, retries=0):
@@ -546,6 +550,40 @@ if _have_medusa:
                 # For a test server, we will go ahead and just die
                 raise
             self.respond('250 Rename successful.')
+
+        def cmd_size(self, line):
+            """Return the size of a file
+
+            This is overloaded to help the test suite determine if the 
+            target is a directory.
+            """
+            filename = line[1]
+            if not self.filesystem.isfile(filename):
+                if self.filesystem.isdir(filename):
+                    self.respond('550 "%s" is a directory' % (filename,))
+                else:
+                    self.respond('550 "%s" is not a file' % (filename,))
+            else:
+                self.respond('213 %d' 
+                    % (self.filesystem.stat(filename)[stat.st_SIZE]),)
+
+        def cmd_mkd(self, line):
+            """Create a directory.
+
+            Overloaded because default implementation does not distinguish
+            *why* it cannot make a directory.
+            """
+            if len (line) != 2:
+                self.command_not_understood (string.join (line))
+            else:
+                path = line[1]
+                try:
+                    self.filesystem.mkdir (path)
+                    self.respond ('257 MKD command successful.')
+                except (IOError, OSError), e:
+                    self.respond ('550 error creating directory: %s' % (e,))
+                except:
+                    self.respond ('550 error creating directory.')
 
 
     class _ftp_server(medusa.ftp_server.ftp_server):
