@@ -75,12 +75,13 @@ class RevisionInfo(object):
         if self.parent_ids:
             rev.parent_ids.extend(self.parent_ids)
 
-        for property in self.properties:
-            key_end = property.find(': ')
-            assert key_end is not None
-            key = property[:key_end].encode('utf-8')
-            value = property[key_end+2:].encode('utf-8')
-            rev.properties[key] = value
+        if self.properties:
+            for property in self.properties:
+                key_end = property.find(': ')
+                assert key_end is not None
+                key = property[:key_end].encode('utf-8')
+                value = property[key_end+2:].encode('utf-8')
+                rev.properties[key] = value
 
         return rev
 
