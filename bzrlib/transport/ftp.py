@@ -198,10 +198,10 @@ class FtpTransport(Transport):
         try:
             f = self._get_FTP()
             s = f.size(self._abspath(relpath))
-            mutter("FTP has: %s" % self._abspath(relpath))
+            mutter("FTP has: %s", self._abspath(relpath))
             return True
         except ftplib.error_perm:
-            mutter("FTP has not: %s" % self._abspath(relpath))
+            mutter("FTP has not: %s", self._abspath(relpath))
             return False
 
     def get(self, relpath, decode=False, retries=0):
@@ -216,7 +216,7 @@ class FtpTransport(Transport):
         """
         # TODO: decode should be deprecated
         try:
-            mutter("FTP get: %s" % self._abspath(relpath))
+            mutter("FTP get: %s", self._abspath(relpath))
             f = self._get_FTP()
             ret = StringIO()
             f.retrbinary('RETR '+self._abspath(relpath), ret.write, 8192)
@@ -230,7 +230,7 @@ class FtpTransport(Transport):
                                      % self.abspath(relpath),
                                      orig_error=e)
             else:
-                warning("FTP temporary error: %s. Retrying." % str(e))
+                warning("FTP temporary error: %s. Retrying.", str(e))
                 self._FTP_instance = None
                 return self.get(relpath, decode, retries+1)
         except EOFError, e:
@@ -259,7 +259,7 @@ class FtpTransport(Transport):
         if not hasattr(fp, 'read'):
             fp = StringIO(fp)
         try:
-            mutter("FTP put: %s" % self._abspath(relpath))
+            mutter("FTP put: %s", self._abspath(relpath))
             f = self._get_FTP()
             try:
                 f.storbinary('STOR '+tmp_abspath, fp)
@@ -269,8 +269,8 @@ class FtpTransport(Transport):
                 try:
                     f.delete(tmp_abspath)
                 except:
-                    warning("Failed to delete temporary file on the server.\nFile: %s"
-                            % tmp_abspath)
+                    warning("Failed to delete temporary file on the"
+                            " server.\nFile: %s", tmp_abspath)
                     raise e
                 raise
         except ftplib.error_perm, e:
@@ -284,7 +284,7 @@ class FtpTransport(Transport):
                 raise TransportError("FTP temporary error during PUT %s. Aborting."
                                      % self.abspath(relpath), orig_error=e)
             else:
-                warning("FTP temporary error: %s. Retrying." % str(e))
+                warning("FTP temporary error: %s. Retrying.", str(e))
                 self._FTP_instance = None
                 self.put(relpath, fp, mode, retries+1)
         except EOFError:
@@ -301,7 +301,7 @@ class FtpTransport(Transport):
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         try:
-            mutter("FTP mkd: %s" % self._abspath(relpath))
+            mutter("FTP mkd: %s", self._abspath(relpath))
             f = self._get_FTP()
             try:
                 f.mkd(self._abspath(relpath))
@@ -317,7 +317,7 @@ class FtpTransport(Transport):
     def rmdir(self, rel_path):
         """Delete the directory at rel_path"""
         try:
-            mutter("FTP rmd: %s" % self._abspath(rel_path))
+            mutter("FTP rmd: %s", self._abspath(rel_path))
 
             f = self._get_FTP()
             f.rmd(self._abspath(rel_path))
@@ -328,11 +328,67 @@ class FtpTransport(Transport):
                 raise TransportError(msg="Cannot remove directory at %s" % \
                         self._abspath(rel_path), extra=str(e))
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """
-        raise TransportNotPossible('ftp does not support append()')
+        if self.has(relpath):
+            ftp = self._get_FTP()
+            result = ftp.size(self._abspath(relpath))
+        else:
+            result = 0
+
+        mutter("FTP appe to %s", self._abspath(relpath))
+        self._try_append(relpath, f.read(), mode)
+
+        return result
+
+    def _try_append(self, relpath, text, mode=None, retries=0):
+        """Try repeatedly to append the given text to the file at relpath.
+        
+        This is a recursive function. On errors, it will be called until the
+        number of retries is exceeded.
+        """
+        try:
+            abspath = self._abspath(relpath)
+            mutter("FTP appe (try %d) to %s", retries, abspath)
+            ftp = self._get_FTP()
+            ftp.voidcmd("TYPE I")
+            cmd = "APPE %s" % abspath
+            conn = ftp.transfercmd(cmd)
+            conn.sendall(text)
+            conn.close()
+            if mode is not None:
+                self._setmode(relpath, mode)
+            ftp.getresp()
+        except ftplib.error_perm, e:
+            FtpTransportError("Error appending data to %s" % abspath,
+                    orig_error=e)
+        except ftplib.error_temp, e:
+            if retries > _number_of_retries:
+                raise TransportError("FTP temporary error during APPEND %s." \
+                        "Aborting." % abspath, orig_error=e)
+            else:
+                warning("FTP temporary error: %s. Retrying.", str(e))
+                self._FTP_instance = None
+                self._try_append(relpath, text, mode, retries+1)
+
+    def _setmode(self, relpath, mode):
+        """Set permissions on a path.
+
+        Only set permissions if the FTP server supports the 'SITE CHMOD'
+        extension.
+        """
+        try:
+            mutter("FTP site chmod: setting permissions to %s on %s",
+                str(mode), self._abspath(relpath))
+            ftp = self._get_FTP()
+            cmd = "SITE CHMOD %s %s" % (self._abspath(relpath), str(mode))
+            ftp.sendcmd(cmd)
+        except ftplib.error_perm, e:
+            # Command probably not available on this server
+            warning("FTP Could not set permissions to %s on %s. %s",
+                    str(mode), self._abspath(relpath), str(e))
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
@@ -341,8 +397,8 @@ class FtpTransport(Transport):
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         try:
-            mutter("FTP mv: %s => %s" % (self._abspath(rel_from),
-                                         self._abspath(rel_to)))
+            mutter("FTP mv: %s => %s", self._abspath(rel_from),
+                                       self._abspath(rel_to))
             f = self._get_FTP()
             f.rename(self._abspath(rel_from), self._abspath(rel_to))
         except ftplib.error_perm, e:
@@ -353,7 +409,7 @@ class FtpTransport(Transport):
     def delete(self, relpath):
         """Delete the item at relpath"""
         try:
-            mutter("FTP rm: %s" % self._abspath(relpath))
+            mutter("FTP rm: %s", self._abspath(relpath))
             f = self._get_FTP()
             f.delete(self._abspath(relpath))
         except ftplib.error_perm, e:
@@ -369,14 +425,15 @@ class FtpTransport(Transport):
     def list_dir(self, relpath):
         """See Transport.list_dir."""
         try:
-            mutter("FTP nlst: %s" % self._abspath(relpath))
+            mutter("FTP nlst: %s", self._abspath(relpath))
             f = self._get_FTP()
             basepath = self._abspath(relpath)
-            # FTP.nlst returns paths prefixed by relpath, strip 'em
-            the_list = f.nlst(basepath)
-            stripped = [path[len(basepath)+1:] for path in the_list]
+            paths = f.nlst(basepath)
+            # If FTP.nlst returns paths prefixed by relpath, strip 'em
+            if paths[0].startswith(basepath):
+                paths = [path[len(basepath)+1:] for path in paths]
             # Remove . and .. if present, and return
-            return [path for path in stripped if path not in (".", "..")]
+            return [path for path in paths if path not in (".", "..")]
         except ftplib.error_perm, e:
             raise TransportError(orig_error=e)
 
@@ -399,7 +456,7 @@ class FtpTransport(Transport):
         """Return the stat information for a file.
         """
         try:
-            mutter("FTP stat: %s" % self._abspath(relpath))
+            mutter("FTP stat: %s", self._abspath(relpath))
             f = self._get_FTP()
             return FtpStatResult(f, self._abspath(relpath))
         except ftplib.error_perm, e:
