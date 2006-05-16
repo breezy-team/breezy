@@ -78,7 +78,7 @@ class cmd_register_branch(Command):
 
     def run(self, 
             branch_url, 
-            product='', 
+            product='',
             branch_name='',
             branch_title='',
             branch_description='',
@@ -86,8 +86,9 @@ class cmd_register_branch(Command):
             link_bug=None,
             dry_run=False):
         from lp_registration import (
-            LaunchpadService, BranchRegistrationRequest, BranchBugLinkRequest)
-        rego = BranchRegistrationRequest(branch_url=branch_url, 
+            LaunchpadService, BranchRegistrationRequest, BranchBugLinkRequest,
+            DryRunLaunchpadService)
+        rego = BranchRegistrationRequest(branch_url=branch_url,
                                          branch_name=branch_name,
                                          branch_title=branch_title,
                                          branch_description=branch_description,
@@ -96,12 +97,21 @@ class cmd_register_branch(Command):
                                          )
         linko = BranchBugLinkRequest(branch_url=branch_url,
                                      bug_id=link_bug)
-        service = LaunchpadService()
-        service.gather_user_credentials()
         if not dry_run:
-            print rego.submit(service)
-            if link_bug:
-                print linko.submit(service)
+            service = LaunchpadService()
+            # This gives back the xmlrpc url that can be used for future
+            # operations on the branch.  It's not so useful to print to the
+            # user since they can't do anything with it from a web browser; it
+            # might be nice for the server to tell us about an html url as
+            # well.
+        else:
+            # Run on service entirely in memory
+            service = DryRunLaunchpadService()
+        service.gather_user_credentials()
+        branch_object_url = rego.submit(service)
+        if link_bug:
+            link_bug_url = linko.submit(service)
+        print 'Branch registered.'
 
 register_command(cmd_register_branch)
 

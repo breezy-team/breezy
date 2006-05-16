@@ -133,11 +133,11 @@ class TestBranchRegistration(TestCase):
         """register-branch command requires parameters"""
         self.run_bzr('register-branch', retcode=3)
 
-    def test_21_register_cmd_simple_branch(self):
-        """Register a well-known branch to fake server"""
-        # disabled until we can set a different transport within the command
-        # command
-        ## self.run_bzr('register-branch', self.SAMPLE_URL)
+    def test_register_dry_run(self):
+        out, err = self.run_bzr('register-branch',
+                                'http://test-server.com/bzr/branch',
+                                '--dry-run')
+        self.assertEquals(out, 'Branch registered.\n')
 
     def test_onto_transport(self):
         """Test how the request is sent by transmitting across a mock Transport"""

@@ -140,6 +140,19 @@ class BaseRequest(object):
         return service.send_request(self._methodname, self._request_params())
 
 
+class DryRunLaunchpadService(LaunchpadService):
+    """Service that just absorbs requests without sending to server.
+    
+    The dummy service does not need authentication.
+    """
+
+    def send_request(self, method_name, method_params):
+        pass
+
+    def gather_user_credentials(self):
+        pass
+
+
 class BranchRegistrationRequest(BaseRequest):
     """Request to tell Launchpad about a bzr branch."""
 
