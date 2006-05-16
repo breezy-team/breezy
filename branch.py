@@ -175,12 +175,6 @@ class SvnBranch(Branch):
     def pullable_revisions(self, other, stop_revision):
         raise NotImplementedError('pullable_revisions is abstract') #FIXME
         
-    def revision_tree(self, revision_id):
-        if revision_id is None or revision_id == NULL_REVISION:
-            return EmptyTree()
-        
-        return SvnRevisionTree(self, revision_id)
-
     # The remote server handles all this for us
     def lock_write(self):
         pass

@@ -312,8 +312,8 @@ class SvnRepository(Repository):
 
         rev.properties = bzr_props
 
-        rev.inventory_sha1 = "EMPTY"  #FIXME
-        
+        rev.inventory_sha1 = self.get_inventory_sha1(revision_id)
+
         return rev
 
     def add_revision(self, rev_id, rev, inv=None, config=None):
