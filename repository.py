@@ -146,6 +146,7 @@ class SvnRepository(Repository):
 
         self.pool = svn.core.svn_pool_create(None)
 
+        self._scheme = bzrdir.transport._scheme
         self.ra = bzrdir.transport.ra
 
         self.uuid = svn.ra.get_uuid(self.ra)
@@ -205,16 +206,6 @@ class SvnRepository(Repository):
 
         return inv
 
-    def unprefix(self,path):
-        #FIXME: Needs to use BranchingScheme
-        parts = path.lstrip("/").split("/")
-        if parts[0] == "trunk" or parts[0] == "hooks":
-            return (parts[0],"/".join(parts[1:]))
-        elif parts[0] == "tags" or parts[0] == "branches":
-            return ("/".join(parts[0:2]),"/".join(parts[2:]))
-        else:
-            raise BzrError("Unable to unprefix path %s" % path)
-
     def path_from_file_id(self,revision_id,file_id):
         """Generate a Subversion path from a bzr file id."""
         
@@ -223,7 +214,7 @@ class SvnRepository(Repository):
     def path_to_file_id(self,revnum,path):
         """Generate a bzr file id from a Subversion file name."""
 
-        (path_branch, filename) = self._unprefix(path)
+        (path_branch, filename) = self._scheme.unprefix(path)
 
         revision_id = self.generate_revision_id(revnum,path_branch)
 

@@ -19,23 +19,7 @@ from cStringIO import StringIO
 import svn.ra
 import os
 from bzrlib.errors import NoSuchFile
-
-class BranchingScheme:
-    @staticmethod
-    def is_branch(name):
-        raise NotImplementedError
-
-class DefaultBranchingScheme:
-    @staticmethod
-    def is_branch(name):
-        parts = name.split("/")
-        if len(parts) == 1 and parts[0] == "trunk":
-            return True
-
-        if len(parts) == 2 and (parts[0] == "branches" or parts[0] == "tags"):
-            return True
-
-        return False
+from scheme import DefaultBranchingScheme
 
 # Don't run any tests on SvnTransport as it is not intended to be 
 # a full implementation of Transport
@@ -78,6 +62,7 @@ class SvnTransport(Transport):
         if not scheme:
             scheme = DefaultBranchingScheme()
 
+        self._scheme = scheme
         self.is_branch_root = scheme.is_branch(self.path)
 
     def get(self, relpath):
