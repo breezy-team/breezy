@@ -107,6 +107,8 @@ class FtpTransport(Transport):
         if self.is_active:
             # urlparse won't handle aftp://
             base = base[1:]
+        if not base.endswith('/'):
+            base += '/'
         (self._proto, self._username,
             self._password, self._host,
             self._port, self._path) = split_url(base)
@@ -139,6 +141,21 @@ class FtpTransport(Transport):
         except ftplib.error_perm, e:
             raise TransportError(msg="Error setting up connection: %s"
                                     % str(e), orig_error=e)
+
+    def _translate_perm_error(self, err, path, extra=None):
+        """Try to translate an ftplib.error_perm exception."""
+        s = str(err).lower()
+        if not extra:
+            extra = str(err)
+        if ('no such file' in s
+            or 'could not open' in s):
+            raise NoSuchFile(path, extra=extra)
+        if ('file exists' in s):
+            raise FileExists(self.abspath(relpath), extra=s)
+        raise
+        # TODO: jam 20060516 Consider re-raising the error wrapped in 
+        #       something like TransportError, but this loses the traceback
+        #raise TransportError(msg='Error for path: %s' % (path,), orig_error=e)
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -274,11 +291,7 @@ class FtpTransport(Transport):
                     raise e
                 raise
         except ftplib.error_perm, e:
-            if "no such file" in str(e).lower():
-                raise NoSuchFile("Error storing %s: %s"
-                                 % (self.abspath(relpath), str(e)), extra=e)
-            else:
-                raise FtpTransportError(orig_error=e)
+            self._translate_perm_error(self.abspath(relpath), e, extra='could not store')
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
                 raise TransportError("FTP temporary error during PUT %s. Aborting."
@@ -296,7 +309,6 @@ class FtpTransport(Transport):
                 time.sleep(_sleep_between_retries)
                 self._FTP_instance = None
                 self.put(relpath, fp, mode, retries+1)
-
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
@@ -362,8 +374,7 @@ class FtpTransport(Transport):
                 self._setmode(relpath, mode)
             ftp.getresp()
         except ftplib.error_perm, e:
-            raise FtpTransportError("Error appending data to %s" % abspath,
-                    orig_error=e)
+            self._translate_perm_error(e, abspath, extra='error appending')
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
                 raise TransportError("FTP temporary error during APPEND %s." \
