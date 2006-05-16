@@ -347,7 +347,7 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             f.rmd(abspath)
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath)
+            self._translate_perm_error(e, abspath, unknown_exc=errors.PathError)
 
     def append(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
