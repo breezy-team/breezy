@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.workingtree import WorkingTree
+from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 import bzrlib
 
 import svn.core, svn.wc
@@ -49,3 +49,15 @@ class SvnWorkingTree(WorkingTree):
                 id = ids.pop()
                 if id:
                     svn.wc.prop_set2('bzr:id', id, f, False, self.pool)
+
+class SvnWorkingTreeFormat(WorkingTreeFormat):
+    def get_format_description(self):
+        return "Subversion Working Copy"
+
+    def initialize(self, a_bzrdir, revision_id=None):
+        # FIXME
+        raise NotImplementedError(self.initialize)
+
+    def open(self, a_bzrdir):
+        # FIXME
+        raise NotImplementedError(self.initialize)
