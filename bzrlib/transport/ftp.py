@@ -309,33 +309,23 @@ class FtpTransport(Transport):
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
+        abspath = self._abspath(relpath)
         try:
-            mutter("FTP mkd: %s", self._abspath(relpath))
+            mutter("FTP mkd: %s", abspath)
             f = self._get_FTP()
-            try:
-                f.mkd(self._abspath(relpath))
-            except ftplib.error_perm, e:
-                s = str(e)
-                if 'File exists' in s:
-                    raise errors.FileExists(self.abspath(relpath), extra=s)
-                else:
-                    raise
+            f.mkd(abspath)
         except ftplib.error_perm, e:
-            raise errors.TransportError(orig_error=e)
+            self._translate_perm_error(e, abspath)
 
     def rmdir(self, rel_path):
         """Delete the directory at rel_path"""
+        abspath = self._abspath(rel_path)
         try:
-            mutter("FTP rmd: %s", self._abspath(rel_path))
-
+            mutter("FTP rmd: %s", abspath)
             f = self._get_FTP()
-            f.rmd(self._abspath(rel_path))
+            f.rmd(abspath)
         except ftplib.error_perm, e:
-            if str(e).endswith("Directory not empty"):
-                raise errors.DirectoryNotEmpty(self._abspath(rel_path), extra=str(e))
-            else:
-                raise errors.TransportError(msg="Cannot remove directory at %s" % \
-                        self._abspath(rel_path), extra=str(e))
+            self._translate_perm_error(e, abspath)
 
     def append(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
