@@ -65,8 +65,15 @@ def install_revision(repository, rev, cset_tree):
         w = repository.weave_store.get_weave_or_empty(ie.file_id,
                 repository.get_transaction())
         if ie.revision not in w:
-            text_parents = [p for (p,t) in parent_trees.iteritems() if 
-                            ie.file_id in t]
+            text_parents = []
+            for revision, tree in parent_trees.iteritems():
+                if ie.file_id not in tree:
+                    continue
+                parent_id = tree.inventory[ie.file_id].revision
+                if parent_id in text_parents:
+                    continue
+                text_parents.append(parent_id)
+                    
             repository.weave_store.add_text(ie.file_id, 
                                             rev.revision_id,
             cset_tree.get_file(ie.file_id).readlines(),
