@@ -149,6 +149,7 @@ class SvnRepository(Repository):
         self.uuid = svn.ra.get_uuid(self.ra)
         self.url = url
         self.fileid_map = {}
+        self.text_cache = {}
 
         assert self.url
         assert self.uuid
@@ -410,18 +411,28 @@ class SvnRepository(Repository):
     def get_signature_text(self, revision_id):
         raise NoSuchRevision(self, revision_id) # SVN doesn't store GPG signatures
 
-    def _get_prop(self, path, revnum, name):
+    def _cache_get_file(self, path, revnum):
+        if self.text_cache.has_key(revnum) and \
+           self.text_cache[revnum].has_key(path):
+               return self.text_cache[revnum][path]
+
         stream = StringIO()
-        mutter('svn propget %s -r %r %s' % (name, revnum, path))
-        (_, props) = svn.ra.get_file(self.ra, path.encode('utf8'), revnum, stream)
+        mutter('svn getfile -r %r %s' % (revnum, path))
+        (realrevnum, props) = svn.ra.get_file(self.ra, path.encode('utf8'), revnum, stream)
+        if not self.text_cache.has_key(revnum):
+            self.text_cache[revnum] = {}
+
+        self.text_cache[revnum][path] = (props, stream)
+        return self.text_cache[revnum][path]
+
+    def _get_prop(self, path, revnum, name):
+        (props, _) = self._cache_get_file(path, revnum)
         if props.has_key(name):
             return props[name]
         return None
 
     def _get_file(self, path, revnum):
-        stream = StringIO()
-        mutter('svn cat -r %r %s' % (revnum, path))
-        svn.ra.get_file(self.ra, path.encode('utf8'), revnum, stream)
+        (_, stream) = self._cache_get_file(path, revnum)
         stream.seek(0)
         return stream
 
