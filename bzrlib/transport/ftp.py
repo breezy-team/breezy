@@ -401,9 +401,10 @@ class FtpTransport(Transport):
             warning("FTP Could not set permissions to %s on %s. %s",
                     str(mode), self._abspath(relpath), str(e))
 
-    def copy(self, rel_from, rel_to):
-        """Copy the item at rel_from to the location at rel_to"""
-        raise TransportNotPossible('ftp does not (yet) support copy()')
+    # TODO: jam 20060516 I believe ftp allows you to tell an ftp server
+    #       to copy something to another machine. And you may be able
+    #       to give it its own address as the 'to' location.
+    #       So implement a fancier 'copy()'
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -419,15 +420,13 @@ class FtpTransport(Transport):
 
     def delete(self, relpath):
         """Delete the item at relpath"""
+        abspath = self._abspath(relpath)
         try:
-            mutter("FTP rm: %s", self._abspath(relpath))
+            mutter("FTP rm: %s", abspath)
             f = self._get_FTP()
-            f.delete(self._abspath(relpath))
+            f.delete(abspath)
         except ftplib.error_perm, e:
-            if str(e).endswith("No such file or directory"):
-                raise NoSuchFile(self._abspath(relpath), extra=str(e))
-            else:
-                raise TransportError(orig_error=e)
+            self._translate_perm_error(e, abspath, 'error deleting')
 
     def listable(self):
         """See Transport.listable."""
@@ -593,6 +592,10 @@ class FtpServer(Server):
     def get_url(self):
         """Calculate an ftp url to this server."""
         return 'ftp://foo:bar@localhost:%d/' % (self._port)
+
+#    def get_bogus_url(self):
+#        """Return a URL which cannot be connected to."""
+#        return 'ftp://127.0.0.1:1'
 
     def log(self, message):
         """This is used by medusa.ftp_server to log connections, etc."""
