@@ -80,7 +80,6 @@ class SvnRemoteAccess(BzrDir):
         return branch
 
 class SvnFormat(BzrDirFormat):
-
     _lock_class = TransportLock
 
     def _open(self, transport):

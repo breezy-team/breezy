@@ -21,6 +21,8 @@ import svn.core, svn.wc
 from libsvn._core import SubversionException
 
 class SvnWorkingTree(WorkingTree):
+    """ Implementation of WorkingTree that uses a Subversion 
+    Working Copy for storage."""
     def __init__(self,path,branch):
         WorkingTree.__init__(self,path,branch)
         self.path = path

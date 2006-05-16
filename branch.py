@@ -14,29 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-#
-# Published under the GNU GPL
-
-"""Branch support for Subversion repositories
-
-Support for SVN branches has been splitted up into two kinds: 
-- RA (remote access) Subversion URLs such as svn+ssh://..., 
-    http:// (webdav) or file:/// 
-- wc (working copy) local checkouts. These are directories that contain a 
-    .svn/ subdirectory)
-
-Subversion always relies on the repository for the history information. Thus,
-RA can roughly be mapped to what bzr calls a Branch, and wc to what bzr calls a 
-WorkingTree.
-
-Three different identifiers are used in this file to refer to 
-revisions:
-- revid: bzr revision ids (text data, usually containing email 
-    address + sha)
-- revno: bzr revision number
-- revnum: svn revision number
-"""
-
 from bzrlib.branch import Branch, BranchFormat
 from bzrlib.errors import NotBranchError,NoWorkingTree,NoSuchRevision
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
@@ -48,7 +25,7 @@ from bzrlib.workingtree import WorkingTree
 from bzrlib.delta import compare_trees
 import bzrlib
 
-import svn.core, svn.wc, svn.ra
+import svn.core, svn.ra
 import os
 from libsvn._core import SubversionException
 
@@ -72,6 +49,7 @@ def _create_auth_baton(pool):
 auth_baton = _create_auth_baton(_global_pool)
 
 class SvnBranch(Branch):
+    """Maps to a Branch in a Subversion repository """
     def __init__(self,repos,branch_path):
         self.repository = repos
         self.branch_path = branch_path

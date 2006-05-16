@@ -71,6 +71,8 @@ class SvnFileWeave(VersionedFile):
         return []
 
 class SvnInventoryFile(InventoryFile):
+    """ Inventory entry that can either be a plain file or a 
+    symbolic link. Avoids fetching data until necessary. """
     def __init__(self, file_id, name, parent_id, repository, path, revnum, has_props):
         self.repository = repository
         self.path = path
@@ -129,11 +131,11 @@ class SvnFileStore(object):
     def get_weave(self,file_id,transaction):
         return SvnFileWeave(self.repository,file_id)
 
-"""
-Provides a simplified interface to a Subversion repository 
-by using the RA (remote access) API from subversion
-"""
 class SvnRepository(Repository):
+    """
+    Provides a simplified interface to a Subversion repository 
+    by using the RA (remote access) API from subversion
+    """
     def __init__(self, bzrdir, url):
         _revision_store = None
         control_store = None
@@ -221,7 +223,7 @@ class SvnRepository(Repository):
     def path_to_file_id(self,revnum,path):
         """Generate a bzr file id from a Subversion file name."""
 
-        (path_branch, filename) = self.unprefix(path)
+        (path_branch, filename) = self._unprefix(path)
 
         revision_id = self.generate_revision_id(revnum,path_branch)
 

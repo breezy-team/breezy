@@ -25,7 +25,7 @@ class cmd_submit(Command):
     """
 
     takes_args = []
-    takes_options = [ "revision" ]
+    takes_options = ["revision"]
     aliases = ["push-svn"]
     
     def run(self, revision=None):

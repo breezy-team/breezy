@@ -20,10 +20,6 @@ import svn.ra
 import os
 from bzrlib.errors import NoSuchFile
 
-class BzrCallbacks(svn.ra.callbacks2_t):
-    def __init__(self):
-        svn.ra.callbacks2_t.__init__(self)
-
 class BranchingScheme:
     @staticmethod
     def is_branch(name):
@@ -47,6 +43,8 @@ def get_test_permutations():
     return []
 
 class SvnTransport(Transport):
+    """ Fake transport for Subversion-related namespaces. This implements 
+    just as much of Transport as is necessary to fool Bazaar-NG. """
     def __init__(self, url="", ra=None, root_url=None, scheme=None):
         Transport.__init__(self,url)
 
@@ -59,7 +57,7 @@ class SvnTransport(Transport):
         # The SVN libraries don't like trailing slashes...
         self.svn_url = self.svn_url.rstrip('/')
 
-        callbacks = BzrCallbacks()
+        callbacks = svn.ra.callbacks2_t()
 
         if not ra:
             self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, None, None)
