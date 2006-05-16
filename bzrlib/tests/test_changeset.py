@@ -483,6 +483,10 @@ class CSetTester(TestCaseInTempDir):
                 , 'sub/sub/emptyfile.txt'
                 , 'sub/sub'
                 ])
+        tt = TreeTransform(self.tree1)
+        trans_id = tt.trans_id_tree_file_id('exe-1')
+        tt.set_executability(False, trans_id)
+        tt.apply()
         self.tree1.commit('removed', rev_id='a@cset-0-3')
         
         cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-3')

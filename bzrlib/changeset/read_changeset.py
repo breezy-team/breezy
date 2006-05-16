@@ -576,6 +576,16 @@ class ChangesetReader(object):
             cset_tree.note_last_changed(file_id, changed_revision_id)
             return changed_revision_id
 
+        def extra_info(info, file_id):
+            last_changed = None
+            for info_item in info:
+                if info_item.startswith('last-changed:'):
+                    last_changed = info_item
+                if info_item.startswith('executable:'):
+                    val = info_item[len('executable:'):] == 'yes'
+                    cset_tree.note_executable(file_id, val)
+            return last_changed
+
         def renamed(kind, extra, lines):
             info = extra.split(' // ')
             if len(info) < 2:
@@ -621,16 +631,7 @@ class ChangesetReader(object):
             file_id = info[1][8:]
 
             cset_tree.note_id(file_id, path, kind)
-
-            last_changed = None
-            for info_item in info[2:]:
-                if info_item.startswith('last-changed:'):
-                    last_changed = info_item
-                if info_item.startswith('executable:'):
-                    val = info_item[len('executable:'):] == 'yes'
-                    cset_tree.note_executable(file_id, val)
-                    
-
+            last_changed = extra_info(info[2:], file_id)
             revision = get_rev_id(last_changed, file_id, kind)
             if kind == 'directory':
                 return
@@ -644,11 +645,10 @@ class ChangesetReader(object):
             path = info[0]
 
             file_id = cset_tree.path2id(path)
-            if len(info) > 1:
-                revision = get_rev_id(info[1], file_id, kind)
-            else:
-                revision = get_rev_id(None, file_id, kind)
-            cset_tree.note_patch(path, ''.join(lines))
+            last_modified = extra_info(info[1:], file_id)
+            revision = get_rev_id(last_modified, file_id, kind)
+            if lines:
+                cset_tree.note_patch(path, ''.join(lines))
             
 
         valid_actions = {
