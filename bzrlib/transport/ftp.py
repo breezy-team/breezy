@@ -163,7 +163,7 @@ class FtpTransport(Transport):
         # Possibly, we could use urlparse.urljoin() here, but
         # I'm concerned about when it chooses to strip the last
         # portion of the path, and when it doesn't.
-        return '/'.join(basepath)
+        return '/'.join(basepath) or '/'
     
     def abspath(self, relpath):
         """Return the full url to the given relative path.
