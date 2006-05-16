@@ -625,10 +625,17 @@ class ChangesetReader(object):
             file_id = info[1][8:]
 
             cset_tree.note_id(file_id, path, kind)
-            if len(info) > 2:
-                revision = get_rev_id(info[2], file_id, kind)
-            else:
-                revision = get_rev_id(None, file_id, kind)
+
+            last_changed = None
+            for info_item in info[2:]:
+                if info_item.startswith('last-changed:'):
+                    last_changed = info_item
+                if info_item.startswith('executable:'):
+                    val = info_item[len('executable:'):] == 'yes'
+                    cset_tree.note_executable(file_id, val)
+                    
+
+            revision = get_rev_id(last_changed, file_id, kind)
             if kind == 'directory':
                 return
             cset_tree.note_patch(path, ''.join(lines))
@@ -696,6 +703,7 @@ class ChangesetTree(Tree):
         self._new_id_r = {} # new_id => new_path
         self._kinds = {} # new_id => kind
         self._last_changed = {} # new_id => revision_id
+        self._executable = {} # new_id => executable value
         self.patches = {}
         self.deleted = []
         self.contents_by_id = True
@@ -734,6 +742,9 @@ class ChangesetTree(Tree):
     def note_deletion(self, old_path):
         """The file at old_path has been deleted."""
         self.deleted.append(old_path)
+
+    def note_executable(self, new_path, executable):
+        self._executable[new_path] = executable
 
     def old_path(self, new_path):
         """Get the old_path (path in the base_tree) for the file at new_path"""
@@ -860,6 +871,12 @@ class ChangesetTree(Tree):
             return self._kinds[file_id]
         return self.base_tree.inventory[file_id].kind
 
+    def is_executable(self, file_id):
+        if file_id in self._executable:
+            return self._executable[file_id]
+        else:
+            return self.base_tree.inventory[file_id].executable
+
     def get_last_changed(self, file_id):
         if file_id in self._last_changed:
             return self._last_changed[file_id]
@@ -919,6 +936,7 @@ class ChangesetTree(Tree):
                 ie = InventoryDirectory(file_id, name, parent_id)
             elif kind == 'file':
                 ie = InventoryFile(file_id, name, parent_id)
+                ie.executable = self.is_executable(file_id)
             elif kind == 'symlink':
                 ie = InventoryLink(file_id, name, parent_id)
             ie.revision = revision_id

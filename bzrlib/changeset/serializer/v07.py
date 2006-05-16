@@ -166,7 +166,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
                     self.to_file)
         def do_meta(file_id):
             ie = new_tree.inventory[file_id]
-            w(' // executable: %s' % bool_text[ie.executable])
+            w(' // executable:%s' % bool_text[ie.executable])
 
         delta = compare_trees(old_tree, new_tree, want_unchanged=False)
 
@@ -177,7 +177,10 @@ class ChangesetSerializerV07(ChangesetSerializer):
             w('=== removed %s %s\n' % (kind, path))
 
         for path, file_id, kind in delta.added:
-            w('=== added %s %s // file-id:%s\n' % (kind, path, file_id))
+            w('=== added %s %s // file-id:%s' % (kind, path, file_id))
+            if kind == 'file':
+                do_meta(file_id)
+            w('\n')
             new_tree.inventory[file_id].diff(internal_diff,
                     pathjoin(new_label, path), new_tree,
                     DEVNULL, None, None,

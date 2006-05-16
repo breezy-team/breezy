@@ -26,6 +26,7 @@ from bzrlib.changeset.apply_changeset import install_changeset
 from bzrlib.changeset.read_changeset import ChangesetTree, ChangesetReader
 from bzrlib.changeset.serializer import write_changeset
 from bzrlib.merge import Merge3Merger
+from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
 class MockTree(object):
@@ -406,7 +407,8 @@ class CSetTester(TestCaseInTempDir):
         base_files = list(base_tree.list_files())
         to_files = list(to_tree.list_files())
         self.assertEqual(len(base_files), len(to_files))
-        self.assertEqual(base_files, to_files)
+        for base_file, to_file in zip(base_files, to_files):
+            self.assertEqual(base_file, to_file)
 
         for path, status, kind, fileid, entry in base_files:
             # Check that the meta information is the same
@@ -451,6 +453,9 @@ class CSetTester(TestCaseInTempDir):
                 ])
         open('b1/sub/sub/emptyfile.txt', 'wb').close()
         open('b1/dir/nolastnewline.txt', 'wb').write('bloop')
+        tt = TreeTransform(self.tree1)
+        tt.new_file('executable', tt.root, '#!/bin/sh\n', 'exe-1', True)
+        tt.apply()
         self.tree1.add([
                 'with space.txt'
                 , 'dir'
