@@ -296,7 +296,8 @@ class Commit(object):
 
             self._gather_parents()
             if len(self.parents) > 1 and self.specific_files:
-                raise NotImplementedError('selected-file commit of merges is not supported yet')
+                raise NotImplementedError('selected-file commit of merges is not supported yet: files %r',
+                        self.specific_files)
             self._check_parents_present()
             
             self._remove_deleted()
@@ -414,6 +415,11 @@ class Commit(object):
 
     def _escape_commit_message(self):
         """Replace xml-incompatible control characters."""
+        # FIXME: RBC 20060419 this should be done by the revision
+        # serialiser not by commit. Then we can also add an unescaper
+        # in the deserializer and start roundtripping revision messages
+        # precisely. See repository_implementations/test_repository.py
+        
         # Python strings can include characters that can't be
         # represented in well-formed XML; escape characters that
         # aren't listed in the XML specification
@@ -506,7 +512,7 @@ class Commit(object):
             if ie.revision is None:
                 change = ie.snapshot(self.rev_id, path, previous_entries,
                                      self.work_tree, self.weave_store,
-                                     self.branch.get_transaction())
+                                     self.branch.repository.get_transaction())
             else:
                 change = "unchanged"
             self.reporter.snapshot_change(change, path)

@@ -16,9 +16,11 @@
 
 """Tests for LockDir"""
 
+from cStringIO import StringIO
 from threading import Thread
 import time
 
+import bzrlib
 from bzrlib.errors import (
         LockBreakMismatch,
         LockContention, LockError, UnlockableTransport,
@@ -55,6 +57,17 @@ class TestLockDir(TestCaseWithTransport):
     def test_02_unlocked_peek(self):
         lf = LockDir(self.get_transport(), 'test_lock')
         self.assertEqual(lf.peek(), None)
+
+    def get_lock(self):
+        return LockDir(self.get_transport(), 'test_lock')
+
+    def test_unlock_after_break_raises(self):
+        ld = self.get_lock()
+        ld2 = self.get_lock()
+        ld.create()
+        ld.attempt_lock()
+        ld2.force_break(ld2.peek())
+        self.assertRaises(LockBroken, ld.unlock)
 
     def test_03_readonly_peek(self):
         lf = LockDir(self.get_readonly_transport(), 'test_lock')
@@ -149,7 +162,10 @@ class TestLockDir(TestCaseWithTransport):
             self.assertRaises(LockContention, lf2.wait_lock,
                               timeout=0.4, poll=0.1)
             after = time.time()
-            self.assertTrue(after - before <= 1.0)
+            # it should only take about 0.4 seconds, but we allow more time in
+            # case the machine is heavily loaded
+            self.assertTrue(after - before <= 8.0, 
+                    "took %f seconds to detect lock contention" % (after - before))
         finally:
             lf1.unlock()
 
@@ -318,3 +334,21 @@ class TestLockDir(TestCaseWithTransport):
         self.assertTrue(t.has('test_lock/held/info'))
         lf1.unlock()
         self.assertFalse(t.has('test_lock/held/info'))
+
+    def test_break_lock(self):
+        # the ui based break_lock routine should Just Work (tm)
+        ld1 = self.get_lock()
+        ld2 = self.get_lock()
+        ld1.create()
+        ld1.lock_write()
+        # do this without IO redirection to ensure it doesn't prompt.
+        self.assertRaises(AssertionError, ld1.break_lock)
+        orig_factory = bzrlib.ui.ui_factory
+        # silent ui - no need for stdout
+        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
+        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        try:
+            ld2.break_lock()
+            self.assertRaises(LockBroken, ld1.unlock)
+        finally:
+            bzrlib.ui.ui_factory = orig_factory

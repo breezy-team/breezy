@@ -6,7 +6,9 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseInTempDir
 
+
 class TestMissing(TestCaseInTempDir):
+
     def test_missing(self):
         missing = "You are missing 1 revision(s):"
 
@@ -24,12 +26,29 @@ class TestMissing(TestCaseInTempDir):
         open('a', 'ab').write('more\n')
         self.capture('commit -m more')
 
-        # compare a against b
+        # run missing in a against b
         os.chdir('../a')
-        lines = self.capture('missing ../b', retcode=1).splitlines()
+        # this should not require missing to take out a write lock on a 
+        # or b. So we take a write lock on both to test that at the same
+        # time. This may let the test pass while the default branch is an
+        # os-locking branch, but it will trigger failures with lockdir based
+        # branches.
+        branch_a = Branch.open('.')
+        branch_a.lock_write()
+        branch_b = Branch.open('../b')
+        branch_b.lock_write()
+        out,err = self.run_bzr('missing', '../b', retcode=1)
+        lines = out.splitlines()
         # we're missing the extra revision here
         self.assertEqual(missing, lines[0])
+        # and we expect 8 lines of output which we trust at the moment to be
+        # good.
         self.assertEqual(8, len(lines))
+        # we do not expect any error output.
+        self.assertEqual('', err)
+        # unlock the branches for the rest of the test
+        branch_a.unlock()
+        branch_b.unlock()
 
         # get extra revision from b
         self.capture('merge ../b')

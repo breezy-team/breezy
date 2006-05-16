@@ -65,7 +65,7 @@ class KnitRevisionStore(RevisionStore):
         self.get_revision_file(transaction).add_lines_with_ghosts(
             revision.revision_id,
             revision.parent_ids,
-            revision_as_file.readlines())
+            bzrlib.osutils.split_lines(revision_as_file.read()))
 
     def add_revision_signature_text(self, revision_id, signature_text, transaction):
         """See RevisionStore.add_revision_signature_text()."""
@@ -121,4 +121,5 @@ class KnitRevisionStore(RevisionStore):
 
     def total_size(self, transaction):
         """ See RevisionStore.total_size()."""
-        return self.versioned_file_store.total_size()
+        return (len(self.all_revision_ids(transaction)), 
+            self.versioned_file_store.total_size()[1])

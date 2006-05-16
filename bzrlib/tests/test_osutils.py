@@ -72,6 +72,25 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertContainsRe(result, r'^[a-z0-9]{100}$')
 
 
+    def test_rmtree(self):
+        # Check to remove tree with read-only files/dirs
+        os.mkdir('dir')
+        f = file('dir/file', 'w')
+        f.write('spam')
+        f.close()
+        # would like to also try making the directory readonly, but at the
+        # moment python shutil.rmtree doesn't handle that properly - it would
+        # need to chmod the directory before removing things inside it - deferred
+        # for now -- mbp 20060505
+        # osutils.make_readonly('dir')
+        osutils.make_readonly('dir/file')
+
+        osutils.rmtree('dir')
+
+        self.failIfExists('dir/file')
+        self.failIfExists('dir')
+
+
 class TestSafeUnicode(TestCase):
 
     def test_from_ascii_string(self):
@@ -90,3 +109,16 @@ class TestSafeUnicode(TestCase):
         self.assertRaises(BzrBadParameterNotUnicode,
                           osutils.safe_unicode,
                           '\xbb\xbb')
+
+
+class TestSplitLines(TestCase):
+
+    def test_split_unicode(self):
+        self.assertEqual([u'foo\n', u'bar\xae'],
+                         osutils.split_lines(u'foo\nbar\xae'))
+        self.assertEqual([u'foo\n', u'bar\xae\n'],
+                         osutils.split_lines(u'foo\nbar\xae\n'))
+
+    def test_split_with_carriage_returns(self):
+        self.assertEqual(['foo\rbar\n'],
+                         osutils.split_lines('foo\rbar\n'))

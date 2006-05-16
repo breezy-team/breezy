@@ -17,10 +17,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-# Remaing to do is to figure out if get_graph should return a simple
-# map, or a graph object of some kind.
-
-
 """Versioned text file storage api."""
 
 
@@ -155,6 +151,18 @@ class VersionedFile(object):
         """Check the versioned file for integrity."""
         raise NotImplementedError(self.check)
 
+    def _check_lines_not_unicode(self, lines):
+        """Check that lines being added to a versioned file are not unicode."""
+        for line in lines:
+            if line.__class__ is not str:
+                raise errors.BzrBadParameterUnicode("lines")
+
+    def _check_lines_are_lines(self, lines):
+        """Check that the lines really are full lines without inline EOL."""
+        for line in lines:
+            if '\n' in line[:-1]:
+                raise errors.BzrBadParameterContainsNewline("lines")
+
     def _check_write_ok(self):
         """Is the versioned file marked as 'finished' ? Raise if it is."""
         if self.finished:
@@ -224,6 +232,13 @@ class VersionedFile(object):
             result[version] = self.get_delta(version)
         return result
 
+    def get_sha1(self, version_id):
+        """Get the stored sha1 sum for the given revision.
+        
+        :param name: The name of the version to lookup
+        """
+        raise NotImplementedError(self.get_sha1)
+
     def get_suffixes(self):
         """Return the file suffixes associated with this versioned file."""
         raise NotImplementedError(self.get_suffixes)
@@ -267,14 +282,29 @@ class VersionedFile(object):
         """
         raise NotImplementedError(self.get_ancestry_with_ghosts)
         
-    def get_graph(self):
-        """Return a graph for the entire versioned file.
+    def get_graph(self, version_ids=None):
+        """Return a graph from the versioned file. 
         
         Ghosts are not listed or referenced in the graph.
+        :param version_ids: Versions to select.
+                            None means retreive all versions.
         """
         result = {}
-        for version in self.versions():
-            result[version] = self.get_parents(version)
+        if version_ids is None:
+            for version in self.versions():
+                result[version] = self.get_parents(version)
+        else:
+            pending = set(version_ids)
+            while pending:
+                version = pending.pop()
+                if version in result:
+                    continue
+                parents = self.get_parents(version)
+                for parent in parents:
+                    if parent in result:
+                        continue
+                    pending.add(parent)
+                result[version] = parents
         return result
 
     def get_graph_with_ghosts(self):
@@ -395,11 +425,31 @@ class VersionedFile(object):
         return iter(self.versions())
 
     def plan_merge(self, ver_a, ver_b):
+        """Return pseudo-annotation indicating how the two versions merge.
+
+        This is computed between versions a and b and their common
+        base.
+
+        Weave lines present in none of them are skipped entirely.
+
+        Legend:
+        killed-base Dead in base revision
+        killed-both Killed in each revision
+        killed-a    Killed in a
+        killed-b    Killed in b
+        unchanged   Alive in both a and b (possibly created in both)
+        new-a       Created in a
+        new-b       Created in b
+        ghost-a     Killed in a, unborn in b    
+        ghost-b     Killed in b, unborn in a
+        irrelevant  Not in either revision
+        """
         raise NotImplementedError(VersionedFile.plan_merge)
         
     def weave_merge(self, plan, a_marker=TextMerge.A_MARKER, 
                     b_marker=TextMerge.B_MARKER):
         return PlanWeaveMerge(plan, a_marker, b_marker).merge_lines()[0]
+
 
 class PlanWeaveMerge(TextMerge):
     """Weave merge that takes a plan as its input.
@@ -413,11 +463,23 @@ class PlanWeaveMerge(TextMerge):
         TextMerge.__init__(self, a_marker, b_marker)
         self.plan = plan
 
-
     def _merge_struct(self):
         lines_a = []
         lines_b = []
         ch_a = ch_b = False
+
+        def outstanding_struct():
+            if not lines_a and not lines_b:
+                return
+            elif ch_a and not ch_b:
+                # one-sided change:
+                yield(lines_a,)
+            elif ch_b and not ch_a:
+                yield (lines_b,)
+            elif lines_a == lines_b:
+                yield(lines_a,)
+            else:
+                yield (lines_a, lines_b)
        
         # We previously considered either 'unchanged' or 'killed-both' lines
         # to be possible places to resynchronize.  However, assuming agreement
@@ -425,18 +487,8 @@ class PlanWeaveMerge(TextMerge):
         for state, line in self.plan:
             if state == 'unchanged':
                 # resync and flush queued conflicts changes if any
-                if not lines_a and not lines_b:
-                    pass
-                elif ch_a and not ch_b:
-                    # one-sided change:
-                    yield(lines_a,)
-                elif ch_b and not ch_a:
-                    yield (lines_b,)
-                elif lines_a == lines_b:
-                    yield(lines_a,)
-                else:
-                    yield (lines_a, lines_b)
-
+                for struct in outstanding_struct():
+                    yield struct
                 lines_a = []
                 lines_b = []
                 ch_a = ch_b = False
@@ -459,6 +511,8 @@ class PlanWeaveMerge(TextMerge):
             else:
                 assert state in ('irrelevant', 'ghost-a', 'ghost-b', 
                                  'killed-base', 'killed-both'), state
+        for struct in outstanding_struct():
+            yield struct
 
 
 class WeaveMerge(PlanWeaveMerge):
@@ -507,7 +561,8 @@ class InterVersionedFile(InterObject):
             # Make a new target-format versioned file. 
             temp_source = self.target.create_empty("temp", MemoryTransport())
             target = temp_source
-        graph = self.source.get_graph()
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
+        graph = self.source.get_graph(version_ids)
         order = topo_sort(graph.items())
         pb = ui.ui_factory.nested_progress_bar()
         parent_texts = {}
@@ -552,6 +607,33 @@ class InterVersionedFile(InterObject):
         finally:
             pb.finished()
 
+    def _get_source_version_ids(self, version_ids, ignore_missing):
+        """Determine the version ids to be used from self.source.
+
+        :param version_ids: The caller-supplied version ids to check. (None 
+                            for all). If None is in version_ids, it is stripped.
+        :param ignore_missing: if True, remove missing ids from the version 
+                               list. If False, raise RevisionNotPresent on
+                               a missing version id.
+        :return: A set of version ids.
+        """
+        if version_ids is None:
+            # None cannot be in source.versions
+            return set(self.source.versions())
+        else:
+            if ignore_missing:
+                return set(self.source.versions()).intersection(set(version_ids))
+            else:
+                new_version_ids = set()
+                for version in version_ids:
+                    if version is None:
+                        continue
+                    if not self.source.has_version(version):
+                        raise errors.RevisionNotPresent(version, str(self.source))
+                    else:
+                        new_version_ids.add(version)
+                return new_version_ids
+
 
 class InterVersionedFileTestProviderAdapter(object):
     """A tool to generate a suite testing multiple inter versioned-file classes.
@@ -591,14 +673,14 @@ class InterVersionedFileTestProviderAdapter(object):
         from bzrlib.weave import WeaveFile
         from bzrlib.knit import KnitVersionedFile
         result = []
-        # test the fallback InterVersionedFile from weave to annotated knits
+        # test the fallback InterVersionedFile from annotated knits to weave
         result.append((InterVersionedFile, 
-                       WeaveFile,
-                       KnitVersionedFile))
+                       KnitVersionedFile,
+                       WeaveFile))
         for optimiser in InterVersionedFile._optimisers:
             result.append((optimiser,
-                           optimiser._matching_file_factory,
-                           optimiser._matching_file_factory
+                           optimiser._matching_file_from_factory,
+                           optimiser._matching_file_to_factory
                            ))
         # if there are specific combinations we want to use, we can add them 
         # here.

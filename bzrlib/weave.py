@@ -463,6 +463,8 @@ class Weave(VersionedFile):
         """
 
         assert isinstance(version_id, basestring)
+        self._check_lines_not_unicode(lines)
+        self._check_lines_are_lines(lines)
         if not sha1:
             sha1 = sha_strings(lines)
         if version_id in self._name_map:
@@ -886,12 +888,9 @@ class Weave(VersionedFile):
                        expected_sha1, measured_sha1))
         return result
 
-    def get_sha1(self, name):
-        """Get the stored sha1 sum for the given revision.
-        
-        :param name: The name of the version to lookup
-        """
-        return self._sha1s[self._lookup(name)]
+    def get_sha1(self, version_id):
+        """See VersionedFile.get_sha1()."""
+        return self._sha1s[self._lookup(version_id)]
 
     @deprecated_method(zero_eight)
     def numversions(self):
@@ -978,12 +977,9 @@ class Weave(VersionedFile):
         if not other.versions():
             return          # nothing to update, easy
 
-        if version_ids:
-            for version_id in version_ids:
-                if not other.has_version(version_id) and not ignore_missing:
-                    raise RevisionNotPresent(version_id, self._weave_name)
-        else:
-            version_ids = other.versions()
+        if not version_ids:
+            # versions is never none, InterWeave checks this.
+            return 0
 
         # two loops so that we do not change ourselves before verifying it
         # will be ok
@@ -1466,7 +1462,8 @@ if __name__ == '__main__':
 class InterWeave(InterVersionedFile):
     """Optimised code paths for weave to weave operations."""
     
-    _matching_file_factory = staticmethod(WeaveFile)
+    _matching_file_from_factory = staticmethod(WeaveFile)
+    _matching_file_to_factory = staticmethod(WeaveFile)
     
     @staticmethod
     def is_compatible(source, target):
@@ -1479,8 +1476,8 @@ class InterWeave(InterVersionedFile):
 
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
-        if self.target.versions() == []:
-            # optimised copy
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
+        if self.target.versions() == [] and version_ids is None:
             self.target._copy_weave_content(self.source)
             return
         try:

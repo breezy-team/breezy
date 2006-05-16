@@ -3,6 +3,7 @@ import os
 from subprocess import Popen, PIPE
 
 from bzrlib.errors import NoDiff3
+from bzrlib.textfile import check_text_path
 """
 Diff and patch functionality
 """
@@ -51,6 +52,9 @@ def patch(patch_contents, filename, output_filename=None, reverse=False):
 def diff3(out_file, mine_path, older_path, yours_path):
     def add_label(args, label):
         args.extend(("-L", label))
+    check_text_path(mine_path)
+    check_text_path(older_path)
+    check_text_path(yours_path)
     args = ['diff3', "-E", "--merge"]
     add_label(args, "TREE")
     add_label(args, "ANCESTOR")

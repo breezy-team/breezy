@@ -37,13 +37,13 @@ rather starts again from the run_bzr function.
 from cStringIO import StringIO
 import os
 import re
-import shutil
 import sys
 
+import bzrlib
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
-from bzrlib.osutils import has_symlinks, pathjoin
+from bzrlib.osutils import has_symlinks, pathjoin, rmtree
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
@@ -63,9 +63,8 @@ class TestCommands(ExternalBase):
     def test_whoami_branch(self):
         """branch specific user identity works."""
         self.runbzr('init')
-        f = file('.bzr/email', 'wt')
-        f.write('Branch Identity <branch@identi.ty>')
-        f.close()
+        b = bzrlib.branch.Branch.open('.')
+        b.control_files.put_utf8('email', 'Branch Identity <branch@identi.ty>')
         bzr_email = os.environ.get('BZREMAIL')
         if bzr_email is not None:
             del os.environ['BZREMAIL']
@@ -279,7 +278,8 @@ class TestCommands(ExternalBase):
         self.example_branch()
         os.chdir('..')
         self.runbzr('branch a b')
-        self.assertFileEqual('b\n', 'b/.bzr/branch-name')
+        b = bzrlib.branch.Branch.open('b')
+        self.assertEqual('b\n', b.control_files.get_utf8('branch-name').read())
         self.runbzr('branch a c -r 1')
         os.chdir('b')
         self.runbzr('commit -m foo --unchanged')
@@ -490,7 +490,7 @@ class TestCommands(ExternalBase):
         self.runbzr('pull')
         self.runbzr('pull ../c')
         self.runbzr('branch ../c ../d')
-        shutil.rmtree('../c')
+        rmtree('../c')
         self.runbzr('pull')
         os.chdir('../b')
         self.runbzr('pull')
