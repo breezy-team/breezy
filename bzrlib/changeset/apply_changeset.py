@@ -85,10 +85,10 @@ def install_revision(repository, rev, cset_tree):
                     continue
                 text_parents.append(parent_id)
                     
-            repository.weave_store.add_text(ie.file_id, 
-                                            rev.revision_id,
-            cset_tree.get_file(ie.file_id).readlines(),
-            text_parents, repository.get_transaction())
+            vfile = repository.weave_store.get_weave_or_empty(ie.file_id, 
+                repository.get_transaction())
+            lines = cset_tree.get_file(ie.file_id).readlines()
+            vfile.add_lines(rev.revision_id, text_parents, lines)
     try:
         repository.add_inventory(rev.revision_id, inv, present_parents)
     except RevisionAlreadyPresent:
