@@ -456,16 +456,59 @@ class _test_authorizer(object):
 
 
 if _have_medusa:
+    class _ftp_channel(medusa.ftp_server.ftp_channel):
+        """Customized ftp channel"""
+
+        def log_info(self, message, type='info'):
+            """Redirect logging requests."""
+            mutter('_ftp_channel %s: %s', type, message)
+            
+        def cmd_rnfr(self, line):
+            """Prepare for renaming a file."""
+            self._renaming = line[1]
+            self.respond('350 Ready for RNTO')
+            # TODO: jam 20060516 in testing, the ftp server seems to
+            #       check that the file already exists, or it sends
+            #       550 RNFR command failed
+
+        def cmd_rnto(self, line):
+            """Rename a file based on the target given.
+
+            rnto must be called after calling rnfr.
+            """
+            if not self._renaming:
+                self.respond('503 RNFR required first.')
+            pfrom = self.filesystem.translate(self._renaming)
+            pto = self.filesystem.translate(line[1])
+            try:
+                os.rename(pfrom, pto)
+            except OSError, e:
+                # TODO: jam 20060516 return custom responses based on
+                #       why the command failed
+                self.respond('550 RNTO failed')
+            except:
+                self.respond('550 RNTO failed')
+                # For a test server, we will go ahead and just die
+                raise
+            self.respond('250 Rename successful.')
+
+
     class _ftp_server(medusa.ftp_server.ftp_server):
         """Customize the behavior of the Medusa ftp_server.
 
         There are a few warts on the ftp_server, based on how it expects
         to be used.
         """
+        _renaming = None
+        ftp_channel_class = _ftp_channel
+
+        def __init__(self, *args, **kwargs):
+            mutter('Initializing _ftp_server: %r, %r', args, kwargs)
+            medusa.ftp_server.ftp_server.__init__(self, *args, **kwargs)
 
         def log_info(self, message, type='info'):
             """Override the asyncore.log_info so we don't stipple the screen."""
-            return
+            mutter('_ftp_server %s: %s', type, message)
 
 
 class FtpServer(Server):
