@@ -1,4 +1,4 @@
-bzr 0.8.1  2006-05-12
+bzr 0.8.1  2006-05-16
 
   BUG FIXES:
 
@@ -8,8 +8,18 @@ bzr 0.8.1  2006-05-12
     * Nicer messages from 'commit' in the case of renames, and correct
       messages when a merge has occured. (Robert Collins, Martin Pool)
 
+    * Separate functionality from assert statements as they are skipped in
+      optimized mode of python. Add the same check to pending merges.
+      (#44443, Olaf Conradi)
+
+  CHANGES:
+
+    * Do not show the None revision in output of bzr ancestry. (Olaf Conradi)
+
     * Add info on standalone branches without a working tree.
       (#44155, Olaf Conradi)
+
+    * Fix bug in knits when raising InvalidRevisionId. (#44284, Olaf Conradi)
 
   CHANGES:
 

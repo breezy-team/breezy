@@ -37,4 +37,13 @@ class TestAncestry(TestCaseWithTransport):
         a_wt.commit('modified A/foo',rev_id='A2')
         merge(['B',-1],['B',1],this_dir='A')
         a_wt.commit('merged B into A',rev_id='A3')
-        self.run_bzr('ancestry')
+        os.chdir('A')
+        out, err = self.run_bzr('ancestry')
+        self.assertEquals(err, '')
+        self.assertEqualDiff(out,
+"""A1
+B1
+A2
+A3
+""")
+
