@@ -137,8 +137,15 @@ class FtpTransport(Transport):
             raise errors.TransportError(msg="Error setting up connection: %s"
                                     % str(e), orig_error=e)
 
-    def _translate_perm_error(self, err, path, extra=None):
-        """Try to translate an ftplib.error_perm exception."""
+    def _translate_perm_error(self, err, path, extra=None, unknown_exc=None):
+        """Try to translate an ftplib.error_perm exception.
+
+        :param err: The error to translate into a bzr error
+        :param path: The path which had problems
+        :param extra: Extra information which can be included
+        :param unknown_exc: If None, we will just raise the original exception
+                    otherwise we raise unknown_exc(path, extra=extra)
+        """
         s = str(err).lower()
         if not extra:
             extra = str(err)
@@ -153,6 +160,9 @@ class FtpTransport(Transport):
             raise errors.PathError(path, extra=extra)
 
         mutter('unable to understand error for path: %s: %s', path, err)
+
+        if unknown_exc:
+            raise unknown_exc(path, extra=extra)
         # TODO: jam 20060516 Consider re-raising the error wrapped in 
         #       something like TransportError, but this loses the traceback
         #       Also, 'sftp' has a generic 'Failure' mode, which we use failure_exc
@@ -218,6 +228,7 @@ class FtpTransport(Transport):
         abspath = self._abspath(relpath)
         try:
             f = self._get_FTP()
+            mutter('FTP has check: %s => %s', relpath, abspath)
             s = f.size(abspath)
             mutter("FTP has: %s", abspath)
             return True
@@ -342,13 +353,14 @@ class FtpTransport(Transport):
         """Append the text in the file-like object into the final
         location.
         """
+        abspath = self._abspath(relpath)
         if self.has(relpath):
             ftp = self._get_FTP()
-            result = ftp.size(self._abspath(relpath))
+            result = ftp.size(abspath)
         else:
             result = 0
 
-        mutter("FTP appe to %s", self._abspath(relpath))
+        mutter("FTP appe to %s", abspath)
         self._try_append(relpath, f.read(), mode)
 
         return result
@@ -406,13 +418,16 @@ class FtpTransport(Transport):
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
+        abs_from = self._abspath(rel_from)
+        abs_to = self._abspath(rel_to)
         try:
-            mutter("FTP mv: %s => %s", self._abspath(rel_from),
-                                       self._abspath(rel_to))
+            mutter("FTP mv: %s => %s", abs_from, abs_to)
             f = self._get_FTP()
-            f.rename(self._abspath(rel_from), self._abspath(rel_to))
+            f.rename(abs_from, abs_to)
         except ftplib.error_perm, e:
-            raise errors.TransportError(orig_error=e)
+            self._translate_perm_error(e, abs_from,
+                extra='unable to rename to %r' % (rel_to,), 
+                unknown_exc=errors.PathError)
 
     rename = move
 
@@ -520,6 +535,10 @@ if _have_medusa:
     class _ftp_channel(medusa.ftp_server.ftp_channel):
         """Customized ftp channel"""
 
+        def log(self, message):
+            """Redirect logging requests."""
+            mutter('_ftp_channel: %s', message)
+            
         def log_info(self, message, type='info'):
             """Redirect logging requests."""
             mutter('_ftp_channel %s: %s', type, message)
@@ -540,13 +559,14 @@ if _have_medusa:
             if not self._renaming:
                 self.respond('503 RNFR required first.')
             pfrom = self.filesystem.translate(self._renaming)
+            self._renaming = None
             pto = self.filesystem.translate(line[1])
             try:
                 os.rename(pfrom, pto)
-            except OSError, e:
+            except (IOError, OSError), e:
                 # TODO: jam 20060516 return custom responses based on
                 #       why the command failed
-                self.respond('550 RNTO failed')
+                self.respond('550 RNTO failed: %s' % (e,))
             except:
                 self.respond('550 RNTO failed')
                 # For a test server, we will go ahead and just die
@@ -559,6 +579,7 @@ if _have_medusa:
             This is overloaded to help the test suite determine if the 
             target is a directory.
             """
+            mutter('cmd_size for %s', line)
             filename = line[1]
             if not self.filesystem.isfile(filename):
                 if self.filesystem.isdir(filename):
@@ -600,6 +621,10 @@ if _have_medusa:
         def __init__(self, *args, **kwargs):
             mutter('Initializing _ftp_server: %r, %r', args, kwargs)
             medusa.ftp_server.ftp_server.__init__(self, *args, **kwargs)
+
+        def log(self, message):
+            """Redirect logging requests."""
+            mutter('_ftp_channel: %s', message)
 
         def log_info(self, message, type='info'):
             """Override the asyncore.log_info so we don't stipple the screen."""
