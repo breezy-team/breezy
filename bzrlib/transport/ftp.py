@@ -64,14 +64,14 @@ def _find_FTP(hostname, port, username, password, is_active):
     alt_key = (hostname, port, username, '********', is_active)
     if key not in _FTP_cache:
         mutter("Constructing FTP instance against %r" % (alt_key,))
-        _FTP_cache[key] = ftplib.FTP(hostname, username or '', password or '')
+        conn = ftplib.FTP()
 
-        if port is not None:
-            _FTP_cache[key].connect(port=port)
-        else:
-            _FTP_cache[key].connect()
+        conn.connect(host=hostname, port=port)
+        conn.login(user=username, passwd=password)
+        conn.set_pasv(not is_active)
 
-        _FTP_cache[key].set_pasv(not is_active)
+        _FTP_cache[key] = conn
+
     return _FTP_cache[key]    
 
 
@@ -449,6 +449,8 @@ class _test_authorizer(object):
         channel.persona = -1, -1
         if username == 'anonymous':
             channel.read_only = 1
+        else:
+            channel.read_only = 0
 
         return 1, 'OK.', medusa.filesys.os_filesystem(self.root)
 
@@ -499,7 +501,8 @@ class FtpServer(Server):
             logger_object=self # Use FtpServer.log() for messages
             )
         self._port = self._ftp_server.getsockname()[1]
-        self._async_thread = threading.Thread(target=asyncore.loop, kwargs={'timeout':0.1})
+        self._async_thread = threading.Thread(target=asyncore.loop,
+                kwargs={'timeout':0.1, 'count':1000})
         self._async_thread.setDaemon(True)
         self._async_thread.start()
 
