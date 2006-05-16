@@ -70,6 +70,58 @@ class SvnFileWeave(VersionedFile):
         mutter("GET_PARENTS: %s,%s" % (version,self.file_id))
         return []
 
+class SvnInventoryFile(InventoryFile):
+    def __init__(self, file_id, name, parent_id, repository, path, revnum, has_props):
+        self.repository = repository
+        self.path = path
+        self.has_props = has_props
+        self.revnum = revnum
+        InventoryFile.__init__(self, file_id, name, parent_id)
+
+    def _get_sha1(self):
+        text = self.repository._get_file(self.path, self.revnum).read()
+        return bzrlib.osutils.sha_string(text)
+
+    def _get_executable(self):
+        if not self.has_props:
+            return False
+
+        value = self.repository._get_prop(self.path, self.revnum, svn.core.SVN_PROP_EXECUTABLE)
+        if value and value == svn.core.SVN_PROP_EXECUTABLE_VALUE:
+            return True
+        return False 
+
+    def _is_special(self):
+        if not self.has_props:
+            return False
+
+        value = self.repository._get_prop(self.path, self.revnum, svn.core.SVN_PROP_SPECIAL)
+        if value and value == svn.core.SVN_PROP_SPECIAL_VALUE:
+            return True
+        return False 
+
+    def _get_symlink_target(self):
+        if not self._is_special():
+            return None
+        data = self.repository._get_file(self.path, self.revnum).read()
+        if not data.startswith("link "):
+            raise BzrError("Improperly formatted symlink file")
+        return data[len("link "):]
+
+    def _get_kind(self):
+        if self._is_special():
+            return 'symlink'
+        return 'file'
+
+    # FIXME: we need a set function here because of InventoryEntry.__init__
+    def _phony_set(self,data):
+        pass
+   
+    text_sha1 = property(_get_sha1, _phony_set)
+    executable = property(_get_executable, _phony_set)
+    symlink_target = property(_get_symlink_target, _phony_set)
+    kind = property(_get_kind, _phony_set)
+
 class SvnFileStore(object):
     def __init__(self,repository):
         self.repository = repository
@@ -114,7 +166,7 @@ class SvnRepository(Repository):
         def read_directory(inv,id,path):
             mutter("svn ls -r %d '%r'" % (revnum, path))
 
-            (dirents,last_revnum,props) = svn.ra.get_dir2(self.ra, path.encode('utf8'), revnum, svn.core.SVN_DIRENT_KIND + svn.core.SVN_DIRENT_CREATED_REV)
+            (dirents,last_revnum,props) = svn.ra.get_dir2(self.ra, path.encode('utf8'), revnum, svn.core.SVN_DIRENT_KIND + svn.core.SVN_DIRENT_CREATED_REV + svn.core.SVN_DIRENT_HAS_PROPS)
 
             recurse = {}
 
@@ -132,8 +184,8 @@ class SvnRepository(Repository):
                     inventry = InventoryDirectory(child_id,child_name,id)
                     recurse[child_path] = revnum
                 elif dirent.kind == svn.core.svn_node_file:
-                    inventry = InventoryFile(child_id,child_name,id)
-                    inventry.text_sha1 = "FIXME" 
+                    inventry = SvnInventoryFile(child_id,child_name,id,self,child_path,dirent.created_rev,dirent.has_props)
+
                 else:
                     raise BzrError("Unknown entry kind for '%s': %s" % (child_path, dirent.kind))
 
@@ -351,20 +403,27 @@ class SvnRepository(Repository):
     def get_revision_sha1(self, revision_id):
         return bzrlib.osutils.sha_string(self.get_revision_xml(revision_id))
 
-    def get_revision_graph_with_ghosts(self, revision_id):
-        result = Graph()
-
-        #FIXME
-        raise NotImplementedError
-
-        return result
-
     def has_signature_for_revision_id(self, revision_id):
         return False # SVN doesn't store GPG signatures. Perhaps 
                      # store in SVN revision property?
 
     def get_signature_text(self, revision_id):
         raise NoSuchRevision(self, revision_id) # SVN doesn't store GPG signatures
+
+    def _get_prop(self, path, revnum, name):
+        stream = StringIO()
+        mutter('svn propget %s -r %r %s' % (name, revnum, path))
+        (_, props) = svn.ra.get_file(self.ra, path.encode('utf8'), revnum, stream)
+        if props.has_key(name):
+            return props[name]
+        return None
+
+    def _get_file(self, path, revnum):
+        stream = StringIO()
+        mutter('svn cat -r %r %s' % (revnum, path))
+        svn.ra.get_file(self.ra, path.encode('utf8'), revnum, stream)
+        stream.seek(0)
+        return stream
 
     def get_revision_graph(self, revision_id):
         if revision_id is None:
@@ -439,17 +498,16 @@ class SvnRepository(Repository):
                 if current.has_key(fileid):
                     parents = [current[fileid]]
                 
-                stream = StringIO()
-                mutter('svn cat -r %r %s' % (revnum, item))
                 try:
-                    svn.ra.get_file(self.ra, item.encode('utf8'), revnum, stream)
+                    stream = self._get_file(item, revnum)
                 except SubversionException, (_, num):
                     if num != svn.core.SVN_ERR_FS_NOT_FILE:
                         raise
+                    stream = None
 
-                stream.seek(0)
-
-                weave.add_lines(revid, parents, stream.readlines())
+                if stream:
+                    stream.seek(0)
+                    weave.add_lines(revid, parents, stream.readlines())
 
         svn.ra.get_log(self.ra, [path.encode('utf8')], 0, revnum, 
                 0, True, False, rcvr)

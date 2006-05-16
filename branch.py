@@ -71,37 +71,6 @@ def _create_auth_baton(pool):
 
 auth_baton = _create_auth_baton(_global_pool)
 
-class SvnRevisionTree(Tree):
-    def __init__(self,branch,revision_id):
-        self.branch = branch
-        self.revision_id = revision_id
-        self.revnum = self.branch.get_revnum(revision_id)
-        self._inventory = branch.repository.get_inventory(revision_id)
-
-    def get_file_sha1(self,file_id):
-        return bzrlib.osutils.sha_string(self.get_file(file_id))
-
-    def is_executable(self,file_id):
-        filename = self.branch.path_from_file_id(self.revision_id,file_id)
-        mutter("svn propget %r %r" % (svn.core.SVN_PROP_EXECUTABLE, filename))
-        values = svn.ra.propget(svn.core.SVN_PROP_EXECUTABLE, filename, self.revnum, False, self.repository.ra)
-        if len(values) == 1 and values.pop() == svn.core.SVN_PROP_EXECUTABLE_VALUE:
-            return True
-        return False 
-    
-    def get_symlink_target(self,file_id):
-        data = self.get_file(file_id)
-        if not data.startswith("link "):
-            raise BzrError("Improperly formatted symlink file")
-        return data[len("link "):]
-   
-    def get_file(self,file_id):
-        stream = svn.core.svn_stream_empty(self.repository.pool)
-        path = self.branch.path_from_file_id(self.revision_id,file_id)
-        mutter("svn cat -r %r %r" % (self.revnum.value.number,path))
-        svn.repository.ra.get_file(stream,path.encode('utf8'),self.revnum,self.repository.ra,self.repository.pool)
-        return Stream(stream).read()
-
 class SvnBranch(Branch):
     def __init__(self,repos,branch_path):
         self.repository = repos
@@ -138,6 +107,11 @@ class SvnBranch(Branch):
     def get_root_id(self):
         inv = self.repository.get_inventory(self.last_revision())
         return inv.root.file_id
+
+    def _get_nick(self):
+        return self.branch_path
+
+    nick = property(_get_nick)
 
     def abspath(self, name):
         return self.base+"/"+name
