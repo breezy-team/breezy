@@ -14,6 +14,9 @@ IN DEVELOPMENT
     progress made. 'make check' shows tests in -v mode, to be more useful
     for the PQM status window. (Robert Collins).
 
+    * Add info on standalone branches without a working tree.  (Olaf Conradi)
+
+
 bzr 0.8  2006-05-08
 
   NOTES WHEN UPGRADING:
