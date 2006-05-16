@@ -37,7 +37,7 @@ class LaunchpadService(object):
 
     # NB: this should always end in a slash to avoid xmlrpclib appending
     # '/RPC2'
-    DEFAULT_SERVICE_URL = 'http://xmlrpc.launchpad.net/bazaar/'
+    DEFAULT_SERVICE_URL = 'https://xmlrpc.launchpad.net/bazaar/'
 
     transport = None
     registrant_email = None
