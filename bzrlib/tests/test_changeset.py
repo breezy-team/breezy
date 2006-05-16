@@ -531,6 +531,12 @@ class CSetTester(TestCaseInTempDir):
                           rev_id='a@cset-0-6', committer=u'William Dod\xe9',
                           verbose=False)
         cset = self.get_valid_cset('a@cset-0-5', 'a@cset-0-6')
+        self.tree1.rename_one('sub/dir/WithCaps.txt', 'temp')
+        self.tree1.rename_one('with space.txt', 'WithCaps.txt')
+        self.tree1.rename_one('temp', 'with space.txt')
+        self.tree1.commit(u'swap revisions', rev_id='a@cset-0-7',
+                          verbose=False)
+        cset = self.get_valid_cset('a@cset-0-6', 'a@cset-0-7')
         ##cset = self.get_valid_cset('a@cset-0-5', 'a@cset-0-6', auto_commit=True)
         ##cset = self.get_valid_cset(None, 'a@cset-0-6', auto_commit=True)
 

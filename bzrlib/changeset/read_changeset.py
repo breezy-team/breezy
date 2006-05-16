@@ -711,8 +711,8 @@ class ChangesetTree(Tree):
 
     def note_rename(self, old_path, new_path):
         """A file/directory has been renamed from old_path => new_path"""
-        assert not self._renamed.has_key(old_path)
-        assert not self._renamed_r.has_key(new_path)
+        assert not self._renamed.has_key(new_path)
+        assert not self._renamed_r.has_key(old_path)
         self._renamed[new_path] = old_path
         self._renamed_r[old_path] = new_path
 
