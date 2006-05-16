@@ -137,7 +137,7 @@ class FtpTransport(Transport):
             raise errors.TransportError(msg="Error setting up connection: %s"
                                     % str(e), orig_error=e)
 
-    def _translate_perm_error(self, err, path, extra=None, failure_exc=PathError):
+    def _translate_perm_error(self, err, path, extra=None, failure_exc=errors.PathError):
         """Try to translate an ftplib.error_perm exception."""
         s = str(err).lower()
         if not extra:
@@ -148,11 +148,16 @@ class FtpTransport(Transport):
             ):
             raise errors.NoSuchFile(path, extra=extra)
         if ('file exists' in s):
-            raise errors.FileExists(self.abspath(relpath), extra=s)
-        raise
+            raise errors.FileExists(path, extra=extra)
+        if ('not a directory' in s):
+            raise errors.PathError(path, extra=extra)
+
         # TODO: jam 20060516 Consider re-raising the error wrapped in 
         #       something like TransportError, but this loses the traceback
+        #       Also, 'sftp' has a generic 'Failure' mode, which we use failure_exc
+        #       to handle. Consider doing something like that here.
         #raise TransportError(msg='Error for path: %s' % (path,), orig_error=e)
+        raise
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
