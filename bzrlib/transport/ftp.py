@@ -52,8 +52,7 @@ from bzrlib.transport import (
     Server,
     split_url,
     )
-from bzrlib.errors import (TransportNotPossible, TransportError,
-                           NoSuchFile, FileExists, DirectoryNotEmpty)
+import bzrlib.errors as errors
 from bzrlib.trace import mutter, warning
 
 
@@ -73,10 +72,6 @@ def _find_FTP(hostname, port, username, password, is_active):
         _FTP_cache[key] = conn
 
     return _FTP_cache[key]    
-
-
-class FtpTransportError(TransportError):
-    pass
 
 
 class FtpStatResult(object):
@@ -139,19 +134,21 @@ class FtpTransport(Transport):
                                            self.is_active)
             return self._FTP_instance
         except ftplib.error_perm, e:
-            raise TransportError(msg="Error setting up connection: %s"
+            raise errors.TransportError(msg="Error setting up connection: %s"
                                     % str(e), orig_error=e)
 
-    def _translate_perm_error(self, err, path, extra=None):
+    def _translate_perm_error(self, err, path, extra=None, failure_exc=PathError):
         """Try to translate an ftplib.error_perm exception."""
         s = str(err).lower()
         if not extra:
             extra = str(err)
         if ('no such file' in s
-            or 'could not open' in s):
-            raise NoSuchFile(path, extra=extra)
+            or 'could not open' in s
+            or 'no such dir' in s
+            ):
+            raise errors.NoSuchFile(path, extra=extra)
         if ('file exists' in s):
-            raise FileExists(self.abspath(relpath), extra=s)
+            raise errors.FileExists(self.abspath(relpath), extra=s)
         raise
         # TODO: jam 20060516 Consider re-raising the error wrapped in 
         #       something like TransportError, but this loses the traceback
@@ -240,10 +237,10 @@ class FtpTransport(Transport):
             ret.seek(0)
             return ret
         except ftplib.error_perm, e:
-            raise NoSuchFile(self.abspath(relpath), extra=str(e))
+            raise errors.NoSuchFile(self.abspath(relpath), extra=str(e))
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
-                raise TransportError(msg="FTP temporary error during GET %s. Aborting."
+                raise errors.TransportError(msg="FTP temporary error during GET %s. Aborting."
                                      % self.abspath(relpath),
                                      orig_error=e)
             else:
@@ -252,7 +249,7 @@ class FtpTransport(Transport):
                 return self.get(relpath, decode, retries+1)
         except EOFError, e:
             if retries > _number_of_retries:
-                raise TransportError("FTP control connection closed during GET %s."
+                raise errors.TransportError("FTP control connection closed during GET %s."
                                      % self.abspath(relpath),
                                      orig_error=e)
             else:
@@ -294,7 +291,7 @@ class FtpTransport(Transport):
             self._translate_perm_error(self.abspath(relpath), e, extra='could not store')
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
-                raise TransportError("FTP temporary error during PUT %s. Aborting."
+                raise errors.TransportError("FTP temporary error during PUT %s. Aborting."
                                      % self.abspath(relpath), orig_error=e)
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
@@ -302,7 +299,7 @@ class FtpTransport(Transport):
                 self.put(relpath, fp, mode, retries+1)
         except EOFError:
             if retries > _number_of_retries:
-                raise TransportError("FTP control connection closed during PUT %s."
+                raise errors.TransportError("FTP control connection closed during PUT %s."
                                      % self.abspath(relpath), orig_error=e)
             else:
                 warning("FTP control connection closed. Trying to reopen.")
@@ -320,11 +317,11 @@ class FtpTransport(Transport):
             except ftplib.error_perm, e:
                 s = str(e)
                 if 'File exists' in s:
-                    raise FileExists(self.abspath(relpath), extra=s)
+                    raise errors.FileExists(self.abspath(relpath), extra=s)
                 else:
                     raise
         except ftplib.error_perm, e:
-            raise TransportError(orig_error=e)
+            raise errors.TransportError(orig_error=e)
 
     def rmdir(self, rel_path):
         """Delete the directory at rel_path"""
@@ -335,9 +332,9 @@ class FtpTransport(Transport):
             f.rmd(self._abspath(rel_path))
         except ftplib.error_perm, e:
             if str(e).endswith("Directory not empty"):
-                raise DirectoryNotEmpty(self._abspath(rel_path), extra=str(e))
+                raise errors.DirectoryNotEmpty(self._abspath(rel_path), extra=str(e))
             else:
-                raise TransportError(msg="Cannot remove directory at %s" % \
+                raise errors.TransportError(msg="Cannot remove directory at %s" % \
                         self._abspath(rel_path), extra=str(e))
 
     def append(self, relpath, f, mode=None):
@@ -377,7 +374,7 @@ class FtpTransport(Transport):
             self._translate_perm_error(e, abspath, extra='error appending')
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
-                raise TransportError("FTP temporary error during APPEND %s." \
+                raise errors.TransportError("FTP temporary error during APPEND %s." \
                         "Aborting." % abspath, orig_error=e)
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
@@ -414,7 +411,7 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             f.rename(self._abspath(rel_from), self._abspath(rel_to))
         except ftplib.error_perm, e:
-            raise TransportError(orig_error=e)
+            raise errors.TransportError(orig_error=e)
 
     rename = move
 
@@ -445,7 +442,7 @@ class FtpTransport(Transport):
             # Remove . and .. if present, and return
             return [path for path in paths if path not in (".", "..")]
         except ftplib.error_perm, e:
-            raise TransportError(orig_error=e)
+            self._translate_perm_error(e, relpath, extra='error with list_dir')
 
     def iter_files_recursive(self):
         """See Transport.iter_files_recursive.
@@ -463,18 +460,14 @@ class FtpTransport(Transport):
                 yield relpath
 
     def stat(self, relpath):
-        """Return the stat information for a file.
-        """
+        """Return the stat information for a file."""
+        abspath = self._abspath(relpath)
         try:
-            mutter("FTP stat: %s", self._abspath(relpath))
+            mutter("FTP stat: %s", abspath)
             f = self._get_FTP()
-            return FtpStatResult(f, self._abspath(relpath))
+            return FtpStatResult(f, abspath)
         except ftplib.error_perm, e:
-            if "no such file" in str(e).lower():
-                raise NoSuchFile("Error storing %s: %s"
-                                 % (self.abspath(relpath), str(e)), extra=e)
-            else:
-                raise FtpTransportError(orig_error=e)
+            self._translate_perm_error(e, abspath, extra='error w/ stat')
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.
