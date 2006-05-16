@@ -24,7 +24,6 @@ import warnings
 import bzrlib
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
-                          _load_module_by_name,
                           ChrootedTestCase,
                           TestCase,
                           TestCaseInTempDir,
@@ -33,6 +32,7 @@ from bzrlib.tests import (
                           TestSuite,
                           TextTestRunner,
                           )
+from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
 
 

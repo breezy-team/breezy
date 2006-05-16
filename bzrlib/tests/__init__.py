@@ -1037,11 +1037,6 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         default_transport = old_transport
 
 
-def benchmark_suite():
-    """Build and return a TestSuite which contains benchmark tests only."""
-    return TestSuite()
-
-
 def test_suite():
     """Build and return TestSuite for the whole of bzrlib.
     
@@ -1126,17 +1121,11 @@ def test_suite():
         'bzrlib.tests.test_transport_implementations']
 
     suite = TestSuite()
-    # python2.4's TestLoader.loadTestsFromNames gives very poor 
-    # errors if it fails to load a named module - no indication of what's
-    # actually wrong, just "no such module".  We should probably override that
-    # class, but for the moment just load them ourselves. (mbp 20051202)
-    loader = TestLoader()
+    loader = TestUtil.TestLoader()
     from bzrlib.transport import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
-    for mod_name in testmod_names:
-        mod = _load_module_by_name(mod_name)
-        suite.addTest(loader.loadTestsFromModule(mod))
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
@@ -1151,18 +1140,5 @@ def test_suite():
 
 def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
-    for mod_name in mods_list:
-        mod = _load_module_by_name(mod_name)
-        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
-            suite.addTests(adapter.adapt(test))
-
-
-def _load_module_by_name(mod_name):
-    parts = mod_name.split('.')
-    module = __import__(mod_name)
-    del parts[0]
-    # for historical reasons python returns the top-level module even though
-    # it loads the submodule; we need to walk down to get the one we want.
-    while parts:
-        module = getattr(module, parts.pop(0))
-    return module
+    for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
+        suite.addTests(adapter.adapt(test))

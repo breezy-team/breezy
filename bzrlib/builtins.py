@@ -1785,7 +1785,8 @@ class cmd_selftest(Command):
     def run(self, testspecs_list=None, verbose=False, one=False,
             keep_output=False, transport=None, benchmark=None):
         import bzrlib.ui
-        from bzrlib.tests import selftest, benchmark_suite
+        from bzrlib.tests import selftest
+        import bzrlib.benchmarks as benchmarks
         # we don't want progress meters from the tests to go to the
         # real output; and we don't want log messages cluttering up
         # the real logs.
@@ -1801,7 +1802,7 @@ class cmd_selftest(Command):
             else:
                 pattern = ".*"
             if benchmark:
-                test_suite_factory = benchmark_suite
+                test_suite_factory = benchmarks.test_suite
             else:
                 test_suite_factory = None
             result = selftest(verbose=verbose, 
