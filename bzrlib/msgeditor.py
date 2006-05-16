@@ -38,16 +38,15 @@ def _get_editor():
     if e is not None:
         yield e
         
-    try:
-        yield os.environ["EDITOR"]
-    except KeyError:
-        pass
+    for varname in 'VISUAL', 'EDITOR':
+        if os.environ.has_key(varname):
+            yield os.environ[varname]
 
     if sys.platform == 'win32':
         for editor in 'wordpad.exe', 'notepad.exe':
             yield editor
     else:
-        for editor in ['vi', 'pico', 'nano', 'joe']:
+        for editor in ['/usr/bin/editor', 'vi', 'pico', 'nano', 'joe']:
             yield editor
 
 
