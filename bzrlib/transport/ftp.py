@@ -25,18 +25,29 @@ active, in which case aftp:// will be your friend.
 """
 
 from cStringIO import StringIO
+import asyncore
 import errno
 import ftplib
 import os
 import urllib
 import urlparse
 import stat
+import threading
 import time
 import random
 from warnings import warn
 
+try:
+    import medusa
+    import medusa.filesys
+    import medusa.ftp_server
+except ImportError:
+    _have_medusa = False
+else:
+    _have_medusa = True
 
-from bzrlib.transport import Transport
+
+from bzrlib.transport import Transport, Server
 from bzrlib.errors import (TransportNotPossible, TransportError,
                            NoSuchFile, FileExists, DirectoryNotEmpty)
 from bzrlib.trace import mutter, warning
@@ -406,7 +417,76 @@ class FtpTransport(Transport):
         return self.lock_read(relpath)
 
 
+class _test_authorizer(object):
+    """A custom Authorizer object for running the test suite.
+
+    The reason we cannot use dummy_authorizer, is because it sets the
+    channel to readonly, which we don't always want to do.
+    """
+
+    def __init__(self, root):
+        self.root = root
+
+    def authorize(self, channel, username, password):
+        """Return (success, reply_string, filesystem)"""
+        if not _have_medusa:
+            return 0, 'No Medusa.', None
+
+        channel.persona = -1, -1
+        if username == 'anonymous':
+            channel.read_only = 1
+
+        return 1, 'OK.', medusa.filesys.os_filesystem(self.root)
+
+
+class FtpServer(Server):
+    """Common code for SFTP server facilities."""
+
+    def __init__(self):
+        self._root = None
+        self._ftp_server = None
+        self._port = None
+        self._async_thread = None
+        # ftp server logs
+        self.logs = []
+
+    def get_url(self):
+        """Calculate an ftp url to this server."""
+        return 'ftp://foo:bar@localhost:%d/' % (self._port)
+
+    def log(self, message):
+        """This is used by medusa.ftp_server to log connections, etc."""
+        self.logs.append(message)
+
+    def setUp(self):
+
+        if not _have_medusa:
+            raise RuntimeError('Must have medusa to run the FtpServer')
+
+        self._root = os.getcwdu()
+        self._ftp_server = medusa.ftp_server.ftp_server(
+            authorizer=_test_authorizer(root=self._root),
+            ip='localhost',
+            port=0, # bind to a random port
+            resolver=None,
+            logger_object=self # Use FtpServer.log() for messages
+            )
+        self._port = self._ftp_server.getsockname()[1]
+        self._async_thread = threading.Thread(target=asyncore.loop, kwargs={'timeout':0.1})
+        self._async_thread.setDaemon(True)
+        self._async_thread.start()
+
+    def tearDown(self):
+        """See bzrlib.transport.Server.tearDown."""
+        # have asyncore release the channel
+        self._ftp_server.del_channel()
+        self._async_thread.join()
+
+
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    warn("There are no FTP transport provider tests yet.")
-    return []
+    if not _have_medusa:
+        warn("You must install medusa (http://www.amk.ca/python/code/medusa.html) for FTP tests")
+        return []
+    else:
+        return [(FtpTransport, FtpServer)]
