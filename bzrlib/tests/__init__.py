@@ -118,13 +118,30 @@ class _MyResult(unittest._TextTestResult):
     def __init__(self, stream, descriptions, verbosity, pb=None):
         unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
         self.pb = pb
+    
+    def setBenchmarkTime(self, seconds):
+        """Add a benchmark time for the current test case."""
+        self._benchmarkTime = seconds
+    
+    def _elapsedTestTimeString(self):
+        """Return a time string for the overall time the current test has taken."""
+        return self._formatTime(time.time() - self._start_time)
 
-    def _elapsedTime(self):
-        return "%5dms" % (1000 * (time.time() - self._start_time))
+    def _testTimeString(self):
+        if self._benchmarkTime is not None:
+            return "%s/%s" % (
+                self._formatTime(self._benchmarkTime),
+                self._elapsedTestTimeString())
+        else:
+            return self._elapsedTestTimeString()
+
+    def _formatTime(self, seconds):
+        """Format seconds as milliseconds with leading spaces."""
+        return "%5dms" % (1000 * seconds)
 
     def _ellipsise_unimportant_words(self, a_string, final_width,
                                    keep_start=False):
-        """Add ellipsese (sp?) for overly long strings.
+        """Add ellipses (sp?) for overly long strings.
         
         :param keep_start: If true preserve the start of a_string rather
                            than the end of it.
@@ -168,14 +185,19 @@ class _MyResult(unittest._TextTestResult):
         elif self.dots and self.pb is not None:
             self.pb.update(what, self.testsRun - 1, None)
         self.stream.flush()
+        self._recordTestStartTime()
+
+    def _recordTestStartTime(self):
+        """Record that a test has started."""
         self._start_time = time.time()
+        self._benchmarkTime = None
 
     def addError(self, test, err):
         if isinstance(err[1], TestSkipped):
             return self.addSkipped(test, err)    
         unittest.TestResult.addError(self, test, err)
         if self.showAll:
-            self.stream.writeln("ERROR %s" % self._elapsedTime())
+            self.stream.writeln("ERROR %s" % self._testTimeString())
         elif self.dots and self.pb is None:
             self.stream.write('E')
         elif self.dots:
@@ -187,7 +209,7 @@ class _MyResult(unittest._TextTestResult):
     def addFailure(self, test, err):
         unittest.TestResult.addFailure(self, test, err)
         if self.showAll:
-            self.stream.writeln(" FAIL %s" % self._elapsedTime())
+            self.stream.writeln(" FAIL %s" % self._testTimeString())
         elif self.dots and self.pb is None:
             self.stream.write('F')
         elif self.dots:
@@ -198,7 +220,7 @@ class _MyResult(unittest._TextTestResult):
 
     def addSuccess(self, test):
         if self.showAll:
-            self.stream.writeln('   OK %s' % self._elapsedTime())
+            self.stream.writeln('   OK %s' % self._testTimeString())
         elif self.dots and self.pb is None:
             self.stream.write('~')
         elif self.dots:
@@ -208,7 +230,7 @@ class _MyResult(unittest._TextTestResult):
 
     def addSkipped(self, test, skip_excinfo):
         if self.showAll:
-            print >>self.stream, ' SKIP %s' % self._elapsedTime()
+            print >>self.stream, ' SKIP %s' % self._testTimeString()
             print >>self.stream, '     %s' % skip_excinfo[1]
         elif self.dots and self.pb is None:
             self.stream.write('S')

@@ -18,6 +18,7 @@
 import os
 from StringIO import StringIO
 import sys
+import time
 import unittest
 import warnings
 
@@ -441,6 +442,25 @@ class TestResult(TestCase):
         result.addSkipped(dummy_test, dummy_error)
         self.assertEqual(last_calls + [('update', 'SKIP         ', 4, None)], mypb.calls)
         last_calls = mypb.calls[:]
+
+    def test_elapsed_time_with_benchmarking(self):
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1,
+                                        )
+        result._recordTestStartTime()
+        time.sleep(0.003)
+        timed_string = result._testTimeString()
+        # without explicit benchmarking, we should get a simple time.
+        self.assertContainsRe(timed_string, "^   [ 1-9][0-9]ms$")
+        # if a benchmark time is given, we want a x of y style result.
+        result.setBenchmarkTime(0.001)
+        timed_string = result._testTimeString()
+        self.assertContainsRe(timed_string, "^    1ms/   [ 1-9][0-9]ms$")
+        # if a new test starts, the benchmark time is reset to nonexistant.
+        result._recordTestStartTime()
+        timed_string = result._testTimeString()
+        self.assertContainsRe(timed_string, "^    [0-9]ms$")
 
 
 class TestRunner(TestCase):
