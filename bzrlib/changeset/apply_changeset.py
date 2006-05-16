@@ -17,6 +17,7 @@ from bzrlib.merge import merge_inner
 from bzrlib.errors import BzrCommandError, RevisionAlreadyPresent
 from bzrlib.diff import compare_trees
 from bzrlib.osutils import sha_string, split_lines
+import bzrlib.ui
 from bzrlib.tree import EmptyTree
 
 
@@ -41,12 +42,18 @@ def _install_info(repository, cset_info, cset_tree):
             repository.unlock()
 
 def install_changeset(repository, changeset_reader):
-    for revision in reversed(changeset_reader.info.real_revisions):
-        if repository.has_revision(revision.revision_id):
-            continue
-        cset_tree = changeset_reader.revision_tree(repository,
-                                                   revision.revision_id)
-        install_revision(repository, revision, cset_tree)
+    pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    try:
+        real_revisions = changeset_reader.info.real_revisions
+        for i, revision in enumerate(reversed(real_revisions)):
+            pb.update("Install revisions",i, len(real_revisions))
+            if repository.has_revision(revision.revision_id):
+                continue
+            cset_tree = changeset_reader.revision_tree(repository,
+                                                       revision.revision_id)
+            install_revision(repository, revision, cset_tree)
+    finally:
+        pb.finished()
 
 def install_revision(repository, rev, cset_tree):
     # install the inventory

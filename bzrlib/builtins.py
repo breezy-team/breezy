@@ -2583,9 +2583,11 @@ def merge_changeset(reader, tree, check_clean, merge_type,
     from bzrlib.merge import Merger
     pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
+        pp = ProgressPhase("Merge phase", 6, pb)
+        pp.next_phase()
         install_changeset(tree.branch.repository, reader)
         merger = Merger(tree.branch, this_tree=tree, pb=pb)
-        merger.pp = ProgressPhase("Merge phase", 5, pb)
+        merger.pp = pp
         merger.pp.next_phase()
         merger.check_basis(check_clean, require_commits=False)
         merger.other_rev_id = reader.info.target
