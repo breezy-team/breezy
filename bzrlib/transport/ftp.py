@@ -565,7 +565,7 @@ if _have_medusa:
                     self.respond('550 "%s" is not a file' % (filename,))
             else:
                 self.respond('213 %d' 
-                    % (self.filesystem.stat(filename)[stat.st_SIZE]),)
+                    % (self.filesystem.stat(filename)[stat.ST_SIZE]),)
 
         def cmd_mkd(self, line):
             """Create a directory.
