@@ -47,19 +47,30 @@ else:
     _have_medusa = True
 
 
-from bzrlib.transport import Transport, Server
+from bzrlib.transport import (
+    Transport,
+    Server,
+    split_url,
+    )
 from bzrlib.errors import (TransportNotPossible, TransportError,
                            NoSuchFile, FileExists, DirectoryNotEmpty)
 from bzrlib.trace import mutter, warning
 
 
 _FTP_cache = {}
-def _find_FTP(hostname, username, password, is_active):
+def _find_FTP(hostname, port, username, password, is_active):
     """Find an ftplib.FTP instance attached to this triplet."""
-    key = "%s|%s|%s|%s" % (hostname, username, password, is_active)
+    key = (hostname, port, username, password, is_active)
+    alt_key = (hostname, port, username, '********', is_active)
     if key not in _FTP_cache:
-        mutter("Constructing FTP instance against %r" % key)
-        _FTP_cache[key] = ftplib.FTP(hostname, username, password)
+        mutter("Constructing FTP instance against %r" % (alt_key,))
+        _FTP_cache[key] = ftplib.FTP(hostname, username or '', password or '')
+
+        if port is not None:
+            _FTP_cache[key].connect(port=port)
+        else:
+            _FTP_cache[key].connect()
+
         _FTP_cache[key].set_pasv(not is_active)
     return _FTP_cache[key]    
 
@@ -91,17 +102,29 @@ class FtpTransport(Transport):
     def __init__(self, base, _provided_instance=None):
         """Set the base path where files will be stored."""
         assert base.startswith('ftp://') or base.startswith('aftp://')
-        if not base.endswith('/'):
-            mutter('FtpTransport adding / to %s', base)
-            base += '/'
-        super(FtpTransport, self).__init__(base)
+
         self.is_active = base.startswith('aftp://')
         if self.is_active:
+            # urlparse won't handle aftp://
             base = base[1:]
-        (self._proto, self._host,
-            self._path, self._parameters,
-            self._query, self._fragment) = urlparse.urlparse(self.base)
+        (self._proto, self._username,
+            self._password, self._host,
+            self._port, self._path) = split_url(base)
+        base = self._unparse_url()
+
+        super(FtpTransport, self).__init__(base)
         self._FTP_instance = _provided_instance
+
+    def _unparse_url(self, path=None):
+        if path is None:
+            path = self._path
+        path = urllib.quote(path)
+        netloc = urllib.quote(self._host)
+        if self._username is not None:
+            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
+        if self._port is not None:
+            netloc = '%s:%d' % (netloc, self._port)
+        return urlparse.urlunparse(('ftp', netloc, path, '', '', ''))
 
     def _get_FTP(self):
         """Return the ftplib.FTP instance for this object."""
@@ -109,15 +132,8 @@ class FtpTransport(Transport):
             return self._FTP_instance
         
         try:
-            username = ''
-            password = ''
-            hostname = self._host
-            if '@' in hostname:
-                username, hostname = hostname.split("@", 1)
-            if ':' in username:
-                username, password = username.split(":", 1)
-
-            self._FTP_instance = _find_FTP(hostname, username, password,
+            self._FTP_instance = _find_FTP(self._host, self._port,
+                                           self._username, self._password,
                                            self.is_active)
             return self._FTP_instance
         except ftplib.error_perm, e:
@@ -170,8 +186,7 @@ class FtpTransport(Transport):
         This can be supplied with a string or a list
         """
         path = self._abspath(relpath)
-        return urlparse.urlunparse((self._proto,
-                self._host, path, '', '', ''))
+        return self._unparse_url(path)
 
     def has(self, relpath):
         """Does the target location exist?
