@@ -8,6 +8,12 @@ bzr 0.8.1  2006-05-12
     * Nicer messages from 'commit' in the case of renames, and correct
       messages when a merge has occured. (Robert Collins, Martin Pool)
 
+  NEW FEATURES:
+
+    * New 'register-branch' command registers a public branch into 
+      Launchpad.net, where it can be associated with bugs, etc.
+      (Martin Pool, Bjorn Tillenius, Robert Collins)
+
   INTERNALS:
 
     * New public api in InventoryEntry - 'describe_change(old, new)' which
