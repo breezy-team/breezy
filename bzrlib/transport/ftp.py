@@ -501,6 +501,8 @@ class FtpServer(Server):
             logger_object=self # Use FtpServer.log() for messages
             )
         self._port = self._ftp_server.getsockname()[1]
+        # Don't let it loop forever, or handle an infinite number of requests.
+        # In this case it will run for 100s, or 1000 requests
         self._async_thread = threading.Thread(target=asyncore.loop,
                 kwargs={'timeout':0.1, 'count':1000})
         self._async_thread.setDaemon(True)
@@ -510,6 +512,7 @@ class FtpServer(Server):
         """See bzrlib.transport.Server.tearDown."""
         # have asyncore release the channel
         self._ftp_server.del_channel()
+        asyncore.close_all()
         self._async_thread.join()
 
 
