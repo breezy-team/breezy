@@ -185,19 +185,6 @@ class SvnRepository(Repository):
     def __del__(self):
         svn.core.svn_pool_destroy(self.pool)
 
-    def _get_last_change_revnum(self,path,revnum):
-        ret = []
-
-        def rcvr(paths,rev,author,date,message,pool):
-            ret.append(rev)
-
-        mutter("svn log -r %d:0 --limit 1 %s" % (revnum,path))
-        svn.ra.get_log(self.ra, [path.encode('utf8')], revnum, \
-            0, 1, False, False, rcvr)
-
-        return ret.pop(0)
-
-
     def get_inventory(self, revision_id):
         (path,revnum) = self.parse_revision_id(revision_id)
         mutter('getting inventory %r for branch %r' % (revnum, path))
@@ -205,7 +192,7 @@ class SvnRepository(Repository):
         def read_directory(inv,id,path):
             mutter("svn ls -r %d '%r'" % (revnum, path))
 
-            (dirents,last_revnum,props) = svn.ra.get_dir2(self.ra, path.encode('utf8'), revnum, svn.core.SVN_DIRENT_KIND)
+            (dirents,last_revnum,props) = svn.ra.get_dir2(self.ra, path.encode('utf8'), revnum, svn.core.SVN_DIRENT_KIND + svn.core.SVN_DIRENT_CREATED_REV)
 
             recurse = {}
 
@@ -217,8 +204,7 @@ class SvnRepository(Repository):
                 else:
                     child_path = child_name
 
-                changed_revnum = self._get_last_change_revnum(child_path,revnum)
-                (child_id,revid) = self.path_to_file_id(changed_revnum, child_path)
+                (child_id,revid) = self.path_to_file_id(dirent.created_rev, child_path)
 
                 if dirent.kind == svn.core.svn_node_dir:
                     inventry = InventoryDirectory(child_id,child_name,id)
