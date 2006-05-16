@@ -30,6 +30,7 @@ from bzrlib.rio import RioWriter, read_stanzas
 from bzrlib.revision import NULL_REVISION
 from bzrlib.osutils import pathjoin
 
+bool_text = {True: 'yes', False: 'no'}
 
 class ChangesetSerializerV07(ChangesetSerializer):
     def read(self, f):
@@ -141,10 +142,8 @@ class ChangesetSerializerV07(ChangesetSerializer):
         w('inventory sha1', rev.inventory_sha1)
         if rev.parent_ids:
             w('parent ids', rev.parent_ids)
-        if rev_tree.inventory.revision_id is None:
-            w('inventory has revision', 'no')
-        else:
-            w('inventory has revision', 'yes')
+        w('inventory has revision', 
+          bool_text[rev_tree.inventory.revision_id is None])
         if rev.properties:
             self._write('properties', None, indent=1)
             for name, value in rev.properties.items():
@@ -167,12 +166,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
                     self.to_file)
         def do_meta(file_id):
             ie = new_tree.inventory[file_id]
-            w(' // executable:')
-            if ie.executable:
-                w('yes')
-            else:
-                w('no')
-
+            w(' // executable: %s' % bool_text[ie.executable])
 
         delta = compare_trees(old_tree, new_tree, want_unchanged=False)
 
