@@ -450,17 +450,23 @@ class TestResult(TestCase):
                                         )
         result._recordTestStartTime()
         time.sleep(0.003)
+        result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
         # without explicit benchmarking, we should get a simple time.
-        self.assertContainsRe(timed_string, "^   [ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
         # if a benchmark time is given, we want a x of y style result.
-        result.setBenchmarkTime(0.001)
+        self.time(time.sleep, 0.001)
+        result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^    1ms/   [ 1-9][0-9]ms$")
-        # if a new test starts, the benchmark time is reset to nonexistant.
+        self.assertContainsRe(timed_string, "^    [0-9]ms/   [ 1-9][0-9]ms$")
+        # extracting the time from a non-bzrlib testcase sets to None
         result._recordTestStartTime()
+        result.extractBenchmarkTime(
+            unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^    [0-9]ms$")
+        self.assertContainsRe(timed_string, "^          [0-9]ms$")
+        # cheat. Yes, wash thy mouth out with soap.
+        self._benchtime = None
 
 
 class TestRunner(TestCase):
@@ -546,6 +552,24 @@ class TestTestCase(TestCase):
                                         verbosity=1)
         outer_test.run(result)
         self.assertEqual(original_trace, bzrlib.trace._trace_file)
+
+    def method_that_times_a_bit_twice(self):
+        # call self.time twice to ensure it aggregates
+        self.time(time.sleep, 0.005)
+        self.time(time.sleep, 0.005)
+
+    def test_time_creates_benchmark_in_result(self):
+        """Test that the TestCase.time() method accumulates a benchmark time."""
+        sample_test = TestTestCase("method_that_times_a_bit_twice")
+        output_stream = StringIO()
+        result = bzrlib.tests._MyResult(
+            unittest._WritelnDecorator(output_stream),
+            descriptions=0,
+            verbosity=2)
+        sample_test.run(result)
+        self.assertContainsRe(
+            output_stream.getvalue(),
+            "[1-9][0-9]ms/   [1-9][0-9]ms\n$")
         
 
 class TestExtraAssertions(TestCase):

@@ -119,9 +119,9 @@ class _MyResult(unittest._TextTestResult):
         unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
         self.pb = pb
     
-    def setBenchmarkTime(self, seconds):
+    def extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
-        self._benchmarkTime = seconds
+        self._benchmarkTime = getattr(testCase, "_benchtime", None)
     
     def _elapsedTestTimeString(self):
         """Return a time string for the overall time the current test has taken."""
@@ -133,7 +133,7 @@ class _MyResult(unittest._TextTestResult):
                 self._formatTime(self._benchmarkTime),
                 self._elapsedTestTimeString())
         else:
-            return self._elapsedTestTimeString()
+            return "      %s" % self._elapsedTestTimeString()
 
     def _formatTime(self, seconds):
         """Format seconds as milliseconds with leading spaces."""
@@ -169,7 +169,7 @@ class _MyResult(unittest._TextTestResult):
             final_width = 13
         else:
             final_width = osutils.terminal_width()
-            final_width = final_width - 15
+            final_width = final_width - 15 - 8
         what = None
         if SHOW_DESCRIPTIONS:
             what = test.shortDescription()
@@ -190,12 +190,12 @@ class _MyResult(unittest._TextTestResult):
     def _recordTestStartTime(self):
         """Record that a test has started."""
         self._start_time = time.time()
-        self._benchmarkTime = None
 
     def addError(self, test, err):
         if isinstance(err[1], TestSkipped):
             return self.addSkipped(test, err)    
         unittest.TestResult.addError(self, test, err)
+        self.extractBenchmarkTime(test)
         if self.showAll:
             self.stream.writeln("ERROR %s" % self._testTimeString())
         elif self.dots and self.pb is None:
@@ -208,6 +208,7 @@ class _MyResult(unittest._TextTestResult):
 
     def addFailure(self, test, err):
         unittest.TestResult.addFailure(self, test, err)
+        self.extractBenchmarkTime(test)
         if self.showAll:
             self.stream.writeln(" FAIL %s" % self._testTimeString())
         elif self.dots and self.pb is None:
@@ -219,6 +220,7 @@ class _MyResult(unittest._TextTestResult):
             self.stop()
 
     def addSuccess(self, test):
+        self.extractBenchmarkTime(test)
         if self.showAll:
             self.stream.writeln('   OK %s' % self._testTimeString())
         elif self.dots and self.pb is None:
@@ -229,6 +231,7 @@ class _MyResult(unittest._TextTestResult):
         unittest.TestResult.addSuccess(self, test)
 
     def addSkipped(self, test, skip_excinfo):
+        self.extractBenchmarkTime(test)
         if self.showAll:
             print >>self.stream, ' SKIP %s' % self._testTimeString()
             print >>self.stream, '     %s' % skip_excinfo[1]
@@ -382,6 +385,7 @@ class TestCase(unittest.TestCase):
         self._cleanEnvironment()
         bzrlib.trace.disable_default_logging()
         self._startLogFile()
+        self._benchtime = None
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -535,6 +539,16 @@ class TestCase(unittest.TestCase):
     def tearDown(self):
         self._runCleanups()
         unittest.TestCase.tearDown(self)
+
+    def time(self, callable, *args, **kwargs):
+        """Run callable and accrue the time it takes to the benchmark time."""
+        if self._benchtime is None:
+            self._benchtime = 0
+        start = time.time()
+        try:
+            callable(*args, **kwargs)
+        finally:
+            self._benchtime += time.time() - start
 
     def _runCleanups(self):
         """Run registered cleanup functions. 

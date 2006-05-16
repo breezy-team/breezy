@@ -27,7 +27,7 @@ class TestAdd(ExternalBase):
         # 3-4 levels deep. 
         # we simulate this by three levels of dirs named 0-7, givin 512 dirs,
         # and 20 files each.
-        # on roberts machine the setup of this takes 9 seconds and the add 20.
+        # on roberts machine this takes 25936ms/32244ms
         self.run_bzr('init')
         files = []
         for outer in range(8):
