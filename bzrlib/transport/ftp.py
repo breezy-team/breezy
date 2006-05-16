@@ -137,7 +137,7 @@ class FtpTransport(Transport):
             raise errors.TransportError(msg="Error setting up connection: %s"
                                     % str(e), orig_error=e)
 
-    def _translate_perm_error(self, err, path, extra=None, failure_exc=errors.PathError):
+    def _translate_perm_error(self, err, path, extra=None):
         """Try to translate an ftplib.error_perm exception."""
         s = str(err).lower()
         if not extra:
@@ -152,6 +152,7 @@ class FtpTransport(Transport):
         if ('not a directory' in s):
             raise errors.PathError(path, extra=extra)
 
+        mutter('unable to understand error for path: %s: %s', path, err)
         # TODO: jam 20060516 Consider re-raising the error wrapped in 
         #       something like TransportError, but this loses the traceback
         #       Also, 'sftp' has a generic 'Failure' mode, which we use failure_exc
@@ -277,16 +278,17 @@ class FtpTransport(Transport):
 
         TODO: jam 20051215 ftp as a protocol seems to support chmod, but ftplib does not
         """
-        tmp_abspath = '%s.tmp.%.9f.%d.%d' % (self._abspath(relpath), time.time(),
+        abspath = self._abspath(relpath)
+        tmp_abspath = '%s.tmp.%.9f.%d.%d' % (abspath, time.time(),
                         os.getpid(), random.randint(0,0x7FFFFFFF))
         if not hasattr(fp, 'read'):
             fp = StringIO(fp)
         try:
-            mutter("FTP put: %s", self._abspath(relpath))
+            mutter("FTP put: %s", abspath)
             f = self._get_FTP()
             try:
                 f.storbinary('STOR '+tmp_abspath, fp)
-                f.rename(tmp_abspath, self._abspath(relpath))
+                f.rename(tmp_abspath, abspath)
             except (ftplib.error_temp,EOFError), e:
                 warning("Failure during ftp PUT. Deleting temporary file.")
                 try:
@@ -297,7 +299,7 @@ class FtpTransport(Transport):
                     raise e
                 raise
         except ftplib.error_perm, e:
-            self._translate_perm_error(self.abspath(relpath), e, extra='could not store')
+            self._translate_perm_error(e, abspath, extra='could not store')
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
                 raise errors.TransportError("FTP temporary error during PUT %s. Aborting."
