@@ -7,7 +7,8 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the # GNU General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
@@ -21,6 +22,12 @@ import urllib
 import xmlrpclib
 
 import bzrlib.config
+import bzrlib.errors as errors
+
+# for testing, do
+'''
+export BZR_LP_XMLRPC_URL=http://xmlrpc.staging.launchpad.net/bazaar/
+'''
 
 class LaunchpadService(object):
     """A service to talk to Launchpad via XMLRPC.
@@ -71,6 +78,12 @@ class LaunchpadService(object):
         assert '@' not in hostinfo
         assert self.registrant_email is not None
         assert self.registrant_password is not None
+        # TODO: perhaps fully quote the password to make it very slightly
+        # obscured
+        # TODO: can we perhaps add extra Authorization headers directly to the 
+        # request, rather than putting this into the url?  perhaps a bit more 
+        # secure against accidentally revealing it.  std66 s3.2.1 discourages putting
+        # the password in the url.
         hostinfo = '%s:%s@%s' % (urllib.quote(self.registrant_email),
                                  urllib.quote(self.registrant_password),
                                  hostinfo)
@@ -90,7 +103,21 @@ class LaunchpadService(object):
         proxy = self.get_proxy()
         assert method_name
         method = getattr(proxy, method_name)
-        result = method(*method_params)
+        try:
+            result = method(*method_params)
+        except xmlrpclib.ProtocolError, e:
+            if e.errcode == 301:
+                # TODO: This can give a ProtocolError representing a 301 error, whose
+                # e.headers['location'] tells where to go and e.errcode==301; should
+                # probably log something and retry on the new url.
+                raise NotImplementedError("should resend request to %s, but this isn't implemented"
+                        % e.headers.get('Location', 'NO-LOCATION-PRESENT'))
+            else:
+                # we don't want to print the original message because its
+                # str representation includes the plaintext password.
+                # TODO: print more headers to help in tracking down failures
+                raise errors.BzrError("xmlrpc protocol error connecting to %s: %s %s"
+                        % (self.service_url, e.errcode, e.errmsg))
         return result
 
 
