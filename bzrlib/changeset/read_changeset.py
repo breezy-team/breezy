@@ -597,12 +597,12 @@ class ChangesetReader(object):
             else:
                 new_path = info[1]
 
-            file_id = cset_tree.path2id(old_path)
+            cset_tree.note_rename(old_path, new_path)
+            file_id = cset_tree.path2id(new_path)
             if len(info) > 2:
                 revision = get_rev_id(info[2], file_id, kind)
             else:
                 revision = get_rev_id(None, file_id, kind)
-            cset_tree.note_rename(old_path, new_path)
             if lines:
                 cset_tree.note_patch(new_path, ''.join(lines))
 
