@@ -362,7 +362,7 @@ class FtpTransport(Transport):
                 self._setmode(relpath, mode)
             ftp.getresp()
         except ftplib.error_perm, e:
-            FtpTransportError("Error appending data to %s" % abspath,
+            raise FtpTransportError("Error appending data to %s" % abspath,
                     orig_error=e)
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
