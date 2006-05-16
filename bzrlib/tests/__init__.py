@@ -348,7 +348,6 @@ class TestCase(unittest.TestCase):
     accidentally overlooked.
     """
 
-    BZRPATH = 'bzr'
     _log_file_name = None
     _log_contents = ''
 
@@ -1018,15 +1017,19 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              keep_output=False,
-             transport=None):
+             transport=None,
+             test_suite_factory=None):
     """Run the whole test suite under the enhanced runner"""
     global default_transport
     if transport is None:
         transport = default_transport
     old_transport = default_transport
     default_transport = transport
-    suite = test_suite()
     try:
+        if test_suite_factory is None:
+            suite = test_suite()
+        else:
+            suite = test_suite_factory()
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
                      stop_on_failure=stop_on_failure, keep_output=keep_output,
                      transport=transport)
@@ -1034,9 +1037,17 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         default_transport = old_transport
 
 
+def benchmark_suite():
+    """Build and return a TestSuite which contains benchmark tests only."""
+    return TestSuite()
+
 
 def test_suite():
-    """Build and return TestSuite for the whole program."""
+    """Build and return TestSuite for the whole of bzrlib.
+    
+    This function can be replaced if you need to change the default test
+    suite on a global basis, but it is not encouraged.
+    """
     from doctest import DocTestSuite
 
     global MODULES_TO_DOCTEST
@@ -1114,11 +1125,6 @@ def test_suite():
     test_transport_implementations = [
         'bzrlib.tests.test_transport_implementations']
 
-    TestCase.BZRPATH = osutils.pathjoin(
-            osutils.realpath(osutils.dirname(bzrlib.__path__[0])), 'bzr')
-    print '%10s: %s' % ('bzr', osutils.realpath(sys.argv[0]))
-    print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
-    print
     suite = TestSuite()
     # python2.4's TestLoader.loadTestsFromNames gives very poor 
     # errors if it fails to load a named module - no indication of what's

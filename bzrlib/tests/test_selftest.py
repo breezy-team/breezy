@@ -16,6 +16,7 @@
 """Tests for the test framework."""
 
 import os
+from StringIO import StringIO
 import sys
 import unittest
 import warnings
@@ -29,6 +30,7 @@ from bzrlib.tests import (
                           TestCaseInTempDir,
                           TestCaseWithTransport,
                           TestSkipped,
+                          TestSuite,
                           TextTestRunner,
                           )
 import bzrlib.errors as errors
@@ -551,3 +553,18 @@ class TestConvenienceMakers(TestCaseWithTransport):
                               bzrlib.bzrdir.BzrDirMetaFormat1)
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
                               bzrlib.bzrdir.BzrDirFormat6)
+
+
+class TestSelftest(TestCase):
+    """Tests of bzrlib.tests.selftest."""
+
+    def test_selftest_benchmark_parameter_invokes_test_suite__benchmark__(self):
+        factory_called = []
+        def factory():
+            factory_called.append(True)
+            return TestSuite()
+        out = StringIO()
+        err = StringIO()
+        self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
+            test_suite_factory=factory)
+        self.assertEqual([True], factory_called)

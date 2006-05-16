@@ -77,6 +77,16 @@ class TestOptions(TestCase):
             TestOptions.current_test = None
             TestCaseInTempDir.TEST_ROOT = old_root
 
+    def test_benchmark_runs_no_tests(self):
+        """bzr selftest --benchmark should not run the default test suite."""
+        # We test this via checking that no tests are run because the
+        # benchmark suite is currently empty.
+        out, err = self.run_bzr('selftest', '--benchmark')
+        self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
+        self.assertEqual(
+            'running tests...\nRunning tests: .\nCleaning up: .\ntests passed\n',
+            err)
+        
 
 class TestRunBzr(ExternalBase):
 
