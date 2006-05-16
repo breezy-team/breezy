@@ -440,7 +440,7 @@ class FtpTransport(Transport):
             basepath = self._abspath(relpath)
             paths = f.nlst(basepath)
             # If FTP.nlst returns paths prefixed by relpath, strip 'em
-            if paths[0].startswith(basepath):
+            if paths and paths[0].startswith(basepath):
                 paths = [path[len(basepath)+1:] for path in paths]
             # Remove . and .. if present, and return
             return [path for path in paths if path not in (".", "..")]
