@@ -515,9 +515,9 @@ class ChangesetReader(object):
             action, lines, do_continue = self._read_one_patch()
             if action is not None:
                 revision_actions.append((action, lines))
-        if self.info.revisions[-1].revision_id not in self.info.actions:
-            self.info.actions[self.info.revisions[-1].revision_id] = \
-                revision_actions
+        assert self.info.revisions[-1].revision_id not in self.info.actions
+        self.info.actions[self.info.revisions[-1].revision_id] = \
+            revision_actions
 
     def _read_revision(self, revision_id):
         """Revision entries have extra information associated.
@@ -550,7 +550,10 @@ class ChangesetReader(object):
         """
         for line in self._next():
             self._handle_next(line)
-            if self._next_line is None or not self._next_line.startswith('#'):
+            if not self._next_line.startswith('#'):
+                self._next().next()
+                break
+            if self._next_line is None:
                 break
 
     def _update_tree(self, cset_tree, revision_id):
