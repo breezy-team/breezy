@@ -103,16 +103,10 @@ class ChangesetSerializerV07(ChangesetSerializer):
 
             # Try to only grab bases which are in the
             # revision set
-            base_id = None
-            for p_id in rev.parent_ids:
-                if p_id in self.revision_ids:
-                    base_id = p_id
-                    break
-            if base_id is None:
-                if rev.parent_ids:
-                    base_id = rev.parent_ids[0]
-                else:
-                    base_id = NULL_REVISION
+            if rev.parent_ids:
+                base_id = rev.parent_ids[0]
+            else:
+                base_id = NULL_REVISION
 
             if base_id == last_rev_id:
                 base_tree = last_rev_tree

@@ -16,7 +16,7 @@
 
 from StringIO import StringIO
 
-from bzrlib.builtins import merge_changeset
+from bzrlib.builtins import merge_changeset, merge
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import BzrError
@@ -534,9 +534,17 @@ class CSetTester(TestCaseInTempDir):
         self.tree1.rename_one('sub/dir/WithCaps.txt', 'temp')
         self.tree1.rename_one('with space.txt', 'WithCaps.txt')
         self.tree1.rename_one('temp', 'with space.txt')
-        self.tree1.commit(u'swap revisions', rev_id='a@cset-0-7',
+        self.tree1.commit(u'swap filenames', rev_id='a@cset-0-7',
                           verbose=False)
         cset = self.get_valid_cset('a@cset-0-6', 'a@cset-0-7')
+        other = self.get_checkout('a@cset-0-6')
+        other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
+        other.commit('rename file', rev_id='a@cset-0-7b')
+        merge([other.basedir, -1], [None, None], this_dir=self.tree1.basedir)
+        self.tree1.commit(u'Merge', rev_id='a@cset-0-8',
+                          verbose=False)
+        cset = self.get_valid_cset('a@cset-0-7', 'a@cset-0-8')
+
         ##cset = self.get_valid_cset('a@cset-0-5', 'a@cset-0-6', auto_commit=True)
         ##cset = self.get_valid_cset(None, 'a@cset-0-6', auto_commit=True)
 
