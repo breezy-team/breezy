@@ -629,7 +629,7 @@ class KnitVersionedFile(VersionedFile):
         assert self.writable, "knit is not opened for write"
         ### FIXME escape. RBC 20060228
         if contains_whitespace(version_id):
-            raise InvalidRevisionId(version_id)
+            raise InvalidRevisionId(version_id, self.filename)
         if self.has_version(version_id):
             raise RevisionAlreadyPresent(version_id, self.filename)
         self._check_lines_not_unicode(lines)

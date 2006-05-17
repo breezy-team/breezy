@@ -85,12 +85,15 @@ def _show_location_info(repository, branch=None, working=None):
             # standalone
             print '  branch root: %s' % working_path
     elif branch:
-        # branch is part of shared repository
-        assert repository.is_shared()
         branch_path = branch.bzrdir.root_transport.base
-        print '  shared repository: %s' % repository_path
-        print '  repository branch: %s' % (
-            _repo_relpath(repository_path, branch_path))
+        if repository.is_shared():
+            # branch is part of shared repository
+            print '  shared repository: %s' % repository_path
+            print '  repository branch: %s' % (
+                _repo_relpath(repository_path, branch_path))
+        else:
+            # standalone branch
+            print '  branch root: %s' % branch_path
     else:
         # shared repository
         assert repository.is_shared()
