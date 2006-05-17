@@ -100,8 +100,11 @@ __version__ = version_string = '0.9'
 
 version_info = (0, 9, 0, 'dev', 0)
 
-__version__ = '%d.%d.%d%s%d' % version_info
-
+if version_info[3] == 'final':
+    version_string = '%d.%d.%d' % version_info[:3]
+else:
+    version_string = '%d.%d.%d%s%d' % version_info
+__version__ = version_string 
 
 from bzrlib.symbol_versioning import deprecated_function, zero_seven
 
