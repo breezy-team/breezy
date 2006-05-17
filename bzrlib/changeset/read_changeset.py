@@ -61,6 +61,7 @@ class RevisionInfo(object):
         self.base_id = None
         self.message = None
         self.properties = None
+        self.tree_actions = None
 
     def __str__(self):
         return pprint.pformat(self.__dict__)
@@ -97,8 +98,6 @@ class ChangesetInfo(object):
 
         # A list of RevisionInfo objects
         self.revisions = []
-
-        self.actions = {}
 
         # The next entries are created during complete_info() and
         # other post-read functions.
@@ -515,9 +514,8 @@ class ChangesetReader(object):
             action, lines, do_continue = self._read_one_patch()
             if action is not None:
                 revision_actions.append((action, lines))
-        assert self.info.revisions[-1].revision_id not in self.info.actions
-        self.info.actions[self.info.revisions[-1].revision_id] = \
-            revision_actions
+        assert self.info.revisions[-1].tree_actions is None
+        self.info.revisions[-1].tree_actions = revision_actions
 
     def _read_revision(self, revision_id):
         """Revision entries have extra information associated.
@@ -657,7 +655,8 @@ class ChangesetReader(object):
             'added':added,
             'modified':modified
         }
-        for action_line, lines in self.info.actions[revision_id]:
+        for action_line, lines in \
+            self.info.get_revision_info(revision_id).tree_actions:
             first = action_line.find(' ')
             if first == -1:
                 raise BzrError('Bogus action line'
