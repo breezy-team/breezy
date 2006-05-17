@@ -152,7 +152,7 @@ class ChangesetInfo(object):
             # and thus base truly is None
             return None
         else:
-            return revision.parent_ids[0]
+            return revision.parent_ids[-1]
 
     def _get_target(self):
         """Return the target revision."""

@@ -104,7 +104,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
             # Try to only grab bases which are in the
             # revision set
             if rev.parent_ids:
-                base_id = rev.parent_ids[0]
+                base_id = rev.parent_ids[-1]
             else:
                 base_id = NULL_REVISION
 
