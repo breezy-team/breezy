@@ -54,6 +54,7 @@ from bzrlib.transport import (
     )
 import bzrlib.errors as errors
 from bzrlib.trace import mutter, warning
+import bzrlib.ui
 
 
 _FTP_cache = {}
@@ -66,6 +67,10 @@ def _find_FTP(hostname, port, username, password, is_active):
         conn = ftplib.FTP()
 
         conn.connect(host=hostname, port=port)
+        if username and username != 'anonymous' and not password:
+            password = bzrlib.ui.ui_factory.get_password(
+                prompt='FTP %(user)s@%(host)s password',
+                user=username, host=hostname)
         conn.login(user=username, passwd=password)
         conn.set_pasv(not is_active)
 
