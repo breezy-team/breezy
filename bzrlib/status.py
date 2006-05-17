@@ -171,6 +171,8 @@ def show_pending_merges(new, to_file):
             m_revision = branch.repository.get_revision(merge)
             print >> to_file, ' ', line_log(m_revision, 77)
             inner_merges = branch.repository.get_ancestry(merge)
+            assert inner_merges[0] == None
+            inner_merges.pop(0)
             inner_merges.reverse()
             for mmerge in inner_merges:
                 if mmerge in ignore:

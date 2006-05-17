@@ -20,7 +20,8 @@ import os
 from bzrlib.branch import Branch
 import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.inventory import (Inventory, ROOT_ID, InventoryFile,
+    InventoryDirectory, InventoryEntry)
 import bzrlib.inventory as inventory
 from bzrlib.osutils import has_symlinks, rename, pathjoin
 from bzrlib.tests import TestCase, TestCaseWithTransport
@@ -399,6 +400,64 @@ class TestPreviousHeads(TestCaseWithTransport):
     # TODO: test two inventories with the same file revision 
 
 
+class TestDescribeChanges(TestCase):
+
+    def test_describe_change(self):
+        # we need to test the following change combinations:
+        # rename
+        # reparent
+        # modify
+        # gone
+        # added
+        # renamed/reparented and modified
+        # change kind (perhaps can't be done yet?)
+        # also, merged in combination with all of these?
+        old_a = InventoryFile('a-id', 'a_file', ROOT_ID)
+        old_a.text_sha1 = '123132'
+        old_a.text_size = 0
+        new_a = InventoryFile('a-id', 'a_file', ROOT_ID)
+        new_a.text_sha1 = '123132'
+        new_a.text_size = 0
+
+        self.assertChangeDescription('unchanged', old_a, new_a)
+
+        new_a.text_size = 10
+        new_a.text_sha1 = 'abcabc'
+        self.assertChangeDescription('modified', old_a, new_a)
+
+        self.assertChangeDescription('added', None, new_a)
+        self.assertChangeDescription('removed', old_a, None)
+        # perhaps a bit questionable but seems like the most reasonable thing...
+        self.assertChangeDescription('unchanged', None, None)
+
+        # in this case it's both renamed and modified; show a rename and 
+        # modification:
+        new_a.name = 'newfilename'
+        self.assertChangeDescription('modified and renamed', old_a, new_a)
+
+        # reparenting is 'renaming'
+        new_a.name = old_a.name
+        new_a.parent_id = 'somedir-id'
+        self.assertChangeDescription('modified and renamed', old_a, new_a)
+
+        # reset the content values so its not modified
+        new_a.text_size = old_a.text_size
+        new_a.text_sha1 = old_a.text_sha1
+        new_a.name = old_a.name
+
+        new_a.name = 'newfilename'
+        self.assertChangeDescription('renamed', old_a, new_a)
+
+        # reparenting is 'renaming'
+        new_a.name = old_a.name
+        new_a.parent_id = 'somedir-id'
+        self.assertChangeDescription('renamed', old_a, new_a)
+
+    def assertChangeDescription(self, expected_change, old_ie, new_ie):
+        change = InventoryEntry.describe_change(old_ie, new_ie)
+        self.assertEqual(expected_change, change)
+
+
 class TestExecutable(TestCaseWithTransport):
 
     def test_stays_executable(self):
@@ -494,7 +553,9 @@ class TestExecutable(TestCaseWithTransport):
         self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
         self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
 
+
 class TestRevert(TestCaseWithTransport):
+
     def test_dangling_id(self):
         wt = self.make_branch_and_tree('b1')
         self.assertEqual(len(wt.inventory), 1)
@@ -504,5 +565,3 @@ class TestRevert(TestCaseWithTransport):
         os.unlink('b1/a')
         wt.revert([])
         self.assertEqual(len(wt.inventory), 1)
-
-
