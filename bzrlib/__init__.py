@@ -96,7 +96,7 @@ __copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
 # 'beta', 'candidate', or 'final'. The version_info value corresponding to the
 # Python version 2.0 is (2, 0, 0, 'final', 0).
 
-version_info = (0, 8, 1, 'final', 0)
+version_info = (0, 8, 2, 'final', 0)
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
