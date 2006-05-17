@@ -396,7 +396,8 @@ class FtpTransport(Transport):
                 self._setmode(relpath, mode)
             ftp.getresp()
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath, extra='error appending')
+            self._translate_perm_error(e, abspath, extra='error appending',
+                unknown_exc=errors.NoSuchFile)
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
                 raise errors.TransportError("FTP temporary error during APPEND %s." \
