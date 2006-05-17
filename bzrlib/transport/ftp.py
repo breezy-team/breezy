@@ -57,6 +57,10 @@ from bzrlib.trace import mutter, warning
 import bzrlib.ui
 
 
+class FtpPathError(errors.PathError):
+    """FTP failed for path: %(path)s%(extra)s"""
+
+
 _FTP_cache = {}
 def _find_FTP(hostname, port, username, password, is_active):
     """Find an ftplib.FTP instance attached to this triplet."""
@@ -142,7 +146,7 @@ class FtpTransport(Transport):
             raise errors.TransportError(msg="Error setting up connection: %s"
                                     % str(e), orig_error=e)
 
-    def _translate_perm_error(self, err, path, extra=None, unknown_exc=None):
+    def _translate_perm_error(self, err, path, extra=None, unknown_exc=FtpPathError):
         """Try to translate an ftplib.error_perm exception.
 
         :param err: The error to translate into a bzr error
@@ -154,6 +158,8 @@ class FtpTransport(Transport):
         s = str(err).lower()
         if not extra:
             extra = str(err)
+        else:
+            extra += ': ' + str(err)
         if ('no such file' in s
             or 'could not open' in s
             or 'no such dir' in s
@@ -342,7 +348,8 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             f.mkd(abspath)
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath)
+            self._translate_perm_error(e, abspath,
+                unknown_exc=errors.FileExists)
 
     def rmdir(self, rel_path):
         """Delete the directory at rel_path"""
@@ -385,7 +392,7 @@ class FtpTransport(Transport):
             conn = ftp.transfercmd(cmd)
             conn.sendall(text)
             conn.close()
-            if mode is not None:
+            if mode:
                 self._setmode(relpath, mode)
             ftp.getresp()
         except ftplib.error_perm, e:
@@ -444,7 +451,8 @@ class FtpTransport(Transport):
             f = self._get_FTP()
             f.delete(abspath)
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath, 'error deleting')
+            self._translate_perm_error(e, abspath, 'error deleting',
+                unknown_exc=errors.NoSuchFile)
 
     def listable(self):
         """See Transport.listable."""
