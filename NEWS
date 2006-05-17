@@ -16,6 +16,12 @@ IN DEVELOPMENT
 
     * Add info on standalone branches without a working tree.  (Olaf Conradi)
 
+  BUG FIXES:
+
+    * Fix shadowed definition of TestLocationConfig that caused some 
+      tests not to run.  (#32587, Erik Bågfors, Michael Ellerman, 
+      Martin Pool)
+
 bzr 0.8.2  2006-05-17
   
   BUG FIXES:
