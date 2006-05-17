@@ -1,3 +1,9 @@
+bzr 0.8.2  2006-05-17
+  
+  BUG FIXES:
+   
+    * setup.py failed to install launchpad plugin.  (Martin Pool)
+
 bzr 0.8.1  2006-05-16
 
   BUG FIXES:
