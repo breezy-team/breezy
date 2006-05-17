@@ -14,7 +14,7 @@ from bzrlib.testament import Testament
 from bzrlib.errors import BzrError
 from bzrlib.xml5 import serializer_v5
 from bzrlib.osutils import sha_file, sha_string
-from bzrlib.revision import Revision
+from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
                               InventoryLink)
@@ -58,6 +58,7 @@ class RevisionInfo(object):
         self.inventory_sha1 = None
 
         self.parent_ids = None
+        self.base_id = None
         self.message = None
         self.properties = None
 
@@ -93,8 +94,6 @@ class ChangesetInfo(object):
         self.committer = None
         self.date = None
         self.message = None
-        self.base = None
-        self.base_sha1 = None
 
         # A list of RevisionInfo objects
         self.revisions = []
@@ -138,13 +137,14 @@ class ChangesetInfo(object):
                 rev.committer = self.committer
             self.real_revisions.append(rev.as_revision())
 
-        if self.base is None and len(self.real_revisions) > 0:
-            # When we don't have a base, then the real base
-            # is the first parent of the first revision listed
-            rev = self.real_revisions[0]
-            self.base = self.get_base(rev)
 
     def get_base(self, revision):
+        revision_info = self.get_revision_info(revision.revision_id)
+        if revision_info.base_id is not None:
+            if revision_info.base_id == NULL_REVISION:
+                return None
+            else:
+                return revision_info.base_id
         if len(revision.parent_ids) == 0:
             # There is no base listed, and
             # the lowest revision doesn't have a parent
@@ -342,10 +342,7 @@ class ChangesetReader(object):
 
     def revision_tree(self, repository, revision_id, base=None):
         revision = self.info.get_revision(revision_id)
-        if revision_id == self.info.target:
-            base = self.info.base
-        else:
-            base = self.info.get_base(revision)
+        base = self.info.get_base(revision)
         assert base != revision_id
         self._validate_references_from_repository(repository)
         revision_info = self.info.get_revision_info(revision_id)
@@ -621,8 +618,8 @@ class ChangesetReader(object):
             if len(info) <= 1:
                 raise BzrError('add action lines require the path and file id'
                         ': %r' % extra)
-            elif len(info) > 3:
-                raise BzrError('add action lines have fewer than 3 entries.'
+            elif len(info) > 4:
+                raise BzrError('add action lines have fewer than 4 entries.'
                         ': %r' % extra)
             path = info[0]
             if not info[1].startswith('file-id:'):

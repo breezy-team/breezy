@@ -43,15 +43,17 @@ class ChangesetSerializerV07(ChangesetSerializer):
         # The first line of the header should have been read
         raise NotImplementedError
 
-    def write(self, source, revision_ids, f):
+    def write(self, source, revision_ids, forced_bases, f):
         """Write the changesets to the supplied files.
 
         :param source: A source for revision information
         :param revision_ids: The list of revision ids to serialize
+        :param forced_bases: A dict of revision -> base that overrides default
         :param f: The file to output to
         """
         self.source = source
         self.revision_ids = revision_ids
+        self.forced_bases = forced_bases
         self.to_file = f
         source.lock_read()
         try:
@@ -100,26 +102,32 @@ class ChangesetSerializerV07(ChangesetSerializer):
         for rev_id in self.revision_ids:
             rev = self.source.get_revision(rev_id)
             rev_tree = self.source.revision_tree(rev_id)
-
-            # Try to only grab bases which are in the
-            # revision set
-            if rev.parent_ids:
-                base_id = rev.parent_ids[-1]
+            if rev_id in self.forced_bases:
+                explicit_base = True
+                base_id = self.forced_bases[rev_id]
+                if base_id is None:
+                    base_id = NULL_REVISION
             else:
-                base_id = NULL_REVISION
+                explicit_base = False
+                if rev.parent_ids:
+                    base_id = rev.parent_ids[-1]
+                else:
+                    base_id = NULL_REVISION
 
             if base_id == last_rev_id:
                 base_tree = last_rev_tree
             else:
                 base_tree = self.source.revision_tree(base_id)
 
-            self._write_revision(rev, rev_tree, None, base_tree)
+            self._write_revision(rev, rev_tree, base_id, base_tree, 
+                                 explicit_base)
 
             last_rev_id = rev_id
             last_rev = rev
             last_rev_tree = rev_tree
 
-    def _write_revision(self, rev, rev_tree, base_rev, base_tree):
+    def _write_revision(self, rev, rev_tree, base_rev, base_tree, 
+                        explicit_base):
         """Write out the information for a revision."""
         def w(key, value):
             self._write(key, value, indent=1)
@@ -130,12 +138,14 @@ class ChangesetSerializerV07(ChangesetSerializer):
         w('message', rev.message.split('\n'))
         self.to_file.write('\n')
 
-        self._write_delta(rev_tree, base_tree)
+        self._write_delta(rev_tree, base_tree, rev.revision_id)
 
         w('sha1', testament_sha1(self.source, rev.revision_id))
         w('inventory sha1', rev.inventory_sha1)
         if rev.parent_ids:
             w('parent ids', rev.parent_ids)
+        if explicit_base:
+            w('base id', base_rev)
         if rev.properties:
             self._write('properties', None, indent=1)
             for name, value in rev.properties.items():
@@ -144,7 +154,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
         # Add an extra blank space at the end
         self.to_file.write('\n')
 
-    def _write_delta(self, new_tree, old_tree):
+    def _write_delta(self, new_tree, old_tree, default_revision_id):
         """Write out the changes between the trees."""
         DEVNULL = '/dev/null'
         old_label = ''
@@ -160,6 +170,11 @@ class ChangesetSerializerV07(ChangesetSerializer):
             ie = new_tree.inventory[file_id]
             w(' // executable:%s' % bool_text[ie.executable])
 
+        def do_revision(file_id):
+            ie = new_tree.inventory[file_id]
+            if ie.revision != default_revision_id:
+                w(' // last-changed:%s' % ie.revision)
+
         delta = compare_trees(old_tree, new_tree, want_unchanged=False)
 
         def w(text):
@@ -170,6 +185,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
 
         for path, file_id, kind in delta.added:
             w('=== added %s %s // file-id:%s' % (kind, path, file_id))
+            do_revision(file_id)
             if kind == 'file':
                 do_meta(file_id)
             w('\n')
@@ -181,6 +197,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
         for (old_path, new_path, file_id, kind,
              text_modified, meta_modified) in delta.renamed:
             w('=== renamed %s %s // %s' % (kind, old_path, new_path))
+            do_revision(file_id)
             if meta_modified:
                 do_meta(file_id)
             w('\n')
@@ -192,6 +209,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
             # TODO: Handle meta_modified
             #prop_str = get_prop_change(meta_modified)
             w('=== modified %s %s' % (kind, path))
+            do_revision(file_id)
             if meta_modified:
                 do_meta(file_id)
             w('\n')

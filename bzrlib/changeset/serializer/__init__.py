@@ -66,7 +66,7 @@ def read(f):
     return serializer.read(f)
 
 
-def write(source, revision_ids, f, version=None):
+def write(source, revision_ids, f, version=None, forced_bases={}):
     """Serialize a list of changesets to a filelike object.
 
     :param source: A source for revision information
@@ -79,7 +79,7 @@ def write(source, revision_ids, f, version=None):
         raise errors.ChangesetNotSupported(version, 'unknown changeset format')
 
     serializer = _serializers[version](version)
-    return serializer.write(source, revision_ids, f) 
+    return serializer.write(source, revision_ids, forced_bases, f) 
 
 
 def write_changeset(repository, revision_id, base_revision_id, out):
@@ -90,7 +90,8 @@ def write_changeset(repository, revision_id, base_revision_id, out):
     revision_ids = [r for r in repository.get_ancestry(revision_id) if r
                     not in base_ancestry]
     revision_ids = list(reversed(revision_ids))
-    write(repository, revision_ids, out)
+    write(repository, revision_ids, out, 
+          forced_bases = {revision_id:base_revision_id})
     return revision_ids
 
 
@@ -206,11 +207,12 @@ class ChangesetSerializer(object):
         """
         raise NotImplementedError
 
-    def write(self, source, revision_ids, f):
+    def write(self, source, revision_ids, forced_bases, f):
         """Write the changesets to the supplied files.
 
         :param source: A source for revision information
         :param revision_ids: The list of revision ids to serialize
+        :param forced_bases: A dict of revision -> base that overrides default
         :param f: The file to output to
         """
         raise NotImplementedError
