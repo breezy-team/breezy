@@ -53,9 +53,11 @@ added:
     def test__get_editor(self):
         # Test that _get_editor can return a decent list of items
         bzr_editor = os.environ.get('BZR_EDITOR')
+        visual = os.environ.get('VISUAL')
         editor = os.environ.get('EDITOR')
         try:
             os.environ['BZR_EDITOR'] = 'bzr_editor'
+            os.environ['VISUAL'] = 'visual'
             os.environ['EDITOR'] = 'editor'
 
             ensure_config_dir_exists()
@@ -65,13 +67,14 @@ added:
 
             editors = list(_get_editor())
 
-            self.assertEqual(['bzr_editor', 'config_editor', 'editor'],
-                editors[:3])
+            self.assertEqual(['bzr_editor', 'config_editor', 'visual',
+                              'editor'], editors[:4])
 
             if sys.platform == 'win32':
-                self.assertEqual(['wordpad.exe', 'notepad.exe'], editors[3:])
+                self.assertEqual(['wordpad.exe', 'notepad.exe'], editors[4:])
             else:
-                self.assertEqual(['vi', 'pico', 'nano', 'joe'], editors[3:])
+                self.assertEqual(['/usr/bin/editor', 'vi', 'pico', 'nano',
+                                  'joe'], editors[4:])
 
         finally:
             # Restore the environment
@@ -79,8 +82,11 @@ added:
                 del os.environ['BZR_EDITOR']
             else:
                 os.environ['BZR_EDITOR'] = bzr_editor
+            if visual is None:
+                del os.environ['VISUAL']
+            else:
+                os.environ['VISUAL'] = visual
             if editor is None:
                 del os.environ['EDITOR']
             else:
                 os.environ['EDITOR'] = editor
-

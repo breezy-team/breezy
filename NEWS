@@ -16,7 +16,13 @@ IN DEVELOPMENT
 
     * Add info on standalone branches without a working tree.  (Olaf Conradi)
 
-bzr 0.8.1  2006-05-12
+bzr 0.8.2  2006-05-17
+  
+  BUG FIXES:
+   
+    * setup.py failed to install launchpad plugin.  (Martin Pool)
+
+bzr 0.8.1  2006-05-16
 
   BUG FIXES:
 
@@ -26,11 +32,42 @@ bzr 0.8.1  2006-05-12
     * Nicer messages from 'commit' in the case of renames, and correct
       messages when a merge has occured. (Robert Collins, Martin Pool)
 
+    * Separate functionality from assert statements as they are skipped in
+      optimized mode of python. Add the same check to pending merges.
+      (#44443, Olaf Conradi)
+
+  CHANGES:
+
+    * Do not show the None revision in output of bzr ancestry. (Olaf Conradi)
+
+    * Add info on standalone branches without a working tree.
+      (#44155, Olaf Conradi)
+
+    * Fix bug in knits when raising InvalidRevisionId. (#44284, Olaf Conradi)
+
+  CHANGES:
+
+    * Make editor invocation comply with Debian Policy. First check
+      environment variables VISUAL and EDITOR, then try editor from
+      alternatives system. If that all fails, fall back to the pre-defined
+      list of editors. (#42904, Olaf Conradi)
+
+  NEW FEATURES:
+
+    * New 'register-branch' command registers a public branch into 
+      Launchpad.net, where it can be associated with bugs, etc.
+      (Martin Pool, Bjorn Tillenius, Robert Collins)
+
   INTERNALS:
 
     * New public api in InventoryEntry - 'describe_change(old, new)' which
       provides a human description of the changes between two old and
       new. (Robert Collins, Martin Pool)
+
+  TESTING:
+
+    * Fix test case for bzr info in upgrading a standalone branch to metadir,
+      uses bzrlib api now. (Olaf Conradi)
 
 bzr 0.8  2006-05-08
 
