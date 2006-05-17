@@ -18,17 +18,18 @@
 """
 
 import os
-import bzrlib.errors as errors
+from sha import sha
+
 from bzrlib.changeset.serializer import (ChangesetSerializer, 
         CHANGESET_HEADER,
         format_highres_date, unpack_highres_date)
 from bzrlib.changeset.common import testament_sha1
-from sha import sha
-from bzrlib.diff import internal_diff
 from bzrlib.delta import compare_trees
-from bzrlib.rio import RioWriter, read_stanzas
-from bzrlib.revision import NULL_REVISION
+from bzrlib.diff import internal_diff
+import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin
+from bzrlib.revision import NULL_REVISION
+from bzrlib.rio import RioWriter, read_stanzas
 
 bool_text = {True: 'yes', False: 'no'}
 

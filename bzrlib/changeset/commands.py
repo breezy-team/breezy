@@ -7,13 +7,15 @@ and for applying a changeset.
 """
 
 import sys
-from bzrlib.commands import Command, register_command
+
 from bzrlib.branch import Branch
-from bzrlib.revisionspec import RevisionSpec
+from bzrlib.commands import Command, register_command
+import bzrlib.errors as errors
 from bzrlib.option import Option
 from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
-import bzrlib.errors as errors
+from bzrlib.revisionspec import RevisionSpec
+
 
 class cmd_send_changeset(Command):
     """Send a bundled up changset via mail.

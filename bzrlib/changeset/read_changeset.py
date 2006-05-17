@@ -3,24 +3,24 @@
 Read in a changeset output, and process it into a Changeset object.
 """
 
+from cStringIO import StringIO
 import os
 import pprint
-from cStringIO import StringIO
 from sha import sha
 
-from bzrlib.tree import Tree
-from bzrlib.trace import mutter, warning
-from bzrlib.testament import Testament
 from bzrlib.errors import BzrError
-from bzrlib.xml5 import serializer_v5
-from bzrlib.osutils import sha_file, sha_string
-from bzrlib.revision import Revision, NULL_REVISION
+from bzrlib.changeset.common import (decode, get_header, header_str,
+                                     testament_sha1)
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
                               InventoryLink)
+from bzrlib.osutils import sha_file, sha_string
+from bzrlib.revision import Revision, NULL_REVISION
+from bzrlib.testament import Testament
+from bzrlib.trace import mutter, warning
+from bzrlib.tree import Tree
+from bzrlib.xml5 import serializer_v5
 
-from bzrlib.changeset.common import (decode, get_header, header_str,
-                                     testament_sha1)
 
 class BadChangeset(Exception): pass
 class MalformedHeader(BadChangeset): pass

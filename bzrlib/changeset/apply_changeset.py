@@ -3,22 +3,22 @@
 This contains the apply changset function for bzr
 """
 
-import bzrlib
 import os
 import sys
 from cStringIO import StringIO
 import tempfile
 import shutil
 
-from bzrlib.xml5 import serializer_v5
-from bzrlib.trace import mutter, warning
-from bzrlib.revision import common_ancestor
-from bzrlib.merge import merge_inner
-from bzrlib.errors import BzrCommandError, RevisionAlreadyPresent
+import bzrlib
 from bzrlib.diff import compare_trees
-from bzrlib.osutils import sha_string, split_lines
-import bzrlib.ui
+from bzrlib.errors import BzrCommandError, RevisionAlreadyPresent
+from bzrlib.merge import merge_inner
+from bzrlib.revision import common_ancestor
+from bzrlib.trace import mutter, warning
 from bzrlib.tree import EmptyTree
+import bzrlib.ui
+from bzrlib.xml5 import serializer_v5
+from bzrlib.osutils import sha_string, split_lines
 
 
 def _install_info(repository, cset_info, cset_tree):
