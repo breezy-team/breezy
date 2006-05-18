@@ -467,6 +467,7 @@ class SvnRepository(Repository):
             rev = self.get_revision(revid)
             destination.add_revision(revid, rev, inv)
 
+            #FIXME: use svn.ra.do_update
             for item in paths:
                 (fileid,revid) = self.path_to_file_id(revnum,item)
                 branch_path = self.parse_revision_id(revid)[0]
