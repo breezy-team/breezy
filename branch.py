@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.branch import Branch, BranchFormat
-from bzrlib.errors import NotBranchError,NoWorkingTree,NoSuchRevision
+from bzrlib.errors import NotBranchError,NoWorkingTree,NoSuchRevision,NoSuchFile
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
             ROOT_ID
 from bzrlib.revision import Revision, NULL_REVISION
@@ -48,13 +48,17 @@ def _create_auth_baton(pool):
 
 auth_baton = _create_auth_baton(_global_pool)
 
+class FakeControlFiles(object):
+    def get_utf8(self, name):
+        raise NoSuchFile(name)
+
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """
     def __init__(self,repos,branch_path):
         self.repository = repos
         self.branch_path = branch_path
         self.base_revnum = svn.ra.get_latest_revnum(self.repository.ra)
-        self.control_files = "FIXME"
+        self.control_files = FakeControlFiles()
         self._generate_revnum_map()
         self.base = "%s/%s" % (repos.url, branch_path)
         self._format = SvnBranchFormat()

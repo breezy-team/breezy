@@ -108,6 +108,7 @@ class SvnRepository(Repository):
         self.url = url
         self.fileid_map = {}
         self.text_cache = {}
+        self.dir_cache = {}
 
         assert self.url
         assert self.uuid
@@ -122,10 +123,9 @@ class SvnRepository(Repository):
         (path,revnum) = self.parse_revision_id(revision_id)
         mutter('getting inventory %r for branch %r' % (revnum, path))
 
-        def read_directory(inv,id,path):
-            mutter("svn ls -r %d '%r'" % (revnum, path))
+        def read_directory(inv,id,path,revnum):
 
-            (dirents,last_revnum,props) = svn.ra.get_dir2(self.ra, path.encode('utf8'), revnum, svn.core.SVN_DIRENT_KIND + svn.core.SVN_DIRENT_CREATED_REV + svn.core.SVN_DIRENT_HAS_PROPS)
+            (props,dirents) = self._cache_get_dir(path, revnum)
 
             recurse = {}
 
@@ -138,10 +138,9 @@ class SvnRepository(Repository):
                     child_path = child_name
 
                 (child_id,revid) = self.path_to_file_id(dirent.created_rev, child_path)
-
                 if dirent.kind == svn.core.svn_node_dir:
                     inventry = InventoryDirectory(child_id,child_name,id)
-                    recurse[child_path] = revnum
+                    recurse[child_path] = dirent.created_rev
                 elif dirent.kind == svn.core.svn_node_file:
                     inventry = SvnInventoryFile(child_id,child_name,id,self,child_path,dirent.created_rev,dirent.has_props)
 
@@ -153,11 +152,11 @@ class SvnRepository(Repository):
 
             for child_path in recurse:
                 (child_id,_) = self.path_to_file_id(recurse[child_path], child_path)
-                read_directory(inv,child_id,child_path)
+                read_directory(inv,child_id,child_path,recurse[child_path])
     
         inv = Inventory()
 
-        read_directory(inv,ROOT_ID,path)
+        read_directory(inv,ROOT_ID,path,revnum)
 
         return inv
 
@@ -361,19 +360,35 @@ class SvnRepository(Repository):
     def get_signature_text(self, revision_id):
         raise NoSuchRevision(self, revision_id) # SVN doesn't store GPG signatures
 
+    def _cache_get_dir(self, path, revnum):
+        if self.dir_cache.has_key(path) and \
+           self.dir_cache[path].has_key(revnum):
+            return self.dir_cache[path][revnum]
+
+        mutter("svn ls -r %d '%r'" % (revnum, path))
+
+        (dirents,_,props) = svn.ra.get_dir2(self.ra, path.encode('utf8'), revnum, svn.core.SVN_DIRENT_KIND + svn.core.SVN_DIRENT_CREATED_REV + svn.core.SVN_DIRENT_HAS_PROPS, self.pool)
+
+        if not self.dir_cache.has_key(path):
+            self.dir_cache[path] = {}
+
+        self.dir_cache[path][revnum] = (props,dirents)
+
+        return self.dir_cache[path][revnum]
+
     def _cache_get_file(self, path, revnum):
-        if self.text_cache.has_key(revnum) and \
-           self.text_cache[revnum].has_key(path):
-               return self.text_cache[revnum][path]
+        if self.text_cache.has_key(path) and \
+           self.text_cache[path].has_key(revnum):
+               return self.text_cache[path][revnum]
 
         stream = StringIO()
         mutter('svn getfile -r %r %s' % (revnum, path))
-        (realrevnum, props) = svn.ra.get_file(self.ra, path.encode('utf8'), revnum, stream)
-        if not self.text_cache.has_key(revnum):
-            self.text_cache[revnum] = {}
+        (realrevnum, props) = svn.ra.get_file(self.ra, path.encode('utf8'), revnum, stream, self.pool)
+        if not self.text_cache.has_key(path):
+            self.text_cache[path] = {}
 
-        self.text_cache[revnum][path] = (props, stream)
-        return self.text_cache[revnum][path]
+        self.text_cache[path][revnum] = (props, stream)
+        return self.text_cache[path][revnum]
 
     def _get_file_prop(self, path, revnum, name):
         (props, _) = self._cache_get_file(path, revnum)
