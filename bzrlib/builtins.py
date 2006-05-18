@@ -1782,16 +1782,21 @@ class cmd_selftest(Command):
                             help='Use a different transport by default '
                                  'throughout the test suite.',
                             type=get_transport_type),
+                     Option('benchmark', help='run the bzr bencharks.'),
                     ]
 
     def run(self, testspecs_list=None, verbose=False, one=False,
-            keep_output=False, transport=None):
+            keep_output=False, transport=None, benchmark=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
+        import bzrlib.benchmarks as benchmarks
         # we don't want progress meters from the tests to go to the
         # real output; and we don't want log messages cluttering up
         # the real logs.
         save_ui = bzrlib.ui.ui_factory
+        print '%10s: %s' % ('bzr', bzrlib.osutils.realpath(sys.argv[0]))
+        print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
+        print
         bzrlib.trace.info('running tests...')
         try:
             bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
@@ -1799,11 +1804,16 @@ class cmd_selftest(Command):
                 pattern = '|'.join(testspecs_list)
             else:
                 pattern = ".*"
+            if benchmark:
+                test_suite_factory = benchmarks.test_suite
+            else:
+                test_suite_factory = None
             result = selftest(verbose=verbose, 
                               pattern=pattern,
                               stop_on_failure=one, 
                               keep_output=keep_output,
-                              transport=transport)
+                              transport=transport,
+                              test_suite_factory=test_suite_factory)
             if result:
                 bzrlib.trace.info('tests passed')
             else:
