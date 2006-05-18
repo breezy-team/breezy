@@ -20,6 +20,7 @@ from bzrlib.trace import mutter
 from bzrlib.revision import Revision
 from bzrlib.errors import NoSuchRevision, InvalidRevisionId, BzrError
 from bzrlib.versionedfile import VersionedFile
+from bzrlib.progress import ProgressBar
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
             ROOT_ID
 from libsvn._core import SubversionException
@@ -462,15 +463,17 @@ class SvnRepository(Repository):
         return False
 
     def copy_content_into(self, destination, revision_id=None, basis=None):
-        # FIXME: Loop over all the revnums until revision_id
+        pb = ProgressBar()
+
+        # Loop over all the revnums until revision_id
         # (or youngest_revnum) and call destination.add_revision() 
         # or destination.add_inventory() each time
 
         if revision_id is None:
             path = ""
-            revnum = svn.ra.get_latest_revnum(self.ra)
+            until_revnum = svn.ra.get_latest_revnum(self.ra)
         else:
-            (path,revnum) = self.parse_revision_id(revision_id)
+            (path,until_revnum) = self.parse_revision_id(revision_id)
         
         weave_store = destination.weave_store
 
@@ -480,14 +483,16 @@ class SvnRepository(Repository):
 
         changed = []
 
-        mutter("svn log -r0:%d %s" % (revnum,path))
+        mutter("svn log -r0:%d %s" % (until_revnum,path))
         def rcvr(paths,revnum,author,date,message,pool):
             changed.append((paths, revnum))
+            pb.update('receiving revision information', revnum, until_revnum)
 
-        svn.ra.get_log(self.ra, [path.encode('utf8')], 0, revnum, 0, 
+        svn.ra.get_log(self.ra, [path.encode('utf8')], 0, until_revnum, 0, 
                 True, False, rcvr)
 
         for (paths,revnum) in changed:
+            pb.update('copying revision', revnum, until_revnum)
             revid = self.generate_revision_id(revnum,path)
             inv = self.get_inventory(revid)
             rev = self.get_revision(revid)
@@ -522,6 +527,8 @@ class SvnRepository(Repository):
                 if stream:
                     stream.seek(0)
                     weave.add_lines(revid, parents, stream.readlines())
+        
+        pb.clear()
 
     def fetch(self, source, revision_id=None, pb=None):
         raise NotImplementedError(self.fetch)
