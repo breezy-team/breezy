@@ -1019,6 +1019,8 @@ class SFTPServerWithoutSSH(SFTPServer):
                 return '1'
             def get_hexdump(self):
                 return False
+            def close(self):
+                pass
 
         server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
                                      root=self._root, home=self._server_homedir)

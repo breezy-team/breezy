@@ -18,6 +18,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
+# TODO: might be nice to create a versionedfile with some type of corruption
+# considered typical and check that it can be detected/corrected.
+
 from StringIO import StringIO
 
 import bzrlib
@@ -790,7 +793,6 @@ class TestKnit(TestCaseWithTransport, VersionedFileTestMixIn):
             create=create)
 
     def test_detection(self):
-        print "TODO for merging: create a corrupted knit."
         knit = self.get_file()
         knit.check()
 
