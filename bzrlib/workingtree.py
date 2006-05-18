@@ -966,14 +966,12 @@ class WorkingTree(bzrlib.tree.Tree):
                 subp = appendpath(path, subf)
                 yield subp
 
-
     def ignored_files(self):
         """Yield list of PATH, IGNORE_PATTERN"""
         for subp in self.extras():
             pat = self.is_ignored(subp)
             if pat != None:
                 yield subp, pat
-
 
     def get_ignore_list(self):
         """Return list of ignore patterns.
@@ -989,7 +987,6 @@ class WorkingTree(bzrlib.tree.Tree):
             l.extend([line.rstrip("\n\r") for line in f.readlines()])
         self._ignorelist = l
         return l
-
 
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
