@@ -1,10 +1,82 @@
-In development:
+IN DEVELOPMENT
+
+  IMPROVEMENTS:
+
+   * On Unix, detect terminal width using an ioctl not just $COLUMNS.
+     Use terminal width for single-line logs from ``bzr log --line`` and
+     pending-merge display.  (Robert Widhopf-Fenk, Gustavo Niemeyer)
+     (Malone #3507)
+
+   * On Windows, detect terminal widht using GetConsoleScreenBufferInfo.
+     (Alexander Belchenko)
+  
+     'bzr selftest' now shows a progress bar with the number of tests, and 
+     progress made. 'make check' shows tests in -v mode, to be more useful
+     for the PQM status window. (Robert Collins).
+
+   * Add info on standalone branches without a working tree.  (Olaf Conradi)
+
+   * 'bzr commit' shows a progress bar. This is useful for commits over sftp
+     where commit can take an appreciable time. (Robert Collins)
+
+  BUG FIXES:
+
+    * Fix shadowed definition of TestLocationConfig that caused some 
+      tests not to run.  (#32587, Erik Bågfors, Michael Ellerman, 
+      Martin Pool)
+
+bzr 0.8.2  2006-05-17
+  
+  BUG FIXES:
+   
+    * setup.py failed to install launchpad plugin.  (Martin Pool)
+
+bzr 0.8.1  2006-05-16
+
+  BUG FIXES:
+
+    * Fix failure to commit a merge in a checkout.  (Martin Pool, 
+      Robert Collins, Erik Bågfors, #43959)
+
+    * Nicer messages from 'commit' in the case of renames, and correct
+      messages when a merge has occured. (Robert Collins, Martin Pool)
+
+    * Separate functionality from assert statements as they are skipped in
+      optimized mode of python. Add the same check to pending merges.
+      (#44443, Olaf Conradi)
 
   CHANGES:
-  
-    'bzr selftest' now shows a progress bar with the number of tests, and 
-    progress made. 'make check' shows tests in -v mode, to be more useful
-    for the PQM status window. (Robert Collins).
+
+    * Do not show the None revision in output of bzr ancestry. (Olaf Conradi)
+
+    * Add info on standalone branches without a working tree.
+      (#44155, Olaf Conradi)
+
+    * Fix bug in knits when raising InvalidRevisionId. (#44284, Olaf Conradi)
+
+  CHANGES:
+
+    * Make editor invocation comply with Debian Policy. First check
+      environment variables VISUAL and EDITOR, then try editor from
+      alternatives system. If that all fails, fall back to the pre-defined
+      list of editors. (#42904, Olaf Conradi)
+
+  NEW FEATURES:
+
+    * New 'register-branch' command registers a public branch into 
+      Launchpad.net, where it can be associated with bugs, etc.
+      (Martin Pool, Bjorn Tillenius, Robert Collins)
+
+  INTERNALS:
+
+    * New public api in InventoryEntry - 'describe_change(old, new)' which
+      provides a human description of the changes between two old and
+      new. (Robert Collins, Martin Pool)
+
+  TESTING:
+
+    * Fix test case for bzr info in upgrading a standalone branch to metadir,
+      uses bzrlib api now. (Olaf Conradi)
 
 bzr 0.8  2006-05-08
 
@@ -135,7 +207,7 @@ bzr 0.8  2006-05-08
       and allows checkouts over SFTP to perform acceptably. 
       The initial Knit code was contributed by Johan Rydberg based on a
       specification by Martin Pool.
-      (Robert Collins, Aaron Bentley, John Rydberg, Martin Pool).
+      (Robert Collins, Aaron Bentley, Johan Rydberg, Martin Pool).
 
     * New tool to generate all-in-one html version of the manual.  (Alexander
       Belchenko)

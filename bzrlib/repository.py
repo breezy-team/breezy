@@ -167,6 +167,10 @@ class Repository(object):
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, 
+                           self.bzrdir.transport.base)
+
     def is_locked(self):
         return self.control_files.is_locked()
 
@@ -1459,7 +1463,8 @@ class InterRepository(InterObject):
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids.pop(0) == None
+            assert source_ids[0] == None
+            source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
         result_set = set(source_ids).difference(target_ids)
@@ -1568,7 +1573,8 @@ class InterWeaveRepo(InterRepository):
         # - RBC 20060209
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids.pop(0) == None
+            assert source_ids[0] == None
+            source_ids.pop(0)
         else:
             source_ids = self.source._all_possible_ids()
         source_ids_set = set(source_ids)
@@ -1630,7 +1636,8 @@ class InterKnitRepo(InterRepository):
         """See InterRepository.missing_revision_ids()."""
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids.pop(0) == None
+            assert source_ids[0] == None
+            source_ids.pop(0)
         else:
             source_ids = self.source._all_possible_ids()
         source_ids_set = set(source_ids)

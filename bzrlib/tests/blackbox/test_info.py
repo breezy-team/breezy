@@ -129,11 +129,8 @@ Revision store:
 
         # Branch and bind to standalone, needs upgrade to metadir
         # (creates backup as unknown)
-        # XXX: I can't get this to work through API
-        self.runbzr('branch standalone bound')
-        #branch3 = branch1.bzrdir.sprout('bound').open_branch()
-        self.runbzr('upgrade --format=metaweave bound')
-        #bzrlib.upgrade.upgrade('bound', bzrlib.bzrdir.BzrDirMetaFormat1())
+        branch1.bzrdir.sprout('bound')
+        bzrlib.upgrade.upgrade('bound', bzrlib.bzrdir.BzrDirMetaFormat1())
         branch3 = bzrlib.bzrdir.BzrDir.open('bound').open_branch()
         branch3.bind(branch1)
         out, err = self.runbzr('info bound')
@@ -460,6 +457,31 @@ Revision store:
 """ % (tree5.bzrdir.root_transport.base,
        branch1.bzrdir.root_transport.base,
        datestring_first, datestring_last,
+       ), out)
+        self.assertEqual('', err)
+
+    def test_info_standalone_no_tree(self):
+        # create standalone branch without a working tree
+        branch = self.make_branch('branch')
+        repo = branch.repository
+        out, err = self.runbzr('info branch')
+        self.assertEqualDiff(
+"""Location:
+  branch root: %s
+
+Format:
+       control: Meta directory format 1
+        branch: Branch format 5
+    repository: %s
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (branch.bzrdir.root_transport.base,
+       repo._format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
