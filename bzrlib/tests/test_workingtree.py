@@ -264,22 +264,31 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
         # the combined ignore regexs need the outer group indices
         # placed in a dictionary with the rules that were combined.
         # an empty set of rules
+        # this is returned as a list of combined regex,rule sets, because
+        # python has a limit of 100 combined regexes.
         compiled_rules = tree._combine_ignore_rules([])
-        # what type *is* the compiled regex to do an isinstance of ?
-        self.assertEqual(0, compiled_rules[0].groups)
-        self.assertEqual({}, compiled_rules[1])
+        self.assertEqual([], compiled_rules)
         # one of each type of rule.
         compiled_rules = tree._combine_ignore_rules(
-            ["rule1", "rule/two", "./three"])
+            ["rule1", "rule/two", "./three"])[0]
+        # what type *is* the compiled regex to do an isinstance of ?
         self.assertEqual(3, compiled_rules[0].groups)
         self.assertEqual(
             {0:"rule1",1:"rule/two",2:"./three"},
             compiled_rules[1])
 
+    def test__combine_ignore_rules_grouping(self):
+        tree = self.make_branch_and_tree('.')
+        # when there are too many rules, the output is split into groups of 100
+        rules = []
+        for index in range(198):
+            rules.append('foo')
+        self.assertEqual(2, len(tree._combine_ignore_rules(rules)))
+
     def test__get_ignore_rules_as_regex(self):
         tree = self.make_branch_and_tree('.')
         # test against the default rules.
-        reference_output = tree._combine_ignore_rules(bzrlib.DEFAULT_IGNORE)
-        regex_rules = tree._get_ignore_rules_as_regex()
+        reference_output = tree._combine_ignore_rules(bzrlib.DEFAULT_IGNORE)[0]
+        regex_rules = tree._get_ignore_rules_as_regex()[0]
         self.assertEqual(len(reference_output[1]), regex_rules[0].groups)
         self.assertEqual(reference_output[1], regex_rules[1])

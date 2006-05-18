@@ -1000,8 +1000,11 @@ class WorkingTree(bzrlib.tree.Tree):
         each subregex's outermost group is placed in a dictionary mapping back 
         to the rule. This allows quick identification of the matching rule that
         triggered a match.
-        :return: the compiled regex and the matching-group index dictionary.
+        :return: a list of the compiled regex and the matching-group index 
+        dictionaries. We return a list because python complains if you try to 
+        combine more than 100 regexes.
         """
+        result = []
         groups = {}
         next_group = 0
         translated_rules = []
@@ -1011,7 +1014,14 @@ class WorkingTree(bzrlib.tree.Tree):
             groups[next_group] = rule
             next_group += compiled_rule.groups
             translated_rules.append(translated_rule)
-        return re.compile("|".join(translated_rules)), groups
+            if next_group == 99:
+                result.append((re.compile("|".join(translated_rules)), groups))
+                groups = {}
+                next_group = 0
+                translated_rules = []
+        if len(translated_rules):
+            result.append((re.compile("|".join(translated_rules)), groups))
+        return result
 
     def ignored_files(self):
         """Yield list of PATH, IGNORE_PATTERN"""
@@ -1064,34 +1074,17 @@ class WorkingTree(bzrlib.tree.Tree):
         # treat dotfiles correctly and allows * to match /.
         # Eventually it should be replaced with something more
         # accurate.
-
-        regex, mapping = self._get_ignore_rules_as_regex()
-        match = regex.match(filename)
-        if match is not None:
-            # one or more of the groups in mapping will have a non-None group 
-            # match.
-            groups = match.groups()
-            rules = [mapping[group] for group in 
-                mapping if groups[group] is not None]
-            return rules[0]
-        return None
-        
-        basename = splitpath(filename)[-1]
-        for pat in self.get_ignore_list():
-            if '/' in pat or '\\' in pat:
-                
-                # as a special case, you can put ./ at the start of a
-                # pattern; this is good to match in the top-level
-                # only;
-                if pat[:2] in ('./', '.\\'):
-                    newpat = pat[2:]
-                else:
-                    newpat = pat
-                if fnmatch.fnmatchcase(filename, newpat):
-                    return pat
-            else:
-                if fnmatch.fnmatchcase(basename, pat):
-                    return pat
+    
+        rules = self._get_ignore_rules_as_regex()
+        for regex, mapping in rules:
+            match = regex.match(filename)
+            if match is not None:
+                # one or more of the groups in mapping will have a non-None group 
+                # match.
+                groups = match.groups()
+                rules = [mapping[group] for group in 
+                    mapping if groups[group] is not None]
+                return rules[0]
         return None
 
     def kind(self, file_id):
