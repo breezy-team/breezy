@@ -26,7 +26,6 @@ rather starts again from the run_bzr function.
 import sys
 
 from bzrlib.tests import (
-                          _load_module_by_name,
                           TestCaseWithTransport,
                           TestSuite,
                           TestLoader,
@@ -36,6 +35,7 @@ import bzrlib.ui as ui
 
 def test_suite():
     testmod_names = [
+                     'bzrlib.tests.blackbox.test_add',
                      'bzrlib.tests.blackbox.test_added',
                      'bzrlib.tests.blackbox.test_aliases',
                      'bzrlib.tests.blackbox.test_ancestry',
@@ -75,12 +75,8 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_versioning',
                      ]
 
-    suite = TestSuite()
     loader = TestLoader()
-    for mod_name in testmod_names:
-        mod = _load_module_by_name(mod_name)
-        suite.addTest(loader.loadTestsFromModule(mod))
-    return suite
+    return loader.loadTestsFromModuleNames(testmod_names)
 
 
 class ExternalBase(TestCaseWithTransport):
