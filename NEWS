@@ -19,6 +19,12 @@ IN DEVELOPMENT
    * 'bzr commit' shows a progress bar. This is useful for commits over sftp
      where commit can take an appreciable time. (Robert Collins)
 
+   * 'bzr add' is now less verbose in telling you what ignore globs were
+     matched by files being ignored. Instead it just tells you how many 
+     were ignored (because you might reasonably be expecting none to be
+     ignored). 'bzr add -v' is unchanged and will report every ignored
+     file. (Robert Collins).
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
