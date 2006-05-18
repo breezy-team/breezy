@@ -17,6 +17,7 @@
 
 from cStringIO import StringIO
 import os
+import _sre
 
 import bzrlib
 from bzrlib.branch import Branch
@@ -234,3 +235,51 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         os.mkdir('lala.OTHER')
         expected = ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
+
+
+class TestNonFormatSpecificCode(TestCaseWithTransport):
+    """This class contains tests of workingtree that are not format specific."""
+
+    def test__translate_ignore_rule(self):
+        tree = self.make_branch_and_tree('.')
+        # translation should return the regex, the number of groups in it,
+        # and the original rule in a tuple.
+        # there are three sorts of ignore rules:
+        # root only - regex is the rule itself without the leading ./
+        self.assertEqual(
+            "(rootdirrule$)", 
+            tree._translate_ignore_rule("./rootdirrule"))
+        # full path - regex is the rule itself
+        self.assertEqual(
+            "(path\\/to\\/file$)",
+            tree._translate_ignore_rule("path/to/file"))
+        # basename only rule - regex is a rule that ignores everything up
+        # to the last / in the filename
+        self.assertEqual(
+            "((?:.*/)?(?!.*/)basenamerule$)",
+            tree._translate_ignore_rule("basenamerule"))
+
+    def test__combine_ignore_rules(self):
+        tree = self.make_branch_and_tree('.')
+        # the combined ignore regexs need the outer group indices
+        # placed in a dictionary with the rules that were combined.
+        # an empty set of rules
+        compiled_rules = tree._combine_ignore_rules([])
+        # what type *is* the compiled regex to do an isinstance of ?
+        self.assertEqual(0, compiled_rules[0].groups)
+        self.assertEqual({}, compiled_rules[1])
+        # one of each type of rule.
+        compiled_rules = tree._combine_ignore_rules(
+            ["rule1", "rule/two", "./three"])
+        self.assertEqual(3, compiled_rules[0].groups)
+        self.assertEqual(
+            {0:"rule1",1:"rule/two",2:"./three"},
+            compiled_rules[1])
+
+    def test__get_ignore_rules_as_regex(self):
+        tree = self.make_branch_and_tree('.')
+        # test against the default rules.
+        reference_output = tree._combine_ignore_rules(bzrlib.DEFAULT_IGNORE)
+        regex_rules = tree._get_ignore_rules_as_regex()
+        self.assertEqual(len(reference_output[1]), regex_rules[0].groups)
+        self.assertEqual(reference_output[1], regex_rules[1])

@@ -49,6 +49,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         # relevant not-matches that look plausible as cases for bugs.
         self.assertEqual('./rootdir', tree.is_ignored('rootdir'))
         self.assertEqual(None, tree.is_ignored('foo/rootdir'))
+        self.assertEqual(None, tree.is_ignored('rootdirtrailer'))
         self.assertEqual('randomfile*', tree.is_ignored('randomfile'))
         self.assertEqual('randomfile*', tree.is_ignored('randomfiles'))
         self.assertEqual('randomfile*', tree.is_ignored('foo/randomfiles'))

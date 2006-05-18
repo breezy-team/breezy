@@ -44,6 +44,7 @@ from cStringIO import StringIO
 import errno
 import fnmatch
 import os
+import re
 import stat
  
 
@@ -107,7 +108,6 @@ def gen_file_id(name):
     This should probably generate proper UUIDs, but for the moment we
     cope with just randomness because running uuidgen every time is
     slow."""
-    import re
     from binascii import hexlify
     from time import time
 
@@ -966,6 +966,53 @@ class WorkingTree(bzrlib.tree.Tree):
                 subp = appendpath(path, subf)
                 yield subp
 
+    def _translate_ignore_rule(self, rule):
+        """Translate a single ignore rule to a regex.
+
+        There are three sorts of ignore rules:
+        root only - regex is the rule itself without the leading './'. These
+        are identified by a leading './'.
+        full path - regex is the rule itself and is identified by the 
+        presenve of a '/' in the path.
+        basename only rule - regex is a rule that ignores everything up
+        to the last / in the string before applying the supplied rule.
+        These are the default case.
+
+        :return: The translated regex.
+        """
+        if rule[:2] in ('./', '.\\'):
+            # rootdir rule
+            result = fnmatch.translate(rule[2:])
+        elif '/' in rule or '\\' in rule:
+            # path prefix 
+            result = fnmatch.translate(rule)
+        else:
+            # default rule style.
+            result = "(?:.*/)?(?!.*/)" + fnmatch.translate(rule)
+        assert result[-1] == '$', "fnmatch.translate did not add the expected $"
+        return "(" + result + ")"
+
+    def _combine_ignore_rules(self, rules):
+        """Combine a list of ignore rules into a single regex object.
+
+        Each individual rule is combined with | to form a big regex, which then
+        has $ added to it to form something like ()|()|()$. The group index for
+        each subregex's outermost group is placed in a dictionary mapping back 
+        to the rule. This allows quick identification of the matching rule that
+        triggered a match.
+        :return: the compiled regex and the matching-group index dictionary.
+        """
+        groups = {}
+        next_group = 0
+        translated_rules = []
+        for rule in rules:
+            translated_rule = self._translate_ignore_rule(rule)
+            compiled_rule = re.compile(translated_rule)
+            groups[next_group] = rule
+            next_group += compiled_rule.groups
+            translated_rules.append(translated_rule)
+        return re.compile("|".join(translated_rules)), groups
+
     def ignored_files(self):
         """Yield list of PATH, IGNORE_PATTERN"""
         for subp in self.extras():
@@ -986,7 +1033,18 @@ class WorkingTree(bzrlib.tree.Tree):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
             l.extend([line.rstrip("\n\r") for line in f.readlines()])
         self._ignorelist = l
+        self._ignore_regex = self._combine_ignore_rules(l)
         return l
+
+    def _get_ignore_rules_as_regex(self):
+        """Return a regex of the ignore rules and a mapping dict.
+
+        :return: (ignore rules compiled regex, dictionary mapping rule group 
+        indices to original rule.)
+        """
+        if getattr(self, '_ignorelist', None) is None:
+            self.get_ignore_list()
+        return self._ignore_regex
 
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
@@ -1006,6 +1064,17 @@ class WorkingTree(bzrlib.tree.Tree):
         # treat dotfiles correctly and allows * to match /.
         # Eventually it should be replaced with something more
         # accurate.
+
+        regex, mapping = self._get_ignore_rules_as_regex()
+        match = regex.match(filename)
+        if match is not None:
+            # one or more of the groups in mapping will have a non-None group 
+            # match.
+            groups = match.groups()
+            rules = [mapping[group] for group in 
+                mapping if groups[group] is not None]
+            return rules[0]
+        return None
         
         basename = splitpath(filename)[-1]
         for pat in self.get_ignore_list():
