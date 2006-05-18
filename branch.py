@@ -222,6 +222,9 @@ class SvnBranch(Branch):
         if parent:
             destination.set_parent(parent)
 
+    def submit(self, from_branch, revision):
+        raise NotImplementedError(self.submit)
+
 class SvnBranchFormat(BranchFormat):
     def __init__(self):
         BranchFormat.__init__(self)

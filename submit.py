@@ -15,90 +15,36 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.commands import Command, register_command, Option
+from bzrlib.commands import Command, register_command
 from bzrlib.builtins import tree_files
-from bzrlib.commit import (NullCommitReporter, ReportCommitToLog)
-from bzrlib.errors import (PointlessCommit, ConflictsInTree,
-                StrictCommitFailed)
-
-def submit(message=None,
-           timestamp=None,
-           timezone=None,
-           committer=None,
-           specific_files=None,
-           rev_id=None,
-           allow_pointless=True,
-           strict=False,
-           verbose=False,
-           revprops=None,
-           working_tree=None,
-           reporter=None,
-           config=None):
-    if revprops is None:
-        revprops = {}
-    
-    print working_tree.branch
+from bzrlib.bzrdir import BzrDir
+from bzrlib.branch import Branch
 
 class cmd_submit(Command):
-    """Submit a revision to a Subversion repository.
+    """Submit a revision to another (related) branch.
     
     This is basically a push to a Subversion repository, 
     without the guarantee that a pull from that same repository 
     is a no-op.
     """
 
-    takes_args = ["selected*"]
-    takes_options = ["revision","message","verbose", 
-                     Option('strict',
-                            help="refuse to commit if there are unknown "
-                            "files in the working tree.")
-                     ]
-    aliases = ["push-svn"]
+    takes_args = ["location?"]
+    takes_options = ["revision","verbose"]
     
-    def run(self, revision=None, message=None, file=None, verbose=True,
-            selected_list=None, unchanged=False, strict=False):
-        from bzrlib.msgeditor import edit_commit_message, \
-                make_commit_message_template
+    def run(self, revid=None, verbose=True, location=None):
+        (branch, _) = Branch.open_containing(".")
 
-        tree, selected_list = tree_files(selected_list)
-        if selected_list == ['']:
-            # workaround - commit of root of tree should be exactly the same
-            # as just default commit in that tree, and succeed even though
-            # selected-file merge commit is not done yet
-            selected_list = []
+        if location is None:
+            location = branch.get_parent()
 
-        if message is None and not file:
-            template = make_commit_message_template(tree, selected_list)
-            message = edit_commit_message(template)
-            if message is None:
-                raise BzrCommandError("please specify a commit message"
-                                      " with either --message or --file")
-        elif message and file:
-            raise BzrCommandError("please specify either --message or --file")
+        if location is None:
+            raise BzrError("No location specified and no default location set on branch")
 
-        if file:
-            import codecs
-            message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
+        parent_branch = Branch.open(location)
 
-        if verbose:
-            reporter = ReportCommitToLog()
-        else:
-            reporter = NullCommitReporter()
-        
-        try:
-            submit(message, specific_files=selected_list,
-                        allow_pointless=unchanged, strict=strict, 
-                        working_tree=tree, reporter=reporter)
-        except PointlessCommit:
-            # FIXME: This should really happen before the file is read in;
-            # perhaps prepare the commit; get the message; then actually commit
-            raise BzrCommandError("no changes to commit",
-                                  ["use --unchanged to commit anyhow"])
-        except ConflictsInTree:
-            raise BzrCommandError("Conflicts detected in working tree.  "
-                'Use "bzr conflicts" to list, "bzr resolve FILE" to resolve.')
-        except StrictCommitFailed:
-            raise BzrCommandError("Commit refused because there are unknown "
-                                  "files in the working tree.")
+        if revid is None:
+            revid = branch.last_revision()
+
+        parent_branch.submit(branch, revid)
 
 register_command(cmd_submit)
