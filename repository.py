@@ -19,57 +19,18 @@ from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.trace import mutter
 from bzrlib.revision import Revision
 from bzrlib.errors import NoSuchRevision, InvalidRevisionId, BzrError
-from bzrlib.versionedfile import VersionedFile
 from bzrlib.progress import ProgressBar
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
             ROOT_ID
 from libsvn._core import SubversionException
 import svn.core
 import bzrlib
+from fakeweave import FakeFileStore
 from branch import auth_baton
 import branch
 from bzrlib.weave import Weave
 from cStringIO import StringIO
 from bzrlib.graph import Graph
-
-class SvnFileWeave(VersionedFile):
-    def __init__(self,repository,weave_name,access_mode='w'):
-        VersionedFile.__init__(self,access_mode)
-        self.repository = repository
-        self.file_id = weave_name
-        assert self.file_id
-
-    def get_lines(self, version_id):
-        assert version_id != None
-
-        (path,revnum) = self.repository.path_from_file_id(version_id, self.file_id)
-
-        stream = StringIO()
-        mutter('svn cat -r %r %s' % (revnum, path))
-        try:
-            (revnum,props) = svn.ra.get_file(self.repository.ra, path.encode('utf8'), revnum, stream)
-        except SubversionException, (_, num):
-            if num == svn.core.SVN_ERR_FS_NOT_FILE:
-                return []
-            raise
-
-        stream.seek(0)
-
-        return stream.readlines()
-
-    def has_version(self,version_id):
-        assert version_id != None
-        (path,path_revnum) = self.repository.path_from_file_id(version_id, self.file_id)
-
-        mutter("svn check_path -r%d %s" % (path_revnum,path))
-        kind = svn.ra.check_path(self.repository.ra, path.encode('utf8'), path_revnum)
-
-        return (kind != svn.core.svn_node_none)
-
-    def get_parents(self,version):
-        #FIXME
-        mutter("GET_PARENTS: %s,%s" % (version,self.file_id))
-        return []
 
 class SvnInventoryFile(InventoryFile):
     """ Inventory entry that can either be a plain file or a 
@@ -125,13 +86,6 @@ class SvnInventoryFile(InventoryFile):
     symlink_target = property(_get_symlink_target, _phony_set)
     kind = property(_get_kind, _phony_set)
 
-class SvnFileStore(object):
-    def __init__(self,repository):
-        self.repository = repository
-
-    def get_weave(self,file_id,transaction):
-        return SvnFileWeave(self.repository,file_id)
-
 class SvnRepository(Repository):
     """
     Provides a simplified interface to a Subversion repository 
@@ -141,7 +95,7 @@ class SvnRepository(Repository):
         _revision_store = None
         control_store = None
 
-        text_store = SvnFileStore(self)
+        text_store = FakeFileStore(self)
         control_files = LockableFiles(bzrdir.transport, '', TransportLock)
         Repository.__init__(self, 'Subversion Smart Server', bzrdir, control_files, _revision_store, control_store, text_store)
 
