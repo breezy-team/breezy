@@ -26,7 +26,6 @@ import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.commands import Command, display_command
-from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
@@ -36,6 +35,7 @@ from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
 from bzrlib.progress import DummyProgress, ProgressPhase
+from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
@@ -273,14 +273,15 @@ class cmd_add(Command):
         added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
                                               action)
         if len(ignored) > 0:
-            for glob in sorted(ignored.keys()):
-                match_len = len(ignored[glob])
-                if verbose:
+            if verbose:
+                for glob in sorted(ignored.keys()):
                     for path in ignored[glob]:
                         print "ignored %s matching \"%s\"" % (path, glob)
-                else:
-                    print "ignored %d file(s) matching \"%s\"" % (match_len,
-                                                              glob)
+            else:
+                match_len = 0
+                for glob, paths in ignored.items():
+                    match_len += len(paths)
+                print "ignored %d file(s)." % match_len
             print "If you wish to add some of these files, please add them"\
                 " by name."
 
