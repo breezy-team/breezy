@@ -555,8 +555,8 @@ class TestTestCase(TestCase):
 
     def method_that_times_a_bit_twice(self):
         # call self.time twice to ensure it aggregates
-        self.time(time.sleep, 0.005)
-        self.time(time.sleep, 0.005)
+        self.time(time.sleep, 0.007)
+        self.time(time.sleep, 0.007)
 
     def test_time_creates_benchmark_in_result(self):
         """Test that the TestCase.time() method accumulates a benchmark time."""

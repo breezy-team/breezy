@@ -519,24 +519,23 @@ class cmd_push(Command):
                                                   "path prefix.")
             dir_to = br_from.bzrdir.clone(location)
             br_to = dir_to.open_branch()
-        old_rh = br_to.revision_history()
-        try:
+            count = len(br_to.revision_history())
+        else:
+            old_rh = br_to.revision_history()
             try:
-                tree_to = dir_to.open_workingtree()
-            except errors.NotLocalUrl:
-                # TODO: This should be updated for branches which don't have a
-                # working tree, as opposed to ones where we just couldn't 
-                # update the tree.
-                warning('This transport does not update the working '
-                        'tree of: %s' % (br_to.base,))
-                count = br_to.pull(br_from, overwrite)
-            except NoWorkingTree:
-                count = br_to.pull(br_from, overwrite)
-            else:
-                count = tree_to.pull(br_from, overwrite)
-        except DivergedBranches:
-            raise BzrCommandError("These branches have diverged."
-                                  "  Try a merge then push with overwrite.")
+                try:
+                    tree_to = dir_to.open_workingtree()
+                except errors.NotLocalUrl:
+                    warning('This transport does not update the working '
+                            'tree of: %s' % (br_to.base,))
+                    count = br_to.pull(br_from, overwrite)
+                except NoWorkingTree:
+                    count = br_to.pull(br_from, overwrite)
+                else:
+                    count = tree_to.pull(br_from, overwrite)
+            except DivergedBranches:
+                raise BzrCommandError("These branches have diverged."
+                                      "  Try a merge then push with overwrite.")
         note('%d revision(s) pushed.' % (count,))
 
         if verbose:
