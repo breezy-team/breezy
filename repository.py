@@ -88,7 +88,7 @@ class SvnInventoryFile(InventoryFile):
         if not self.has_props:
             return False
 
-        value = self.repository._get_prop(self.path, self.revnum, svn.core.SVN_PROP_EXECUTABLE)
+        value = self.repository._get_file_prop(self.path, self.revnum, svn.core.SVN_PROP_EXECUTABLE)
         if value and value == svn.core.SVN_PROP_EXECUTABLE_VALUE:
             return True
         return False 
@@ -97,7 +97,7 @@ class SvnInventoryFile(InventoryFile):
         if not self.has_props:
             return False
 
-        value = self.repository._get_prop(self.path, self.revnum, svn.core.SVN_PROP_SPECIAL)
+        value = self.repository._get_file_prop(self.path, self.revnum, svn.core.SVN_PROP_SPECIAL)
         if value and value == svn.core.SVN_PROP_SPECIAL_VALUE:
             return True
         return False 
@@ -212,7 +212,8 @@ class SvnRepository(Repository):
         return self.fileid_map[revision_id][file_id]
 
     def path_to_file_id(self,revnum,path):
-        """Generate a bzr file id from a Subversion file name."""
+        """Generate a bzr file id from a Subversion file name. 
+        Does not use svn.ra """
 
         (path_branch, filename) = self._scheme.unprefix(path)
 
@@ -370,6 +371,7 @@ class SvnRepository(Repository):
         return ids
 
     def generate_revision_id(self,rev,path):
+        """ Generate a unambiguous revision id. Does not use svn.ra """
         return "%d@%s-%s" % (rev,self.uuid,path)
 
     def parse_revision_id(self,revid):
@@ -418,7 +420,7 @@ class SvnRepository(Repository):
         self.text_cache[revnum][path] = (props, stream)
         return self.text_cache[revnum][path]
 
-    def _get_prop(self, path, revnum, name):
+    def _get_file_prop(self, path, revnum, name):
         (props, _) = self._cache_get_file(path, revnum)
         if props.has_key(name):
             return props[name]
@@ -476,8 +478,16 @@ class SvnRepository(Repository):
 
         transact = destination.get_transaction()
 
+        changed = []
+
         mutter("svn log -r0:%d %s" % (revnum,path))
         def rcvr(paths,revnum,author,date,message,pool):
+            changed.append((paths, revnum))
+
+        svn.ra.get_log(self.ra, [path.encode('utf8')], 0, revnum, 0, 
+                True, False, rcvr)
+
+        for (paths,revnum) in changed:
             revid = self.generate_revision_id(revnum,path)
             inv = self.get_inventory(revid)
             rev = self.get_revision(revid)
@@ -512,9 +522,6 @@ class SvnRepository(Repository):
                 if stream:
                     stream.seek(0)
                     weave.add_lines(revid, parents, stream.readlines())
-
-        svn.ra.get_log(self.ra, [path.encode('utf8')], 0, revnum, 
-                0, True, False, rcvr)
 
     def fetch(self, source, revision_id=None, pb=None):
         raise NotImplementedError(self.fetch)
