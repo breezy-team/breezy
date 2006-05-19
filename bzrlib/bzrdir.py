@@ -118,7 +118,11 @@ class BzrDir(object):
         if local_repo:
             # may need to copy content in
             if force_new_repo:
-                local_repo.clone(result, revision_id=revision_id, basis=basis_repo)
+                result_repo = local_repo.clone(
+                    result,
+                    revision_id=revision_id,
+                    basis=basis_repo)
+                result_repo.set_make_working_trees(local_repo.make_working_trees())
             else:
                 try:
                     result_repo = result.find_repository()
@@ -130,7 +134,11 @@ class BzrDir(object):
                     result_repo.fetch(local_repo, revision_id=revision_id)
                 except errors.NoRepositoryPresent:
                     # needed to make one anyway.
-                    local_repo.clone(result, revision_id=revision_id, basis=basis_repo)
+                    result_repo = local_repo.clone(
+                        result,
+                        revision_id=revision_id,
+                        basis=basis_repo)
+                    result_repo.set_make_working_trees(local_repo.make_working_trees())
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
@@ -567,11 +575,12 @@ class BzrDir(object):
             # no repo available, make a new one
             result.create_repository()
         elif source_repository is not None and result_repo is None:
-            # have soure, and want to make a new target repo
-            source_repository.clone(result,
-                                    revision_id=revision_id,
-                                    basis=basis_repo)
-        else:
+            # have source, and want to make a new target repo
+            # we dont clone the repo because that preserves attributes
+            # like is_shared(), and we have not yet implemented a 
+            # repository sprout().
+            result_repo = result.create_repository()
+        if result_repo is not None:
             # fetch needed content into target.
             if basis_repo:
                 # XXX FIXME RBC 20060214 need tests for this when the basis

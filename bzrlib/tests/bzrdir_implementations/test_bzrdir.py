@@ -171,6 +171,32 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertNotEqual(dir.transport.base, shared_repo.bzrdir.transport.base)
         self.assertTrue(shared_repo.has_revision('1'))
+
+    def test_clone_bzrdir_repository_branch_only_source_under_shared(self):
+        try:
+            shared_repo = self.make_repository('shared', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
+        tree.bzrdir.open_branch().set_revision_history([])
+        tree.set_last_revision(None)
+        tree.commit('revision 2', rev_id='2')
+        tree.bzrdir.open_repository().copy_content_into(shared_repo)
+        shared_repo.set_make_working_trees(False)
+        self.assertFalse(shared_repo.make_working_trees())
+        self.assertTrue(shared_repo.has_revision('1'))
+        dir = self.make_bzrdir('shared/source')
+        dir.create_branch()
+        target = dir.clone(self.get_url('target'))
+        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertNotEqual(dir.transport.base, shared_repo.bzrdir.transport.base)
+        branch = target.open_branch()
+        self.assertTrue(branch.repository.has_revision('1'))
+        self.assertFalse(branch.repository.make_working_trees())
+        self.assertTrue(branch.repository.is_shared())
         
     def test_clone_bzrdir_repository_under_shared_force_new_repo(self):
         tree = self.make_branch_and_tree('commit_tree')
@@ -479,6 +505,32 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertNotEqual(dir.transport.base, shared_repo.bzrdir.transport.base)
         self.assertTrue(shared_repo.has_revision('1'))
+
+    def test_sprout_bzrdir_repository_branch_only_source_under_shared(self):
+        try:
+            shared_repo = self.make_repository('shared', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
+        tree.add('foo')
+        tree.commit('revision 1', rev_id='1')
+        tree.bzrdir.open_branch().set_revision_history([])
+        tree.set_last_revision(None)
+        tree.commit('revision 2', rev_id='2')
+        tree.bzrdir.open_repository().copy_content_into(shared_repo)
+        shared_repo.set_make_working_trees(False)
+        self.assertFalse(shared_repo.make_working_trees())
+        self.assertTrue(shared_repo.has_revision('1'))
+        dir = self.make_bzrdir('shared/source')
+        dir.create_branch()
+        target = dir.sprout(self.get_url('target'))
+        self.assertNotEqual(dir.transport.base, target.transport.base)
+        self.assertNotEqual(dir.transport.base, shared_repo.bzrdir.transport.base)
+        branch = target.open_branch()
+        self.assertTrue(branch.repository.has_revision('1'))
+        self.assertTrue(branch.repository.make_working_trees())
+        self.assertFalse(branch.repository.is_shared())
 
     def test_sprout_bzrdir_repository_under_shared_force_new_repo(self):
         tree = self.make_branch_and_tree('commit_tree')

@@ -164,7 +164,7 @@ def show_pending_merges(new, to_file):
     if last_revision is not None:
         ignore = set(branch.repository.get_ancestry(last_revision))
     else:
-        ignore = set()
+        ignore = set([None])
     for merge in new.pending_merges():
         ignore.add(merge)
         try:
