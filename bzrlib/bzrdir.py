@@ -412,6 +412,25 @@ class BzrDir(object):
         self.transport = _transport.clone('.bzr')
         self.root_transport = _transport
 
+    def is_control_filename(self, filename):
+        """True if filename is the name of a path which is reserved for bzrdir's.
+        
+        :param filename: A filename within the root transport of this bzrdir.
+
+        This is true IF and ONLY IF the filename is part of the namespace reserved
+        for bzr control dirs. Currently this is the '.bzr' directory in the root
+        of the root_transport. it is expected that plugins will need to extend
+        this in the future - for instance to make bzr talk with svn working
+        trees.
+        """
+        # this might be better on the BzrDirFormat class because it refers to 
+        # all the possible bzrdir disk formats. 
+        # This method is tested via the workingtree is_control_filename tests- 
+        # it was extractd from WorkingTree.is_control_filename. If the methods
+        # contract is extended beyond the current trivial  implementation please
+        # add new tests for it to the appropriate place.
+        return filename == '.bzr' or filename.startswith('.bzr/')
+
     def needs_format_conversion(self, format=None):
         """Return true if this bzrdir needs convert_format run on it.
         

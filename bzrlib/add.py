@@ -97,44 +97,55 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
     import os, errno
     from bzrlib.errors import BadFileKindError, ForbiddenFileError
     assert isinstance(recurse, bool)
-
+    
+    orig_list = file_list
     file_list = _prepare_file_list(file_list)
-    user_list = file_list[:]
+    mutter("smart add of %r, originally %r", file_list, orig_list)
     inv = tree.read_working_inventory()
     added = []
     ignored = {}
     user_files = set(file_list)
 
-    for f in file_list:
-        rf = tree.relpath(f)
-        af = tree.abspath(rf)
+    for filepath in file_list:
+        # convert a random abs or cwd-relative path to tree relative.
+        rf = tree.relpath(filepath)
 
-        try:
-            kind = bzrlib.osutils.file_kind(af)
-        except OSError, e:
-            if hasattr(e, 'errno') and e.errno == errno.ENOENT:
-                raise errors.NoSuchFile(rf)
-            raise
-
-        if not InventoryEntry.versionable_kind(kind):
-            if f in user_list:
-                raise BadFileKindError("cannot add %s of type %s" % (f, kind))
-            else:
-                warning("skipping %s (can't add file of kind '%s')", f, kind)
-                continue
-
-        mutter("smart add of %r, abs=%r", f, af)
-            
         # validate user parameters. Our recursive code avoids adding new files
         # that need such validation 
-        if f in user_files and tree.is_control_filename(af):
-            raise ForbiddenFileError('cannot add control file %s' % f)
+        if filepath in user_files and tree.is_control_filename(rf):
+            raise ForbiddenFileError('cannot add control file %s' % filepath)
 
-        versioned = (inv.path2id(rf) != None)
+        # find the kind of the path being added. This is not
+        # currently determined when we list directories 
+        # recursively, but in theory we can determine while 
+        # doing the directory listing on *some* platformans.
+        # TODO: a safe, portable, clean interface which will 
+        # be faster than os.listdir() + stat. Specifically,
+        # readdir - dirent.d_type supplies the file type when
+        # it is defined. (Apparently Mac OSX has the field but
+        # does not fill it in ?!) Robert C, Martin P.
+        try:
+            kind = bzrlib.osutils.file_kind(filepath)
+        except OSError, e:
+            if hasattr(e, 'errno') and e.errno == errno.ENOENT:
+                raise errors.NoSuchFile(filepath)
+            raise
+
+        # we need to call this to determine the inventory kind to create.
+        if not InventoryEntry.versionable_kind(kind):
+            if filepath in user_files:
+                raise BadFileKindError("cannot add %s of type %s" % (filepath, kind))
+            else:
+                warning("skipping %s (can't add file of kind '%s')", filepath, kind)
+                continue
+
+        # TODO make has_filename faster or provide a better api for accessing/determining 
+        # this status. perhaps off the inventory directory object.
+        versioned = inv.has_filename(rf)
 
         if kind == 'directory':
             try:
-                sub_branch = WorkingTree.open(af)
+                sub_branch = bzrlib.bzrdir.BzrDir.open(filepath)
                 sub_tree = True
             except NotBranchError:
                 sub_tree = False
@@ -144,36 +155,42 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
             sub_tree = False
 
         if rf == '':
-            mutter("tree root doesn't need to be added")
+            # mutter("tree root doesn't need to be added")
             sub_tree = False
         elif versioned:
-            mutter("%r is already versioned", f)
+            pass
+            # mutter("%r is already versioned", filepath)
         elif sub_tree:
-            mutter("%r is a bzr tree", f)
+            mutter("%r is a nested bzr tree", filepath)
         else:
             added.extend(__add_one(tree, inv, rf, kind, action))
 
         if kind == 'directory' and recurse and not sub_tree:
-            for subf in os.listdir(af):
+            for subf in os.listdir(filepath):
+                # here we could use TreeDirectory rather than 
+                # string concatenation.
                 subp = bzrlib.osutils.pathjoin(rf, subf)
+                # TODO: is_control_filename is very slow. Make it faster. 
+                # TreeDirectory.is_control_filename could also make this 
+                # faster - its impossible for a non root dir to have a 
+                # control file.
                 if tree.is_control_filename(subp):
                     mutter("skip control directory %r", subp)
                 else:
+                    # ignore while selecting files - if we globbed in the
+                    # outer loop we would ignore user files.
                     ignore_glob = tree.is_ignored(subp)
                     if ignore_glob is not None:
-                        mutter("skip ignored sub-file %r", subp)
+                        # mutter("skip ignored sub-file %r", subp)
                         if ignore_glob not in ignored:
                             ignored[ignore_glob] = []
                         ignored[ignore_glob].append(subp)
                     else:
-                        mutter("queue to add sub-file %r", subp)
+                        #mutter("queue to add sub-file %r", subp)
                         file_list.append(tree.abspath(subp))
 
-    mutter('added %d entries', len(added))
-    
     if len(added) > 0:
         tree._write_inventory(inv)
-
     return added, ignored
 
 
