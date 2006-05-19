@@ -133,14 +133,14 @@ class ChangesetSerializerV07(ChangesetSerializer):
         def w(key, value):
             self._write(key, value, indent=1)
 
-        w('revision id', rev.revision_id)
+        w('message', rev.message.split('\n'))
         w('committer', rev.committer)
         w('date', format_highres_date(rev.timestamp, rev.timezone))
-        w('message', rev.message.split('\n'))
         self.to_file.write('\n')
 
         self._write_delta(rev_tree, base_tree, rev.revision_id)
 
+        w('revision id', rev.revision_id)
         w('sha1', testament_sha1(self.source, rev.revision_id))
         w('inventory sha1', rev.inventory_sha1)
         if rev.parent_ids:

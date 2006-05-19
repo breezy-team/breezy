@@ -400,6 +400,7 @@ class ChangesetReader(object):
             raise MalformedHeader('Did not find an opening header')
 
     def _read_revision_header(self):
+        self.info.revisions.append(RevisionInfo(None))
         for line in self._next():
             # The bzr header is terminated with a blank line
             # which does not start with '#'
@@ -443,19 +444,16 @@ class ChangesetReader(object):
         if key is None:
             return
 
-        if key == 'revision_id':
-            self._read_revision(value)
-        else:
-            revision_info = self.info.revisions[-1]
-            if hasattr(revision_info, key):
-                if getattr(revision_info, key) is None:
-                    setattr(revision_info, key, value)
-                else:
-                    raise MalformedHeader('Duplicated Key: %s' % key)
+        revision_info = self.info.revisions[-1]
+        if hasattr(revision_info, key):
+            if getattr(revision_info, key) is None:
+                setattr(revision_info, key, value)
             else:
-                # What do we do with a key we don't recognize
-                raise MalformedHeader('Unknown Key: "%s"' % key)
-        
+                raise MalformedHeader('Duplicated Key: %s' % key)
+        else:
+            # What do we do with a key we don't recognize
+            raise MalformedHeader('Unknown Key: "%s"' % key)
+    
     def _read_many(self, indent):
         """If a line ends with no entry, that means that it should be
         followed with multiple lines of values.
@@ -516,29 +514,6 @@ class ChangesetReader(object):
                 revision_actions.append((action, lines))
         assert self.info.revisions[-1].tree_actions is None
         self.info.revisions[-1].tree_actions = revision_actions
-
-    def _read_revision(self, revision_id):
-        """Revision entries have extra information associated.
-        """
-        rev_info = RevisionInfo(revision_id)
-        start = '#    '
-        for line in self._next():
-            key,value = self._read_next_entry(line, indent=1)
-            #if key is None:
-            #    continue
-            if hasattr(rev_info, key):
-                if getattr(rev_info, key) is None:
-                    setattr(rev_info, key, value)
-                else:
-                    raise MalformedHeader('Duplicated Key: %s' % key)
-            else:
-                # What do we do with a key we don't recognize
-                raise MalformedHeader('Unknown Key: %s' % key)
-
-            if self._next_line is None or not self._next_line.startswith(start):
-                break
-
-        self.info.revisions.append(rev_info)
 
     def _read_footer(self):
         """Read the rest of the meta information.

@@ -310,7 +310,7 @@ class CSetTester(TestCaseInTempDir):
 
         rev = self.b1.repository.get_revision(rev_id)
         self.assertEqual(cset_txt.readline().decode('utf-8'),
-                u'# revision id: %s\n' % rev.revision_id)
+                u'# message:\n')
 
         open(',,cset', 'wb').write(cset_txt.getvalue())
         cset_txt.seek(0)
