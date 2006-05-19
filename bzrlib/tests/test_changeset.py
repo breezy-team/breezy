@@ -17,18 +17,18 @@
 from StringIO import StringIO
 
 from bzrlib.builtins import merge_changeset, merge
-from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import BzrError
-
-from bzrlib.diff import internal_diff
 from bzrlib.changeset.apply_changeset import install_changeset
 from bzrlib.changeset.read_changeset import ChangesetTree, ChangesetReader
 from bzrlib.changeset.serializer import write_changeset
+from bzrlib.diff import internal_diff
+from bzrlib.errors import BzrError
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
+from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
+
 
 class MockTree(object):
     def __init__(self):
@@ -303,7 +303,6 @@ class CSetTester(TestCaseInTempDir):
         :return: The in-memory changeset
         """
         from cStringIO import StringIO
-        from bzrlib.changeset.read_changeset import read_changeset
 
         cset_txt = StringIO()
         rev_ids = write_changeset(self.b1.repository, rev_id, base_rev_id, 
