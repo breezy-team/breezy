@@ -3,6 +3,7 @@
 Read in a changeset output, and process it into a Changeset object.
 """
 
+import base64
 from cStringIO import StringIO
 import os
 import pprint
@@ -482,6 +483,7 @@ class ChangesetReader(object):
         #mutter('_read_one_patch: %r' % self._next_line)
         # Peek and see if there are no patches
         if self._next_line is None or self._next_line.startswith('#'):
+            print "ret1"
             return None, [], False
 
         first = True
@@ -546,6 +548,7 @@ class ChangesetReader(object):
 
         def extra_info(info, new_path):
             last_changed = None
+            encoding = None
             for info_item in info:
                 name, value = info_item.split(':', 1)
                 if name == 'last-changed':
@@ -556,7 +559,9 @@ class ChangesetReader(object):
                     cset_tree.note_executable(new_path, val)
                 elif name == 'target':
                     cset_tree.note_target(new_path, value)
-            return last_changed
+                elif name == 'encoding':
+                    encoding = value
+            return last_changed, encoding
 
         def renamed(kind, extra, lines):
             info = extra.split(' // ')
@@ -570,7 +575,7 @@ class ChangesetReader(object):
                 new_path = info[1]
 
             cset_tree.note_rename(old_path, new_path)
-            last_modified = extra_info(info[2:], new_path)
+            last_modified, encoding = extra_info(info[2:], new_path)
             revision = get_rev_id(last_modified, new_path, kind)
             if lines:
                 cset_tree.note_patch(new_path, ''.join(lines))
@@ -600,11 +605,17 @@ class ChangesetReader(object):
             file_id = info[1][8:]
 
             cset_tree.note_id(file_id, path, kind)
-            last_changed = extra_info(info[2:], path)
+            last_changed, encoding = extra_info(info[2:], path)
             revision = get_rev_id(last_changed, path, kind)
             if kind == 'directory':
                 return
-            cset_tree.note_patch(path, ''.join(lines))
+            if encoding is not None:
+                assert encoding == 'base64'
+                patch = base64.decodestring(''.join(lines))
+            else:
+                patch =  ''.join(lines)
+
+            cset_tree.note_patch(path, patch)
 
         def modified(kind, extra, lines):
             info = extra.split(' // ')
@@ -613,7 +624,7 @@ class ChangesetReader(object):
                         'the path in them: %r' % extra)
             path = info[0]
 
-            last_modified = extra_info(info[1:], path)
+            last_modified, encoding = extra_info(info[1:], path)
             revision = get_rev_id(last_modified, path, kind)
             if lines:
                 cset_tree.note_patch(path, ''.join(lines))

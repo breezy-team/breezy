@@ -567,3 +567,12 @@ class CSetTester(TestCaseInTempDir):
         tt.apply()
         self.tree1.commit('Delete symlink', rev_id='l@cset-0-4')
         self.get_valid_cset('l@cset-0-3', 'l@cset-0-4')
+
+    def test_binary_cset(self):
+        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.b1 = self.tree1.branch
+        tt = TreeTransform(self.tree1)
+        tt.new_file('file', tt.root, '\x00\xff', 'binary-1')
+        tt.apply()
+        self.tree1.commit('add binary', rev_id='b@cset-0-1')
+        self.get_valid_cset(None, 'b@cset-0-1')

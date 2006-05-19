@@ -17,9 +17,12 @@
 """Serializer factory for reading and writing changesets.
 """
 
+import base64
+from StringIO import StringIO
 import re
 
 import bzrlib.errors as errors
+from bzrlib.diff import internal_diff
 from bzrlib.revision import NULL_REVISION
 
 # New changesets should try to use this header format
@@ -247,6 +250,14 @@ def register_lazy(version, module, classname, overwrite=False):
         return klass(version)
     register(version, _loader, overwrite=overwrite)
 
+
+def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
+    temp = StringIO()
+    internal_diff(old_filename, old_lines, new_filename, new_lines, temp,
+                  allow_binary=True)
+    temp.seek(0)
+    base64.encode(temp, to_file)
+    to_file.write('\n')
 
 register_lazy('0.7', 'bzrlib.changeset.serializer.v07', 'ChangesetSerializerV07')
 register_lazy(None, 'bzrlib.changeset.serializer.v07', 'ChangesetSerializerV07')

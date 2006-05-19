@@ -24,6 +24,7 @@ from bzrlib.changeset.serializer import (ChangesetSerializer,
         CHANGESET_HEADER,
         format_highres_date, unpack_highres_date)
 from bzrlib.changeset.common import testament_sha1
+from bzrlib.changeset.serializer import binary_diff
 from bzrlib.delta import compare_trees
 from bzrlib.diff import internal_diff
 import bzrlib.errors as errors
@@ -31,6 +32,7 @@ from bzrlib.osutils import pathjoin
 from bzrlib.revision import NULL_REVISION
 from bzrlib.rio import RioWriter, read_stanzas
 import bzrlib.ui
+from bzrlib.textfile import text_file
 
 bool_text = {True: 'yes', False: 'no'}
 
@@ -168,11 +170,28 @@ class ChangesetSerializerV07(ChangesetSerializer):
         new_label = ''
 
         def do_diff(old_path, file_id, new_path, kind):
-            new_entry = new_tree.inventory[file_id]
-            old_tree.inventory[file_id].diff(internal_diff,
-                    pathjoin(old_label, old_path), old_tree,
-                    pathjoin(new_label, new_path), new_entry, new_tree,
-                    self.to_file)
+            def tree_lines(tree, require_text=False):
+                if file_id in tree:
+                    tree_file = tree.get_file(file_id)
+                    if require_text is True:
+                        tree_file = text_file(tree_file)
+                    return tree_file.readlines()
+                else:
+                    return []
+
+            try:
+                old_lines = tree_lines(old_tree, require_text=True)
+                new_lines = tree_lines(new_tree, require_text=True)
+                self.to_file.write('\n')
+                internal_diff(old_path, old_lines, new_path, new_lines, 
+                              self.to_file)
+            except errors.BinaryFile:
+                old_lines = tree_lines(old_tree, require_text=False)
+                new_lines = tree_lines(new_tree, require_text=False)
+                self.to_file.write(' // encoding:base64\n')
+                binary_diff(old_path, old_lines, new_path, new_lines, 
+                            self.to_file)
+
         def do_meta(file_id):
             ie = new_tree.inventory[file_id]
             w(' // executable:%s' % bool_text[ie.executable])
@@ -200,12 +219,11 @@ class ChangesetSerializerV07(ChangesetSerializer):
                 do_meta(file_id)
             if kind == 'symlink':
                 do_target(new_tree.inventory[file_id].symlink_target)
-            w('\n')
             if kind == 'file':
-                new_tree.inventory[file_id].diff(internal_diff,
-                        pathjoin(new_label, path), new_tree,
-                        DEVNULL, None, None,
-                        self.to_file, reverse=True)
+                do_diff(DEVNULL, file_id, path, kind)
+            else:
+                w('\n')
+
 
         for (old_path, new_path, file_id, kind,
              text_modified, meta_modified) in delta.renamed:
@@ -215,9 +233,10 @@ class ChangesetSerializerV07(ChangesetSerializer):
                 do_meta(file_id)
             if text_modified and kind == "symlink":
                 do_target(new_tree.inventory[file_id].symlink_target)
-            w('\n')
             if text_modified and kind == "file":
                 do_diff(old_path, file_id, new_path, text_modified)
+            else:
+                w('\n')
 
         for (path, file_id, kind,
              text_modified, meta_modified) in delta.modified:
@@ -229,8 +248,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
                 do_meta(file_id)
             if text_modified and kind == "symlink":
                 do_target(new_tree.inventory[file_id].symlink_target)
-            w('\n')
             if text_modified and kind == "file":
                 do_diff(path, file_id, path, kind)
-
-
+            else:
+                w('\n')
