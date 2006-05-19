@@ -20,7 +20,6 @@ import bzrlib.errors as errors
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter, note, warning
 from bzrlib.errors import NotBranchError
-from bzrlib.workingtree import is_control_file
 import bzrlib.osutils
 from bzrlib.workingtree import WorkingTree
 
@@ -104,6 +103,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
     inv = tree.read_working_inventory()
     added = []
     ignored = {}
+    user_files = set(file_list)
 
     for f in file_list:
         rf = tree.relpath(f)
@@ -124,10 +124,12 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
                 continue
 
         mutter("smart add of %r, abs=%r", f, af)
-        
-        if tree.is_control_filename(af):
-            raise ForbiddenFileError('cannot add control file %s' % f)
             
+        # validate user parameters. Our recursive code avoids adding new files
+        # that need such validation 
+        if f in user_files and tree.is_control_filename(af):
+            raise ForbiddenFileError('cannot add control file %s' % f)
+
         versioned = (inv.path2id(rf) != None)
 
         if kind == 'directory':
