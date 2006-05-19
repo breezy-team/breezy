@@ -536,12 +536,12 @@ class ChangesetReader(object):
         :param cset_tree: A ChangesetTree to update with the new information.
         """
 
-        def get_rev_id(last_changed, file_id, kind):
+        def get_rev_id(last_changed, path, kind):
             if last_changed is not None:
                 changed_revision_id = decode(last_changed)
             else:
                 changed_revision_id = revision_id
-            cset_tree.note_last_changed(file_id, changed_revision_id)
+            cset_tree.note_last_changed(path, changed_revision_id)
             return changed_revision_id
 
         def extra_info(info, new_path):
@@ -570,9 +570,8 @@ class ChangesetReader(object):
                 new_path = info[1]
 
             cset_tree.note_rename(old_path, new_path)
-            file_id = cset_tree.path2id(new_path)
             last_modified = extra_info(info[2:], new_path)
-            revision = get_rev_id(last_modified, file_id, kind)
+            revision = get_rev_id(last_modified, new_path, kind)
             if lines:
                 cset_tree.note_patch(new_path, ''.join(lines))
 
@@ -602,7 +601,7 @@ class ChangesetReader(object):
 
             cset_tree.note_id(file_id, path, kind)
             last_changed = extra_info(info[2:], path)
-            revision = get_rev_id(last_changed, file_id, kind)
+            revision = get_rev_id(last_changed, path, kind)
             if kind == 'directory':
                 return
             cset_tree.note_patch(path, ''.join(lines))
@@ -614,9 +613,8 @@ class ChangesetReader(object):
                         'the path in them: %r' % extra)
             path = info[0]
 
-            file_id = cset_tree.path2id(path)
             last_modified = extra_info(info[1:], path)
-            revision = get_rev_id(last_modified, file_id, kind)
+            revision = get_rev_id(last_modified, path, kind)
             if lines:
                 cset_tree.note_patch(path, ''.join(lines))
             
@@ -851,8 +849,9 @@ class ChangesetTree(Tree):
             return self.base_tree.inventory[file_id].executable
 
     def get_last_changed(self, file_id):
-        if file_id in self._last_changed:
-            return self._last_changed[file_id]
+        path = self.id2path(file_id)
+        if path in self._last_changed:
+            return self._last_changed[path]
         return self.base_tree.inventory[file_id].revision
 
     def get_size_and_sha1(self, file_id):
