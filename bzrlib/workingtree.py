@@ -320,15 +320,14 @@ class WorkingTree(bzrlib.tree.Tree):
     def is_control_filename(self, filename):
         """True if filename is the name of a control file in this tree.
         
+        :param filename: A filename within the tree. This is a relative path
+        from the root of this tree.
+
         This is true IF and ONLY IF the filename is part of the meta data
         that bzr controls in this tree. I.E. a random .bzr directory placed
         on disk will not be a control file for this tree.
         """
-        try:
-            self.bzrdir.transport.relpath(self.abspath(filename))
-            return True
-        except errors.PathNotChild:
-            return False
+        return self.bzrdir.is_control_filename(filename)
 
     @staticmethod
     def open(path=None, _unsupported=False):
@@ -435,9 +434,13 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         return bzrdir.BzrDir.create_standalone_workingtree(directory)
 
-    def relpath(self, abs):
-        """Return the local path portion from a given absolute path."""
-        return relpath(self.basedir, abs)
+    def relpath(self, path):
+        """Return the local path portion from a given path.
+        
+        The path may be absolute or relative. If its a relative path it is 
+        interpreted relative to the python current working directory.
+        """
+        return relpath(self.basedir, path)
 
     def has_filename(self, filename):
         return bzrlib.osutils.lexists(self.abspath(filename))
