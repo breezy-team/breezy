@@ -1396,8 +1396,8 @@ class cmd_ignore(Command):
             igns += '\n'
         igns += name_pattern + '\n'
 
+        f = AtomicFile(ifn, 'wt')
         try:
-            f = AtomicFile(ifn, 'wt')
             f.write(igns.encode('utf-8'))
             f.commit()
         finally:

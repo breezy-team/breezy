@@ -29,6 +29,8 @@ IN DEVELOPMENT
      ignored). 'bzr add -v' is unchanged and will report every ignored
      file. (Robert Collins).
 
+   * ``log --line`` shows the revision number.  (#5162, Alexander Belchenko)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
