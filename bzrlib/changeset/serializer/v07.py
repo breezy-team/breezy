@@ -171,6 +171,9 @@ class ChangesetSerializerV07(ChangesetSerializer):
             ie = new_tree.inventory[file_id]
             w(' // executable:%s' % bool_text[ie.executable])
 
+        def do_target(target):
+            w(' // target:%s' % target)
+
         def do_revision(file_id):
             ie = new_tree.inventory[file_id]
             if ie.revision != default_revision_id:
@@ -189,11 +192,14 @@ class ChangesetSerializerV07(ChangesetSerializer):
             do_revision(file_id)
             if kind == 'file':
                 do_meta(file_id)
+            if kind == 'symlink':
+                do_target(new_tree.inventory[file_id].symlink_target)
             w('\n')
-            new_tree.inventory[file_id].diff(internal_diff,
-                    pathjoin(new_label, path), new_tree,
-                    DEVNULL, None, None,
-                    self.to_file, reverse=True)
+            if kind == 'file':
+                new_tree.inventory[file_id].diff(internal_diff,
+                        pathjoin(new_label, path), new_tree,
+                        DEVNULL, None, None,
+                        self.to_file, reverse=True)
 
         for (old_path, new_path, file_id, kind,
              text_modified, meta_modified) in delta.renamed:

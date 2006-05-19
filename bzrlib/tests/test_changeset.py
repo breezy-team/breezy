@@ -26,6 +26,7 @@ from bzrlib.changeset.apply_changeset import install_changeset
 from bzrlib.changeset.read_changeset import ChangesetTree, ChangesetReader
 from bzrlib.changeset.serializer import write_changeset
 from bzrlib.merge import Merge3Merger
+from bzrlib.osutils import has_symlinks, sha_file
 from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
@@ -111,7 +112,6 @@ class MockTree(object):
         return result
 
     def contents_stats(self, file_id):
-        from bzrlib.osutils import sha_file
         if file_id not in self.contents:
             return None, None
         text_sha1 = sha_file(self.get_file(file_id))
@@ -219,12 +219,15 @@ class CTreeTester(TestCase):
         ctree = self.make_tree_2()
         add_patch = self.unified_diff([], ["Extra cheese\n"])
         ctree.note_patch("grandparent/parent/file", add_patch)
+        ctree.note_id('f', 'grandparent/parent/symlink', kind='symlink')
+        ctree.note_target('grandparent/parent/symlink', 'venus')
         self.adds_test(ctree)
 
     def adds_test(self, ctree):
         self.assertEqual(ctree.id2path("e"), "grandparent/parent/file")
         self.assertEqual(ctree.path2id("grandparent/parent/file"), "e")
         self.assertEqual(ctree.get_file("e").read(), "Extra cheese\n")
+        self.assertEqual(ctree.get_symlink_target('f'), 'venus')
 
     def test_adds2(self):
         """File/inventory adds, with patch-compatibile renames"""
@@ -232,6 +235,8 @@ class CTreeTester(TestCase):
         ctree.contents_by_id = False
         add_patch = self.unified_diff(["Hello\n"], ["Extra cheese\n"])
         ctree.note_patch("grandparent/parent/file", add_patch)
+        ctree.note_id('f', 'grandparent/parent/symlink', kind='symlink')
+        ctree.note_target('grandparent/parent/symlink', 'venus')
         self.adds_test(ctree)
 
     def make_tree_3(self):
@@ -546,4 +551,13 @@ class CSetTester(TestCaseInTempDir):
         ##cset = self.get_valid_cset('a@cset-0-5', 'a@cset-0-6', auto_commit=True)
         ##cset = self.get_valid_cset(None, 'a@cset-0-6', auto_commit=True)
 
-
+    def test_symlink_cset(self):
+        if not has_symlinks():
+            raise TestSkipped("No symlink support")
+        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.b1 = self.tree1.branch
+        tt = TreeTransform(self.tree1)
+        tt.new_symlink('link', tt.root, 'bar/foo', 'exe-1')
+        tt.apply()
+        self.tree1.commit('add symlink', rev_id='l@cset-0-1')
+        self.get_valid_cset(None, 'l@cset-0-1')

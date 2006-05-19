@@ -646,7 +646,7 @@ class ChangesetReader(object):
                         ' (missing second space): %r' % action_line)
             action = action_line[:first]
             kind = action_line[first+1:second]
-            if kind not in ('file', 'directory'):
+            if kind not in ('file', 'directory', 'symlink'):
                 raise BzrError('Bogus action line'
                         ' (invalid object kind %r): %r' % (kind, action_line))
             extra = action_line[second+1:]
@@ -679,6 +679,7 @@ class ChangesetTree(Tree):
         self._last_changed = {} # new_id => revision_id
         self._executable = {} # new_id => executable value
         self.patches = {}
+        self._targets = {} # new path => new symlink target
         self.deleted = []
         self.contents_by_id = True
         self.revision_id = revision_id
@@ -712,6 +713,10 @@ class ChangesetTree(Tree):
     def note_patch(self, new_path, patch):
         """There is a patch for a given filename."""
         self.patches[new_path] = patch
+
+    def note_target(self, new_path, target):
+        """The symlink at the new path has the given target"""
+        self._targets[new_path] = target
 
     def note_deletion(self, old_path):
         """The file at old_path has been deleted."""
@@ -840,6 +845,13 @@ class ChangesetTree(Tree):
             'Malformed patch for %s, %r' % (file_id, file_patch)
         return patched_file(file_patch, patch_original)
 
+    def get_symlink_target(self, file_id):
+        new_path = self.id2path(file_id)
+        try:
+            return self._targets[new_path]
+        except KeyError:
+            return self.base_tree.get_symlink_target(file_id)
+
     def get_kind(self, file_id):
         if file_id in self._kinds:
             return self._kinds[file_id]
@@ -913,6 +925,7 @@ class ChangesetTree(Tree):
                 ie.executable = self.is_executable(file_id)
             elif kind == 'symlink':
                 ie = InventoryLink(file_id, name, parent_id)
+                ie.symlink_target = self.get_symlink_target(file_id)
             ie.revision = revision_id
 
             if kind == 'directory':
