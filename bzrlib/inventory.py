@@ -1011,7 +1011,6 @@ class Inventory(object):
         else:
             if file_id is None:
                 file_id = bzrlib.workingtree.gen_file_id(parts[-1])
-
             parent_path = parts[:-1]
             parent_id = self.path2id(parent_path)
             if parent_id == None:

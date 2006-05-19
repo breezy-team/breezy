@@ -82,7 +82,7 @@ from bzrlib.osutils import (
                             pumpfile,
                             safe_unicode,
                             splitpath,
-                            rand_bytes,
+                            rand_chars,
                             normpath,
                             realpath,
                             relpath,
@@ -104,7 +104,7 @@ import bzrlib.xml5
 
 
 # the regex here does the following:
-# 1) remove any wierd characters; we don't escape them but rather
+# 1) remove any weird characters; we don't escape them but rather
 # just pull them out
  # 2) match leading '.'s to make it not hidden
 _gen_file_id_re = re.compile(r'[^\w.]|(^\.*)')
@@ -119,9 +119,13 @@ def _next_id_suffix():
     to give a highly probably globally unique number. Then each call in the same
     process adds 1 to a serial number we append to that unique value.
     """
+    # XXX TODO: change bzrlib.add.smart_add to call workingtree.add() rather 
+    # than having to move the id randomness out of the inner loop like this.
+    # XXX TODO: for the global randomness this uses we should add the thread-id
+    # before the serial #.
     global _gen_id_suffix, _gen_id_serial
     if _gen_id_suffix is None:
-        _gen_id_suffix = "-%s-%s-" % (compact_date(time()), hexlify(rand_bytes(8)))
+        _gen_id_suffix = "-%s-%s-" % (compact_date(time()), rand_chars(16))
     _gen_id_serial += 1
     return _gen_id_suffix + str(_gen_id_serial)
 
@@ -129,12 +133,12 @@ def _next_id_suffix():
 def gen_file_id(name):
     """Return new file id for the basename 'name'.
 
-    This should probably generate proper UUIDs, but for the moment we
-    cope with just randomness because running uuidgen every time is
-    slow.
-
     The uniqueness is supplied from _next_id_suffix.
     """
+    # XXX TODO: squash the filename to lowercase.
+    # XXX TODO: truncate the filename to something like 20 or 30 chars.
+    # XXX TODO: consider what to do with ids that look like illegal filepaths
+    # on platforms we support.
     return _gen_file_id_re.sub('', name) + _next_id_suffix()
 
 
