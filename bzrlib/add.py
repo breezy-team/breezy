@@ -65,6 +65,7 @@ def add_action_add(inv, path, kind):
     entry = inv.add_path(path, kind=kind)
     mutter("added %r kind %r file_id={%s}" % (path, kind, entry.file_id))
 
+
 def add_action_add_and_print(inv, path, kind):
     """Add each file to the given inventory, and print a line to stdout."""
     add_action_add(inv, path, kind)
@@ -82,6 +83,7 @@ def smart_add(file_list, recurse=True, action=add_action_add):
     file_list = _prepare_file_list(file_list)
     tree = WorkingTree.open_containing(file_list[0])[0]
     return smart_add_tree(tree, file_list, recurse, action)
+
 
 def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
     """Add files to version, optionally recursing into directories.
@@ -165,13 +167,13 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
                         mutter("queue to add sub-file %r", subp)
                         file_list.append(tree.abspath(subp))
 
-
     mutter('added %d entries', len(added))
     
     if len(added) > 0:
         tree._write_inventory(inv)
 
     return added, ignored
+
 
 def __add_one(tree, inv, path, kind, action):
     """Add a file or directory, automatically add unversioned parents."""

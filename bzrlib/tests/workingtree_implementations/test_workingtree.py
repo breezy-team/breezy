@@ -341,55 +341,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         made_tree = self.workingtree_format.initialize(made_control, revision_id='a')
         self.assertEqual('a', made_tree.last_revision())
 
-    def test_commit_sets_last_revision(self):
-        tree = self.make_branch_and_tree('tree')
-        tree.commit('foo', rev_id='foo', allow_pointless=True)
-        self.assertEqual('foo', tree.last_revision())
-
-    def test_commit_local_unbound(self):
-        # using the library api to do a local commit on unbound branches is 
-        # also an error
-        tree = self.make_branch_and_tree('tree')
-        self.assertRaises(errors.LocalRequiresBoundBranch,
-                          tree.commit,
-                          'foo',
-                          local=True)
- 
-    def test_local_commit_ignores_master(self):
-        # a --local commit does not require access to the master branch
-        # at all, or even for it to exist.
-        # we test this by setting up a bound branch and then corrupting
-        # the master.
-        master = self.make_branch('master')
-        tree = self.make_branch_and_tree('tree')
-        try:
-            tree.branch.bind(master)
-        except errors.UpgradeRequired:
-            # older format.
-            return
-        master.bzrdir.transport.put('branch-format', StringIO('garbage'))
-        del master
-        # check its corrupted.
-        self.assertRaises(errors.UnknownFormatError,
-                          bzrdir.BzrDir.open,
-                          'master')
-        tree.commit('foo', rev_id='foo', local=True)
- 
-    def test_local_commit_does_not_push_to_master(self):
-        # a --local commit does not require access to the master branch
-        # at all, or even for it to exist.
-        # we test that even when its available it does not push to it.
-        master = self.make_branch('master')
-        tree = self.make_branch_and_tree('tree')
-        try:
-            tree.branch.bind(master)
-        except errors.UpgradeRequired:
-            # older format.
-            return
-        tree.commit('foo', rev_id='foo', local=True)
-        self.failIf(master.repository.has_revision('foo'))
-        self.assertEqual(None, master.last_revision())
-        
     def test_update_sets_last_revision(self):
         # working tree formats from the meta-dir format and newer support
         # setting the last revision on a tree independently of that on the 
