@@ -969,14 +969,12 @@ class WorkingTree(bzrlib.tree.Tree):
     def _translate_ignore_rule(self, rule):
         """Translate a single ignore rule to a regex.
 
-        There are three sorts of ignore rules:
-        root only - regex is the rule itself without the leading './'. These
-        are identified by a leading './'.
-        full path - regex is the rule itself and is identified by the 
-        presenve of a '/' in the path.
-        basename only rule - regex is a rule that ignores everything up
-        to the last / in the string before applying the supplied rule.
-        These are the default case.
+        There are two types of ignore rules.  Those that do not contain a / are
+        matched against the tail of the filename (that is, they do not care
+        what directory the file is in.)  Rules which do contain a slash must
+        match the entire path.  As a special case, './' at the start of the
+        string counts as a slash in the string but is removed before matching
+        (e.g. ./foo.c, ./src/foo.c)
 
         :return: The translated regex.
         """
