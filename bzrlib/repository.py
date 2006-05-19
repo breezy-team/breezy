@@ -1308,7 +1308,7 @@ class RepositoryFormatKnit1(MetaDirRepositoryFormat):
                        repository.
         """
         mutter('creating repository in %s.', a_bzrdir.transport.base)
-        dirs = ['knits']
+        dirs = ['revision-store', 'knits']
         files = []
         utf8_files = [('format', self.get_format_string())]
         
