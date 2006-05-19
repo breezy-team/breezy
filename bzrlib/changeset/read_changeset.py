@@ -795,15 +795,8 @@ class ChangesetTree(Tree):
         return self.new_path(old_path)
 
     def old_contents_id(self, file_id):
-        """Return the id in the base_tree for the given file_id,
-        or None if the file did not exist in base.
-
-        FIXME:  Something doesn't seem right here. It seems like this function
-                should always either return None or file_id. Even if
-                you are doing the by-path lookup, you are doing a
-                id2path lookup, just to do the reverse path2id lookup.
-
-        Notice that you're doing the path2id on a different tree!
+        """Return the id in the base_tree for the given file_id.
+        Return None if the file did not exist in base.
         """
         if self.contents_by_id:
             if self.base_tree.has_id(file_id):
