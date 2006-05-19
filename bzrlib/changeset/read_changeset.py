@@ -536,29 +536,24 @@ class ChangesetReader(object):
         :param cset_tree: A ChangesetTree to update with the new information.
         """
 
-        def get_rev_id(info, file_id, kind):
-            if info is not None:
-                if not info.startswith('last-changed:'):
-                    raise BzrError("Last changed revision should start with 'last-changed:'"
-                        ': %r' % info)
-                changed_revision_id = decode(info[13:])
-            elif cset_tree._last_changed.has_key(file_id):
-                return cset_tree._last_changed[file_id]
+        def get_rev_id(last_changed, file_id, kind):
+            if last_changed is not None:
+                changed_revision_id = decode(last_changed)
             else:
                 changed_revision_id = revision_id
             cset_tree.note_last_changed(file_id, changed_revision_id)
             return changed_revision_id
 
-        def extra_info(info, file_id, new_path):
+        def extra_info(info, new_path):
             last_changed = None
             for info_item in info:
                 name, value = info_item.split(':', 1)
                 if name == 'last-changed':
-                    last_changed = info_item
+                    last_changed = value
                 elif name == 'executable':
                     assert value in ('yes', 'no'), value
                     val = (value == 'yes')
-                    cset_tree.note_executable(file_id, val)
+                    cset_tree.note_executable(new_path, val)
                 elif name == 'target':
                     cset_tree.note_target(new_path, value)
             return last_changed
@@ -576,7 +571,7 @@ class ChangesetReader(object):
 
             cset_tree.note_rename(old_path, new_path)
             file_id = cset_tree.path2id(new_path)
-            last_modified = extra_info(info[2:], file_id, new_path)
+            last_modified = extra_info(info[2:], new_path)
             revision = get_rev_id(last_modified, file_id, kind)
             if lines:
                 cset_tree.note_patch(new_path, ''.join(lines))
@@ -606,7 +601,7 @@ class ChangesetReader(object):
             file_id = info[1][8:]
 
             cset_tree.note_id(file_id, path, kind)
-            last_changed = extra_info(info[2:], file_id, path)
+            last_changed = extra_info(info[2:], path)
             revision = get_rev_id(last_changed, file_id, kind)
             if kind == 'directory':
                 return
@@ -620,7 +615,7 @@ class ChangesetReader(object):
             path = info[0]
 
             file_id = cset_tree.path2id(path)
-            last_modified = extra_info(info[1:], file_id, path)
+            last_modified = extra_info(info[1:], path)
             revision = get_rev_id(last_modified, file_id, kind)
             if lines:
                 cset_tree.note_patch(path, ''.join(lines))
@@ -856,8 +851,9 @@ class ChangesetTree(Tree):
         return self.base_tree.inventory[file_id].kind
 
     def is_executable(self, file_id):
-        if file_id in self._executable:
-            return self._executable[file_id]
+        path = self.id2path(file_id)
+        if path in self._executable:
+            return self._executable[path]
         else:
             return self.base_tree.inventory[file_id].executable
 
