@@ -563,6 +563,14 @@ class ChangesetReader(object):
                     encoding = value
             return last_changed, encoding
 
+        def do_patch(path, lines, encoding):
+            if encoding is not None:
+                assert encoding == 'base64'
+                patch = base64.decodestring(''.join(lines))
+            else:
+                patch =  ''.join(lines)
+            cset_tree.note_patch(path, patch)
+
         def renamed(kind, extra, lines):
             info = extra.split(' // ')
             if len(info) < 2:
@@ -578,7 +586,7 @@ class ChangesetReader(object):
             last_modified, encoding = extra_info(info[2:], new_path)
             revision = get_rev_id(last_modified, new_path, kind)
             if lines:
-                cset_tree.note_patch(new_path, ''.join(lines))
+                do_patch(new_path, lines, encoding)
 
         def removed(kind, extra, lines):
             info = extra.split(' // ')
@@ -595,8 +603,8 @@ class ChangesetReader(object):
             if len(info) <= 1:
                 raise BzrError('add action lines require the path and file id'
                         ': %r' % extra)
-            elif len(info) > 4:
-                raise BzrError('add action lines have fewer than 4 entries.'
+            elif len(info) > 5:
+                raise BzrError('add action lines have fewer than 5 entries.'
                         ': %r' % extra)
             path = info[0]
             if not info[1].startswith('file-id:'):
@@ -609,13 +617,7 @@ class ChangesetReader(object):
             revision = get_rev_id(last_changed, path, kind)
             if kind == 'directory':
                 return
-            if encoding is not None:
-                assert encoding == 'base64'
-                patch = base64.decodestring(''.join(lines))
-            else:
-                patch =  ''.join(lines)
-
-            cset_tree.note_patch(path, patch)
+            do_patch(path, lines, encoding)
 
         def modified(kind, extra, lines):
             info = extra.split(' // ')
@@ -627,7 +629,7 @@ class ChangesetReader(object):
             last_modified, encoding = extra_info(info[1:], path)
             revision = get_rev_id(last_modified, path, kind)
             if lines:
-                cset_tree.note_patch(path, ''.join(lines))
+                do_patch(path, lines, encoding)
             
 
         valid_actions = {
