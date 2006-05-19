@@ -62,6 +62,8 @@ class cmd_changeset(Command):
     This changeset contains all of the meta-information of a
     diff, rather than just containing the patch information.
 
+    You can apply it to another tree using 'bzr merge'.
+
     bzr cset
         - Changeset for the last commit
     bzr cset BASE
@@ -157,35 +159,8 @@ class cmd_verify_changeset(Command):
         #serializer_v4.write(cset_tree.inventory, sys.stdout)
 
 
-
-class cmd_apply_changeset(Command):
-    """Read in the given changeset, and apply it to the
-    current tree.
-
-    """
-    takes_args = ['filename?']
-    takes_options = [Option('reverse'), Option('auto-commit')]
-
-    def run(self, filename=None, reverse=False, auto_commit=False):
-        import apply_changeset
-
-        b, relpath = Branch.open_containing('.') # Make sure we are in a branch
-        if filename is None or filename == '-':
-            f = sys.stdin
-        else:
-            # Actually, we should not use Universal newlines
-            # as this potentially modifies the patch.
-            # though it seems mailers save attachments with their
-            # own format of the files.
-            f = open(filename, 'rb')
-
-        apply_changeset.apply_changeset(b, f, reverse=reverse,
-                auto_commit=auto_commit)
-
-
 register_command(cmd_changeset)
 register_command(cmd_verify_changeset)
-register_command(cmd_apply_changeset)
 register_command(cmd_send_changeset)
 
 #OPTIONS['reverse'] = None

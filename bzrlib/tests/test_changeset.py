@@ -374,8 +374,6 @@ class CSetTester(TestCaseInTempDir):
         """Get the base revision, apply the changes, and make
         sure everything matches the builtin branch.
         """
-        from bzrlib.changeset.apply_changeset import _apply_cset
-
         to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
         repository = to_tree.branch.repository
         self.assertIs(repository.has_revision(base_rev_id), True)
