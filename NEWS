@@ -35,6 +35,12 @@ IN DEVELOPMENT
       tests not to run.  (#32587, Erik Bågfors, Michael Ellerman, 
       Martin Pool)
 
+  INTERNALS:
+
+    * Combine the ignore rules into a single regex rather than looping over
+      them to reduce the threshold where  N^2 behaviour occurs in operations
+      like status. (Jan Hudec, Robert Collins).
+
 bzr 0.8.2  2006-05-17
   
   BUG FIXES:
