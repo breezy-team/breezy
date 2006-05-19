@@ -295,8 +295,7 @@ class CTreeTester(TestCase):
 class CSetTester(TestCaseInTempDir):
 
     def get_valid_cset(self, base_rev_id, rev_id,
-            auto_commit=False, checkout_dir=None,
-            message=None):
+            checkout_dir=None, message=None):
         """Create a changeset from base_rev_id -> rev_id in built-in branch.
         Make sure that the text generated is valid, and that it
         can be applied against the base, and generate the same information.
@@ -335,7 +334,7 @@ class CSetTester(TestCaseInTempDir):
         self.assertEqual(rev_ids, 
                          [r.revision_id for r in cset.info.real_revisions])
         self.valid_apply_changeset(base_rev_id, cset,
-                auto_commit=auto_commit, checkout_dir=checkout_dir)
+                                   checkout_dir=checkout_dir)
 
         return cset
 
@@ -374,8 +373,7 @@ class CSetTester(TestCaseInTempDir):
             tree.update()
         return tree
 
-    def valid_apply_changeset(self, base_rev_id, reader,
-            auto_commit=False, checkout_dir=None):
+    def valid_apply_changeset(self, base_rev_id, reader, checkout_dir=None):
         """Get the base revision, apply the changes, and make
         sure everything matches the builtin branch.
         """
@@ -474,11 +472,9 @@ class CSetTester(TestCaseInTempDir):
         self.tree1.commit('add whitespace', rev_id='a@cset-0-2')
 
         cset = self.get_valid_cset('a@cset-0-1', 'a@cset-0-2')
-        ##cset = self.get_valid_cset('a@cset-0-1', 'a@cset-0-2', auto_commit=True)
 
         # Check a rollup changeset
         cset = self.get_valid_cset(None, 'a@cset-0-2')
-        ##cset = self.get_valid_cset(None, 'a@cset-0-2', auto_commit=True)
 
         # Now delete entries
         self.tree1.remove(
@@ -493,10 +489,8 @@ class CSetTester(TestCaseInTempDir):
         self.tree1.commit('removed', rev_id='a@cset-0-3')
         
         cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-3')
-        ##cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-3', auto_commit=True)
         # Check a rollup changeset
         cset = self.get_valid_cset(None, 'a@cset-0-3')
-        ##cset = self.get_valid_cset(None, 'a@cset-0-3', auto_commit=True)
 
 
         # Now move the directory
@@ -506,10 +500,6 @@ class CSetTester(TestCaseInTempDir):
         cset = self.get_valid_cset('a@cset-0-3', 'a@cset-0-4')
         # Check a rollup changeset
         cset = self.get_valid_cset(None, 'a@cset-0-4')
-        ##cset = self.get_valid_cset(None, 'a@cset-0-4', auto_commit=True)
-        ##cset = self.get_valid_cset('a@cset-0-1', 'a@cset-0-4', auto_commit=True)
-        ##cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-4', auto_commit=True)
-        ##cset = self.get_valid_cset('a@cset-0-3', 'a@cset-0-4', auto_commit=True)
 
         # Modified files
         open('b1/sub/dir/WithCaps.txt', 'ab').write('\nAdding some text\n')
@@ -519,8 +509,6 @@ class CSetTester(TestCaseInTempDir):
                               'sub/ start and end space ')
         self.tree1.commit('Modified files', rev_id='a@cset-0-5')
         cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5')
-        ##cset = self.get_valid_cset('a@cset-0-4', 'a@cset-0-5', auto_commit=True)
-        ##cset = self.get_valid_cset(None, 'a@cset-0-5', auto_commit=True)
 
         # Handle international characters
         f = open(u'b1/with Dod\xe9', 'wb')
@@ -547,9 +535,6 @@ class CSetTester(TestCaseInTempDir):
         self.tree1.commit(u'Merge', rev_id='a@cset-0-8',
                           verbose=False)
         cset = self.get_valid_cset('a@cset-0-7', 'a@cset-0-8')
-
-        ##cset = self.get_valid_cset('a@cset-0-5', 'a@cset-0-6', auto_commit=True)
-        ##cset = self.get_valid_cset(None, 'a@cset-0-6', auto_commit=True)
 
     def test_symlink_cset(self):
         if not has_symlinks():
