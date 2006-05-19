@@ -30,6 +30,7 @@ import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin
 from bzrlib.revision import NULL_REVISION
 from bzrlib.rio import RioWriter, read_stanzas
+import bzrlib.ui
 
 bool_text = {True: 'yes', False: 'no'}
 
@@ -59,7 +60,11 @@ class ChangesetSerializerV07(ChangesetSerializer):
         source.lock_read()
         try:
             self._write_main_header()
-            self._write_revisions()
+            pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            try:
+                self._write_revisions(pb)
+            finally:
+                pb.finished()
         finally:
             source.unlock()
 
@@ -89,14 +94,16 @@ class ChangesetSerializerV07(ChangesetSerializer):
                 f.write(entry.encode('utf-8'))
                 f.write('\n')
 
-    def _write_revisions(self):
+    def _write_revisions(self, pb):
         """Write the information for all of the revisions."""
 
         # Optimize for the case of revisions in order
         last_rev_id = None
         last_rev_tree = None
 
-        for rev_id in self.revision_ids:
+        i_max = len(self.revision_ids) 
+        for i, rev_id in enumerate(self.revision_ids):
+            pb.update("Generating revsion data", i, i_max)
             rev = self.source.get_revision(rev_id)
             if rev_id == last_rev_id:
                 rev_tree = last_rev_tree
