@@ -69,8 +69,33 @@ class TestSuite(unittest.TestSuite):
 
 
 class TestLoader(unittest.TestLoader):
-    """Custome TestLoader to set the right TestSuite class."""
+    """Custom  TestLoader to address some quirks in the stock python one."""
     suiteClass = TestSuite
+
+    def loadTestsFromModuleNames(self, names):
+        """use a custom means to load tests from modules.
+
+        There is an undesirable glitch in the python TestLoader where a 
+        import error is ignore. We think this can be solved by ensuring the 
+        requested name is resolvable, if its not raising the original error.
+        """
+        result = self.suiteClass()
+        for name in names:
+            _load_module_by_name(name)
+            result.addTests(self.loadTestsFromName(name))
+        return result
+
+
+def _load_module_by_name(mod_name):
+    parts = mod_name.split('.')
+    module = __import__(mod_name)
+    del parts[0]
+    # for historical reasons python returns the top-level module even though
+    # it loads the submodule; we need to walk down to get the one we want.
+    while parts:
+        module = getattr(module, parts.pop(0))
+    return module
+
 
 class TestVisitor(object):
     """A visitor for Tests"""

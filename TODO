@@ -434,3 +434,18 @@ Large things
   with removing the tags on the way back in.
 
 * ``bzr find``
+
+Selftest
+--------
+
+* Write some benchmark tests
+
+* we could display the ids of some tests selected by time to rune, or cputime,
+  rusage. 
+
+* We could run tests multiple times and report deviation/slowest/fastest.
+
+* Gather lsprofile output for each test individually - log that somewhere.
+
+* Should plugins be able to offer benchmark tests ?
+

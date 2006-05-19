@@ -1010,24 +1010,23 @@ class WorkingTree(bzrlib.tree.Tree):
         # Eventually it should be replaced with something more
         # accurate.
         
+        basename = splitpath(filename)[-1]
         for pat in self.get_ignore_list():
             if '/' in pat or '\\' in pat:
                 
                 # as a special case, you can put ./ at the start of a
                 # pattern; this is good to match in the top-level
                 # only;
-                
-                if (pat[:2] == './') or (pat[:2] == '.\\'):
+                if pat[:2] in ('./', '.\\'):
                     newpat = pat[2:]
                 else:
                     newpat = pat
                 if fnmatch.fnmatchcase(filename, newpat):
                     return pat
             else:
-                if fnmatch.fnmatchcase(splitpath(filename)[-1], pat):
+                if fnmatch.fnmatchcase(basename, pat):
                     return pat
-        else:
-            return None
+        return None
 
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
