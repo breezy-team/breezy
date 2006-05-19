@@ -15,24 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from cStringIO import StringIO
-import os
-
-import bzrlib
-import bzrlib.branch
-from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
-from bzrlib.bzrdir import BzrDir
-import bzrlib.errors as errors
-from bzrlib.errors import NotBranchError, NotVersionedError
-from bzrlib.osutils import basename
-from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
-from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
-import bzrlib.workingtree as workingtree
-from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
-                                WorkingTree)
 
 
 class TestIsIgnored(TestCaseWithWorkingTree):

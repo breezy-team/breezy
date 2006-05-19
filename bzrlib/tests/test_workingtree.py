@@ -17,7 +17,6 @@
 
 from cStringIO import StringIO
 import os
-import _sre
 
 import bzrlib
 from bzrlib.branch import Branch

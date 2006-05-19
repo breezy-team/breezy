@@ -38,8 +38,8 @@ IN DEVELOPMENT
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
-      them to avoid N^2 behaviour in operations like status. (Jan Hudec,
-      Robert Collins).
+      them to reduce the threshold where  N^2 behaviour occurs in operations
+      like status. (Jan Hudec, Robert Collins).
 
 bzr 0.8.2  2006-05-17
   
