@@ -2,9 +2,10 @@
 This contains functionality for installing changesets into repositories
 """
 
-from bzrlib.errors import RevisionAlreadyPresent
-from bzrlib.tree import EmptyTree
 import bzrlib.ui
+from bzrlib.progress import ProgressPhase
+from bzrlib.merge import Merger
+from bzrlib.repository import install_revision
 
 
 def install_changeset(repository, changeset_reader):
@@ -24,39 +25,31 @@ def install_changeset(repository, changeset_reader):
         pb.finished()
 
 
-def install_revision(repository, rev, cset_tree):
-    present_parents = []
-    parent_trees = {}
-    for p_id in rev.parent_ids:
-        if repository.has_revision(p_id):
-            present_parents.append(p_id)
-            parent_trees[p_id] = repository.revision_tree(p_id)
-        else:
-            parent_trees[p_id] = EmptyTree()
-
-    inv = cset_tree.inventory
-    
-    # Add the texts that are not already present
-    for path, ie in inv.iter_entries():
-        w = repository.weave_store.get_weave_or_empty(ie.file_id,
-                repository.get_transaction())
-        if ie.revision not in w:
-            text_parents = []
-            for revision, tree in parent_trees.iteritems():
-                if ie.file_id not in tree:
-                    continue
-                parent_id = tree.inventory[ie.file_id].revision
-                if parent_id in text_parents:
-                    continue
-                text_parents.append(parent_id)
-                    
-            vfile = repository.weave_store.get_weave_or_empty(ie.file_id, 
-                repository.get_transaction())
-            lines = cset_tree.get_file(ie.file_id).readlines()
-            vfile.add_lines(rev.revision_id, text_parents, lines)
+def merge_changeset(reader, tree, check_clean, merge_type, 
+                    reprocess, show_base):
+    """Merge a changeset's revision into the current tree."""
+    pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
-        # install the inventory
-        repository.add_inventory(rev.revision_id, inv, present_parents)
-    except RevisionAlreadyPresent:
-        pass
-    repository.add_revision(rev.revision_id, rev, inv)
+        pp = ProgressPhase("Merge phase", 6, pb)
+        pp.next_phase()
+        install_changeset(tree.branch.repository, reader)
+        merger = Merger(tree.branch, this_tree=tree, pb=pb)
+        merger.pp = pp
+        merger.pp.next_phase()
+        merger.check_basis(check_clean, require_commits=False)
+        merger.other_rev_id = reader.info.target
+        merger.other_tree = merger.revision_tree(reader.info.target)
+        merger.other_basis = reader.info.target
+        merger.pp.next_phase()
+        merger.find_base()
+        if merger.base_rev_id == merger.other_rev_id:
+            note("Nothing to do.")
+            return 0
+        merger.merge_type = merge_type
+        merger.show_base = show_base
+        merger.reprocess = reprocess
+        conflicts = merger.do_merge()
+        merger.set_pending()
+    finally:
+        pb.clear()
+    return conflicts
