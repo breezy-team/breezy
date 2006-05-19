@@ -999,18 +999,18 @@ class Inventory(object):
         The immediate parent must already be versioned.
 
         Returns the new entry object."""
-        from bzrlib.workingtree import gen_file_id
         
         parts = bzrlib.osutils.splitpath(relpath)
 
-        if file_id == None:
-            file_id = gen_file_id(relpath)
-
         if len(parts) == 0:
+            if file_id is None:
+                file_id = bzrlib.workingtree.gen_root_id()
             self.root = RootEntry(file_id)
             self._byid = {self.root.file_id: self.root}
             return
         else:
+            if file_id is None:
+                file_id = bzrlib.workingtree.gen_file_id(parts[-1])
             parent_path = parts[:-1]
             parent_id = self.path2id(parent_path)
             if parent_id == None:

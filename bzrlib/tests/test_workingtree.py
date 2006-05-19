@@ -234,3 +234,28 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         os.mkdir('lala.OTHER')
         expected = ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
+
+
+class TestNonFormatSpecific(TestCaseWithTransport):
+    
+    def test_gen_file_id(self):
+        self.assertStartsWith(bzrlib.workingtree.gen_file_id('bar'), 'bar-')
+        self.assertStartsWith(bzrlib.workingtree.gen_file_id('Mwoo oof\t m'), 'Mwoooofm-')
+        self.assertStartsWith(bzrlib.workingtree.gen_file_id('..gam.py'), 'gam.py-')
+        self.assertStartsWith(bzrlib.workingtree.gen_file_id('..Mwoo oof\t m'), 'Mwoooofm-')
+
+    def test_next_id_suffix(self):
+        bzrlib.workingtree._gen_id_suffix = None
+        bzrlib.workingtree._next_id_suffix()
+        self.assertNotEqual(None, bzrlib.workingtree._gen_id_suffix)
+        bzrlib.workingtree._gen_id_suffix = "foo-"
+        bzrlib.workingtree._gen_id_serial = 1
+        self.assertEqual("foo-2", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-3", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-4", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-5", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-6", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-7", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-8", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-9", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-10", bzrlib.workingtree._next_id_suffix())
