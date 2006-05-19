@@ -3,6 +3,5 @@
 #
 
 Ensure changeset command behaves properly w/revisions
-Encode binary files
 Decide whether to bundle 'send-changeset' into 'changeset'.
 Get rid of the 'old' directory
