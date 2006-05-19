@@ -103,11 +103,11 @@ class cmd_changeset(Command):
             if base_branch is not None:
                 base_revision = base_branch.last_revision()
         elif len(revision) == 2:
-            target_revision = revision[0].in_history(target_branch).rev_id
+            target_revision = revision[1].in_history(target_branch).rev_id
             if base_branch is not None:
-                base_revision = revision[1].in_history(base_branch).rev_id
+                base_revision = revision[0].in_history(base_branch).rev_id
             else:
-                base_revision = revision[1].in_history(target_branch).rev_id
+                base_revision = revision[0].in_history(target_branch).rev_id
         else:
             raise errors.BzrCommandError('--revision takes 1 or 2 parameters')
 
