@@ -207,8 +207,10 @@ class ChangesetSerializerV07(ChangesetSerializer):
             do_revision(file_id)
             if meta_modified:
                 do_meta(file_id)
+            if text_modified and kind == "symlink":
+                do_target(new_tree.inventory[file_id].symlink_target)
             w('\n')
-            if text_modified:
+            if text_modified and kind == "file":
                 do_diff(old_path, file_id, new_path, text_modified)
 
         for (path, file_id, kind,
@@ -219,8 +221,10 @@ class ChangesetSerializerV07(ChangesetSerializer):
             do_revision(file_id)
             if meta_modified:
                 do_meta(file_id)
+            if text_modified and kind == "symlink":
+                do_target(new_tree.inventory[file_id].symlink_target)
             w('\n')
-            if text_modified:
+            if text_modified and kind == "file":
                 do_diff(path, file_id, path, kind)
 
 

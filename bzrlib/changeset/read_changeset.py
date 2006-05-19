@@ -576,10 +576,8 @@ class ChangesetReader(object):
 
             cset_tree.note_rename(old_path, new_path)
             file_id = cset_tree.path2id(new_path)
-            if len(info) > 2:
-                revision = get_rev_id(info[2], file_id, kind)
-            else:
-                revision = get_rev_id(None, file_id, kind)
+            last_modified = extra_info(info[2:], file_id, new_path)
+            revision = get_rev_id(last_modified, file_id, kind)
             if lines:
                 cset_tree.note_patch(new_path, ''.join(lines))
 
@@ -928,11 +926,11 @@ class ChangesetTree(Tree):
                 ie.symlink_target = self.get_symlink_target(file_id)
             ie.revision = revision_id
 
-            if kind == 'directory':
+            if kind in ('directory', 'symlink'):
                 ie.text_size, ie.text_sha1 = None, None
             else:
                 ie.text_size, ie.text_sha1 = self.get_size_and_sha1(file_id)
-            if (ie.text_size is None) and (kind != 'directory'):
+            if (ie.text_size is None) and (kind == 'file'):
                 raise BzrError('Got a text_size of None for file_id %r' % file_id)
             inv.add(ie)
 
