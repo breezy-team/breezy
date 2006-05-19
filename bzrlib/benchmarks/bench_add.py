@@ -27,8 +27,8 @@ class TestAdd(ExternalBase):
         # 3-4 levels deep. 
         # we simulate this by three levels of dirs named 0-7, givin 512 dirs,
         # and 20 files each.
-        # on roberts machine this originally took: 25936ms/32244ms
-        # after low hanging fruit                :  9692ms/13911ms
+        # on roberts machine this originally took:  25936ms/32244ms
+        # after making smart_add use the parent_ie:  5033ms/ 9368ms
         self.run_bzr('init')
         files = []
         for outer in range(8):

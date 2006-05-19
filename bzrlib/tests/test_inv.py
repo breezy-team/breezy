@@ -61,7 +61,6 @@ class TestInventory(TestCase):
         
         self.assert_('src-id' in inv)
 
-
     def test_version(self):
         """Inventory remembers the text's version."""
         inv = Inventory()
@@ -134,6 +133,13 @@ class TestInventoryEntry(TestCase):
         link = inventory.InventoryLink('123', 'hello.c', ROOT_ID)
         self.failIf(link.has_text())
 
+    def test_make_entry(self):
+        self.assertIsInstance(inventory.make_entry("file", "name", ROOT_ID),
+            inventory.InventoryFile)
+        self.assertIsInstance(inventory.make_entry("symlink", "name", ROOT_ID),
+            inventory.InventoryLink)
+        self.assertIsInstance(inventory.make_entry("directory", "name", ROOT_ID),
+            inventory.InventoryDirectory)
 
 class TestEntryDiffing(TestCaseWithTransport):
 

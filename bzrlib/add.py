@@ -51,24 +51,31 @@ def _prepare_file_list(file_list):
     return file_list
 
 
-def add_action_null(inv, path, kind):
+def add_action_null(inv, parent_ie, path, kind):
     """Absorb add actions and do nothing."""
     pass
 
-def add_action_print(inv, path, kind):
+
+def add_action_print(inv, parent_ie, path, kind):
     """Print a line to stdout for each file that would be added."""
     print "added", bzrlib.osutils.quotefn(path)
 
-def add_action_add(inv, path, kind):
+
+def add_action_add(inv, parent_ie, path, kind):
     """Add each file to the given inventory. Produce no output."""
-    entry = inv.add_path(path, kind=kind)
-    mutter("added %r kind %r file_id={%s}" % (path, kind, entry.file_id))
+    if parent_ie is not None:
+        entry = bzrlib.inventory.make_entry(
+            kind, bzrlib.osutils.basename(path),  parent_ie.file_id)
+        inv.add(entry)
+    else:
+        entry = inv.add_path(path, kind=kind)
+    # mutter("added %r kind %r file_id={%s}" % (path, kind, entry.file_id))
 
 
-def add_action_add_and_print(inv, path, kind):
+def add_action_add_and_print(inv, parent_ie, path, kind):
     """Add each file to the given inventory, and print a line to stdout."""
-    add_action_add(inv, path, kind)
-    add_action_print(inv, path, kind)
+    add_action_add(inv, parent_ie, path, kind)
+    add_action_print(inv, parent_ie, path, kind)
 
 
 def smart_add(file_list, recurse=True, action=add_action_add):
@@ -104,16 +111,25 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
     inv = tree.read_working_inventory()
     added = []
     ignored = {}
-    user_files = set(file_list)
+    user_files = list(file_list)
+    file_list = []
 
-    for filepath in file_list:
-        # convert a random abs or cwd-relative path to tree relative.
+    # validate user file paths and convert all paths to tree 
+    # relative : its cheaper to make a tree relative path an abspath
+    # than to convert an abspath to tree relative.
+    for filepath in user_files:
         rf = tree.relpath(filepath)
-
+        file_list.append((rf, None))
         # validate user parameters. Our recursive code avoids adding new files
         # that need such validation 
-        if filepath in user_files and tree.is_control_filename(rf):
+        if tree.is_control_filename(rf):
             raise ForbiddenFileError('cannot add control file %s' % filepath)
+
+    user_files = set([path for path, parent_ie in file_list])
+        
+    for filepath, parent_ie in file_list:
+        # filepath is tree-relative
+        abspath = tree.abspath(filepath)
 
         # find the kind of the path being added. This is not
         # currently determined when we list directories 
@@ -125,27 +141,30 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
         # it is defined. (Apparently Mac OSX has the field but
         # does not fill it in ?!) Robert C, Martin P.
         try:
-            kind = bzrlib.osutils.file_kind(filepath)
+            kind = bzrlib.osutils.file_kind(abspath)
         except OSError, e:
             if hasattr(e, 'errno') and e.errno == errno.ENOENT:
-                raise errors.NoSuchFile(filepath)
+                raise errors.NoSuchFile(abspath)
             raise
 
         # we need to call this to determine the inventory kind to create.
         if not InventoryEntry.versionable_kind(kind):
             if filepath in user_files:
-                raise BadFileKindError("cannot add %s of type %s" % (filepath, kind))
+                raise BadFileKindError("cannot add %s of type %s" % (abspath, kind))
             else:
-                warning("skipping %s (can't add file of kind '%s')", filepath, kind)
+                warning("skipping %s (can't add file of kind '%s')", abspath, kind)
                 continue
 
-        # TODO make has_filename faster or provide a better api for accessing/determining 
-        # this status. perhaps off the inventory directory object.
-        versioned = inv.has_filename(rf)
+        if parent_ie is not None:
+            versioned = bzrlib.osutils.basename(filepath) in parent_ie.children
+        else:
+            # without the parent ie, use the relatively slower inventory 
+            # probing method
+            versioned = inv.has_filename(filepath)
 
         if kind == 'directory':
             try:
-                sub_branch = bzrlib.bzrdir.BzrDir.open(filepath)
+                sub_branch = bzrlib.bzrdir.BzrDir.open(abspath)
                 sub_tree = True
             except NotBranchError:
                 sub_tree = False
@@ -154,22 +173,37 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
         else:
             sub_tree = False
 
-        if rf == '':
+        if filepath == '':
             # mutter("tree root doesn't need to be added")
             sub_tree = False
         elif versioned:
             pass
-            # mutter("%r is already versioned", filepath)
+            # mutter("%r is already versioned", abspath)
         elif sub_tree:
-            mutter("%r is a nested bzr tree", filepath)
+            mutter("%r is a nested bzr tree", abspath)
         else:
-            added.extend(__add_one(tree, inv, rf, kind, action))
+            added.extend(__add_one(tree, inv, parent_ie, filepath, kind, action))
 
         if kind == 'directory' and recurse and not sub_tree:
-            for subf in os.listdir(filepath):
+            try:
+                if parent_ie is not None:
+                    # must be present:
+                    this_ie = parent_ie.children[bzrlib.osutils.basename(filepath)]
+                else:
+                    # without the parent ie, use the relatively slower inventory 
+                    # probing method
+                    this_id = inv.path2id(filepath)
+                    if this_id is None:
+                        this_ie = None
+                    else:
+                        this_ie = inv[this_id]
+            except KeyError:
+                this_ie = None
+
+            for subf in os.listdir(abspath):
                 # here we could use TreeDirectory rather than 
                 # string concatenation.
-                subp = bzrlib.osutils.pathjoin(rf, subf)
+                subp = bzrlib.osutils.pathjoin(filepath, subf)
                 # TODO: is_control_filename is very slow. Make it faster. 
                 # TreeDirectory.is_control_filename could also make this 
                 # faster - its impossible for a non root dir to have a 
@@ -187,24 +221,33 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
                         ignored[ignore_glob].append(subp)
                     else:
                         #mutter("queue to add sub-file %r", subp)
-                        file_list.append(tree.abspath(subp))
+                        file_list.append((subp, this_ie))
 
     if len(added) > 0:
         tree._write_inventory(inv)
     return added, ignored
 
 
-def __add_one(tree, inv, path, kind, action):
+def __add_one(tree, inv, parent_ie, path, kind, action):
     """Add a file or directory, automatically add unversioned parents."""
 
     # Nothing to do if path is already versioned.
     # This is safe from infinite recursion because the tree root is
     # always versioned.
-    if inv.path2id(path) != None:
-        return []
-
-    # add parent
-    added = __add_one(tree, inv, dirname(path), 'directory', action)
-    action(inv, path, kind)
+    if parent_ie is not None:
+        # we have a parent ie already
+        added = []
+    else:
+        # slower but does not need parent_ie
+        if inv.has_filename(path):
+            return []
+        # add parent
+        added = __add_one(tree, inv, None, dirname(path), 'directory', action)
+        parent_id = inv.path2id(dirname(path))
+        if parent_id is not None:
+            parent_ie = inv[inv.path2id(dirname(path))]
+        else:
+            parent_ie = None
+    action(inv, parent_ie, path, kind)
 
     return added + [path]
