@@ -483,7 +483,6 @@ class ChangesetReader(object):
         #mutter('_read_one_patch: %r' % self._next_line)
         # Peek and see if there are no patches
         if self._next_line is None or self._next_line.startswith('#'):
-            print "ret1"
             return None, [], False
 
         first = True
