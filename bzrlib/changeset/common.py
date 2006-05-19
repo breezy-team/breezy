@@ -51,32 +51,7 @@ def canonicalize_revision(branch, revnos):
 
     return old, new
 
-class ChangesetTree(object):
-    """This class is designed to take a base tree, and re-create
-    a final tree based on the information contained within a
-    changeset.
-    """
-
-    def __init__(self, branch, changeset_info):
-        """Initialize this ChangesetTree.
-
-        :param branch:  This is where information will be acquired
-                        and updated.
-        :param changeset_info:  Information about a given changeset,
-                                so that we can identify the base,
-                                and other information.
-        """
-        self.branch = branch
-        self.changeset_info = changeset_info
-
-        self._build_tree()
-
-    def _build_tree(self):
-        """Build the final description of the tree, based on
-        the changeset_info object.
-        """
-        self.base_tree = self.branch.revision_tree(self.changeset_info.base)
-        
+       
 def encode(s):
     """Take a unicode string, and make sure to escape it for
     use in a changeset.
