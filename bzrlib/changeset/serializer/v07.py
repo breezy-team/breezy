@@ -91,17 +91,17 @@ class ChangesetSerializerV07(ChangesetSerializer):
 
     def _write_revisions(self):
         """Write the information for all of the revisions."""
-        # The next version of changesets will write a rollup
-        # at the top, and back-patches, or something else after that.
-        # For now, we just write the patches in order.
 
         # Optimize for the case of revisions in order
         last_rev_id = None
-        last_rev = None
         last_rev_tree = None
 
         for rev_id in self.revision_ids:
             rev = self.source.get_revision(rev_id)
+            if rev_id == last_rev_id:
+                rev_tree = last_rev_tree
+            else:
+                base_tree = self.source.revision_tree(rev_id)
             rev_tree = self.source.revision_tree(rev_id)
             if rev_id in self.forced_bases:
                 explicit_base = True
@@ -123,9 +123,8 @@ class ChangesetSerializerV07(ChangesetSerializer):
             self._write_revision(rev, rev_tree, base_id, base_tree, 
                                  explicit_base)
 
-            last_rev_id = rev_id
-            last_rev = rev
-            last_rev_tree = rev_tree
+            last_rev_id = base_id
+            last_rev_tree = base_tree
 
     def _write_revision(self, rev, rev_tree, base_rev, base_tree, 
                         explicit_base):
