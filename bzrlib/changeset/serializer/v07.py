@@ -51,14 +51,28 @@ class Action(object):
         else:
             self.properties = properties
 
+    def add_property(self, name, value):
+        """Add a property to the action"""
+        self.properties.append((name, value))
+
+    def add_bool_property(self, name, value):
+        """Add a boolean property to the action"""
+        self.add_property(name, bool_text[value])
+
     def write(self, to_file):
         """Write action as to a file"""
-        p_texts = ['%s:%s' % v for v in self.properties]
+        p_texts = [' '.join([self.name]+self.parameters)]
+        for prop in self.properties:
+            if len(prop) == 1:
+                p_texts.append(prop[0])
+            else:
+                try:
+                    p_texts.append('%s:%s' % prop)
+                except:
+                    raise repr(prop)
         text = ['=== ']
-        text.append(' '.join([self.name]+self.parameters))
         text.append(' // '.join(p_texts))
-        text.append('\n')
-        to_file.write(''.join(text).encode('utf-8'))
+        to_file.write(''.join(text).encode('utf-8')+'\n')
 
 
 class ChangesetSerializerV07(ChangesetSerializer):
@@ -203,7 +217,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
         old_label = ''
         new_label = ''
 
-        def do_diff(old_path, file_id, new_path, kind):
+        def do_diff(old_path, file_id, new_path, kind, action):
             def tree_lines(tree, require_text=False):
                 if file_id in tree:
                     tree_file = tree.get_file(file_id)
@@ -216,27 +230,28 @@ class ChangesetSerializerV07(ChangesetSerializer):
             try:
                 old_lines = tree_lines(old_tree, require_text=True)
                 new_lines = tree_lines(new_tree, require_text=True)
-                self.to_file.write('\n')
+                action.write(self.to_file)
                 internal_diff(old_path, old_lines, new_path, new_lines, 
                               self.to_file)
             except errors.BinaryFile:
                 old_lines = tree_lines(old_tree, require_text=False)
                 new_lines = tree_lines(new_tree, require_text=False)
-                self.to_file.write(' // encoding:base64\n')
+                action.add_property('encoding', 'base64')
+                action.write(self.to_file)
                 binary_diff(old_path, old_lines, new_path, new_lines, 
                             self.to_file)
 
-        def do_meta(file_id):
+        def do_meta(file_id, action):
             ie = new_tree.inventory[file_id]
-            w(' // executable:%s' % bool_text[ie.executable])
+            action.add_bool_property('executable', ie.executable)
 
-        def do_target(target):
-            w(' // target:%s' % target)
+        def do_target(target, action):
+            action.add_property('target', target)
 
-        def do_revision(file_id):
+        def do_revision(file_id, action):
             ie = new_tree.inventory[file_id]
             if ie.revision != default_revision_id:
-                w(' // last-changed:%s' % ie.revision)
+                action.add_property('last-changed', ie.revision)
 
         delta = compare_trees(old_tree, new_tree, want_unchanged=False)
 
@@ -244,45 +259,45 @@ class ChangesetSerializerV07(ChangesetSerializer):
             self.to_file.write(text.encode('utf-8'))
 
         for path, file_id, kind in delta.removed:
-            Action('removed', [kind, path]).write(self.to_file)
+            action = Action('removed', [kind, path]).write(self.to_file)
 
         for path, file_id, kind in delta.added:
-            w('=== added %s %s // file-id:%s' % (kind, path, file_id))
-            do_revision(file_id)
+            action = Action('added', [kind, path], [('file-id', file_id)])
+            do_revision(file_id, action)
             if kind == 'file':
-                do_meta(file_id)
+                do_meta(file_id, action)
             if kind == 'symlink':
-                do_target(new_tree.inventory[file_id].symlink_target)
+                do_target(new_tree.inventory[file_id].symlink_target, action)
             if kind == 'file':
-                do_diff(DEVNULL, file_id, path, kind)
+                do_diff(DEVNULL, file_id, path, kind, action)
             else:
-                w('\n')
+                action.write(self.to_file)
 
 
         for (old_path, new_path, file_id, kind,
              text_modified, meta_modified) in delta.renamed:
-            w('=== renamed %s %s // %s' % (kind, old_path, new_path))
-            do_revision(file_id)
+            action = Action('renamed', [kind, old_path], [(new_path,)])
+            do_revision(file_id, action)
             if meta_modified:
                 do_meta(file_id)
             if text_modified and kind == "symlink":
-                do_target(new_tree.inventory[file_id].symlink_target)
+                do_target(new_tree.inventory[file_id].symlink_target, action)
             if text_modified and kind == "file":
-                do_diff(old_path, file_id, new_path, text_modified)
+                do_diff(old_path, file_id, new_path, text_modified, action)
             else:
-                w('\n')
+                action.write(self.to_file)
 
         for (path, file_id, kind,
              text_modified, meta_modified) in delta.modified:
             # TODO: Handle meta_modified
             #prop_str = get_prop_change(meta_modified)
-            w('=== modified %s %s' % (kind, path))
-            do_revision(file_id)
+            action = Action('modified', [kind, path])
+            do_revision(file_id, action)
             if meta_modified:
-                do_meta(file_id)
+                do_meta(file_id, action)
             if text_modified and kind == "symlink":
-                do_target(new_tree.inventory[file_id].symlink_target)
+                do_target(new_tree.inventory[file_id].symlink_target, action)
             if text_modified and kind == "file":
-                do_diff(path, file_id, path, kind)
+                do_diff(path, file_id, path, kind, action)
             else:
-                w('\n')
+                action.write(self.to_file)
