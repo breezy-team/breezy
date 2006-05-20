@@ -163,6 +163,15 @@ class ChangesetSerializerV07(ChangesetSerializer):
         # Add an extra blank space at the end
         self.to_file.write('\n')
 
+    def _write_action(self, name, parameters, properties=None):
+        if properties is None:
+            properties = []
+        p_texts = ['%s:%s' % v for v in properties]
+        self.to_file.write('=== ')
+        self.to_file.write(' '.join([name]+parameters).encode('utf-8'))
+        self.to_file.write(' // '.join(p_texts).encode('utf-8'))
+        self.to_file.write('\n')
+
     def _write_delta(self, new_tree, old_tree, default_revision_id):
         """Write out the changes between the trees."""
         DEVNULL = '/dev/null'
@@ -210,7 +219,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
             self.to_file.write(text.encode('utf-8'))
 
         for path, file_id, kind in delta.removed:
-            w('=== removed %s %s\n' % (kind, path))
+            self._write_action('removed', [kind, path])
 
         for path, file_id, kind in delta.added:
             w('=== added %s %s // file-id:%s' % (kind, path, file_id))
