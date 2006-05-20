@@ -253,33 +253,11 @@ class ChangesetSerializerV07(ChangesetSerializer):
             if ie.revision != default_revision_id:
                 action.add_property('last-changed', ie.revision)
 
-        delta = compare_trees(old_tree, new_tree, want_unchanged=False)
-
-        def w(text):
-            self.to_file.write(text.encode('utf-8'))
-
-        for path, file_id, kind in delta.removed:
-            action = Action('removed', [kind, path]).write(self.to_file)
-
-        for path, file_id, kind in delta.added:
-            action = Action('added', [kind, path], [('file-id', file_id)])
-            do_revision(file_id, action)
-            if kind == 'file':
-                do_meta(file_id, action)
-            if kind == 'symlink':
-                do_target(new_tree.inventory[file_id].symlink_target, action)
-            if kind == 'file':
-                do_diff(DEVNULL, file_id, path, kind, action)
-            else:
-                action.write(self.to_file)
-
-
-        for (old_path, new_path, file_id, kind,
-             text_modified, meta_modified) in delta.renamed:
-            action = Action('renamed', [kind, old_path], [(new_path,)])
+        def finish_action(action, file_id, kind, meta_modified, text_modified,
+                          old_path, new_path):
             do_revision(file_id, action)
             if meta_modified:
-                do_meta(file_id)
+                do_meta(file_id, action)
             if text_modified and kind == "symlink":
                 do_target(new_tree.inventory[file_id].symlink_target, action)
             if text_modified and kind == "file":
@@ -287,17 +265,24 @@ class ChangesetSerializerV07(ChangesetSerializer):
             else:
                 action.write(self.to_file)
 
+        delta = compare_trees(old_tree, new_tree, want_unchanged=False)
+
+        for path, file_id, kind in delta.removed:
+            action = Action('removed', [kind, path]).write(self.to_file)
+
+        for path, file_id, kind in delta.added:
+            action = Action('added', [kind, path], [('file-id', file_id)])
+            finish_action(action, file_id, kind, True, True,
+                          DEVNULL, path)
+
+        for (old_path, new_path, file_id, kind,
+             text_modified, meta_modified) in delta.renamed:
+            action = Action('renamed', [kind, old_path], [(new_path,)])
+            finish_action(action, file_id, kind, meta_modified, text_modified,
+                          old_path, new_path)
+
         for (path, file_id, kind,
              text_modified, meta_modified) in delta.modified:
-            # TODO: Handle meta_modified
-            #prop_str = get_prop_change(meta_modified)
             action = Action('modified', [kind, path])
-            do_revision(file_id, action)
-            if meta_modified:
-                do_meta(file_id, action)
-            if text_modified and kind == "symlink":
-                do_target(new_tree.inventory[file_id].symlink_target, action)
-            if text_modified and kind == "file":
-                do_diff(path, file_id, path, kind, action)
-            else:
-                action.write(self.to_file)
+            finish_action(action, file_id, kind, meta_modified, text_modified,
+                          path, path)
