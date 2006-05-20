@@ -72,7 +72,14 @@ class Action(object):
                     raise repr(prop)
         text = ['=== ']
         text.append(' // '.join(p_texts))
-        to_file.write(''.join(text).encode('utf-8')+'\n')
+        text_line = ''.join(text).encode('utf-8')
+        available = 79
+        while len(text_line) > available:
+            to_file.write(text_line[:available])
+            text_line = text_line[available:]
+            to_file.write('\n... ')
+            available = 79 - len('... ')
+        to_file.write(text_line+'\n')
 
 
 class ChangesetSerializerV07(ChangesetSerializer):

@@ -494,14 +494,18 @@ class ChangesetReader(object):
                         ' should be a bzr meta line "==="'
                         ': %r' % line)
                 action = decode(line[4:-1])
-            if self._next_line is not None and self._next_line.startswith('==='):
+            elif line.startswith('... '):
+                action += decode(line[len('... '):-1])
+
+            if (self._next_line is not None and 
+                self._next_line.startswith('===')):
                 return action, lines, True
             elif self._next_line is None or self._next_line.startswith('#'):
                 return action, lines, False
 
             if first:
                 first = False
-            else:
+            elif not line.startswith('... '):
                 lines.append(line)
 
         return action, lines, False
@@ -549,7 +553,10 @@ class ChangesetReader(object):
             last_changed = None
             encoding = None
             for info_item in info:
-                name, value = info_item.split(':', 1)
+                try:
+                    name, value = info_item.split(':', 1)
+                except ValueError:
+                    raise 'Value %r has no colon' % info_item
                 if name == 'last-changed':
                     last_changed = value
                 elif name == 'executable':
