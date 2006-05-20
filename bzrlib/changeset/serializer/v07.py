@@ -217,7 +217,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
         old_label = ''
         new_label = ''
 
-        def do_diff(old_path, file_id, new_path, kind, action):
+        def do_diff(file_id, old_path, new_path, action):
             def tree_lines(tree, require_text=False):
                 if file_id in tree:
                     tree_file = tree.get_file(file_id)
@@ -241,27 +241,17 @@ class ChangesetSerializerV07(ChangesetSerializer):
                 binary_diff(old_path, old_lines, new_path, new_lines, 
                             self.to_file)
 
-        def do_meta(file_id, action):
-            ie = new_tree.inventory[file_id]
-            action.add_bool_property('executable', ie.executable)
-
-        def do_target(target, action):
-            action.add_property('target', target)
-
-        def do_revision(file_id, action):
-            ie = new_tree.inventory[file_id]
-            if ie.revision != default_revision_id:
-                action.add_property('last-changed', ie.revision)
-
         def finish_action(action, file_id, kind, meta_modified, text_modified,
                           old_path, new_path):
-            do_revision(file_id, action)
+            entry = new_tree.inventory[file_id]
+            if entry.revision != default_revision_id:
+                action.add_property('last-changed', entry.revision)
             if meta_modified:
-                do_meta(file_id, action)
+                action.add_bool_property('executable', entry.executable)
             if text_modified and kind == "symlink":
-                do_target(new_tree.inventory[file_id].symlink_target, action)
+                action.add_property('target', entry.symlink_target)
             if text_modified and kind == "file":
-                do_diff(old_path, file_id, new_path, text_modified, action)
+                do_diff(file_id, old_path, new_path, action)
             else:
                 action.write(self.to_file)
 
