@@ -26,7 +26,6 @@ import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.commands import Command, display_command
-from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
@@ -36,6 +35,7 @@ from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
 from bzrlib.progress import DummyProgress, ProgressPhase
+from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
@@ -273,14 +273,15 @@ class cmd_add(Command):
         added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
                                               action)
         if len(ignored) > 0:
-            for glob in sorted(ignored.keys()):
-                match_len = len(ignored[glob])
-                if verbose:
+            if verbose:
+                for glob in sorted(ignored.keys()):
                     for path in ignored[glob]:
                         print "ignored %s matching \"%s\"" % (path, glob)
-                else:
-                    print "ignored %d file(s) matching \"%s\"" % (match_len,
-                                                              glob)
+            else:
+                match_len = 0
+                for glob, paths in ignored.items():
+                    match_len += len(paths)
+                print "ignored %d file(s)." % match_len
             print "If you wish to add some of these files, please add them"\
                 " by name."
 
@@ -518,24 +519,23 @@ class cmd_push(Command):
                                                   "path prefix.")
             dir_to = br_from.bzrdir.clone(location)
             br_to = dir_to.open_branch()
-        old_rh = br_to.revision_history()
-        try:
+            count = len(br_to.revision_history())
+        else:
+            old_rh = br_to.revision_history()
             try:
-                tree_to = dir_to.open_workingtree()
-            except errors.NotLocalUrl:
-                # TODO: This should be updated for branches which don't have a
-                # working tree, as opposed to ones where we just couldn't 
-                # update the tree.
-                warning('This transport does not update the working '
-                        'tree of: %s' % (br_to.base,))
-                count = br_to.pull(br_from, overwrite)
-            except NoWorkingTree:
-                count = br_to.pull(br_from, overwrite)
-            else:
-                count = tree_to.pull(br_from, overwrite)
-        except DivergedBranches:
-            raise BzrCommandError("These branches have diverged."
-                                  "  Try a merge then push with overwrite.")
+                try:
+                    tree_to = dir_to.open_workingtree()
+                except errors.NotLocalUrl:
+                    warning('This transport does not update the working '
+                            'tree of: %s' % (br_to.base,))
+                    count = br_to.pull(br_from, overwrite)
+                except NoWorkingTree:
+                    count = br_to.pull(br_from, overwrite)
+                else:
+                    count = tree_to.pull(br_from, overwrite)
+            except DivergedBranches:
+                raise BzrCommandError("These branches have diverged."
+                                      "  Try a merge then push with overwrite.")
         note('%d revision(s) pushed.' % (count,))
 
         if verbose:
@@ -1396,8 +1396,8 @@ class cmd_ignore(Command):
             igns += '\n'
         igns += name_pattern + '\n'
 
+        f = AtomicFile(ifn, 'wt')
         try:
-            f = AtomicFile(ifn, 'wt')
             f.write(igns.encode('utf-8'))
             f.commit()
         finally:
@@ -1782,16 +1782,21 @@ class cmd_selftest(Command):
                             help='Use a different transport by default '
                                  'throughout the test suite.',
                             type=get_transport_type),
+                     Option('benchmark', help='run the bzr bencharks.'),
                     ]
 
     def run(self, testspecs_list=None, verbose=False, one=False,
-            keep_output=False, transport=None):
+            keep_output=False, transport=None, benchmark=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
+        import bzrlib.benchmarks as benchmarks
         # we don't want progress meters from the tests to go to the
         # real output; and we don't want log messages cluttering up
         # the real logs.
         save_ui = bzrlib.ui.ui_factory
+        print '%10s: %s' % ('bzr', bzrlib.osutils.realpath(sys.argv[0]))
+        print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
+        print
         bzrlib.trace.info('running tests...')
         try:
             bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
@@ -1799,11 +1804,16 @@ class cmd_selftest(Command):
                 pattern = '|'.join(testspecs_list)
             else:
                 pattern = ".*"
+            if benchmark:
+                test_suite_factory = benchmarks.test_suite
+            else:
+                test_suite_factory = None
             result = selftest(verbose=verbose, 
                               pattern=pattern,
                               stop_on_failure=one, 
                               keep_output=keep_output,
-                              transport=transport)
+                              transport=transport,
+                              test_suite_factory=test_suite_factory)
             if result:
                 bzrlib.trace.info('tests passed')
             else:

@@ -43,7 +43,12 @@ import bzrlib
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
-from bzrlib.osutils import has_symlinks, pathjoin, rmtree
+from bzrlib.osutils import (
+    has_symlinks,
+    pathjoin,
+    rmtree,
+    terminal_width,
+    )
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
@@ -499,102 +504,6 @@ class TestCommands(ExternalBase):
         self.runbzr('pull ../a --remember')
         self.runbzr('pull')
         
-    def test_add_reports(self):
-        """add command prints the names of added files."""
-        self.runbzr('init')
-        self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
-        out = self.run_bzr_captured(['add'], retcode=0)[0]
-        # the ordering is not defined at the moment
-        results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['If you wish to add some of these files, please'\
-                           ' add them by name.',
-                           'added dir',
-                           'added dir/sub.txt',
-                           'added top.txt',
-                           'ignored 1 file(s) matching "CVS"'],
-                          results)
-        out = self.run_bzr_captured(['add', '-v'], retcode=0)[0]
-        results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['If you wish to add some of these files, please'\
-                           ' add them by name.',
-                           'ignored CVS matching "CVS"'],
-                          results)
-
-    def test_add_quiet_is(self):
-        """add -q does not print the names of added files."""
-        self.runbzr('init')
-        self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
-        out = self.run_bzr_captured(['add', '-q'], retcode=0)[0]
-        # the ordering is not defined at the moment
-        results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals([''], results)
-
-    def test_add_in_unversioned(self):
-        """Try to add a file in an unversioned directory.
-
-        "bzr add" should add the parent(s) as necessary.
-        """
-        self.runbzr('init')
-        self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
-        self.run_bzr('add', 'inertiatic/esp')
-        self.assertEquals(self.capture('unknowns'), '')
-
-        # Multiple unversioned parents
-        self.build_tree(['veil/', 'veil/cerpin/', 'veil/cerpin/taxt'])
-        self.assertEquals(self.capture('unknowns'), 'veil\n')
-        self.run_bzr('add', 'veil/cerpin/taxt')
-        self.assertEquals(self.capture('unknowns'), '')
-
-        # Check whacky paths work
-        self.build_tree(['cicatriz/', 'cicatriz/esp'])
-        self.assertEquals(self.capture('unknowns'), 'cicatriz\n')
-        self.run_bzr('add', 'inertiatic/../cicatriz/esp')
-        self.assertEquals(self.capture('unknowns'), '')
-
-    def test_add_in_versioned(self):
-        """Try to add a file in a versioned directory.
-
-        "bzr add" should do this happily.
-        """
-        self.runbzr('init')
-        self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
-        self.run_bzr('add', '--no-recurse', 'inertiatic')
-        self.assertEquals(self.capture('unknowns'), 'inertiatic/esp\n')
-        self.run_bzr('add', 'inertiatic/esp')
-        self.assertEquals(self.capture('unknowns'), '')
-
-    def test_subdir_add(self):
-        """Add in subdirectory should add only things from there down"""
-        from bzrlib.workingtree import WorkingTree
-        
-        eq = self.assertEqual
-        ass = self.assert_
-        chdir = os.chdir
-        
-        t = self.make_branch_and_tree('.')
-        b = t.branch
-        self.build_tree(['src/', 'README'])
-        
-        eq(sorted(t.unknowns()),
-           ['README', 'src'])
-        
-        self.run_bzr('add', 'src')
-        
-        self.build_tree(['src/foo.c'])
-        
-        chdir('src')
-        self.run_bzr('add')
-        
-        self.assertEquals(self.capture('unknowns'), 'README\n')
-        eq(len(t.read_working_inventory()), 3)
-                
-        chdir('..')
-        self.run_bzr('add')
-        self.assertEquals(self.capture('unknowns'), '')
-        self.run_bzr('check')
-
     def test_unknown_command(self):
         """Handling of unknown command."""
         out, err = self.run_bzr_captured(['fluffy-badger'],
@@ -952,10 +861,11 @@ class OldTests(ExternalBase):
         self.assert_('revision-id' in capture('log --show-ids -m commit'))
 
         log_out = capture('log --line')
+        # determine the widest line we want
+        max_width = terminal_width() - 1
         for line in log_out.splitlines():
-            self.assert_(len(line) <= 79, len(line))
+            self.assert_(len(line) <= max_width, len(line))
         self.assert_("this is my new commit and" in log_out)
-
 
         progress("file with spaces in name")
         mkdir('sub directory')
