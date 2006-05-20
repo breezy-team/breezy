@@ -29,6 +29,7 @@ from bzrlib.delta import compare_trees
 from bzrlib.diff import internal_diff
 import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin
+from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
 from bzrlib.rio import RioWriter, read_stanzas
 import bzrlib.ui
@@ -108,11 +109,12 @@ class ChangesetSerializerV07(ChangesetSerializer):
         source.lock_read()
         try:
             self._write_main_header()
-            pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            pb = DummyProgress()
             try:
                 self._write_revisions(pb)
             finally:
-                pb.finished()
+                pass
+                #pb.finished()
         finally:
             source.unlock()
 
