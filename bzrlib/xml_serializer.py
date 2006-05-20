@@ -71,3 +71,78 @@ class Serializer(object):
 
     def _read_element(self, f):
         return ElementTree().parse(f)
+
+
+# before in bench_add_kernel_like
+# 10831        10824   9384.4890   1847.5270   elementtree.ElementTree:662(_write)
+#+10824            0   9295.0140   1761.0460   +elementtree.ElementTree:662(_write)
+#+32471            0   4585.8950   1331.2060   +elementtree.ElementTree:812(_escape_attrib)
+#after switching to text.replace rather than string.replace.
+# 10831        10824   7486.1120   1832.2340   elementtree.ElementTree:662(_write)
+#+10824            0   7397.3120   1745.6300   +elementtree.ElementTree:662(_write)
+#+32471            0   2762.3760   1300.3990   +bzrlib.xml_serializer:85(_escape_attrib)
+
+ 
+import elementtree.ElementTree
+import re
+escape_re = re.compile("&'\"<>")
+escape_map = {
+    "&":'&amp;',
+    "'":"&apos;", # FIXME: overkill
+    "\"":"&quot;",
+    "<":"&lt;",
+    ">":"&gt;",
+    }
+def _escape_replace(match, map=escape_map):
+    return map[match.group()]
+ 
+def _escape_attrib(text, encoding=None, replace=None):
+    # escape attribute value
+    try:
+        if encoding:
+            try:
+                text = elementtree.ElementTree._encode(text, encoding)
+            except UnicodeError:
+                return elementtree.ElementTree._encode_entity(text)
+        if replace is None:
+            return escape_re.sub(_escape_replace, text)
+        else:
+            text = replace(text, "&", "&amp;")
+            text = replace(text, "'", "&apos;") # FIXME: overkill
+            text = replace(text, "\"", "&quot;")
+            text = replace(text, "<", "&lt;")
+            text = replace(text, ">", "&gt;")
+            return text
+    except (TypeError, AttributeError):
+        elementtree.ElementTree._raise_serialization_error(text)
+
+elementtree.ElementTree._escape_attrib = _escape_attrib
+
+escape_cdata_re = re.compile("&<>")
+escape_cdata_map = {
+    "&":'&amp;',
+    "<":"&lt;",
+    ">":"&gt;",
+    }
+def _escape_cdata_replace(match, map=escape_cdata_map):
+    return map[match.group()]
+ 
+def _escape_cdata(text, encoding=None, replace=None):
+    # escape character data
+    try:
+        if encoding:
+            try:
+                text = elementtree.ElementTree._encode(text, encoding)
+            except UnicodeError:
+                return elementtree.ElementTree._encode_entity(text)
+        if replace is None:
+            return escape_cdata_re.sub(_escape_cdata_replace, text)
+        else:
+            text = replace(text, "&", "&amp;")
+            text = replace(text, "<", "&lt;")
+            text = replace(text, ">", "&gt;")
+            return text
+    except (TypeError, AttributeError):
+        elementtree.ElementTree._raise_serialization_error(text)
+
+elementtree.ElementTree._escape_cdata = _escape_cdata
