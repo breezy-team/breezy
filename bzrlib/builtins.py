@@ -1954,9 +1954,12 @@ class cmd_merge(Command):
 
         tree = WorkingTree.open_containing(u'.')[0]
         try:
-            reader = ChangesetReader(file(branch, 'rb'))
+            if branch is not None:
+                reader = ChangesetReader(file(branch, 'rb'))
+            else:
+                reader = None
         except IOError, e:
-            if e != errno.ENOENT:
+            if e.errno not in (errno.ENOENT, errno.EISDIR):
                 raise
             reader = None
         except BadChangeset:
