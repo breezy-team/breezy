@@ -44,6 +44,24 @@ class TestMerge(TestCaseWithTransport):
                           [None, None])
         return wt2
 
+    def test_merge_one(self):
+        wt1 = self.make_branch_and_tree('branch1')
+        wt1.commit('empty commit')
+        wt2 = self.make_branch_and_tree('branch2')
+        wt2.pull(wt1.branch)
+        file('branch1/foo', 'wb').write('foo')
+        file('branch1/bar', 'wb').write('bar')
+        wt1.add('foo')
+        wt1.add('bar')
+        wt1.commit('add foobar')
+        os.chdir('branch2')
+        self.run_bzr('merge', '../branch1/baz', retcode=3)
+        self.run_bzr('merge', '../branch1/foo')
+        self.failUnlessExists('foo')
+        self.failIfExists('bar')
+        wt2 = WorkingTree.open_containing('branch2')[0]
+        self.assertEqual(wt2.pending_merges(), [])
+
     def test_pending_with_null(self):
         """When base is forced to revno 0, pending_merges is set"""
         wt2 = self.test_unrelated()

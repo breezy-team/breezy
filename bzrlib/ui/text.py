@@ -24,11 +24,37 @@ import sys
 
 import bzrlib.progress
 from bzrlib.symbol_versioning import *
-from bzrlib.ui import UIFactory
+from bzrlib.ui import CLIUIFactory
 
 
-class TextUIFactory(UIFactory):
+class TextUIFactory(CLIUIFactory):
+    """A UI factory for Text user interefaces."""
 
+    def __init__(self,
+                 bar_type=None,
+                 stdout=None,
+                 stderr=None):
+        """Create a TextUIFactory.
+
+        :param bar_type: The type of progress bar to create. It defaults to 
+                         letting the bzrlib.progress.ProgressBar factory auto
+                         select.
+        """
+        super(TextUIFactory, self).__init__()
+        self._bar_type = bar_type
+        if stdout is None:
+            self.stdout = sys.stdout
+        else:
+            self.stdout = stdout
+        if stderr is None:
+            self.stderr = sys.stderr
+        else:
+            self.stderr = stderr
+
+    def prompt(self, prompt):
+        """Emit prompt on the CLI."""
+        self.stdout.write(prompt + "? [y/n]:")
+        
     @deprecated_method(zero_eight)
     def progress_bar(self):
         """See UIFactory.nested_progress_bar()."""
@@ -60,7 +86,8 @@ class TextUIFactory(UIFactory):
         may return a tty or dots bar depending on the terminal.
         """
         if self._progress_bar_stack is None:
-            self._progress_bar_stack = bzrlib.progress.ProgressBarStack()
+            self._progress_bar_stack = bzrlib.progress.ProgressBarStack(
+                klass=self._bar_type)
         return self._progress_bar_stack.get_nested()
 
     def clear_term(self):

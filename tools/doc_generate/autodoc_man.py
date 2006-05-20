@@ -159,8 +159,6 @@ man_head = """\
 bazaar-ng (or
 .B "%(bzrcmd)s"
 ) is a project of Canonical to develop an open source distributed version control system that is powerful, friendly, and scalable. Version control means a system that keeps track of previous revisions of software source code or similar information and helps people work on it in teams.
-.SS "Warning"
-bazaar-ng is at an early stage of development, and the design is still changing from week to week. This man page here may be inconsistent with itself, with other documentation or with the code, and sometimes refer to features that are planned but not yet written. Comments are still very welcome; please send them to bazaar-ng@lists.canonical.com.
 """
 
 man_foot = """\
@@ -187,9 +185,7 @@ typical default config file may be similiar to:
 .br
 .B email=John Doe <jdoe@isp.com>
 .SH "SEE ALSO"
-.UR http://bazaar.canonical.com/
-.BR http://bazaar.canonical.com/,
-.UR http://www.bazaar-ng.org/
-.BR http://www.bazaar-ng.org/
+.UR http://www.bazaar-vcs.org/
+.BR http://www.bazaar-vcs.org/
 """
 

@@ -1,17 +1,19 @@
 import os
-import shutil
 import stat
 import sys
 
 import bzrlib
 from bzrlib.add import smart_add_tree
 from bzrlib.builtins import merge
+from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
 from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError, NoDiff3)
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.merge import Merge3Merger, Diff3Merger, WeaveMerger
-from bzrlib.osutils import file_kind, rename, sha_file, pathjoin, mkdtemp
+from bzrlib.osutils import (file_kind, mkdtemp, pathjoin, rename, rmtree,
+                            sha_file, 
+                            )
 from bzrlib.transform import TreeTransform
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
 from bzrlib.workingtree import WorkingTree
@@ -36,25 +38,28 @@ class MergeBuilder(object):
             return None
         return pathjoin(self.cset.entries[parent].path, name)
 
-    def add_file(self, id, parent, name, contents, executable):
+    def add_file(self, id, parent, name, contents, executable, this=True, 
+                 base=True, other=True):
         def new_file(tt):
             parent_id = tt.trans_id_file_id(parent)
             tt.new_file(name, parent_id, contents, id, executable)
-        for tt in (self.this_tt, self.base_tt, self.other_tt):
-            new_file(tt)
+        for option, tt in self.selected_transforms(this, base, other):
+            if option is True:
+                new_file(tt)
 
-    def merge(self, merge_type=Merge3Merger, interesting_ids=None):
+    def merge(self, merge_type=Merge3Merger, interesting_ids=None, **kwargs):
         self.base_tt.apply()
         self.base.commit('base commit')
         for tt, wt in ((self.this_tt, self.this), (self.other_tt, self.other)):
             wt.branch.pull(self.base.branch)
+            wt.set_last_revision(wt.branch.last_revision())
             tt.apply()
             wt.commit('branch commit')
             assert len(wt.branch.revision_history()) == 2
         self.this.branch.fetch(self.other.branch)
         other_basis = self.other.branch.basis_tree()
         merger = merge_type(self.this, self.this, self.base, other_basis, 
-                            interesting_ids=interesting_ids)
+                            interesting_ids=interesting_ids, **kwargs)
         return merger.cooked_conflicts
 
     def list_transforms(self):
@@ -172,10 +177,11 @@ class MergeBuilder(object):
                                                      self.this.inventory_dict)
 
     def cleanup(self):
-        shutil.rmtree(self.dir)
+        rmtree(self.dir)
 
 
 class MergeTest(TestCase):
+
     def test_change_name(self):
         """Test renames"""
         builder = MergeBuilder()
@@ -191,7 +197,7 @@ class MergeTest(TestCase):
         builder.add_file("1", "TREE_ROOT", "name1", "hello1", False)
         builder.change_name("1", other="name2", this="name3")
         conflicts = builder.merge()
-        self.assertEqual(conflicts, [('path conflict', '1', 'name3', 'name2')])
+        self.assertEqual(conflicts, [PathConflict('name3', 'name2', '1')])
         builder.cleanup()
 
     def test_merge_one(self):
@@ -227,7 +233,7 @@ class MergeTest(TestCase):
         conflicts = builder.merge()
         path2 = pathjoin('dir2', 'file1')
         path3 = pathjoin('dir3', 'file1')
-        self.assertEqual(conflicts, [('path conflict', '4', path3, path2)])
+        self.assertEqual(conflicts, [PathConflict(path3, path2, '4')])
         builder.cleanup()
 
     def test_contents_merge(self):
@@ -244,6 +250,29 @@ class MergeTest(TestCase):
     def test_contents_merge3(self):
         """Test diff3 merging"""
         self.do_contents_test(WeaveMerger)
+
+    def test_reprocess_weave(self):
+        # Reprocess works on weaves, and behaves as expected
+        builder = MergeBuilder()
+        builder.add_file('a', 'TREE_ROOT', 'blah', 'a', False)
+        builder.change_contents('a', this='b\nc\nd\ne\n', other='z\nc\nd\ny\n')
+        builder.merge(WeaveMerger, reprocess=True)
+        expected = """<<<<<<< TREE
+b
+=======
+z
+>>>>>>> MERGE-SOURCE
+c
+d
+<<<<<<< TREE
+e
+=======
+y
+>>>>>>> MERGE-SOURCE
+"""
+        self.assertEqualDiff(builder.this.get_file("a").read(), expected)
+
+ 
 
     def do_contents_test(self, merge_factory):
         """Test merging with specified ContentsChange factory"""
@@ -277,8 +306,12 @@ class MergeTest(TestCase):
         builder = MergeBuilder()
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.change_contents("1", other="text4", this="text3")
+        builder.add_file("2", "TREE_ROOT", "name2", "text1", True)
+        builder.change_contents("2", other="\x00", this="text3")
         conflicts = builder.merge(merge_factory)
-        self.assertEqual(conflicts, [('text conflict', '1', 'name1')])
+        self.assertEqual(conflicts, [TextConflict('name1', file_id='1'),
+                                     ContentsConflict('name2', file_id='2')])
+        self.assertEqual(builder.this.get_file('2').read(), '\x00')
         builder.cleanup()
 
     def test_symlink_conflicts(self):
@@ -287,7 +320,8 @@ class MergeTest(TestCase):
             builder.add_symlink("2", "TREE_ROOT", "name2", "target1")
             builder.change_target("2", other="target4", base="text3")
             conflicts = builder.merge()
-            self.assertEqual(conflicts, [('contents conflict', '2', 'name2')])
+            self.assertEqual(conflicts, [ContentsConflict('name2', 
+                                                          file_id='2')])
             builder.cleanup()
 
     def test_symlink_merge(self):
@@ -337,6 +371,15 @@ class MergeTest(TestCase):
         builder.merge()
         os.lstat(builder.this.id2abspath("2"))
         builder.cleanup()
+
+    def test_spurious_conflict(self):
+        builder = MergeBuilder()
+        builder.add_file("1", "TREE_ROOT", "name1", "text1", False)
+        builder.remove_file("1", other=True)
+        builder.add_file("2", "TREE_ROOT", "name1", "text1", False, this=False, 
+                         base=False)
+        conflicts = builder.merge()
+        self.assertEqual(conflicts, []) 
 
 
 class FunctionalMergeTest(TestCaseWithTransport):
@@ -398,9 +441,6 @@ class FunctionalMergeTest(TestCaseWithTransport):
                           [None, None], this_dir='b', check_clean=False,
                           merge_type=WeaveMerger)
         wtb.revert([])
-        os.unlink('b/file.THIS')
-        os.unlink('b/file.OTHER')
-        os.unlink('b/file.BASE')
         self.assertEqual(merge(['a', -1], [None, None], this_dir='b', 
                                check_clean=False, merge_type=WeaveMerger), 1)
         self.assert_(os.path.lexists('b/file'))

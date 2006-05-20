@@ -20,10 +20,13 @@ import os
 from bzrlib.branch import Branch
 import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
-from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.inventory import (Inventory, ROOT_ID, InventoryFile,
+    InventoryDirectory, InventoryEntry)
 import bzrlib.inventory as inventory
 from bzrlib.osutils import has_symlinks, rename, pathjoin
 from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.transform import TreeTransform
+from bzrlib.uncommit import uncommit
 
 
 class TestInventory(TestCase):
@@ -139,21 +142,26 @@ class TestEntryDiffing(TestCaseWithTransport):
         self.wt = self.make_branch_and_tree('.')
         self.branch = self.wt.branch
         print >> open('file', 'wb'), 'foo'
+        print >> open('binfile', 'wb'), 'foo'
         self.wt.add(['file'], ['fileid'])
+        self.wt.add(['binfile'], ['binfileid'])
         if has_symlinks():
             os.symlink('target1', 'symlink')
             self.wt.add(['symlink'], ['linkid'])
         self.wt.commit('message_1', rev_id = '1')
         print >> open('file', 'wb'), 'bar'
+        print >> open('binfile', 'wb'), 'x' * 1023 + '\x00'
         if has_symlinks():
             os.unlink('symlink')
             os.symlink('target2', 'symlink')
         self.tree_1 = self.branch.repository.revision_tree('1')
         self.inv_1 = self.branch.repository.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
+        self.file_1b = self.inv_1['binfileid']
         self.tree_2 = self.wt
         self.inv_2 = self.tree_2.read_working_inventory()
         self.file_2 = self.inv_2['fileid']
+        self.file_2b = self.inv_2['binfileid']
         if has_symlinks():
             self.link_1 = self.inv_1['linkid']
             self.link_2 = self.inv_2['linkid']
@@ -195,6 +203,14 @@ class TestEntryDiffing(TestCaseWithTransport):
                                             "+bar\n"
                                             "\n")
         
+    def test_file_diff_binary(self):
+        output = StringIO()
+        self.file_1.diff(internal_diff, 
+                          "/dev/null", self.tree_1, 
+                          "new_label", self.file_2b, self.tree_2,
+                          output)
+        self.assertEqual(output.getvalue(), 
+                         "Binary files /dev/null and new_label differ\n")
     def test_link_diff_deleted(self):
         if not has_symlinks():
             return
@@ -339,11 +355,7 @@ class TestPreviousHeads(TestCaseWithTransport):
         self.wt.add(['file'], ['fileid'])
         self.wt.commit('add file', rev_id='B')
         self.inv_B = self.branch.repository.get_inventory('B')
-        self.branch.lock_write()
-        try:
-            self.branch.control_files.put_utf8('revision-history', 'A\n')
-        finally:
-            self.branch.unlock()
+        uncommit(self.branch, tree=self.wt)
         self.assertEqual(self.branch.revision_history(), ['A'])
         self.wt.commit('another add of file', rev_id='C')
         self.inv_C = self.branch.repository.get_inventory('C')
@@ -388,26 +400,79 @@ class TestPreviousHeads(TestCaseWithTransport):
     # TODO: test two inventories with the same file revision 
 
 
+class TestDescribeChanges(TestCase):
+
+    def test_describe_change(self):
+        # we need to test the following change combinations:
+        # rename
+        # reparent
+        # modify
+        # gone
+        # added
+        # renamed/reparented and modified
+        # change kind (perhaps can't be done yet?)
+        # also, merged in combination with all of these?
+        old_a = InventoryFile('a-id', 'a_file', ROOT_ID)
+        old_a.text_sha1 = '123132'
+        old_a.text_size = 0
+        new_a = InventoryFile('a-id', 'a_file', ROOT_ID)
+        new_a.text_sha1 = '123132'
+        new_a.text_size = 0
+
+        self.assertChangeDescription('unchanged', old_a, new_a)
+
+        new_a.text_size = 10
+        new_a.text_sha1 = 'abcabc'
+        self.assertChangeDescription('modified', old_a, new_a)
+
+        self.assertChangeDescription('added', None, new_a)
+        self.assertChangeDescription('removed', old_a, None)
+        # perhaps a bit questionable but seems like the most reasonable thing...
+        self.assertChangeDescription('unchanged', None, None)
+
+        # in this case it's both renamed and modified; show a rename and 
+        # modification:
+        new_a.name = 'newfilename'
+        self.assertChangeDescription('modified and renamed', old_a, new_a)
+
+        # reparenting is 'renaming'
+        new_a.name = old_a.name
+        new_a.parent_id = 'somedir-id'
+        self.assertChangeDescription('modified and renamed', old_a, new_a)
+
+        # reset the content values so its not modified
+        new_a.text_size = old_a.text_size
+        new_a.text_sha1 = old_a.text_sha1
+        new_a.name = old_a.name
+
+        new_a.name = 'newfilename'
+        self.assertChangeDescription('renamed', old_a, new_a)
+
+        # reparenting is 'renaming'
+        new_a.name = old_a.name
+        new_a.parent_id = 'somedir-id'
+        self.assertChangeDescription('renamed', old_a, new_a)
+
+    def assertChangeDescription(self, expected_change, old_ie, new_ie):
+        change = InventoryEntry.describe_change(old_ie, new_ie)
+        self.assertEqual(expected_change, change)
+
+
 class TestExecutable(TestCaseWithTransport):
 
     def test_stays_executable(self):
-        basic_inv = """<inventory format="5">
-<file file_id="a-20051208024829-849e76f7968d7a86" name="a" executable="yes" />
-<file file_id="b-20051208024829-849e76f7968d7a86" name="b" />
-</inventory>
-"""
-        wt = self.make_branch_and_tree('b1')
-        b = wt.branch
-        open('b1/a', 'wb').write('a test\n')
-        open('b1/b', 'wb').write('b test\n')
-        os.chmod('b1/a', 0755)
-        os.chmod('b1/b', 0644)
-        # Manually writing the inventory, to ensure that
-        # the executable="yes" entry is set for 'a' and not for 'b'
-        open('b1/.bzr/inventory', 'wb').write(basic_inv)
-
         a_id = "a-20051208024829-849e76f7968d7a86"
         b_id = "b-20051208024829-849e76f7968d7a86"
+        wt = self.make_branch_and_tree('b1')
+        b = wt.branch
+        tt = TreeTransform(wt)
+        tt.new_file('a', tt.root, 'a test\n', a_id, True)
+        tt.new_file('b', tt.root, 'b test\n', b_id, False)
+        tt.apply()
+
+        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
+
+        # reopen the tree and ensure it stuck.
         wt = wt.bzrdir.open_workingtree()
         self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
 
@@ -488,7 +553,9 @@ class TestExecutable(TestCaseWithTransport):
         self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
         self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
 
+
 class TestRevert(TestCaseWithTransport):
+
     def test_dangling_id(self):
         wt = self.make_branch_and_tree('b1')
         self.assertEqual(len(wt.inventory), 1)
@@ -498,5 +565,3 @@ class TestRevert(TestCaseWithTransport):
         os.unlink('b1/a')
         wt.revert([])
         self.assertEqual(len(wt.inventory), 1)
-
-

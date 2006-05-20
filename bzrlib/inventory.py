@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,9 +37,9 @@ import types
 import bzrlib
 from bzrlib.osutils import (pumpfile, quotefn, splitpath, joinpath,
                             pathjoin, sha_strings)
-from bzrlib.trace import mutter
 from bzrlib.errors import (NotVersionedError, InvalidEntryName,
-                           BzrError, BzrCheckError)
+                           BzrError, BzrCheckError, BinaryFile)
+from bzrlib.trace import mutter
 
 
 class InventoryEntry(object):
@@ -113,6 +113,14 @@ class InventoryEntry(object):
     >>> i.id2path('2326')
     'src/wibble/wibble.c'
     """
+
+    # Constants returned by describe_change()
+    #
+    # TODO: These should probably move to some kind of FileChangeDescription 
+    # class; that's like what's inside a TreeDelta but we want to be able to 
+    # generate them just for one file at a time.
+    RENAMED = 'renamed'
+    MODIFIED_AND_RENAMED = 'modified and renamed'
     
     __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
                  'text_id', 'parent_id', 'children', 'executable', 
@@ -122,6 +130,7 @@ class InventoryEntry(object):
         versionedfile = weave_store.get_weave_or_empty(self.file_id,
                                                        transaction)
         versionedfile.add_lines(self.revision, parents, new_lines)
+        versionedfile.clear_cache()
 
     def detect_changes(self, old_entry):
         """Return a (text_modified, meta_modified) from this to old_entry.
@@ -348,18 +357,49 @@ class InventoryEntry(object):
         raise BzrCheckError('unknown entry kind %r in revision {%s}' % 
                             (self.kind, rev_id))
 
-
     def copy(self):
         """Clone this inventory entry."""
         raise NotImplementedError
 
-    def _get_snapshot_change(self, previous_entries):
-        if len(previous_entries) > 1:
-            return 'merged'
-        elif len(previous_entries) == 0:
+    @staticmethod
+    def describe_change(old_entry, new_entry):
+        """Describe the change between old_entry and this.
+        
+        This smells of being an InterInventoryEntry situation, but as its
+        the first one, we're making it a static method for now.
+
+        An entry with a different parent, or different name is considered 
+        to be renamed. Reparenting is an internal detail.
+        Note that renaming the parent does not trigger a rename for the
+        child entry itself.
+        """
+        # TODO: Perhaps return an object rather than just a string
+        if old_entry is new_entry:
+            # also the case of both being None
+            return 'unchanged'
+        elif old_entry is None:
             return 'added'
+        elif new_entry is None:
+            return 'removed'
+        text_modified, meta_modified = new_entry.detect_changes(old_entry)
+        if text_modified or meta_modified:
+            modified = True
         else:
-            return 'modified/renamed/reparented'
+            modified = False
+        # TODO 20060511 (mbp, rbc) factor out 'detect_rename' here.
+        if old_entry.parent_id != new_entry.parent_id:
+            renamed = True
+        elif old_entry.name != new_entry.name:
+            renamed = True
+        else:
+            renamed = False
+        if renamed and not modified:
+            return InventoryEntry.RENAMED
+        if modified and not renamed:
+            return 'modified'
+        if modified and renamed:
+            return InventoryEntry.MODIFIED_AND_RENAMED
+        return 'unchanged'
 
     def __repr__(self):
         return ("%s(%r, %r, parent_id=%r)"
@@ -384,18 +424,24 @@ class InventoryEntry(object):
                 mutter("found unchanged entry")
                 self.revision = parent_ie.revision
                 return "unchanged"
-        return self.snapshot_revision(revision, previous_entries, 
-                                      work_tree, weave_store, transaction)
+        return self._snapshot_into_revision(revision, previous_entries, 
+                                            work_tree, weave_store, transaction)
 
-    def snapshot_revision(self, revision, previous_entries, work_tree,
-                          weave_store, transaction):
-        """Record this revision unconditionally."""
-        mutter('new revision for {%s}', self.file_id)
+    def _snapshot_into_revision(self, revision, previous_entries, work_tree,
+                                weave_store, transaction):
+        """Record this revision unconditionally into a store.
+
+        The entry's last-changed revision property (`revision`) is updated to 
+        that of the new revision.
+        
+        :param revision: id of the new revision that is being recorded.
+
+        :returns: String description of the commit (e.g. "merged", "modified"), etc.
+        """
+        mutter('new revision {%s} for {%s}', revision, self.file_id)
         self.revision = revision
-        change = self._get_snapshot_change(previous_entries)
         self._snapshot_text(previous_entries, work_tree, weave_store,
                             transaction)
-        return change
 
     def _snapshot_text(self, file_parents, work_tree, weave_store, transaction): 
         """Record the 'text' of this entry, whatever form that takes.
@@ -572,17 +618,24 @@ class InventoryFile(InventoryEntry):
     def _diff(self, text_diff, from_label, tree, to_label, to_entry, to_tree,
              output_to, reverse=False):
         """See InventoryEntry._diff."""
-        from_text = tree.get_file(self.file_id).readlines()
-        if to_entry:
-            to_text = to_tree.get_file(to_entry.file_id).readlines()
-        else:
-            to_text = []
-        if not reverse:
-            text_diff(from_label, from_text,
-                      to_label, to_text, output_to)
-        else:
-            text_diff(to_label, to_text,
-                      from_label, from_text, output_to)
+        try:
+            from_text = tree.get_file(self.file_id).readlines()
+            if to_entry:
+                to_text = to_tree.get_file(to_entry.file_id).readlines()
+            else:
+                to_text = []
+            if not reverse:
+                text_diff(from_label, from_text,
+                          to_label, to_text, output_to)
+            else:
+                text_diff(to_label, to_text,
+                          from_label, from_text, output_to)
+        except BinaryFile:
+            if reverse:
+                label_pair = (to_label, from_label)
+            else:
+                label_pair = (from_label, to_label)
+            print >> output_to, "Binary files %s and %s differ" % label_pair
 
     def has_text(self):
         """See InventoryEntry.has_text."""
@@ -622,21 +675,21 @@ class InventoryFile(InventoryEntry):
         self.text_sha1 = None
         self.executable = None
 
-    def _snapshot_text(self, file_parents, work_tree, weave_store, transaction):
+    def _snapshot_text(self, file_parents, work_tree, versionedfile_store, transaction):
         """See InventoryEntry._snapshot_text."""
-        mutter('storing file {%s} in revision {%s}',
-               self.file_id, self.revision)
+        mutter('storing text of file {%s} in revision {%s} into %r',
+               self.file_id, self.revision, versionedfile_store)
         # special case to avoid diffing on renames or 
         # reparenting
         if (len(file_parents) == 1
             and self.text_sha1 == file_parents.values()[0].text_sha1
             and self.text_size == file_parents.values()[0].text_size):
             previous_ie = file_parents.values()[0]
-            versionedfile = weave_store.get_weave(self.file_id, transaction)
+            versionedfile = versionedfile_store.get_weave(self.file_id, transaction)
             versionedfile.clone_text(self.revision, previous_ie.revision, file_parents.keys())
         else:
             new_lines = work_tree.get_file(self.file_id).readlines()
-            self._add_text_to_weave(new_lines, file_parents.keys(), weave_store,
+            self._add_text_to_weave(new_lines, file_parents.keys(), versionedfile_store,
                                     transaction)
             self.text_sha1 = sha_strings(new_lines)
             self.text_size = sum(map(len, new_lines))
@@ -946,18 +999,18 @@ class Inventory(object):
         The immediate parent must already be versioned.
 
         Returns the new entry object."""
-        from bzrlib.workingtree import gen_file_id
         
         parts = bzrlib.osutils.splitpath(relpath)
 
-        if file_id == None:
-            file_id = gen_file_id(relpath)
-
         if len(parts) == 0:
+            if file_id is None:
+                file_id = bzrlib.workingtree.gen_root_id()
             self.root = RootEntry(file_id)
             self._byid = {self.root.file_id: self.root}
             return
         else:
+            if file_id is None:
+                file_id = bzrlib.workingtree.gen_file_id(parts[-1])
             parent_path = parts[:-1]
             parent_id = self.path2id(parent_path)
             if parent_id == None:

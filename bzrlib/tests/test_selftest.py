@@ -13,24 +13,27 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for the test framework
-"""
+"""Tests for the test framework."""
 
 import os
+from StringIO import StringIO
 import sys
+import time
 import unittest
 import warnings
 
 import bzrlib
+from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
-                          _load_module_by_name,
                           ChrootedTestCase,
                           TestCase,
                           TestCaseInTempDir,
                           TestCaseWithTransport,
                           TestSkipped,
+                          TestSuite,
                           TextTestRunner,
                           )
+from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
 
 
@@ -65,19 +68,6 @@ class TestTreeShape(TestCaseInTempDir):
             raise TestSkipped("can't build unicode working tree in "
                 "filesystem encoding %s" % sys.getfilesystemencoding())
         self.failUnlessExists(filename)
-
-
-class TestSkippedTest(TestCase):
-    """Try running a test which is skipped, make sure it's reported properly."""
-
-    def test_skipped_test(self):
-        # must be hidden in here so it's not run as a real test
-        def skipping_test():
-            raise TestSkipped('test intentionally skipped')
-        runner = TextTestRunner(stream=self._log_file)
-        test = unittest.FunctionTestCase(skipping_test)
-        result = runner.run(test)
-        self.assertTrue(result.wasSuccessful())
 
 
 class TestTransportProviderAdapter(TestCase):
@@ -375,6 +365,7 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertRaises(AssertionError, self.assertIsDirectory, 'a_file', t)
         self.assertRaises(AssertionError, self.assertIsDirectory, 'not_here', t)
 
+
 class TestChrootedTest(ChrootedTestCase):
 
     def test_root_is_root(self):
@@ -384,6 +375,203 @@ class TestChrootedTest(ChrootedTestCase):
         self.assertEqual(url, t.clone('..').base)
 
 
+class MockProgress(_BaseProgressBar):
+    """Progress-bar standin that records calls.
+
+    Useful for testing pb using code.
+    """
+
+    def __init__(self):
+        _BaseProgressBar.__init__(self)
+        self.calls = []
+
+    def tick(self):
+        self.calls.append(('tick',))
+
+    def update(self, msg=None, current=None, total=None):
+        self.calls.append(('update', msg, current, total))
+
+    def clear(self):
+        self.calls.append(('clear',))
+
+
+class TestResult(TestCase):
+
+    def test_progress_bar_style_quiet(self):
+        # test using a progress bar.
+        dummy_test = TestResult('test_progress_bar_style_quiet')
+        dummy_error = (Exception, None, [])
+        mypb = MockProgress()
+        mypb.update('Running tests', 0, 4)
+        last_calls = mypb.calls[:]
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1,
+                                        pb=mypb)
+        self.assertEqual(last_calls, mypb.calls)
+
+        # an error 
+        result.startTest(dummy_test)
+        # starting a test prints the test name
+        self.assertEqual(last_calls + [('update', '...tyle_quiet', 0, None)], mypb.calls)
+        last_calls = mypb.calls[:]
+        result.addError(dummy_test, dummy_error)
+        self.assertEqual(last_calls + [('update', 'ERROR        ', 1, None)], mypb.calls)
+        last_calls = mypb.calls[:]
+
+        # a failure
+        result.startTest(dummy_test)
+        self.assertEqual(last_calls + [('update', '...tyle_quiet', 1, None)], mypb.calls)
+        last_calls = mypb.calls[:]
+        result.addFailure(dummy_test, dummy_error)
+        self.assertEqual(last_calls + [('update', 'FAIL         ', 2, None)], mypb.calls)
+        last_calls = mypb.calls[:]
+
+        # a success
+        result.startTest(dummy_test)
+        self.assertEqual(last_calls + [('update', '...tyle_quiet', 2, None)], mypb.calls)
+        last_calls = mypb.calls[:]
+        result.addSuccess(dummy_test)
+        self.assertEqual(last_calls + [('update', 'OK           ', 3, None)], mypb.calls)
+        last_calls = mypb.calls[:]
+
+        # a skip
+        result.startTest(dummy_test)
+        self.assertEqual(last_calls + [('update', '...tyle_quiet', 3, None)], mypb.calls)
+        last_calls = mypb.calls[:]
+        result.addSkipped(dummy_test, dummy_error)
+        self.assertEqual(last_calls + [('update', 'SKIP         ', 4, None)], mypb.calls)
+        last_calls = mypb.calls[:]
+
+    def test_elapsed_time_with_benchmarking(self):
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1,
+                                        )
+        result._recordTestStartTime()
+        time.sleep(0.003)
+        result.extractBenchmarkTime(self)
+        timed_string = result._testTimeString()
+        # without explicit benchmarking, we should get a simple time.
+        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
+        # if a benchmark time is given, we want a x of y style result.
+        self.time(time.sleep, 0.001)
+        result.extractBenchmarkTime(self)
+        timed_string = result._testTimeString()
+        self.assertContainsRe(timed_string, "^    [0-9]ms/   [ 1-9][0-9]ms$")
+        # extracting the time from a non-bzrlib testcase sets to None
+        result._recordTestStartTime()
+        result.extractBenchmarkTime(
+            unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
+        timed_string = result._testTimeString()
+        self.assertContainsRe(timed_string, "^          [0-9]ms$")
+        # cheat. Yes, wash thy mouth out with soap.
+        self._benchtime = None
+
+
+class TestRunner(TestCase):
+
+    def dummy_test(self):
+        pass
+
+    def run_test_runner(self, testrunner, test):
+        """Run suite in testrunner, saving global state and restoring it.
+
+        This current saves and restores:
+        TestCaseInTempDir.TEST_ROOT
+        
+        There should be no tests in this file that use bzrlib.tests.TextTestRunner
+        without using this convenience method, because of our use of global state.
+        """
+        old_root = TestCaseInTempDir.TEST_ROOT
+        try:
+            TestCaseInTempDir.TEST_ROOT = None
+            return testrunner.run(test)
+        finally:
+            TestCaseInTempDir.TEST_ROOT = old_root
+
+    def test_accepts_and_uses_pb_parameter(self):
+        test = TestRunner('dummy_test')
+        mypb = MockProgress()
+        self.assertEqual([], mypb.calls)
+        runner = TextTestRunner(stream=self._log_file, pb=mypb)
+        result = self.run_test_runner(runner, test)
+        self.assertEqual(1, result.testsRun)
+        self.assertEqual(('update', 'Running tests', 0, 1), mypb.calls[0])
+        self.assertEqual(('update', '...dummy_test', 0, None), mypb.calls[1])
+        self.assertEqual(('update', 'OK           ', 1, None), mypb.calls[2])
+        self.assertEqual(('update', 'Cleaning up', 0, 1), mypb.calls[3])
+        self.assertEqual(('clear',), mypb.calls[4])
+        self.assertEqual(5, len(mypb.calls))
+
+    def test_skipped_test(self):
+        # run a test that is skipped, and check the suite as a whole still
+        # succeeds.
+        # skipping_test must be hidden in here so it's not run as a real test
+        def skipping_test():
+            raise TestSkipped('test intentionally skipped')
+        runner = TextTestRunner(stream=self._log_file, keep_output=True)
+        test = unittest.FunctionTestCase(skipping_test)
+        result = self.run_test_runner(runner, test)
+        self.assertTrue(result.wasSuccessful())
+
+
+class TestTestCase(TestCase):
+    """Tests that test the core bzrlib TestCase."""
+
+    def inner_test(self):
+        # the inner child test
+        note("inner_test")
+
+    def outer_child(self):
+        # the outer child test
+        note("outer_start")
+        self.inner_test = TestTestCase("inner_child")
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1)
+        self.inner_test.run(result)
+        note("outer finish")
+
+    def test_trace_nesting(self):
+        # this tests that each test case nests its trace facility correctly.
+        # we do this by running a test case manually. That test case (A)
+        # should setup a new log, log content to it, setup a child case (B),
+        # which should log independently, then case (A) should log a trailer
+        # and return.
+        # we do two nested children so that we can verify the state of the 
+        # logs after the outer child finishes is correct, which a bad clean
+        # up routine in tearDown might trigger a fault in our test with only
+        # one child, we should instead see the bad result inside our test with
+        # the two children.
+        # the outer child test
+        original_trace = bzrlib.trace._trace_file
+        outer_test = TestTestCase("outer_child")
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1)
+        outer_test.run(result)
+        self.assertEqual(original_trace, bzrlib.trace._trace_file)
+
+    def method_that_times_a_bit_twice(self):
+        # call self.time twice to ensure it aggregates
+        self.time(time.sleep, 0.007)
+        self.time(time.sleep, 0.007)
+
+    def test_time_creates_benchmark_in_result(self):
+        """Test that the TestCase.time() method accumulates a benchmark time."""
+        sample_test = TestTestCase("method_that_times_a_bit_twice")
+        output_stream = StringIO()
+        result = bzrlib.tests._MyResult(
+            unittest._WritelnDecorator(output_stream),
+            descriptions=0,
+            verbosity=2)
+        sample_test.run(result)
+        self.assertContainsRe(
+            output_stream.getvalue(),
+            "[1-9][0-9]ms/   [1-9][0-9]ms\n$")
+        
+
 class TestExtraAssertions(TestCase):
     """Tests for new test assertions in bzrlib test suite"""
 
@@ -392,3 +580,35 @@ class TestExtraAssertions(TestCase):
         self.assertIsInstance(u'', basestring)
         self.assertRaises(AssertionError, self.assertIsInstance, None, int)
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
+
+    def test_assertEndsWith(self):
+        self.assertEndsWith('foo', 'oo')
+        self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
+
+
+class TestConvenienceMakers(TestCaseWithTransport):
+    """Test for the make_* convenience functions."""
+
+    def test_make_branch_and_tree_with_format(self):
+        # we should be able to supply a format to make_branch_and_tree
+        self.make_branch_and_tree('a', format=bzrlib.bzrdir.BzrDirMetaFormat1())
+        self.make_branch_and_tree('b', format=bzrlib.bzrdir.BzrDirFormat6())
+        self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('a')._format,
+                              bzrlib.bzrdir.BzrDirMetaFormat1)
+        self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
+                              bzrlib.bzrdir.BzrDirFormat6)
+
+
+class TestSelftest(TestCase):
+    """Tests of bzrlib.tests.selftest."""
+
+    def test_selftest_benchmark_parameter_invokes_test_suite__benchmark__(self):
+        factory_called = []
+        def factory():
+            factory_called.append(True)
+            return TestSuite()
+        out = StringIO()
+        err = StringIO()
+        self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
+            test_suite_factory=factory)
+        self.assertEqual([True], factory_called)

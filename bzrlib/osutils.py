@@ -24,6 +24,7 @@ import errno
 import os
 import re
 import sha
+import shutil
 import string
 import sys
 import time
@@ -35,8 +36,10 @@ from bzrlib.errors import (BzrError,
                            BzrBadParameterNotUnicode,
                            NoSuchFile,
                            PathNotChild,
+                           IllegalPath,
                            )
 from bzrlib.trace import mutter
+import bzrlib.win32console
 
 
 def make_readonly(filename):
@@ -170,7 +173,8 @@ def fancy_rename(old, new, rename_func, unlink_func):
             else:
                 rename_func(tmp_name, new)
 
-# Default is to just use the python builtins
+# Default is to just use the python builtins, but these can be rebound on
+# particular platforms.
 abspath = os.path.abspath
 realpath = os.path.realpath
 pathjoin = os.path.join
@@ -180,6 +184,9 @@ mkdtemp = tempfile.mkdtemp
 rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
+rmtree = shutil.rmtree
+
+MIN_ABS_PATHLENGTH = 1
 
 if os.name == "posix":
     # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
@@ -216,6 +223,25 @@ if sys.platform == 'win32':
 
     def rename(old, new):
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+
+    MIN_ABS_PATHLENGTH = 3
+
+    def _win32_delete_readonly(function, path, excinfo):
+        """Error handler for shutil.rmtree function [for win32]
+        Helps to remove files and dirs marked as read-only.
+        """
+        type_, value = excinfo[:2]
+        if function in (os.remove, os.rmdir) \
+            and type_ == OSError \
+            and value.errno == errno.EACCES:
+            bzrlib.osutils.make_writable(path)
+            function(path)
+        else:
+            raise
+
+    def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
+        """Replacer for shutil.rmtree: could remove readonly dirs/files"""
+        return shutil.rmtree(path, ignore_errors, onerror)
 
 
 def normalizepath(f):
@@ -530,7 +556,11 @@ def appendpath(p1, p2):
 
 def split_lines(s):
     """Split s into lines, but without removing the newline characters."""
-    return StringIO(s).readlines()
+    lines = s.split('\n')
+    result = [line + '\n' for line in lines[:-1]]
+    if lines[-1]:
+        result.append(lines[-1])
+    return result
 
 
 def hardlinks_good():
@@ -548,6 +578,16 @@ def link_or_copy(src, dest):
         if e.errno != errno.EXDEV:
             raise
         copyfile(src, dest)
+
+def delete_any(full_path):
+    """Delete a file or directory."""
+    try:
+        os.unlink(full_path)
+    except OSError, e:
+    # We may be renaming a dangling inventory id
+        if e.errno not in (errno.EISDIR, errno.EACCES, errno.EPERM):
+            raise
+        os.rmdir(full_path)
 
 
 def has_symlinks():
@@ -585,12 +625,10 @@ def relpath(base, path):
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem.
     """
-    if sys.platform != "win32":
-        minlength = 1
-    else:
-        minlength = 3
-    assert len(base) >= minlength, ('Length of base must be equal or exceed the'
-        ' platform minimum length (which is %d)' % minlength)
+
+    assert len(base) >= MIN_ABS_PATHLENGTH, ('Length of base must be equal or'
+        ' exceed the platform minimum length (which is %d)' % 
+        MIN_ABS_PATHLENGTH)
     rp = abspath(path)
 
     s = []
@@ -630,16 +668,50 @@ def safe_unicode(unicode_or_utf8_string):
 
 def terminal_width():
     """Return estimated terminal width."""
-
-    # TODO: Do something smart on Windows?
-
-    # TODO: Is there anything that gets a better update when the window
-    # is resized while the program is running? We could use the Python termcap
-    # library.
+    if sys.platform == 'win32':
+        import bzrlib.win32console
+        return bzrlib.win32console.get_console_size()[0]
+    width = 0
     try:
-        return int(os.environ['COLUMNS'])
-    except (IndexError, KeyError, ValueError):
-        return 80
+        import struct, fcntl, termios
+        s = struct.pack('HHHH', 0, 0, 0, 0)
+        x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
+        width = struct.unpack('HHHH', x)[1]
+    except IOError:
+        pass
+    if width <= 0:
+        try:
+            width = int(os.environ['COLUMNS'])
+        except:
+            pass
+    if width <= 0:
+        width = 80
+
+    return width
 
 def supports_executable():
     return sys.platform != "win32"
+
+
+def strip_trailing_slash(path):
+    """Strip trailing slash, except for root paths.
+    The definition of 'root path' is platform-dependent.
+    """
+    if len(path) != MIN_ABS_PATHLENGTH and path[-1] == '/':
+        return path[:-1]
+    else:
+        return path
+
+
+_validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
+
+
+def check_legal_path(path):
+    """Check whether the supplied path is legal.  
+    This is only required on Windows, so we don't test on other platforms
+    right now.
+    """
+    if sys.platform != "win32":
+        return
+    if _validWin32PathRE.match(path) is None:
+        raise IllegalPath(path)

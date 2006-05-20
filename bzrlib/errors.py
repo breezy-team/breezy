@@ -53,6 +53,8 @@ Exception strings should start with a capital letter and not have a final
 fullstop.
 """
 
+from warnings import warn
+
 # based on Scott James Remnant's hct error classes
 
 # TODO: is there any value in providing the .args field used by standard
@@ -65,6 +67,10 @@ fullstop.
 
 # TODO: Convert all the other error classes here to BzrNewError, and eliminate
 # the old one.
+
+# TODO: The pattern (from hct) of using classes docstrings as message
+# templates is cute but maybe not such a great idea - perhaps should have a
+# separate static message_template.
 
 
 class BzrError(StandardError):
@@ -128,13 +134,14 @@ class InvalidRevisionNumber(BzrNewError):
 class InvalidRevisionId(BzrNewError):
     """Invalid revision-id {%(revision_id)s} in %(branch)s"""
     def __init__(self, revision_id, branch):
+        # branch can be any string or object with __str__ defined
         BzrNewError.__init__(self)
         self.revision_id = revision_id
         self.branch = branch
 
 
 class NoWorkingTree(BzrNewError):
-    """No WorkingTree exists for %s(base)."""
+    """No WorkingTree exists for %(base)s."""
     
     def __init__(self, base):
         BzrNewError.__init__(self)
@@ -142,7 +149,7 @@ class NoWorkingTree(BzrNewError):
 
 
 class NotLocalUrl(BzrNewError):
-    """%s(url) is not a local path."""
+    """%(url)s is not a local path."""
     
     def __init__(self, url):
         BzrNewError.__init__(self)
@@ -170,8 +177,11 @@ class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
 
+# XXX: Should be unified with TransportError; they seem to represent the
+# same thing
 class PathError(BzrNewError):
     """Generic path error: %(path)r%(extra)s)"""
+
     def __init__(self, path, extra=None):
         BzrNewError.__init__(self)
         self.path = path
@@ -213,15 +223,21 @@ class PathNotChild(BzrNewError):
             self.extra = ''
 
 
-class NotBranchError(BzrNewError):
+class NotBranchError(PathError):
     """Not a branch: %(path)s"""
-    def __init__(self, path):
-        BzrNewError.__init__(self)
-        self.path = path
+
+
+class AlreadyBranchError(PathError):
+    """Already a branch: %(path)s."""
+
+
+class BranchExistsWithoutWorkingTree(PathError):
+    """Directory contains a branch, but no working tree \
+(use bzr checkout if you wish to build a working tree): %(path)s"""
 
 
 class NoRepositoryPresent(BzrNewError):
-    """Not repository present: %(path)r"""
+    """No repository present: %(path)r"""
     def __init__(self, bzrdir):
         BzrNewError.__init__(self)
         self.path = bzrdir.transport.clone('..').base
@@ -263,6 +279,31 @@ class NotVersionedError(BzrNewError):
     def __init__(self, path):
         BzrNewError.__init__(self)
         self.path = path
+
+
+class PathsNotVersionedError(BzrNewError):
+    # used when reporting several paths are not versioned
+    """Path(s) are not versioned: %(paths_as_string)s"""
+
+    def __init__(self, paths):
+        from bzrlib.osutils import quotefn
+        BzrNewError.__init__(self)
+        self.paths = paths
+        self.paths_as_string = ' '.join([quotefn(p) for p in paths])
+
+
+class PathsDoNotExist(BzrNewError):
+    """Path(s) do not exist: %(paths_as_string)s"""
+
+    # used when reporting that paths are neither versioned nor in the working
+    # tree
+
+    def __init__(self, paths):
+        # circular import
+        from bzrlib.osutils import quotefn
+        BzrNewError.__init__(self)
+        self.paths = paths
+        self.paths_as_string = ' '.join([quotefn(p) for p in paths])
 
 
 class BadFileKindError(BzrError):
@@ -394,6 +435,7 @@ class HistoryMissing(BzrError):
 
 
 class DivergedBranches(BzrError):
+
     def __init__(self, branch1, branch2):
         BzrError.__init__(self, "These branches have diverged.  Try merge.")
         self.branch1 = branch1
@@ -440,6 +482,8 @@ class InstallFailed(BzrError):
 
 class AmbiguousBase(BzrError):
     def __init__(self, bases):
+        warn("BzrError AmbiguousBase has been deprecated as of bzrlib 0.8.",
+                DeprecationWarning)
         msg = "The correct base is unclear, becase %s are all equally close" %\
             ", ".join(bases)
         BzrError.__init__(self, msg)
@@ -746,6 +790,14 @@ class BzrBadParameterMissing(BzrBadParameter):
     """Parameter $(param)s is required but not present."""
 
 
+class BzrBadParameterUnicode(BzrBadParameter):
+    """Parameter %(param)s is unicode but only byte-strings are permitted."""
+
+
+class BzrBadParameterContainsNewline(BzrBadParameter):
+    """Parameter %(param)s contains a newline."""
+
+
 class DependencyNotPresent(BzrNewError):
     """Unable to import library "%(library)s": %(error)s"""
 
@@ -804,6 +856,10 @@ class MergeModifiedFormatError(BzrNewError):
     """Error in merge modified format"""
 
 
+class ConflictFormatError(BzrNewError):
+    """Format error in conflict listings"""
+
+
 class CorruptRepository(BzrNewError):
     """An error has been detected in the repository %(repo_path)s.
 Please run bzr reconcile on this repository."""
@@ -827,3 +883,23 @@ class LocalRequiresBoundBranch(BzrNewError):
 
 class MissingProgressBarFinish(BzrNewError):
     """A nested progress bar was not 'finished' correctly."""
+
+
+class UnsupportedOperation(BzrNewError):
+    """The method %(mname)s is not supported on objects of type %(tname)s."""
+    def __init__(self, method, method_self):
+        self.method = method
+        self.mname = method.__name__
+        self.tname = type(method_self).__name__
+
+
+class BinaryFile(BzrNewError):
+    """File is binary but should be text."""
+
+
+class IllegalPath(BzrNewError):
+    """The path %(path)s is not permitted on this platform"""
+
+    def __init__(self, path):
+        BzrNewError.__init__(self)
+        self.path = path

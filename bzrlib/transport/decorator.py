@@ -42,7 +42,9 @@ class TransportDecorator(Transport):
         
         _decorated is a private parameter for cloning."""
         prefix = self._get_url_prefix()
-        assert url.startswith(prefix)
+        assert url.startswith(prefix), \
+                "url %r doesn't start with decorator prefix %r" % \
+                (url, prefix)
         decorated_url = url[len(prefix):]
         if _decorated is None:
             self._decorated = get_transport(decorated_url)
@@ -55,9 +57,9 @@ class TransportDecorator(Transport):
         """See Transport.abspath()."""
         return self._get_url_prefix() + self._decorated.abspath(relpath)
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """See Transport.append()."""
-        return self._decorated.append(relpath, f)
+        return self._decorated.append(relpath, f, mode=mode)
 
     def clone(self, offset=None):
         """See Transport.clone()."""
@@ -109,6 +111,9 @@ class TransportDecorator(Transport):
     def list_dir(self, relpath):
         """See Transport.list_dir()."""
         return self._decorated.list_dir(relpath)
+
+    def rename(self, rel_from, rel_to):
+        return self._decorated.rename(rel_from, rel_to)
     
     def rmdir(self, relpath):
         """See Transport.rmdir."""

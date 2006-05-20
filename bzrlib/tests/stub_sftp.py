@@ -22,11 +22,13 @@ Adapted from the one in paramiko's unit tests.
 import os
 from paramiko import ServerInterface, SFTPServerInterface, SFTPServer, SFTPAttributes, \
     SFTPHandle, SFTP_OK, AUTH_SUCCESSFUL, OPEN_SUCCEEDED
+
 from bzrlib.osutils import pathjoin
 from bzrlib.trace import mutter
 
 
 class StubServer (ServerInterface):
+
     def __init__(self, test_case):
         ServerInterface.__init__(self)
         self._test_case = test_case
@@ -59,6 +61,7 @@ class StubSFTPHandle (SFTPHandle):
 
 
 class StubSFTPServer (SFTPServerInterface):
+
     def __init__(self, server, root, home=None):
         SFTPServerInterface.__init__(self, server)
         self.root = root

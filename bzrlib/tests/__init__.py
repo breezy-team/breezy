@@ -33,7 +33,6 @@ import errno
 import logging
 import os
 import re
-import shutil
 import stat
 import sys
 import tempfile
@@ -48,10 +47,13 @@ import bzrlib.errors as errors
 import bzrlib.inventory
 import bzrlib.iterablefile
 import bzrlib.lockdir
+from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.osutils
 import bzrlib.osutils as osutils
 import bzrlib.plugin
+import bzrlib.progress as progress
+from bzrlib.revision import common_ancestor
 import bzrlib.store
 import bzrlib.trace
 from bzrlib.transport import urlescape, get_transport
@@ -112,9 +114,49 @@ class _MyResult(unittest._TextTestResult):
     Shows output in a different format, including displaying runtime for tests.
     """
     stop_early = False
+    
+    def __init__(self, stream, descriptions, verbosity, pb=None):
+        unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
+        self.pb = pb
+    
+    def extractBenchmarkTime(self, testCase):
+        """Add a benchmark time for the current test case."""
+        self._benchmarkTime = getattr(testCase, "_benchtime", None)
+    
+    def _elapsedTestTimeString(self):
+        """Return a time string for the overall time the current test has taken."""
+        return self._formatTime(time.time() - self._start_time)
 
-    def _elapsedTime(self):
-        return "%5dms" % (1000 * (time.time() - self._start_time))
+    def _testTimeString(self):
+        if self._benchmarkTime is not None:
+            return "%s/%s" % (
+                self._formatTime(self._benchmarkTime),
+                self._elapsedTestTimeString())
+        else:
+            return "      %s" % self._elapsedTestTimeString()
+
+    def _formatTime(self, seconds):
+        """Format seconds as milliseconds with leading spaces."""
+        return "%5dms" % (1000 * seconds)
+
+    def _ellipsise_unimportant_words(self, a_string, final_width,
+                                   keep_start=False):
+        """Add ellipses (sp?) for overly long strings.
+        
+        :param keep_start: If true preserve the start of a_string rather
+                           than the end of it.
+        """
+        if keep_start:
+            if len(a_string) > final_width:
+                result = a_string[:final_width-3] + '...'
+            else:
+                result = a_string
+        else:
+            if len(a_string) > final_width:
+                result = '...' + a_string[3-final_width:]
+            else:
+                result = a_string
+        return result.ljust(final_width)
 
     def startTest(self, test):
         unittest.TestResult.startTest(self, test)
@@ -122,62 +164,81 @@ class _MyResult(unittest._TextTestResult):
         # the beginning, but in an id, the important words are
         # at the end
         SHOW_DESCRIPTIONS = False
+
+        if not self.showAll and self.dots and self.pb is not None:
+            final_width = 13
+        else:
+            final_width = osutils.terminal_width()
+            final_width = final_width - 15 - 8
+        what = None
+        if SHOW_DESCRIPTIONS:
+            what = test.shortDescription()
+            if what:
+                what = self._ellipsise_unimportant_words(what, final_width, keep_start=True)
+        if what is None:
+            what = test.id()
+            if what.startswith('bzrlib.tests.'):
+                what = what[13:]
+            what = self._ellipsise_unimportant_words(what, final_width)
         if self.showAll:
-            width = osutils.terminal_width()
-            name_width = width - 15
-            what = None
-            if SHOW_DESCRIPTIONS:
-                what = test.shortDescription()
-                if what:
-                    if len(what) > name_width:
-                        what = what[:name_width-3] + '...'
-            if what is None:
-                what = test.id()
-                if what.startswith('bzrlib.tests.'):
-                    what = what[13:]
-                if len(what) > name_width:
-                    what = '...' + what[3-name_width:]
-            what = what.ljust(name_width)
             self.stream.write(what)
+        elif self.dots and self.pb is not None:
+            self.pb.update(what, self.testsRun - 1, None)
         self.stream.flush()
+        self._recordTestStartTime()
+
+    def _recordTestStartTime(self):
+        """Record that a test has started."""
         self._start_time = time.time()
 
     def addError(self, test, err):
         if isinstance(err[1], TestSkipped):
             return self.addSkipped(test, err)    
         unittest.TestResult.addError(self, test, err)
+        self.extractBenchmarkTime(test)
         if self.showAll:
-            self.stream.writeln("ERROR %s" % self._elapsedTime())
-        elif self.dots:
+            self.stream.writeln("ERROR %s" % self._testTimeString())
+        elif self.dots and self.pb is None:
             self.stream.write('E')
+        elif self.dots:
+            self.pb.update(self._ellipsise_unimportant_words('ERROR', 13), self.testsRun, None)
         self.stream.flush()
         if self.stop_early:
             self.stop()
 
     def addFailure(self, test, err):
         unittest.TestResult.addFailure(self, test, err)
+        self.extractBenchmarkTime(test)
         if self.showAll:
-            self.stream.writeln(" FAIL %s" % self._elapsedTime())
-        elif self.dots:
+            self.stream.writeln(" FAIL %s" % self._testTimeString())
+        elif self.dots and self.pb is None:
             self.stream.write('F')
+        elif self.dots:
+            self.pb.update(self._ellipsise_unimportant_words('FAIL', 13), self.testsRun, None)
         self.stream.flush()
         if self.stop_early:
             self.stop()
 
     def addSuccess(self, test):
+        self.extractBenchmarkTime(test)
         if self.showAll:
-            self.stream.writeln('   OK %s' % self._elapsedTime())
-        elif self.dots:
+            self.stream.writeln('   OK %s' % self._testTimeString())
+        elif self.dots and self.pb is None:
             self.stream.write('~')
+        elif self.dots:
+            self.pb.update(self._ellipsise_unimportant_words('OK', 13), self.testsRun, None)
         self.stream.flush()
         unittest.TestResult.addSuccess(self, test)
 
     def addSkipped(self, test, skip_excinfo):
+        self.extractBenchmarkTime(test)
         if self.showAll:
-            print >>self.stream, ' SKIP %s' % self._elapsedTime()
+            print >>self.stream, ' SKIP %s' % self._testTimeString()
             print >>self.stream, '     %s' % skip_excinfo[1]
-        elif self.dots:
+        elif self.dots and self.pb is None:
             self.stream.write('S')
+        elif self.dots:
+            self.pb.update(self._ellipsise_unimportant_words('SKIP', 13), self.testsRun, None)
         self.stream.flush()
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
@@ -198,12 +259,75 @@ class _MyResult(unittest._TextTestResult):
             self.stream.writeln("%s" % err)
 
 
-class TextTestRunner(unittest.TextTestRunner):
+class TextTestRunner(object):
     stop_on_failure = False
 
+    def __init__(self,
+                 stream=sys.stderr,
+                 descriptions=0,
+                 verbosity=1,
+                 keep_output=False,
+                 pb=None):
+        self.stream = unittest._WritelnDecorator(stream)
+        self.descriptions = descriptions
+        self.verbosity = verbosity
+        self.keep_output = keep_output
+        self.pb = pb
+
     def _makeResult(self):
-        result = _MyResult(self.stream, self.descriptions, self.verbosity)
+        result = _MyResult(self.stream,
+                           self.descriptions,
+                           self.verbosity,
+                           pb=self.pb)
         result.stop_early = self.stop_on_failure
+        return result
+
+    def run(self, test):
+        "Run the given test case or test suite."
+        result = self._makeResult()
+        startTime = time.time()
+        if self.pb is not None:
+            self.pb.update('Running tests', 0, test.countTestCases())
+        test.run(result)
+        stopTime = time.time()
+        timeTaken = stopTime - startTime
+        result.printErrors()
+        self.stream.writeln(result.separator2)
+        run = result.testsRun
+        self.stream.writeln("Ran %d test%s in %.3fs" %
+                            (run, run != 1 and "s" or "", timeTaken))
+        self.stream.writeln()
+        if not result.wasSuccessful():
+            self.stream.write("FAILED (")
+            failed, errored = map(len, (result.failures, result.errors))
+            if failed:
+                self.stream.write("failures=%d" % failed)
+            if errored:
+                if failed: self.stream.write(", ")
+                self.stream.write("errors=%d" % errored)
+            self.stream.writeln(")")
+        else:
+            self.stream.writeln("OK")
+        if self.pb is not None:
+            self.pb.update('Cleaning up', 0, 1)
+        # This is still a little bogus, 
+        # but only a little. Folk not using our testrunner will
+        # have to delete their temp directories themselves.
+        test_root = TestCaseInTempDir.TEST_ROOT
+        if result.wasSuccessful() or not self.keep_output:
+            if test_root is not None:
+                    osutils.rmtree(test_root)
+        else:
+            if self.pb is not None:
+                self.pb.note("Failed tests working directories are in '%s'\n",
+                             test_root)
+            else:
+                self.stream.writeln(
+                    "Failed tests working directories are in '%s'\n" %
+                    test_root)
+        TestCaseInTempDir.TEST_ROOT = None
+        if self.pb is not None:
+            self.pb.clear()
         return result
 
 
@@ -249,7 +373,6 @@ class TestCase(unittest.TestCase):
     accidentally overlooked.
     """
 
-    BZRPATH = 'bzr'
     _log_file_name = None
     _log_contents = ''
 
@@ -262,6 +385,7 @@ class TestCase(unittest.TestCase):
         self._cleanEnvironment()
         bzrlib.trace.disable_default_logging()
         self._startLogFile()
+        self._benchtime = None
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -301,7 +425,8 @@ class TestCase(unittest.TestCase):
             raise AssertionError('string %r does not start with %r' % (s, prefix))
 
     def assertEndsWith(self, s, suffix):
-        if not s.endswith(prefix):
+        """Asserts that s ends with suffix."""
+        if not s.endswith(suffix):
             raise AssertionError('string %r does not end with %r' % (s, suffix))
 
     def assertContainsRe(self, haystack, needle_re):
@@ -327,9 +452,9 @@ class TestCase(unittest.TestCase):
     def assertTransportMode(self, transport, path, mode):
         """Fail if a path does not have mode mode.
         
-        If modes are not supported on this platform, the test is skipped.
+        If modes are not supported on this transport, the assertion is ignored.
         """
-        if sys.platform == 'win32':
+        if not transport._can_roundtrip_unix_modebits():
             return
         path_stat = transport.stat(path)
         actual_mode = stat.S_IMODE(path_stat.st_mode)
@@ -339,7 +464,8 @@ class TestCase(unittest.TestCase):
     def assertIsInstance(self, obj, kls):
         """Fail if obj is not an instance of kls"""
         if not isinstance(obj, kls):
-            self.fail("%r is not an instance of %s" % (obj, kls))
+            self.fail("%r is an instance of %s rather than %s" % (
+                obj, obj.__class__, kls))
 
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
@@ -414,6 +540,16 @@ class TestCase(unittest.TestCase):
         self._runCleanups()
         unittest.TestCase.tearDown(self)
 
+    def time(self, callable, *args, **kwargs):
+        """Run callable and accrue the time it takes to the benchmark time."""
+        if self._benchtime is None:
+            self._benchtime = 0
+        start = time.time()
+        try:
+            callable(*args, **kwargs)
+        finally:
+            self._benchtime += time.time() - start
+
     def _runCleanups(self):
         """Run registered cleanup functions. 
 
@@ -439,7 +575,7 @@ class TestCase(unittest.TestCase):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
 
-    def run_bzr_captured(self, argv, retcode=0):
+    def run_bzr_captured(self, argv, retcode=0, stdin=None):
         """Invoke bzr and return (stdout, stderr).
 
         Useful for code that wants to check the contents of the
@@ -458,7 +594,10 @@ class TestCase(unittest.TestCase):
 
         argv -- arguments to invoke bzr
         retcode -- expected return code, or None for don't-care.
+        :param stdin: A string to be used as stdin for the command.
         """
+        if stdin is not None:
+            stdin = StringIO(stdin)
         stdout = StringIO()
         stderr = StringIO()
         self.log('run bzr: %s', ' '.join(argv))
@@ -468,12 +607,18 @@ class TestCase(unittest.TestCase):
         handler.setLevel(logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
+        old_ui_factory = bzrlib.ui.ui_factory
+        bzrlib.ui.ui_factory = bzrlib.tests.blackbox.TestUIFactory(
+            stdout=stdout,
+            stderr=stderr)
+        bzrlib.ui.ui_factory.stdin = stdin
         try:
-            result = self.apply_redirected(None, stdout, stderr,
+            result = self.apply_redirected(stdin, stdout, stderr,
                                            bzrlib.commands.run_bzr_catch_errors,
                                            argv)
         finally:
             logger.removeHandler(handler)
+            bzrlib.ui.ui_factory = old_ui_factory
         out = stdout.getvalue()
         err = stderr.getvalue()
         if out:
@@ -493,9 +638,12 @@ class TestCase(unittest.TestCase):
 
         This sends the stdout/stderr results into the test's log,
         where it may be useful for debugging.  See also run_captured.
+
+        :param stdin: A string to be used as stdin for the command.
         """
         retcode = kwargs.pop('retcode', 0)
-        return self.run_bzr_captured(args, retcode)
+        stdin = kwargs.pop('stdin', None)
+        return self.run_bzr_captured(args, retcode, stdin)
 
     def check_inventory_shape(self, inv, shape):
         """Compare an inventory to a list of expected names.
@@ -548,6 +696,22 @@ class TestCase(unittest.TestCase):
             sys.stdout = real_stdout
             sys.stderr = real_stderr
             sys.stdin = real_stdin
+
+    def merge(self, branch_from, wt_to):
+        """A helper for tests to do a ui-less merge.
+
+        This should move to the main library when someone has time to integrate
+        it in.
+        """
+        # minimal ui-less merge.
+        wt_to.branch.fetch(branch_from)
+        base_rev = common_ancestor(branch_from.last_revision(),
+                                   wt_to.branch.last_revision(),
+                                   wt_to.branch.repository)
+        merge_inner(wt_to.branch, branch_from.basis_tree(), 
+                    wt_to.branch.repository.revision_tree(base_rev),
+                    this_tree=wt_to)
+        wt_to.add_pending_merge(branch_from.last_revision())
 
 
 BzrTestBase = TestCase
@@ -775,12 +939,12 @@ class TestCaseWithTransport(TestCaseInTempDir):
         self.assertTrue(t.is_readonly())
         return t
 
-    def make_branch(self, relpath):
+    def make_branch(self, relpath, format=None):
         """Create a branch on the transport at relpath."""
-        repo = self.make_repository(relpath)
+        repo = self.make_repository(relpath, format=format)
         return repo.bzrdir.create_branch()
 
-    def make_bzrdir(self, relpath):
+    def make_bzrdir(self, relpath, format=None):
         try:
             url = self.get_url(relpath)
             segments = relpath.split('/')
@@ -791,16 +955,19 @@ class TestCaseWithTransport(TestCaseInTempDir):
                     t.mkdir(segments[-1])
                 except errors.FileExists:
                     pass
-            return bzrlib.bzrdir.BzrDir.create(url)
+            if format is None:
+                format=bzrlib.bzrdir.BzrDirFormat.get_default_format()
+            # FIXME: make this use a single transport someday. RBC 20060418
+            return format.initialize_on_transport(get_transport(relpath))
         except errors.UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
+            raise TestSkipped("Format %s is not initializable." % format)
 
-    def make_repository(self, relpath, shared=False):
+    def make_repository(self, relpath, shared=False, format=None):
         """Create a repository on our default transport at relpath."""
-        made_control = self.make_bzrdir(relpath)
+        made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
-    def make_branch_and_tree(self, relpath):
+    def make_branch_and_tree(self, relpath, format=None):
         """Create a branch on the transport and a tree locally.
 
         Returns the tree.
@@ -809,7 +976,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         # this obviously requires a format that supports branch references
         # so check for that by checking bzrdir.BzrDirFormat.get_default_format()
         # RBC 20060208
-        b = self.make_branch(relpath)
+        b = self.make_branch(relpath, format=format)
         try:
             return b.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
@@ -868,42 +1035,37 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     TestCaseInTempDir._TEST_NAME = name
     if verbose:
         verbosity = 2
+        pb = None
     else:
         verbosity = 1
+        pb = progress.ProgressBar()
     runner = TextTestRunner(stream=sys.stdout,
                             descriptions=0,
-                            verbosity=verbosity)
+                            verbosity=verbosity,
+                            keep_output=keep_output,
+                            pb=pb)
     runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
         suite = filter_suite_by_re(suite, pattern)
     result = runner.run(suite)
-    # This is still a little bogus, 
-    # but only a little. Folk not using our testrunner will
-    # have to delete their temp directories themselves.
-    test_root = TestCaseInTempDir.TEST_ROOT
-    if result.wasSuccessful() or not keep_output:
-        if test_root is not None:
-            print 'Deleting test root %s...' % test_root
-            try:
-                shutil.rmtree(test_root)
-            finally:
-                print
-    else:
-        print "Failed tests working directories are in '%s'\n" % TestCaseInTempDir.TEST_ROOT
     return result.wasSuccessful()
 
 
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              keep_output=False,
-             transport=None):
+             transport=None,
+             test_suite_factory=None):
     """Run the whole test suite under the enhanced runner"""
     global default_transport
     if transport is None:
         transport = default_transport
     old_transport = default_transport
     default_transport = transport
-    suite = test_suite()
     try:
+        if test_suite_factory is None:
+            suite = test_suite()
+        else:
+            suite = test_suite_factory()
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
                      stop_on_failure=stop_on_failure, keep_output=keep_output,
                      transport=transport)
@@ -911,19 +1073,20 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         default_transport = old_transport
 
 
-
 def test_suite():
-    """Build and return TestSuite for the whole program."""
+    """Build and return TestSuite for the whole of bzrlib.
+    
+    This function can be replaced if you need to change the default test
+    suite on a global basis, but it is not encouraged.
+    """
     from doctest import DocTestSuite
 
     global MODULES_TO_DOCTEST
 
     testmod_names = [ \
                    'bzrlib.tests.test_ancestry',
-                   'bzrlib.tests.test_annotate',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
-                   'bzrlib.tests.test_basis_inventory',
                    'bzrlib.tests.test_branch',
                    'bzrlib.tests.test_bzrdir',
                    'bzrlib.tests.test_command',
@@ -935,6 +1098,7 @@ def test_suite():
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
                    'bzrlib.tests.test_errors',
+                   'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
                    'bzrlib.tests.test_gpg',
                    'bzrlib.tests.test_graph',
@@ -954,6 +1118,7 @@ def test_suite():
                    'bzrlib.tests.test_nonascii',
                    'bzrlib.tests.test_options',
                    'bzrlib.tests.test_osutils',
+                   'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_permissions',
                    'bzrlib.tests.test_plugins',
                    'bzrlib.tests.test_progress',
@@ -969,16 +1134,19 @@ def test_suite():
                    'bzrlib.tests.test_sftp_transport',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_source',
+                   'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_testament',
+                   'bzrlib.tests.test_textfile',
+                   'bzrlib.tests.test_textmerge',
                    'bzrlib.tests.test_trace',
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
                    'bzrlib.tests.test_tsort',
+                   'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
-                   'bzrlib.tests.test_uncommit',
                    'bzrlib.tests.test_upgrade',
                    'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_weave',
@@ -989,23 +1157,12 @@ def test_suite():
     test_transport_implementations = [
         'bzrlib.tests.test_transport_implementations']
 
-    TestCase.BZRPATH = osutils.pathjoin(
-            osutils.realpath(osutils.dirname(bzrlib.__path__[0])), 'bzr')
-    print '%10s: %s' % ('bzr', osutils.realpath(sys.argv[0]))
-    print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
-    print
     suite = TestSuite()
-    # python2.4's TestLoader.loadTestsFromNames gives very poor 
-    # errors if it fails to load a named module - no indication of what's
-    # actually wrong, just "no such module".  We should probably override that
-    # class, but for the moment just load them ourselves. (mbp 20051202)
-    loader = TestLoader()
+    loader = TestUtil.TestLoader()
     from bzrlib.transport import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
-    for mod_name in testmod_names:
-        mod = _load_module_by_name(mod_name)
-        suite.addTest(loader.loadTestsFromModule(mod))
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
@@ -1020,18 +1177,5 @@ def test_suite():
 
 def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
-    for mod_name in mods_list:
-        mod = _load_module_by_name(mod_name)
-        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
-            suite.addTests(adapter.adapt(test))
-
-
-def _load_module_by_name(mod_name):
-    parts = mod_name.split('.')
-    module = __import__(mod_name)
-    del parts[0]
-    # for historical reasons python returns the top-level module even though
-    # it loads the submodule; we need to walk down to get the one we want.
-    while parts:
-        module = getattr(module, parts.pop(0))
-    return module
+    for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
+        suite.addTests(adapter.adapt(test))

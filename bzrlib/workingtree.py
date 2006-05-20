@@ -30,6 +30,7 @@ WorkingTree.open(dir).
 """
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
+CONFLICT_HEADER_1 = "BZR conflict list format 1"
 
 # TODO: Give the workingtree sole responsibility for the working inventory;
 # remove the variable and references to it from the branch.  This may require
@@ -38,28 +39,34 @@ MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
 # At the moment they may alias the inventory and have old copies of it in
 # memory.  (Now done? -- mbp 20060309)
 
+from binascii import hexlify
 from copy import deepcopy
 from cStringIO import StringIO
 import errno
 import fnmatch
 import os
+import re
 import stat
- 
+from time import time
 
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import (Branch,
                            quotefn)
+from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
+                           ConflictFormatError,
                            DivergedBranches,
                            WeaveRevisionNotPresent,
                            NotBranchError,
                            NoSuchFile,
                            NotVersionedError,
-                           MergeModifiedFormatError)
+                           MergeModifiedFormatError,
+                           UnsupportedOperation,
+                           )
 from bzrlib.inventory import InventoryEntry, Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
@@ -75,7 +82,7 @@ from bzrlib.osutils import (
                             pumpfile,
                             safe_unicode,
                             splitpath,
-                            rand_bytes,
+                            rand_chars,
                             normpath,
                             realpath,
                             relpath,
@@ -84,45 +91,55 @@ from bzrlib.osutils import (
                             )
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import NULL_REVISION
-from bzrlib.rio import RioReader, RioWriter, Stanza
+from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import *
 from bzrlib.textui import show_status
 import bzrlib.tree
-from bzrlib.trace import mutter
 from bzrlib.transform import build_tree
+from bzrlib.trace import mutter, note
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
 import bzrlib.ui
 import bzrlib.xml5
 
 
+# the regex here does the following:
+# 1) remove any weird characters; we don't escape them but rather
+# just pull them out
+ # 2) match leading '.'s to make it not hidden
+_gen_file_id_re = re.compile(r'[^\w.]|(^\.*)')
+_gen_id_suffix = None
+_gen_id_serial = 0
+
+
+def _next_id_suffix():
+    """Create a new file id suffix that is reasonably unique.
+    
+    On the first call we combine the current time with 64 bits of randomness
+    to give a highly probably globally unique number. Then each call in the same
+    process adds 1 to a serial number we append to that unique value.
+    """
+    # XXX TODO: change bzrlib.add.smart_add to call workingtree.add() rather 
+    # than having to move the id randomness out of the inner loop like this.
+    # XXX TODO: for the global randomness this uses we should add the thread-id
+    # before the serial #.
+    global _gen_id_suffix, _gen_id_serial
+    if _gen_id_suffix is None:
+        _gen_id_suffix = "-%s-%s-" % (compact_date(time()), rand_chars(16))
+    _gen_id_serial += 1
+    return _gen_id_suffix + str(_gen_id_serial)
+
+
 def gen_file_id(name):
-    """Return new file id.
+    """Return new file id for the basename 'name'.
 
-    This should probably generate proper UUIDs, but for the moment we
-    cope with just randomness because running uuidgen every time is
-    slow."""
-    import re
-    from binascii import hexlify
-    from time import time
-
-    # get last component
-    idx = name.rfind('/')
-    if idx != -1:
-        name = name[idx+1 : ]
-    idx = name.rfind('\\')
-    if idx != -1:
-        name = name[idx+1 : ]
-
-    # make it not a hidden file
-    name = name.lstrip('.')
-
-    # remove any wierd characters; we don't escape them but rather
-    # just pull them out
-    name = re.sub(r'[^\w.]', '', name)
-
-    s = hexlify(rand_bytes(8))
-    return '-'.join((name, compact_date(time()), s))
+    The uniqueness is supplied from _next_id_suffix.
+    """
+    # XXX TODO: squash the filename to lowercase.
+    # XXX TODO: truncate the filename to something like 20 or 30 chars.
+    # XXX TODO: consider what to do with ids that look like illegal filepaths
+    # on platforms we support.
+    return _gen_file_id_re.sub('', name) + _next_id_suffix()
 
 
 def gen_root_id():
@@ -218,7 +235,7 @@ class WorkingTree(bzrlib.tree.Tree):
                  DeprecationWarning,
                  stacklevel=2)
             wt = WorkingTree.open(basedir)
-            self.branch = wt.branch
+            self._branch = wt.branch
             self.basedir = wt.basedir
             self._control_files = wt._control_files
             self._hashcache = wt._hashcache
@@ -234,13 +251,14 @@ class WorkingTree(bzrlib.tree.Tree):
         if deprecated_passed(branch):
             if not _internal:
                 warn("WorkingTree(..., branch=XXX) is deprecated as of bzr 0.8."
-                     " Please use bzrdir.open_workingtree() or WorkingTree.open().",
+                     " Please use bzrdir.open_workingtree() or"
+                     " WorkingTree.open().",
                      DeprecationWarning,
                      stacklevel=2
                      )
-            self.branch = branch
+            self._branch = branch
         else:
-            self.branch = self.bzrdir.open_branch()
+            self._branch = self.bzrdir.open_branch()
         assert isinstance(self.branch, Branch), \
             "branch %r is not a Branch" % self.branch
         self.basedir = realpath(basedir)
@@ -276,6 +294,25 @@ class WorkingTree(bzrlib.tree.Tree):
         else:
             self._set_inventory(_inventory)
 
+    branch = property(
+        fget=lambda self: self._branch,
+        doc="""The branch this WorkingTree is connected to.
+
+            This cannot be set - it is reflective of the actual disk structure
+            the working tree has been constructed from.
+            """)
+
+    def break_lock(self):
+        """Break a lock if one is present from another instance.
+
+        Uses the ui factory to ask for confirmation if the lock may be from
+        an active process.
+
+        This will probe the repository for its lock as well.
+        """
+        self._control_files.break_lock()
+        self.branch.break_lock()
+
     def _set_inventory(self, inv):
         self._inventory = inv
         self.path2id = self._inventory.path2id
@@ -283,15 +320,14 @@ class WorkingTree(bzrlib.tree.Tree):
     def is_control_filename(self, filename):
         """True if filename is the name of a control file in this tree.
         
+        :param filename: A filename within the tree. This is a relative path
+        from the root of this tree.
+
         This is true IF and ONLY IF the filename is part of the meta data
         that bzr controls in this tree. I.E. a random .bzr directory placed
         on disk will not be a control file for this tree.
         """
-        try:
-            self.bzrdir.transport.relpath(self.abspath(filename))
-            return True
-        except errors.PathNotChild:
-            return False
+        return self.bzrdir.is_control_filename(filename)
 
     @staticmethod
     def open(path=None, _unsupported=False):
@@ -398,9 +434,13 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         return bzrdir.BzrDir.create_standalone_workingtree(directory)
 
-    def relpath(self, abs):
-        """Return the local path portion from a given absolute path."""
-        return relpath(self.basedir, abs)
+    def relpath(self, path):
+        """Return the local path portion from a given path.
+        
+        The path may be absolute or relative. If its a relative path it is 
+        interpreted relative to the python current working directory.
+        """
+        return relpath(self.basedir, path)
 
     def has_filename(self, filename):
         return bzrlib.osutils.lexists(self.abspath(filename))
@@ -563,10 +603,10 @@ class WorkingTree(bzrlib.tree.Tree):
                                'i.e. regular file, symlink or directory): %s' % quotefn(f))
 
             if file_id is None:
-                file_id = gen_file_id(f)
-            inv.add_path(f, kind=kind, file_id=file_id)
+                inv.add_path(f, kind=kind)
+            else:
+                inv.add_path(f, kind=kind, file_id=file_id)
 
-            mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
         self._write_inventory(inv)
 
     @needs_write_lock
@@ -607,14 +647,15 @@ class WorkingTree(bzrlib.tree.Tree):
 
     @needs_write_lock
     def set_merge_modified(self, modified_hashes):
-        my_file = StringIO()
-        my_file.write(MERGE_MODIFIED_HEADER_1 + '\n')
-        writer = RioWriter(my_file)
-        for file_id, hash in modified_hashes.iteritems():
-            s = Stanza(file_id=file_id, hash=hash)
-            writer.write_stanza(s)
-        my_file.seek(0)
-        self._control_files.put('merge-hashes', my_file)
+        def iter_stanzas():
+            for file_id, hash in modified_hashes.iteritems():
+                yield Stanza(file_id=file_id, hash=hash)
+        self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
+
+    @needs_write_lock
+    def _put_rio(self, filename, stanzas, header):
+        my_file = rio_file(stanzas, header)
+        self._control_files.put(filename, my_file)
 
     @needs_read_lock
     def merge_modified(self):
@@ -630,6 +671,8 @@ class WorkingTree(bzrlib.tree.Tree):
             raise MergeModifiedFormatError()
         for s in RioReader(hashfile):
             file_id = s.get("file_id")
+            if file_id not in self.inventory:
+                continue
             hash = s.get("hash")
             if hash == self.get_file_sha1(file_id):
                 merge_hashes[file_id] = hash
@@ -861,7 +904,13 @@ class WorkingTree(bzrlib.tree.Tree):
             if not self.is_ignored(subp):
                 yield subp
 
+    @deprecated_method(zero_eight)
     def iter_conflicts(self):
+        """List all files in the tree that have text or content conflicts.
+        DEPRECATED.  Use conflicts instead."""
+        return self._iter_conflicts()
+
+    def _iter_conflicts(self):
         conflicted = set()
         for path in (s[0] for s in self.list_files()):
             stem = get_conflicted_stem(path)
@@ -932,6 +981,60 @@ class WorkingTree(bzrlib.tree.Tree):
                 subp = appendpath(path, subf)
                 yield subp
 
+    def _translate_ignore_rule(self, rule):
+        """Translate a single ignore rule to a regex.
+
+        There are two types of ignore rules.  Those that do not contain a / are
+        matched against the tail of the filename (that is, they do not care
+        what directory the file is in.)  Rules which do contain a slash must
+        match the entire path.  As a special case, './' at the start of the
+        string counts as a slash in the string but is removed before matching
+        (e.g. ./foo.c, ./src/foo.c)
+
+        :return: The translated regex.
+        """
+        if rule[:2] in ('./', '.\\'):
+            # rootdir rule
+            result = fnmatch.translate(rule[2:])
+        elif '/' in rule or '\\' in rule:
+            # path prefix 
+            result = fnmatch.translate(rule)
+        else:
+            # default rule style.
+            result = "(?:.*/)?(?!.*/)" + fnmatch.translate(rule)
+        assert result[-1] == '$', "fnmatch.translate did not add the expected $"
+        return "(" + result + ")"
+
+    def _combine_ignore_rules(self, rules):
+        """Combine a list of ignore rules into a single regex object.
+
+        Each individual rule is combined with | to form a big regex, which then
+        has $ added to it to form something like ()|()|()$. The group index for
+        each subregex's outermost group is placed in a dictionary mapping back 
+        to the rule. This allows quick identification of the matching rule that
+        triggered a match.
+        :return: a list of the compiled regex and the matching-group index 
+        dictionaries. We return a list because python complains if you try to 
+        combine more than 100 regexes.
+        """
+        result = []
+        groups = {}
+        next_group = 0
+        translated_rules = []
+        for rule in rules:
+            translated_rule = self._translate_ignore_rule(rule)
+            compiled_rule = re.compile(translated_rule)
+            groups[next_group] = rule
+            next_group += compiled_rule.groups
+            translated_rules.append(translated_rule)
+            if next_group == 99:
+                result.append((re.compile("|".join(translated_rules)), groups))
+                groups = {}
+                next_group = 0
+                translated_rules = []
+        if len(translated_rules):
+            result.append((re.compile("|".join(translated_rules)), groups))
+        return result
 
     def ignored_files(self):
         """Yield list of PATH, IGNORE_PATTERN"""
@@ -939,7 +1042,6 @@ class WorkingTree(bzrlib.tree.Tree):
             pat = self.is_ignored(subp)
             if pat != None:
                 yield subp, pat
-
 
     def get_ignore_list(self):
         """Return list of ignore patterns.
@@ -954,8 +1056,18 @@ class WorkingTree(bzrlib.tree.Tree):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
             l.extend([line.rstrip("\n\r") for line in f.readlines()])
         self._ignorelist = l
+        self._ignore_regex = self._combine_ignore_rules(l)
         return l
 
+    def _get_ignore_rules_as_regex(self):
+        """Return a regex of the ignore rules and a mapping dict.
+
+        :return: (ignore rules compiled regex, dictionary mapping rule group 
+        indices to original rule.)
+        """
+        if getattr(self, '_ignorelist', None) is None:
+            self.get_ignore_list()
+        return self._ignore_regex
 
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
@@ -975,25 +1087,18 @@ class WorkingTree(bzrlib.tree.Tree):
         # treat dotfiles correctly and allows * to match /.
         # Eventually it should be replaced with something more
         # accurate.
-        
-        for pat in self.get_ignore_list():
-            if '/' in pat or '\\' in pat:
-                
-                # as a special case, you can put ./ at the start of a
-                # pattern; this is good to match in the top-level
-                # only;
-                
-                if (pat[:2] == './') or (pat[:2] == '.\\'):
-                    newpat = pat[2:]
-                else:
-                    newpat = pat
-                if fnmatch.fnmatchcase(filename, newpat):
-                    return pat
-            else:
-                if fnmatch.fnmatchcase(splitpath(filename)[-1], pat):
-                    return pat
-        else:
-            return None
+    
+        rules = self._get_ignore_rules_as_regex()
+        for regex, mapping in rules:
+            match = regex.match(filename)
+            if match is not None:
+                # one or more of the groups in mapping will have a non-None group 
+                # match.
+                groups = match.groups()
+                rules = [mapping[group] for group in 
+                    mapping if groups[group] is not None]
+                return rules[0]
+        return None
 
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
@@ -1007,6 +1112,9 @@ class WorkingTree(bzrlib.tree.Tree):
         always use tree.last_revision().
         """
         return self.branch.last_revision()
+
+    def is_locked(self):
+        return self._control_files.is_locked()
 
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock."""
@@ -1025,6 +1133,9 @@ class WorkingTree(bzrlib.tree.Tree):
         except:
             self.branch.unlock()
             raise
+
+    def get_physical_lock_status(self):
+        return self._control_files.get_physical_lock_status()
 
     def _basis_inventory_name(self):
         return 'basis-inventory'
@@ -1130,12 +1241,19 @@ class WorkingTree(bzrlib.tree.Tree):
     def revert(self, filenames, old_tree=None, backups=True, 
                pb=DummyProgress()):
         from transform import revert
+        from conflicts import resolve
         if old_tree is None:
             old_tree = self.basis_tree()
-        revert(self, old_tree, filenames, backups, pb)
+        conflicts = revert(self, old_tree, filenames, backups, pb)
         if not len(filenames):
             self.set_pending_merges([])
+            resolve(self)
+        else:
+            resolve(self, filenames, ignore_misses=True)
+        return conflicts
 
+    # XXX: This method should be deprecated in favour of taking in a proper
+    # new Inventory object.
     @needs_write_lock
     def set_inventory(self, new_inventory_list):
         from bzrlib.inventory import (Inventory,
@@ -1199,11 +1317,10 @@ class WorkingTree(bzrlib.tree.Tree):
              self._control_files._lock_count==3)):
             self._hashcache.write()
         # reverse order of locking.
-        result = self._control_files.unlock()
         try:
-            self.branch.unlock()
+            return self._control_files.unlock()
         finally:
-            return result
+            self.branch.unlock()
 
     @needs_write_lock
     def update(self):
@@ -1272,6 +1389,40 @@ class WorkingTree(bzrlib.tree.Tree):
         self._set_inventory(inv)
         mutter('wrote working inventory')
 
+    def set_conflicts(self, arg):
+        raise UnsupportedOperation(self.set_conflicts, self)
+
+    @needs_read_lock
+    def conflicts(self):
+        conflicts = ConflictList()
+        for conflicted in self._iter_conflicts():
+            text = True
+            try:
+                if file_kind(self.abspath(conflicted)) != "file":
+                    text = False
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    text = False
+                else:
+                    raise
+            if text is True:
+                for suffix in ('.THIS', '.OTHER'):
+                    try:
+                        kind = file_kind(self.abspath(conflicted+suffix))
+                    except OSError, e:
+                        if e.errno == errno.ENOENT:
+                            text = False
+                            break
+                        else:
+                            raise
+                    if kind != "file":
+                        text = False
+                        break
+            ctype = {True: 'text conflict', False: 'contents conflict'}[text]
+            conflicts.append(Conflict.factory(ctype, path=conflicted,
+                             file_id=self.path2id(conflicted)))
+        return conflicts
+
 
 class WorkingTree3(WorkingTree):
     """This is the Format 3 working tree.
@@ -1307,8 +1458,25 @@ class WorkingTree3(WorkingTree):
             self._control_files.put_utf8('last-revision', revision_id)
             return True
 
+    @needs_write_lock
+    def set_conflicts(self, conflicts):
+        self._put_rio('conflicts', conflicts.to_stanzas(), 
+                      CONFLICT_HEADER_1)
 
-CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
+    @needs_read_lock
+    def conflicts(self):
+        try:
+            confile = self._control_files.get('conflicts')
+        except NoSuchFile:
+            return ConflictList()
+        try:
+            if confile.next() != CONFLICT_HEADER_1 + '\n':
+                raise ConflictFormatError()
+        except StopIteration:
+            raise ConflictFormatError()
+        return ConflictList.from_stanzas(RioReader(confile))
+
+
 def get_conflicted_stem(path):
     for suffix in CONFLICT_SUFFIXES:
         if path.endswith(suffix):
@@ -1375,6 +1543,10 @@ class WorkingTreeFormat(object):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
 
+    def get_format_description(self):
+        """Return the short description for this format."""
+        raise NotImplementedError(self.get_format_description)
+
     def is_supported(self):
         """Is this format supported?
 
@@ -1404,6 +1576,26 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     This format modified the hash cache from the format 1 hash cache.
     """
+
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 2"
+
+    def stub_initialize_remote(self, control_files):
+        """As a special workaround create critical control files for a remote working tree
+        
+        This ensures that it can later be updated and dealt with locally,
+        since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with 
+        no working tree.  (See bug #43064).
+        """
+        sio = StringIO()
+        inv = Inventory()
+        bzrlib.xml5.serializer_v5.write_inventory(inv, sio)
+        sio.seek(0)
+        control_files.put('inventory', sio)
+
+        control_files.put_utf8('pending-merges', '')
+        
 
     def initialize(self, a_bzrdir, revision_id=None):
         """See WorkingTreeFormat.initialize()."""
@@ -1473,6 +1665,10 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         """See WorkingTreeFormat.get_format_string()."""
         return "Bazaar-NG Working Tree format 3"
 
+    def get_format_description(self):
+        """See WorkingTreeFormat.get_format_description()."""
+        return "Working tree format 3"
+
     _lock_file_name = 'lock'
     _lock_class = LockDir
 
@@ -1492,6 +1688,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         transport = a_bzrdir.get_workingtree_transport(self)
         control_files = self._open_control_files(a_bzrdir)
         control_files.create_lock()
+        control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
         branch = a_bzrdir.open_branch()
         if revision_id is None:
@@ -1504,11 +1701,16 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          _format=self,
                          _bzrdir=a_bzrdir,
                          _control_files=control_files)
-        wt._write_inventory(inv)
-        wt.set_root_id(inv.root.file_id)
-        wt.set_last_revision(revision_id)
-        wt.set_pending_merges([])
-        build_tree(wt.basis_tree(), wt)
+        wt.lock_write()
+        try:
+            wt._write_inventory(inv)
+            wt.set_root_id(inv.root.file_id)
+            wt.set_last_revision(revision_id)
+            wt.set_pending_merges([])
+            build_tree(wt.basis_tree(), wt)
+        finally:
+            wt.unlock()
+            control_files.unlock()
         return wt
 
     def __init__(self):

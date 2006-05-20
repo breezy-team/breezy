@@ -23,11 +23,7 @@ from cStringIO import StringIO
 
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import (BzrDir,
-                           BzrDirFormat,
-                           BzrDirFormat6,
-                           BzrDirMetaFormat1,
-                           )
+from bzrlib.bzrdir import (BzrDir, BzrDirFormat, BzrDirMetaFormat1)
 from bzrlib.osutils import getcwd
 from bzrlib.workingtree import WorkingTree
 
@@ -38,12 +34,7 @@ class TestLegacyFormats(TestCaseWithTransport):
         super(TestLegacyFormats, self).setUp()
         self.build_tree(['master/', 'child/'])
         self.run_bzr('init', 'master')
-        old_format = BzrDirFormat.get_default_format()
-        BzrDirFormat.set_default_format(BzrDirFormat6())
-        try:
-            self.run_bzr('init', 'child')
-        finally:
-            BzrDirFormat.set_default_format(old_format)
+        self.run_bzr('init', '--format=weave', 'child')
         os.chdir('child')
     
     def test_bind_format_6_bzrdir(self):
@@ -67,28 +58,22 @@ class TestBoundBranches(TestCaseWithTransport):
         bzr = self.run_bzr
         self.build_tree(['base/', 'base/a', 'base/b'])
 
-        self.init_meta_branch('base')
-        os.chdir('base')
-        bzr('add')
-        bzr('commit', '-m', 'init')
+        branch = self.init_meta_branch('base')
+        tree = branch.bzrdir.open_workingtree()
+        tree.lock_write()
+        tree.add(['a', 'b'])
+        tree.commit('init')
+        tree.unlock()
 
-        os.chdir('..')
-
-        bzr('checkout', 'base', 'child')
-
-        self.failUnlessExists('child')
+        self.run_bzr('checkout', 'base', 'child')
 
         self.check_revno(1, 'child')
         d = BzrDir.open('child')
         self.assertNotEqual(None, d.open_branch().get_master_branch())
 
-    def check_revno(self, val, loc=None):
-        if loc is not None:
-            cwd = os.getcwd()
-            os.chdir(loc)
-        self.assertEquals(str(val), self.run_bzr('revno')[0].strip())
-        if loc is not None:
-            os.chdir(cwd)
+    def check_revno(self, val, loc='.'):
+        self.assertEqual(
+            val, len(BzrDir.open(loc).open_branch().revision_history()))
 
     def test_simple_binding(self):
         self.build_tree(['base/', 'base/a', 'base/b'])
@@ -114,7 +99,8 @@ class TestBoundBranches(TestCaseWithTransport):
         old_format = BzrDirFormat.get_default_format()
         BzrDirFormat.set_default_format(BzrDirMetaFormat1())
         try:
-            self.run_bzr('init', path)
+            return BzrDir.create_branch_convenience(
+                path, BzrDirMetaFormat1())
         finally:
             BzrDirFormat.set_default_format(old_format)
 
@@ -286,8 +272,11 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(5)
 
     def test_bind_child_ahead(self):
+        # test binding when the master branches history is a prefix of the 
+        # childs
         bzr = self.run_bzr
         self.create_branches()
+        return
 
         os.chdir('child')
         bzr('unbind')
