@@ -7,3 +7,4 @@ Decide whether to bundle 'send-changeset' into 'changeset'.
 Decide whether to fix or kill 'verify-changeset'.
 Figure out whether testament-related bug is my problem
 Get rid of the 'old' directory
+Bundle signatures?
