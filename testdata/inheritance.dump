@@ -1,0 +1,240 @@
+SVN-fs-dump-format-version: 2
+
+UUID: 4b5beae1-1728-46a4-8025-fb2da20c576a
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-05-11T22:12:16.054648Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 130
+Content-length: 130
+
+K 7
+svn:log
+V 29
+created trunk and added hosts
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-05-11T22:12:17.351966Z
+PROPS-END
+
+Node-path: trunk
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Node-path: trunk/hosts
+Node-kind: file
+Node-action: add
+Prop-content-length: 10
+Text-content-length: 247
+Text-content-md5: 06ba5804ee020b715be8aa15d376cd18
+Content-length: 257
+
+PROPS-END
+127.0.0.1	localhost.localdomain	localhost
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+
+
+Revision-number: 2
+Prop-content-length: 105
+Content-length: 105
+
+K 7
+svn:log
+V 5
+rev 2
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-05-11T22:12:18.273126Z
+PROPS-END
+
+Node-path: trunk/hosts
+Node-kind: file
+Node-action: change
+Text-content-length: 251
+Text-content-md5: a777cbacc190059ec8141db55ce1e903
+Content-length: 251
+
+127.0.0.1	localhost.localdomain	localhost
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+hej
+
+
+Revision-number: 3
+Prop-content-length: 105
+Content-length: 105
+
+K 7
+svn:log
+V 5
+rev 3
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-05-11T22:12:19.257835Z
+PROPS-END
+
+Node-path: trunk/hosts
+Node-kind: file
+Node-action: change
+Text-content-length: 255
+Text-content-md5: ce4705387ad779fe004aa9f5b464147d
+Content-length: 255
+
+127.0.0.1	localhost.localdomain	localhost
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+hej
+hej
+
+
+Revision-number: 4
+Prop-content-length: 105
+Content-length: 105
+
+K 7
+svn:log
+V 5
+rev 4
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-05-11T22:12:20.289525Z
+PROPS-END
+
+Node-path: trunk/hosts
+Node-kind: file
+Node-action: change
+Text-content-length: 259
+Text-content-md5: 47a85568c3d250c58f5df2d3c3b589c0
+Content-length: 259
+
+127.0.0.1	localhost.localdomain	localhost
+
+# The following lines are desirable for IPv6 capable hosts
+::1     ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+hej
+hej
+hej
+
+
+Revision-number: 5
+Prop-content-length: 115
+Content-length: 115
+
+K 7
+svn:log
+V 14
+added branches
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-05-11T22:12:21.305605Z
+PROPS-END
+
+Node-path: branches
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 6
+Prop-content-length: 123
+Content-length: 123
+
+K 7
+svn:log
+V 22
+added branch foobranch
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-05-11T22:12:23.263291Z
+PROPS-END
+
+Node-path: branches/foobranch
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: trunk
+
+
+Node-path: branches/foobranch/hosts
+Node-kind: file
+Node-action: delete
+
+Node-path: branches/foobranch/hosts
+Node-kind: file
+Node-action: add
+Node-copyfrom-rev: 4
+Node-copyfrom-path: trunk/hosts
+
+
+
+

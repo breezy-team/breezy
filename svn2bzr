@@ -34,7 +34,7 @@ from bzrlib.branch import Branch
 import bzrlib.trace
 from dumpfile import Dump
 
-VERSION = "0.6"
+VERSION = "0.8.2"
 
 # Bogus difflib
 sys.setrecursionlimit(10000)
@@ -604,7 +604,7 @@ def append_filter(option, opt, value, parser):
 
 
 def parse_options():
-    parser = optparse.OptionParser("svn2bzr.py [options] "
+    parser = optparse.OptionParser("svn2bzr [options] "
                                    "<dump file> <output dir>",
                                    version="%prog "+VERSION)
     parser.defaults["filter"] = []
