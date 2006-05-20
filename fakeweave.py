@@ -17,6 +17,7 @@
 from bzrlib.versionedfile import VersionedFile
 from cStringIO import StringIO
 from bzrlib.trace import mutter
+from libsvn.core import SubversionException
 import svn.ra
 
 class FakeFileWeave(VersionedFile):
@@ -45,7 +46,7 @@ class FakeFileWeave(VersionedFile):
         return stream.readlines()
 
     def has_version(self,version_id):
-        assert version_id != None
+        assert version_id
         (path,path_revnum) = self.repository.path_from_file_id(version_id, self.file_id)
 
         mutter("svn check_path -r%d %s" % (path_revnum,path))
@@ -64,3 +65,36 @@ class FakeFileStore(object):
 
     def get_weave(self,file_id,transaction):
         return FakeFileWeave(self.repository,file_id)
+
+
+class FakeInventoryWeave(VersionedFile):
+    def __init__(self,repository,access_mode='w'):
+        VersionedFile.__init__(self,access_mode)
+        self.repository = repository
+
+    def has_version(self,version):
+        return self.repository.has_revision(version)
+
+    def get_parents(self,version):
+        return self.repository.revision_parents(version)
+
+    def get_ancestry(self,version):
+        return self.repository.get_ancestry(version)
+
+    def versions(self):
+        raise NotImplementedError(self.versions)
+
+    def get_lines(self, version_id):
+        if version_id is None:
+            return []
+        return self.repository.get_inventory_xml(version_id).splitlines()
+
+    def get_graph(self,versions):
+        if versions is None:
+            return self.repository.get_revision_graph()
+
+        ret = {}
+        for vers in versions:
+            ret.update(self.repository.get_revision_graph(vers))
+        return ret
+

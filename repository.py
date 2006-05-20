@@ -25,7 +25,7 @@ from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
 from libsvn._core import SubversionException
 import svn.core
 import bzrlib
-from fakeweave import FakeFileStore
+from fakeweave import FakeFileStore, FakeInventoryWeave
 from branch import auth_baton
 import branch
 from bzrlib.weave import Weave
@@ -187,9 +187,11 @@ class SvnRepository(Repository):
         raise NotImplementedError(self.all_revision_ids)
 
     def get_inventory_weave(self):
-        raise NotImplementedError(self.get_inventory_weave)
+        return FakeInventoryWeave(self)
 
     def get_ancestry(self, revision_id):
+        if revision_id is None: # FIXME: Is this correct?
+            return []
         #FIXME: Find not just direct predecessors 
         # but also branches from which this branch was copied
         (path,revnum) = self.parse_revision_id(revision_id)
@@ -218,15 +220,8 @@ class SvnRepository(Repository):
 
         return (kind != svn.core.svn_node_none)
 
-    def get_revision(self,revision_id):
-        if not revision_id or not isinstance(revision_id, basestring):
-            raise InvalidRevisionId(revision_id=revision_id,branch=self)
-
-        mutter("retrieving %s" % revision_id)
+    def revision_parents(self, revision_id):
         (path,revnum) = self.parse_revision_id(revision_id)
-        
-        mutter('svn proplist -r %r' % revnum)
-        svn_props = svn.ra.rev_proplist(self.ra, revnum)
 
         parent_ids = []
 
@@ -243,6 +238,20 @@ class SvnRepository(Repository):
             # If this is the first revision, there are no parents
             if num != svn.core.SVN_ERR_FS_NOT_FOUND:
                 raise
+
+        return parent_ids
+
+    def get_revision(self, revision_id):
+        if not revision_id or not isinstance(revision_id, basestring):
+            raise InvalidRevisionId(revision_id=revision_id,branch=self)
+
+        mutter("retrieving %s" % revision_id)
+        (path,revnum) = self.parse_revision_id(revision_id)
+        
+        mutter('svn proplist -r %r' % revnum)
+        svn_props = svn.ra.rev_proplist(self.ra, revnum)
+
+        parent_ids = self.revision_parents(revision_id)
 
         # Commit SVN revision properties to a Revision object
         bzr_props = {}
@@ -416,11 +425,14 @@ class SvnRepository(Repository):
             self._previous = revid
 
         mutter("svn log -r%d:0 %s" % (revnum-1,path))
-        svn.ra.get_log(self.ra, [path.encode('utf8')], revnum - 1, \
+        try:
+            svn.ra.get_log(self.ra, [path.encode('utf8')], revnum - 1, \
                 0, 0, False, False, rcvr)
+        except SubversionException, (_, num):
+            if num != svn.core.SVN_ERR_FS_NOT_FOUND:
+                raise
 
-        self._ancestry[self._previous] = [None]
-        self._ancestry[None] = []
+        self._ancestry[self._previous] = []
 
         return self._ancestry
 

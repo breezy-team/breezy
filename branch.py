@@ -222,8 +222,23 @@ class SvnBranch(Branch):
         if parent:
             destination.set_parent(parent)
 
-    def submit(self, from_branch, revision):
-        raise NotImplementedError(self.submit)
+    def commit(self, message):
+        callbacks = svn.ra.callbacks2_t()
+        svn.ra.get_commit_editor2(self.repository.ra, 
+                message, callbacks, None, False)
+
+    def submit(self, from_branch, stop_revision):
+        if stop_revision is None:
+            stop_revision = from_branch.last_revision()
+
+        revisions = self.missing_revisions(from_branch, \
+                from_branch.revision_id_to_revno(stop_revision))
+
+        for revid in revisions:
+            rev = from_branch.repository.get_revision(revid)
+            self.commit(rev.message)
+
+        print revisions
 
 class SvnBranchFormat(BranchFormat):
     def __init__(self):
