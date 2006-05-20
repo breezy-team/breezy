@@ -36,6 +36,31 @@ from bzrlib.textfile import text_file
 
 bool_text = {True: 'yes', False: 'no'}
 
+
+class Action(object):
+    """Represent an action"""
+
+    def __init__(self, name, parameters=None, properties=None):
+        self.name = name
+        if parameters is None:
+            self.parameters = []
+        else:
+            self.parameters = parameters
+        if properties is None:
+            self.properties = []
+        else:
+            self.properties = properties
+
+    def write(self, to_file):
+        """Write action as to a file"""
+        p_texts = ['%s:%s' % v for v in self.properties]
+        text = ['=== ']
+        text.append(' '.join([self.name]+self.parameters))
+        text.append(' // '.join(p_texts))
+        text.append('\n')
+        to_file.write(''.join(text).encode('utf-8'))
+
+
 class ChangesetSerializerV07(ChangesetSerializer):
     def read(self, f):
         """Read the rest of the changesets from the supplied file.
@@ -219,7 +244,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
             self.to_file.write(text.encode('utf-8'))
 
         for path, file_id, kind in delta.removed:
-            self._write_action('removed', [kind, path])
+            Action('removed', [kind, path]).write(self.to_file)
 
         for path, file_id, kind in delta.added:
             w('=== added %s %s // file-id:%s' % (kind, path, file_id))
