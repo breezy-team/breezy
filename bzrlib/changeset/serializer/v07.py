@@ -269,7 +269,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
 
         for path, file_id, kind in delta.added:
             action = Action('added', [kind, path], [('file-id', file_id)])
-            finish_action(action, file_id, kind, True, True,
+            finish_action(action, file_id, kind, kind=='file', True,
                           DEVNULL, path)
 
         for (old_path, new_path, file_id, kind,
