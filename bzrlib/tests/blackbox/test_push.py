@@ -80,3 +80,17 @@ class TestPush(ExternalBase):
         self.assertEqual('0 revision(s) pushed.\n', err)
         b2 = bzrlib.branch.Branch.open('pushed-location')
         self.assertEndsWith(b2.base, 'pushed-location/')
+
+    def test_push_new_branch_revision_count(self):
+        # bzr push of a branch with revisions to a new location 
+        # should print the number of revisions equal to the length of the 
+        # local branch.
+        t = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        t.add('file')
+        t.commit('commit 1')
+        os.chdir('tree')
+        out, err = self.run_bzr('push', 'pushed-to')
+        os.chdir('..')
+        self.assertEqual('', out)
+        self.assertEqual('1 revision(s) pushed.\n', err)

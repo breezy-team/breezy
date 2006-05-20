@@ -16,21 +16,24 @@
 """Tests for the test framework."""
 
 import os
+from StringIO import StringIO
 import sys
+import time
 import unittest
 import warnings
 
 import bzrlib
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
-                          _load_module_by_name,
                           ChrootedTestCase,
                           TestCase,
                           TestCaseInTempDir,
                           TestCaseWithTransport,
                           TestSkipped,
+                          TestSuite,
                           TextTestRunner,
                           )
+from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
 
 
@@ -440,6 +443,31 @@ class TestResult(TestCase):
         self.assertEqual(last_calls + [('update', 'SKIP         ', 4, None)], mypb.calls)
         last_calls = mypb.calls[:]
 
+    def test_elapsed_time_with_benchmarking(self):
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1,
+                                        )
+        result._recordTestStartTime()
+        time.sleep(0.003)
+        result.extractBenchmarkTime(self)
+        timed_string = result._testTimeString()
+        # without explicit benchmarking, we should get a simple time.
+        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
+        # if a benchmark time is given, we want a x of y style result.
+        self.time(time.sleep, 0.001)
+        result.extractBenchmarkTime(self)
+        timed_string = result._testTimeString()
+        self.assertContainsRe(timed_string, "^    [0-9]ms/   [ 1-9][0-9]ms$")
+        # extracting the time from a non-bzrlib testcase sets to None
+        result._recordTestStartTime()
+        result.extractBenchmarkTime(
+            unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
+        timed_string = result._testTimeString()
+        self.assertContainsRe(timed_string, "^          [0-9]ms$")
+        # cheat. Yes, wash thy mouth out with soap.
+        self._benchtime = None
+
 
 class TestRunner(TestCase):
 
@@ -524,6 +552,24 @@ class TestTestCase(TestCase):
                                         verbosity=1)
         outer_test.run(result)
         self.assertEqual(original_trace, bzrlib.trace._trace_file)
+
+    def method_that_times_a_bit_twice(self):
+        # call self.time twice to ensure it aggregates
+        self.time(time.sleep, 0.007)
+        self.time(time.sleep, 0.007)
+
+    def test_time_creates_benchmark_in_result(self):
+        """Test that the TestCase.time() method accumulates a benchmark time."""
+        sample_test = TestTestCase("method_that_times_a_bit_twice")
+        output_stream = StringIO()
+        result = bzrlib.tests._MyResult(
+            unittest._WritelnDecorator(output_stream),
+            descriptions=0,
+            verbosity=2)
+        sample_test.run(result)
+        self.assertContainsRe(
+            output_stream.getvalue(),
+            "[1-9][0-9]ms/   [1-9][0-9]ms\n$")
         
 
 class TestExtraAssertions(TestCase):
@@ -551,3 +597,18 @@ class TestConvenienceMakers(TestCaseWithTransport):
                               bzrlib.bzrdir.BzrDirMetaFormat1)
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
                               bzrlib.bzrdir.BzrDirFormat6)
+
+
+class TestSelftest(TestCase):
+    """Tests of bzrlib.tests.selftest."""
+
+    def test_selftest_benchmark_parameter_invokes_test_suite__benchmark__(self):
+        factory_called = []
+        def factory():
+            factory_called.append(True)
+            return TestSuite()
+        out = StringIO()
+        err = StringIO()
+        self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
+            test_suite_factory=factory)
+        self.assertEqual([True], factory_called)
