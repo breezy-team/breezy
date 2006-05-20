@@ -8,3 +8,4 @@ Decide whether to fix or kill 'verify-changeset'.
 Figure out whether testament-related bug is my problem
 Get rid of the 'old' directory
 Bundle signatures?
+What to do about ghost ancestors in remote branch that are present locally?
