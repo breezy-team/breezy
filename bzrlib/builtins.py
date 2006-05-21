@@ -517,7 +517,8 @@ class cmd_push(Command):
                         if new_transport.base == transport.base:
                             raise BzrCommandError("Could not create "
                                                   "path prefix.")
-            dir_to = br_from.bzrdir.clone(location)
+            dir_to = br_from.bzrdir.clone(location,
+                revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
             count = len(br_to.revision_history())
         else:
