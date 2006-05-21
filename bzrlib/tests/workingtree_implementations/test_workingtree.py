@@ -550,3 +550,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             tree.branch = tree.branch
         self.assertRaises(AttributeError, set_branch)
 
+    def test_list_files_versioned_before_ignored(self):
+        """A versioned file matching an ignore rule should not be ignored."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo.pyc'])
+        # ensure that foo.pyc is ignored
+        self.build_tree_contents([('.bzrignore', 'foo.pyc')])
+        tree.add('foo.pyc', 'anid')
+        files = sorted(list(tree.list_files()))
+        self.assertEqual((u'.bzrignore', '?', 'file', None), files[0][:-1])
+        self.assertEqual((u'foo.pyc', 'V', 'file', 'anid'), files[1][:-1])
+        self.assertEqual(2, len(files))
