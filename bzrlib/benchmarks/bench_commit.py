@@ -13,17 +13,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for bzr add performance."""
+"""Benchmarks of bzr commit."""
 
 
 from bzrlib.benchmarks import Benchmark
 
 
-class AddBenchmark(Benchmark):
+class CommitBenchmark(Benchmark):
 
-    def test_one_add_kernel_like_tree(self):
-        """Adding a kernel sized tree should be bearable (<5secs) fast.""" 
+    def test_commit_kernel_like_tree(self):
+        """Commit of a fresh import of a clean kernel sized tree."""
         self.make_kernel_like_tree()
-        # on roberts machine this originally took: 25936ms/32244ms
-        # after low hanging fruit                :  9692ms/13911ms
-        self.time(self.run_bzr, 'add')
+        self.run_bzr('add')
+        # on robertc's machine the first sample of this took 59750ms/77682ms
+        self.time(self.run_bzr, 'commit', '-m', 'first post')
