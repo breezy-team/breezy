@@ -34,7 +34,7 @@ This means that exceptions can used like this:
 ... except:
 ...   print sys.exc_type
 ...   print sys.exc_value
-...   path = getattr(sys.exc_value, 'path')
+...   path = getattr(sys.exc_value, 'path', None)
 ...   if path is not None:
 ...     print path
 bzrlib.errors.NotBranchError
