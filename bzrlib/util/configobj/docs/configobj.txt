@@ -35,7 +35,7 @@ It has lots of other features though :
 
 .. sidebar:: ConfigObj in Bazaar
 
-    **ConfigObj** is now used as the config file parser for `Bazaar <http://bazaar-ng.org>`_.
+    **ConfigObj** is now used as the config file parser for `Bazaar <http://bazaar-vcs.org>`_.
     
     Bazaar is *the* Python  distributed {acro;VCS;Version Control System}. 
     ConfigObj is used to read ``bazaar.conf`` and ``branches.conf``.

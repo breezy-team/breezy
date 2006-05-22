@@ -34,7 +34,7 @@ This means that exceptions can used like this:
 ... except:
 ...   print sys.exc_type
 ...   print sys.exc_value
-...   path = getattr(sys.exc_value, 'path')
+...   path = getattr(sys.exc_value, 'path', None)
 ...   if path is not None:
 ...     print path
 bzrlib.errors.NotBranchError
@@ -134,6 +134,7 @@ class InvalidRevisionNumber(BzrNewError):
 class InvalidRevisionId(BzrNewError):
     """Invalid revision-id {%(revision_id)s} in %(branch)s"""
     def __init__(self, revision_id, branch):
+        # branch can be any string or object with __str__ defined
         BzrNewError.__init__(self)
         self.revision_id = revision_id
         self.branch = branch

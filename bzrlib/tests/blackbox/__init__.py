@@ -23,8 +23,9 @@ command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
+import sys
+
 from bzrlib.tests import (
-                          _load_module_by_name,
                           TestCaseWithTransport,
                           TestSuite,
                           TestLoader,
@@ -34,6 +35,7 @@ import bzrlib.ui as ui
 
 def test_suite():
     testmod_names = [
+                     'bzrlib.tests.blackbox.test_add',
                      'bzrlib.tests.blackbox.test_added',
                      'bzrlib.tests.blackbox.test_aliases',
                      'bzrlib.tests.blackbox.test_ancestry',
@@ -48,6 +50,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_export',
                      'bzrlib.tests.blackbox.test_find_merge_base',
                      'bzrlib.tests.blackbox.test_help',
+                     'bzrlib.tests.blackbox.test_ignored',
                      'bzrlib.tests.blackbox.test_info',
                      'bzrlib.tests.blackbox.test_init',
                      'bzrlib.tests.blackbox.test_log',
@@ -73,12 +76,8 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_versioning',
                      ]
 
-    suite = TestSuite()
     loader = TestLoader()
-    for mod_name in testmod_names:
-        mod = _load_module_by_name(mod_name)
-        suite.addTest(loader.loadTestsFromModule(mod))
-    return suite
+    return loader.loadTestsFromModuleNames(testmod_names)
 
 
 class ExternalBase(TestCaseWithTransport):
@@ -92,18 +91,37 @@ class ExternalBase(TestCaseWithTransport):
             return self.run_bzr_captured(args, retcode=retcode)
 
 
-class TestUIFactory(ui.UIFactory):
+class TestUIFactory(ui.CLIUIFactory):
     """A UI Factory for testing - hide the progress bar but emit note()s."""
+
+    def __init__(self,
+                 stdout=None,
+                 stderr=None):
+        super(TestUIFactory, self).__init__()
+        if stdout is None:
+            self.stdout = sys.stdout
+        else:
+            self.stdout = stdout
+        if stderr is None:
+            self.stderr = sys.stderr
+        else:
+            self.stderr = stderr
 
     def clear(self):
         """See progress.ProgressBar.clear()."""
+
+    def clear_term(self):
+        """See progress.ProgressBar.clear_term()."""
+
+    def clear_term(self):
+        """See progress.ProgressBar.clear_term()."""
 
     def finished(self):
         """See progress.ProgressBar.finished()."""
 
     def note(self, fmt_string, *args, **kwargs):
         """See progress.ProgressBar.note()."""
-        print fmt_string % args
+        self.stdout.write((fmt_string + "\n") % args)
 
     def progress_bar(self):
         return self

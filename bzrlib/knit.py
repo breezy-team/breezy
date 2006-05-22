@@ -290,6 +290,10 @@ class KnitVersionedFile(VersionedFile):
         self._data = _KnitData(transport, relpath + DATA_SUFFIX,
             access_mode, create=create and not len(self), file_mode=file_mode)
 
+    def __repr__(self):
+        return '%s(%s)' % (self.__class__.__name__, 
+                           self.transport.abspath(self.filename))
+    
     def _add_delta(self, version_id, parents, delta_parent, sha1, noeol, delta):
         """See VersionedFile._add_delta()."""
         self._check_add(version_id, []) # should we check the lines ?
@@ -629,7 +633,7 @@ class KnitVersionedFile(VersionedFile):
         assert self.writable, "knit is not opened for write"
         ### FIXME escape. RBC 20060228
         if contains_whitespace(version_id):
-            raise InvalidRevisionId(version_id)
+            raise InvalidRevisionId(version_id, self.filename)
         if self.has_version(version_id):
             raise RevisionAlreadyPresent(version_id, self.filename)
         self._check_lines_not_unicode(lines)

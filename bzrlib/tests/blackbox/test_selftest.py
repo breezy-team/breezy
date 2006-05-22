@@ -15,6 +15,8 @@
 
 """UI tests for the test framework."""
 
+import sys
+
 import bzrlib
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
@@ -75,6 +77,16 @@ class TestOptions(TestCase):
             TestOptions.current_test = None
             TestCaseInTempDir.TEST_ROOT = old_root
 
+    def test_benchmark_runs_benchmark_tests(self):
+        """bzr selftest --benchmark should not run the default test suite."""
+        # We test this by passing a regression test name to --benchmark, which
+        # should result in 0 rests run.
+        out, err = self.run_bzr('selftest', '--benchmark', 'workingtree_implementations')
+        self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
+        self.assertEqual(
+            'running tests...\nRunning tests: .\nCleaning up: .\ntests passed\n',
+            err)
+        
 
 class TestRunBzr(ExternalBase):
 
@@ -99,6 +111,9 @@ class TestRunBzrCaptured(ExternalBase):
                          a_callable=None, *args, **kwargs):
         self.stdin = stdin
         self.factory_stdin = getattr(bzrlib.ui.ui_factory, "stdin", None)
+        self.factory = bzrlib.ui.ui_factory
+        stdout.write('foo\n')
+        stderr.write('bar\n')
         return 0
 
     def test_stdin(self):
@@ -112,3 +127,17 @@ class TestRunBzrCaptured(ExternalBase):
         self.run_bzr_captured(['foo', 'bar'], stdin='zippy')
         self.assertEqual('zippy', self.stdin.read())
         self.assertTrue(self.stdin is self.factory_stdin)
+
+    def test_ui_factory(self):
+        # each invocation of self.run_bzr_captured should get its own UI
+        # factory, which is an instance of TestUIFactory, with stdout and
+        # stderr attached to the stdout and stderr of the invoked
+        # run_bzr_captured
+        current_factory = bzrlib.ui.ui_factory
+        self.run_bzr_captured(['foo'])
+        self.failIf(current_factory is self.factory)
+        self.assertNotEqual(sys.stdout, self.factory.stdout)
+        self.assertNotEqual(sys.stderr, self.factory.stderr)
+        self.assertEqual('foo\n', self.factory.stdout.getvalue())
+        self.assertEqual('bar\n', self.factory.stderr.getvalue())
+        self.assertIsInstance(self.factory, bzrlib.tests.blackbox.TestUIFactory)
