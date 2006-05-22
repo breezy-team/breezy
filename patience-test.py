@@ -1,0 +1,67 @@
+#!/usr/bin/env python2.4
+
+import difflib
+from StringIO import StringIO
+from subprocess import Popen, PIPE
+from tempfile import mkdtemp
+
+from bzrlib.branch import Branch
+from bzrlib.cdv.cdvdifflib import SequenceMatcher
+from bzrlib.diff import internal_diff
+from bzrlib.osutils import pathjoin
+
+
+def patch(path, patch_lines):
+    """Apply a patch to a branch, using patch(1).  URLs may be used."""
+    cmd = ['patch', '--quiet', path]
+    r = 0
+    child_proc = Popen(cmd, stdin=PIPE)
+    for line in patch_lines:
+        child_proc.stdin.write(line)
+    child_proc.stdin.close()
+    r = child_proc.wait()
+    return r
+
+
+b = Branch.open_containing('.')[0]
+repo = b.repository
+repo.lock_write()
+try:
+    temp_dir = mkdtemp()
+    transaction = repo.get_transaction()
+    file_list = list(repo.text_store)
+    for i, file_id in enumerate(file_list):
+        print "%.2f%% %d of %d %s" % ((float(i)/len(file_list) * 100), i,
+                                    len(file_list), file_id)
+        versioned_file = repo.text_store.get_weave(file_id, transaction)
+        last_id = None
+        for revision_id in versioned_file.versions():
+            if last_id != None:
+                old_lines = versioned_file.get_lines(last_id)
+                new_lines = versioned_file.get_lines(revision_id)
+                if ''.join(old_lines) == ''.join(new_lines):
+                    continue
+                new_patch = StringIO()
+                try:
+                    internal_diff('old', old_lines, 'new', new_lines, new_patch,
+                                  sequence_matcher=SequenceMatcher)
+                except:
+                    file(pathjoin(temp_dir, 'old'), 
+                         'wb').write(''.join(old_lines))
+                    file(pathjoin(temp_dir, 'new'), 
+                         'wb').write(''.join(new_lines))
+                    print "temp dir is %s" % temp_dir
+                    raise
+                new_patch.seek(0)
+                file_path = pathjoin(temp_dir, 'file')
+                orig_file = file(file_path, 'wb')
+                for line in old_lines:
+                    orig_file.write(line)
+                orig_file.close()
+                patch(file_path, new_patch)
+                new_file = file(file_path, 'rb')
+                for line_a, line_b in zip(new_file, new_lines):
+                    assert line_a == line_b
+            last_id = revision_id
+finally:
+    repo.unlock()
