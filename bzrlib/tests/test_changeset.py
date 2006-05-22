@@ -598,3 +598,31 @@ class CSetTester(TestCaseInTempDir):
         tt.apply()
         self.tree1.commit('just modify binary', rev_id='b@cset-0-4')
         self.get_valid_cset('b@cset-0-3', 'b@cset-0-4')
+
+    def test_last_modified(self):
+        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.b1 = self.tree1.branch
+        tt = TreeTransform(self.tree1)
+        tt.new_file('file', tt.root, 'file', 'file')
+        tt.apply()
+        self.tree1.commit('create file', rev_id='a@lmod-0-1')
+
+        tt = TreeTransform(self.tree1)
+        trans_id = tt.trans_id_tree_file_id('file')
+        tt.delete_contents(trans_id)
+        tt.create_file('file2', trans_id)
+        tt.apply()
+        self.tree1.commit('modify text', rev_id='a@lmod-0-2a')
+
+        other = self.get_checkout('a@lmod-0-1')
+        tt = TreeTransform(other)
+        trans_id = tt.trans_id_tree_file_id('file')
+        tt.delete_contents(trans_id)
+        tt.create_file('file2', trans_id)
+        tt.apply()
+        other.commit('modify text in another tree', rev_id='a@lmod-0-2b')
+        merge([other.basedir, -1], [None, None], this_dir=self.tree1.basedir)
+        self.tree1.commit(u'Merge', rev_id='a@lmod-0-3',
+                          verbose=False)
+        self.tree1.commit(u'Merge', rev_id='a@lmod-0-4')
+        cset = self.get_valid_cset('a@lmod-0-2', 'a@lmod-0-4')
