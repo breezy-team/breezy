@@ -264,8 +264,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
             else:
                 action.write(self.to_file)
 
-        delta = compare_trees(old_tree, new_tree, want_unchanged=False)
-
+        delta = compare_trees(old_tree, new_tree, want_unchanged=True)
         for path, file_id, kind in delta.removed:
             action = Action('removed', [kind, path]).write(self.to_file)
 
@@ -285,3 +284,15 @@ class ChangesetSerializerV07(ChangesetSerializer):
             action = Action('modified', [kind, path])
             finish_action(action, file_id, kind, meta_modified, text_modified,
                           path, path)
+
+        for path, file_id, kind in delta.unchanged:
+            ie = new_tree.inventory[file_id]
+            new_rev = getattr(ie, 'revision', None)
+            if new_rev is None:
+                continue
+            old_rev = getattr(old_tree.inventory[ie.file_id], 'revision', None)
+            if new_rev != old_rev:
+                action = Action('modified', [ie.kind, 
+                                             new_tree.id2path(ie.file_id)])
+                action.add_property('last-changed', ie.revision)
+                action.write(self.to_file)
