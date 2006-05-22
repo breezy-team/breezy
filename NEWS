@@ -89,7 +89,6 @@ bzr 0.8.1  2006-05-16
 
     * Fix test case for bzr info in upgrading a standalone branch to metadir,
       uses bzrlib api now. (Olaf Conradi)
->>>>>>> MERGE-SOURCE
 
 bzr 0.8  2006-05-08
 
