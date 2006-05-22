@@ -80,9 +80,8 @@ def _custom_import(name, globals, locals, fromlist):
         cur_frame = 4
         frame_name = frame.f_globals.get('__name__', '<unknown>')
     frame_lineno = frame.f_lineno
-    s = ['%5.3fs' % (time.time()-tstart,)]
-    sys.stderr.write('%5.3fs %-24s\tfor %-24s\t@ %s:%d%s\n' 
-        % (time.time()-tstart, name, scope_name,
+    sys.stderr.write('%3.0fms %-24s\tfor %-24s\t@ %s:%d%s\n' 
+        % ((time.time()-tstart)*1000, name, scope_name,
             frame_name, frame_lineno, extra))
     if tload > 0.01:
         stack = []
@@ -109,8 +108,8 @@ def _custom_compile(*args, **kwargs):
     frame = sys._getframe(2)
     frame_name = frame.f_globals.get('__name__', '<unknown>')
     frame_lineno = frame.f_lineno
-    sys.stderr.write('%5.3fs %-40r\t@ %s:%d\n'
-        % (time.time()-tstart, args[0][:40], 
+    sys.stderr.write('%3.0fms %-40r\t@ %s:%d\n'
+        % ((time.time()-tstart)*1000, args[0][:40], 
             frame_name, frame_lineno))
     return comp
 
