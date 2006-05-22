@@ -20,6 +20,7 @@
 import os
 import sys
 import time
+import sre
 
 
 if __doc__ is None:
@@ -98,8 +99,24 @@ def _custom_import(name, globals, locals, fromlist):
             sys.stderr.write('\t' + ' '.join(stack) + '\n')
     return mod
 
+
+_real_compile = sre._compile
+
+def _custom_compile(*args, **kwargs):
+    """Time how long it takes to compile a regex"""
+    tstart = time.time()
+    comp = _real_compile(*args, **kwargs)
+    frame = sys._getframe(2)
+    frame_name = frame.f_globals.get('__name__', '<unknown>')
+    frame_lineno = frame.f_lineno
+    sys.stderr.write('%5.3fs %-40r\t@ %s:%d\n'
+        % (time.time()-tstart, args[0][:40], 
+            frame_name, frame_lineno))
+    return comp
+
 if '--profile-imports' in sys.argv:
     __builtins__.__import__ = _custom_import
+    sre._compile = _custom_compile
     sys.argv.remove('--profile-imports')
 
 
