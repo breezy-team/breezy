@@ -19,11 +19,11 @@
 from bzrlib.benchmarks import Benchmark
 
 
-class Commit(Benchmark):
+class CommitBenchmark(Benchmark):
 
     def test_commit_kernel_like_tree(self):
         """Commit of a fresh import of a clean kernel sized tree."""
-        self.make_kernel_tree()
+        self.make_kernel_like_tree()
         self.run_bzr('add')
         # on robertc's machine the first sample of this took 59750ms/77682ms
         self.time(self.run_bzr, 'commit', '-m', 'first post')

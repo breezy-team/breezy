@@ -22,7 +22,7 @@ from bzrlib.tests.blackbox import ExternalBase
 
 class Benchmark(ExternalBase):
 
-    def make_kernel_tree(self):
+    def make_kernel_like_tree(self):
         """Setup a temporary tree roughly like a kernel tree."""
         # a kernel tree has ~10000 and 500 directory, with most files around 
         # 3-4 levels deep. 

@@ -19,7 +19,7 @@
 from bzrlib.benchmarks import Benchmark
 
 
-class Checkout(Benchmark):
+class CheckoutBenchmark(Benchmark):
 
     def test_build_kernel_like_tree(self):
         """Checkout of a clean kernel sized tree should be (<10secs)."""

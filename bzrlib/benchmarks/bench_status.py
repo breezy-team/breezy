@@ -19,11 +19,13 @@
 from bzrlib.benchmarks import Benchmark
 
 
-class Status(Benchmark):
+class StatusBenchmark(Benchmark):
 
-    def test_clean_kernel_like_tree(self):
-        """Status in a clean kernel sized tree should be bearable (<2secs) fast.""" 
-        self.make_kernel_tree()
+    def test_no_ignored_unknown_kernel_like_tree(self):
+        """Status in a kernel sized tree with no ignored or unknowns.
+        
+        This should be bearable (<2secs) fast.""" 
+        self.make_kernel_like_tree()
         self.run_bzr('add')
         # on robertc's machine the first sample of this took 1687ms/15994ms
         self.time(self.run_bzr, 'status')
