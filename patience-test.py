@@ -23,6 +23,8 @@ def patch(path, patch_lines):
     return r
 
 
+old_total = 0
+new_total = 0
 b = Branch.open_containing('.')[0]
 repo = b.repository
 repo.lock_write()
@@ -41,6 +43,7 @@ try:
                 new_lines = versioned_file.get_lines(revision_id)
                 if ''.join(old_lines) == ''.join(new_lines):
                     continue
+
                 new_patch = StringIO()
                 try:
                     internal_diff('old', old_lines, 'new', new_lines, new_patch,
@@ -52,6 +55,11 @@ try:
                          'wb').write(''.join(new_lines))
                     print "temp dir is %s" % temp_dir
                     raise
+                old_patch = StringIO()
+                internal_diff('old', old_lines, 'new', new_lines, old_patch,
+                              sequence_matcher=difflib.SequenceMatcher)
+                old_total += len(old_patch.getvalue())
+                new_total += len(new_patch.getvalue())
                 new_patch.seek(0)
                 file_path = pathjoin(temp_dir, 'file')
                 orig_file = file(file_path, 'wb')
@@ -63,5 +71,6 @@ try:
                 for line_a, line_b in zip(new_file, new_lines):
                     assert line_a == line_b
             last_id = revision_id
+    print old_total, new_total
 finally:
     repo.unlock()
