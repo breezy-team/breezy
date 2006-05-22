@@ -17,7 +17,7 @@ from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryLink)
 from bzrlib.osutils import sha_file, sha_string
 from bzrlib.revision import Revision, NULL_REVISION
-from bzrlib.testament import Testament
+from bzrlib.testament import StrictTestament
 from bzrlib.trace import mutter, warning
 from bzrlib.tree import Tree
 from bzrlib.xml5 import serializer_v5
@@ -225,7 +225,7 @@ class ChangesetReader(object):
         rev_info = self.info.get_revision_info(revision_id)
         assert rev.revision_id == rev_info.revision_id
         assert rev.revision_id == revision_id
-        sha1 = sha(Testament(rev, inventory).as_short_text()).hexdigest()
+        sha1 = sha(StrictTestament(rev, inventory).as_short_text()).hexdigest()
         if sha1 != rev_info.sha1:
             raise BzrError('Revision checksum mismatch.'
                 ' For revision_id {%s} supplied sha1 (%s) != measured (%s)'

@@ -625,4 +625,4 @@ class CSetTester(TestCaseInTempDir):
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-3',
                           verbose=False)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-4')
-        cset = self.get_valid_cset('a@lmod-0-2', 'a@lmod-0-4')
+        cset = self.get_valid_cset('a@lmod-0-2a', 'a@lmod-0-4')

@@ -6,7 +6,7 @@ Common entries, like strings, etc, for the changeset reading + writing code.
 from sha import sha
 
 import bzrlib
-from bzrlib.testament import Testament
+from bzrlib.testament import StrictTestament
 
 header_str = 'Bazaar changeset v'
 version = (0, 7)
@@ -187,7 +187,8 @@ def unpack_highres_date(date):
 
 
 def testament_sha1(repository, revision_id):
-    text = Testament.from_revision(repository, revision_id).as_short_text()
+    testament = StrictTestament.from_revision(repository, revision_id)
+    text = testament.as_short_text()
     s = sha(text)
     return s.hexdigest()
  

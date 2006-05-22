@@ -184,3 +184,17 @@ class Testament(object):
                     line = line.encode('utf-8')
                 r.append('    %s\n' % line)
         return r
+
+
+class StrictTestament(Testament):
+    """This testament format is for use as a checksum in changesets"""
+
+    def _entry_to_line(self, path, ie):
+        l = ie.revision.decode('utf-8') + ' '
+        l += Testament._entry_to_line(self, path, ie)
+        return l
+
+    def as_text_lines(self):
+        lines = ['bazaar-ng testament version 2']
+        lines.extend(Testament.as_text_lines(self)[1:])
+        return lines
