@@ -73,19 +73,12 @@ class Serializer(object):
         return ElementTree().parse(f)
 
 
-# before in bench_add_kernel_like
-# 10831        10824   9384.4890   1847.5270   elementtree.ElementTree:662(_write)
-#+10824            0   9295.0140   1761.0460   +elementtree.ElementTree:662(_write)
-#+32471            0   4585.8950   1331.2060   +elementtree.ElementTree:812(_escape_attrib)
-#after switching to text.replace rather than string.replace.
-# 10831        10824   7486.1120   1832.2340   elementtree.ElementTree:662(_write)
-#+10824            0   7397.3120   1745.6300   +elementtree.ElementTree:662(_write)
-#+32471            0   2762.3760   1300.3990   +bzrlib.xml_serializer:85(_escape_attrib)
-
- 
+# performance tuning for elementree's serialiser. THis should be
+# sent upstream - RBC 20060523.
+# the functions here are patched into elementree at runtime.
 import elementtree.ElementTree
 import re
-escape_re = re.compile("&'\"<>")
+escape_re = re.compile("[&'\"<>]")
 escape_map = {
     "&":'&amp;',
     "'":"&apos;", # FIXME: overkill
@@ -118,7 +111,7 @@ def _escape_attrib(text, encoding=None, replace=None):
 
 elementtree.ElementTree._escape_attrib = _escape_attrib
 
-escape_cdata_re = re.compile("&<>")
+escape_cdata_re = re.compile("[&<>]")
 escape_cdata_map = {
     "&":'&amp;',
     "<":"&lt;",

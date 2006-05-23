@@ -105,29 +105,27 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
     from bzrlib.errors import BadFileKindError, ForbiddenFileError
     assert isinstance(recurse, bool)
     
-    orig_list = file_list
-    file_list = _prepare_file_list(file_list)
-    mutter("smart add of %r, originally %r", file_list, orig_list)
+    prepared_list = _prepare_file_list(file_list)
+    mutter("smart add of %r, originally %r", prepared_list, file_list)
     inv = tree.read_working_inventory()
     added = []
     ignored = {}
-    user_files = list(file_list)
-    file_list = []
+    user_files = set()
+    files_to_add = []
 
     # validate user file paths and convert all paths to tree 
     # relative : its cheaper to make a tree relative path an abspath
     # than to convert an abspath to tree relative.
-    for filepath in user_files:
+    for filepath in prepared_list:
         rf = tree.relpath(filepath)
-        file_list.append((rf, None))
+        user_files.add(rf)
+        files_to_add.append((rf, None))
         # validate user parameters. Our recursive code avoids adding new files
         # that need such validation 
         if tree.is_control_filename(rf):
             raise ForbiddenFileError('cannot add control file %s' % filepath)
 
-    user_files = set([path for path, parent_ie in file_list])
-        
-    for filepath, parent_ie in file_list:
+    for filepath, parent_ie in files_to_add:
         # filepath is tree-relative
         abspath = tree.abspath(filepath)
 
@@ -221,7 +219,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
                         ignored[ignore_glob].append(subp)
                     else:
                         #mutter("queue to add sub-file %r", subp)
-                        file_list.append((subp, this_ie))
+                        files_to_add.append((subp, this_ie))
 
     if len(added) > 0:
         tree._write_inventory(inv)
@@ -229,7 +227,18 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
 
 
 def __add_one(tree, inv, parent_ie, path, kind, action):
-    """Add a file or directory, automatically add unversioned parents."""
+    """Add a new entry to the inventory and automatically add unversioned parents.
+
+    Actual adding of the entry is delegated to the action callback.
+
+    :param inv: Inventory which will receive the new entry.
+    :param parent_ie: Parent inventory entry if known, or None.  If
+    None, the parent is looked up by name and used if present, otherwise
+    it is recursively added.
+    :param kind: Kind of new entry (file, directory, etc)
+    :param action: callback(inv, parent_ie, path, kind); return ignored.
+    :returns: A list of paths which have been added.
+    """
 
     # Nothing to do if path is already versioned.
     # This is safe from infinite recursion because the tree root is
