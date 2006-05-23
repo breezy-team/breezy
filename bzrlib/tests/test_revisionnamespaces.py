@@ -50,6 +50,8 @@ class TestRevisionNamespaces(TestCaseWithTransport):
 
         self.assertEquals(RevisionSpec('date:today').in_history(b),
                           (2, 'a@r-0-2'))
+        self.assertRaises(NoSuchRevision,
+                          RevisionSpec('date:tomorrow').in_history, b)
         self.assertEquals(RevisionSpec('date:yesterday').in_history(b),
                           (1, 'a@r-0-1'))
         self.assertEquals(RevisionSpec('before:date:today').in_history(b),

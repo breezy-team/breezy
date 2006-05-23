@@ -261,6 +261,18 @@ class RevisionSpec_revs:
         return len(self.revs)
 
 
+class RevisionSpec_revs:
+    def __init__(self, revs, branch):
+        self.revs = revs
+        self.branch = branch
+    def __getitem__(self, index):
+        r = self.branch.repository.get_revision(self.revs[index])
+        # TODO: Handle timezone.
+        return datetime.datetime.fromtimestamp(r.timestamp)
+    def __len__(self):
+        return len(self.revs)
+
+
 class RevisionSpec_date(RevisionSpec):
     prefix = 'date:'
     _date_re = re.compile(
@@ -308,8 +320,11 @@ class RevisionSpec_date(RevisionSpec):
 
             dt = datetime.datetime(year=year, month=month, day=day,
                     hour=hour, minute=minute, second=second)
-
-        rev = bisect.bisect(RevisionSpec_revs(revs, branch), dt)
+        branch.lock_read()
+        try:
+            rev = bisect.bisect(RevisionSpec_revs(revs, branch), dt)
+        finally:
+            branch.unlock()
         if rev == len(revs):
             return RevisionInfo(branch, None)
         else:
