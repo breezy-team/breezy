@@ -2,6 +2,8 @@ from cStringIO import StringIO
 
 from bzrlib.diff import internal_diff
 from bzrlib.errors import BinaryFile
+from bzrlib.patiencediff import (recurse_matches, SequenceMatcher, unique_lcs,
+                                 unified_diff, unified_diff_files)
 from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
@@ -11,7 +13,9 @@ def udiff_lines(old, new, allow_binary=False):
     output.seek(0, 0)
     return output.readlines()
 
+
 class TestDiff(TestCase):
+
     def test_add_nl(self):
         """diff generates a valid diff for patches that add a newline"""
         lines = udiff_lines(['boo'], ['boo\n'])
@@ -57,11 +61,10 @@ class TestDiff(TestCase):
         udiff_lines([1023 * 'a' + '\x00'], [], allow_binary=True)
         udiff_lines([], [1023 * 'a' + '\x00'], allow_binary=True)
 
+
 class TestCDVDiffLib(TestCase):
 
     def test_unique_lcs(self):
-        from bzrlib.patiencediff import unique_lcs
-
         self.assertEquals(unique_lcs('', ''), [])
         self.assertEquals(unique_lcs('a', 'a'), [(0,0)])
         self.assertEquals(unique_lcs('a', 'b'), [])
@@ -73,8 +76,6 @@ class TestCDVDiffLib(TestCase):
         self.assertEquals(unique_lcs('acbac', 'abc'), [(2,1)])
 
     def test_recurse_matches(self):
-        from bzrlib.patiencediff import recurse_matches
-
         def test_one(a, b, matches):
             test_matches = []
             recurse_matches(a, b, len(a), len(b), test_matches, 10)
@@ -96,8 +97,6 @@ class TestCDVDiffLib(TestCase):
         test_one('aBccDe', 'abccde', [(0,0), (5,5)])
 
     def test_matching_blocks(self):
-        from bzrlib.patiencediff import SequenceMatcher
-
         def chk_blocks(a, b, matching):
             # difflib always adds a signature of the total
             # length, with no matching entries at the end
@@ -144,8 +143,6 @@ class TestCDVDiffLib(TestCase):
         chk_blocks('bbbbbbbb', 'cbbbbbbc', [(0,1,6)])
 
     def test_opcodes(self):
-        from bzrlib.patiencediff import SequenceMatcher
-
         def chk_ops(a, b, codes):
             s = SequenceMatcher(None, a, b)
             self.assertEquals(codes, s.get_opcodes())
@@ -180,7 +177,6 @@ class TestCDVDiffLib(TestCase):
                 , ('insert', 6,6,  6,11)
                 , ('equal',  6,16, 11,21)
                 ])
-
         chk_ops(
                 [ 'hello there\n'
                 , 'world\n'
@@ -191,7 +187,6 @@ class TestCDVDiffLib(TestCase):
                 , ('delete', 1,2, 1,1)
                 , ('equal',  2,3, 1,2)
                 ])
-
         chk_ops('aBccDe', 'abccde', 
                 [ ('equal',   0,1, 0,1)
                 , ('replace', 1,2, 1,2)
@@ -199,7 +194,6 @@ class TestCDVDiffLib(TestCase):
                 , ('replace', 4,5, 4,5)
                 , ('equal',   5,6, 5,6)
                 ])
-
         chk_ops('aBcdEcdFg', 'abcdecdfg', 
                 [ ('equal',   0,1, 0,1)
                 , ('replace', 1,2, 1,2)
@@ -213,8 +207,6 @@ class TestCDVDiffLib(TestCase):
     def test_multiple_ranges(self):
         # There was an earlier bug where we used a bad set of ranges,
         # this triggers that specific bug, to make sure it doesn't regress
-        from bzrlib.patiencediff import SequenceMatcher
-
         def chk_blocks(a, b, matching):
             # difflib always adds a signature of the total
             # length, with no matching entries at the end
@@ -280,14 +272,11 @@ class cmd_mkdir(Command):
 , [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
 
     def test_cdv_unified_diff(self):
-        from bzrlib.patiencediff import SequenceMatcher, unified_diff
-
         txt_a = [ 'hello there\n'
                 , 'world\n'
                 , 'how are you today?\n']
         txt_b = [ 'hello there\n'
                 , 'how are you today?\n']
-
         self.assertEquals([ '---  \n'
                           , '+++  \n'
                           , '@@ -1,3 +1,2 @@\n'
@@ -297,10 +286,8 @@ class cmd_mkdir(Command):
                           ]
                           , list(unified_diff(txt_a, txt_b
                                         , sequencematcher=SequenceMatcher)))
-
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
-
         # This is the result with LongestCommonSubstring matching
         self.assertEquals([ '---  \n'
                           , '+++  \n'
@@ -317,7 +304,6 @@ class cmd_mkdir(Command):
                           , ' e\n'
                           , ' f\n']
                           , list(unified_diff(txt_a, txt_b)))
-
         # And the cdv diff
         self.assertEquals([ '---  \n'
                           , '+++  \n'
@@ -334,14 +320,13 @@ class cmd_mkdir(Command):
                           , ' h\n'
                           , ' i\n'
                           ]
-                          , list(unified_diff(txt_a, txt_b
-                                        , sequencematcher=SequenceMatcher)))
+                          , list(unified_diff(txt_a, txt_b,
+                                 sequencematcher=SequenceMatcher)))
+
 
 class TestCDVDiffLibFiles(TestCaseInTempDir):
 
     def test_cdv_unified_diff_files(self):
-        from bzrlib.patiencediff import SequenceMatcher, unified_diff_files
-
         txt_a = [ 'hello there\n'
                 , 'world\n'
                 , 'how are you today?\n']
@@ -357,8 +342,8 @@ class TestCDVDiffLibFiles(TestCaseInTempDir):
                           , '-world\n'
                           , ' how are you today?\n'
                           ]
-                          , list(unified_diff_files('a1', 'b1'
-                                        , sequencematcher=SequenceMatcher)))
+                          , list(unified_diff_files('a1', 'b1',
+                                 sequencematcher=SequenceMatcher)))
 
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
@@ -398,5 +383,5 @@ class TestCDVDiffLibFiles(TestCaseInTempDir):
                           , ' h\n'
                           , ' i\n'
                           ]
-                          , list(unified_diff_files('a2', 'b2'
-                                        , sequencematcher=SequenceMatcher)))
+                          , list(unified_diff_files('a2', 'b2',
+                                 sequencematcher=SequenceMatcher)))
