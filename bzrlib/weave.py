@@ -73,9 +73,6 @@ from cStringIO import StringIO
 from difflib import SequenceMatcher
 import os
 import sha
-# from difflib import unified_diff
-from bzrlib.cdv.cdvdifflib import unified_diff
-from bzrlib.cdv.cdvdifflib import SequenceMatcher
 import time
 
 from bzrlib.trace import mutter
@@ -87,6 +84,7 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         )
 import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings
+from bzrlib.patiencediff import SequenceMatcher, unified_diff
 from bzrlib.symbol_versioning import *
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile

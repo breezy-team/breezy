@@ -17,6 +17,7 @@
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 import bzrlib.errors as errors
+from bzrlib.patiencediff import SequenceMatcher, unified_diff
 from bzrlib.symbol_versioning import *
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter
@@ -27,9 +28,6 @@ from bzrlib.trace import mutter
 
 def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   allow_binary=False, sequence_matcher=None):
-    from bzrlib.cdv.cdvdifflib import unified_diff
-    from bzrlib.cdv.cdvdifflib import SequenceMatcher
-    
     # FIXME: difflib is wrong if there is no trailing newline.
     # The syntax used by patch seems to be "\ No newline at
     # end of file" following the last diff line from that
