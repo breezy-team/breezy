@@ -9,7 +9,9 @@ IN DEVELOPMENT
 
    * On Windows, detect terminal width using GetConsoleScreenBufferInfo.
      (Alexander Belchenko)
-  
+
+   * Speedup improvement for 'date:'-revision search. (Guillaume Pinot).
+
    * Show the correct number of revisions pushed when pushing a new branch.
      (Robert Collins).
 
