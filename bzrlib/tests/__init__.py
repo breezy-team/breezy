@@ -118,13 +118,30 @@ class _MyResult(unittest._TextTestResult):
     def __init__(self, stream, descriptions, verbosity, pb=None):
         unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
         self.pb = pb
+    
+    def extractBenchmarkTime(self, testCase):
+        """Add a benchmark time for the current test case."""
+        self._benchmarkTime = getattr(testCase, "_benchtime", None)
+    
+    def _elapsedTestTimeString(self):
+        """Return a time string for the overall time the current test has taken."""
+        return self._formatTime(time.time() - self._start_time)
 
-    def _elapsedTime(self):
-        return "%5dms" % (1000 * (time.time() - self._start_time))
+    def _testTimeString(self):
+        if self._benchmarkTime is not None:
+            return "%s/%s" % (
+                self._formatTime(self._benchmarkTime),
+                self._elapsedTestTimeString())
+        else:
+            return "      %s" % self._elapsedTestTimeString()
+
+    def _formatTime(self, seconds):
+        """Format seconds as milliseconds with leading spaces."""
+        return "%5dms" % (1000 * seconds)
 
     def _ellipsise_unimportant_words(self, a_string, final_width,
                                    keep_start=False):
-        """Add ellipsese (sp?) for overly long strings.
+        """Add ellipses (sp?) for overly long strings.
         
         :param keep_start: If true preserve the start of a_string rather
                            than the end of it.
@@ -152,7 +169,7 @@ class _MyResult(unittest._TextTestResult):
             final_width = 13
         else:
             final_width = osutils.terminal_width()
-            final_width = final_width - 15
+            final_width = final_width - 15 - 8
         what = None
         if SHOW_DESCRIPTIONS:
             what = test.shortDescription()
@@ -168,14 +185,19 @@ class _MyResult(unittest._TextTestResult):
         elif self.dots and self.pb is not None:
             self.pb.update(what, self.testsRun - 1, None)
         self.stream.flush()
+        self._recordTestStartTime()
+
+    def _recordTestStartTime(self):
+        """Record that a test has started."""
         self._start_time = time.time()
 
     def addError(self, test, err):
         if isinstance(err[1], TestSkipped):
             return self.addSkipped(test, err)    
         unittest.TestResult.addError(self, test, err)
+        self.extractBenchmarkTime(test)
         if self.showAll:
-            self.stream.writeln("ERROR %s" % self._elapsedTime())
+            self.stream.writeln("ERROR %s" % self._testTimeString())
         elif self.dots and self.pb is None:
             self.stream.write('E')
         elif self.dots:
@@ -186,8 +208,9 @@ class _MyResult(unittest._TextTestResult):
 
     def addFailure(self, test, err):
         unittest.TestResult.addFailure(self, test, err)
+        self.extractBenchmarkTime(test)
         if self.showAll:
-            self.stream.writeln(" FAIL %s" % self._elapsedTime())
+            self.stream.writeln(" FAIL %s" % self._testTimeString())
         elif self.dots and self.pb is None:
             self.stream.write('F')
         elif self.dots:
@@ -197,8 +220,9 @@ class _MyResult(unittest._TextTestResult):
             self.stop()
 
     def addSuccess(self, test):
+        self.extractBenchmarkTime(test)
         if self.showAll:
-            self.stream.writeln('   OK %s' % self._elapsedTime())
+            self.stream.writeln('   OK %s' % self._testTimeString())
         elif self.dots and self.pb is None:
             self.stream.write('~')
         elif self.dots:
@@ -207,8 +231,9 @@ class _MyResult(unittest._TextTestResult):
         unittest.TestResult.addSuccess(self, test)
 
     def addSkipped(self, test, skip_excinfo):
+        self.extractBenchmarkTime(test)
         if self.showAll:
-            print >>self.stream, ' SKIP %s' % self._elapsedTime()
+            print >>self.stream, ' SKIP %s' % self._testTimeString()
             print >>self.stream, '     %s' % skip_excinfo[1]
         elif self.dots and self.pb is None:
             self.stream.write('S')
@@ -348,7 +373,6 @@ class TestCase(unittest.TestCase):
     accidentally overlooked.
     """
 
-    BZRPATH = 'bzr'
     _log_file_name = None
     _log_contents = ''
 
@@ -361,6 +385,7 @@ class TestCase(unittest.TestCase):
         self._cleanEnvironment()
         bzrlib.trace.disable_default_logging()
         self._startLogFile()
+        self._benchtime = None
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -514,6 +539,16 @@ class TestCase(unittest.TestCase):
     def tearDown(self):
         self._runCleanups()
         unittest.TestCase.tearDown(self)
+
+    def time(self, callable, *args, **kwargs):
+        """Run callable and accrue the time it takes to the benchmark time."""
+        if self._benchtime is None:
+            self._benchtime = 0
+        start = time.time()
+        try:
+            callable(*args, **kwargs)
+        finally:
+            self._benchtime += time.time() - start
 
     def _runCleanups(self):
         """Run registered cleanup functions. 
@@ -1018,15 +1053,19 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              keep_output=False,
-             transport=None):
+             transport=None,
+             test_suite_factory=None):
     """Run the whole test suite under the enhanced runner"""
     global default_transport
     if transport is None:
         transport = default_transport
     old_transport = default_transport
     default_transport = transport
-    suite = test_suite()
     try:
+        if test_suite_factory is None:
+            suite = test_suite()
+        else:
+            suite = test_suite_factory()
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
                      stop_on_failure=stop_on_failure, keep_output=keep_output,
                      transport=transport)
@@ -1034,9 +1073,12 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         default_transport = old_transport
 
 
-
 def test_suite():
-    """Build and return TestSuite for the whole program."""
+    """Build and return TestSuite for the whole of bzrlib.
+    
+    This function can be replaced if you need to change the default test
+    suite on a global basis, but it is not encouraged.
+    """
     from doctest import DocTestSuite
 
     global MODULES_TO_DOCTEST
@@ -1092,6 +1134,7 @@ def test_suite():
                    'bzrlib.tests.test_sftp_transport',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_source',
+                   'bzrlib.tests.test_status',
                    'bzrlib.tests.test_store',
                    'bzrlib.tests.test_symbol_versioning',
                    'bzrlib.tests.test_testament',
@@ -1114,23 +1157,12 @@ def test_suite():
     test_transport_implementations = [
         'bzrlib.tests.test_transport_implementations']
 
-    TestCase.BZRPATH = osutils.pathjoin(
-            osutils.realpath(osutils.dirname(bzrlib.__path__[0])), 'bzr')
-    print '%10s: %s' % ('bzr', osutils.realpath(sys.argv[0]))
-    print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
-    print
     suite = TestSuite()
-    # python2.4's TestLoader.loadTestsFromNames gives very poor 
-    # errors if it fails to load a named module - no indication of what's
-    # actually wrong, just "no such module".  We should probably override that
-    # class, but for the moment just load them ourselves. (mbp 20051202)
-    loader = TestLoader()
+    loader = TestUtil.TestLoader()
     from bzrlib.transport import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
     adapt_modules(test_transport_implementations, adapter, loader, suite)
-    for mod_name in testmod_names:
-        mod = _load_module_by_name(mod_name)
-        suite.addTest(loader.loadTestsFromModule(mod))
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     for package in packages_to_test():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
@@ -1145,18 +1177,5 @@ def test_suite():
 
 def adapt_modules(mods_list, adapter, loader, suite):
     """Adapt the modules in mods_list using adapter and add to suite."""
-    for mod_name in mods_list:
-        mod = _load_module_by_name(mod_name)
-        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
-            suite.addTests(adapter.adapt(test))
-
-
-def _load_module_by_name(mod_name):
-    parts = mod_name.split('.')
-    module = __import__(mod_name)
-    del parts[0]
-    # for historical reasons python returns the top-level module even though
-    # it loads the submodule; we need to walk down to get the one we want.
-    while parts:
-        module = getattr(module, parts.pop(0))
-    return module
+    for test in iter_suite_tests(loader.loadTestsFromModuleNames(mods_list)):
+        suite.addTests(adapter.adapt(test))

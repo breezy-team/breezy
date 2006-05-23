@@ -7,12 +7,104 @@ IN DEVELOPMENT
      pending-merge display.  (Robert Widhopf-Fenk, Gustavo Niemeyer)
      (Malone #3507)
 
-   * On Windows, detect terminal widht using GetConsoleScreenBufferInfo.
+   * On Windows, detect terminal width using GetConsoleScreenBufferInfo.
      (Alexander Belchenko)
+
+   * Speedup improvement for 'date:'-revision search. (Guillaume Pinot).
+
+   * Show the correct number of revisions pushed when pushing a new branch.
+     (Robert Collins).
+
+   * 'bzr selftest' now shows a progress bar with the number of tests, and 
+     progress made. 'make check' shows tests in -v mode, to be more useful
+     for the PQM status window. (Robert Collins).
+
+   * 'bzr selftest --benchmark' will run a new benchmarking selftest.
+     (Robert Collins, Martin Pool).
+
+   * 'bzr commit' shows a progress bar. This is useful for commits over sftp
+     where commit can take an appreciable time. (Robert Collins)
+
+   * 'bzr add' is now less verbose in telling you what ignore globs were
+     matched by files being ignored. Instead it just tells you how many 
+     were ignored (because you might reasonably be expecting none to be
+     ignored). 'bzr add -v' is unchanged and will report every ignored
+     file. (Robert Collins).
+
+   * ftp now has a test server if medusa is installed. As part of testing,
+     ftp support has been improved, including support for supplying a
+     non-standard port. (John Arbash Meinel).
+
+   * ``log --line`` shows the revision number.  (#5162, Alexander Belchenko)
+
+  BUG FIXES:
+
+    * Fix shadowed definition of TestLocationConfig that caused some 
+      tests not to run.  (#32587, Erik Bågfors, Michael Ellerman, 
+      Martin Pool)
+
+  INTERNALS:
+
+    * Combine the ignore rules into a single regex rather than looping over
+      them to reduce the threshold where  N^2 behaviour occurs in operations
+      like status. (Jan Hudec, Robert Collins).
+
+    * 'bzr push' should only push the ancestry of the current revision, not
+      all of the history in the repository. This is especially important for
+      shared repositories. (John Arbash Meinel)
+
+bzr 0.8.2  2006-05-17
   
-    'bzr selftest' now shows a progress bar with the number of tests, and 
-    progress made. 'make check' shows tests in -v mode, to be more useful
-    for the PQM status window. (Robert Collins).
+  BUG FIXES:
+   
+    * setup.py failed to install launchpad plugin.  (Martin Pool)
+
+bzr 0.8.1  2006-05-16
+
+  BUG FIXES:
+
+    * Fix failure to commit a merge in a checkout.  (Martin Pool, 
+      Robert Collins, Erik Bågfors, #43959)
+
+    * Nicer messages from 'commit' in the case of renames, and correct
+      messages when a merge has occured. (Robert Collins, Martin Pool)
+
+    * Separate functionality from assert statements as they are skipped in
+      optimized mode of python. Add the same check to pending merges.
+      (#44443, Olaf Conradi)
+
+  CHANGES:
+
+    * Do not show the None revision in output of bzr ancestry. (Olaf Conradi)
+
+    * Add info on standalone branches without a working tree.
+      (#44155, Olaf Conradi)
+
+    * Fix bug in knits when raising InvalidRevisionId. (#44284, Olaf Conradi)
+
+  CHANGES:
+
+    * Make editor invocation comply with Debian Policy. First check
+      environment variables VISUAL and EDITOR, then try editor from
+      alternatives system. If that all fails, fall back to the pre-defined
+      list of editors. (#42904, Olaf Conradi)
+
+  NEW FEATURES:
+
+    * New 'register-branch' command registers a public branch into 
+      Launchpad.net, where it can be associated with bugs, etc.
+      (Martin Pool, Bjorn Tillenius, Robert Collins)
+
+  INTERNALS:
+
+    * New public api in InventoryEntry - 'describe_change(old, new)' which
+      provides a human description of the changes between two old and
+      new. (Robert Collins, Martin Pool)
+
+  TESTING:
+
+    * Fix test case for bzr info in upgrading a standalone branch to metadir,
+      uses bzrlib api now. (Olaf Conradi)
 
 bzr 0.8  2006-05-08
 

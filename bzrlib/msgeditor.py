@@ -38,16 +38,15 @@ def _get_editor():
     if e is not None:
         yield e
         
-    try:
-        yield os.environ["EDITOR"]
-    except KeyError:
-        pass
+    for varname in 'VISUAL', 'EDITOR':
+        if os.environ.has_key(varname):
+            yield os.environ[varname]
 
     if sys.platform == 'win32':
         for editor in 'wordpad.exe', 'notepad.exe':
             yield editor
     else:
-        for editor in ['vi', 'pico', 'nano', 'joe']:
+        for editor in ['/usr/bin/editor', 'vi', 'pico', 'nano', 'joe']:
             yield editor
 
 
@@ -90,6 +89,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
     """
     import tempfile
 
+    msgfilename = None
     try:
         tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
         msgfile = os.close(tmp_fileno)
@@ -136,8 +136,11 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
             return "".join(msg)
     finally:
         # delete the msg file in any case
-        try: os.unlink(msgfilename)
-        except IOError: pass
+        if msgfilename is not None:
+            try:
+                os.unlink(msgfilename)
+            except IOError, e:
+                mutter("failed to unlink %s: %s; ignored", msgfilename, e)
 
 
 def make_commit_message_template(working_tree, specific_files):

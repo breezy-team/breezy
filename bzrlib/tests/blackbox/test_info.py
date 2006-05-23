@@ -460,6 +460,31 @@ Revision store:
        ), out)
         self.assertEqual('', err)
 
+    def test_info_standalone_no_tree(self):
+        # create standalone branch without a working tree
+        branch = self.make_branch('branch')
+        repo = branch.repository
+        out, err = self.runbzr('info branch')
+        self.assertEqualDiff(
+"""Location:
+  branch root: %s
+
+Format:
+       control: Meta directory format 1
+        branch: Branch format 5
+    repository: %s
+
+Branch history:
+         0 revisions
+
+Revision store:
+         0 revisions
+         0 KiB
+""" % (branch.bzrdir.root_transport.base,
+       repo._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
+
     def test_info_shared_repository(self):
         old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
         bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrlib.bzrdir.BzrDirMetaFormat1())

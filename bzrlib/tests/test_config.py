@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -396,7 +396,8 @@ class TestGlobalConfigItems(TestCase):
         my_config = self._get_sample_config()
         self.assertEqual(sample_long_alias, my_config.get_alias('ll'))
 
-class TestLocationConfig(TestCase):
+
+class TestLocationConfig(TestCaseInTempDir):
 
     def test_constructs(self):
         my_config = config.LocationConfig('http://example.com')
@@ -416,7 +417,8 @@ class TestLocationConfig(TestCase):
             config.ConfigObj = oldparserclass
         self.failUnless(isinstance(parser, InstrumentedConfigObj))
         self.assertEqual(parser._calls,
-                         [('__init__', config.branches_config_filename())])
+                         [('__init__', config.branches_config_filename(),
+                           'utf-8')])
 
     def test_get_global_config(self):
         my_config = config.LocationConfig('http://example.com')
@@ -473,24 +475,16 @@ class TestLocationConfig(TestCase):
         self.get_location_config('/a/c')
         self.assertEqual('/a/c', self.my_config._get_section())
 
-    def get_location_config(self, location, global_config=None):
-        if global_config is None:
-            global_file = StringIO(sample_config_text)
-        else:
-            global_file = StringIO(global_config)
-        branches_file = StringIO(sample_branches_text)
-        self.my_config = config.LocationConfig(location)
-        self.my_config._get_parser(branches_file)
-        self.my_config._get_global_config()._get_parser(global_file)
 
     def test_location_without_username(self):
         self.get_location_config('http://www.example.com/useglobal')
-        self.assertEqual('Robert Collins <robertc@example.com>',
+        self.assertEqual(u'Erik B\u00e5gfors <erik@bagfors.nu>',
                          self.my_config.username())
 
     def test_location_not_listed(self):
+        """Test that the global username is used when no location matches"""
         self.get_location_config('/home/robertc/sources')
-        self.assertEqual('Robert Collins <robertc@example.com>',
+        self.assertEqual(u'Erik B\u00e5gfors <erik@bagfors.nu>',
                          self.my_config.username())
 
     def test_overriding_location(self):
@@ -541,9 +535,6 @@ class TestLocationConfig(TestCase):
         self.get_location_config('/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          self.my_config.post_commit())
-
-
-class TestLocationConfig(TestCaseInTempDir):
 
     def get_location_config(self, location, global_config=None):
         if global_config is None:

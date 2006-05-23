@@ -118,7 +118,11 @@ class BzrDir(object):
         if local_repo:
             # may need to copy content in
             if force_new_repo:
-                local_repo.clone(result, revision_id=revision_id, basis=basis_repo)
+                result_repo = local_repo.clone(
+                    result,
+                    revision_id=revision_id,
+                    basis=basis_repo)
+                result_repo.set_make_working_trees(local_repo.make_working_trees())
             else:
                 try:
                     result_repo = result.find_repository()
@@ -130,7 +134,11 @@ class BzrDir(object):
                     result_repo.fetch(local_repo, revision_id=revision_id)
                 except errors.NoRepositoryPresent:
                     # needed to make one anyway.
-                    local_repo.clone(result, revision_id=revision_id, basis=basis_repo)
+                    result_repo = local_repo.clone(
+                        result,
+                        revision_id=revision_id,
+                        basis=basis_repo)
+                    result_repo.set_make_working_trees(local_repo.make_working_trees())
         # 1 if there is a branch present
         #   make sure its content is available in the target repository
         #   clone it.
@@ -404,6 +412,25 @@ class BzrDir(object):
         self.transport = _transport.clone('.bzr')
         self.root_transport = _transport
 
+    def is_control_filename(self, filename):
+        """True if filename is the name of a path which is reserved for bzrdir's.
+        
+        :param filename: A filename within the root transport of this bzrdir.
+
+        This is true IF and ONLY IF the filename is part of the namespace reserved
+        for bzr control dirs. Currently this is the '.bzr' directory in the root
+        of the root_transport. it is expected that plugins will need to extend
+        this in the future - for instance to make bzr talk with svn working
+        trees.
+        """
+        # this might be better on the BzrDirFormat class because it refers to 
+        # all the possible bzrdir disk formats. 
+        # This method is tested via the workingtree is_control_filename tests- 
+        # it was extractd from WorkingTree.is_control_filename. If the methods
+        # contract is extended beyond the current trivial  implementation please
+        # add new tests for it to the appropriate place.
+        return filename == '.bzr' or filename.startswith('.bzr/')
+
     def needs_format_conversion(self, format=None):
         """Return true if this bzrdir needs convert_format run on it.
         
@@ -567,11 +594,12 @@ class BzrDir(object):
             # no repo available, make a new one
             result.create_repository()
         elif source_repository is not None and result_repo is None:
-            # have soure, and want to make a new target repo
-            source_repository.clone(result,
-                                    revision_id=revision_id,
-                                    basis=basis_repo)
-        else:
+            # have source, and want to make a new target repo
+            # we dont clone the repo because that preserves attributes
+            # like is_shared(), and we have not yet implemented a 
+            # repository sprout().
+            result_repo = result.create_repository()
+        if result_repo is not None:
             # fetch needed content into target.
             if basis_repo:
                 # XXX FIXME RBC 20060214 need tests for this when the basis

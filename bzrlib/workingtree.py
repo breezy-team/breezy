@@ -39,13 +39,15 @@ CONFLICT_HEADER_1 = "BZR conflict list format 1"
 # At the moment they may alias the inventory and have old copies of it in
 # memory.  (Now done? -- mbp 20060309)
 
+from binascii import hexlify
 from copy import deepcopy
 from cStringIO import StringIO
 import errno
 import fnmatch
 import os
+import re
 import stat
- 
+from time import time
 
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import (Branch,
@@ -80,7 +82,7 @@ from bzrlib.osutils import (
                             pumpfile,
                             safe_unicode,
                             splitpath,
-                            rand_bytes,
+                            rand_chars,
                             normpath,
                             realpath,
                             relpath,
@@ -101,33 +103,43 @@ import bzrlib.ui
 import bzrlib.xml5
 
 
+# the regex here does the following:
+# 1) remove any weird characters; we don't escape them but rather
+# just pull them out
+ # 2) match leading '.'s to make it not hidden
+_gen_file_id_re = re.compile(r'[^\w.]|(^\.*)')
+_gen_id_suffix = None
+_gen_id_serial = 0
+
+
+def _next_id_suffix():
+    """Create a new file id suffix that is reasonably unique.
+    
+    On the first call we combine the current time with 64 bits of randomness
+    to give a highly probably globally unique number. Then each call in the same
+    process adds 1 to a serial number we append to that unique value.
+    """
+    # XXX TODO: change bzrlib.add.smart_add to call workingtree.add() rather 
+    # than having to move the id randomness out of the inner loop like this.
+    # XXX TODO: for the global randomness this uses we should add the thread-id
+    # before the serial #.
+    global _gen_id_suffix, _gen_id_serial
+    if _gen_id_suffix is None:
+        _gen_id_suffix = "-%s-%s-" % (compact_date(time()), rand_chars(16))
+    _gen_id_serial += 1
+    return _gen_id_suffix + str(_gen_id_serial)
+
+
 def gen_file_id(name):
-    """Return new file id.
+    """Return new file id for the basename 'name'.
 
-    This should probably generate proper UUIDs, but for the moment we
-    cope with just randomness because running uuidgen every time is
-    slow."""
-    import re
-    from binascii import hexlify
-    from time import time
-
-    # get last component
-    idx = name.rfind('/')
-    if idx != -1:
-        name = name[idx+1 : ]
-    idx = name.rfind('\\')
-    if idx != -1:
-        name = name[idx+1 : ]
-
-    # make it not a hidden file
-    name = name.lstrip('.')
-
-    # remove any wierd characters; we don't escape them but rather
-    # just pull them out
-    name = re.sub(r'[^\w.]', '', name)
-
-    s = hexlify(rand_bytes(8))
-    return '-'.join((name, compact_date(time()), s))
+    The uniqueness is supplied from _next_id_suffix.
+    """
+    # XXX TODO: squash the filename to lowercase.
+    # XXX TODO: truncate the filename to something like 20 or 30 chars.
+    # XXX TODO: consider what to do with ids that look like illegal filepaths
+    # on platforms we support.
+    return _gen_file_id_re.sub('', name) + _next_id_suffix()
 
 
 def gen_root_id():
@@ -308,15 +320,14 @@ class WorkingTree(bzrlib.tree.Tree):
     def is_control_filename(self, filename):
         """True if filename is the name of a control file in this tree.
         
+        :param filename: A filename within the tree. This is a relative path
+        from the root of this tree.
+
         This is true IF and ONLY IF the filename is part of the meta data
         that bzr controls in this tree. I.E. a random .bzr directory placed
         on disk will not be a control file for this tree.
         """
-        try:
-            self.bzrdir.transport.relpath(self.abspath(filename))
-            return True
-        except errors.PathNotChild:
-            return False
+        return self.bzrdir.is_control_filename(filename)
 
     @staticmethod
     def open(path=None, _unsupported=False):
@@ -423,9 +434,13 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         return bzrdir.BzrDir.create_standalone_workingtree(directory)
 
-    def relpath(self, abs):
-        """Return the local path portion from a given absolute path."""
-        return relpath(self.basedir, abs)
+    def relpath(self, path):
+        """Return the local path portion from a given path.
+        
+        The path may be absolute or relative. If its a relative path it is 
+        interpreted relative to the python current working directory.
+        """
+        return relpath(self.basedir, path)
 
     def has_filename(self, filename):
         return bzrlib.osutils.lexists(self.abspath(filename))
@@ -591,10 +606,10 @@ class WorkingTree(bzrlib.tree.Tree):
                                'i.e. regular file, symlink or directory): %s' % quotefn(f))
 
             if file_id is None:
-                file_id = gen_file_id(f)
-            inv.add_path(f, kind=kind, file_id=file_id)
+                inv.add_path(f, kind=kind)
+            else:
+                inv.add_path(f, kind=kind, file_id=file_id)
 
-            mutter("add file %s file_id:{%s} kind=%r" % (f, file_id, kind))
         self._write_inventory(inv)
 
     @needs_write_lock
@@ -969,6 +984,60 @@ class WorkingTree(bzrlib.tree.Tree):
                 subp = appendpath(path, subf)
                 yield subp
 
+    def _translate_ignore_rule(self, rule):
+        """Translate a single ignore rule to a regex.
+
+        There are two types of ignore rules.  Those that do not contain a / are
+        matched against the tail of the filename (that is, they do not care
+        what directory the file is in.)  Rules which do contain a slash must
+        match the entire path.  As a special case, './' at the start of the
+        string counts as a slash in the string but is removed before matching
+        (e.g. ./foo.c, ./src/foo.c)
+
+        :return: The translated regex.
+        """
+        if rule[:2] in ('./', '.\\'):
+            # rootdir rule
+            result = fnmatch.translate(rule[2:])
+        elif '/' in rule or '\\' in rule:
+            # path prefix 
+            result = fnmatch.translate(rule)
+        else:
+            # default rule style.
+            result = "(?:.*/)?(?!.*/)" + fnmatch.translate(rule)
+        assert result[-1] == '$', "fnmatch.translate did not add the expected $"
+        return "(" + result + ")"
+
+    def _combine_ignore_rules(self, rules):
+        """Combine a list of ignore rules into a single regex object.
+
+        Each individual rule is combined with | to form a big regex, which then
+        has $ added to it to form something like ()|()|()$. The group index for
+        each subregex's outermost group is placed in a dictionary mapping back 
+        to the rule. This allows quick identification of the matching rule that
+        triggered a match.
+        :return: a list of the compiled regex and the matching-group index 
+        dictionaries. We return a list because python complains if you try to 
+        combine more than 100 regexes.
+        """
+        result = []
+        groups = {}
+        next_group = 0
+        translated_rules = []
+        for rule in rules:
+            translated_rule = self._translate_ignore_rule(rule)
+            compiled_rule = re.compile(translated_rule)
+            groups[next_group] = rule
+            next_group += compiled_rule.groups
+            translated_rules.append(translated_rule)
+            if next_group == 99:
+                result.append((re.compile("|".join(translated_rules)), groups))
+                groups = {}
+                next_group = 0
+                translated_rules = []
+        if len(translated_rules):
+            result.append((re.compile("|".join(translated_rules)), groups))
+        return result
 
     def ignored_files(self):
         """Yield list of PATH, IGNORE_PATTERN"""
@@ -976,7 +1045,6 @@ class WorkingTree(bzrlib.tree.Tree):
             pat = self.is_ignored(subp)
             if pat != None:
                 yield subp, pat
-
 
     def get_ignore_list(self):
         """Return list of ignore patterns.
@@ -991,8 +1059,18 @@ class WorkingTree(bzrlib.tree.Tree):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
             l.extend([line.rstrip("\n\r") for line in f.readlines()])
         self._ignorelist = l
+        self._ignore_regex = self._combine_ignore_rules(l)
         return l
 
+    def _get_ignore_rules_as_regex(self):
+        """Return a regex of the ignore rules and a mapping dict.
+
+        :return: (ignore rules compiled regex, dictionary mapping rule group 
+        indices to original rule.)
+        """
+        if getattr(self, '_ignorelist', None) is None:
+            self.get_ignore_list()
+        return self._ignore_regex
 
     def is_ignored(self, filename):
         r"""Check whether the filename matches an ignore pattern.
@@ -1012,25 +1090,18 @@ class WorkingTree(bzrlib.tree.Tree):
         # treat dotfiles correctly and allows * to match /.
         # Eventually it should be replaced with something more
         # accurate.
-        
-        for pat in self.get_ignore_list():
-            if '/' in pat or '\\' in pat:
-                
-                # as a special case, you can put ./ at the start of a
-                # pattern; this is good to match in the top-level
-                # only;
-                
-                if (pat[:2] == './') or (pat[:2] == '.\\'):
-                    newpat = pat[2:]
-                else:
-                    newpat = pat
-                if fnmatch.fnmatchcase(filename, newpat):
-                    return pat
-            else:
-                if fnmatch.fnmatchcase(splitpath(filename)[-1], pat):
-                    return pat
-        else:
-            return None
+    
+        rules = self._get_ignore_rules_as_regex()
+        for regex, mapping in rules:
+            match = regex.match(filename)
+            if match is not None:
+                # one or more of the groups in mapping will have a non-None group 
+                # match.
+                groups = match.groups()
+                rules = [mapping[group] for group in 
+                    mapping if groups[group] is not None]
+                return rules[0]
+        return None
 
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
