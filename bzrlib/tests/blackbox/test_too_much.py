@@ -37,13 +37,18 @@ rather starts again from the run_bzr function.
 from cStringIO import StringIO
 import os
 import re
-import shutil
 import sys
 
+import bzrlib
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
-from bzrlib.osutils import has_symlinks, pathjoin
+from bzrlib.osutils import (
+    has_symlinks,
+    pathjoin,
+    rmtree,
+    terminal_width,
+    )
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
@@ -51,23 +56,6 @@ from bzrlib.workingtree import WorkingTree
 
 
 class TestCommands(ExternalBase):
-
-    def test_init_branch(self):
-        self.runbzr(['init'])
-
-        # Can it handle subdirectories as well?
-        self.runbzr('init subdir1')
-        self.assert_(os.path.exists('subdir1'))
-        self.assert_(os.path.exists('subdir1/.bzr'))
-
-        self.runbzr('init subdir2/nothere', retcode=3)
-        
-        os.mkdir('subdir2')
-        self.runbzr('init subdir2')
-        self.runbzr('init subdir2', retcode=3)
-
-        self.runbzr('init subdir2/subsubdir1')
-        self.assert_(os.path.exists('subdir2/subsubdir1/.bzr'))
 
     def test_whoami(self):
         # this should always identify something, if only "john@localhost"
@@ -80,9 +68,8 @@ class TestCommands(ExternalBase):
     def test_whoami_branch(self):
         """branch specific user identity works."""
         self.runbzr('init')
-        f = file('.bzr/email', 'wt')
-        f.write('Branch Identity <branch@identi.ty>')
-        f.close()
+        b = bzrlib.branch.Branch.open('.')
+        b.control_files.put_utf8('email', 'Branch Identity <branch@identi.ty>')
         bzr_email = os.environ.get('BZREMAIL')
         if bzr_email is not None:
             del os.environ['BZREMAIL']
@@ -296,7 +283,8 @@ class TestCommands(ExternalBase):
         self.example_branch()
         os.chdir('..')
         self.runbzr('branch a b')
-        self.assertFileEqual('b\n', 'b/.bzr/branch-name')
+        b = bzrlib.branch.Branch.open('b')
+        self.assertEqual('b\n', b.control_files.get_utf8('branch-name').read())
         self.runbzr('branch a c -r 1')
         os.chdir('b')
         self.runbzr('commit -m foo --unchanged')
@@ -321,78 +309,6 @@ class TestCommands(ExternalBase):
         self.assertEqual('2', target.open_branch().last_revision())
         self.assertEqual('2', target.open_workingtree().last_revision())
         self.assertTrue(target.open_branch().repository.has_revision('2'))
-
-    def test_merge(self):
-        from bzrlib.branch import Branch
-        
-        os.mkdir('a')
-        os.chdir('a')
-        self.example_branch()
-        os.chdir('..')
-        self.runbzr('branch a b')
-        os.chdir('b')
-        file('goodbye', 'wt').write('quux')
-        self.runbzr(['commit',  '-m',  "more u's are always good"])
-
-        os.chdir('../a')
-        file('hello', 'wt').write('quuux')
-        # We can't merge when there are in-tree changes
-        self.runbzr('merge ../b', retcode=3)
-        self.runbzr(['commit', '-m', "Like an epidemic of u's"])
-        self.runbzr('merge ../b -r last:1..last:1 --merge-type blooof',
-                    retcode=3)
-        self.runbzr('merge ../b -r last:1..last:1 --merge-type merge3')
-        self.runbzr('revert --no-backup')
-        self.runbzr('merge ../b -r last:1..last:1 --merge-type weave')
-        self.runbzr('revert --no-backup')
-        self.runbzr('merge ../b -r last:1..last:1 --reprocess')
-        self.runbzr('revert --no-backup')
-        self.runbzr('merge ../b -r last:1')
-        self.check_file_contents('goodbye', 'quux')
-        # Merging a branch pulls its revision into the tree
-        a = WorkingTree.open('.')
-        b = Branch.open('../b')
-        a.branch.repository.get_revision_xml(b.last_revision())
-        self.log('pending merges: %s', a.pending_merges())
-        self.assertEquals(a.pending_merges(),
-                          [b.last_revision()])
-        self.runbzr('commit -m merged')
-        self.runbzr('merge ../b -r last:1')
-        self.assertEqual(a.pending_merges(), [])
-
-    def test_merge_with_missing_file(self):
-        """Merge handles missing file conflicts"""
-        os.mkdir('a')
-        os.chdir('a')
-        os.mkdir('sub')
-        print >> file('sub/a.txt', 'wb'), "hello"
-        print >> file('b.txt', 'wb'), "hello"
-        print >> file('sub/c.txt', 'wb'), "hello"
-        self.runbzr('init')
-        self.runbzr('add')
-        self.runbzr(('commit', '-m', 'added a'))
-        self.runbzr('branch . ../b')
-        print >> file('sub/a.txt', 'ab'), "there"
-        print >> file('b.txt', 'ab'), "there"
-        print >> file('sub/c.txt', 'ab'), "there"
-        self.runbzr(('commit', '-m', 'Added there'))
-        os.unlink('sub/a.txt')
-        os.unlink('sub/c.txt')
-        os.rmdir('sub')
-        os.unlink('b.txt')
-        self.runbzr(('commit', '-m', 'Removed a.txt'))
-        os.chdir('../b')
-        print >> file('sub/a.txt', 'ab'), "something"
-        print >> file('b.txt', 'ab'), "something"
-        print >> file('sub/c.txt', 'ab'), "something"
-        self.runbzr(('commit', '-m', 'Modified a.txt'))
-        self.runbzr('merge ../a/', retcode=1)
-        self.assert_(os.path.exists('sub/a.txt.THIS'))
-        self.assert_(os.path.exists('sub/a.txt.BASE'))
-        os.chdir('../a')
-        self.runbzr('merge ../b/', retcode=1)
-        self.assert_(os.path.exists('sub/a.txt.OTHER'))
-        self.assert_(os.path.exists('sub/a.txt.BASE'))
 
     def test_inventory(self):
         bzr = self.runbzr
@@ -579,7 +495,7 @@ class TestCommands(ExternalBase):
         self.runbzr('pull')
         self.runbzr('pull ../c')
         self.runbzr('branch ../c ../d')
-        shutil.rmtree('../c')
+        rmtree('../c')
         self.runbzr('pull')
         os.chdir('../b')
         self.runbzr('pull')
@@ -588,102 +504,6 @@ class TestCommands(ExternalBase):
         self.runbzr('pull ../a --remember')
         self.runbzr('pull')
         
-    def test_add_reports(self):
-        """add command prints the names of added files."""
-        self.runbzr('init')
-        self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
-        out = self.run_bzr_captured(['add'], retcode=0)[0]
-        # the ordering is not defined at the moment
-        results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['If you wish to add some of these files, please'\
-                           ' add them by name.',
-                           'added dir',
-                           'added dir/sub.txt',
-                           'added top.txt',
-                           'ignored 1 file(s) matching "CVS"'],
-                          results)
-        out = self.run_bzr_captured(['add', '-v'], retcode=0)[0]
-        results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['If you wish to add some of these files, please'\
-                           ' add them by name.',
-                           'ignored CVS matching "CVS"'],
-                          results)
-
-    def test_add_quiet_is(self):
-        """add -q does not print the names of added files."""
-        self.runbzr('init')
-        self.build_tree(['top.txt', 'dir/', 'dir/sub.txt'])
-        out = self.run_bzr_captured(['add', '-q'], retcode=0)[0]
-        # the ordering is not defined at the moment
-        results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals([''], results)
-
-    def test_add_in_unversioned(self):
-        """Try to add a file in an unversioned directory.
-
-        "bzr add" should add the parent(s) as necessary.
-        """
-        self.runbzr('init')
-        self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
-        self.run_bzr('add', 'inertiatic/esp')
-        self.assertEquals(self.capture('unknowns'), '')
-
-        # Multiple unversioned parents
-        self.build_tree(['veil/', 'veil/cerpin/', 'veil/cerpin/taxt'])
-        self.assertEquals(self.capture('unknowns'), 'veil\n')
-        self.run_bzr('add', 'veil/cerpin/taxt')
-        self.assertEquals(self.capture('unknowns'), '')
-
-        # Check whacky paths work
-        self.build_tree(['cicatriz/', 'cicatriz/esp'])
-        self.assertEquals(self.capture('unknowns'), 'cicatriz\n')
-        self.run_bzr('add', 'inertiatic/../cicatriz/esp')
-        self.assertEquals(self.capture('unknowns'), '')
-
-    def test_add_in_versioned(self):
-        """Try to add a file in a versioned directory.
-
-        "bzr add" should do this happily.
-        """
-        self.runbzr('init')
-        self.build_tree(['inertiatic/', 'inertiatic/esp'])
-        self.assertEquals(self.capture('unknowns'), 'inertiatic\n')
-        self.run_bzr('add', '--no-recurse', 'inertiatic')
-        self.assertEquals(self.capture('unknowns'), 'inertiatic/esp\n')
-        self.run_bzr('add', 'inertiatic/esp')
-        self.assertEquals(self.capture('unknowns'), '')
-
-    def test_subdir_add(self):
-        """Add in subdirectory should add only things from there down"""
-        from bzrlib.workingtree import WorkingTree
-        
-        eq = self.assertEqual
-        ass = self.assert_
-        chdir = os.chdir
-        
-        t = self.make_branch_and_tree('.')
-        b = t.branch
-        self.build_tree(['src/', 'README'])
-        
-        eq(sorted(t.unknowns()),
-           ['README', 'src'])
-        
-        self.run_bzr('add', 'src')
-        
-        self.build_tree(['src/foo.c'])
-        
-        chdir('src')
-        self.run_bzr('add')
-        
-        self.assertEquals(self.capture('unknowns'), 'README\n')
-        eq(len(t.read_working_inventory()), 3)
-                
-        chdir('..')
-        self.run_bzr('add')
-        self.assertEquals(self.capture('unknowns'), '')
-        self.run_bzr('check')
-
     def test_unknown_command(self):
         """Handling of unknown command."""
         out, err = self.run_bzr_captured(['fluffy-badger'],
@@ -738,8 +558,8 @@ class TestCommands(ExternalBase):
         assert '|||||||' not in conflict_text
         assert 'hi world' not in conflict_text
         self.runbzr('remerge . --merge-type weave --show-base', retcode=3)
-        self.runbzr('remerge . --merge-type weave --reprocess', retcode=3)
         self.runbzr('remerge . --show-base --reprocess', retcode=3)
+        self.runbzr('remerge . --merge-type weave --reprocess', retcode=1)
         self.runbzr('remerge hello --show-base', retcode=1)
         self.runbzr('remerge hello --reprocess', retcode=1)
         self.runbzr('resolve --all')
@@ -1041,10 +861,11 @@ class OldTests(ExternalBase):
         self.assert_('revision-id' in capture('log --show-ids -m commit'))
 
         log_out = capture('log --line')
+        # determine the widest line we want
+        max_width = terminal_width() - 1
         for line in log_out.splitlines():
-            self.assert_(len(line) <= 79, len(line))
+            self.assert_(len(line) <= max_width, len(line))
         self.assert_("this is my new commit and" in log_out)
-
 
         progress("file with spaces in name")
         mkdir('sub directory')

@@ -52,6 +52,7 @@ _file_handler = None
 _stderr_handler = None
 _stderr_quiet = False
 _trace_file = None
+_trace_depth = 0
 _bzr_log_file = None
 
 
@@ -231,24 +232,31 @@ def enable_test_log(to_file):
     """Redirect logging to a temporary file for a test
     
     returns an opaque reference that should be passed to disable_test_log
-    after the test complete.
+    after the test completes.
     """
     disable_default_logging()
     global _trace_file
+    global _trace_depth
     hdlr = logging.StreamHandler(to_file)
     hdlr.setLevel(logging.DEBUG)
     hdlr.setFormatter(logging.Formatter('%(levelname)8s  %(message)s'))
     _bzr_logger.addHandler(hdlr)
     _bzr_logger.setLevel(logging.DEBUG)
-    result = hdlr, _trace_file
+    result = hdlr, _trace_file, _trace_depth
     _trace_file = to_file
+    _trace_depth += 1
     return result
 
 
-def disable_test_log((test_log_hdlr, old_trace_file)):
+def disable_test_log((test_log_hdlr, old_trace_file, old_trace_depth)):
     _bzr_logger.removeHandler(test_log_hdlr)
+    test_log_hdlr.close()
+    global _trace_file
+    global _trace_depth
     _trace_file = old_trace_file
-    enable_default_logging()
+    _trace_depth = old_trace_depth
+    if not _trace_depth:
+        enable_default_logging()
 
 
 def format_exception_short(exc_info):

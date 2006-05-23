@@ -1,4 +1,4 @@
-# -*- coding: UTF-8 -*-
+# Copyright (C) 2005, 2006 Canonical
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -157,9 +157,11 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
 
     specific_files
         If true, only check for changes to specified names or
-        files within them.
+        files within them.  Any unversioned files given have no effect
+        (but this might change in the future).
     """
-
+    # NB: show_status depends on being able to pass in non-versioned files and
+    # report them as unknown
     old_tree.lock_read()
     try:
         new_tree.lock_read()
@@ -181,8 +183,10 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
     delta = TreeDelta()
     mutter('start compare_trees')
 
-    # TODO: match for specific files can be rather smarter by finding
-    # the IDs of those files up front and then considering only that.
+    # TODO: Rather than iterating over the whole tree and then filtering, we
+    # could diff just the specified files (if any) and their subtrees.  
+    # Perhaps should take a list of file-ids instead?   Need to indicate any
+    # ids or names which were not found in the trees.
 
     for file_id in old_tree:
         if file_id in new_tree:

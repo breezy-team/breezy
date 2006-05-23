@@ -20,13 +20,15 @@ This is a fairly thin wrapper on regular file IO."""
 
 import os
 import shutil
+import sys
 from stat import ST_MODE, S_ISDIR, ST_SIZE
 import tempfile
 import urllib
 
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, Server
-from bzrlib.osutils import abspath, realpath, normpath, pathjoin, rename
+from bzrlib.osutils import (abspath, realpath, normpath, pathjoin, rename, 
+                            check_legal_path, rmtree)
 
 
 class LocalTransport(Transport):
@@ -67,16 +69,12 @@ class LocalTransport(Transport):
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.
         """
-        from bzrlib.osutils import relpath
+        from bzrlib.osutils import relpath, strip_trailing_slash
         if abspath is None:
             abspath = u'.'
-        if len(abspath) > 1 and abspath.endswith('/'):
-            abspath = abspath[:-1]
-        if self.base == '/':
-            root = '/'
-        else:
-            root = self.base[:-1]
-        return relpath(root, abspath)
+
+        return relpath(strip_trailing_slash(self.base), 
+                       strip_trailing_slash(abspath))
 
     def has(self, relpath):
         return os.access(self.abspath(relpath), os.F_OK)
@@ -103,6 +101,7 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self.abspath(relpath)
+            check_legal_path(path)
             fp = AtomicFile(path, 'wb', new_mode=mode)
         except (IOError, OSError),e:
             self._translate_error(e, path)
@@ -135,12 +134,14 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
         location.
         """
         try:
             fp = open(self.abspath(relpath), 'ab')
+            if mode is not None:
+                os.chmod(self.abspath(relpath), mode)
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
         # win32 workaround (tell on an unwritten file returns 0)
@@ -151,7 +152,6 @@ class LocalTransport(Transport):
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""
-        import shutil
         path_from = self.abspath(rel_from)
         path_to = self.abspath(rel_to)
         try:
@@ -201,8 +201,6 @@ class LocalTransport(Transport):
             # Both from & to are on the local filesystem
             # Unfortunately, I can't think of anything faster than just
             # copying them across, one by one :(
-            import shutil
-
             total = self._get_total(relpaths)
             count = 0
             for path in relpaths:
@@ -275,6 +273,13 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
+    def _can_roundtrip_unix_modebits(self):
+        if sys.platform == 'win32':
+            # anyone else?
+            return False
+        else:
+            return True
+
 
 class ScratchTransport(LocalTransport):
     """A transport that works in a temporary dir and cleans up after itself.
@@ -289,7 +294,7 @@ class ScratchTransport(LocalTransport):
         super(ScratchTransport, self).__init__(base)
 
     def __del__(self):
-        shutil.rmtree(self.base, ignore_errors=True)
+        rmtree(self.base, ignore_errors=True)
         mutter("%r destroyed" % self)
 
 

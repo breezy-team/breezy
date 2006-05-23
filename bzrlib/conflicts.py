@@ -26,7 +26,7 @@ import bzrlib
 from bzrlib.commands import register_command
 from bzrlib.errors import BzrCommandError, NotConflicted, UnsupportedOperation
 from bzrlib.option import Option
-from bzrlib.osutils import rename
+from bzrlib.osutils import rename, delete_any
 from bzrlib.rio import Stanza
 
 
@@ -54,6 +54,7 @@ class cmd_conflicts(bzrlib.commands.Command):
         for conflict in wt.conflicts():
             print conflict
 
+
 class cmd_resolve(bzrlib.commands.Command):
     """Mark a conflict as resolved.
 
@@ -73,16 +74,17 @@ class cmd_resolve(bzrlib.commands.Command):
     takes_options = [Option('all', help='Resolve all conflicts in this tree')]
     def run(self, file_list=None, all=False):
         from bzrlib.workingtree import WorkingTree
-        if file_list is None:
-            if not all:
-                raise BzrCommandError(
-                    "command 'resolve' needs one or more FILE, or --all")
+        if all:
+            if file_list:
+                raise BzrCommandError("If --all is specified, no FILE may be provided")
+            tree = WorkingTree.open_containing('.')[0]
+            resolve(tree)
         else:
-            if all:
-                raise BzrCommandError(
-                    "If --all is specified, no FILE may be provided")
-        tree = WorkingTree.open_containing(u'.')[0]
-        resolve(tree, file_list)
+            if file_list is None:
+                raise BzrCommandError("command 'resolve' needs one or more FILE, or --all")
+            tree = WorkingTree.open_containing(file_list[0])[0]
+            to_resolve = [tree.relpath(p) for p in file_list]
+            resolve(tree, to_resolve)
 
 
 def resolve(tree, paths=None, ignore_misses=False):
@@ -133,7 +135,10 @@ def restore(filename):
 
 
 class ConflictList(object):
-    """List of conflicts
+    """List of conflicts.
+
+    Typically obtained from WorkingTree.conflicts()
+
     Can be instantiated from stanzas or from Conflict subclasses.
     """
 
@@ -143,6 +148,9 @@ class ConflictList(object):
             self.__list = []
         else:
             self.__list = conflicts
+
+    def is_empty(self):
+        return len(self.__list) == 0
 
     def __len__(self):
         return len(self.__list)
@@ -190,7 +198,7 @@ class ConflictList(object):
                 continue
             for suffix in CONFLICT_SUFFIXES:
                 try:
-                    os.unlink(tree.abspath(conflict.path+suffix))
+                    delete_any(tree.abspath(conflict.path+suffix))
                 except OSError, e:
                     if e.errno != errno.ENOENT:
                         raise
@@ -283,6 +291,15 @@ class Conflict(object):
     def factory(type, **kwargs):
         global ctype
         return ctype[type](**kwargs)
+
+    @staticmethod
+    def sort_key(conflict):
+        if conflict.path is not None:
+            return conflict.path, conflict.typestring
+        elif getattr(conflict, "conflict_path", None) is not None:
+            return conflict.conflict_path, conflict.typestring
+        else:
+            return None, conflict.typestring
 
 
 class PathConflict(Conflict):

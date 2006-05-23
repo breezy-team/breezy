@@ -247,6 +247,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         t = self.get_transport()
         if t.is_readonly():
             return
+        if not t._can_roundtrip_unix_modebits():
+            # no sense testing on this transport
+            return
         # Test mkdir with a mode
         t.mkdir('dmode755', mode=0755)
         self.assertTransportMode(t, 'dmode755', 0755)
@@ -503,6 +506,13 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.check_transport_contents(t.get('f2').read(), t, 'c')
         self.check_transport_contents(t.get('f3').read(), t, 'd')
 
+    def test_append_mode(self):
+        # check append accepts a mode
+        t = self.get_transport()
+        if t.is_readonly():
+            return
+        t.append('f', StringIO('f'), mode=None)
+        
     def test_delete(self):
         # TODO: Test Transport.delete
         t = self.get_transport()
@@ -694,9 +704,10 @@ class TestTransportImplementation(TestCaseInTempDir):
         except (ConnectionError, NoSuchFile), e:
             pass
         except (Exception), e:
-            self.failIf(True, 'Wrong exception thrown: %s' % e)
+            self.fail('Wrong exception thrown (%s): %s' 
+                        % (e.__class__.__name__, e))
         else:
-            self.failIf(True, 'Did not get the expected exception.')
+            self.fail('Did not get the expected ConnectionError or NoSuchFile.')
 
     def test_stat(self):
         # TODO: Test stat, just try once, and if it throws, stop testing
@@ -778,9 +789,9 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertEqual([u'a', u'c', u'c2'], sorted_list('.'))
         self.assertEqual([u'e'], sorted_list(u'c'))
 
-        self.assertListRaises(NoSuchFile, t.list_dir, 'q')
-        self.assertListRaises(NoSuchFile, t.list_dir, 'c/f')
-        self.assertListRaises(NoSuchFile, t.list_dir, 'a')
+        self.assertListRaises(PathError, t.list_dir, 'q')
+        self.assertListRaises(PathError, t.list_dir, 'c/f')
+        self.assertListRaises(PathError, t.list_dir, 'a')
 
     def test_clone(self):
         # TODO: Test that clone moves up and down the filesystem

@@ -45,13 +45,13 @@ from bzrlib.osutils import (isdir, quotefn,
                             rename, splitpath, sha_file,
                             file_kind, abspath, normpath, pathjoin,
                             safe_unicode,
+                            rmtree,
                             )
 from bzrlib.textui import show_status
 from bzrlib.trace import mutter, note
 from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.repository import Repository
 from bzrlib.revision import (
-                             get_intervening_revisions,
                              is_ancestor,
                              NULL_REVISION,
                              Revision,
@@ -94,6 +94,20 @@ class Branch(object):
 
     def __init__(self, *ignored, **ignored_too):
         raise NotImplementedError('The Branch class is abstract')
+
+    def break_lock(self):
+        """Break a lock if one is present from another instance.
+
+        Uses the ui factory to ask for confirmation if the lock may be from
+        an active process.
+
+        This will probe the repository for its lock as well.
+        """
+        self.control_files.break_lock()
+        self.repository.break_lock()
+        master = self.get_master_branch()
+        if master is not None:
+            master.break_lock()
 
     @staticmethod
     @deprecated_method(zero_eight)
@@ -154,10 +168,13 @@ class Branch(object):
         assert cfg.get_option("nickname") == nick
 
     nick = property(_get_nick, _set_nick)
-        
+
+    def is_locked(self):
+        raise NotImplementedError('is_locked is abstract')
+
     def lock_write(self):
         raise NotImplementedError('lock_write is abstract')
-        
+
     def lock_read(self):
         raise NotImplementedError('lock_read is abstract')
 
@@ -167,6 +184,9 @@ class Branch(object):
     def peek_lock_mode(self):
         """Return lock mode for the Branch: 'r', 'w' or None"""
         raise NotImplementedError(self.peek_lock_mode)
+
+    def get_physical_lock_status(self):
+        raise NotImplementedError('get_physical_lock_status is abstract')
 
     def abspath(self, name):
         """Return absolute filename for something in the branch
@@ -333,9 +353,6 @@ class Branch(object):
         """
         raise NotImplementedError('update_revisions is abstract')
 
-    def pullable_revisions(self, other, stop_revision):
-        raise NotImplementedError('pullable_revisions is abstract')
-        
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""
         if revision_id is None:
@@ -566,6 +583,10 @@ class BranchFormat(object):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
 
+    def get_format_description(self):
+        """Return the short format description for this format."""
+        raise NotImplementedError(self.get_format_string)
+
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
         raise NotImplementedError(self.initialized)
@@ -611,6 +632,10 @@ class BzrBranchFormat4(BranchFormat):
      - a revision-history file.
      - a branch-lock lock file [ to be shared with the bzrdir ]
     """
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Branch format 4"
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
@@ -668,6 +693,10 @@ class BzrBranchFormat5(BranchFormat):
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
         return "Bazaar-NG branch format 5\n"
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Branch format 5"
         
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
@@ -725,6 +754,10 @@ class BranchReferenceFormat(BranchFormat):
     def get_format_string(self):
         """See BranchFormat.get_format_string()."""
         return "Bazaar-NG Branch Reference Format 1\n"
+
+    def get_format_description(self):
+        """See BranchFormat.get_format_description()."""
+        return "Checkout reference format 1"
         
     def initialize(self, a_bzrdir, target_branch=None):
         """Create a branch of this format in a_bzrdir."""
@@ -867,7 +900,7 @@ class BzrBranch(Branch):
         # XXX: cache_root seems to be unused, 2006-01-13 mbp
         if hasattr(self, 'cache_root') and self.cache_root is not None:
             try:
-                shutil.rmtree(self.cache_root)
+                rmtree(self.cache_root)
             except:
                 pass
             self.cache_root = None
@@ -926,6 +959,9 @@ class BzrBranch(Branch):
         tree = self.repository.revision_tree(self.last_revision())
         return tree.inventory.root.file_id
 
+    def is_locked(self):
+        return self.control_files.is_locked()
+
     def lock_write(self):
         # TODO: test for failed two phase locks. This is known broken.
         self.control_files.lock_write()
@@ -938,14 +974,19 @@ class BzrBranch(Branch):
 
     def unlock(self):
         # TODO: test for failed two phase locks. This is known broken.
-        self.repository.unlock()
-        self.control_files.unlock()
+        try:
+            self.repository.unlock()
+        finally:
+            self.control_files.unlock()
         
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:
             return None
         else:
             return self.control_files._lock_mode
+
+    def get_physical_lock_status(self):
+        return self.control_files.get_physical_lock_status()
 
     @needs_read_lock
     def print_file(self, file, revision_id):
@@ -1016,36 +1057,46 @@ class BzrBranch(Branch):
         # transaction.register_clean(history, precious=True)
         return list(history)
 
+    @needs_write_lock
     def update_revisions(self, other, stop_revision=None):
         """See Branch.update_revisions."""
-        if stop_revision is None:
-            stop_revision = other.last_revision()
-        ### Should this be checking is_ancestor instead of revision_history?
-        if (stop_revision is not None and 
-            stop_revision in self.revision_history()):
-            return
-        self.fetch(other, stop_revision)
-        pullable_revs = self.pullable_revisions(other, stop_revision)
-        if len(pullable_revs) > 0:
-            self.append_revision(*pullable_revs)
-
-    def pullable_revisions(self, other, stop_revision):
-        other_revno = other.revision_id_to_revno(stop_revision)
+        other.lock_read()
         try:
-            return self.missing_revisions(other, other_revno)
-        except DivergedBranches, e:
-            try:
-                pullable_revs = get_intervening_revisions(self.last_revision(),
-                                                          stop_revision, 
-                                                          self.repository)
-                assert self.last_revision() not in pullable_revs
-                return pullable_revs
-            except bzrlib.errors.NotAncestor:
-                if is_ancestor(self.last_revision(), stop_revision, self):
-                    return []
-                else:
-                    raise e
-        
+            if stop_revision is None:
+                stop_revision = other.last_revision()
+                if stop_revision is None:
+                    # if there are no commits, we're done.
+                    return
+            # whats the current last revision, before we fetch [and change it
+            # possibly]
+            last_rev = self.last_revision()
+            # we fetch here regardless of whether we need to so that we pickup
+            # filled in ghosts.
+            self.fetch(other, stop_revision)
+            my_ancestry = self.repository.get_ancestry(last_rev)
+            if stop_revision in my_ancestry:
+                # last_revision is a descendant of stop_revision
+                return
+            # stop_revision must be a descendant of last_revision
+            stop_graph = self.repository.get_revision_graph(stop_revision)
+            if last_rev is not None and last_rev not in stop_graph:
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other)
+            # make a new revision history from the graph
+            current_rev_id = stop_revision
+            new_history = []
+            while current_rev_id not in (None, NULL_REVISION):
+                new_history.append(current_rev_id)
+                current_rev_id_parents = stop_graph[current_rev_id]
+                try:
+                    current_rev_id = current_rev_id_parents[0]
+                except IndexError:
+                    current_rev_id = None
+            new_history.reverse()
+            self.set_revision_history(new_history)
+        finally:
+            other.unlock()
+
     def basis_tree(self):
         """See Branch.basis_tree."""
         return self.repository.revision_tree(self.last_revision())
@@ -1108,7 +1159,10 @@ class BzrBranch(Branch):
         # FIXUP this and get_parent in a future branch format bump:
         # read and rewrite the file, and have the new format code read
         # using .get not .get_utf8. RBC 20060125
-        self.control_files.put_utf8('parent', url + '\n')
+        if url is None:
+            self.control_files._transport.delete('parent')
+        else:
+            self.control_files.put_utf8('parent', url + '\n')
 
     def tree_config(self):
         return TreeConfig(self)

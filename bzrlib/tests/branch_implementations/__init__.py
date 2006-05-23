@@ -41,8 +41,10 @@ def test_suite():
     test_branch_implementations = [
         'bzrlib.tests.branch_implementations.test_bound_sftp',
         'bzrlib.tests.branch_implementations.test_branch',
+        'bzrlib.tests.branch_implementations.test_break_lock',
         'bzrlib.tests.branch_implementations.test_parent',
         'bzrlib.tests.branch_implementations.test_permissions',
+        'bzrlib.tests.branch_implementations.test_pull',
         'bzrlib.tests.branch_implementations.test_update',
         ]
     adapter = BranchTestProviderAdapter(
