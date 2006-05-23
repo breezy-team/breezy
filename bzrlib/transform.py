@@ -225,6 +225,7 @@ class TreeTransform(object):
         abs = pathjoin(dirname, basename)
         if dirname in self._relpaths:
             relpath = pathjoin(self._relpaths[dirname], basename)
+            relpath = relpath.rstrip('/\\')
         else:
             relpath = self._tree.relpath(abs)
         self._relpaths[abs] = relpath
