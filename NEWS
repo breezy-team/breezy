@@ -31,6 +31,10 @@ IN DEVELOPMENT
      ignored). 'bzr add -v' is unchanged and will report every ignored
      file. (Robert Collins).
 
+   * ftp now has a test server if medusa is installed. As part of testing,
+     ftp support has been improved, including support for supplying a
+     non-standard port. (John Arbash Meinel).
+
    * ``log --line`` shows the revision number.  (#5162, Alexander Belchenko)
 
   BUG FIXES:
@@ -38,6 +42,16 @@ IN DEVELOPMENT
     * Fix shadowed definition of TestLocationConfig that caused some 
       tests not to run.  (#32587, Erik Bågfors, Michael Ellerman, 
       Martin Pool)
+
+  INTERNALS:
+
+    * Combine the ignore rules into a single regex rather than looping over
+      them to reduce the threshold where  N^2 behaviour occurs in operations
+      like status. (Jan Hudec, Robert Collins).
+
+    * 'bzr push' should only push the ancestry of the current revision, not
+      all of the history in the repository. This is especially important for
+      shared repositories. (John Arbash Meinel)
 
 bzr 0.8.2  2006-05-17
   

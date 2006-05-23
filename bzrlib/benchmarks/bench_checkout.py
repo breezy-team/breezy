@@ -13,17 +13,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for bzr add performance."""
+"""Tests for bzr tree building (checkout) performance."""
 
 
 from bzrlib.benchmarks import Benchmark
 
 
-class AddBenchmark(Benchmark):
+class CheckoutBenchmark(Benchmark):
 
-    def test_one_add_kernel_like_tree(self):
-        """Adding a kernel sized tree should be bearable (<5secs) fast.""" 
-        self.make_kernel_like_tree()
-        # on roberts machine this originally took:  25936ms/32244ms
-        # after making smart_add use the parent_ie:  5033ms/ 9368ms
-        self.time(self.run_bzr, 'add')
+    def test_build_kernel_like_tree(self):
+        """Checkout of a clean kernel sized tree should be (<10secs)."""
+        self.make_kernel_tree()
+        self.run_bzr('add')
+        self.run_bzr('commit', '-m', 'first post')
+        # on robertc's machine the first sample of this took 105079ms/205417ms
+        self.time(self.run_bzr, 'checkout', '--lightweight', '.', 'acheckout')
