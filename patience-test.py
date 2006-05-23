@@ -6,7 +6,7 @@ from subprocess import Popen, PIPE
 from tempfile import mkdtemp
 
 from bzrlib.branch import Branch
-from bzrlib.cdv.cdvdifflib import SequenceMatcher
+from bzrlib.patiencediff import SequenceMatcher
 from bzrlib.diff import internal_diff
 from bzrlib.osutils import pathjoin
 
@@ -68,8 +68,7 @@ try:
                 orig_file.close()
                 patch(file_path, new_patch)
                 new_file = file(file_path, 'rb')
-                for line_a, line_b in zip(new_file, new_lines):
-                    assert line_a == line_b
+                assert list(new_file) == new_lines
             last_id = revision_id
     print old_total, new_total
 finally:
