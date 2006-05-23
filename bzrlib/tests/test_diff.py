@@ -126,11 +126,11 @@ class TestCDVDiffLib(TestCase):
 
         # make sure it supports passing in lists
         chk_blocks(
-                [ 'hello there\n'
-                , 'world\n'
-                , 'how are you today?\n'],
-                [ 'hello there\n'
-                , 'how are you today?\n'],
+                   ['hello there\n',
+                    'world\n',
+                    'how are you today?\n'],
+                   ['hello there\n',
+                    'how are you today?\n'],
                 [(0, 0, 1), (2, 1, 1)])
 
         chk_blocks('aBccDe', 'abccde', [(0,0,1), (2,2,2), (5,5,1)])
@@ -150,32 +150,32 @@ class TestCDVDiffLib(TestCase):
         chk_ops('', '', [])
         chk_ops([], [], [])
         chk_ops('abcd', 'abcd', [('equal',    0,4, 0,4)])
-        chk_ops('abcd', 'abce', [ ('equal',   0,3, 0,3)
-                                , ('replace', 3,4, 3,4)
+        chk_ops('abcd', 'abce', [('equal',   0,3, 0,3),
+                                 ('replace', 3,4, 3,4)
                                 ])
-        chk_ops('eabc', 'abce', [ ('delete', 0,1, 0,0)
-                                , ('equal',  1,4, 0,3)
-                                , ('insert', 4,4, 3,4)
+        chk_ops('eabc', 'abce', [('delete', 0,1, 0,0),
+                                 ('equal',  1,4, 0,3),
+                                 ('insert', 4,4, 3,4)
                                 ])
-        chk_ops('eabce', 'abce', [ ('delete', 0,1, 0,0)
-                                 , ('equal',  1,5, 0,4)
+        chk_ops('eabce', 'abce', [('delete', 0,1, 0,0),
+                                  ('equal',  1,5, 0,4)
                                  ])
-        chk_ops('abcde', 'abXde', [ ('equal',   0,2, 0,2)
-                                  , ('replace', 2,3, 2,3)
-                                  , ('equal',   3,5, 3,5)
+        chk_ops('abcde', 'abXde', [('equal',   0,2, 0,2),
+                                   ('replace', 2,3, 2,3),
+                                   ('equal',   3,5, 3,5)
                                   ])
-        chk_ops('abcde', 'abXYZde', [ ('equal',   0,2, 0,2)
-                                    , ('replace', 2,3, 2,5)
-                                    , ('equal',   3,5, 5,7)
+        chk_ops('abcde', 'abXYZde', [('equal',   0,2, 0,2),
+                                     ('replace', 2,3, 2,5),
+                                     ('equal',   3,5, 5,7)
                                     ])
-        chk_ops('abde', 'abXYZde', [ ('equal',  0,2, 0,2)
-                                   , ('insert', 2,2, 2,5)
-                                   , ('equal',  2,4, 5,7)
+        chk_ops('abde', 'abXYZde', [('equal',  0,2, 0,2),
+                                    ('insert', 2,2, 2,5),
+                                    ('equal',  2,4, 5,7)
                                    ])
         chk_ops('abcdefghijklmnop', 'abcdefxydefghijklmnop',
-                [ ('equal',  0,6,  0,6)
-                , ('insert', 6,6,  6,11)
-                , ('equal',  6,16, 11,21)
+                [('equal',  0,6,  0,6),
+                 ('insert', 6,6,  6,11),
+                 ('equal',  6,16, 11,21)
                 ])
         chk_ops(
                 [ 'hello there\n'
@@ -183,25 +183,25 @@ class TestCDVDiffLib(TestCase):
                 , 'how are you today?\n'],
                 [ 'hello there\n'
                 , 'how are you today?\n'],
-                [ ('equal',  0,1, 0,1)
-                , ('delete', 1,2, 1,1)
-                , ('equal',  2,3, 1,2)
+                [('equal',  0,1, 0,1),
+                 ('delete', 1,2, 1,1),
+                 ('equal',  2,3, 1,2)
                 ])
         chk_ops('aBccDe', 'abccde', 
-                [ ('equal',   0,1, 0,1)
-                , ('replace', 1,2, 1,2)
-                , ('equal',   2,4, 2,4)
-                , ('replace', 4,5, 4,5)
-                , ('equal',   5,6, 5,6)
+                [('equal',   0,1, 0,1),
+                 ('replace', 1,2, 1,2),
+                 ('equal',   2,4, 2,4),
+                 ('replace', 4,5, 4,5),
+                 ('equal',   5,6, 5,6)
                 ])
         chk_ops('aBcdEcdFg', 'abcdecdfg', 
-                [ ('equal',   0,1, 0,1)
-                , ('replace', 1,2, 1,2)
-                , ('equal',   2,4, 2,4)
-                , ('replace', 4,5, 4,5)
-                , ('equal',   5,7, 5,7)
-                , ('replace', 7,8, 7,8)
-                , ('equal',   8,9, 8,9)
+                [('equal',   0,1, 0,1),
+                 ('replace', 1,2, 1,2),
+                 ('equal',   2,4, 2,4),
+                 ('replace', 4,5, 4,5),
+                 ('equal',   5,7, 5,7),
+                 ('replace', 7,8, 7,8),
+                 ('equal',   8,9, 8,9)
                 ])
 
     def test_multiple_ranges(self):
@@ -272,53 +272,53 @@ class cmd_mkdir(Command):
 , [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
 
     def test_cdv_unified_diff(self):
-        txt_a = [ 'hello there\n'
-                , 'world\n'
-                , 'how are you today?\n']
-        txt_b = [ 'hello there\n'
-                , 'how are you today?\n']
-        self.assertEquals([ '---  \n'
-                          , '+++  \n'
-                          , '@@ -1,3 +1,2 @@\n'
-                          , ' hello there\n'
-                          , '-world\n'
-                          , ' how are you today?\n'
+        txt_a = ['hello there\n',
+                 'world\n',
+                 'how are you today?\n']
+        txt_b = ['hello there\n',
+                 'how are you today?\n']
+        self.assertEquals([ '---  \n',
+                           '+++  \n',
+                           '@@ -1,3 +1,2 @@\n',
+                           ' hello there\n',
+                           '-world\n',
+                           ' how are you today?\n'
                           ]
                           , list(unified_diff(txt_a, txt_b
                                         , sequencematcher=SequenceMatcher)))
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
         # This is the result with LongestCommonSubstring matching
-        self.assertEquals([ '---  \n'
-                          , '+++  \n'
-                          , '@@ -1,6 +1,11 @@\n'
-                          , ' a\n'
-                          , ' b\n'
-                          , ' c\n'
-                          , '+d\n'
-                          , '+e\n'
-                          , '+f\n'
-                          , '+x\n'
-                          , '+y\n'
-                          , ' d\n'
-                          , ' e\n'
-                          , ' f\n']
+        self.assertEquals(['---  \n',
+                           '+++  \n',
+                           '@@ -1,6 +1,11 @@\n',
+                           ' a\n',
+                           ' b\n',
+                           ' c\n',
+                           '+d\n',
+                           '+e\n',
+                           '+f\n',
+                           '+x\n',
+                           '+y\n',
+                           ' d\n',
+                           ' e\n',
+                           ' f\n']
                           , list(unified_diff(txt_a, txt_b)))
         # And the cdv diff
-        self.assertEquals([ '---  \n'
-                          , '+++  \n'
-                          , '@@ -4,6 +4,11 @@\n'
-                          , ' d\n'
-                          , ' e\n'
-                          , ' f\n'
-                          , '+x\n'
-                          , '+y\n'
-                          , '+d\n'
-                          , '+e\n'
-                          , '+f\n'
-                          , ' g\n'
-                          , ' h\n'
-                          , ' i\n'
+        self.assertEquals(['---  \n',
+                           '+++  \n',
+                           '@@ -4,6 +4,11 @@\n',
+                           ' d\n',
+                           ' e\n',
+                           ' f\n',
+                           '+x\n',
+                           '+y\n',
+                           '+d\n',
+                           '+e\n',
+                           '+f\n',
+                           ' g\n',
+                           ' h\n',
+                           ' i\n',
                           ]
                           , list(unified_diff(txt_a, txt_b,
                                  sequencematcher=SequenceMatcher)))
@@ -327,20 +327,20 @@ class cmd_mkdir(Command):
 class TestCDVDiffLibFiles(TestCaseInTempDir):
 
     def test_cdv_unified_diff_files(self):
-        txt_a = [ 'hello there\n'
-                , 'world\n'
-                , 'how are you today?\n']
-        txt_b = [ 'hello there\n'
-                , 'how are you today?\n']
+        txt_a = ['hello there\n',
+                 'world\n',
+                 'how are you today?\n']
+        txt_b = ['hello there\n',
+                 'how are you today?\n']
         open('a1', 'wb').writelines(txt_a)
         open('b1', 'wb').writelines(txt_b)
 
-        self.assertEquals([ '--- a1 \n'
-                          , '+++ b1 \n'
-                          , '@@ -1,3 +1,2 @@\n'
-                          , ' hello there\n'
-                          , '-world\n'
-                          , ' how are you today?\n'
+        self.assertEquals(['--- a1 \n',
+                           '+++ b1 \n',
+                           '@@ -1,3 +1,2 @@\n',
+                           ' hello there\n',
+                           '-world\n',
+                           ' how are you today?\n',
                           ]
                           , list(unified_diff_files('a1', 'b1',
                                  sequencematcher=SequenceMatcher)))
@@ -351,37 +351,37 @@ class TestCDVDiffLibFiles(TestCaseInTempDir):
         open('b2', 'wb').writelines(txt_b)
 
         # This is the result with LongestCommonSubstring matching
-        self.assertEquals([ '--- a2 \n'
-                          , '+++ b2 \n'
-                          , '@@ -1,6 +1,11 @@\n'
-                          , ' a\n'
-                          , ' b\n'
-                          , ' c\n'
-                          , '+d\n'
-                          , '+e\n'
-                          , '+f\n'
-                          , '+x\n'
-                          , '+y\n'
-                          , ' d\n'
-                          , ' e\n'
-                          , ' f\n']
+        self.assertEquals(['--- a2 \n',
+                           '+++ b2 \n',
+                           '@@ -1,6 +1,11 @@\n',
+                           ' a\n',
+                           ' b\n',
+                           ' c\n',
+                           '+d\n',
+                           '+e\n',
+                           '+f\n',
+                           '+x\n',
+                           '+y\n',
+                           ' d\n',
+                           ' e\n',
+                           ' f\n']
                           , list(unified_diff_files('a2', 'b2')))
 
         # And the cdv diff
-        self.assertEquals([ '--- a2 \n'
-                          , '+++ b2 \n'
-                          , '@@ -4,6 +4,11 @@\n'
-                          , ' d\n'
-                          , ' e\n'
-                          , ' f\n'
-                          , '+x\n'
-                          , '+y\n'
-                          , '+d\n'
-                          , '+e\n'
-                          , '+f\n'
-                          , ' g\n'
-                          , ' h\n'
-                          , ' i\n'
+        self.assertEquals(['--- a2 \n',
+                           '+++ b2 \n',
+                           '@@ -4,6 +4,11 @@\n',
+                           ' d\n',
+                           ' e\n',
+                           ' f\n',
+                           '+x\n',
+                           '+y\n',
+                           '+d\n',
+                           '+e\n',
+                           '+f\n',
+                           ' g\n',
+                           ' h\n',
+                           ' i\n',
                           ]
                           , list(unified_diff_files('a2', 'b2',
                                  sequencematcher=SequenceMatcher)))

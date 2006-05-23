@@ -19,11 +19,13 @@
 from bisect import bisect
 from copy import copy
 import difflib
-import time
 import os
 import sys
+import time
+
 
 __all__ = ['SequenceMatcher', 'unified_diff', 'unified_diff_files']
+
 
 def unique_lcs(a, b):
     """Find the longest common subset for unique lines.
@@ -79,7 +81,8 @@ def unique_lcs(a, b):
             k = len(stacks)
         # as an optimization, check if the next line comes right after
         # the previous line, because usually it does
-        elif stacks and stacks[k] < apos and (k == len(stacks) - 1 or stacks[k+1] > apos):
+        elif stacks and stacks[k] < apos and (k == len(stacks) - 1 or 
+                                              stacks[k+1] > apos):
             k += 1
         else:
             k = bisect(stacks, apos)
@@ -101,14 +104,6 @@ def unique_lcs(a, b):
     result.reverse()
     return result
 
-assert unique_lcs('', '') == []
-assert unique_lcs('a', 'a') == [(0, 0)]
-assert unique_lcs('a', 'b') == []
-assert unique_lcs('ab', 'ab') == [(0, 0), (1, 1)]
-assert unique_lcs('abcde', 'cdeab') == [(2, 0), (3, 1), (4, 2)]
-assert unique_lcs('cdeab', 'abcde') == [(0, 2), (1, 3), (2, 4)]
-assert unique_lcs('abXde', 'abYde') == [(0, 0), (1, 1), (3, 3), (4, 4)]
-assert unique_lcs('acbac', 'abc') == [(2, 1)]
 
 def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
     """Find all of the matching text in the lines of a and b.
@@ -164,21 +159,6 @@ def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
         recurse_matches(a, b, nahi, nbhi, answer, maxrecursion - 1)
         for i in xrange(ahi - nahi):
             answer.append((nahi + i, nbhi + i))
-
-a1 = []
-recurse_matches(['a', None, 'b', None, 'c'], ['a', 'a', 'b', 'c', 'c'], 5, 5, a1, 10)
-assert a1 == [(0, 0), (2, 2), (4, 4)]
-a2 = []
-recurse_matches(['a', 'c', 'b', 'a', 'c'], ['a', 'b', 'c'], 5, 3, a2, 10)
-assert  a2 == [(0, 0), (2, 1), (4, 2)]
-
-a3 = []
-recurse_matches(['a', 'B', 'c', 'c', 'D', 'e'], ['a', 'b', 'c', 'c', 'd', 'e'], 6, 6, a3, 10)
-# FIXME: recurse_matches won't match non-unique lines, surrounded by bogus text
-# This is what it should be
-#assert a2 == [(0,0), (2,2), (3,3), (5,5)]
-# This is what it currently gives:
-assert a3 == [(0,0), (5,5)]
 
 
 class SequenceMatcher(difflib.SequenceMatcher):
@@ -244,7 +224,8 @@ class SequenceMatcher(difflib.SequenceMatcher):
                 # New block
                 if start_a is None:
                     # We need to check from 0,0 until the current match
-                    self._check_with_diff(alo-1, i_a+alo, blo-1, i_b+blo, answer)
+                    self._check_with_diff(alo-1, i_a+alo, blo-1, i_b+blo, 
+                                          answer)
                 else:
                     answer.append((start_a+alo, start_b+blo, length))
                     self._check_with_diff(start_a+alo+length, i_a+alo,
@@ -274,10 +255,10 @@ class SequenceMatcher(difflib.SequenceMatcher):
                 next_a = a + match_len
                 next_b = b + match_len
 
+
 # This is a version of unified_diff which only adds a factory parameter
 # so that you can override the default SequenceMatcher
 # this has been submitted as a patch to python
-
 def unified_diff(a, b, fromfile='', tofile='', fromfiledate='',
                  tofiledate='', n=3, lineterm='\n',
                  sequencematcher=None):
@@ -342,6 +323,7 @@ def unified_diff(a, b, fromfile='', tofile='', fromfiledate='',
                 for line in b[j1:j2]:
                     yield '+' + line
 
+
 def unified_diff_files(a, b, sequencematcher=None):
     """Generate the diff for two files.
     """
@@ -366,6 +348,7 @@ def unified_diff_files(a, b, sequencematcher=None):
     return unified_diff(file_a.readlines(), file_b.readlines(),
                         fromfile=a, tofile=b,
                         sequencematcher=sequencematcher)
+
 
 def main(args):
     import optparse
