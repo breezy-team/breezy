@@ -208,7 +208,7 @@ class TestAddActions(TestCase):
         inv = Inventory()
         stdout = StringIO()
 
-        self.apply_redirected(None, stdout, None, action, inv, 'path', 'file')
+        self.apply_redirected(None, stdout, None, action, inv, None, 'path', 'file')
         self.assertEqual(stdout.getvalue(), output)
 
         if should_add:
