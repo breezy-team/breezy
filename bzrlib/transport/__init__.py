@@ -35,10 +35,12 @@ from unittest import TestSuite
 import urllib
 import urlparse
 
-from bzrlib.trace import mutter, warning
+import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import DependencyNotPresent
+from bzrlib.osutils import pumpfile
 from bzrlib.symbol_versioning import *
+from bzrlib.trace import mutter, warning
 
 # {prefix: [transport_classes]}
 # Transports are inserted onto the list LIFO and tried in order; as a result
@@ -216,7 +218,6 @@ class Transport(object):
         if isinstance(from_file, basestring):
             to_file.write(from_file)
         else:
-            from bzrlib.osutils import pumpfile
             pumpfile(from_file, to_file)
 
     def _get_total(self, multi):

@@ -26,4 +26,5 @@ class CommitBenchmark(Benchmark):
         self.make_kernel_like_tree()
         self.run_bzr('add')
         # on robertc's machine the first sample of this took 59750ms/77682ms
+        # after initial call reduction                       53922ms/73918ms
         self.time(self.run_bzr, 'commit', '-m', 'first post')
