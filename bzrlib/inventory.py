@@ -850,7 +850,6 @@ class Inventory(object):
         self.revision_id = revision_id
         self._byid = {self.root.file_id: self.root}
 
-
     def copy(self):
         # TODO: jam 20051218 Should copy also copy the revision_id?
         other = Inventory(self.root.file_id)
@@ -862,32 +861,34 @@ class Inventory(object):
             other.add(entry.copy())
         return other
 
-
     def __iter__(self):
         return iter(self._byid)
-
 
     def __len__(self):
         """Returns number of entries."""
         return len(self._byid)
 
-
-    def iter_entries(self, from_dir=None):
+    def iter_entries(self, _current_path=None, _from_dir_ie=None):
         """Return (path, entry) pairs, in order by name."""
-        if from_dir == None:
+        slash = '/'
+        if _from_dir_ie is None:
             assert self.root
-            from_dir = self.root
-        elif isinstance(from_dir, basestring):
-            from_dir = self._byid[from_dir]
+            _from_dir_ie = self.root
+            _current_path = None
             
-        kids = from_dir.children.items()
+        kids = _from_dir_ie.children.items()
         kids.sort()
         for name, ie in kids:
-            yield name, ie
+            # because of the structure of an inventory, pathjoin is 
+            # unnecessary.
+            if _current_path is None:
+                path = name
+            else:
+                path = _current_path + slash + name
+            yield path, ie
             if ie.kind == 'directory':
-                for cn, cie in self.iter_entries(from_dir=ie.file_id):
-                    yield pathjoin(name, cn), cie
-
+                for result in self.iter_entries(path, ie):
+                    yield result
 
     def entries(self):
         """Return list of (path, ie) for all entries except the root.
@@ -907,7 +908,6 @@ class Inventory(object):
         descend(self.root, u'')
         return accum
 
-
     def directories(self):
         """Return (path, entry) pairs for all directories, including the root.
         """
@@ -924,8 +924,6 @@ class Inventory(object):
         descend(self.root, u'')
         return accum
         
-
-
     def __contains__(self, file_id):
         """True if this entry contains a file with given id.
 
@@ -938,7 +936,6 @@ class Inventory(object):
         False
         """
         return file_id in self._byid
-
 
     def __getitem__(self, file_id):
         """Return the entry for given file_id.
@@ -957,13 +954,11 @@ class Inventory(object):
             else:
                 raise BzrError("file_id {%s} not in inventory" % file_id)
 
-
     def get_file_kind(self, file_id):
         return self._byid[file_id].kind
 
     def get_child(self, parent_id, filename):
         return self[parent_id].children.get(filename)
-
 
     def add(self, entry):
         """Add entry to inventory.
@@ -991,7 +986,6 @@ class Inventory(object):
         self._byid[entry.file_id] = entry
         parent.children[entry.name] = entry
         return entry
-
 
     def add_path(self, relpath, kind, file_id=None, parent_id=None):
         """Add entry from a path.
@@ -1037,7 +1031,6 @@ class Inventory(object):
         if ie.parent_id is not None:
             del self[ie.parent_id].children[ie.name]
 
-
     def __eq__(self, other):
         """Compare two sets by comparing their contents.
 
@@ -1063,10 +1056,8 @@ class Inventory(object):
 
         return self._byid == other._byid
 
-
     def __ne__(self, other):
         return not self.__eq__(other)
-
 
     def __hash__(self):
         raise ValueError('not hashable')
@@ -1137,14 +1128,11 @@ class Inventory(object):
 
         return parent.file_id
 
-
     def has_filename(self, names):
         return bool(self.path2id(names))
 
-
     def has_id(self, file_id):
         return self._byid.has_key(file_id)
-
 
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.
