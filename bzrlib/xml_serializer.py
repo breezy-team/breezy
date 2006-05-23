@@ -71,3 +71,71 @@ class Serializer(object):
 
     def _read_element(self, f):
         return ElementTree().parse(f)
+
+
+# performance tuning for elementree's serialiser. THis should be
+# sent upstream - RBC 20060523.
+# the functions here are patched into elementree at runtime.
+import elementtree.ElementTree
+import re
+escape_re = re.compile("[&'\"<>]")
+escape_map = {
+    "&":'&amp;',
+    "'":"&apos;", # FIXME: overkill
+    "\"":"&quot;",
+    "<":"&lt;",
+    ">":"&gt;",
+    }
+def _escape_replace(match, map=escape_map):
+    return map[match.group()]
+ 
+def _escape_attrib(text, encoding=None, replace=None):
+    # escape attribute value
+    try:
+        if encoding:
+            try:
+                text = elementtree.ElementTree._encode(text, encoding)
+            except UnicodeError:
+                return elementtree.ElementTree._encode_entity(text)
+        if replace is None:
+            return escape_re.sub(_escape_replace, text)
+        else:
+            text = replace(text, "&", "&amp;")
+            text = replace(text, "'", "&apos;") # FIXME: overkill
+            text = replace(text, "\"", "&quot;")
+            text = replace(text, "<", "&lt;")
+            text = replace(text, ">", "&gt;")
+            return text
+    except (TypeError, AttributeError):
+        elementtree.ElementTree._raise_serialization_error(text)
+
+elementtree.ElementTree._escape_attrib = _escape_attrib
+
+escape_cdata_re = re.compile("[&<>]")
+escape_cdata_map = {
+    "&":'&amp;',
+    "<":"&lt;",
+    ">":"&gt;",
+    }
+def _escape_cdata_replace(match, map=escape_cdata_map):
+    return map[match.group()]
+ 
+def _escape_cdata(text, encoding=None, replace=None):
+    # escape character data
+    try:
+        if encoding:
+            try:
+                text = elementtree.ElementTree._encode(text, encoding)
+            except UnicodeError:
+                return elementtree.ElementTree._encode_entity(text)
+        if replace is None:
+            return escape_cdata_re.sub(_escape_cdata_replace, text)
+        else:
+            text = replace(text, "&", "&amp;")
+            text = replace(text, "<", "&lt;")
+            text = replace(text, ">", "&gt;")
+            return text
+    except (TypeError, AttributeError):
+        elementtree.ElementTree._raise_serialization_error(text)
+
+elementtree.ElementTree._escape_cdata = _escape_cdata
