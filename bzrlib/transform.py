@@ -101,6 +101,10 @@ class TreeTransform(object):
         self._removed_id = set()
         self._tree_path_ids = {}
         self._tree_id_paths = {}
+        self._realpaths = {}
+        # Cache of realpath results, to speed up canonical_path
+        self._relpaths = {}
+        # Cache of relpath results, to speed up canonical_path
         self._new_root = self.trans_id_tree_file_id(tree.get_root_id())
         self.__done = False
         self._pb = pb
@@ -211,9 +215,20 @@ class TreeTransform(object):
     def canonical_path(self, path):
         """Get the canonical tree-relative path"""
         # don't follow final symlinks
-        dirname, basename = os.path.split(self._tree.abspath(path))
-        dirname = os.path.realpath(dirname)
-        return self._tree.relpath(pathjoin(dirname, basename))
+        abs = self._tree.abspath(path)
+        if abs in self._relpaths:
+            return self._relpaths[abs]
+        dirname, basename = os.path.split(abs)
+        if dirname not in self._realpaths:
+            self._realpaths[dirname] = os.path.realpath(dirname)
+        dirname = self._realpaths[dirname]
+        abs = pathjoin(dirname, basename)
+        if dirname in self._relpaths:
+            relpath = pathjoin(self._relpaths[dirname], basename)
+        else:
+            relpath = self._tree.relpath(abs)
+        self._relpaths[abs] = relpath
+        return relpath
 
     def trans_id_tree_path(self, path):
         """Determine (and maybe set) the transaction ID for a tree path."""
