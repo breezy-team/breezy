@@ -399,7 +399,7 @@ class TestTestResult(TestCase):
 
     def test_progress_bar_style_quiet(self):
         # test using a progress bar.
-        dummy_test = TestResult('test_progress_bar_style_quiet')
+        dummy_test = TestTestResult('test_progress_bar_style_quiet')
         dummy_error = (Exception, None, [])
         mypb = MockProgress()
         mypb.update('Running tests', 0, 4)
