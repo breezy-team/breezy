@@ -228,7 +228,7 @@ class _MyResult(unittest._TextTestResult):
         self.extractBenchmarkTime(test)
         if self.showAll:
             self.stream.writeln('   OK %s' % self._testTimeString())
-            for bench_called, stats in test._benchcalls:
+            for bench_called, stats in getattr(test, '_benchcalls', []):
                 self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
                 stats.pprint(file=self.stream)
         elif self.dots and self.pb is None:
