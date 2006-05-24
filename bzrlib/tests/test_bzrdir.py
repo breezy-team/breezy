@@ -254,6 +254,20 @@ class TestBzrDirFormat(TestCaseWithTransport):
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
+    def test_create_branch_convenience_root(self):
+        """Creating a branch at the root of a fs should work."""
+        self.transport_server = MemoryServer
+        # outside a repo the default convenience output is a repo+branch_tree
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            branch = bzrdir.BzrDir.create_branch_convenience(self.get_url())
+            self.assertRaises(errors.NoWorkingTree,
+                              branch.bzrdir.open_workingtree)
+            branch.bzrdir.open_repository()
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
     def test_create_branch_convenience_under_shared_repo(self):
         # inside a repo the default convenience output is a branch+ follow the
         # repo tree policy
