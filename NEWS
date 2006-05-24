@@ -9,7 +9,9 @@ IN DEVELOPMENT
 
    * On Windows, detect terminal width using GetConsoleScreenBufferInfo.
      (Alexander Belchenko)
-  
+
+   * Speedup improvement for 'date:'-revision search. (Guillaume Pinot).
+
    * Show the correct number of revisions pushed when pushing a new branch.
      (Robert Collins).
 
@@ -28,6 +30,10 @@ IN DEVELOPMENT
      were ignored (because you might reasonably be expecting none to be
      ignored). 'bzr add -v' is unchanged and will report every ignored
      file. (Robert Collins).
+
+   * ftp now has a test server if medusa is installed. As part of testing,
+     ftp support has been improved, including support for supplying a
+     non-standard port. (John Arbash Meinel).
 
    * ``log --line`` shows the revision number.  (#5162, Alexander Belchenko)
 

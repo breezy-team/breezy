@@ -84,6 +84,7 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         )
 import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings
+from bzrlib.patiencediff import SequenceMatcher, unified_diff
 from bzrlib.symbol_versioning import *
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
@@ -180,9 +181,9 @@ class Weave(VersionedFile):
     """
 
     __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
-                 '_weave_name']
+                 '_weave_name', '_matcher']
     
-    def __init__(self, weave_name=None, access_mode='w'):
+    def __init__(self, weave_name=None, access_mode='w', matcher=None):
         super(Weave, self).__init__(access_mode)
         self._weave = []
         self._parents = []
@@ -190,6 +191,10 @@ class Weave(VersionedFile):
         self._names = []
         self._name_map = {}
         self._weave_name = weave_name
+        if matcher is None:
+            self._matcher = SequenceMatcher
+        else:
+            self._matcher = matcher
 
     def __repr__(self):
         return "Weave(%r)" % self._weave_name
@@ -528,7 +533,7 @@ class Weave(VersionedFile):
         #print 'basis_lines:', basis_lines
         #print 'new_lines:  ', lines
 
-        s = SequenceMatcher(None, basis_lines, lines)
+        s = self._matcher(None, basis_lines, lines)
 
         # offset gives the number of lines that have been inserted
         # into the weave up to the current point; if the original edit instruction
@@ -1356,7 +1361,6 @@ def main(argv):
         sys.stdout.writelines(w.get_iter(int(argv[3])))
         
     elif cmd == 'diff':
-        from difflib import unified_diff
         w = readit()
         fn = argv[2]
         v1, v2 = map(int, argv[3:5])

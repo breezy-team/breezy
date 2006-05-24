@@ -19,9 +19,8 @@
 # s: "i hate that."
 
 
-from difflib import SequenceMatcher
-
 from bzrlib.errors import CantReprocessAndShowBase
+from bzrlib.patiencediff import SequenceMatcher
 from bzrlib.textfile import check_text_lines
 
 def intersect(ra, rb):
@@ -384,14 +383,8 @@ class Merge3(object):
 
     def find_unconflicted(self):
         """Return a list of ranges in base that are not conflicted."""
-
-        import re
-
-        # don't sync-up on lines containing only blanks or pounds
-        junk_re = re.compile(r'^[ \t#]*$')
-        
-        am = SequenceMatcher(junk_re.match, self.base, self.a).get_matching_blocks()
-        bm = SequenceMatcher(junk_re.match, self.base, self.b).get_matching_blocks()
+        am = SequenceMatcher(None, self.base, self.a).get_matching_blocks()
+        bm = SequenceMatcher(None, self.base, self.b).get_matching_blocks()
 
         unc = []
 
