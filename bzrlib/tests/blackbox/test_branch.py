@@ -21,7 +21,9 @@ import os
 
 import bzrlib.branch
 import bzrlib.bzrdir
+from bzrlib.repository import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.workingtree import WorkingTree
 
 
 class TestBranch(ExternalBase):
@@ -68,5 +70,43 @@ class TestBranch(ExternalBase):
         self.assertEqual('2', target.open_branch().last_revision())
         self.assertEqual('2', target.open_workingtree().last_revision())
         self.assertTrue(target.open_branch().repository.has_revision('2'))
+
+    def test_branch_only_copies_history(self):
+        # Knit branches should only push the history for the current revision.
+        format = bzrlib.bzrdir.BzrDirMetaFormat1()
+        format.repository_format = RepositoryFormatKnit1()
+        shared_repo = self.make_repository('repo', format=format, shared=True)
+        shared_repo.set_make_working_trees(True)
+
+        def make_shared_tree(path):
+            shared_repo.bzrdir.root_transport.mkdir(path)
+            shared_repo.bzrdir.create_branch_convenience('repo/' + path)
+            return WorkingTree.open('repo/' + path)
+        tree_a = make_shared_tree('a')
+        self.build_tree(['repo/a/file'])
+        tree_a.add('file')
+        tree_a.commit('commit a-1', rev_id='a-1')
+        f = open('repo/a/file', 'ab')
+        f.write('more stuff\n')
+        f.close()
+        tree_a.commit('commit a-2', rev_id='a-2')
+
+        tree_b = make_shared_tree('b')
+        self.build_tree(['repo/b/file'])
+        tree_b.add('file')
+        tree_b.commit('commit b-1', rev_id='b-1')
+
+        self.assertTrue(shared_repo.has_revision('a-1'))
+        self.assertTrue(shared_repo.has_revision('a-2'))
+        self.assertTrue(shared_repo.has_revision('b-1'))
+
+        # Now that we have a repository with shared files, make sure
+        # that things aren't copied out by a 'branch'
+        self.run_bzr('branch', 'repo/b', 'branch-b')
+        pushed_tree = WorkingTree.open('branch-b')
+        pushed_repo = pushed_tree.branch.repository
+        self.assertFalse(pushed_repo.has_revision('a-1'))
+        self.assertFalse(pushed_repo.has_revision('a-2'))
+        self.assertTrue(pushed_repo.has_revision('b-1'))
 
 
