@@ -18,12 +18,10 @@
 """
 
 import os
-from sha import sha
 
 from bzrlib.changeset.serializer import (ChangesetSerializer, 
         CHANGESET_HEADER,
         format_highres_date, unpack_highres_date)
-from bzrlib.changeset.common import testament_sha1
 from bzrlib.changeset.serializer import binary_diff
 from bzrlib.delta import compare_trees
 from bzrlib.diff import internal_diff
@@ -33,6 +31,7 @@ from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
 from bzrlib.rio import RioWriter, read_stanzas
 import bzrlib.ui
+from bzrlib.testament import StrictTestament
 from bzrlib.textfile import text_file
 
 bool_text = {True: 'yes', False: 'no'}
@@ -197,7 +196,8 @@ class ChangesetSerializerV07(ChangesetSerializer):
         self._write_delta(rev_tree, base_tree, rev.revision_id)
 
         w('revision id', rev.revision_id)
-        w('sha1', testament_sha1(self.source, rev.revision_id))
+        w('sha1', StrictTestament.from_revision(self.source, 
+                                                rev.revision_id).as_sha1())
         w('inventory sha1', rev.inventory_sha1)
         if rev.parent_ids:
             w('parent ids', rev.parent_ids)

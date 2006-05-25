@@ -185,6 +185,9 @@ class Testament(object):
                 r.append('    %s\n' % line)
         return r
 
+    def as_sha1(self):
+        return sha(self.as_short_text()).hexdigest()
+
 
 class StrictTestament(Testament):
     """This testament format is for use as a checksum in changesets"""

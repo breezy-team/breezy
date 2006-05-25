@@ -7,11 +7,9 @@ import base64
 from cStringIO import StringIO
 import os
 import pprint
-from sha import sha
 
-from bzrlib.errors import TestamentMismatch
-from bzrlib.changeset.common import (decode, get_header, header_str,
-                                     testament_sha1)
+from bzrlib.errors import TestamentMismatch, BzrError
+from bzrlib.changeset.common import decode, get_header, header_str
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
                               InventoryLink)
@@ -225,7 +223,7 @@ class ChangesetReader(object):
         rev_info = self.info.get_revision_info(revision_id)
         assert rev.revision_id == rev_info.revision_id
         assert rev.revision_id == revision_id
-        sha1 = sha(StrictTestament(rev, inventory).as_short_text()).hexdigest()
+        sha1 = StrictTestament(rev, inventory).as_sha1()
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev_to_sha1.has_key(rev.revision_id):
@@ -285,7 +283,9 @@ class ChangesetReader(object):
         missing = {}
         for revision_id, sha1 in rev_to_sha.iteritems():
             if repository.has_revision(revision_id):
-                local_sha1 = testament_sha1(repository, revision_id)
+                testament = StrictTestament.from_revision(repository, 
+                                                          revision_id)
+                local_sha1 = testament.as_sha1()
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For revision id {%s}' 
                             'local: %s, cset: %s' % (revision_id, local_sha1, sha1))
