@@ -224,50 +224,50 @@ class TestCDVDiffLib(TestCase):
                  , 'AxyzBCn mo pqrstuvwI1 2  L'
                  , [(0,0,1), (1, 4, 2), (4, 7, 1), (9, 19, 1), (12, 23, 3)])
 
+        # These are rot13 code snippets.
         chk_blocks('''\
-    get added when you add a file in the directory.
+    trg nqqrq jura lbh nqq n svyr va gur qverpgbel.
     """
-    takes_args = ['file*']
-    takes_options = ['no-recurse']
-    
-    def run(self, file_list, no_recurse=False):
-        from bzrlib.add import smart_add, add_reporter_print, add_reporter_null
-        if is_quiet():
-            reporter = add_reporter_null
-        else:
-            reporter = add_reporter_print
-        smart_add(file_list, not no_recurse, reporter)
+    gnxrf_netf = ['svyr*']
+    gnxrf_bcgvbaf = ['ab-erphefr']
+  
+    qrs eha(frys, svyr_yvfg, ab_erphefr=Snyfr):
+        sebz omeyvo.nqq vzcbeg fzneg_nqq, nqq_ercbegre_cevag, nqq_ercbegre_ahyy
+        vs vf_dhvrg():
+            ercbegre = nqq_ercbegre_ahyy
+        ryfr:
+            ercbegre = nqq_ercbegre_cevag
+        fzneg_nqq(svyr_yvfg, abg ab_erphefr, ercbegre)
 
 
-class cmd_mkdir(Command):
-'''.splitlines(True)
-, '''\
-    get added when you add a file in the directory.
+pynff pzq_zxqve(Pbzznaq):
+'''.splitlines(True), '''\
+    trg nqqrq jura lbh nqq n svyr va gur qverpgbel.
 
-    --dry-run will show which files would be added, but not actually 
-    add them.
+    --qel-eha jvyy fubj juvpu svyrf jbhyq or nqqrq, ohg abg npghnyyl 
+    nqq gurz.
     """
-    takes_args = ['file*']
-    takes_options = ['no-recurse', 'dry-run']
+    gnxrf_netf = ['svyr*']
+    gnxrf_bcgvbaf = ['ab-erphefr', 'qel-eha']
 
-    def run(self, file_list, no_recurse=False, dry_run=False):
-        import bzrlib.add
+    qrs eha(frys, svyr_yvfg, ab_erphefr=Snyfr, qel_eha=Snyfr):
+        vzcbeg omeyvo.nqq
 
-        if dry_run:
-            if is_quiet():
-                # This is pointless, but I'd rather not raise an error
-                action = bzrlib.add.add_action_null
-            else:
-                action = bzrlib.add.add_action_print
-        elif is_quiet():
-            action = bzrlib.add.add_action_add
-        else:
-            action = bzrlib.add.add_action_add_and_print
+        vs qel_eha:
+            vs vf_dhvrg():
+                # Guvf vf cbvagyrff, ohg V'q engure abg envfr na reebe
+                npgvba = omeyvo.nqq.nqq_npgvba_ahyy
+            ryfr:
+  npgvba = omeyvo.nqq.nqq_npgvba_cevag
+        ryvs vf_dhvrg():
+            npgvba = omeyvo.nqq.nqq_npgvba_nqq
+        ryfr:
+       npgvba = omeyvo.nqq.nqq_npgvba_nqq_naq_cevag
 
-        bzrlib.add.smart_add(file_list, not no_recurse, action)
+        omeyvo.nqq.fzneg_nqq(svyr_yvfg, abg ab_erphefr, npgvba)
 
 
-class cmd_mkdir(Command):
+pynff pzq_zxqve(Pbzznaq):
 '''.splitlines(True)
 , [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
 
