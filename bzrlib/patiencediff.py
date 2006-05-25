@@ -381,12 +381,12 @@ def main(args):
     import optparse
     p = optparse.OptionParser(usage='%prog [options] file_a file_b'
                                     '\nFiles can be "-" to read from stdin')
-    p.add_option('--cdv', dest='matcher', action='store_const', const='cdv',
-                 default='cdv', help='Use the cdv difference algorithm')
+    p.add_option('--patience', dest='matcher', action='store_const', const='patience',
+                 default='patience', help='Use the patience difference algorithm')
     p.add_option('--difflib', dest='matcher', action='store_const', const='difflib',
-                 default='cdv', help='Use python\'s difflib algorithm')
+                 default='patience', help='Use python\'s difflib algorithm')
 
-    algorithms = {'cdv':SequenceMatcher, 'difflib':difflib.SequenceMatcher}
+    algorithms = {'patience':SequenceMatcher, 'difflib':difflib.SequenceMatcher}
 
     (opts, args) = p.parse_args(args)
     matcher = algorithms[opts.matcher]

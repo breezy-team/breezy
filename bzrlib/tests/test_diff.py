@@ -271,7 +271,7 @@ pynff pzq_zxqve(Pbzznaq):
 '''.splitlines(True)
 , [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
 
-    def test_cdv_unified_diff(self):
+    def test_patience_unified_diff(self):
         txt_a = ['hello there\n',
                  'world\n',
                  'how are you today?\n']
@@ -304,7 +304,7 @@ pynff pzq_zxqve(Pbzznaq):
                            ' e\n',
                            ' f\n']
                           , list(unified_diff(txt_a, txt_b)))
-        # And the cdv diff
+        # And the patience diff
         self.assertEquals(['---  \n',
                            '+++  \n',
                            '@@ -4,6 +4,11 @@\n',
@@ -326,7 +326,7 @@ pynff pzq_zxqve(Pbzznaq):
 
 class TestCDVDiffLibFiles(TestCaseInTempDir):
 
-    def test_cdv_unified_diff_files(self):
+    def test_patience_unified_diff_files(self):
         txt_a = ['hello there\n',
                  'world\n',
                  'how are you today?\n']
@@ -367,7 +367,7 @@ class TestCDVDiffLibFiles(TestCaseInTempDir):
                            ' f\n']
                           , list(unified_diff_files('a2', 'b2')))
 
-        # And the cdv diff
+        # And the patience diff
         self.assertEquals(['--- a2 \n',
                            '+++ b2 \n',
                            '@@ -4,6 +4,11 @@\n',
