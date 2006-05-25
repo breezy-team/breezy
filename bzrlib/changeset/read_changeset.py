@@ -617,6 +617,8 @@ class ChangesetReader(object):
             file_id = info[1][8:]
 
             cset_tree.note_id(file_id, path, kind)
+            # this will be overridden in extra_info if executable is specified.
+            cset_tree.note_executable(path, False)
             last_changed, encoding = extra_info(info[2:], path)
             revision = get_rev_id(last_changed, path, kind)
             if kind == 'directory':
