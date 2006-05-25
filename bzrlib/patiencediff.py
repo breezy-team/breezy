@@ -205,6 +205,33 @@ class SequenceMatcher(difflib.SequenceMatcher):
                                blk[1]+blo+1,
                                blk[2]))
 
+    def get_matching_blocks(self):
+        """Return list of triples describing matching subsequences.
+
+        Each triple is of the form (i, j, n), and means that
+        a[i:i+n] == b[j:j+n].  The triples are monotonically increasing in
+        i and in j.
+
+        The last triple is a dummy, (len(a), len(b), 0), and is the only
+        triple with n==0.
+
+        >>> s = SequenceMatcher(None, "abxcd", "abcd")
+        >>> s.get_matching_blocks()
+        [(0, 0, 2), (3, 2, 2), (5, 4, 0)]
+        """
+        # jam 20060525 This is the python 2.4.1 difflib get_matching_blocks 
+        # implementation which uses __helper. 2.4.3 got rid of helper for
+        # doing it inline with a queue.
+        # We should consider doing the same for recurse_matches
+
+        if self.matching_blocks is not None:
+            return self.matching_blocks
+        self.matching_blocks = []
+        la, lb = len(self.a), len(self.b)
+        self.__helper(0, la, 0, lb, self.matching_blocks)
+        self.matching_blocks.append( (la, lb, 0) )
+        return self.matching_blocks
+
     def __helper(self, alo, ahi, blo, bhi, answer):
         matches = []
         a = self.a[alo:ahi]
