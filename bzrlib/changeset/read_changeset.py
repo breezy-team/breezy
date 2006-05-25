@@ -9,7 +9,7 @@ import os
 import pprint
 
 from bzrlib.errors import TestamentMismatch, BzrError
-from bzrlib.changeset.common import decode, get_header, header_str
+from bzrlib.changeset.common import get_header, header_str
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
                               InventoryLink)
@@ -367,14 +367,14 @@ class ChangesetReader(object):
                 if line == '#\n':
                     line = '# \n'
                 if (not line.startswith('# ') or not line.endswith('\n')
-                        or decode(line[2:-1]) != header[0]):
+                        or line[2:-1].decode('utf-8') != header[0]):
                     raise MalformedHeader('Found a header, but it'
                         ' was improperly formatted')
                 header.pop(0) # We read this line.
                 if not header:
                     break # We found everything.
             elif (line.startswith('#') and line.endswith('\n')):
-                line = decode(line[1:-1].strip())
+                line = line[1:-1].strip().decode('utf-8')
                 if line[:len(header_str)] == header_str:
                     if line == header[0]:
                         found = True
@@ -399,7 +399,7 @@ class ChangesetReader(object):
         """
         if not line.startswith('#'):
             raise MalformedHeader('Bzr header did not start with #')
-        line = decode(line[1:-1]) # Remove the '#' and '\n'
+        line = line[1:-1].decode('utf-8') # Remove the '#' and '\n'
         if line[:indent] == ' '*indent:
             line = line[indent:]
         if not line:
@@ -454,7 +454,7 @@ class ChangesetReader(object):
             return values
 
         for line in self._next():
-            values.append(decode(line[len(start):-1]))
+            values.append(line[len(start):-1].decode('utf-8'))
             if self._next_line is None or self._next_line[:len(start)] != start:
                 break
         return values
@@ -478,9 +478,9 @@ class ChangesetReader(object):
                     raise MalformedPatches('The first line of all patches'
                         ' should be a bzr meta line "==="'
                         ': %r' % line)
-                action = decode(line[4:-1])
+                action = line[4:-1].decode('utf-8')
             elif line.startswith('... '):
-                action += decode(line[len('... '):-1])
+                action += line[len('... '):-1].decode('utf-8')
 
             if (self._next_line is not None and 
                 self._next_line.startswith('===')):
@@ -528,7 +528,7 @@ class ChangesetReader(object):
 
         def get_rev_id(last_changed, path, kind):
             if last_changed is not None:
-                changed_revision_id = decode(last_changed)
+                changed_revision_id = last_changed.decode('utf-8')
             else:
                 changed_revision_id = revision_id
             cset_tree.note_last_changed(path, changed_revision_id)

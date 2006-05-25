@@ -16,47 +16,6 @@ def get_header():
     ]
 
       
-def encode(s):
-    """Take a unicode string, and make sure to escape it for
-    use in a changeset.
-
-    Note: It can be either a normal, or a unicode string
-
-    >>> encode(u'abcdefg')
-    'abcdefg'
-    >>> encode(u'a b\\tc\\nd\\\\e')
-    'a b\\tc\\nd\\\\e'
-    >>> encode('a b\\tc\\nd\\e')
-    'a b\\tc\\nd\\\\e'
-    >>> encode(u'\\u1234\\u0020')
-    '\\xe1\\x88\\xb4 '
-    >>> encode('abcdefg')
-    'abcdefg'
-    >>> encode(u'')
-    ''
-    >>> encode('')
-    ''
-    """
-    return s.encode('utf-8')
-
-
-def decode(s):
-    """Undo the encode operation, returning a unicode string.
-
-    >>> decode('abcdefg')
-    u'abcdefg'
-    >>> decode('a b\\tc\\nd\\\\e')
-    u'a b\\tc\\nd\\\\e'
-    >>> decode('\\xe1\\x88\\xb4 ')
-    u'\\u1234 '
-    >>> for s in ('test', 'strings'):
-    ...   if decode(encode(s)) != s:
-    ...     print 'Failed: %r' % s # There should be no failures
-
-    """
-    return s.decode('utf-8')
-
-
 def format_highres_date(t, offset=0):
     """Format a date, such that it includes higher precision in the
     seconds field.

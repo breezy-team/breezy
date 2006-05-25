@@ -157,22 +157,3 @@ class cmd_verify_changeset(Command):
         # print cset_info
         # print cset_tree
         #serializer_v4.write(cset_tree.inventory, sys.stdout)
-
-
-register_command(cmd_changeset)
-#register_command(cmd_verify_changeset)
-#register_command(cmd_send_changeset)
-
-def test_suite():
-    from doctest import DocTestSuite
-    from unittest import TestSuite, TestLoader
-    import test_changeset
-    import common
-    import patches
-
-    suite = TestSuite()
-
-    suite.addTest(TestLoader().loadTestsFromModule(test_changeset))
-    suite.addTest(TestLoader().loadTestsFromModule(patches))
-    suite.addTest(DocTestSuite(common))
-    return suite
