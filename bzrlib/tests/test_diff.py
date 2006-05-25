@@ -97,14 +97,13 @@ class TestCDVDiffLib(TestCase):
         test_one('aBccDe', 'abccde', [(0,0), (5,5)])
 
     def test_matching_blocks(self):
-        def chk_blocks(a, b, matching):
+        def chk_blocks(a, b, expected_blocks):
             # difflib always adds a signature of the total
             # length, with no matching entries at the end
             s = SequenceMatcher(None, a, b)
             blocks = s.get_matching_blocks()
-            x = blocks.pop()
-            self.assertEquals(x, (len(a), len(b), 0))
-            self.assertEquals(matching, blocks)
+            self.assertEquals((len(a), len(b), 0), blocks[-1])
+            self.assertEquals(expected_blocks, blocks[:-1])
 
         # Some basic matching tests
         chk_blocks('', '', [])
@@ -143,9 +142,9 @@ class TestCDVDiffLib(TestCase):
         chk_blocks('bbbbbbbb', 'cbbbbbbc', [(0,1,6)])
 
     def test_opcodes(self):
-        def chk_ops(a, b, codes):
+        def chk_ops(a, b, expected_codes):
             s = SequenceMatcher(None, a, b)
-            self.assertEquals(codes, s.get_opcodes())
+            self.assertEquals(expected_codes, s.get_opcodes())
 
         chk_ops('', '', [])
         chk_ops([], [], [])
@@ -207,14 +206,14 @@ class TestCDVDiffLib(TestCase):
     def test_multiple_ranges(self):
         # There was an earlier bug where we used a bad set of ranges,
         # this triggers that specific bug, to make sure it doesn't regress
-        def chk_blocks(a, b, matching):
+        def chk_blocks(a, b, expected_blocks):
             # difflib always adds a signature of the total
             # length, with no matching entries at the end
             s = SequenceMatcher(None, a, b)
             blocks = s.get_matching_blocks()
             x = blocks.pop()
             self.assertEquals(x, (len(a), len(b), 0))
-            self.assertEquals(matching, blocks)
+            self.assertEquals(expected_blocks, blocks)
 
         chk_blocks('abcdefghijklmnop'
                  , 'abcXghiYZQRSTUVWXYZijklmnop'
