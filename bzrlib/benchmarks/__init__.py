@@ -48,5 +48,6 @@ def test_suite():
                    'bzrlib.benchmarks.bench_checkout',
                    'bzrlib.benchmarks.bench_commit',
                    'bzrlib.benchmarks.bench_status',
+                   'bzrlib.benchmarks.bench_transform',
                    ]
     return TestLoader().loadTestsFromModuleNames(testmod_names)
