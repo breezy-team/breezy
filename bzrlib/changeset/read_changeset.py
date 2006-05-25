@@ -9,7 +9,7 @@ import os
 import pprint
 from sha import sha
 
-from bzrlib.errors import BzrError
+from bzrlib.errors import TestamentMismatch
 from bzrlib.changeset.common import (decode, get_header, header_str,
                                      testament_sha1)
 from bzrlib.inventory import (Inventory, InventoryEntry,
@@ -227,9 +227,7 @@ class ChangesetReader(object):
         assert rev.revision_id == revision_id
         sha1 = sha(StrictTestament(rev, inventory).as_short_text()).hexdigest()
         if sha1 != rev_info.sha1:
-            raise BzrError('Revision checksum mismatch.'
-                ' For revision_id {%s} supplied sha1 (%s) != measured (%s)'
-                % (rev.revision_id, rev_info.sha1, sha1))
+            raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev_to_sha1.has_key(rev.revision_id):
             raise BzrError('Revision {%s} given twice in the list'
                     % (rev.revision_id))

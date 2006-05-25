@@ -22,7 +22,7 @@ from bzrlib.changeset.apply_changeset import install_changeset
 from bzrlib.changeset.read_changeset import ChangesetTree, ChangesetReader
 from bzrlib.changeset.serializer import write_changeset
 from bzrlib.diff import internal_diff
-from bzrlib.errors import BzrError
+from bzrlib.errors import BzrError, TestamentMismatch
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
 from bzrlib.tests import TestCaseInTempDir, TestCase
@@ -338,6 +338,27 @@ class CSetTester(TestCaseInTempDir):
 
         return cset
 
+    def get_invalid_cset(self, base_rev_id, rev_id):
+        """Create a changeset from base_rev_id -> rev_id in built-in branch.
+        Munge the text so that it's invalid.
+        
+        :return: The in-memory changeset
+        """
+        from cStringIO import StringIO
+
+        cset_txt = StringIO()
+        rev_ids = write_changeset(self.b1.repository, rev_id, base_rev_id, 
+                                  cset_txt)
+        cset_txt.seek(0)
+        open(',,cset', 'wb').write(cset_txt.getvalue())
+        cset_txt.seek(0)
+        new_text = cset_txt.getvalue().replace('executable:no', 
+                                               'executable:yes')
+        cset_txt = StringIO(new_text)
+        cset = ChangesetReader(cset_txt)
+        self.valid_apply_changeset(base_rev_id, cset)
+        return cset
+
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.
         """
@@ -489,6 +510,8 @@ class CSetTester(TestCaseInTempDir):
         self.tree1.commit('removed', rev_id='a@cset-0-3')
         
         cset = self.get_valid_cset('a@cset-0-2', 'a@cset-0-3')
+        self.assertRaises(TestamentMismatch, self.get_invalid_cset, 
+                          'a@cset-0-2', 'a@cset-0-3')
         # Check a rollup changeset
         cset = self.get_valid_cset(None, 'a@cset-0-3')
 

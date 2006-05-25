@@ -191,6 +191,7 @@ class StrictTestament(Testament):
 
     def _entry_to_line(self, path, ie):
         l = ie.revision.decode('utf-8') + ' '
+        l += {True: 'yes', False: 'no'}[ie.executable]
         l += Testament._entry_to_line(self, path, ie)
         return l
 
