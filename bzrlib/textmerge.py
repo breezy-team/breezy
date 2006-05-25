@@ -18,7 +18,7 @@
 #         Aaron Bentley <aaron.bentley@utoronto.ca>
 
 
-from difflib import SequenceMatcher
+from bzrlib.patiencediff import SequenceMatcher
 
 
 class TextMerge(object):
