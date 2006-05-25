@@ -70,7 +70,6 @@
 
 from copy import copy
 from cStringIO import StringIO
-from difflib import SequenceMatcher
 import os
 import sha
 import time
@@ -84,7 +83,7 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         )
 import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings
-from bzrlib.patiencediff import SequenceMatcher, unified_diff
+from bzrlib.patiencediff import PatienceSequenceMatcher, unified_diff
 from bzrlib.symbol_versioning import *
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
@@ -192,7 +191,7 @@ class Weave(VersionedFile):
         self._name_map = {}
         self._weave_name = weave_name
         if matcher is None:
-            self._matcher = SequenceMatcher
+            self._matcher = PatienceSequenceMatcher
         else:
             self._matcher = matcher
 

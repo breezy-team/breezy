@@ -17,7 +17,7 @@
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 import bzrlib.errors as errors
-from bzrlib.patiencediff import SequenceMatcher, unified_diff
+from bzrlib.patiencediff import PatienceSequenceMatcher, unified_diff
 from bzrlib.symbol_versioning import *
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter
@@ -49,7 +49,7 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
         check_text_lines(newlines)
 
     if sequence_matcher is None:
-        sequence_matcher = SequenceMatcher
+        sequence_matcher = PatienceSequenceMatcher
     ud = unified_diff(oldlines, newlines,
                       fromfile=old_filename+'\t', 
                       tofile=new_filename+'\t',

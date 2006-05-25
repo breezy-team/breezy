@@ -24,7 +24,7 @@ import sys
 import time
 
 
-__all__ = ['SequenceMatcher', 'unified_diff', 'unified_diff_files']
+__all__ = ['PatienceSequenceMatcher', 'unified_diff', 'unified_diff_files']
 
 
 def unique_lcs(a, b):
@@ -161,7 +161,7 @@ def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
             answer.append((nahi + i, nbhi + i))
 
 
-class SequenceMatcher(difflib.SequenceMatcher):
+class PatienceSequenceMatcher(difflib.SequenceMatcher):
     """Compare a pair of sequences using longest common subset."""
 
     def __init__(self, isjunk=None, a='', b=''):
@@ -215,7 +215,7 @@ class SequenceMatcher(difflib.SequenceMatcher):
         The last triple is a dummy, (len(a), len(b), 0), and is the only
         triple with n==0.
 
-        >>> s = SequenceMatcher(None, "abxcd", "abcd")
+        >>> s = PatienceSequenceMatcher(None, "abxcd", "abcd")
         >>> s.get_matching_blocks()
         [(0, 0, 2), (3, 2, 2), (5, 4, 0)]
         """
@@ -386,7 +386,7 @@ def main(args):
     p.add_option('--difflib', dest='matcher', action='store_const', const='difflib',
                  default='patience', help='Use python\'s difflib algorithm')
 
-    algorithms = {'patience':SequenceMatcher, 'difflib':difflib.SequenceMatcher}
+    algorithms = {'patience':PatienceSequenceMatcher, 'difflib':difflib.SequenceMatcher}
 
     (opts, args) = p.parse_args(args)
     matcher = algorithms[opts.matcher]

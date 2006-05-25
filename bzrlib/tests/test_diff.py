@@ -2,7 +2,7 @@ from cStringIO import StringIO
 
 from bzrlib.diff import internal_diff
 from bzrlib.errors import BinaryFile
-from bzrlib.patiencediff import (recurse_matches, SequenceMatcher, unique_lcs,
+from bzrlib.patiencediff import (recurse_matches, PatienceSequenceMatcher, unique_lcs,
                                  unified_diff, unified_diff_files)
 from bzrlib.tests import TestCase, TestCaseInTempDir
 
@@ -100,7 +100,7 @@ class TestCDVDiffLib(TestCase):
         def chk_blocks(a, b, expected_blocks):
             # difflib always adds a signature of the total
             # length, with no matching entries at the end
-            s = SequenceMatcher(None, a, b)
+            s = PatienceSequenceMatcher(None, a, b)
             blocks = s.get_matching_blocks()
             self.assertEquals((len(a), len(b), 0), blocks[-1])
             self.assertEquals(expected_blocks, blocks[:-1])
@@ -143,7 +143,7 @@ class TestCDVDiffLib(TestCase):
 
     def test_opcodes(self):
         def chk_ops(a, b, expected_codes):
-            s = SequenceMatcher(None, a, b)
+            s = PatienceSequenceMatcher(None, a, b)
             self.assertEquals(expected_codes, s.get_opcodes())
 
         chk_ops('', '', [])
@@ -209,7 +209,7 @@ class TestCDVDiffLib(TestCase):
         def chk_blocks(a, b, expected_blocks):
             # difflib always adds a signature of the total
             # length, with no matching entries at the end
-            s = SequenceMatcher(None, a, b)
+            s = PatienceSequenceMatcher(None, a, b)
             blocks = s.get_matching_blocks()
             x = blocks.pop()
             self.assertEquals(x, (len(a), len(b), 0))
@@ -284,7 +284,7 @@ pynff pzq_zxqve(Pbzznaq):
                            ' how are you today?\n'
                           ]
                           , list(unified_diff(txt_a, txt_b
-                                        , sequencematcher=SequenceMatcher)))
+                                        , sequencematcher=PatienceSequenceMatcher)))
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
         # This is the result with LongestCommonSubstring matching
@@ -320,7 +320,7 @@ pynff pzq_zxqve(Pbzznaq):
                            ' i\n',
                           ]
                           , list(unified_diff(txt_a, txt_b,
-                                 sequencematcher=SequenceMatcher)))
+                                 sequencematcher=PatienceSequenceMatcher)))
 
 
 class TestCDVDiffLibFiles(TestCaseInTempDir):
@@ -342,7 +342,7 @@ class TestCDVDiffLibFiles(TestCaseInTempDir):
                            ' how are you today?\n',
                           ]
                           , list(unified_diff_files('a1', 'b1',
-                                 sequencematcher=SequenceMatcher)))
+                                 sequencematcher=PatienceSequenceMatcher)))
 
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
@@ -383,4 +383,4 @@ class TestCDVDiffLibFiles(TestCaseInTempDir):
                            ' i\n',
                           ]
                           , list(unified_diff_files('a2', 'b2',
-                                 sequencematcher=SequenceMatcher)))
+                                 sequencematcher=PatienceSequenceMatcher)))

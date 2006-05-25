@@ -20,8 +20,11 @@
 
 
 from bzrlib.errors import CantReprocessAndShowBase
-from bzrlib.patiencediff import SequenceMatcher
+from bzrlib.patiencediff import PatienceSequenceMatcher
 from bzrlib.textfile import check_text_lines
+
+SequenceMatcher = PatienceSequenceMatcher
+
 
 def intersect(ra, rb):
     """Given two ranges return the range where they intersect or None.
