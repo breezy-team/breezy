@@ -160,11 +160,8 @@ class cmd_verify_changeset(Command):
 
 
 register_command(cmd_changeset)
-register_command(cmd_verify_changeset)
-register_command(cmd_send_changeset)
-
-#OPTIONS['reverse'] = None
-#OPTIONS['auto-commit'] = None
+#register_command(cmd_verify_changeset)
+#register_command(cmd_send_changeset)
 
 def test_suite():
     from doctest import DocTestSuite
@@ -178,7 +175,4 @@ def test_suite():
     suite.addTest(TestLoader().loadTestsFromModule(test_changeset))
     suite.addTest(TestLoader().loadTestsFromModule(patches))
     suite.addTest(DocTestSuite(common))
-
     return suite
-
-

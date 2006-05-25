@@ -26,6 +26,7 @@ class MalformedHeader(BadChangeset): pass
 class MalformedPatches(BadChangeset): pass
 class MalformedFooter(BadChangeset): pass
 
+
 def _unescape(name):
     """Now we want to find the filename effected.
     Unfortunately the filename is written out as
@@ -43,6 +44,7 @@ def _unescape(name):
                 ' filename: %r' % name)
     # We need to handle escaped hexadecimals too.
     return name[1:-1].replace('\"', '"').replace("\'", "'")
+
 
 class RevisionInfo(object):
     """Gets filled out for each revision object that is read.
@@ -85,6 +87,7 @@ class RevisionInfo(object):
                 rev.properties[key] = value
 
         return rev
+
 
 class ChangesetInfo(object):
     """This contains the meta information. Stuff that allows you to
@@ -134,7 +137,6 @@ class ChangesetInfo(object):
             if rev.committer is None and self.committer:
                 rev.committer = self.committer
             self.real_revisions.append(rev.as_revision())
-
 
     def get_base(self, revision):
         revision_info = self.get_revision_info(revision.revision_id)
@@ -231,21 +233,6 @@ class ChangesetReader(object):
                     % (rev.revision_id))
         rev_to_sha1[rev.revision_id] = sha1
 
-        # Now that we've checked all the sha1 sums, we can make sure that
-        # at least for the small list we have, all of the references are
-        # valid.
-        ## TODO: Bring this back
-        ## for rev in self.info.real_revisions:
-        ##     for p_id in rev.parent_ids:
-        ##         if p_id in rev_to_sha1:
-        ##             if parent.revision_sha1 != rev_to_sha1[p_id]:
-        ##                 raise BzrError('Parent revision checksum mismatch.'
-        ##                         ' A parent was referenced with an'
-        ##                         ' incorrect checksum'
-        ##                         ': {%r} %s != %s' % (parent.revision_id,
-        ##                                     parent.revision_sha1,
-        ##                                     rev_to_sha1[parent.revision_id]))
-
     def _validate_references_from_repository(self, repository):
         """Now that we have a repository which should have some of the
         revisions we care about, go through and validate all of them
@@ -296,10 +283,11 @@ class ChangesetReader(object):
 
         for inv_id, sha1 in inv_to_sha.iteritems():
             if repository.has_revision(inv_id):
-                # TODO: Currently branch.get_inventory_sha1() just returns the value
-                # that is stored in the revision text. Which is *really* bogus, because
-                # that means we aren't validating the actual text, just that we wrote 
-                # and read the string. But for now, what the hell.
+                # Note: branch.get_inventory_sha1() just returns the value that
+                # is stored in the revision text, and that value may be out
+                # of date. This is bogus, because that means we aren't
+                # validating the actual text, just that we wrote and read the
+                # string. But for now, what the hell.
                 local_sha1 = repository.get_inventory_sha1(inv_id)
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For inventory id {%s}' 
@@ -331,7 +319,6 @@ class ChangesetReader(object):
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
-        
     def get_changeset(self, repository):
         """Return the meta information, and a Changeset tree which can
         be used to populate the local stores and working tree, respectively.
@@ -637,7 +624,6 @@ class ChangesetReader(object):
             if lines:
                 do_patch(path, lines, encoding)
             
-
         valid_actions = {
             'renamed':renamed,
             'removed':removed,
@@ -666,6 +652,7 @@ class ChangesetReader(object):
                         ' (unrecognized action): %r' % action_line)
             valid_actions[action](kind, extra, lines)
 
+
 def read_changeset(from_file, repository):
     """Read in a changeset from a iterable object (such as a file object)
 
@@ -677,6 +664,7 @@ def read_changeset(from_file, repository):
     """
     cr = ChangesetReader(from_file)
     return cr.get_changeset(repository)
+
 
 class ChangesetTree(Tree):
     def __init__(self, base_tree, revision_id):
@@ -892,7 +880,6 @@ class ChangesetTree(Tree):
         content = fileobj.read()
         return len(content), sha_string(content)
 
-
     def _get_inventory(self):
         """Build up the inventory entry for the ChangesetTree.
 
@@ -972,6 +959,7 @@ class ChangesetTree(Tree):
         paths.sort()
         return paths
 
+
 def patched_file(file_patch, original):
     """Produce a file-like object with the patched version of a text"""
     from bzrlib.patches import iter_patched
@@ -979,4 +967,3 @@ def patched_file(file_patch, original):
     if file_patch == "":
         return IterableFile(())
     return IterableFile(iter_patched(original, file_patch.splitlines(True)))
-    

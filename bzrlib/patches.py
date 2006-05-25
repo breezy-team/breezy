@@ -15,6 +15,7 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+
 class PatchSyntax(Exception):
     def __init__(self, msg):
         Exception.__init__(self, msg)
@@ -27,6 +28,7 @@ class MalformedPatchHeader(PatchSyntax):
         msg = "Malformed patch header.  %s\n%r" % (self.desc, self.line)
         PatchSyntax.__init__(self, msg)
 
+
 class MalformedHunkHeader(PatchSyntax):
     def __init__(self, desc, line):
         self.desc = desc
@@ -34,12 +36,14 @@ class MalformedHunkHeader(PatchSyntax):
         msg = "Malformed hunk header.  %s\n%r" % (self.desc, self.line)
         PatchSyntax.__init__(self, msg)
 
+
 class MalformedLine(PatchSyntax):
     def __init__(self, desc, line):
         self.desc = desc
         self.line = line
         msg = "Malformed line.  %s\n%s" % (self.desc, self.line)
         PatchSyntax.__init__(self, msg)
+
 
 def get_patch_names(iter_lines):
     try:
@@ -59,6 +63,7 @@ def get_patch_names(iter_lines):
     except StopIteration:
         raise MalformedPatchHeader("No mod line", "")
     return (orig_name, mod_name)
+
 
 def parse_range(textrange):
     """Parse a patch range, handling the "1" special-case
@@ -215,6 +220,7 @@ class Hunk:
                 break
         return shift
 
+
 def iter_hunks(iter_lines):
     hunk = None
     for line in iter_lines:
@@ -237,6 +243,7 @@ def iter_hunks(iter_lines):
                 mod_size += 1
     if hunk is not None:
         yield hunk
+
 
 class Patch:
     def __init__(self, oldname, newname):
@@ -288,6 +295,7 @@ class Patch:
                     pos += 1
                 if isinstance(line, ContextLine):
                     pos += 1
+
 
 def parse_patch(iter_lines):
     (orig_name, mod_name) = get_patch_names(iter_lines)
@@ -354,6 +362,7 @@ def difference_index(atext, btext):
             return i;
     return None
 
+
 class PatchConflict(Exception):
     def __init__(self, line_no, orig_line, patch_line):
         orig = orig_line.rstrip('\n')
@@ -394,9 +403,12 @@ def iter_patched(orig_lines, patch_lines):
     if orig_lines is not None:
         for line in orig_lines:
             yield line
-                    
+
+
 import unittest
 import os.path
+
+
 class PatchesTester(unittest.TestCase):
     def datafile(self, filename):
         data_path = os.path.join(os.path.dirname(__file__), "testdata", 
@@ -518,8 +530,6 @@ class PatchesTester(unittest.TestCase):
 +__doc__ = An alternate Arch commandline interface
 """
         self.compare_parsed(patchtext)
-        
-
 
     def testLineLookup(self):
         import sys
