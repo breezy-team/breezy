@@ -48,6 +48,11 @@ import bzrlib.errors as errors
 import bzrlib.inventory
 import bzrlib.iterablefile
 import bzrlib.lockdir
+try:
+    import bzrlib.lsprof
+except ImportError:
+    # lsprof not available
+    pass
 from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.osutils
@@ -227,6 +232,9 @@ class _MyResult(unittest._TextTestResult):
         self.extractBenchmarkTime(test)
         if self.showAll:
             self.stream.writeln('   OK %s' % self._testTimeString())
+            for bench_called, stats in getattr(test, '_benchcalls', []):
+                self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
+                stats.pprint(file=self.stream)
         elif self.dots and self.pb is None:
             self.stream.write('~')
         elif self.dots:
@@ -379,6 +387,8 @@ class TestCase(unittest.TestCase):
 
     _log_file_name = None
     _log_contents = ''
+    # record lsprof data when performing benchmark calls.
+    _gather_lsprof_in_benchmarks = False
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
@@ -389,6 +399,7 @@ class TestCase(unittest.TestCase):
         self._cleanEnvironment()
         bzrlib.trace.disable_default_logging()
         self._startLogFile()
+        self._benchcalls = []
         self._benchtime = None
 
     def _ndiff_strings(self, a, b):
@@ -545,12 +556,24 @@ class TestCase(unittest.TestCase):
         unittest.TestCase.tearDown(self)
 
     def time(self, callable, *args, **kwargs):
-        """Run callable and accrue the time it takes to the benchmark time."""
+        """Run callable and accrue the time it takes to the benchmark time.
+        
+        If lsprofiling is enabled (i.e. by --lsprof-time to bzr selftest) then
+        this will cause lsprofile statistics to be gathered and stored in
+        self._benchcalls.
+        """
         if self._benchtime is None:
             self._benchtime = 0
         start = time.time()
         try:
-            callable(*args, **kwargs)
+            if not self._gather_lsprof_in_benchmarks:
+                return callable(*args, **kwargs)
+            else:
+                # record this benchmark
+                ret, stats = bzrlib.lsprof.profile(callable, *args, **kwargs)
+                stats.sort()
+                self._benchcalls.append(((callable, args, kwargs), stats))
+                return ret
         finally:
             self._benchtime += time.time() - start
 
@@ -1035,8 +1058,9 @@ def filter_suite_by_re(suite, pattern):
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
-              transport=None):
+              transport=None, lsprof_timed=None):
     TestCaseInTempDir._TEST_NAME = name
+    TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
         verbosity = 2
         pb = None
@@ -1058,7 +1082,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
 def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              keep_output=False,
              transport=None,
-             test_suite_factory=None):
+             test_suite_factory=None,
+             lsprof_timed=None):
     """Run the whole test suite under the enhanced runner"""
     global default_transport
     if transport is None:
@@ -1072,7 +1097,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
             suite = test_suite_factory()
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
                      stop_on_failure=stop_on_failure, keep_output=keep_output,
-                     transport=transport)
+                     transport=transport,
+                     lsprof_timed=lsprof_timed)
     finally:
         default_transport = old_transport
 

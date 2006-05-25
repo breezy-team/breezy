@@ -519,7 +519,8 @@ class cmd_push(Command):
                         if new_transport.base == transport.base:
                             raise BzrCommandError("Could not create "
                                                   "path prefix.")
-            dir_to = br_from.bzrdir.clone(location)
+            dir_to = br_from.bzrdir.clone(location,
+                revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
             count = len(br_to.revision_history())
         else:
@@ -1785,10 +1786,14 @@ class cmd_selftest(Command):
                                  'throughout the test suite.',
                             type=get_transport_type),
                      Option('benchmark', help='run the bzr bencharks.'),
-                    ]
+                     Option('lsprof-timed',
+                            help='generate lsprof output for benchmarked'
+                                 ' sections of code.'),
+                     ]
 
-    def run(self, testspecs_list=None, verbose=False, one=False,
-            keep_output=False, transport=None, benchmark=None):
+    def run(self, testspecs_list=None, verbose=None, one=False,
+            keep_output=False, transport=None, benchmark=None,
+            lsprof_timed=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -1808,14 +1813,19 @@ class cmd_selftest(Command):
                 pattern = ".*"
             if benchmark:
                 test_suite_factory = benchmarks.test_suite
+                if verbose is None:
+                    verbose = True
             else:
                 test_suite_factory = None
+                if verbose is None:
+                    verbose = False
             result = selftest(verbose=verbose, 
                               pattern=pattern,
                               stop_on_failure=one, 
                               keep_output=keep_output,
                               transport=transport,
-                              test_suite_factory=test_suite_factory)
+                              test_suite_factory=test_suite_factory,
+                              lsprof_timed=lsprof_timed)
             if result:
                 bzrlib.trace.info('tests passed')
             else:
@@ -1950,11 +1960,18 @@ class cmd_merge(Command):
     
     merge refuses to run if there are any uncommitted changes, unless
     --force is given.
+
+    The following merge types are available:
     """
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
                      Option('show-base', help="Show base revision text in "
                             "conflicts")]
+
+    def help(self):
+        from merge import merge_type_help
+        from inspect import getdoc
+        return getdoc(self) + '\n' + merge_type_help() 
 
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False):
@@ -2042,11 +2059,34 @@ class cmd_merge(Command):
 
 class cmd_remerge(Command):
     """Redo a merge.
-    """
+
+    Use this if you want to try a different merge technique while resolving
+    conflicts.  Some merge techniques are better than others, and remerge 
+    lets you try different ones on different files.
+
+    The options for remerge have the same meaning and defaults as the ones for
+    merge.  The difference is that remerge can (only) be run when there is a
+    pending merge, and it lets you specify particular files.
+
+    Examples:
+    $ bzr remerge --show-base
+        Re-do the merge of all conflicted files, and show the base text in
+        conflict regions, in addition to the usual THIS and OTHER texts.
+
+    $ bzr remerge --merge-type weave --reprocess foobar
+        Re-do the merge of "foobar", using the weave merge algorithm, with
+        additional processing to reduce the size of conflict regions.
+    
+    The following merge types are available:"""
     takes_args = ['file*']
     takes_options = ['merge-type', 'reprocess',
                      Option('show-base', help="Show base revision text in "
                             "conflicts")]
+
+    def help(self):
+        from merge import merge_type_help
+        from inspect import getdoc
+        return getdoc(self) + '\n' + merge_type_help() 
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):

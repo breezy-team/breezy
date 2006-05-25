@@ -9,7 +9,9 @@ IN DEVELOPMENT
 
    * On Windows, detect terminal width using GetConsoleScreenBufferInfo.
      (Alexander Belchenko)
-  
+
+   * Speedup improvement for 'date:'-revision search. (Guillaume Pinot).
+
    * Show the correct number of revisions pushed when pushing a new branch.
      (Robert Collins).
 
@@ -18,6 +20,9 @@ IN DEVELOPMENT
      for the PQM status window. (Robert Collins).
 
    * 'bzr selftest --benchmark' will run a new benchmarking selftest.
+     'bzr selftest --benchmark --lsprof-timed' will use lsprofile to generate
+     profile data for the individual profiled calls, allowing for fine
+     grained analysis of performance.
      (Robert Collins, Martin Pool).
 
    * 'bzr commit' shows a progress bar. This is useful for commits over sftp
@@ -28,6 +33,10 @@ IN DEVELOPMENT
      were ignored (because you might reasonably be expecting none to be
      ignored). 'bzr add -v' is unchanged and will report every ignored
      file. (Robert Collins).
+
+   * ftp now has a test server if medusa is installed. As part of testing,
+     ftp support has been improved, including support for supplying a
+     non-standard port. (John Arbash Meinel).
 
    * ``log --line`` shows the revision number.  (#5162, Alexander Belchenko)
 
@@ -42,6 +51,10 @@ IN DEVELOPMENT
     * Combine the ignore rules into a single regex rather than looping over
       them to reduce the threshold where  N^2 behaviour occurs in operations
       like status. (Jan Hudec, Robert Collins).
+
+    * 'bzr push' should only push the ancestry of the current revision, not
+      all of the history in the repository. This is especially important for
+      shared repositories. (John Arbash Meinel)
 
 bzr 0.8.2  2006-05-17
   

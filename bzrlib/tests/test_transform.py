@@ -57,6 +57,8 @@ class TestTreeTransform(TestCaseInTempDir):
         transform, root = self.get_transform() 
         self.assertIs(transform.get_tree_parent(root), ROOT_PARENT)
         imaginary_id = transform.trans_id_tree_path('imaginary')
+        imaginary_id2 = transform.trans_id_tree_path('imaginary/')
+        self.assertEqual(imaginary_id, imaginary_id2)
         self.assertEqual(transform.get_tree_parent(imaginary_id), root)
         self.assertEqual(transform.final_kind(root), 'directory')
         self.assertEqual(transform.final_file_id(root), self.wt.get_root_id())
