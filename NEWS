@@ -20,6 +20,9 @@ IN DEVELOPMENT
      for the PQM status window. (Robert Collins).
 
    * 'bzr selftest --benchmark' will run a new benchmarking selftest.
+     'bzr selftest --benchmark --lsprof-timed' will use lsprofile to generate
+     profile data for the individual profiled calls, allowing for fine
+     grained analysis of performance.
      (Robert Collins, Martin Pool).
 
    * 'bzr commit' shows a progress bar. This is useful for commits over sftp

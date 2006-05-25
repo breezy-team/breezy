@@ -395,11 +395,11 @@ class MockProgress(_BaseProgressBar):
         self.calls.append(('clear',))
 
 
-class TestResult(TestCase):
+class TestTestResult(TestCase):
 
     def test_progress_bar_style_quiet(self):
         # test using a progress bar.
-        dummy_test = TestResult('test_progress_bar_style_quiet')
+        dummy_test = TestTestResult('test_progress_bar_style_quiet')
         dummy_error = (Exception, None, [])
         mypb = MockProgress()
         mypb.update('Running tests', 0, 4)
@@ -467,6 +467,53 @@ class TestResult(TestCase):
         self.assertContainsRe(timed_string, "^          [0-9]ms$")
         # cheat. Yes, wash thy mouth out with soap.
         self._benchtime = None
+
+    def _time_hello_world_encoding(self):
+        """Profile two sleep calls
+        
+        This is used to exercise the test framework.
+        """
+        self.time(unicode, 'hello', errors='replace')
+        self.time(unicode, 'world', errors='replace')
+
+    def test_lsprofiling(self):
+        """Verbose test result prints lsprof statistics from test cases."""
+        try:
+            import bzrlib.lsprof
+        except ImportError:
+            raise TestSkipped("lsprof not installed.")
+        result_stream = StringIO()
+        result = bzrlib.tests._MyResult(
+            unittest._WritelnDecorator(result_stream),
+            descriptions=0,
+            verbosity=2,
+            )
+        # we want profile a call of some sort and check it is output by
+        # addSuccess. We dont care about addError or addFailure as they
+        # are not that interesting for performance tuning.
+        # make a new test instance that when run will generate a profile
+        example_test_case = TestTestResult("_time_hello_world_encoding")
+        example_test_case._gather_lsprof_in_benchmarks = True
+        # execute the test, which should succeed and record profiles
+        example_test_case.run(result)
+        # lsprofile_something()
+        # if this worked we want 
+        # LSProf output for <built in function unicode> (['hello'], {'errors': 'replace'})
+        #    CallCount    Recursive    Total(ms)   Inline(ms) module:lineno(function)
+        # (the lsprof header)
+        # ... an arbitrary number of lines
+        # and the function call which is time.sleep.
+        #           1        0            ???         ???       ???(sleep) 
+        # and then repeated but with 'world', rather than 'hello'.
+        # this should appear in the output stream of our test result.
+        self.assertContainsRe(result_stream.getvalue(), 
+            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)\n"
+            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
+            r" +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n"
+            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n"
+            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
+            r" +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n"
+            )
 
 
 class TestRunner(TestCase):
@@ -571,6 +618,26 @@ class TestTestCase(TestCase):
             output_stream.getvalue(),
             "[1-9][0-9]ms/   [1-9][0-9]ms\n$")
         
+    def test__gather_lsprof_in_benchmarks(self):
+        """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
+        
+        Each self.time() call is individually and separately profiled.
+        """
+        try:
+            import bzrlib.lsprof
+        except ImportError:
+            raise TestSkipped("lsprof not installed.")
+        # overrides the class member with an instance member so no cleanup 
+        # needed.
+        self._gather_lsprof_in_benchmarks = True
+        self.time(time.sleep, 0.000)
+        self.time(time.sleep, 0.003)
+        self.assertEqual(2, len(self._benchcalls))
+        self.assertEqual((time.sleep, (0.000,), {}), self._benchcalls[0][0])
+        self.assertEqual((time.sleep, (0.003,), {}), self._benchcalls[1][0])
+        self.assertIsInstance(self._benchcalls[0][1], bzrlib.lsprof.Stats)
+        self.assertIsInstance(self._benchcalls[1][1], bzrlib.lsprof.Stats)
+
 
 class TestExtraAssertions(TestCase):
     """Tests for new test assertions in bzrlib test suite"""
