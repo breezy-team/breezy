@@ -537,6 +537,34 @@ class Branch(object):
         if parent:
             destination.set_parent(parent)
 
+    @needs_read_lock
+    def check(self):
+        """Check consistency of the branch.
+
+        In particular this checks that revisions given in the revision-history
+        do actually match up in the revision graph, and that they're all 
+        present in the repository.
+
+        :return: A BranchCheckResult.
+        """
+        mainline_parent_id = None
+        for revision_id in self.revision_history():
+            try:
+                revision = self.repository.get_revision(revision_id)
+            except errors.NoSuchRevision, e:
+                raise BzrCheckError("mainline revision {%s} not in repository"
+                        % revision_id)
+            # In general the first entry on the revision history has no parents.
+            # But it's not illegal for it to have parents listed; this can happen
+            # in imports from Arch when the parents weren't reachable.
+            if mainline_parent_id is not None:
+                if mainline_parent_id not in revision.parent_ids:
+                    raise BzrCheckError("previous revision {%s} not listed among "
+                                        "parents of {%s}"
+                                        % (mainline_parent_id, revision_id))
+            mainline_parent_id = revision_id
+        return BranchCheckResult(self)
+
 
 class BranchFormat(object):
     """An encapsulation of the initialization and open routines for a format.
@@ -1332,6 +1360,26 @@ class BranchTestProviderAdapter(object):
             new_test.id = make_new_test_id()
             result.addTest(new_test)
         return result
+
+
+class BranchCheckResult(object):
+    """Results of checking branch consistency.
+
+    :see: Branch.check
+    """
+
+    def __init__(self, branch):
+        self.branch = branch
+
+    def report_results(self, verbose):
+        """Report the check results via trace.note.
+        
+        :param verbose: Requests more detailed display of what was checked,
+            if any.
+        """
+        note('checked branch %s format %s',
+             self.branch.base,
+             self.branch._format)
 
 
 ######################################################################
