@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Aaron Bentley
+# Copyright (C) 2004 - 2006 Aaron Bentley
 # <aaron.bentley@utoronto.ca>
 #
 #    This program is free software; you can redistribute it and/or modify
@@ -43,6 +43,15 @@ class MalformedLine(PatchSyntax):
         self.line = line
         msg = "Malformed line.  %s\n%s" % (self.desc, self.line)
         PatchSyntax.__init__(self, msg)
+
+
+class PatchConflict(Exception):
+    def __init__(self, line_no, orig_line, patch_line):
+        orig = orig_line.rstrip('\n')
+        patch = str(patch_line).rstrip('\n')
+        msg = 'Text contents mismatch at line %d.  Original has "%s",'\
+            ' but patch says it should be "%s"' % (line_no, orig, patch)
+        Exception.__init__(self, msg)
 
 
 def get_patch_names(iter_lines):
@@ -361,15 +370,6 @@ def difference_index(atext, btext):
         if atext[i] != btext[i]:
             return i;
     return None
-
-
-class PatchConflict(Exception):
-    def __init__(self, line_no, orig_line, patch_line):
-        orig = orig_line.rstrip('\n')
-        patch = str(patch_line).rstrip('\n')
-        msg = 'Text contents mismatch at line %d.  Original has "%s",'\
-            ' but patch says it should be "%s"' % (line_no, orig, patch)
-        Exception.__init__(self, msg)
 
 
 def iter_patched(orig_lines, patch_lines):

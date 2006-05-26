@@ -65,7 +65,7 @@ def unpack_highres_date(date):
     :param date: A date formated by format_highres_date
     :type date: string
 
-    >>> import time, random
+    >>> import time
     >>> unpack_highres_date('Thu 2005-06-30 12:38:52.350850105 -0500')
     (1120153132.3508501, -18000)
     >>> unpack_highres_date('Thu 2005-06-30 17:38:52.350850105 +0000')
@@ -80,17 +80,6 @@ def unpack_highres_date(date):
     True
     >>> o == o2
     True
-    >>> t -= 24*3600*365*2 # Start 2 years ago
-    >>> o = -12*3600
-    >>> for count in xrange(500):
-    ...   t += random.random()*24*3600*30
-    ...   o = ((o/3600 + 13) % 25 - 12)*3600 # Add 1 wrap around from [-12, 12]
-    ...   date = format_highres_date(t, o)
-    ...   t2, o2 = unpack_highres_date(date)
-    ...   if t != t2 or o != o2:
-    ...      print 'Failed on date %r, %s,%s diff:%s' % (date, t, o, t2-t)
-    ...      break
-
     """
     import time, calendar
     # Up until the first period is a datestamp that is generated

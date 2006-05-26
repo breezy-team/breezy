@@ -27,25 +27,6 @@ class MalformedPatches(BadChangeset): pass
 class MalformedFooter(BadChangeset): pass
 
 
-def _unescape(name):
-    """Now we want to find the filename effected.
-    Unfortunately the filename is written out as
-    repr(filename), which means that it surrounds
-    the name with quotes which may be single or double
-    (single is preferred unless there is a single quote in
-    the filename). And some characters will be escaped.
-
-    TODO:   There has to be some pythonic way of undo-ing the
-            representation of a string rather than using eval.
-    """
-    delimiter = name[0]
-    if name[-1] != delimiter:
-        raise BadChangeset('Could not properly parse the'
-                ' filename: %r' % name)
-    # We need to handle escaped hexadecimals too.
-    return name[1:-1].replace('\"', '"').replace("\'", "'")
-
-
 class RevisionInfo(object):
     """Gets filled out for each revision object that is read.
     """
