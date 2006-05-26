@@ -1555,9 +1555,9 @@ class ConvertBzrDir4To5(Converter):
         # the XML is now updated with text versions
         if __debug__:
             for file_id in inv:
-                ie = inv[file_id]
-                if ie.kind == 'root_directory':
+                if inv.is_root(file_id):
                     continue
+                ie = inv[file_id]
                 assert hasattr(ie, 'revision'), \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)

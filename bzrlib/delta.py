@@ -201,9 +201,6 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
             assert kind in InventoryEntry.known_kinds, \
                    'invalid file kind %r' % kind
 
-            if kind == 'root_directory':
-                continue
-            
             if specific_files:
                 if (not is_inside_any(specific_files, old_inv.id2path(file_id)) 
                     and not is_inside_any(specific_files, new_inv.id2path(file_id))):
@@ -235,8 +232,6 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
                 delta.unchanged.append((new_path, file_id, kind))
         else:
             kind = old_inv.get_file_kind(file_id)
-            if kind == 'root_directory':
-                continue
             old_path = old_inv.id2path(file_id)
             if specific_files:
                 if not is_inside_any(specific_files, old_path):
@@ -250,8 +245,6 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
         if new_inv.is_root(file_id) and len(old_inv) == 0:
             continue
         kind = new_inv.get_file_kind(file_id)
-        if kind == 'root_directory':
-            continue
         new_path = new_inv.id2path(file_id)
         if specific_files:
             if not is_inside_any(specific_files, new_path):

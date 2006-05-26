@@ -493,8 +493,7 @@ class TreeTransform(object):
                         self.tree_kind(t) == 'directory'])
         for trans_id in self._removed_id:
             file_id = self.tree_file_id(trans_id)
-            if self._tree.inventory[file_id].kind in ('directory', 
-                                                      'root_directory'):
+            if self._tree.inventory[file_id].kind == 'directory':
                 parents.append(trans_id)
 
         for parent_id in parents:
