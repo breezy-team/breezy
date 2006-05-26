@@ -330,7 +330,8 @@ class Commit(object):
 
             if not (self.allow_pointless
                     or len(self.parents) > 1
-                    or self.new_inv != self.basis_inv):
+                    or (self.new_inv != self.basis_inv and 
+                        (len(self.basis_inv) != 0 or len(self.new_inv) > 1))):
                 raise PointlessCommit()
 
             self._emit_progress_update()

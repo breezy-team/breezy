@@ -8,7 +8,6 @@ from bzrlib.builtins import merge
 from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
 from bzrlib.errors import (NotBranchError, NotVersionedError,
                            WorkingTreeNotRevision, BzrCommandError, NoDiff3)
-from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.merge import Merge3Merger, Diff3Merger, WeaveMerger
 from bzrlib.osutils import (file_kind, mkdtemp, pathjoin, rename, rmtree,

@@ -192,7 +192,7 @@ class RevisionTree(Tree):
 
 class EmptyTree(Tree):
     def __init__(self):
-        self._inventory = Inventory()
+        self._inventory = Inventory(root_id=None)
 
     def get_symlink_target(self, file_id):
         return None
@@ -202,6 +202,7 @@ class EmptyTree(Tree):
 
     def kind(self, file_id):
         assert self._inventory[file_id].kind == "root_directory"
+        assert self._inventory[file_id].parent is None 
         return "root_directory"
 
     def list_files(self):

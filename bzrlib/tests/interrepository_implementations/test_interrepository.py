@@ -27,6 +27,7 @@ from bzrlib.errors import (FileExists,
                            UninitializableFormat,
                            NotBranchError,
                            )
+from bzrlib.inventory import Inventory
 import bzrlib.repository as repository
 from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
@@ -206,9 +207,8 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         # repository.
 
         # 'ghost' is a ghost in missing_ghost and not in with_ghost_rev
-        inv = bzrlib.tree.EmptyTree().inventory
         repo = self.make_repository('with_ghost_rev')
-        sha1 = repo.add_inventory('ghost', inv, [])
+        sha1 = repo.add_inventory('ghost', Inventory(), [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
                                        committer="Foo Bar <foo@example.com>",
@@ -219,7 +219,7 @@ class TestCaseWithGhosts(TestCaseWithInterRepository):
         repo.add_revision('ghost', rev)
          
         repo = self.make_to_repository('missing_ghost')
-        sha1 = repo.add_inventory('with_ghost', inv, [])
+        sha1 = repo.add_inventory('with_ghost', Inventory(), [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
                                        committer="Foo Bar <foo@example.com>",

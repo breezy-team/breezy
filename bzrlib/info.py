@@ -209,7 +209,8 @@ def _show_working_stats(working):
 
     dir_cnt = 0
     for file_id in work_inv:
-        if work_inv.get_file_kind(file_id) == 'directory':
+        if (work_inv.get_file_kind(file_id) == 'directory' and 
+            not work_inv.is_root(file_id)):
             dir_cnt += 1
     print '  %8d versioned %s' \
           % (dir_cnt,

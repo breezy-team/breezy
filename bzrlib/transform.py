@@ -1068,10 +1068,7 @@ def _entry_changes(file_id, entry, working_tree):
         contents_mod = True
         meta_mod = False
     if has_contents is True:
-        real_e_kind = entry.kind
-        if real_e_kind == 'root_directory':
-            real_e_kind = 'directory'
-        if real_e_kind != working_kind:
+        if entry.kind != working_kind:
             contents_mod, meta_mod = True, False
         else:
             cur_entry._read_tree_state(working_tree.id2path(file_id), 
@@ -1128,6 +1125,9 @@ def revert(working_tree, target_tree, filenames, backups=False,
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             for id_num, file_id in enumerate(wt_interesting):
+                if (working_tree.inventory.is_root(file_id) and 
+                    len(target_tree.inventory) == 0):
+                    continue
                 child_pb.update("New file check", id_num+1, 
                                 len(sorted_interesting))
                 if file_id not in target_tree:

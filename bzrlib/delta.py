@@ -189,6 +189,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
     # ids or names which were not found in the trees.
 
     for file_id in old_tree:
+        if old_inv.is_root(file_id) and len(new_inv) == 0:
+            continue
         if file_id in new_tree:
             old_ie = old_inv[file_id]
             new_ie = new_inv[file_id]
@@ -229,7 +231,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
             elif text_modified or meta_modified:
                 delta.modified.append((new_path, file_id, kind,
                                        text_modified, meta_modified))
-            elif want_unchanged:
+            elif want_unchanged and not new_inv.is_root(file_id):
                 delta.unchanged.append((new_path, file_id, kind))
         else:
             kind = old_inv.get_file_kind(file_id)
@@ -244,6 +246,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
     mutter('start looking for new files')
     for file_id in new_inv:
         if file_id in old_inv or file_id not in new_tree:
+            continue
+        if new_inv.is_root(file_id) and len(old_inv) == 0:
             continue
         kind = new_inv.get_file_kind(file_id)
         if kind == 'root_directory':

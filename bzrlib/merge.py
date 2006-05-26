@@ -374,7 +374,13 @@ class Merge3Merger(object):
                     self.merge_executable(file_id, file_status)
             finally:
                 child_pb.finished()
-                
+            try:
+                self.tt.final_kind(self.tt.root)
+            except NoSuchFile:
+                self.tt.cancel_deletion(self.tt.root)
+            if self.tt.final_file_id(self.tt.root) is None:
+                self.tt.version_file(self.tt.tree_file_id(self.tt.root), 
+                                     self.tt.root)
             self.pp.next_phase()
             child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
             try:
