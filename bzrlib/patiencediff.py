@@ -23,6 +23,8 @@ import os
 import sys
 import time
 
+from bzrlib.trace import mutter
+
 
 __all__ = ['PatienceSequenceMatcher', 'unified_diff', 'unified_diff_files']
 
@@ -122,6 +124,7 @@ def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
     """
     oldlen = len(answer)
     if maxrecursion < 0:
+        mutter('max recursion depth reached')
         # this will never happen normally, this check is to prevent DOS attacks
         return
     oldlength = len(answer)
