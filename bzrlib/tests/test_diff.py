@@ -62,7 +62,7 @@ class TestDiff(TestCase):
         udiff_lines([], [1023 * 'a' + '\x00'], allow_binary=True)
 
 
-class TestCDVDiffLib(TestCase):
+class TestPatienceDiffLib(TestCase):
 
     def test_unique_lcs(self):
         self.assertEquals(unique_lcs('', ''), [])
@@ -323,7 +323,7 @@ pynff pzq_zxqve(Pbzznaq):
                                  sequencematcher=PatienceSequenceMatcher)))
 
 
-class TestCDVDiffLibFiles(TestCaseInTempDir):
+class TestPatienceDiffLibFiles(TestCaseInTempDir):
 
     def test_patience_unified_diff_files(self):
         txt_a = ['hello there\n',
