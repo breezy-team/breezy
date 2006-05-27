@@ -962,13 +962,7 @@ class Inventory(object):
         return self._byid[file_id].kind
 
     def get_child(self, parent_id, filename):
-        try:
-            return self._byid[parent_id].children.get(filename)
-        except KeyError:
-            if file_id is None:
-                raise BzrError("can't look up file_id None")
-            else:
-                raise BzrError("file_id {%s} not in inventory" % file_id)
+        return self[parent_id].children.get(filename)
 
 
     def add(self, entry):
