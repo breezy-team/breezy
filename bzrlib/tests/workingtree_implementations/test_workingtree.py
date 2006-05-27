@@ -50,7 +50,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_list_files_sorted(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['dir/', 'file', 'dir/file', 'dir/b', 'dir/subdir/', 'a', 'dir/subfile'])
+        self.build_tree(['dir/', 'file', 'dir/file', 'dir/b', 'dir/subdir/', 'a', 'dir/subfile',
+                'zz_dir/', 'zz_dir/subfile'])
         files = [(path, kind) for (path, versioned, kind, file_id, entry) in tree.list_files()]
         self.assertEqual([
             ('a', 'file'),
@@ -68,6 +69,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             ('dir/subdir', 'directory'),
             ('dir/subfile', 'file'),
             ('file', 'file'),
+            ('zz_dir', 'directory'),
+            ('zz_dir/subfile', 'file'),
             ], files)
 
     def test_open_containing(self):

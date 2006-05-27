@@ -779,10 +779,10 @@ class WorkingTree(bzrlib.tree.Tree):
                 stack.append((f_ie.file_id, fp, fap, new_children))
                 # Break out of inner loop, so that we start outer loop with child
                 break
-
-            # if we finished all children, pop it off the stack
-            if not children:
-                stack.pop()
+            else:
+                # if we finished all children, pop it off the stack
+                if not children:
+                    stack.pop()
 
 
     @needs_write_lock
