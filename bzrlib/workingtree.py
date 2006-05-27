@@ -713,6 +713,9 @@ class WorkingTree(bzrlib.tree.Tree):
         # directory file_id, relative path, absolute path, reverse sorted children
         children = os.listdir(self.basedir)
         children.sort()
+        # jam 20060527 The kernel sized tree seems equivalent whether we 
+        # use a deque and popleft to keep them sorted, or if we use a plain
+        # list and just reverse() them.
         children = collections.deque(children)
         stack = [(inv.root.file_id, u'', self.basedir, children)]
         while stack:
@@ -728,11 +731,14 @@ class WorkingTree(bzrlib.tree.Tree):
                 if transport_base_dir == f:
                     continue
 
+                # we know that from_dir_relpath and from_dir_abspath never end in a slash
+                # and 'f' doesn't begin with one, we can do a string op, rather
+                # than the checks of pathjoin()
                 # path within tree
-                fp = pathjoin(from_dir_relpath, f)
+                fp = from_dir_relpath + '/' + f
 
                 # absolute path
-                fap = pathjoin(from_dir_abspath, f)
+                fap = from_dir_abspath + '/' + f
                 
                 f_ie = inv.get_child(from_dir_id, f)
                 if f_ie:
@@ -771,7 +777,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 # Break out of inner loop, so that we start outer loop with child
                 break
 
-            # We haven't finished this entry, leave it on the stack
+            # if we finished all children, pop it off the stack
             if not children:
                 stack.pop()
 
