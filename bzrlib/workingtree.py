@@ -40,6 +40,7 @@ CONFLICT_HEADER_1 = "BZR conflict list format 1"
 # memory.  (Now done? -- mbp 20060309)
 
 from binascii import hexlify
+import collections
 from copy import deepcopy
 from cStringIO import StringIO
 import errno
@@ -699,24 +700,37 @@ class WorkingTree(bzrlib.tree.Tree):
         Skips the control directory.
         """
         inv = self._inventory
+        # Convert these into local objects to save lookup times
+        pathjoin = bzrlib.osutils.pathjoin
+        file_kind = bzrlib.osutils.file_kind
 
-        def descend(from_dir_relpath, from_dir_id, dp):
-            ls = os.listdir(dp)
-            ls.sort()
-            for f in ls:
+        # transport.base ends in a slash, we want the piece
+        # between the last two slashes
+        transport_base_dir = self.bzrdir.transport.base.rsplit('/', 2)[1]
+
+        # directory file_id, relative path, absolute path, reverse sorted children
+        children = os.listdir(self.basedir)
+        children.sort()
+        children.reverse()
+        stack = collections.deque([(inv.root.file_id, u'', self.basedir, children)])
+        while stack:
+            from_dir_id, from_dir_relpath, from_dir_abspath, children = stack.popleft()
+
+            while children:
+                f = children.pop()
                 ## TODO: If we find a subdirectory with its own .bzr
                 ## directory, then that is a separate tree and we
                 ## should exclude it.
 
                 # the bzrdir for this tree
-                if self.bzrdir.transport.base.endswith(f + '/'):
+                if transport_base_dir == f:
                     continue
 
                 # path within tree
                 fp = pathjoin(from_dir_relpath, f)
 
                 # absolute path
-                fap = pathjoin(dp, f)
+                fap = pathjoin(from_dir_abspath, f)
                 
                 f_ie = inv.get_child(from_dir_id, f)
                 if f_ie:
@@ -737,30 +751,34 @@ class WorkingTree(bzrlib.tree.Tree):
                 # make a last minute entry
                 if f_ie:
                     entry = f_ie
+                    yield fp, c, fk, f_ie.file_id, f_ie
                 else:
                     if fk == 'directory':
-                        entry = TreeDirectory()
+                        yield fp, c, fk, None, TreeDirectory()
                     elif fk == 'file':
-                        entry = TreeFile()
+                        yield fp, c, fk, None, TreeFile()
                     elif fk == 'symlink':
-                        entry = TreeLink()
+                        yield fp, c, fk, None, TreeLink()
                     else:
-                        entry = TreeEntry()
+                        yield fp, c, fk, None, TreeEntry()
                 
-                yield fp, c, fk, (f_ie and f_ie.file_id), entry
-
                 if fk != 'directory':
                     continue
 
                 if c != 'V':
-                    # don't descend unversioned directories
                     continue
-                
-                for ff in descend(fp, f_ie.file_id, fap):
-                    yield ff
 
-        for f in descend(u'', inv.root.file_id, self.basedir):
-            yield f
+                # We haven't finished this entry, push it back on the stack
+                if children:
+                    stack.appendleft((from_dir_id, from_dir_relpath, from_dir_abspath, children))
+
+                # But do this child first
+                children = os.listdir(fap)
+                children.sort()
+                children.reverse()
+                stack.appendleft((f_ie.file_id, fp, fap, children))
+                # Break out of inner loop, so that we start outer loop with child
+                break
 
     @needs_write_lock
     def move(self, from_paths, to_name):
