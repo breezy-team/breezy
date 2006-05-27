@@ -105,20 +105,21 @@ def kind_marker(kind):
     else:
         raise BzrError('invalid file kind %r' % kind)
 
-def lexists(f):
-    if hasattr(os.path, 'lexists'):
-        return os.path.lexists(f)
-    try:
-        if hasattr(os, 'lstat'):
-            os.lstat(f)
-        else:
-            os.stat(f)
-        return True
-    except OSError,e:
-        if e.errno == errno.ENOENT:
-            return False;
-        else:
-            raise BzrError("lstat/stat of (%r): %r" % (f, e))
+lexists = getattr(os.path, 'lexists', None)
+if lexists is None:
+    def lexists(f):
+        try:
+            if hasattr(os, 'lstat'):
+                os.lstat(f)
+            else:
+                os.stat(f)
+            return True
+        except OSError,e:
+            if e.errno == errno.ENOENT:
+                return False;
+            else:
+                raise BzrError("lstat/stat of (%r): %r" % (f, e))
+
 
 def fancy_rename(old, new, rename_func, unlink_func):
     """A fancy rename, when you don't have atomic rename.
