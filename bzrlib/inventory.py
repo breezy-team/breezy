@@ -881,6 +881,8 @@ class Inventory(object):
         elif isinstance(from_dir, basestring):
             from_dir = self._byid[from_dir]
             
+        # unrolling the recursive called changed the time from
+        # 440ms/663ms (inline/total) to 116ms/116ms
         children = from_dir.children.items()
         children.sort()
         children = collections.deque(children)
