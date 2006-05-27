@@ -25,7 +25,9 @@ from bzrlib.osutils import contains_whitespace
 from bzrlib.progress import DummyProgress
 from bzrlib.symbol_versioning import *
 
+
 NULL_REVISION="null:"
+
 
 class Revision(object):
     """Single revision on a branch.
