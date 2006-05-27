@@ -689,7 +689,7 @@ class WorkingTree(bzrlib.tree.Tree):
             return '?'
 
     def list_files(self):
-        """Recursively list all files as (path, class, kind, id).
+        """Recursively list all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
 
