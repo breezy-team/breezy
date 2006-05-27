@@ -781,8 +781,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 break
             else:
                 # if we finished all children, pop it off the stack
-                if not children:
-                    stack.pop()
+                stack.pop()
 
 
     @needs_write_lock

@@ -913,8 +913,7 @@ class Inventory(object):
                 break
             else:
                 # if we finished all children, pop it off the stack
-                if not children:
-                    stack.pop()
+                stack.pop()
 
     def entries(self):
         """Return list of (path, ie) for all entries except the root.

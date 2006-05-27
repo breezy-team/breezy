@@ -57,9 +57,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             ('a', 'file'),
             ('dir', 'directory'),
             ('file', 'file'),
+            ('zz_dir', 'directory'),
             ], files)
 
-        tree.add(['dir'])
+        tree.add(['dir', 'zz_dir'])
         files = [(path, kind) for (path, versioned, kind, file_id, entry) in tree.list_files()]
         self.assertEqual([
             ('a', 'file'),
