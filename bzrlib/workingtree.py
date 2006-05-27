@@ -704,9 +704,13 @@ class WorkingTree(bzrlib.tree.Tree):
         pathjoin = bzrlib.osutils.pathjoin
         file_kind = bzrlib.osutils.file_kind
 
+        # result = []
+
         # transport.base ends in a slash, we want the piece
         # between the last two slashes
         transport_base_dir = self.bzrdir.transport.base.rsplit('/', 2)[1]
+
+        fk_entries = {'directory':TreeDirectory, 'file':TreeFile, 'symlink':TreeLink}
 
         # directory file_id, relative path, absolute path, reverse sorted children
         children = os.listdir(self.basedir)
@@ -751,15 +755,12 @@ class WorkingTree(bzrlib.tree.Tree):
                 # make a last minute entry
                 if f_ie:
                     entry = f_ie
+                    #result.append((fp, c, fk, f_ie.file_id, f_ie))
                     yield fp, c, fk, f_ie.file_id, f_ie
                 else:
-                    if fk == 'directory':
-                        yield fp, c, fk, None, TreeDirectory()
-                    elif fk == 'file':
-                        yield fp, c, fk, None, TreeFile()
-                    elif fk == 'symlink':
-                        yield fp, c, fk, None, TreeLink()
-                    else:
+                    try:
+                        yield fp, c, fk, None, fk_entries[fk]
+                    except KeyError:
                         yield fp, c, fk, None, TreeEntry()
                 
                 if fk != 'directory':
@@ -779,6 +780,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 stack.appendleft((f_ie.file_id, fp, fap, children))
                 # Break out of inner loop, so that we start outer loop with child
                 break
+        #return result
 
     @needs_write_lock
     def move(self, from_paths, to_name):
@@ -929,7 +931,8 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def _iter_conflicts(self):
         conflicted = set()
-        for path in (s[0] for s in self.list_files()):
+        for info in self.list_files():
+            path = info[0]
             stem = get_conflicted_stem(path)
             if stem is None:
                 continue
