@@ -668,8 +668,8 @@ class InventoryFile(InventoryEntry):
 
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
-        self.text_sha1 = work_tree.get_file_sha1(self.file_id)
-        self.executable = work_tree.is_executable(self.file_id)
+        self.text_sha1 = work_tree.get_file_sha1(self.file_id, path=path)
+        self.executable = work_tree.is_executable(self.file_id, path=path)
 
     def _forget_tree_state(self):
         self.text_sha1 = None

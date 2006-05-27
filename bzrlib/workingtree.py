@@ -530,15 +530,18 @@ class WorkingTree(bzrlib.tree.Tree):
         return os.path.getsize(self.id2abspath(file_id))
 
     @needs_read_lock
-    def get_file_sha1(self, file_id):
-        path = self._inventory.id2path(file_id)
+    def get_file_sha1(self, file_id, path=None):
+        if not path:
+            path = self._inventory.id2path(file_id)
         return self._hashcache.get_sha1(path)
 
-    def is_executable(self, file_id):
-        if not supports_executable():
+    if not supports_executable():
+        def is_executable(self, file_id, path=None):
             return self._inventory[file_id].executable
-        else:
-            path = self._inventory.id2path(file_id)
+    else:
+        def is_executable(self, file_id, path=None):
+            if not path:
+                path = self._inventory.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
 
