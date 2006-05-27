@@ -288,12 +288,12 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     has_changes = 0
     for path, file_id, kind in delta.removed:
         has_changes = 1
-        print >>to_file, '=== removed %s %r' % (kind, path)
+        print >>to_file, '=== removed %s %r' % (kind, path.encode('utf8'))
         old_tree.inventory[file_id].diff(diff_file, old_label + path, old_tree,
                                          DEVNULL, None, None, to_file)
     for path, file_id, kind in delta.added:
         has_changes = 1
-        print >>to_file, '=== added %s %r' % (kind, path)
+        print >>to_file, '=== added %s %r' % (kind, path.encode('utf8'))
         new_tree.inventory[file_id].diff(diff_file, new_label + path, new_tree,
                                          DEVNULL, None, None, to_file, 
                                          reverse=True)
@@ -309,7 +309,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     for path, file_id, kind, text_modified, meta_modified in delta.modified:
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
-        print >>to_file, '=== modified %s %r%s' % (kind, path, prop_str)
+        print >>to_file, '=== modified %s %r%s' % (kind, path.encode('utf8'), prop_str)
         if text_modified:
             _maybe_diff_file_or_symlink(old_label, path, old_tree, file_id,
                                         new_label, path, new_tree,
