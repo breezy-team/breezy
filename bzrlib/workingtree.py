@@ -283,7 +283,7 @@ class WorkingTree(bzrlib.tree.Tree):
         hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
         hc.read()
         # is this scan needed ? it makes things kinda slow.
-        hc.scan()
+        #hc.scan()
 
         if hc.needs_write:
             mutter("write hc")
