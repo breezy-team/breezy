@@ -704,8 +704,6 @@ class WorkingTree(bzrlib.tree.Tree):
         pathjoin = bzrlib.osutils.pathjoin
         file_kind = bzrlib.osutils.file_kind
 
-        # result = []
-
         # transport.base ends in a slash, we want the piece
         # between the last two slashes
         transport_base_dir = self.bzrdir.transport.base.rsplit('/', 2)[1]
@@ -715,13 +713,13 @@ class WorkingTree(bzrlib.tree.Tree):
         # directory file_id, relative path, absolute path, reverse sorted children
         children = os.listdir(self.basedir)
         children.sort()
-        children.reverse()
-        stack = collections.deque([(inv.root.file_id, u'', self.basedir, children)])
+        children = collections.deque(children)
+        stack = [(inv.root.file_id, u'', self.basedir, children)]
         while stack:
-            from_dir_id, from_dir_relpath, from_dir_abspath, children = stack.popleft()
+            from_dir_id, from_dir_relpath, from_dir_abspath, children = stack[-1]
 
             while children:
-                f = children.pop()
+                f = children.popleft()
                 ## TODO: If we find a subdirectory with its own .bzr
                 ## directory, then that is a separate tree and we
                 ## should exclude it.
@@ -754,33 +752,29 @@ class WorkingTree(bzrlib.tree.Tree):
 
                 # make a last minute entry
                 if f_ie:
-                    entry = f_ie
-                    #result.append((fp, c, fk, f_ie.file_id, f_ie))
                     yield fp, c, fk, f_ie.file_id, f_ie
                 else:
                     try:
-                        yield fp, c, fk, None, fk_entries[fk]
+                        yield fp, c, fk, None, fk_entries[fk]()
                     except KeyError:
                         yield fp, c, fk, None, TreeEntry()
+                    continue
                 
                 if fk != 'directory':
                     continue
 
-                if c != 'V':
-                    continue
-
-                # We haven't finished this entry, push it back on the stack
-                if children:
-                    stack.appendleft((from_dir_id, from_dir_relpath, from_dir_abspath, children))
-
                 # But do this child first
-                children = os.listdir(fap)
-                children.sort()
-                children.reverse()
-                stack.appendleft((f_ie.file_id, fp, fap, children))
+                new_children = os.listdir(fap)
+                new_children.sort()
+                new_children = collections.deque(new_children)
+                stack.append((f_ie.file_id, fp, fap, new_children))
                 # Break out of inner loop, so that we start outer loop with child
                 break
-        #return result
+
+            # We haven't finished this entry, leave it on the stack
+            if not children:
+                stack.pop()
+
 
     @needs_write_lock
     def move(self, from_paths, to_name):

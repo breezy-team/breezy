@@ -15,6 +15,7 @@
 
 """Tests for bzr working tree performance."""
 
+import os
 
 from bzrlib.benchmarks import Benchmark
 from bzrlib.workingtree import WorkingTree
@@ -26,5 +27,16 @@ class WorkingTreeBenchmark(Benchmark):
         self.make_kernel_like_tree()
         self.run_bzr('add')
         tree = WorkingTree.open('.')
+        self.time(list, tree.list_files())
+
+    def test_list_files_unknown_kernel_like_tree(self):
+        self.make_kernel_like_tree()
+        tree = WorkingTree.open('.')
+        for root, dirs, files in os.walk('.'):
+            if '.bzr' in dirs:
+                dirs.remove('.bzr')
+            if root == '.':
+                continue
+            tree.add(root)
         self.time(list, tree.list_files())
 
