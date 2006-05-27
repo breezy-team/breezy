@@ -38,6 +38,7 @@ from bzrlib.errors import (BzrError,
                            PathNotChild,
                            IllegalPath,
                            )
+from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 import bzrlib.win32console
 
@@ -547,6 +548,7 @@ def joinpath(p):
     return pathjoin(*p)
 
 
+@deprecated_function(zero_nine)
 def appendpath(p1, p2):
     if p1 == '':
         return p2

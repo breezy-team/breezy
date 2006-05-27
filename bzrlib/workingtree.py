@@ -73,7 +73,6 @@ from bzrlib.lockdir import LockDir
 from bzrlib.merge import merge_inner, transform_tree
 from bzrlib.osutils import (
                             abspath,
-                            appendpath,
                             compact_date,
                             file_kind,
                             isdir,
@@ -714,10 +713,10 @@ class WorkingTree(bzrlib.tree.Tree):
                     continue
 
                 # path within tree
-                fp = appendpath(from_dir_relpath, f)
+                fp = pathjoin(from_dir_relpath, f)
 
                 # absolute path
-                fap = appendpath(dp, f)
+                fap = pathjoin(dp, f)
                 
                 f_ie = inv.get_child(from_dir_id, f)
                 if f_ie:
@@ -803,7 +802,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if f_id == None:
                 raise BzrError("%r is not versioned" % f)
             name_tail = splitpath(f)[-1]
-            dest_path = appendpath(to_name, name_tail)
+            dest_path = pathjoin(to_name, name_tail)
             if self.has_filename(dest_path):
                 raise BzrError("destination %r already exists" % dest_path)
             if f_id in to_idpath:
@@ -816,7 +815,7 @@ class WorkingTree(bzrlib.tree.Tree):
         try:
             for f in from_paths:
                 name_tail = splitpath(f)[-1]
-                dest_path = appendpath(to_name, name_tail)
+                dest_path = pathjoin(to_name, name_tail)
                 result.append((f, dest_path))
                 inv.rename(inv.path2id(f), to_dir_id, name_tail)
                 try:
@@ -978,7 +977,7 @@ class WorkingTree(bzrlib.tree.Tree):
             
             fl.sort()
             for subf in fl:
-                subp = appendpath(path, subf)
+                subp = pathjoin(path, subf)
                 yield subp
 
     def _translate_ignore_rule(self, rule):

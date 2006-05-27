@@ -24,7 +24,7 @@ import bzrlib
 from bzrlib.trace import mutter, note
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.inventory import Inventory
-from bzrlib.osutils import appendpath, fingerprint_file
+from bzrlib.osutils import fingerprint_file
 
 class Tree(object):
     """Abstract file tree.
