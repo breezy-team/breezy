@@ -15,9 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.inventory import InventoryEntry
-from bzrlib.osutils import pathjoin
 from bzrlib.trace import mutter
-
 
 class TreeDelta(object):
     """Describes changes from one tree to another.
@@ -178,7 +176,7 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
 
 def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
 
-    from bzrlib.osutils import is_inside_any
+    from osutils import is_inside_any
     
     old_inv = old_tree.inventory
     new_inv = new_tree.inventory
@@ -190,42 +188,29 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
     # Perhaps should take a list of file-ids instead?   Need to indicate any
     # ids or names which were not found in the trees.
 
-    # Map file_id to path and inventory entry
-    # We probably need to 
-    new_id_to_path_map = {None:''}
+    for file_id in old_tree:
+        if file_id in new_tree:
+            old_ie = old_inv[file_id]
+            new_ie = new_inv[file_id]
 
-    def get_new_path(new_ie):
-        if new_ie.file_id in new_id_to_path_map:
-            return new_id_to_path_map[new_ie.file_id]
-        if new_ie.parent_id is None:
-            return new_ie.name
-        return pathjoin(get_new_path(new_inv[new_ie.parent_id]), new_ie.name)
-
-    for old_path, old_ie in old_inv.iter_entries():
-        if not old_tree.has_file_or_id(old_path, old_ie.file_id):
-            # In case old_tree is a WorkingTree, and the file
-            # has been deleted
-            continue
-        if new_inv.has_id(old_ie.file_id):
-            new_ie = new_inv[old_ie.file_id]
-            new_path = get_new_path(new_ie)
-        else:
-            new_path = None
-            new_ie = None
-        if new_path and new_tree.has_file_or_id(new_path, old_ie.file_id):
-            assert old_ie.kind == new_ie.kind
+            kind = old_ie.kind
+            assert kind == new_ie.kind
             
-            assert old_ie.kind in InventoryEntry.known_kinds, \
-                   'invalid file kind %r' % old_ie.kind
+            assert kind in InventoryEntry.known_kinds, \
+                   'invalid file kind %r' % kind
 
-            if old_ie.kind == 'root_directory':
+            if kind == 'root_directory':
                 continue
             
             if specific_files:
-                if (not is_inside_any(specific_files, old_path)
-                    and not is_inside_any(specific_files, new_path)):
+                if (not is_inside_any(specific_files, old_inv.id2path(file_id)) 
+                    and not is_inside_any(specific_files, new_inv.id2path(file_id))):
                     continue
 
+            # temporary hack until all entries are populated before clients 
+            # get them
+            old_path = old_inv.id2path(file_id)
+            new_path = new_inv.id2path(file_id)
             old_ie._read_tree_state(old_path, old_tree)
             new_ie._read_tree_state(new_path, new_tree)
             text_modified, meta_modified = new_ie.detect_changes(old_ie)
@@ -239,32 +224,35 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
                 or old_ie.parent_id != new_ie.parent_id):
                 delta.renamed.append((old_path,
                                       new_path,
-                                      old_ie.file_id, old_ie.kind,
+                                      file_id, kind,
                                       text_modified, meta_modified))
             elif text_modified or meta_modified:
-                delta.modified.append((new_path, old_ie.file_id, old_ie.kind,
+                delta.modified.append((new_path, file_id, kind,
                                        text_modified, meta_modified))
             elif want_unchanged:
-                delta.unchanged.append((new_path, old_ie.file_id, old_ie.kind))
+                delta.unchanged.append((new_path, file_id, kind))
         else:
-            if old_ie.kind == 'root_directory':
+            kind = old_inv.get_file_kind(file_id)
+            if kind == 'root_directory':
                 continue
+            old_path = old_inv.id2path(file_id)
             if specific_files:
                 if not is_inside_any(specific_files, old_path):
                     continue
-            delta.removed.append((old_path, old_ie.file_id, old_ie.kind))
+            delta.removed.append((old_path, file_id, kind))
 
     mutter('start looking for new files')
-    for new_path, new_ie in new_inv.iter_entries():
-        if (new_ie.file_id in old_inv 
-            or not new_tree.has_file_or_id(new_path, new_ie.file_id)):
+    for file_id in new_inv:
+        if file_id in old_inv or file_id not in new_tree:
             continue
-        if new_ie.kind == 'root_directory':
+        kind = new_inv.get_file_kind(file_id)
+        if kind == 'root_directory':
             continue
+        new_path = new_inv.id2path(file_id)
         if specific_files:
             if not is_inside_any(specific_files, new_path):
                 continue
-        delta.added.append((new_path, new_ie.file_id, new_ie.kind))
+        delta.added.append((new_path, file_id, kind))
             
     delta.removed.sort()
     delta.added.sort()

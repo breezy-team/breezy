@@ -26,7 +26,6 @@ from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import fingerprint_file
 
-
 class Tree(object):
     """Abstract file tree.
 
@@ -171,16 +170,6 @@ class RevisionTree(Tree):
 
     def has_filename(self, filename):
         return bool(self.inventory.path2id(filename))
-
-    def has_file_or_id(self, filename, file_id):
-        """Do we have this filename or file_id?
-
-        Some trees are faster to lookup by filename, some
-        are faster by id, if we have both, figure out which
-        one is better.
-        """
-        # Default to has_id, since that is best for Revision trees
-        return self.has_id(file_id)
 
     def list_files(self):
         # The only files returned by this are those from the version

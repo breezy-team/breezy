@@ -518,11 +518,6 @@ class WorkingTree(bzrlib.tree.Tree):
         path = inv.id2path(file_id)
         return bzrlib.osutils.lexists(self.abspath(path))
 
-    def has_file_or_id(self, filename, file_id):
-        if not self._inventory.has_id(file_id):
-            return False
-        return bzrlib.osutils.lexists(self.abspath(filename))
-
     def has_or_had_id(self, file_id):
         if file_id == self.inventory.root.file_id:
             return True
