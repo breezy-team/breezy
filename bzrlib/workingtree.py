@@ -717,7 +717,7 @@ class WorkingTree(bzrlib.tree.Tree):
         # use a deque and popleft to keep them sorted, or if we use a plain
         # list and just reverse() them.
         children = collections.deque(children)
-        stack = [(inv.root.file_id, u'', self.basedir, children)]
+        stack = [(inv.root.file_id, u'.', self.basedir, children)]
         while stack:
             from_dir_id, from_dir_relpath, from_dir_abspath, children = stack[-1]
 
@@ -733,7 +733,7 @@ class WorkingTree(bzrlib.tree.Tree):
 
                 # we know that from_dir_relpath and from_dir_abspath never end in a slash
                 # and 'f' doesn't begin with one, we can do a string op, rather
-                # than the checks of pathjoin()
+                # than the checks of pathjoin(), though from_dir_relpath may be the empty string
                 # path within tree
                 fp = from_dir_relpath + '/' + f
 
@@ -743,7 +743,7 @@ class WorkingTree(bzrlib.tree.Tree):
                 f_ie = inv.get_child(from_dir_id, f)
                 if f_ie:
                     c = 'V'
-                elif self.is_ignored(fp):
+                elif self.is_ignored(fp[2:]):
                     c = 'I'
                 else:
                     c = '?'
@@ -758,12 +758,12 @@ class WorkingTree(bzrlib.tree.Tree):
 
                 # make a last minute entry
                 if f_ie:
-                    yield fp, c, fk, f_ie.file_id, f_ie
+                    yield fp[2:], c, fk, f_ie.file_id, f_ie
                 else:
                     try:
-                        yield fp, c, fk, None, fk_entries[fk]()
+                        yield fp[2:], c, fk, None, fk_entries[fk]()
                     except KeyError:
-                        yield fp, c, fk, None, TreeEntry()
+                        yield fp[2:], c, fk, None, TreeEntry()
                     continue
                 
                 if fk != 'directory':
