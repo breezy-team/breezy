@@ -28,6 +28,7 @@
 ROOT_ID = "TREE_ROOT"
 
 
+import collections
 import os.path
 import re
 import sys
@@ -827,7 +828,7 @@ class Inventory(object):
     May also look up by name:
 
     >>> [x[0] for x in inv.iter_entries()]
-    ['hello.c']
+    [u'hello.c']
     >>> inv = Inventory('TREE_ROOT-12345678-12345678')
     >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
     InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678')
@@ -880,14 +881,38 @@ class Inventory(object):
         elif isinstance(from_dir, basestring):
             from_dir = self._byid[from_dir]
             
-        kids = from_dir.children.items()
-        kids.sort()
-        for name, ie in kids:
-            yield name, ie
-            if ie.kind == 'directory':
-                for cn, cie in self.iter_entries(from_dir=ie.file_id):
-                    yield pathjoin(name, cn), cie
+        children = from_dir.children.items()
+        children.sort()
+        children = collections.deque(children)
+        stack = [(u'', children)]
+        while stack:
+            from_dir_relpath, children = stack[-1]
 
+            while children:
+                name, ie = children.popleft()
+
+                # we know that from_dir_relpath never ends in a slash
+                # and 'f' doesn't begin with one, we can do a string op, rather
+                # than the checks of pathjoin(), though this means that all paths
+                # start with a slash
+                path = from_dir_relpath + '/' + name
+
+                yield path[1:], ie
+
+                if ie.kind != 'directory':
+                    continue
+
+                # But do this child first
+                new_children = ie.children.items()
+                new_children.sort()
+                new_children = collections.deque(new_children)
+                stack.append((path, new_children))
+                # Break out of inner loop, so that we start outer loop with child
+                break
+            else:
+                # if we finished all children, pop it off the stack
+                if not children:
+                    stack.pop()
 
     def entries(self):
         """Return list of (path, ie) for all entries except the root.
