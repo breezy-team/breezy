@@ -213,14 +213,19 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
         if old_entry.kind == 'root_directory':
             return
 
+        if specific_files:
+            if (not is_inside_any(specific_files, old_path)
+                and not is_inside_any(specific_files, new_path)):
+                return
+
+        # temporary hack until all entries are populated before clients 
+        # get them
         old_entry._read_tree_state(old_path, old_tree)
         new_entry._read_tree_state(new_path, new_tree)
         text_modified, meta_modified = new_entry.detect_changes(old_entry)
         
-        # Even though the files are at the same path, the parent ids
-        # changed, so apparently someone created a new path with the
-        # same name as the old one, and moved files into it. 
-        # Weird, but still counts as a rename
+        # If the name changes, or the parent_id changes, we have a rename
+        # (if we move a parent, that doesn't count as a rename for the file)
         if (old_entry.name != new_entry.name 
             or old_entry.parent_id != new_entry.parent_id):
             delta.renamed.append((old_path,
@@ -298,8 +303,14 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
 
     # Now we have a set of added and removed files, mark them all
     for old_path, old_entry in removed.itervalues():
+        if specific_files:
+            if not is_inside_any(specific_files, old_path):
+                continue
         delta.removed.append((old_path, old_entry.file_id, old_entry.kind))
     for new_path, new_entry in added.itervalues():
+        if specific_files:
+            if not is_inside_any(specific_files, new_path):
+                continue
         delta.added.append((new_path, new_entry.file_id, new_entry.kind))
 
     delta.removed.sort()
