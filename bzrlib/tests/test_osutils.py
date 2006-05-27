@@ -90,6 +90,15 @@ class TestOSUtils(TestCaseInTempDir):
         self.failIfExists('dir/file')
         self.failIfExists('dir')
 
+    def test_file_kind(self):
+        self.build_tree(['file', 'dir/'])
+        self.assertEquals('file', osutils.file_kind('file'))
+        self.assertEquals('directory', osutils.file_kind('dir/'))
+        if osutils.has_symlinks():
+            os.symlink('symlink', 'symlink')
+            self.assertEquals('symlink', osutils.file_kind('symlink'))
+        #TODO: jam 20060527 Test nodes, sockets, fifos, etc
+
 
 class TestSafeUnicode(TestCase):
 

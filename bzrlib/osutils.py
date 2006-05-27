@@ -25,6 +25,7 @@ import os
 import re
 import sha
 import shutil
+import stat
 import string
 import sys
 import time
@@ -75,23 +76,20 @@ def quotefn(f):
         return f
 
 
+_formats = {
+    stat.S_IFDIR:'directory',
+    stat.S_IFCHR:'chardev',
+    stat.S_IFBLK:'block',
+    stat.S_IFREG:'file',
+    stat.S_IFIFO:'fifo',
+    stat.S_IFLNK:'symlink',
+    stat.S_IFSOCK:'socket',
+}
 def file_kind(f):
-    mode = os.lstat(f)[ST_MODE]
-    if S_ISREG(mode):
-        return 'file'
-    elif S_ISDIR(mode):
-        return 'directory'
-    elif S_ISLNK(mode):
-        return 'symlink'
-    elif S_ISCHR(mode):
-        return 'chardev'
-    elif S_ISBLK(mode):
-        return 'block'
-    elif S_ISFIFO(mode):
-        return 'fifo'
-    elif S_ISSOCK(mode):
-        return 'socket'
-    else:
+    fmt = stat.S_IFMT(os.lstat(f).st_mode)
+    try:
+        return _formats[fmt]
+    except KeyError:
         return 'unknown'
 
 
