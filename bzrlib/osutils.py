@@ -86,11 +86,10 @@ _formats = {
     stat.S_IFSOCK:'socket',
 }
 def file_kind(f):
-    mode = os.lstat(f).st_mode
-    fmt = stat.S_IFMT(mode)
-    if fmt in _formats:
-        return _formats[fmt]
-    return 'unknown'
+    try:
+        return _formats[os.lstat(f).st_mode & 0170000]
+    except KeyError:
+        return 'unknown'
 
 
 def kind_marker(kind):
