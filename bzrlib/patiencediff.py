@@ -135,11 +135,17 @@ def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
         blo += 1
     if alo == ahi or blo == bhi:
         return
+    last_a_pos = -1
+    last_b_pos = -1
     for apos, bpos in unique_lcs(a[alo:ahi], b[blo:bhi]):
         # recurse between lines which are unique in each file and match
         apos += alo
         bpos += blo
-        recurse_matches(a, b, apos, bpos, answer, maxrecursion - 1)
+        # Most of the time, you will have a sequence of similar entries
+        if last_a_pos+1 != apos or last_b_pos+1 != bpos:
+            recurse_matches(a, b, apos, bpos, answer, maxrecursion - 1)
+        last_a_pos = apos
+        last_b_pos = bpos
         answer.append((apos, bpos))
     if len(answer) > oldlength:
         # find matches between the last match and the end
