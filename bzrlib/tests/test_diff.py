@@ -18,8 +18,7 @@ from cStringIO import StringIO
 
 from bzrlib.diff import internal_diff
 from bzrlib.errors import BinaryFile
-from bzrlib.patiencediff import (recurse_matches, PatienceSequenceMatcher, unique_lcs,
-                                 unified_diff, unified_diff_files)
+import bzrlib.patiencediff
 from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
@@ -81,6 +80,7 @@ class TestDiff(TestCase):
 class TestPatienceDiffLib(TestCase):
 
     def test_unique_lcs(self):
+        unique_lcs = bzrlib.patiencediff.unique_lcs
         self.assertEquals(unique_lcs('', ''), [])
         self.assertEquals(unique_lcs('a', 'a'), [(0,0)])
         self.assertEquals(unique_lcs('a', 'b'), [])
@@ -94,7 +94,8 @@ class TestPatienceDiffLib(TestCase):
     def test_recurse_matches(self):
         def test_one(a, b, matches):
             test_matches = []
-            recurse_matches(a, b, len(a), len(b), test_matches, 10)
+            bzrlib.patiencediff.recurse_matches(a, b, len(a), len(b),
+                test_matches, 10)
             self.assertEquals(test_matches, matches)
 
         test_one(['a', '', 'b', '', 'c'], ['a', 'a', 'b', 'c', 'c'],
@@ -116,7 +117,7 @@ class TestPatienceDiffLib(TestCase):
         def chk_blocks(a, b, expected_blocks):
             # difflib always adds a signature of the total
             # length, with no matching entries at the end
-            s = PatienceSequenceMatcher(None, a, b)
+            s = bzrlib.patiencediff.PatienceSequenceMatcher(None, a, b)
             blocks = s.get_matching_blocks()
             self.assertEquals((len(a), len(b), 0), blocks[-1])
             self.assertEquals(expected_blocks, blocks[:-1])
@@ -159,7 +160,7 @@ class TestPatienceDiffLib(TestCase):
 
     def test_opcodes(self):
         def chk_ops(a, b, expected_codes):
-            s = PatienceSequenceMatcher(None, a, b)
+            s = bzrlib.patiencediff.PatienceSequenceMatcher(None, a, b)
             self.assertEquals(expected_codes, s.get_opcodes())
 
         chk_ops('', '', [])
@@ -225,7 +226,7 @@ class TestPatienceDiffLib(TestCase):
         def chk_blocks(a, b, expected_blocks):
             # difflib always adds a signature of the total
             # length, with no matching entries at the end
-            s = PatienceSequenceMatcher(None, a, b)
+            s = bzrlib.patiencediff.PatienceSequenceMatcher(None, a, b)
             blocks = s.get_matching_blocks()
             x = blocks.pop()
             self.assertEquals(x, (len(a), len(b), 0))
@@ -292,6 +293,8 @@ pynff pzq_zxqve(Pbzznaq):
                  'how are you today?\n']
         txt_b = ['hello there\n',
                  'how are you today?\n']
+        unified_diff = bzrlib.patiencediff.unified_diff
+        psm = bzrlib.patiencediff.PatienceSequenceMatcher
         self.assertEquals([ '---  \n',
                            '+++  \n',
                            '@@ -1,3 +1,2 @@\n',
@@ -299,8 +302,8 @@ pynff pzq_zxqve(Pbzznaq):
                            '-world\n',
                            ' how are you today?\n'
                           ]
-                          , list(unified_diff(txt_a, txt_b
-                                        , sequencematcher=PatienceSequenceMatcher)))
+                          , list(unified_diff(txt_a, txt_b,
+                                 sequencematcher=psm)))
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
         # This is the result with LongestCommonSubstring matching
@@ -336,7 +339,7 @@ pynff pzq_zxqve(Pbzznaq):
                            ' i\n',
                           ]
                           , list(unified_diff(txt_a, txt_b,
-                                 sequencematcher=PatienceSequenceMatcher)))
+                                 sequencematcher=psm)))
 
 
 class TestPatienceDiffLibFiles(TestCaseInTempDir):
@@ -350,6 +353,8 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
         open('a1', 'wb').writelines(txt_a)
         open('b1', 'wb').writelines(txt_b)
 
+        unified_diff_files = bzrlib.patiencediff.unified_diff_files
+        psm = bzrlib.patiencediff.PatienceSequenceMatcher
         self.assertEquals(['--- a1 \n',
                            '+++ b1 \n',
                            '@@ -1,3 +1,2 @@\n',
@@ -358,7 +363,7 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
                            ' how are you today?\n',
                           ]
                           , list(unified_diff_files('a1', 'b1',
-                                 sequencematcher=PatienceSequenceMatcher)))
+                                 sequencematcher=psm)))
 
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
@@ -399,4 +404,4 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
                            ' i\n',
                           ]
                           , list(unified_diff_files('a2', 'b2',
-                                 sequencematcher=PatienceSequenceMatcher)))
+                                 sequencematcher=psm)))
