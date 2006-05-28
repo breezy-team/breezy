@@ -97,7 +97,7 @@ class TestPatienceDiffLib(TestCase):
             recurse_matches(a, b, len(a), len(b), test_matches, 10)
             self.assertEquals(test_matches, matches)
 
-        test_one(['a', None, 'b', None, 'c'], ['a', 'a', 'b', 'c', 'c'],
+        test_one(['a', '', 'b', '', 'c'], ['a', 'a', 'b', 'c', 'c'],
                  [(0, 0), (2, 2), (4, 4)])
         test_one(['a', 'c', 'b', 'a', 'c'], ['a', 'b', 'c'],
                  [(0, 0), (2, 1), (4, 2)])

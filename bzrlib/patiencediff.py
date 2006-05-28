@@ -115,14 +115,13 @@ def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
     :param ahi: The maximum length of a to check, typically len(a)
     :param bhi: The maximum length of b to check, typically len(b)
     :param answer: The return array. Will be filled with tuples
-                   indicating [(line_in_a), (line_in_b)]
+                   indicating [(line_in_a, line_in_b)]
     :param maxrecursion: The maximum depth to recurse.
                          Must be a positive integer.
     :return: None, the return value is in the parameter answer, which
              should be a list
 
     """
-    oldlen = len(answer)
     if maxrecursion < 0:
         mutter('max recursion depth reached')
         # this will never happen normally, this check is to prevent DOS attacks
@@ -231,11 +230,11 @@ class PatienceSequenceMatcher(difflib.SequenceMatcher):
             return self.matching_blocks
         self.matching_blocks = []
         la, lb = len(self.a), len(self.b)
-        self.__helper(0, la, 0, lb, self.matching_blocks)
+        self._find_matching_blocks(0, la, 0, lb, self.matching_blocks)
         self.matching_blocks.append( (la, lb, 0) )
         return self.matching_blocks
 
-    def __helper(self, alo, ahi, blo, bhi, answer):
+    def _find_matching_blocks(self, alo, ahi, blo, bhi, answer):
         matches = []
         a = self.a[alo:ahi]
         b = self.b[blo:bhi]
