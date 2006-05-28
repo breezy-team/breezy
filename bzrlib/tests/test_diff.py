@@ -149,14 +149,23 @@ class TestPatienceDiffLib(TestCase):
                     'how are you today?\n'],
                 [(0, 0, 1), (2, 1, 1)])
 
-        chk_blocks('aBccDe', 'abccde', [(0,0,1), (2,2,2), (5,5,1)])
+        # non unique lines surrounded by non-matching lines
+        # won't be found
+        chk_blocks('aBccDe', 'abccde', [(0,0,1), (5,5,1)])
 
-        chk_blocks('aBcdEcdFg', 'abcdecdfg', [(0,0,1), (2,2,2),
-                                              (5,5,2), (8,8,1)])
+        # But they only need to be locally unique
+        chk_blocks('aBcDec', 'abcdec', [(0,0,1), (2,2,1), (4,4,2)])
 
-        chk_blocks('abbabbXd', 'cabbabxd', [(0,1,5), (7,7,1)])
-        chk_blocks('abbabbbb', 'cabbabbc', [(0,1,6)])
-        chk_blocks('bbbbbbbb', 'cbbbbbbc', [(0,1,6)])
+        # non unique blocks won't be matched
+        chk_blocks('aBcdEcdFg', 'abcdecdfg', [(0,0,1), (8,8,1)])
+
+        # but locally unique ones will
+        chk_blocks('aBcdEeXcdFg', 'abcdecdfg', [(0,0,1), (2,2,2),
+                                              (5,4,1), (7,5,2), (10,8,1)])
+
+        chk_blocks('abbabbXd', 'cabbabxd', [(7,7,1)])
+        chk_blocks('abbabbbb', 'cabbabbc', [])
+        chk_blocks('bbbbbbbb', 'cbbbbbbc', [])
 
     def test_opcodes(self):
         def chk_ops(a, b, expected_codes):
@@ -201,23 +210,35 @@ class TestPatienceDiffLib(TestCase):
                 , 'how are you today?\n'],
                 [('equal',  0,1, 0,1),
                  ('delete', 1,2, 1,1),
-                 ('equal',  2,3, 1,2)
+                 ('equal',  2,3, 1,2),
                 ])
         chk_ops('aBccDe', 'abccde', 
                 [('equal',   0,1, 0,1),
+                 ('replace', 1,5, 1,5),
+                 ('equal',   5,6, 5,6),
+                ])
+        chk_ops('aBcDec', 'abcdec', 
+                [('equal',   0,1, 0,1),
                  ('replace', 1,2, 1,2),
-                 ('equal',   2,4, 2,4),
-                 ('replace', 4,5, 4,5),
-                 ('equal',   5,6, 5,6)
+                 ('equal',   2,3, 2,3),
+                 ('replace', 3,4, 3,4),
+                 ('equal',   4,6, 4,6),
                 ])
         chk_ops('aBcdEcdFg', 'abcdecdfg', 
                 [('equal',   0,1, 0,1),
+                 ('replace', 1,8, 1,8),
+                 ('equal',   8,9, 8,9)
+                ])
+        chk_ops('aBcdEeXcdFg', 'abcdecdfg', 
+                [('equal',   0,1, 0,1),
                  ('replace', 1,2, 1,2),
                  ('equal',   2,4, 2,4),
-                 ('replace', 4,5, 4,5),
-                 ('equal',   5,7, 5,7),
-                 ('replace', 7,8, 7,8),
-                 ('equal',   8,9, 8,9)
+                 ('delete', 4,5, 4,4),
+                 ('equal',   5,6, 4,5),
+                 ('delete', 6,7, 5,5),
+                 ('equal',   7,9, 5,7),
+                 ('replace', 9,10, 7,8),
+                 ('equal',   10,11, 8,9)
                 ])
 
     def test_multiple_ranges(self):
@@ -238,7 +259,7 @@ class TestPatienceDiffLib(TestCase):
 
         chk_blocks('ABCd efghIjk  L'
                  , 'AxyzBCn mo pqrstuvwI1 2  L'
-                 , [(0,0,1), (1, 4, 2), (4, 7, 1), (9, 19, 1), (12, 23, 3)])
+                 , [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
 
         # These are rot13 code snippets.
         chk_blocks('''\
