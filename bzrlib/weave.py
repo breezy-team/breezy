@@ -83,7 +83,7 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         )
 import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings
-from bzrlib.patiencediff import PatienceSequenceMatcher, unified_diff
+import bzrlib.patiencediff
 from bzrlib.symbol_versioning import *
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
@@ -191,7 +191,7 @@ class Weave(VersionedFile):
         self._name_map = {}
         self._weave_name = weave_name
         if matcher is None:
-            self._matcher = PatienceSequenceMatcher
+            self._matcher = bzrlib.patiencediff.PatienceSequenceMatcher
         else:
             self._matcher = matcher
 
@@ -1365,7 +1365,7 @@ def main(argv):
         v1, v2 = map(int, argv[3:5])
         lines1 = w.get(v1)
         lines2 = w.get(v2)
-        diff_gen = unified_diff(lines1, lines2,
+        diff_gen = bzrlib.patiencediff.unified_diff(lines1, lines2,
                                 '%s version %d' % (fn, v1),
                                 '%s version %d' % (fn, v2))
         sys.stdout.writelines(diff_gen)

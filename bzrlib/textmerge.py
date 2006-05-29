@@ -18,7 +18,7 @@
 #         Aaron Bentley <aaron.bentley@utoronto.ca>
 
 
-from bzrlib.patiencediff import PatienceSequenceMatcher
+import bzrlib.patiencediff
 
 
 class TextMerge(object):
@@ -131,7 +131,7 @@ class Merge2(TextMerge):
         """Return structured merge info.  
         See TextMerge docstring.
         """
-        sm = PatienceSequenceMatcher(None, self.lines_a, self.lines_b)
+        sm = bzrlib.patiencediff.PatienceSequenceMatcher(None, self.lines_a, self.lines_b)
         pos_a = 0
         pos_b = 0
         for ai, bi, l in sm.get_matching_blocks():
