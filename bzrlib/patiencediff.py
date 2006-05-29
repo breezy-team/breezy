@@ -107,11 +107,13 @@ def unique_lcs(a, b):
     return result
 
 
-def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
+def recurse_matches(a, b, alo, blo, ahi, bhi, answer, maxrecursion):
     """Find all of the matching text in the lines of a and b.
 
     :param a: A sequence
     :param b: Another sequence
+    :param alo: The start location of a to check, typically 0
+    :param ahi: The start location of b to check, typically 0
     :param ahi: The maximum length of a to check, typically len(a)
     :param bhi: The maximum length of b to check, typically len(b)
     :param answer: The return array. Will be filled with tuples
@@ -127,36 +129,33 @@ def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
         # this will never happen normally, this check is to prevent DOS attacks
         return
     oldlength = len(answer)
-    if len(answer) == 0:
-        alo, blo = 0, 0
-    else:
-        alo, blo = answer[-1]
-        alo += 1
-        blo += 1
     if alo == ahi or blo == bhi:
         return
-    last_a_pos = -1
-    last_b_pos = -1
+    last_a_pos = alo-1
+    last_b_pos = blo-1
     for apos, bpos in unique_lcs(a[alo:ahi], b[blo:bhi]):
         # recurse between lines which are unique in each file and match
         apos += alo
         bpos += blo
         # Most of the time, you will have a sequence of similar entries
         if last_a_pos+1 != apos or last_b_pos+1 != bpos:
-            recurse_matches(a, b, apos, bpos, answer, maxrecursion - 1)
+            recurse_matches(a, b, last_a_pos+1, last_b_pos+1,
+                apos, bpos, answer, maxrecursion - 1)
         last_a_pos = apos
         last_b_pos = bpos
         answer.append((apos, bpos))
     if len(answer) > oldlength:
         # find matches between the last match and the end
-        recurse_matches(a, b, ahi, bhi, answer, maxrecursion - 1)
+        recurse_matches(a, b, last_a_pos+1, last_b_pos+1,
+                        ahi, bhi, answer, maxrecursion - 1)
     elif a[alo] == b[blo]:
         # find matching lines at the very beginning
         while alo < ahi and blo < bhi and a[alo] == b[blo]:
             answer.append((alo, blo))
             alo += 1
             blo += 1
-        recurse_matches(a, b, ahi, bhi, answer, maxrecursion - 1)
+        recurse_matches(a, b, alo, blo,
+                        ahi, bhi, answer, maxrecursion - 1)
     elif a[ahi - 1] == b[bhi - 1]:
         # find matching lines at the very end
         nahi = ahi - 1
@@ -164,7 +163,8 @@ def recurse_matches(a, b, ahi, bhi, answer, maxrecursion):
         while nahi > alo and nbhi > blo and a[nahi - 1] == b[nbhi - 1]:
             nahi -= 1
             nbhi -= 1
-        recurse_matches(a, b, nahi, nbhi, answer, maxrecursion - 1)
+        recurse_matches(a, b, last_a_pos+1, last_b_pos+1,
+                        nahi, nbhi, answer, maxrecursion - 1)
         for i in xrange(ahi - nahi):
             answer.append((nahi + i, nbhi + i))
 
@@ -241,7 +241,8 @@ class PatienceSequenceMatcher(difflib.SequenceMatcher):
             return self.matching_blocks
 
         matches = []
-        recurse_matches(self.a, self.b, len(self.a), len(self.b), matches, 10)
+        recurse_matches(self.a, self.b, 0, 0,
+                        len(self.a), len(self.b), matches, 10)
         # Matches now has individual line pairs of
         # line A matches line B, at the given offsets
         self.matching_blocks = _collapse_sequences(matches)

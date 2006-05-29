@@ -94,7 +94,7 @@ class TestPatienceDiffLib(TestCase):
     def test_recurse_matches(self):
         def test_one(a, b, matches):
             test_matches = []
-            bzrlib.patiencediff.recurse_matches(a, b, len(a), len(b),
+            bzrlib.patiencediff.recurse_matches(a, b, 0, 0, len(a), len(b),
                 test_matches, 10)
             self.assertEquals(test_matches, matches)
 
