@@ -465,6 +465,55 @@ class TestFormat6(TestCaseWithTransport):
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
 
+class NotBzrDir(bzrlib.bzrdir.BzrDir):
+    """A non .bzr based control directory."""
+
+    def __init__(self, transport, format):
+        self._format = format
+        self.root_transport = transport
+        self.transport = transport.clone('.not')
+
+
+class NotBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
+    """A test class representing any non-.bzr based disk format."""
+
+    def initialize_on_transport(self, transport):
+        """Initialize a new .not dir in the base directory of a Transport."""
+        transport.mkdir('.not')
+        return self.open(transport)
+
+    def open(self, transport):
+        """Open this directory."""
+        return NotBzrDir(transport, self)
+
+    @classmethod
+    def probe_transport(self, transport):
+        """Our format is present if the transport ends in '.not/'."""
+        if transport.base.endswith('.not/'):
+            return NotBzrDirFormat()
+
+
+class TestNotBzrDir(TestCaseWithTransport):
+    """Tests for using the bzrdir api with a non .bzr based disk format.
+    
+    If/when one of these is in the core, we can let the implementation tests
+    verify this works.
+    """
+
+    def test_create_and_find_format(self):
+        # create a .notbzr dir 
+        format = NotBzrDirFormat()
+        dir = format.initialize(self.get_url())
+        self.assertIsInstance(dir, NotBzrDir)
+        # now probe for it.
+        bzrlib.bzrdir.BzrDirFormat.register_control_format(format)
+        try:
+            found = bzrlib.bzrdir.BzrDirFormat.find_format(
+                get_transport(self.get_url()))
+        finally:
+            bzrlib.bzrdir.BzrDirFormat.unregister_control_format(format)
+
+
 class NonLocalTests(TestCaseWithTransport):
     """Tests for bzrdir static behaviour on non local paths."""
 

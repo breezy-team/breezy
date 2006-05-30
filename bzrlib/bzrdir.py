@@ -931,6 +931,9 @@ class BzrDirFormat(object):
     _formats = {}
     """The known formats."""
 
+    _control_formats = set()
+    """The core control formats - .bzr, ...."""
+
     _lock_file_name = 'branch-lock'
 
     # _lock_class must be set in subclasses to the lock type, typ.
@@ -938,7 +941,18 @@ class BzrDirFormat(object):
 
     @classmethod
     def find_format(klass, transport):
-        """Return the format registered for URL."""
+        """Return the format present at transport."""
+        for format in klass._control_formats:
+            try:
+                return format.probe_transport(transport)
+            except errors.NotBranchError:
+                # this format does not find a control dir here.
+                pass
+        raise errors.NotBranchError(path=transport.base)
+
+    @classmethod
+    def probe_transport(klass, transport):
+        """Return the .bzrdir style transport present at URL."""
         try:
             format_string = transport.get(".bzr/branch-format").read()
             return klass._formats[format_string]
@@ -1044,6 +1058,17 @@ class BzrDirFormat(object):
         klass._formats[format.get_format_string()] = format
 
     @classmethod
+    def register_control_format(klass, format):
+        """Register a format that does not use '.bzrdir' for its control dir.
+
+        TODO: This should be pulled up into a 'ControlDirFormat' base class
+        which BzrDirFormat can inherit from, and renamed to register_format 
+        there. It has been done without that for now for simplicity of
+        implementation.
+        """
+        klass._control_formats.add(format)
+
+    @classmethod
     def set_default_format(klass, format):
         klass._default_format = format
 
@@ -1054,6 +1079,14 @@ class BzrDirFormat(object):
     def unregister_format(klass, format):
         assert klass._formats[format.get_format_string()] is format
         del klass._formats[format.get_format_string()]
+
+    @classmethod
+    def unregister_control_format(klass, format):
+        klass._control_formats.remove(format)
+
+
+# register BzrDirFormat as a control format
+BzrDirFormat.register_control_format(BzrDirFormat)
 
 
 class BzrDirFormat4(BzrDirFormat):
