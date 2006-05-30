@@ -489,7 +489,7 @@ class NotBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
     @classmethod
     def probe_transport(self, transport):
         """Our format is present if the transport ends in '.not/'."""
-        if transport.base.endswith('.not/'):
+        if transport.has('.not'):
             return NotBzrDirFormat()
 
 
@@ -510,6 +510,7 @@ class TestNotBzrDir(TestCaseWithTransport):
         try:
             found = bzrlib.bzrdir.BzrDirFormat.find_format(
                 get_transport(self.get_url()))
+            self.assertIsInstance(found, NotBzrDirFormat)
         finally:
             bzrlib.bzrdir.BzrDirFormat.unregister_control_format(format)
 
