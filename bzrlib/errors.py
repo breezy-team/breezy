@@ -55,6 +55,13 @@ fullstop.
 
 from warnings import warn
 
+from bzrlib.patches import (PatchSyntax, 
+                            PatchConflict, 
+                            MalformedPatchHeader,
+                            MalformedHunkHeader,
+                            MalformedLine,)
+
+
 # based on Scott James Remnant's hct error classes
 
 # TODO: is there any value in providing the .args field used by standard
