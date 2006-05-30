@@ -117,42 +117,17 @@ class PatchesTester(unittest.TestCase):
 
     def testAll(self):
         """Test parsing a whole patch"""
-        patchtext = """--- orig/commands.py
-+++ mod/commands.py
-@@ -1337,7 +1337,8 @@
- 
-     def set_title(self, command=None):
-         try:
--            version = self.tree.tree_version.nonarch
-+            version = pylon.alias_or_version(self.tree.tree_version, self.tree,
-+                                             full=False)
-         except:
-             version = "[no version]"
-         if command is None:
-@@ -1983,7 +1984,11 @@
-                                          version)
-         if len(new_merges) > 0:
-             if cmdutil.prompt("Log for merge"):
--                mergestuff = cmdutil.log_for_merge(tree, comp_version)
-+                if cmdutil.prompt("changelog for merge"):
-+                    mergestuff = "Patches applied:\\n"
-+                    mergestuff += pylon.changelog_for_merge(new_merges)
-+                else:
-+                    mergestuff = cmdutil.log_for_merge(tree, comp_version)
-                 log.description += mergestuff
-         log.save()
-     try:
-"""
+        patchtext = self.datafile("patchtext.patch").read()
         self.compare_parsed(patchtext)
 
     def testInit(self):
         """Handle patches missing half the position, range tuple"""
         patchtext = \
-"""--- orig/__init__.py
-+++ mod/__init__.py
+"""--- orig/__vavg__.cl
++++ mod/__vavg__.cl
 @@ -1 +1,2 @@
- __docformat__ = "restructuredtext en"
-+__doc__ = An alternate Arch commandline interface
+ __qbpsbezng__ = "erfgehpgherqgrkg ra"
++__qbp__ = Na nygreangr Nepu pbzznaqyvar vagresnpr
 """
         self.compare_parsed(patchtext)
 
