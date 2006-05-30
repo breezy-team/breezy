@@ -793,13 +793,29 @@ class cmd_remove(Command):
 
     This makes bzr stop tracking changes to a versioned file.  It does
     not delete the working copy.
+
+    You can specify one or more files, and/or --new.  If you specify --new,
+    only 'added' files will be removed.  If you specify both, then new files
+    in the specified directories will be removed.  If the directories are
+    also new, they will also be removed.
     """
-    takes_args = ['file+']
-    takes_options = ['verbose']
+    takes_args = ['file*']
+    takes_options = ['verbose', Option('new', help='remove newly-added files')]
     aliases = ['rm']
     
-    def run(self, file_list, verbose=False):
+    def run(self, file_list, verbose=False, new=False):
         tree, file_list = tree_files(file_list)
+        if new is False:
+            if file_list is None:
+                raise BzrCommandError('Specify one or more files to remove, or'
+                                      ' use --new.')
+        else:
+            from bzrlib.delta import compare_trees
+            added = [compare_trees(tree.basis_tree(), tree,
+                                   specific_files=file_list).added]
+            file_list = sorted([f[0] for f in added[0]], reverse=True)
+            if len(file_list) == 0:
+                raise BzrCommandError('No matching files.')
         tree.remove(file_list, verbose=verbose)
 
 

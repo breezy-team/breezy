@@ -18,6 +18,7 @@
 import os
 
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.workingtree import WorkingTree
 
 
 class TestRemove(ExternalBase):
@@ -29,3 +30,33 @@ class TestRemove(ExternalBase):
         self.runbzr(['commit', '-m', 'added a'])
         os.unlink('a')
         self.runbzr(['remove', 'a'])
+
+    def test_remove_new(self):
+        self.build_tree(['filefile',
+                         'dir/',
+                         'dir/filefilefile'])
+        wt = self.make_branch_and_tree('.')
+        wt.add(['filefile', 'dir', 'dir/filefilefile'], 
+               ['filefile-id', 'dir-id', 'filefilefile-id'])
+        self.assertEqual(wt.path2id('filefile'), 'filefile-id')
+        self.assertEqual(wt.path2id('dir/filefilefile'), 'filefilefile-id')
+        self.assertEqual(wt.path2id('dir'), 'dir-id')
+        self.runbzr('remove --new')
+        wt = WorkingTree.open('.')
+        self.assertIs(wt.path2id('filefile'), None)
+        self.assertIs(wt.path2id('dir/filefilefile'), None)
+        self.assertIs(wt.path2id('dir'), None)
+        wt.add(['filefile', 'dir', 'dir/filefilefile'], 
+               ['filefile-id', 'dir-id', 'filefilefile-id'])
+        self.assertEqual(wt.path2id('filefile'), 'filefile-id')
+        self.assertEqual(wt.path2id('dir/filefilefile'), 'filefilefile-id')
+        self.assertEqual(wt.path2id('dir'), 'dir-id')
+        self.runbzr('remove --new dir')
+        wt = WorkingTree.open('.')
+        self.assertEqual(wt.path2id('filefile'), 'filefile-id')
+        self.assertIs(wt.path2id('dir/filefilefile'), None)
+        self.assertIs(wt.path2id('dir'), None)
+        self.runbzr('remove --new .')
+        wt = WorkingTree.open('.')
+        self.assertIs(wt.path2id('filefile'), None)
+        self.runbzr('remove --new .', retcode=3)
