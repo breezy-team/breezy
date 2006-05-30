@@ -25,14 +25,14 @@ import bzrlib
 import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
-from bzrlib.bundle.read_bundle import BadBundle, BundleReader
+from bzrlib.bundle.read_bundle import BundleReader
 from bzrlib.bundle.apply_bundle import merge_bundle
 from bzrlib.commands import Command, display_command
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch,
-                           NotVersionedError)
+                           NotVersionedError, BadBundle)
 from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option

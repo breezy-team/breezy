@@ -936,3 +936,15 @@ class TestamentMismatch(BzrNewError):
         self.revision_id = revision_id
         self.expected = expected
         self.measured = measured
+
+
+class BadBundle(Exception): pass
+
+
+class MalformedHeader(BadBundle): pass
+
+
+class MalformedPatches(BadBundle): pass
+
+
+class MalformedFooter(BadBundle): pass

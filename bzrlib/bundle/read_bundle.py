@@ -8,7 +8,8 @@ from cStringIO import StringIO
 import os
 import pprint
 
-from bzrlib.errors import TestamentMismatch, BzrError
+from bzrlib.errors import (TestamentMismatch, BzrError, 
+                           MalformedHeader, MalformedPatches)
 from bzrlib.bundle.common import get_header, header_str
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
@@ -19,12 +20,6 @@ from bzrlib.testament import StrictTestament
 from bzrlib.trace import mutter, warning
 from bzrlib.tree import Tree
 from bzrlib.xml5 import serializer_v5
-
-
-class BadBundle(Exception): pass
-class MalformedHeader(BadBundle): pass
-class MalformedPatches(BadBundle): pass
-class MalformedFooter(BadBundle): pass
 
 
 class RevisionInfo(object):
