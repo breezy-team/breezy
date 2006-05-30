@@ -85,11 +85,11 @@ _formats = {
     stat.S_IFLNK:'symlink',
     stat.S_IFSOCK:'socket',
 }
-def file_kind(f):
+def file_kind(f, _formats=_formats, _unknown='unknown', _lstat=os.lstat):
     try:
-        return _formats[os.lstat(f).st_mode & 0170000]
+        return _formats[_lstat(f).st_mode & 0170000]
     except KeyError:
-        return 'unknown'
+        return _unknown
 
 
 def kind_marker(kind):
