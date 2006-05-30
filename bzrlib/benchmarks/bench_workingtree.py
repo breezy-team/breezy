@@ -32,6 +32,9 @@ class WorkingTreeBenchmark(Benchmark):
     def test_list_files_unknown_kernel_like_tree(self):
         self.make_kernel_like_tree()
         tree = WorkingTree.open('.')
+        # Bzr only traverses directories if they are versioned
+        # So add all the directories, but not the files, yielding
+        # lots of unknown files.
         for root, dirs, files in os.walk('.'):
             if '.bzr' in dirs:
                 dirs.remove('.bzr')
