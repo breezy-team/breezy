@@ -1,5 +1,5 @@
 """\
-This contains functionality for installing changesets into repositories
+This contains functionality for installing bundles into repositories
 """
 
 import bzrlib.ui
@@ -8,16 +8,16 @@ from bzrlib.merge import Merger
 from bzrlib.repository import install_revision
 
 
-def install_changeset(repository, changeset_reader):
+def install_bundle(repository, bundle_reader):
     pb = bzrlib.ui.ui_factory.nested_progress_bar()
     repository.lock_write()
     try:
-        real_revisions = changeset_reader.info.real_revisions
+        real_revisions = bundle_reader.info.real_revisions
         for i, revision in enumerate(reversed(real_revisions)):
             pb.update("Install revisions",i, len(real_revisions))
             if repository.has_revision(revision.revision_id):
                 continue
-            cset_tree = changeset_reader.revision_tree(repository,
+            cset_tree = bundle_reader.revision_tree(repository,
                                                        revision.revision_id)
             install_revision(repository, revision, cset_tree)
     finally:
@@ -25,14 +25,14 @@ def install_changeset(repository, changeset_reader):
         pb.finished()
 
 
-def merge_changeset(reader, tree, check_clean, merge_type, 
+def merge_bundle(reader, tree, check_clean, merge_type, 
                     reprocess, show_base):
-    """Merge a changeset's revision into the current tree."""
+    """Merge a revision bundle into the current tree."""
     pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
         pp = ProgressPhase("Merge phase", 6, pb)
         pp.next_phase()
-        install_changeset(tree.branch.repository, reader)
+        install_bundle(tree.branch.repository, reader)
         merger = Merger(tree.branch, this_tree=tree, pb=pb)
         merger.pp = pp
         merger.pp.next_phase()

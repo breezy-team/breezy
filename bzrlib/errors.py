@@ -747,15 +747,15 @@ class MustUseDecorated(Exception):
     """
 
 
-class NoChangesetFound(BzrNewError):
-    """No changeset was found in %(filename)s"""
+class NoBundleFound(BzrNewError):
+    """No bundle was found in %(filename)s"""
     def __init__(self, filename):
         BzrNewError.__init__(self)
         self.filename = filename
 
 
-class ChangesetNotSupported(BzrNewError):
-    """Unable to handle changeset version %(version)s: %(msg)s"""
+class BundleNotSupported(BzrNewError):
+    """Unable to handle bundle version %(version)s: %(msg)s"""
     def __init__(self, version, msg):
         BzrNewError.__init__(self)
         self.version = version

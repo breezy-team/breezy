@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """\
-Common entries, like strings, etc, for the changeset reading + writing code.
+Common entries, like strings, etc, for the bundle reading + writing code.
 """
 
 import bzrlib
 
-header_str = 'Bazaar changeset v'
+header_str = 'Bazaar revision bundle v'
 version = (0, 7)
 
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """\
-Read in a changeset output, and process it into a Changeset object.
+Read in a bundle stream, and process it into a BundleReader object.
 """
 
 import base64
@@ -9,7 +9,7 @@ import os
 import pprint
 
 from bzrlib.errors import TestamentMismatch, BzrError
-from bzrlib.changeset.common import get_header, header_str
+from bzrlib.bundle.common import get_header, header_str
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
                               InventoryLink)
@@ -21,10 +21,10 @@ from bzrlib.tree import Tree
 from bzrlib.xml5 import serializer_v5
 
 
-class BadChangeset(Exception): pass
-class MalformedHeader(BadChangeset): pass
-class MalformedPatches(BadChangeset): pass
-class MalformedFooter(BadChangeset): pass
+class BadBundle(Exception): pass
+class MalformedHeader(BadBundle): pass
+class MalformedPatches(BadBundle): pass
+class MalformedFooter(BadBundle): pass
 
 
 class RevisionInfo(object):
@@ -70,7 +70,7 @@ class RevisionInfo(object):
         return rev
 
 
-class ChangesetInfo(object):
+class BundleInfo(object):
     """This contains the meta information. Stuff that allows you to
     recreate the revision or inventory XML.
     """
@@ -99,7 +99,7 @@ class ChangesetInfo(object):
         split up, based on the assumptions that can be made
         when information is missing.
         """
-        from bzrlib.changeset.common import unpack_highres_date
+        from bzrlib.bundle.common import unpack_highres_date
         # Put in all of the guessable information.
         if not self.timestamp and self.date:
             self.timestamp, self.timezone = unpack_highres_date(self.date)
@@ -158,12 +158,12 @@ class ChangesetInfo(object):
         raise KeyError(revision_id)
 
 
-class ChangesetReader(object):
-    """This class reads in a changeset from a file, and returns
-    a Changeset object, which can then be applied against a tree.
+class BundleReader(object):
+    """This class reads in a bundle from a file, and returns
+    a Bundle object, which can then be applied against a tree.
     """
     def __init__(self, from_file):
-        """Read in the changeset from the file.
+        """Read in the bundle from the file.
 
         :param from_file: A file-like object (must have iterator support).
         """
@@ -171,11 +171,11 @@ class ChangesetReader(object):
         self.from_file = iter(from_file)
         self._next_line = None
         
-        self.info = ChangesetInfo()
+        self.info = BundleInfo()
         # We put the actual inventory ids in the footer, so that the patch
         # is easier to read for humans.
         # Unfortunately, that means we need to read everything before we
-        # can create a proper changeset.
+        # can create a proper bundle.
         self._read()
         self._validate()
 
@@ -256,7 +256,7 @@ class ChangesetReader(object):
                 local_sha1 = testament.as_sha1()
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For revision id {%s}' 
-                            'local: %s, cset: %s' % (revision_id, local_sha1, sha1))
+                            'local: %s, bundle: %s' % (revision_id, local_sha1, sha1))
                 else:
                     count += 1
             elif revision_id not in checked:
@@ -272,7 +272,8 @@ class ChangesetReader(object):
                 local_sha1 = repository.get_inventory_sha1(inv_id)
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For inventory id {%s}' 
-                            'local: %s, cset: %s' % (inv_id, local_sha1, sha1))
+                                   'local: %s, bundle: %s' % 
+                                   (inv_id, local_sha1, sha1))
                 else:
                     count += 1
 
@@ -280,10 +281,10 @@ class ChangesetReader(object):
             # I don't know if this is an error yet
             warning('Not all revision hashes could be validated.'
                     ' Unable validate %d hashes' % len(missing))
-        mutter('Verified %d sha hashes for the changeset.' % count)
+        mutter('Verified %d sha hashes for the bundle.' % count)
 
     def _validate_inventory(self, inv, revision_id):
-        """At this point we should have generated the ChangesetTree,
+        """At this point we should have generated the BundleTree,
         so build up an inventory, and make sure the hashes match.
         """
 
@@ -300,8 +301,8 @@ class ChangesetReader(object):
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
-    def get_changeset(self, repository):
-        """Return the meta information, and a Changeset tree which can
+    def get_bundle(self, repository):
+        """Return the meta information, and a Bundle tree which can
         be used to populate the local stores and working tree, respectively.
         """
         return self.info, self.revision_tree(repository, self.info.target)
@@ -313,15 +314,15 @@ class ChangesetReader(object):
         self._validate_references_from_repository(repository)
         revision_info = self.info.get_revision_info(revision_id)
         inventory_revision_id = revision_id
-        cset_tree = ChangesetTree(repository.revision_tree(base), 
+        bundle_tree = BundleTree(repository.revision_tree(base), 
                                   inventory_revision_id)
-        self._update_tree(cset_tree, revision_id)
+        self._update_tree(bundle_tree, revision_id)
 
-        inv = cset_tree.inventory
+        inv = bundle_tree.inventory
         self._validate_inventory(inv, revision_id)
         self._validate_revision(inv, revision_id)
 
-        return cset_tree
+        return bundle_tree
 
     def _next(self):
         """yield the next line, but secretly
@@ -500,11 +501,11 @@ class ChangesetReader(object):
             if self._next_line is None:
                 break
 
-    def _update_tree(self, cset_tree, revision_id):
-        """This fills out a ChangesetTree based on the information
+    def _update_tree(self, bundle_tree, revision_id):
+        """This fills out a BundleTree based on the information
         that was read in.
 
-        :param cset_tree: A ChangesetTree to update with the new information.
+        :param bundle_tree: A BundleTree to update with the new information.
         """
 
         def get_rev_id(last_changed, path, kind):
@@ -512,7 +513,7 @@ class ChangesetReader(object):
                 changed_revision_id = last_changed.decode('utf-8')
             else:
                 changed_revision_id = revision_id
-            cset_tree.note_last_changed(path, changed_revision_id)
+            bundle_tree.note_last_changed(path, changed_revision_id)
             return changed_revision_id
 
         def extra_info(info, new_path):
@@ -528,9 +529,9 @@ class ChangesetReader(object):
                 elif name == 'executable':
                     assert value in ('yes', 'no'), value
                     val = (value == 'yes')
-                    cset_tree.note_executable(new_path, val)
+                    bundle_tree.note_executable(new_path, val)
                 elif name == 'target':
-                    cset_tree.note_target(new_path, value)
+                    bundle_tree.note_target(new_path, value)
                 elif name == 'encoding':
                     encoding = value
             return last_changed, encoding
@@ -541,7 +542,7 @@ class ChangesetReader(object):
                 patch = base64.decodestring(''.join(lines))
             else:
                 patch =  ''.join(lines)
-            cset_tree.note_patch(path, patch)
+            bundle_tree.note_patch(path, patch)
 
         def renamed(kind, extra, lines):
             info = extra.split(' // ')
@@ -554,7 +555,7 @@ class ChangesetReader(object):
             else:
                 new_path = info[1]
 
-            cset_tree.note_rename(old_path, new_path)
+            bundle_tree.note_rename(old_path, new_path)
             last_modified, encoding = extra_info(info[2:], new_path)
             revision = get_rev_id(last_modified, new_path, kind)
             if lines:
@@ -568,7 +569,7 @@ class ChangesetReader(object):
                 raise BzrError('removed action lines should only have the path'
                         ': %r' % extra)
             path = info[0]
-            cset_tree.note_deletion(path)
+            bundle_tree.note_deletion(path)
 
         def added(kind, extra, lines):
             info = extra.split(' // ')
@@ -584,9 +585,9 @@ class ChangesetReader(object):
                         ': %r' % extra)
             file_id = info[1][8:]
 
-            cset_tree.note_id(file_id, path, kind)
+            bundle_tree.note_id(file_id, path, kind)
             # this will be overridden in extra_info if executable is specified.
-            cset_tree.note_executable(path, False)
+            bundle_tree.note_executable(path, False)
             last_changed, encoding = extra_info(info[2:], path)
             revision = get_rev_id(last_changed, path, kind)
             if kind == 'directory':
@@ -634,20 +635,7 @@ class ChangesetReader(object):
             valid_actions[action](kind, extra, lines)
 
 
-def read_changeset(from_file, repository):
-    """Read in a changeset from a iterable object (such as a file object)
-
-    :param from_file: A file-like object to read the changeset information.
-    :param repository: This will be used to build the changeset tree, it needs
-                       to contain the base of the changeset. (Which you
-                       probably won't know about until after the changeset is
-                       parsed.)
-    """
-    cr = ChangesetReader(from_file)
-    return cr.get_changeset(repository)
-
-
-class ChangesetTree(Tree):
+class BundleTree(Tree):
     def __init__(self, base_tree, revision_id):
         self.base_tree = base_tree
         self._renamed = {} # Mapping from old_path => new_path
@@ -862,7 +850,7 @@ class ChangesetTree(Tree):
         return len(content), sha_string(content)
 
     def _get_inventory(self):
-        """Build up the inventory entry for the ChangesetTree.
+        """Build up the inventory entry for the BundleTree.
 
         This need to be called before ever accessing self.inventory
         """

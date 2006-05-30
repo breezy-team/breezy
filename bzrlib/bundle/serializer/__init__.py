@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Serializer factory for reading and writing changesets.
+"""Serializer factory for reading and writing bundles.
 """
 
 import base64
@@ -25,9 +25,9 @@ import bzrlib.errors as errors
 from bzrlib.diff import internal_diff
 from bzrlib.revision import NULL_REVISION
 
-# New changesets should try to use this header format
-CHANGESET_HEADER = '# Bazaar changeset v'
-CHANGESET_HEADER_RE = re.compile(r'^# Bazaar changeset v(?P<version>\d+[\w.]*)\n$')
+# New bundles should try to use this header format
+BUNDLE_HEADER = '# Bazaar revision bundle v'
+BUNDLE_HEADER_RE = re.compile(r'^# Bazaar revision bundle v(?P<version>\d+[\w.]*)\n$')
 CHANGESET_OLD_HEADER_RE = re.compile(r'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)\n$')
 
 
@@ -41,28 +41,28 @@ def _get_filename(f):
 
 
 def read(f):
-    """Read in a changeset from a filelike object.
+    """Read in a bundle from a filelike object.
 
     :param f: A file-like object
-    :return: A list of Changeset objects
+    :return: A list of Bundle objects
     """
     version = None
     for line in f:
-        m = CHANGESET_HEADER_RE.match(line)
+        m = BUNDLE_HEADER_RE.match(line)
         if m:
             version = m.group('version')
             break
         m = CHANGESET_OLD_HEADER_RE.match(line)
         if m:
             version = m.group('version')
-            raise errors.ChangesetNotSupported(version, 'old format changesets not supported')
+            raise errors.BundleNotSupported(version, 'old format bundles not supported')
 
     if version is None:
-        raise errors.NoChangesetFound(_get_filename(f))
+        raise errors.NoBundleFound(_get_filename(f))
 
-    # Now we have a version, to figure out how to read the changeset
+    # Now we have a version, to figure out how to read the bundle 
     if not _serializers.has_key(version):
-        raise errors.ChangesetNotSupported(version, 'version not listed in known versions')
+        raise errors.BundleNotSupported(version, 'version not listed in known versions')
 
     serializer = _serializers[version](version)
 
@@ -70,7 +70,7 @@ def read(f):
 
 
 def write(source, revision_ids, f, version=None, forced_bases={}):
-    """Serialize a list of changesets to a filelike object.
+    """Serialize a list of bundles to a filelike object.
 
     :param source: A source for revision information
     :param revision_ids: The list of revision ids to serialize
@@ -79,13 +79,13 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
     """
 
     if not _serializers.has_key(version):
-        raise errors.ChangesetNotSupported(version, 'unknown changeset format')
+        raise errors.BundleNotSupported(version, 'unknown bundle format')
 
     serializer = _serializers[version](version)
     return serializer.write(source, revision_ids, forced_bases, f) 
 
 
-def write_changeset(repository, revision_id, base_revision_id, out):
+def write_bundle(repository, revision_id, base_revision_id, out):
     """"""
     if base_revision_id is NULL_REVISION:
         base_revision_id = None
@@ -194,7 +194,7 @@ def unpack_highres_date(date):
     return (timestamp, offset)
 
 
-class ChangesetSerializer(object):
+class BundleSerializer(object):
     """The base class for Serializers.
 
     Common functionality should be included here.
@@ -203,15 +203,15 @@ class ChangesetSerializer(object):
         self.version = version
 
     def read(self, f):
-        """Read the rest of the changesets from the supplied file.
+        """Read the rest of the bundles from the supplied file.
 
         :param f: The file to read from
-        :return: A list of changeset trees
+        :return: A list of bundle trees
         """
         raise NotImplementedError
 
     def write(self, source, revision_ids, forced_bases, f):
-        """Write the changesets to the supplied files.
+        """Write the bundle to the supplied file.
 
         :param source: A source for revision information
         :param revision_ids: The list of revision ids to serialize
@@ -222,7 +222,7 @@ class ChangesetSerializer(object):
 
 
 def register(version, klass, overwrite=False):
-    """Register a ChangesetSerializer version.
+    """Register a BundleSerializer version.
 
     :param version: The version associated with this format
     :param klass: The class to instantiate, which must take a version argument
@@ -237,7 +237,7 @@ def register(version, klass, overwrite=False):
 
 
 def register_lazy(version, module, classname, overwrite=False):
-    """Register lazy-loaded changeset serializer.
+    """Register lazy-loaded bundle serializer.
 
     :param version: The version associated with this reader
     :param module: String indicating what module should be loaded
@@ -259,6 +259,6 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
     base64.encode(temp, to_file)
     to_file.write('\n')
 
-register_lazy('0.7', 'bzrlib.changeset.serializer.v07', 'ChangesetSerializerV07')
-register_lazy(None, 'bzrlib.changeset.serializer.v07', 'ChangesetSerializerV07')
+register_lazy('0.7', 'bzrlib.bundle.serializer.v07', 'BundleSerializerV07')
+register_lazy(None, 'bzrlib.bundle.serializer.v07', 'BundleSerializerV07')
 

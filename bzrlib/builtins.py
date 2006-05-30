@@ -25,8 +25,8 @@ import bzrlib
 import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
-from bzrlib.changeset.read_changeset import BadChangeset, ChangesetReader
-from bzrlib.changeset.apply_changeset import merge_changeset
+from bzrlib.bundle.read_bundle import BadBundle, BundleReader
+from bzrlib.bundle.apply_bundle import merge_bundle
 from bzrlib.commands import Command, display_command
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
@@ -1982,17 +1982,17 @@ class cmd_merge(Command):
         tree = WorkingTree.open_containing(u'.')[0]
         try:
             if branch is not None:
-                reader = ChangesetReader(file(branch, 'rb'))
+                reader = BundleReader(file(branch, 'rb'))
             else:
                 reader = None
         except IOError, e:
             if e.errno not in (errno.ENOENT, errno.EISDIR):
                 raise
             reader = None
-        except BadChangeset:
+        except BadBundle:
             reader = None
         if reader is not None:
-            conflicts = merge_changeset(reader, tree, not force, merge_type,
+            conflicts = merge_bundle(reader, tree, not force, merge_type,
                                         reprocess, show_base)
             if conflicts == 0:
                 return 0
@@ -2479,7 +2479,7 @@ class cmd_uncommit(bzrlib.commands.Command):
     --dry-run will go through all the motions, but not actually
     remove anything.
     
-    In the future, uncommit will create a changeset, which can then
+    In the future, uncommit will create a revision bundle, which can then
     be re-applied.
     """
 
@@ -2639,7 +2639,7 @@ def merge(other_revision, base_revision,
 # aliases.  ideally we would avoid loading the implementation until the
 # details were needed.
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
-from bzrlib.changeset.commands import cmd_changeset
+from bzrlib.bundle.commands import cmd_bundle_revisions
 from bzrlib.sign_my_commits import cmd_sign_my_commits
 from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join, \
         cmd_weave_plan_merge, cmd_weave_merge_text

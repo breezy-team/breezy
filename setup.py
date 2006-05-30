@@ -112,8 +112,8 @@ setup(name='bzr',
                 'bzrlib.util.elementtree',
                 'bzrlib.util.effbot.org',
                 'bzrlib.util.configobj',
-                'bzrlib.changeset',
-                'bzrlib.changeset.serializer'
+                'bzrlib.bundle',
+                'bzrlib.bundle.serializer'
                 ],
       scripts=['bzr'],
       cmdclass={'install_scripts': my_install_scripts, 'build': bzr_build},

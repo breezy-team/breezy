@@ -43,7 +43,7 @@ import time
 import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 import bzrlib.commands
-import bzrlib.changeset.serializer
+import bzrlib.bundle.serializer
 import bzrlib.errors as errors
 import bzrlib.inventory
 import bzrlib.iterablefile
@@ -76,7 +76,7 @@ default_transport = LocalRelpathServer
 MODULES_TO_TEST = []
 MODULES_TO_DOCTEST = [
                       bzrlib.branch,
-                      bzrlib.changeset.serializer,
+                      bzrlib.bundle.serializer,
                       bzrlib.commands,
                       bzrlib.errors,
                       bzrlib.inventory,
@@ -1118,8 +1118,8 @@ def test_suite():
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
                    'bzrlib.tests.test_branch',
+                   'bzrlib.tests.test_bundle',
                    'bzrlib.tests.test_bzrdir',
-                   'bzrlib.tests.test_changeset',
                    'bzrlib.tests.test_command',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',

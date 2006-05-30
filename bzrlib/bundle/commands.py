@@ -56,33 +56,33 @@ class cmd_send_changeset(Command):
         send_changeset(b, revision, to, message, file)
 
 
-class cmd_changeset(Command):
-    """Generate a bundled up changeset.
+class cmd_bundle_revisions(Command):
+    """Generate a revision bundle.
 
-    This changeset contains all of the meta-information of a
+    This bundle contains all of the meta-information of a
     diff, rather than just containing the patch information.
 
     You can apply it to another tree using 'bzr merge'.
 
-    bzr cset
-        - Changeset for the last commit
-    bzr cset BASE
-        - Changeset to apply the current tree into BASE
-    bzr cset --revision A
-        - Changeset for revision A
-    bzr cset --revision A..B
-        - Changeset to transform A into B
-    bzr cset --revision A..B BASE
-        - Changeset to transform revision A of BASE into revision B
+    bzr bundle
+        - Bundle for the last commit
+    bzr bundle BASE
+        - Bundle to apply the current tree into BASE
+    bzr bundle --revision A
+        - Bundle for revision A
+    bzr bundle --revision A..B
+        - Bundle to transform A into B
+    bzr bundle --revision A..B BASE
+        - Bundle to transform revision A of BASE into revision B
           of the local tree
     """
     takes_options = ['verbose', 'revision']
     takes_args = ['base?']
-    aliases = ['cset']
+    aliases = ['bundle']
 
     def run(self, base=None, revision=None):
         from bzrlib import user_encoding
-        from bzrlib.changeset.serializer import write_changeset
+        from bzrlib.bundle.serializer import write_bundle
 
         if base is None:
             base_branch = None
@@ -132,8 +132,8 @@ class cmd_changeset(Command):
             target_branch.repository.fetch(base_branch.repository, 
                                            revision_id=base_revision)
             del base_branch
-        write_changeset(target_branch.repository, target_revision,
-                        base_revision, sys.stdout)
+        write_bundle(target_branch.repository, target_revision, base_revision,
+                     sys.stdout)
 
 
 class cmd_verify_changeset(Command):

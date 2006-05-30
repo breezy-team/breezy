@@ -14,15 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Serializer factory for reading and writing changesets.
+"""Serializer factory for reading and writing bundles.
 """
 
 import os
 
-from bzrlib.changeset.serializer import (ChangesetSerializer, 
-        CHANGESET_HEADER,
-        format_highres_date, unpack_highres_date)
-from bzrlib.changeset.serializer import binary_diff
+from bzrlib.bundle.serializer import (BundleSerializer, 
+                                      BUNDLE_HEADER, 
+                                      format_highres_date,
+                                      unpack_highres_date,
+                                     )
+from bzrlib.bundle.serializer import binary_diff
 from bzrlib.delta import compare_trees
 from bzrlib.diff import internal_diff
 import bzrlib.errors as errors
@@ -82,19 +84,19 @@ class Action(object):
         to_file.write(text_line+'\n')
 
 
-class ChangesetSerializerV07(ChangesetSerializer):
+class BundleSerializerV07(BundleSerializer):
     def read(self, f):
-        """Read the rest of the changesets from the supplied file.
+        """Read the rest of the bundles from the supplied file.
 
         :param f: The file to read from
-        :return: A list of changesets
+        :return: A list of bundles
         """
         assert self.version == '0.7'
         # The first line of the header should have been read
         raise NotImplementedError
 
     def write(self, source, revision_ids, forced_bases, f):
-        """Write the changesets to the supplied files.
+        """Write the bundless to the supplied files.
 
         :param source: A source for revision information
         :param revision_ids: The list of revision ids to serialize
@@ -120,7 +122,7 @@ class ChangesetSerializerV07(ChangesetSerializer):
     def _write_main_header(self):
         """Write the header for the changes"""
         f = self.to_file
-        f.write(CHANGESET_HEADER)
+        f.write(BUNDLE_HEADER)
         f.write('0.7\n')
         f.write('#\n')
 
