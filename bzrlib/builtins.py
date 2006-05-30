@@ -867,13 +867,15 @@ class cmd_reconcile(Command):
 
 
 class cmd_revision_history(Command):
-    """Display list of revision ids on this branch."""
+    """Display the list of revision ids on a branch."""
+    takes_args = ['location?']
+
     hidden = True
     @display_command
-    def run(self):
-        branch = WorkingTree.open_containing(u'.')[0].branch
-        for patchid in branch.revision_history():
-            print patchid
+    def run(self, location="."):
+        branch = Branch.open_containing(location)[0]
+        for revid in branch.revision_history():
+            print revid
 
 
 class cmd_ancestry(Command):
