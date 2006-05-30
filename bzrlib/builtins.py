@@ -517,7 +517,8 @@ class cmd_push(Command):
                         if new_transport.base == transport.base:
                             raise BzrCommandError("Could not create "
                                                   "path prefix.")
-            dir_to = br_from.bzrdir.clone(location)
+            dir_to = br_from.bzrdir.clone(location,
+                revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
             count = len(br_to.revision_history())
         else:
@@ -1396,8 +1397,8 @@ class cmd_ignore(Command):
             igns += '\n'
         igns += name_pattern + '\n'
 
+        f = AtomicFile(ifn, 'wt')
         try:
-            f = AtomicFile(ifn, 'wt')
             f.write(igns.encode('utf-8'))
             f.commit()
         finally:
@@ -1783,10 +1784,14 @@ class cmd_selftest(Command):
                                  'throughout the test suite.',
                             type=get_transport_type),
                      Option('benchmark', help='run the bzr bencharks.'),
-                    ]
+                     Option('lsprof-timed',
+                            help='generate lsprof output for benchmarked'
+                                 ' sections of code.'),
+                     ]
 
-    def run(self, testspecs_list=None, verbose=False, one=False,
-            keep_output=False, transport=None, benchmark=None):
+    def run(self, testspecs_list=None, verbose=None, one=False,
+            keep_output=False, transport=None, benchmark=None,
+            lsprof_timed=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
@@ -1806,14 +1811,19 @@ class cmd_selftest(Command):
                 pattern = ".*"
             if benchmark:
                 test_suite_factory = benchmarks.test_suite
+                if verbose is None:
+                    verbose = True
             else:
                 test_suite_factory = None
+                if verbose is None:
+                    verbose = False
             result = selftest(verbose=verbose, 
                               pattern=pattern,
                               stop_on_failure=one, 
                               keep_output=keep_output,
                               transport=transport,
-                              test_suite_factory=test_suite_factory)
+                              test_suite_factory=test_suite_factory,
+                              lsprof_timed=lsprof_timed)
             if result:
                 bzrlib.trace.info('tests passed')
             else:

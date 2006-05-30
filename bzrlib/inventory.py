@@ -993,20 +993,18 @@ class Inventory(object):
         return entry
 
 
-    def add_path(self, relpath, kind, file_id=None):
+    def add_path(self, relpath, kind, file_id=None, parent_id=None):
         """Add entry from a path.
 
         The immediate parent must already be versioned.
 
         Returns the new entry object."""
-        from bzrlib.workingtree import gen_file_id
         
         parts = bzrlib.osutils.splitpath(relpath)
 
-        if file_id == None:
-            file_id = gen_file_id(relpath)
-
         if len(parts) == 0:
+            if file_id is None:
+                file_id = bzrlib.workingtree.gen_root_id()
             self.root = RootEntry(file_id)
             self._byid = {self.root.file_id: self.root}
             return
@@ -1015,16 +1013,8 @@ class Inventory(object):
             parent_id = self.path2id(parent_path)
             if parent_id == None:
                 raise NotVersionedError(path=parent_path)
-        if kind == 'directory':
-            ie = InventoryDirectory(file_id, parts[-1], parent_id)
-        elif kind == 'file':
-            ie = InventoryFile(file_id, parts[-1], parent_id)
-        elif kind == 'symlink':
-            ie = InventoryLink(file_id, parts[-1], parent_id)
-        else:
-            raise BzrError("unknown kind %r" % kind)
+        ie = make_entry(kind, parts[-1], parent_id, file_id)
         return self.add(ie)
-
 
     def __delitem__(self, file_id):
         """Remove entry by id.
@@ -1127,12 +1117,12 @@ class Inventory(object):
         This returns the entry of the last component in the path,
         which may be either a file or a directory.
 
-        Returns None iff the path is not found.
+        Returns None IFF the path is not found.
         """
         if isinstance(name, types.StringTypes):
             name = splitpath(name)
 
-        mutter("lookup path %r" % name)
+        # mutter("lookup path %r" % name)
 
         parent = self.root
         for f in name:
@@ -1185,6 +1175,25 @@ class Inventory(object):
         file_ie.name = new_name
         file_ie.parent_id = new_parent_id
 
+
+def make_entry(kind, name, parent_id, file_id=None):
+    """Create an inventory entry.
+
+    :param kind: the type of inventory entry to create.
+    :param name: the basename of the entry.
+    :param parent_id: the parent_id of the entry.
+    :param file_id: the file_id to use. if None, one will be created.
+    """
+    if file_id is None:
+        file_id = bzrlib.workingtree.gen_file_id(name)
+    if kind == 'directory':
+        return InventoryDirectory(file_id, name, parent_id)
+    elif kind == 'file':
+        return InventoryFile(file_id, name, parent_id)
+    elif kind == 'symlink':
+        return InventoryLink(file_id, name, parent_id)
+    else:
+        raise BzrError("unknown kind %r" % kind)
 
 
 

@@ -22,9 +22,12 @@ import os
 
 import bzrlib
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.osutils import abspath
+from bzrlib.repository import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.uncommit import uncommit
+from bzrlib.workingtree import WorkingTree
 
 
 class TestPush(ExternalBase):
@@ -94,3 +97,43 @@ class TestPush(ExternalBase):
         os.chdir('..')
         self.assertEqual('', out)
         self.assertEqual('1 revision(s) pushed.\n', err)
+
+    def test_push_only_pushes_history(self):
+        # Knit branches should only push the history for the current revision.
+        format = BzrDirMetaFormat1()
+        format.repository_format = RepositoryFormatKnit1()
+        shared_repo = self.make_repository('repo', format=format, shared=True)
+        shared_repo.set_make_working_trees(True)
+
+        def make_shared_tree(path):
+            shared_repo.bzrdir.root_transport.mkdir(path)
+            shared_repo.bzrdir.create_branch_convenience('repo/' + path)
+            return WorkingTree.open('repo/' + path)
+        tree_a = make_shared_tree('a')
+        self.build_tree(['repo/a/file'])
+        tree_a.add('file')
+        tree_a.commit('commit a-1', rev_id='a-1')
+        f = open('repo/a/file', 'ab')
+        f.write('more stuff\n')
+        f.close()
+        tree_a.commit('commit a-2', rev_id='a-2')
+
+        tree_b = make_shared_tree('b')
+        self.build_tree(['repo/b/file'])
+        tree_b.add('file')
+        tree_b.commit('commit b-1', rev_id='b-1')
+
+        self.assertTrue(shared_repo.has_revision('a-1'))
+        self.assertTrue(shared_repo.has_revision('a-2'))
+        self.assertTrue(shared_repo.has_revision('b-1'))
+
+        # Now that we have a repository with shared files, make sure
+        # that things aren't copied out by a 'push'
+        os.chdir('repo/b')
+        self.run_bzr('push', '../../push-b')
+        pushed_tree = WorkingTree.open('../../push-b')
+        pushed_repo = pushed_tree.branch.repository
+        self.assertFalse(pushed_repo.has_revision('a-1'))
+        self.assertFalse(pushed_repo.has_revision('a-2'))
+        self.assertTrue(pushed_repo.has_revision('b-1'))
+

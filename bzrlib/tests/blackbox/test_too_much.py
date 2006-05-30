@@ -276,40 +276,6 @@ class TestCommands(ExternalBase):
         zf = ZipFile('../first-zip')
         self.assert_('first-zip/hello' in zf.namelist(), zf.namelist())
 
-    def test_branch(self):
-        """Branch from one branch to another."""
-        os.mkdir('a')
-        os.chdir('a')
-        self.example_branch()
-        os.chdir('..')
-        self.runbzr('branch a b')
-        b = bzrlib.branch.Branch.open('b')
-        self.assertEqual('b\n', b.control_files.get_utf8('branch-name').read())
-        self.runbzr('branch a c -r 1')
-        os.chdir('b')
-        self.runbzr('commit -m foo --unchanged')
-        os.chdir('..')
-
-    def test_branch_basis(self):
-        # ensure that basis really does grab from the basis by having incomplete source
-        tree = self.make_branch_and_tree('commit_tree')
-        self.build_tree(['foo'], transport=tree.bzrdir.transport.clone('..'))
-        tree.add('foo')
-        tree.commit('revision 1', rev_id='1')
-        source = self.make_branch_and_tree('source')
-        # this gives us an incomplete repository
-        tree.bzrdir.open_repository().copy_content_into(source.branch.repository)
-        tree.commit('revision 2', rev_id='2', allow_pointless=True)
-        tree.bzrdir.open_branch().copy_content_into(source.branch)
-        tree.copy_content_into(source)
-        self.assertFalse(source.branch.repository.has_revision('2'))
-        dir = source.bzrdir
-        self.runbzr('branch source target --basis commit_tree')
-        target = bzrdir.BzrDir.open('target')
-        self.assertEqual('2', target.open_branch().last_revision())
-        self.assertEqual('2', target.open_workingtree().last_revision())
-        self.assertTrue(target.open_branch().repository.has_revision('2'))
-
     def test_inventory(self):
         bzr = self.runbzr
         def output_equals(value, *args):

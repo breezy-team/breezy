@@ -17,18 +17,19 @@
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 import bzrlib.errors as errors
+from bzrlib.patiencediff import unified_diff
+import bzrlib.patiencediff
 from bzrlib.symbol_versioning import *
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter
+
 
 # TODO: Rather than building a changeset object, we should probably
 # invoke callbacks on an object.  That object can either accumulate a
 # list, write them out directly, etc etc.
 
 def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
-                  allow_binary=False):
-    import difflib
-    
+                  allow_binary=False, sequence_matcher=None):
     # FIXME: difflib is wrong if there is no trailing newline.
     # The syntax used by patch seems to be "\ No newline at
     # end of file" following the last diff line from that
@@ -49,9 +50,12 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
         check_text_lines(oldlines)
         check_text_lines(newlines)
 
-    ud = difflib.unified_diff(oldlines, newlines,
-                              fromfile=old_filename+'\t', 
-                              tofile=new_filename+'\t')
+    if sequence_matcher is None:
+        sequence_matcher = bzrlib.patiencediff.PatienceSequenceMatcher
+    ud = unified_diff(oldlines, newlines,
+                      fromfile=old_filename+'\t', 
+                      tofile=new_filename+'\t',
+                      sequencematcher=sequence_matcher)
 
     ud = list(ud)
     # work-around for difflib being too smart for its own good
