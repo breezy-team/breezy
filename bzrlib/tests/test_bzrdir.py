@@ -487,6 +487,10 @@ class NotBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
         return NotBzrDir(transport, self)
 
     @classmethod
+    def _known_formats(self):
+        return set([NotBzrDirFormat()])
+
+    @classmethod
     def probe_transport(self, transport):
         """Our format is present if the transport ends in '.not/'."""
         if transport.has('.not'):
@@ -513,6 +517,17 @@ class TestNotBzrDir(TestCaseWithTransport):
             self.assertIsInstance(found, NotBzrDirFormat)
         finally:
             bzrlib.bzrdir.BzrDirFormat.unregister_control_format(format)
+
+    def test_included_in_known_formats(self):
+        bzrlib.bzrdir.BzrDirFormat.register_control_format(NotBzrDirFormat)
+        try:
+            formats = bzrlib.bzrdir.BzrDirFormat.known_formats()
+            for format in formats:
+                if isinstance(format, NotBzrDirFormat):
+                    return
+            self.fail("No NotBzrDirFormat in %s" % formats)
+        finally:
+            bzrlib.bzrdir.BzrDirFormat.unregister_control_format(NotBzrDirFormat)
 
 
 class NonLocalTests(TestCaseWithTransport):
