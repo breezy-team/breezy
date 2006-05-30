@@ -17,6 +17,7 @@
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter
 
+
 class TreeDelta(object):
     """Describes changes from one tree to another.
 
@@ -240,7 +241,12 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
 
 
     def handle_old(path, entry):
-        """old entry without a new entry match"""
+        """old entry without a new entry match
+
+        Check to see if a matching new entry was already seen as an
+        added file, and switch the pair into being a rename.
+        Otherwise just mark the old entry being removed.
+        """
         if entry.file_id in added:
             # Actually this is a rename, we found a new file_id earlier
             # at a different location, so it is no-longer added
@@ -253,7 +259,12 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
             removed[entry.file_id] = path, entry
 
     def handle_new(path, entry):
-        """new entry without an old entry match"""
+        """new entry without an old entry match
+        
+        Check to see if a matching old entry was already seen as a
+        removal, and change the pair into a rename.
+        Otherwise just mark the new entry as an added file.
+        """
         if entry.file_id in removed:
             # We saw this file_id earlier at an old different location
             # it is no longer removed, just renamed
@@ -316,6 +327,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
     delta.removed.sort()
     delta.added.sort()
     delta.renamed.sort()
+    # TODO: jam 20060529 These lists shouldn't need to be sorted
+    #       since we added them in alphabetical order.
     delta.modified.sort()
     delta.unchanged.sort()
 
