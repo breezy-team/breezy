@@ -18,7 +18,7 @@ import os
 
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.branch import Branch
-from bzrlib.xml5 import serializer_v5
+import bzrlib.xml5
 
 
 class TestBasisInventory(TestCaseWithWorkingTree):
@@ -49,7 +49,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         t._control_files.get_utf8('basis-inventory')
 
         basis_inv_txt = t.read_basis_inventory()
-        basis_inv = serializer_v5.read_inventory_from_string(basis_inv_txt)
+        basis_inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(basis_inv_txt)
         self.assertEquals('r2', basis_inv.revision_id)
         store_inv = b.repository.get_inventory('r2')
 

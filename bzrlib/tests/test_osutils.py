@@ -17,7 +17,10 @@
 """Tests for the osutils wrapper.
 """
 
+import errno
 import os
+import socket
+import stat
 import sys
 
 import bzrlib
@@ -89,6 +92,40 @@ class TestOSUtils(TestCaseInTempDir):
 
         self.failIfExists('dir/file')
         self.failIfExists('dir')
+
+    def test_file_kind(self):
+        self.build_tree(['file', 'dir/'])
+        self.assertEquals('file', osutils.file_kind('file'))
+        self.assertEquals('directory', osutils.file_kind('dir/'))
+        if osutils.has_symlinks():
+            os.symlink('symlink', 'symlink')
+            self.assertEquals('symlink', osutils.file_kind('symlink'))
+        
+        # TODO: jam 20060529 Test a block device
+        try:
+            os.lstat('/dev/null')
+        except OSError, e:
+            if e.errno not in (errno.ENOENT,):
+                raise
+        else:
+            self.assertEquals('chardev', osutils.file_kind('/dev/null'))
+
+        mkfifo = getattr(os, 'mkfifo', None)
+        if mkfifo:
+            mkfifo('fifo')
+            try:
+                self.assertEquals('fifo', osutils.file_kind('fifo'))
+            finally:
+                os.remove('fifo')
+
+        AF_UNIX = getattr(socket, 'AF_UNIX', None)
+        if AF_UNIX:
+            s = socket.socket(AF_UNIX)
+            s.bind('socket')
+            try:
+                self.assertEquals('socket', osutils.file_kind('socket'))
+            finally:
+                os.remove('socket')
 
 
 class TestSafeUnicode(TestCase):

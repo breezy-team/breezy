@@ -13,26 +13,33 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for bzr status performance."""
+"""Tests for bzr working tree performance."""
 
+import os
 
 from bzrlib.benchmarks import Benchmark
+from bzrlib.workingtree import WorkingTree
 
 
-class StatusBenchmark(Benchmark):
+class WorkingTreeBenchmark(Benchmark):
 
-    def test_no_ignored_unknown_kernel_like_tree(self):
-        """Status in a kernel sized tree with no ignored or unknowns.
-        
-        This should be bearable (<2secs) fast.""" 
+    def test_list_files_kernel_like_tree(self):
         self.make_kernel_like_tree()
         self.run_bzr('add')
-        # on robertc's machine the first sample of this took 1687ms/15994ms
-        self.time(self.run_bzr, 'status')
+        tree = WorkingTree.open('.')
+        self.time(list, tree.list_files())
 
-    def test_no_changes_known_kernel_like_tree(self):
-        """Status in a kernel sized tree with no ignored, unknowns, or added.""" 
+    def test_list_files_unknown_kernel_like_tree(self):
         self.make_kernel_like_tree()
-        self.run_bzr('add')
-        self.run_bzr('commit', '-m', 'initial import')
-        self.time(self.run_bzr, 'status')
+        tree = WorkingTree.open('.')
+        # Bzr only traverses directories if they are versioned
+        # So add all the directories, but not the files, yielding
+        # lots of unknown files.
+        for root, dirs, files in os.walk('.'):
+            if '.bzr' in dirs:
+                dirs.remove('.bzr')
+            if root == '.':
+                continue
+            tree.add(root)
+        self.time(list, tree.list_files())
+

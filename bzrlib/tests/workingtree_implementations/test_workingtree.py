@@ -37,10 +37,9 @@ from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
 
 class TestWorkingTree(TestCaseWithWorkingTree):
 
-    def test_listfiles(self):
+    def test_list_files(self):
         tree = self.make_branch_and_tree('.')
-        os.mkdir('dir')
-        print >> open('file', 'w'), "content"
+        self.build_tree(['dir/', 'file'])
         if has_symlinks():
             os.symlink('target', 'symlink')
         files = list(tree.list_files())
@@ -48,6 +47,32 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(files[1], ('file', '?', 'file', None, TreeFile()))
         if has_symlinks():
             self.assertEqual(files[2], ('symlink', '?', 'symlink', None, TreeLink()))
+
+    def test_list_files_sorted(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'file', 'dir/file', 'dir/b', 'dir/subdir/', 'a', 'dir/subfile',
+                'zz_dir/', 'zz_dir/subfile'])
+        files = [(path, kind) for (path, versioned, kind, file_id, entry) in tree.list_files()]
+        self.assertEqual([
+            ('a', 'file'),
+            ('dir', 'directory'),
+            ('file', 'file'),
+            ('zz_dir', 'directory'),
+            ], files)
+
+        tree.add(['dir', 'zz_dir'])
+        files = [(path, kind) for (path, versioned, kind, file_id, entry) in tree.list_files()]
+        self.assertEqual([
+            ('a', 'file'),
+            ('dir', 'directory'),
+            ('dir/b', 'file'),
+            ('dir/file', 'file'),
+            ('dir/subdir', 'directory'),
+            ('dir/subfile', 'file'),
+            ('file', 'file'),
+            ('zz_dir', 'directory'),
+            ('zz_dir/subfile', 'file'),
+            ], files)
 
     def test_open_containing(self):
         branch = self.make_branch_and_tree('.').branch
