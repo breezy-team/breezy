@@ -82,6 +82,15 @@ class SvnRemoteAccess(BzrDir):
 class SvnFormat(BzrDirFormat):
     _lock_class = TransportLock
 
+    @classmethod
+    def probe_transport(klass, transport):
+        format = klass()
+
+        if isinstance(transport, SvnTransport):
+            return format
+
+        raise NotBranchError(path=transport.base)
+
     def _open(self, transport):
         return SvnRemoteAccess(transport, self)
 

@@ -30,7 +30,10 @@ from bzrlib.transport import register_transport
 register_transport('svn', transport.SvnTransport)
 
 from bzrlib.bzrdir import BzrDirFormat
-BzrDirFormat.register_format(format.SvnFormat())
+#BzrDirFormat.register_format(format.SvnFormat())
+
+BzrDirFormat.register_control_format(format.SvnFormat)
+
 
 def test_suite():
     from unittest import TestSuite, TestLoader

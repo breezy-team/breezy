@@ -66,13 +66,7 @@ class SvnTransport(Transport):
         self.is_branch_root = scheme.is_branch(self.path)
 
     def get(self, relpath):
-        if relpath == '.bzr/branch-format':
-            if self.is_branch_root:
-                return StringIO('Subversion Smart Server')
-            else:
-                raise NoSuchFile(relpath)
-        else:
-            raise NotImplementedError(self.get)
+        raise NotImplementedError(self.get)
 
     def stat(self, relpath):
         return os.stat('.') #FIXME
