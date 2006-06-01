@@ -19,10 +19,12 @@ import time
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 import bzrlib.errors as errors
-from bzrlib.patiencediff import SequenceMatcher, unified_diff
+from bzrlib.patiencediff import unified_diff
+import bzrlib.patiencediff
 from bzrlib.symbol_versioning import *
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter
+
 
 # TODO: Rather than building a changeset object, we should probably
 # invoke callbacks on an object.  That object can either accumulate a
@@ -51,7 +53,7 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
         check_text_lines(newlines)
 
     if sequence_matcher is None:
-        sequence_matcher = SequenceMatcher
+        sequence_matcher = bzrlib.patiencediff.PatienceSequenceMatcher
     ud = unified_diff(oldlines, newlines,
                       fromfile=old_filename, 
                       tofile=new_filename,
@@ -289,7 +291,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     has_changes = 0
     for path, file_id, kind in delta.removed:
         has_changes = 1
-        print >>to_file, '=== removed %s %r' % (kind, path)
+        print >>to_file, '=== removed %s %r' % (kind, path.encode('utf8'))
         old_name = '%s%s\t%s' % (old_label, path,
                                  _patch_header_date(old_tree, file_id))
         new_name = '%s%s\t%s' % (new_label, path, EPOCH_DATE)
@@ -297,7 +299,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
                                          new_name, None, None, to_file)
     for path, file_id, kind in delta.added:
         has_changes = 1
-        print >>to_file, '=== added %s %r' % (kind, path)
+        print >>to_file, '=== added %s %r' % (kind, path.encode('utf8'))
         old_name = '%s%s\t%s' % (old_label, path, EPOCH_DATE)
         new_name = '%s%s\t%s' % (new_label, path,
                                  _patch_header_date(new_tree, file_id))
@@ -309,7 +311,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== renamed %s %r => %r%s' % (
-                    kind, old_path, new_path, prop_str)
+                    kind, old_path.encode('utf8'),
+                    new_path.encode('utf8'), prop_str)
         old_name = '%s%s\t%s' % (old_label, old_path,
                                  _patch_header_date(old_tree, file_id))
         new_name = '%s%s\t%s' % (new_label, new_path,
@@ -320,7 +323,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     for path, file_id, kind, text_modified, meta_modified in delta.modified:
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
-        print >>to_file, '=== modified %s %r%s' % (kind, path, prop_str)
+        print >>to_file, '=== modified %s %r%s' % (kind, path.encode('utf8'), prop_str)
         old_name = '%s%s\t%s' % (old_label, path,
                                  _patch_header_date(old_tree, file_id))
         new_name = '%s%s\t%s' % (new_label, path,

@@ -56,6 +56,9 @@ IN DEVELOPMENT
       all of the history in the repository. This is especially important for
       shared repositories. (John Arbash Meinel)
 
+    * bzrlib.delta.compare_trees now iterates in alphabetically sorted order,
+      rather than randomly walking the inventories. (John Arbash Meinel)
+
 bzr 0.8.2  2006-05-17
   
   BUG FIXES:

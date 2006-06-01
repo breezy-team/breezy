@@ -1,11 +1,27 @@
+# Copyright (C) 2005, 2006 Canonical Development Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 import os
 from cStringIO import StringIO
 
 from bzrlib.diff import internal_diff, show_diff_trees
 from bzrlib.errors import BinaryFile
-from bzrlib.patiencediff import (recurse_matches, SequenceMatcher, unique_lcs,
-                                 unified_diff, unified_diff_files)
+import bzrlib.patiencediff
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestCaseInTempDir
+from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -174,9 +190,10 @@ class TestDiffDates(TestCaseWithTransport):
 ''')
 
 
-class TestCDVDiffLib(TestCase):
+class TestPatienceDiffLib(TestCase):
 
     def test_unique_lcs(self):
+        unique_lcs = bzrlib.patiencediff.unique_lcs
         self.assertEquals(unique_lcs('', ''), [])
         self.assertEquals(unique_lcs('a', 'a'), [(0,0)])
         self.assertEquals(unique_lcs('a', 'b'), [])
@@ -190,10 +207,11 @@ class TestCDVDiffLib(TestCase):
     def test_recurse_matches(self):
         def test_one(a, b, matches):
             test_matches = []
-            recurse_matches(a, b, len(a), len(b), test_matches, 10)
+            bzrlib.patiencediff.recurse_matches(a, b, 0, 0, len(a), len(b),
+                test_matches, 10)
             self.assertEquals(test_matches, matches)
 
-        test_one(['a', None, 'b', None, 'c'], ['a', 'a', 'b', 'c', 'c'],
+        test_one(['a', '', 'b', '', 'c'], ['a', 'a', 'b', 'c', 'c'],
                  [(0, 0), (2, 2), (4, 4)])
         test_one(['a', 'c', 'b', 'a', 'c'], ['a', 'b', 'c'],
                  [(0, 0), (2, 1), (4, 2)])
@@ -209,14 +227,13 @@ class TestCDVDiffLib(TestCase):
         test_one('aBccDe', 'abccde', [(0,0), (5,5)])
 
     def test_matching_blocks(self):
-        def chk_blocks(a, b, matching):
+        def chk_blocks(a, b, expected_blocks):
             # difflib always adds a signature of the total
             # length, with no matching entries at the end
-            s = SequenceMatcher(None, a, b)
+            s = bzrlib.patiencediff.PatienceSequenceMatcher(None, a, b)
             blocks = s.get_matching_blocks()
-            x = blocks.pop()
-            self.assertEquals(x, (len(a), len(b), 0))
-            self.assertEquals(matching, blocks)
+            self.assertEquals((len(a), len(b), 0), blocks[-1])
+            self.assertEquals(expected_blocks, blocks[:-1])
 
         # Some basic matching tests
         chk_blocks('', '', [])
@@ -245,19 +262,28 @@ class TestCDVDiffLib(TestCase):
                     'how are you today?\n'],
                 [(0, 0, 1), (2, 1, 1)])
 
-        chk_blocks('aBccDe', 'abccde', [(0,0,1), (2,2,2), (5,5,1)])
+        # non unique lines surrounded by non-matching lines
+        # won't be found
+        chk_blocks('aBccDe', 'abccde', [(0,0,1), (5,5,1)])
 
-        chk_blocks('aBcdEcdFg', 'abcdecdfg', [(0,0,1), (2,2,2),
-                                              (5,5,2), (8,8,1)])
+        # But they only need to be locally unique
+        chk_blocks('aBcDec', 'abcdec', [(0,0,1), (2,2,1), (4,4,2)])
 
-        chk_blocks('abbabbXd', 'cabbabxd', [(0,1,5), (7,7,1)])
-        chk_blocks('abbabbbb', 'cabbabbc', [(0,1,6)])
-        chk_blocks('bbbbbbbb', 'cbbbbbbc', [(0,1,6)])
+        # non unique blocks won't be matched
+        chk_blocks('aBcdEcdFg', 'abcdecdfg', [(0,0,1), (8,8,1)])
+
+        # but locally unique ones will
+        chk_blocks('aBcdEeXcdFg', 'abcdecdfg', [(0,0,1), (2,2,2),
+                                              (5,4,1), (7,5,2), (10,8,1)])
+
+        chk_blocks('abbabbXd', 'cabbabxd', [(7,7,1)])
+        chk_blocks('abbabbbb', 'cabbabbc', [])
+        chk_blocks('bbbbbbbb', 'cbbbbbbc', [])
 
     def test_opcodes(self):
-        def chk_ops(a, b, codes):
-            s = SequenceMatcher(None, a, b)
-            self.assertEquals(codes, s.get_opcodes())
+        def chk_ops(a, b, expected_codes):
+            s = bzrlib.patiencediff.PatienceSequenceMatcher(None, a, b)
+            self.assertEquals(expected_codes, s.get_opcodes())
 
         chk_ops('', '', [])
         chk_ops([], [], [])
@@ -297,36 +323,48 @@ class TestCDVDiffLib(TestCase):
                 , 'how are you today?\n'],
                 [('equal',  0,1, 0,1),
                  ('delete', 1,2, 1,1),
-                 ('equal',  2,3, 1,2)
+                 ('equal',  2,3, 1,2),
                 ])
         chk_ops('aBccDe', 'abccde', 
                 [('equal',   0,1, 0,1),
+                 ('replace', 1,5, 1,5),
+                 ('equal',   5,6, 5,6),
+                ])
+        chk_ops('aBcDec', 'abcdec', 
+                [('equal',   0,1, 0,1),
                  ('replace', 1,2, 1,2),
-                 ('equal',   2,4, 2,4),
-                 ('replace', 4,5, 4,5),
-                 ('equal',   5,6, 5,6)
+                 ('equal',   2,3, 2,3),
+                 ('replace', 3,4, 3,4),
+                 ('equal',   4,6, 4,6),
                 ])
         chk_ops('aBcdEcdFg', 'abcdecdfg', 
                 [('equal',   0,1, 0,1),
+                 ('replace', 1,8, 1,8),
+                 ('equal',   8,9, 8,9)
+                ])
+        chk_ops('aBcdEeXcdFg', 'abcdecdfg', 
+                [('equal',   0,1, 0,1),
                  ('replace', 1,2, 1,2),
                  ('equal',   2,4, 2,4),
-                 ('replace', 4,5, 4,5),
-                 ('equal',   5,7, 5,7),
-                 ('replace', 7,8, 7,8),
-                 ('equal',   8,9, 8,9)
+                 ('delete', 4,5, 4,4),
+                 ('equal',   5,6, 4,5),
+                 ('delete', 6,7, 5,5),
+                 ('equal',   7,9, 5,7),
+                 ('replace', 9,10, 7,8),
+                 ('equal',   10,11, 8,9)
                 ])
 
     def test_multiple_ranges(self):
         # There was an earlier bug where we used a bad set of ranges,
         # this triggers that specific bug, to make sure it doesn't regress
-        def chk_blocks(a, b, matching):
+        def chk_blocks(a, b, expected_blocks):
             # difflib always adds a signature of the total
             # length, with no matching entries at the end
-            s = SequenceMatcher(None, a, b)
+            s = bzrlib.patiencediff.PatienceSequenceMatcher(None, a, b)
             blocks = s.get_matching_blocks()
             x = blocks.pop()
             self.assertEquals(x, (len(a), len(b), 0))
-            self.assertEquals(matching, blocks)
+            self.assertEquals(expected_blocks, blocks)
 
         chk_blocks('abcdefghijklmnop'
                  , 'abcXghiYZQRSTUVWXYZijklmnop'
@@ -334,61 +372,63 @@ class TestCDVDiffLib(TestCase):
 
         chk_blocks('ABCd efghIjk  L'
                  , 'AxyzBCn mo pqrstuvwI1 2  L'
-                 , [(0,0,1), (1, 4, 2), (4, 7, 1), (9, 19, 1), (12, 23, 3)])
+                 , [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
 
+        # These are rot13 code snippets.
         chk_blocks('''\
-    get added when you add a file in the directory.
+    trg nqqrq jura lbh nqq n svyr va gur qverpgbel.
     """
-    takes_args = ['file*']
-    takes_options = ['no-recurse']
-    
-    def run(self, file_list, no_recurse=False):
-        from bzrlib.add import smart_add, add_reporter_print, add_reporter_null
-        if is_quiet():
-            reporter = add_reporter_null
-        else:
-            reporter = add_reporter_print
-        smart_add(file_list, not no_recurse, reporter)
+    gnxrf_netf = ['svyr*']
+    gnxrf_bcgvbaf = ['ab-erphefr']
+  
+    qrs eha(frys, svyr_yvfg, ab_erphefr=Snyfr):
+        sebz omeyvo.nqq vzcbeg fzneg_nqq, nqq_ercbegre_cevag, nqq_ercbegre_ahyy
+        vs vf_dhvrg():
+            ercbegre = nqq_ercbegre_ahyy
+        ryfr:
+            ercbegre = nqq_ercbegre_cevag
+        fzneg_nqq(svyr_yvfg, abg ab_erphefr, ercbegre)
 
 
-class cmd_mkdir(Command):
-'''.splitlines(True)
-, '''\
-    get added when you add a file in the directory.
+pynff pzq_zxqve(Pbzznaq):
+'''.splitlines(True), '''\
+    trg nqqrq jura lbh nqq n svyr va gur qverpgbel.
 
-    --dry-run will show which files would be added, but not actually 
-    add them.
+    --qel-eha jvyy fubj juvpu svyrf jbhyq or nqqrq, ohg abg npghnyyl 
+    nqq gurz.
     """
-    takes_args = ['file*']
-    takes_options = ['no-recurse', 'dry-run']
+    gnxrf_netf = ['svyr*']
+    gnxrf_bcgvbaf = ['ab-erphefr', 'qel-eha']
 
-    def run(self, file_list, no_recurse=False, dry_run=False):
-        import bzrlib.add
+    qrs eha(frys, svyr_yvfg, ab_erphefr=Snyfr, qel_eha=Snyfr):
+        vzcbeg omeyvo.nqq
 
-        if dry_run:
-            if is_quiet():
-                # This is pointless, but I'd rather not raise an error
-                action = bzrlib.add.add_action_null
-            else:
-                action = bzrlib.add.add_action_print
-        elif is_quiet():
-            action = bzrlib.add.add_action_add
-        else:
-            action = bzrlib.add.add_action_add_and_print
+        vs qel_eha:
+            vs vf_dhvrg():
+                # Guvf vf cbvagyrff, ohg V'q engure abg envfr na reebe
+                npgvba = omeyvo.nqq.nqq_npgvba_ahyy
+            ryfr:
+  npgvba = omeyvo.nqq.nqq_npgvba_cevag
+        ryvs vf_dhvrg():
+            npgvba = omeyvo.nqq.nqq_npgvba_nqq
+        ryfr:
+       npgvba = omeyvo.nqq.nqq_npgvba_nqq_naq_cevag
 
-        bzrlib.add.smart_add(file_list, not no_recurse, action)
+        omeyvo.nqq.fzneg_nqq(svyr_yvfg, abg ab_erphefr, npgvba)
 
 
-class cmd_mkdir(Command):
+pynff pzq_zxqve(Pbzznaq):
 '''.splitlines(True)
 , [(0,0,1), (1, 4, 2), (9, 19, 1), (12, 23, 3)])
 
-    def test_cdv_unified_diff(self):
+    def test_patience_unified_diff(self):
         txt_a = ['hello there\n',
                  'world\n',
                  'how are you today?\n']
         txt_b = ['hello there\n',
                  'how are you today?\n']
+        unified_diff = bzrlib.patiencediff.unified_diff
+        psm = bzrlib.patiencediff.PatienceSequenceMatcher
         self.assertEquals([ '---  \n',
                            '+++  \n',
                            '@@ -1,3 +1,2 @@\n',
@@ -396,8 +436,8 @@ class cmd_mkdir(Command):
                            '-world\n',
                            ' how are you today?\n'
                           ]
-                          , list(unified_diff(txt_a, txt_b
-                                        , sequencematcher=SequenceMatcher)))
+                          , list(unified_diff(txt_a, txt_b,
+                                 sequencematcher=psm)))
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
         # This is the result with LongestCommonSubstring matching
@@ -416,7 +456,7 @@ class cmd_mkdir(Command):
                            ' e\n',
                            ' f\n']
                           , list(unified_diff(txt_a, txt_b)))
-        # And the cdv diff
+        # And the patience diff
         self.assertEquals(['---  \n',
                            '+++  \n',
                            '@@ -4,6 +4,11 @@\n',
@@ -433,12 +473,12 @@ class cmd_mkdir(Command):
                            ' i\n',
                           ]
                           , list(unified_diff(txt_a, txt_b,
-                                 sequencematcher=SequenceMatcher)))
+                                 sequencematcher=psm)))
 
 
-class TestCDVDiffLibFiles(TestCaseInTempDir):
+class TestPatienceDiffLibFiles(TestCaseInTempDir):
 
-    def test_cdv_unified_diff_files(self):
+    def test_patience_unified_diff_files(self):
         txt_a = ['hello there\n',
                  'world\n',
                  'how are you today?\n']
@@ -447,6 +487,8 @@ class TestCDVDiffLibFiles(TestCaseInTempDir):
         open('a1', 'wb').writelines(txt_a)
         open('b1', 'wb').writelines(txt_b)
 
+        unified_diff_files = bzrlib.patiencediff.unified_diff_files
+        psm = bzrlib.patiencediff.PatienceSequenceMatcher
         self.assertEquals(['--- a1 \n',
                            '+++ b1 \n',
                            '@@ -1,3 +1,2 @@\n',
@@ -455,7 +497,7 @@ class TestCDVDiffLibFiles(TestCaseInTempDir):
                            ' how are you today?\n',
                           ]
                           , list(unified_diff_files('a1', 'b1',
-                                 sequencematcher=SequenceMatcher)))
+                                 sequencematcher=psm)))
 
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
@@ -479,7 +521,7 @@ class TestCDVDiffLibFiles(TestCaseInTempDir):
                            ' f\n']
                           , list(unified_diff_files('a2', 'b2')))
 
-        # And the cdv diff
+        # And the patience diff
         self.assertEquals(['--- a2 \n',
                            '+++ b2 \n',
                            '@@ -4,6 +4,11 @@\n',
@@ -496,4 +538,4 @@ class TestCDVDiffLibFiles(TestCaseInTempDir):
                            ' i\n',
                           ]
                           , list(unified_diff_files('a2', 'b2',
-                                 sequencematcher=SequenceMatcher)))
+                                 sequencematcher=psm)))

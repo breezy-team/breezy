@@ -61,6 +61,24 @@ class TestInventory(TestCase):
         
         self.assert_('src-id' in inv)
 
+    def test_iter_entries(self):
+        inv = Inventory()
+        
+        for args in [('src', 'directory', 'src-id'), 
+                     ('doc', 'directory', 'doc-id'), 
+                     ('src/hello.c', 'file', 'hello-id'),
+                     ('src/bye.c', 'file', 'bye-id'),
+                     ('Makefile', 'file', 'makefile-id')]:
+            inv.add_path(*args)
+
+        self.assertEqual([
+            ('Makefile', 'makefile-id'),
+            ('doc', 'doc-id'),
+            ('src', 'src-id'),
+            ('src/bye.c', 'bye-id'),
+            ('src/hello.c', 'hello-id'),
+            ], [(path, ie.file_id) for path, ie in inv.iter_entries()])
+            
     def test_version(self):
         """Inventory remembers the text's version."""
         inv = Inventory()

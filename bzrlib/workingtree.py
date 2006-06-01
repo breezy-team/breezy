@@ -40,6 +40,7 @@ CONFLICT_HEADER_1 = "BZR conflict list format 1"
 # memory.  (Now done? -- mbp 20060309)
 
 from binascii import hexlify
+import collections
 from copy import deepcopy
 from cStringIO import StringIO
 import errno
@@ -73,7 +74,6 @@ from bzrlib.lockdir import LockDir
 from bzrlib.merge import merge_inner, transform_tree
 from bzrlib.osutils import (
                             abspath,
-                            appendpath,
                             compact_date,
                             file_kind,
                             isdir,
@@ -283,7 +283,7 @@ class WorkingTree(bzrlib.tree.Tree):
         hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
         hc.read()
         # is this scan needed ? it makes things kinda slow.
-        hc.scan()
+        #hc.scan()
 
         if hc.needs_write:
             mutter("write hc")
@@ -530,18 +530,21 @@ class WorkingTree(bzrlib.tree.Tree):
         return os.path.getsize(self.id2abspath(file_id))
 
     @needs_read_lock
-    def get_file_sha1(self, file_id):
-        path = self._inventory.id2path(file_id)
+    def get_file_sha1(self, file_id, path=None):
+        if not path:
+            path = self._inventory.id2path(file_id)
         return self._hashcache.get_sha1(path)
 
     def get_file_mtime(self, file_id):
         return os.lstat(self.id2abspath(file_id)).st_mtime
 
-    def is_executable(self, file_id):
-        if not supports_executable():
+    if not supports_executable():
+        def is_executable(self, file_id, path=None):
             return self._inventory[file_id].executable
-        else:
-            path = self._inventory.id2path(file_id)
+    else:
+        def is_executable(self, file_id, path=None):
+            if not path:
+                path = self._inventory.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
 
@@ -693,7 +696,7 @@ class WorkingTree(bzrlib.tree.Tree):
             return '?'
 
     def list_files(self):
-        """Recursively list all files as (path, class, kind, id).
+        """Recursively list all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
 
@@ -703,29 +706,50 @@ class WorkingTree(bzrlib.tree.Tree):
         Skips the control directory.
         """
         inv = self._inventory
+        # Convert these into local objects to save lookup times
+        pathjoin = bzrlib.osutils.pathjoin
+        file_kind = bzrlib.osutils.file_kind
 
-        def descend(from_dir_relpath, from_dir_id, dp):
-            ls = os.listdir(dp)
-            ls.sort()
-            for f in ls:
+        # transport.base ends in a slash, we want the piece
+        # between the last two slashes
+        transport_base_dir = self.bzrdir.transport.base.rsplit('/', 2)[1]
+
+        fk_entries = {'directory':TreeDirectory, 'file':TreeFile, 'symlink':TreeLink}
+
+        # directory file_id, relative path, absolute path, reverse sorted children
+        children = os.listdir(self.basedir)
+        children.sort()
+        # jam 20060527 The kernel sized tree seems equivalent whether we 
+        # use a deque and popleft to keep them sorted, or if we use a plain
+        # list and just reverse() them.
+        children = collections.deque(children)
+        stack = [(inv.root.file_id, u'', self.basedir, children)]
+        while stack:
+            from_dir_id, from_dir_relpath, from_dir_abspath, children = stack[-1]
+
+            while children:
+                f = children.popleft()
                 ## TODO: If we find a subdirectory with its own .bzr
                 ## directory, then that is a separate tree and we
                 ## should exclude it.
 
                 # the bzrdir for this tree
-                if self.bzrdir.transport.base.endswith(f + '/'):
+                if transport_base_dir == f:
                     continue
 
-                # path within tree
-                fp = appendpath(from_dir_relpath, f)
+                # we know that from_dir_relpath and from_dir_abspath never end in a slash
+                # and 'f' doesn't begin with one, we can do a string op, rather
+                # than the checks of pathjoin(), all relative paths will have an extra slash
+                # at the beginning
+                fp = from_dir_relpath + '/' + f
 
                 # absolute path
-                fap = appendpath(dp, f)
+                fap = from_dir_abspath + '/' + f
                 
                 f_ie = inv.get_child(from_dir_id, f)
                 if f_ie:
                     c = 'V'
-                elif self.is_ignored(fp):
+                elif self.is_ignored(fp[1:]):
                     c = 'I'
                 else:
                     c = '?'
@@ -740,31 +764,28 @@ class WorkingTree(bzrlib.tree.Tree):
 
                 # make a last minute entry
                 if f_ie:
-                    entry = f_ie
+                    yield fp[1:], c, fk, f_ie.file_id, f_ie
                 else:
-                    if fk == 'directory':
-                        entry = TreeDirectory()
-                    elif fk == 'file':
-                        entry = TreeFile()
-                    elif fk == 'symlink':
-                        entry = TreeLink()
-                    else:
-                        entry = TreeEntry()
+                    try:
+                        yield fp[1:], c, fk, None, fk_entries[fk]()
+                    except KeyError:
+                        yield fp[1:], c, fk, None, TreeEntry()
+                    continue
                 
-                yield fp, c, fk, (f_ie and f_ie.file_id), entry
-
                 if fk != 'directory':
                     continue
 
-                if c != 'V':
-                    # don't descend unversioned directories
-                    continue
-                
-                for ff in descend(fp, f_ie.file_id, fap):
-                    yield ff
+                # But do this child first
+                new_children = os.listdir(fap)
+                new_children.sort()
+                new_children = collections.deque(new_children)
+                stack.append((f_ie.file_id, fp, fap, new_children))
+                # Break out of inner loop, so that we start outer loop with child
+                break
+            else:
+                # if we finished all children, pop it off the stack
+                stack.pop()
 
-        for f in descend(u'', inv.root.file_id, self.basedir):
-            yield f
 
     @needs_write_lock
     def move(self, from_paths, to_name):
@@ -806,7 +827,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if f_id == None:
                 raise BzrError("%r is not versioned" % f)
             name_tail = splitpath(f)[-1]
-            dest_path = appendpath(to_name, name_tail)
+            dest_path = pathjoin(to_name, name_tail)
             if self.has_filename(dest_path):
                 raise BzrError("destination %r already exists" % dest_path)
             if f_id in to_idpath:
@@ -819,7 +840,7 @@ class WorkingTree(bzrlib.tree.Tree):
         try:
             for f in from_paths:
                 name_tail = splitpath(f)[-1]
-                dest_path = appendpath(to_name, name_tail)
+                dest_path = pathjoin(to_name, name_tail)
                 result.append((f, dest_path))
                 inv.rename(inv.path2id(f), to_dir_id, name_tail)
                 try:
@@ -915,7 +936,8 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def _iter_conflicts(self):
         conflicted = set()
-        for path in (s[0] for s in self.list_files()):
+        for info in self.list_files():
+            path = info[0]
             stem = get_conflicted_stem(path)
             if stem is None:
                 continue
@@ -981,7 +1003,7 @@ class WorkingTree(bzrlib.tree.Tree):
             
             fl.sort()
             for subf in fl:
-                subp = appendpath(path, subf)
+                subp = pathjoin(path, subf)
                 yield subp
 
     def _translate_ignore_rule(self, rule):

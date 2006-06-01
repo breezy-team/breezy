@@ -25,7 +25,7 @@ __all__ = ['deprecated_function',
            'DEPRECATED_PARAMETER',
            'deprecated_passed',
            'warn', 'set_warning_method', 'zero_seven',
-           'zero_eight',
+           'zero_eight', 'zero_nine'
            ]
 
 from warnings import warn
@@ -34,6 +34,7 @@ from warnings import warn
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
 zero_seven = "%s was deprecated in version 0.7."
 zero_eight = "%s was deprecated in version 0.8."
+zero_nine = "%s was deprecated in version 0.9."
 
 
 def set_warning_method(method):
@@ -113,7 +114,10 @@ def deprecated_passed(parameter_value):
 
 def _decorate_docstring(callable, deprecation_version, label,
                         decorated_callable):
-    docstring_lines = callable.__doc__.split('\n')
+    if callable.__doc__:
+        docstring_lines = callable.__doc__.split('\n')
+    else:
+        docstring_lines = []
     if len(docstring_lines) == 0:
         decorated_callable.__doc__ = deprecation_version % ("This " + label)
     elif len(docstring_lines) == 1:

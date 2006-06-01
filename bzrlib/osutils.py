@@ -25,6 +25,7 @@ import os
 import re
 import sha
 import shutil
+import stat
 import string
 import sys
 import time
@@ -38,6 +39,7 @@ from bzrlib.errors import (BzrError,
                            PathNotChild,
                            IllegalPath,
                            )
+from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 import bzrlib.win32console
 
@@ -74,24 +76,20 @@ def quotefn(f):
         return f
 
 
-def file_kind(f):
-    mode = os.lstat(f)[ST_MODE]
-    if S_ISREG(mode):
-        return 'file'
-    elif S_ISDIR(mode):
-        return 'directory'
-    elif S_ISLNK(mode):
-        return 'symlink'
-    elif S_ISCHR(mode):
-        return 'chardev'
-    elif S_ISBLK(mode):
-        return 'block'
-    elif S_ISFIFO(mode):
-        return 'fifo'
-    elif S_ISSOCK(mode):
-        return 'socket'
-    else:
-        return 'unknown'
+_formats = {
+    stat.S_IFDIR:'directory',
+    stat.S_IFCHR:'chardev',
+    stat.S_IFBLK:'block',
+    stat.S_IFREG:'file',
+    stat.S_IFIFO:'fifo',
+    stat.S_IFLNK:'symlink',
+    stat.S_IFSOCK:'socket',
+}
+def file_kind(f, _formats=_formats, _unknown='unknown', _lstat=os.lstat):
+    try:
+        return _formats[_lstat(f).st_mode & 0170000]
+    except KeyError:
+        return _unknown
 
 
 def kind_marker(kind):
@@ -104,20 +102,21 @@ def kind_marker(kind):
     else:
         raise BzrError('invalid file kind %r' % kind)
 
-def lexists(f):
-    if hasattr(os.path, 'lexists'):
-        return os.path.lexists(f)
-    try:
-        if hasattr(os, 'lstat'):
-            os.lstat(f)
-        else:
-            os.stat(f)
-        return True
-    except OSError,e:
-        if e.errno == errno.ENOENT:
-            return False;
-        else:
-            raise BzrError("lstat/stat of (%r): %r" % (f, e))
+lexists = getattr(os.path, 'lexists', None)
+if lexists is None:
+    def lexists(f):
+        try:
+            if hasattr(os, 'lstat'):
+                os.lstat(f)
+            else:
+                os.stat(f)
+            return True
+        except OSError,e:
+            if e.errno == errno.ENOENT:
+                return False;
+            else:
+                raise BzrError("lstat/stat of (%r): %r" % (f, e))
+
 
 def fancy_rename(old, new, rename_func, unlink_func):
     """A fancy rename, when you don't have atomic rename.
@@ -547,6 +546,7 @@ def joinpath(p):
     return pathjoin(*p)
 
 
+@deprecated_function(zero_nine)
 def appendpath(p1, p2):
     if p1 == '':
         return p2
