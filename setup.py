@@ -81,10 +81,10 @@ class bzr_build(build):
 ########################
 
 setup(name='bzr',
-      version='0.8pre',
+      version='0.9pre',
       author='Martin Pool',
       author_email='mbp@sourcefrog.net',
-      url='http://www.bazaar-ng.org/',
+      url='http://bazaar-vcs.org/',
       description='Friendly distributed version control system',
       license='GNU GPL v2',
       packages=['bzrlib',
