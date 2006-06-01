@@ -402,11 +402,12 @@ class InventoryEntry(object):
         return 'unchanged'
 
     def __repr__(self):
-        return ("%s(%r, %r, parent_id=%r)"
+        return ("%s(%r, %r, parent_id=%r, revision=%r)"
                 % (self.__class__.__name__,
                    self.file_id,
                    self.name,
-                   self.parent_id))
+                   self.parent_id,
+                   self.revision))
 
     def snapshot(self, revision, path, previous_entries,
                  work_tree, weave_store, transaction):
@@ -514,6 +515,7 @@ class RootEntry(InventoryEntry):
         self.kind = 'root_directory'
         self.parent_id = None
         self.name = u''
+        self.revision = None
 
     def __eq__(self, other):
         if not isinstance(other, RootEntry):
@@ -670,6 +672,15 @@ class InventoryFile(InventoryEntry):
         """See InventoryEntry._read_tree_state."""
         self.text_sha1 = work_tree.get_file_sha1(self.file_id)
         self.executable = work_tree.is_executable(self.file_id)
+
+    def __repr__(self):
+        return ("%s(%r, %r, parent_id=%r, sha1=%r, len=%s)"
+                % (self.__class__.__name__,
+                   self.file_id,
+                   self.name,
+                   self.parent_id,
+                   self.text_sha1,
+                   self.text_size))
 
     def _forget_tree_state(self):
         self.text_sha1 = None
@@ -847,6 +858,8 @@ class Inventory(object):
         #if root_id is None:
         #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
         self.root = RootEntry(root_id)
+        # FIXME: this isn't ever used, changin it to self.revision may break
+        # things. TODO make everything one or the other.
         self.revision_id = revision_id
         self._byid = {self.root.file_id: self.root}
 
@@ -1057,6 +1070,7 @@ class Inventory(object):
         if not isinstance(other, Inventory):
             return NotImplemented
 
+        # is this needed? (Doesn't dict do this ?)
         if len(self._byid) != len(other._byid):
             # shortcut: obviously not the same
             return False

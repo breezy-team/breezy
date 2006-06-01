@@ -540,7 +540,7 @@ class WorkingTree(bzrlib.tree.Tree):
         else:
             path = self._inventory.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
-            return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
+            return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     @needs_write_lock
     def add(self, files, ids=None):

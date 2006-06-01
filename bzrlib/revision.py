@@ -51,6 +51,7 @@ class Revision(object):
         self._check_properties()
         self.parent_ids = []
         self.parent_sha1s = []
+        """Not used anymore - legacy from for 4."""
         self.__dict__.update(args)
 
     def __repr__(self):
