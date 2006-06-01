@@ -82,8 +82,8 @@ class bzr_build(build):
 
 setup(name='bzr',
       version='0.9pre',
-      author='Martin Pool',
-      author_email='mbp@sourcefrog.net',
+      author='Canonical Ltd',
+      author_email='bazaar-ng@lists.ubuntu.com',
       url='http://bazaar-vcs.org/',
       description='Friendly distributed version control system',
       license='GNU GPL v2',
