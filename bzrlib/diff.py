@@ -293,7 +293,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         has_changes = 1
         print >>to_file, '=== removed %s %r' % (kind, path.encode('utf8'))
         old_name = '%s%s\t%s' % (old_label, path,
-                                 _patch_header_date(old_tree, file_id))
+                                 _patch_header_date(old_tree, file_id, path))
         new_name = '%s%s\t%s' % (new_label, path, EPOCH_DATE)
         old_tree.inventory[file_id].diff(diff_file, old_name, old_tree,
                                          new_name, None, None, to_file)
@@ -302,7 +302,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         print >>to_file, '=== added %s %r' % (kind, path.encode('utf8'))
         old_name = '%s%s\t%s' % (old_label, path, EPOCH_DATE)
         new_name = '%s%s\t%s' % (new_label, path,
-                                 _patch_header_date(new_tree, file_id))
+                                 _patch_header_date(new_tree, file_id, path))
         new_tree.inventory[file_id].diff(diff_file, new_name, new_tree,
                                          old_name, None, None, to_file, 
                                          reverse=True)
@@ -314,9 +314,11 @@ def _show_diff_trees(old_tree, new_tree, to_file,
                     kind, old_path.encode('utf8'),
                     new_path.encode('utf8'), prop_str)
         old_name = '%s%s\t%s' % (old_label, old_path,
-                                 _patch_header_date(old_tree, file_id))
+                                 _patch_header_date(old_tree, file_id,
+                                                    old_path))
         new_name = '%s%s\t%s' % (new_label, new_path,
-                                 _patch_header_date(new_tree, file_id))
+                                 _patch_header_date(new_tree, file_id,
+                                                    new_path))
         _maybe_diff_file_or_symlink(old_name, old_tree, file_id,
                                     new_name, new_tree,
                                     text_modified, kind, to_file, diff_file)
@@ -325,9 +327,9 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== modified %s %r%s' % (kind, path.encode('utf8'), prop_str)
         old_name = '%s%s\t%s' % (old_label, path,
-                                 _patch_header_date(old_tree, file_id))
+                                 _patch_header_date(old_tree, file_id, path))
         new_name = '%s%s\t%s' % (new_label, path,
-                                 _patch_header_date(new_tree, file_id))
+                                 _patch_header_date(new_tree, file_id, path))
         if text_modified:
             _maybe_diff_file_or_symlink(old_name, old_tree, file_id,
                                         new_name, new_tree,
@@ -336,9 +338,9 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     return has_changes
 
 
-def _patch_header_date(tree, file_id):
+def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
-    tm = time.gmtime(tree.get_file_mtime(file_id))
+    tm = time.gmtime(tree.get_file_mtime(file_id, path))
     return time.strftime('%Y-%m-%d %H:%M:%S +0000', tm)
 
 

@@ -535,8 +535,10 @@ class WorkingTree(bzrlib.tree.Tree):
             path = self._inventory.id2path(file_id)
         return self._hashcache.get_sha1(path)
 
-    def get_file_mtime(self, file_id):
-        return os.lstat(self.id2abspath(file_id)).st_mtime
+    def get_file_mtime(self, file_id, path=None):
+        if not path:
+            path = self._inventory.id2path(file_id)
+        return os.lstat(self.abspath(path)).st_mtime
 
     if not supports_executable():
         def is_executable(self, file_id, path=None):
