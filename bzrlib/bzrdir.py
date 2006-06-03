@@ -47,7 +47,7 @@ from bzrlib.transport import get_transport, urlunescape
 from bzrlib.transport.local import LocalTransport
 from bzrlib.weave import Weave
 from bzrlib.xml4 import serializer_v4
-from bzrlib.xml5 import serializer_v5
+import bzrlib.xml5
 
 
 class BzrDir(object):
@@ -1469,7 +1469,7 @@ class ConvertBzrDir4To5(Converter):
 
     def _convert_working_inv(self):
         inv = serializer_v4.read_inventory(self.branch.control_files.get('inventory'))
-        new_inv_xml = serializer_v5.write_inventory_to_string(inv)
+        new_inv_xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
         # FIXME inventory is a working tree change.
         self.branch.control_files.put('inventory', new_inv_xml)
 
@@ -1543,7 +1543,7 @@ class ConvertBzrDir4To5(Converter):
     def _load_updated_inventory(self, rev_id):
         assert rev_id in self.converted_revs
         inv_xml = self.inv_weave.get_text(rev_id)
-        inv = serializer_v5.read_inventory_from_string(inv_xml)
+        inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(inv_xml)
         return inv
 
     def _convert_one_rev(self, rev_id):
@@ -1566,7 +1566,7 @@ class ConvertBzrDir4To5(Converter):
                 assert hasattr(ie, 'revision'), \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
-        new_inv_xml = serializer_v5.write_inventory_to_string(inv)
+        new_inv_xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
         new_inv_sha1 = sha_string(new_inv_xml)
         self.inv_weave.add_lines(rev.revision_id, 
                                  present_parents,

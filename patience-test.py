@@ -21,7 +21,7 @@ from subprocess import Popen, PIPE
 from tempfile import mkdtemp
 
 from bzrlib.branch import Branch
-from bzrlib.patiencediff import SequenceMatcher
+import bzrlib.patiencediff
 from bzrlib.diff import internal_diff
 from bzrlib.osutils import pathjoin
 
@@ -62,7 +62,7 @@ try:
                 new_patch = StringIO()
                 try:
                     internal_diff('old', old_lines, 'new', new_lines, new_patch,
-                                  sequence_matcher=SequenceMatcher)
+                        sequence_matcher=bzrlib.patiencediff.PatienceSequenceMatcher)
                 except:
                     file(pathjoin(temp_dir, 'old'), 
                          'wb').write(''.join(old_lines))

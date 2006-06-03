@@ -62,6 +62,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_pull',
                      'bzrlib.tests.blackbox.test_push',
                      'bzrlib.tests.blackbox.test_reconcile',
+                     'bzrlib.tests.blackbox.test_remove',
                      'bzrlib.tests.blackbox.test_re_sign',
                      'bzrlib.tests.blackbox.test_revert',
                      'bzrlib.tests.blackbox.test_revno',
