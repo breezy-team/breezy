@@ -76,6 +76,62 @@ class TestDiff(TestCase):
         udiff_lines([1023 * 'a' + '\x00'], [], allow_binary=True)
         udiff_lines([], [1023 * 'a' + '\x00'], allow_binary=True)
 
+    def test_internal_diff_default(self):
+        # Default internal diff encoding is utf8
+        output = StringIO()
+        internal_diff(u'old_\xb5', ['old_text\n'],
+                    u'new_\xe5', ['new_text\n'], output)
+        lines = output.getvalue().splitlines(True)
+        self.check_patch(lines)
+        self.assertEquals(['--- old_\xc2\xb5\t\n',
+                           '+++ new_\xc3\xa5\t\n',
+                           '@@ -1,1 +1,1 @@\n',
+                           '-old_text\n',
+                           '+new_text\n',
+                           '\n',
+                          ]
+                          , lines)
+
+    def test_internal_diff_utf8(self):
+        output = StringIO()
+        internal_diff(u'old_\xb5', ['old_text\n'],
+                    u'new_\xe5', ['new_text\n'], output,
+                    path_encoding='utf8')
+        lines = output.getvalue().splitlines(True)
+        self.check_patch(lines)
+        self.assertEquals(['--- old_\xc2\xb5\t\n',
+                           '+++ new_\xc3\xa5\t\n',
+                           '@@ -1,1 +1,1 @@\n',
+                           '-old_text\n',
+                           '+new_text\n',
+                           '\n',
+                          ]
+                          , lines)
+
+    def test_internal_diff_iso_8859_1(self):
+        output = StringIO()
+        internal_diff(u'old_\xb5', ['old_text\n'],
+                    u'new_\xe5', ['new_text\n'], output,
+                    path_encoding='iso-8859-1')
+        lines = output.getvalue().splitlines(True)
+        self.check_patch(lines)
+        self.assertEquals(['--- old_\xb5\t\n',
+                           '+++ new_\xe5\t\n',
+                           '@@ -1,1 +1,1 @@\n',
+                           '-old_text\n',
+                           '+new_text\n',
+                           '\n',
+                          ]
+                          , lines)
+
+    def test_internal_diff_returns_bytes(self):
+        import StringIO
+        output = StringIO.StringIO()
+        internal_diff(u'old_\xb5', ['old_text\n'],
+                    u'new_\xe5', ['new_text\n'], output)
+        self.failUnless(isinstance(output.getvalue(), str),
+            'internal_diff should return bytestrings')
+
 
 class TestPatienceDiffLib(TestCase):
 

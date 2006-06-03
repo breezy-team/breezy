@@ -24,7 +24,7 @@ import bzrlib
 from bzrlib.trace import mutter, note
 from bzrlib.errors import BzrError, BzrCheckError
 from bzrlib.inventory import Inventory
-from bzrlib.osutils import appendpath, fingerprint_file
+from bzrlib.osutils import fingerprint_file
 
 class Tree(object):
     """Abstract file tree.
@@ -139,6 +139,10 @@ class RevisionTree(Tree):
         self._inventory = inv
         self._revision_id = revision_id
 
+    def get_revision_id(self):
+        """Return the revision id associated with this tree."""
+        return self._revision_id
+
     def get_weave(self, file_id):
         return self._weave_store.get_weave(file_id,
                 self._branch.get_transaction())
@@ -157,12 +161,13 @@ class RevisionTree(Tree):
     def get_file_size(self, file_id):
         return self._inventory[file_id].text_size
 
-    def get_file_sha1(self, file_id):
+    def get_file_sha1(self, file_id, path=None):
         ie = self._inventory[file_id]
         if ie.kind == "file":
             return ie.text_sha1
+        return None
 
-    def is_executable(self, file_id):
+    def is_executable(self, file_id, path=None):
         ie = self._inventory[file_id]
         if ie.kind != "file":
             return None 
@@ -210,7 +215,7 @@ class EmptyTree(Tree):
     def __contains__(self, file_id):
         return file_id in self._inventory
 
-    def get_file_sha1(self, file_id):
+    def get_file_sha1(self, file_id, path=None):
         assert self._inventory[file_id].kind == "root_directory"
         return None
 

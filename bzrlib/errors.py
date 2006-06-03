@@ -55,6 +55,13 @@ fullstop.
 
 from warnings import warn
 
+from bzrlib.patches import (PatchSyntax, 
+                            PatchConflict, 
+                            MalformedPatchHeader,
+                            MalformedHunkHeader,
+                            MalformedLine,)
+
+
 # based on Scott James Remnant's hct error classes
 
 # TODO: is there any value in providing the .args field used by standard
@@ -740,6 +747,21 @@ class MustUseDecorated(Exception):
     """
 
 
+class NoBundleFound(BzrNewError):
+    """No bundle was found in %(filename)s"""
+    def __init__(self, filename):
+        BzrNewError.__init__(self)
+        self.filename = filename
+
+
+class BundleNotSupported(BzrNewError):
+    """Unable to handle bundle version %(version)s: %(msg)s"""
+    def __init__(self, version, msg):
+        BzrNewError.__init__(self)
+        self.version = version
+        self.msg = msg
+
+
 class MissingText(BzrNewError):
     """Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"""
 
@@ -903,3 +925,26 @@ class IllegalPath(BzrNewError):
     def __init__(self, path):
         BzrNewError.__init__(self)
         self.path = path
+
+
+class TestamentMismatch(BzrNewError):
+    """Testament did not match expected value.  
+       For revision_id {%(revision_id)s}, expected {%(expected)s}, measured 
+       {%(measured)s}
+    """
+    def __init__(self, revision_id, expected, measured):
+        self.revision_id = revision_id
+        self.expected = expected
+        self.measured = measured
+
+
+class BadBundle(Exception): pass
+
+
+class MalformedHeader(BadBundle): pass
+
+
+class MalformedPatches(BadBundle): pass
+
+
+class MalformedFooter(BadBundle): pass

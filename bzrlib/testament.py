@@ -156,7 +156,7 @@ class Testament(object):
             assert ie.symlink_target
             l += ' ' + self._escape_path(ie.symlink_target)
         l += '\n'
-        return l
+        return l.decode('utf-8')
 
     def as_text(self):
         return ''.join(self.as_text_lines())
@@ -184,3 +184,21 @@ class Testament(object):
                     line = line.encode('utf-8')
                 r.append('    %s\n' % line)
         return r
+
+    def as_sha1(self):
+        return sha(self.as_short_text()).hexdigest()
+
+
+class StrictTestament(Testament):
+    """This testament format is for use as a checksum in changesets"""
+
+    def _entry_to_line(self, path, ie):
+        l = ie.revision.decode('utf-8') + ' '
+        l += {True: 'yes', False: 'no'}[ie.executable] + ' '
+        l += Testament._entry_to_line(self, path, ie)
+        return l
+
+    def as_text_lines(self):
+        lines = ['bazaar-ng testament version 2']
+        lines.extend(Testament.as_text_lines(self)[1:])
+        return lines
