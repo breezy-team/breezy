@@ -137,8 +137,8 @@ class Merger(object):
         trees = (self.this_basis_tree, self.other_tree)
         return [get_id(tree, file_id) for tree in trees]
 
-    def check_basis(self, check_clean):
-        if self.this_basis is None:
+    def check_basis(self, check_clean, require_commits=True):
+        if self.this_basis is None and require_commits is True:
             raise BzrCommandError("This branch has no commits")
         if check_clean:
             self.compare_basis()
@@ -204,6 +204,9 @@ class Merger(object):
                 raise NoCommits(other_branch)
         if other_branch.base != self.this_branch.base:
             self.this_branch.fetch(other_branch, last_revision=self.other_basis)
+
+    def find_base(self):
+        self.set_base([None, None])
 
     def set_base(self, base_revision):
         mutter("doing merge() with no base_revision specified")
