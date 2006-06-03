@@ -62,7 +62,9 @@ class TestCommitMerge(TestCaseWithTransport):
         """Commit merge of two trees with no overlapping files."""
         wtx = self.make_branch_and_tree('x')
         bx = wtx.branch
-        wty = self.make_branch_and_tree('y')
+        wtx.commit('establish root id')
+        wty = wtx.bzrdir.sprout('y').open_workingtree()
+        self.assertEqual(wtx.get_root_id(), wty.get_root_id())
         by = wty.branch
 
         self.build_tree(['x/ecks', 'y/why'])

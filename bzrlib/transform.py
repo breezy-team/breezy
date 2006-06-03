@@ -442,7 +442,10 @@ class TreeTransform(object):
         try:
             return self._new_name[trans_id]
         except KeyError:
-            return os.path.basename(self._tree_id_paths[trans_id])
+            try:
+                return os.path.basename(self._tree_id_paths[trans_id])
+            except KeyError:
+                raise self.final_file_id(trans_id)
 
     def by_parent(self):
         """Return a map of parent: children for known parents.
@@ -552,7 +555,10 @@ class TreeTransform(object):
             parent_id = trans_id
             while parent_id is not ROOT_PARENT:
                 seen.add(parent_id)
-                parent_id = self.final_parent(parent_id)
+                try:
+                    parent_id = self.final_parent(parent_id)
+                except KeyError:
+                    break
                 if parent_id == trans_id:
                     conflicts.append(('parent loop', trans_id))
                 if parent_id in seen:
@@ -922,6 +928,8 @@ def build_tree(tree, wt):
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
+    if tree.inventory.root is not None:
+        wt.set_root_id(tree.inventory.root.file_id)
     tt = TreeTransform(wt)
     try:
         pp.next_phase()

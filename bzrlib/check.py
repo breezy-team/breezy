@@ -37,7 +37,6 @@ from bzrlib.trace import note, warning
 from bzrlib.osutils import rename, sha_string, fingerprint_file
 from bzrlib.trace import mutter
 from bzrlib.errors import BzrCheckError, NoSuchRevision
-from bzrlib.inventory import ROOT_ID
 
 
 class Check(object):

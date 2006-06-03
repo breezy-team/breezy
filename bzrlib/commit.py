@@ -89,7 +89,7 @@ from bzrlib.revision import Revision
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
-from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
+from bzrlib.inventory import Inventory, InventoryEntry
 from bzrlib.symbol_versioning import *
 from bzrlib.workingtree import WorkingTree
 
@@ -551,7 +551,7 @@ class Commit(object):
         # made a specific decision on a particular value -- c.f.
         # mark-merge.  
 
-        # iter_entries does not visit the ROOT_ID node so we need to call
+        # iter_entries does not visit the root node so we need to call
         # self._emit_progress_update once by hand.
         self._emit_progress_update()
         for path, ie in self.new_inv.iter_entries():
@@ -591,8 +591,9 @@ class Commit(object):
         revision set to their prior value.
         """
         mutter("Selecting files for commit with filter %s", self.specific_files)
-        self.new_inv = Inventory(revision_id=self.rev_id)
-        # iter_entries does not visit the ROOT_ID node so we need to call
+        self.new_inv = Inventory(root_id=self.work_inv.root.file_id, 
+                                 revision_id=self.rev_id)
+        # iter_entries does not visit the root node so we need to call
         # self._emit_progress_update once by hand.
         self._emit_progress_update()
         for path, new_ie in self.work_inv.iter_entries():
@@ -607,7 +608,7 @@ class Commit(object):
                 else:
                     # this is selected, ensure its parents are too.
                     parent_id = new_ie.parent_id
-                    while parent_id != ROOT_ID:
+                    while parent_id != self.work_inv.root.file_id:
                         if not self.new_inv.has_id(parent_id):
                             ie = self._select_entry(self.work_inv[parent_id])
                             mutter('%s selected for commit because of %s',

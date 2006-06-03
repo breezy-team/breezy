@@ -45,7 +45,8 @@ from bzrlib.symbol_versioning import *
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
-                              FinalPaths, create_by_entry, unique_add)
+                              FinalPaths, create_by_entry, unique_add,
+                              ROOT_PARENT)
 from bzrlib.versionedfile import WeaveMerge
 import bzrlib.ui
 
@@ -374,13 +375,7 @@ class Merge3Merger(object):
                     self.merge_executable(file_id, file_status)
             finally:
                 child_pb.finished()
-            try:
-                self.tt.final_kind(self.tt.root)
-            except NoSuchFile:
-                self.tt.cancel_deletion(self.tt.root)
-            if self.tt.final_file_id(self.tt.root) is None:
-                self.tt.version_file(self.tt.tree_file_id(self.tt.root), 
-                                     self.tt.root)
+            self.fix_root()
             self.pp.next_phase()
             child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
             try:
@@ -404,6 +399,35 @@ class Merge3Merger(object):
                 pass
             working_tree.unlock()
             self.pb.clear()
+
+    def fix_root(self):
+        try:
+            self.tt.final_kind(self.tt.root)
+        except NoSuchFile:
+            self.tt.cancel_deletion(self.tt.root)
+        if self.tt.final_file_id(self.tt.root) is None:
+            self.tt.version_file(self.tt.tree_file_id(self.tt.root), 
+                                 self.tt.root)
+        if self.other_tree.inventory.root is None:
+            return
+        other_root_file_id = self.other_tree.inventory.root.file_id
+        other_root = self.tt.trans_id_file_id(other_root_file_id)
+        if other_root == self.tt.root:
+            return
+        try:
+            self.tt.final_kind(other_root)
+        except NoSuchFile:
+            return
+        self.reparent_children(self.other_tree.inventory.root, self.tt.root)
+        self.tt.cancel_creation(other_root)
+        self.tt.cancel_versioning(other_root)
+
+    def reparent_children(self, ie, target):
+        for child in ie.children:
+            if isinstance(child, str):
+                raise "Child of %r is a string: %r" % (ie.file_id, child)
+            trans_id = self.tt.trans_id_file_id(child.file_id)
+            self.tt.adjust_path(self.tt.final_name(trans_id), target)
 
     def write_modified(self, results):
         modified_hashes = {}
@@ -515,9 +539,10 @@ class Merge3Merger(object):
                         "conflict": other_entry}
         trans_id = self.tt.trans_id_file_id(file_id)
         parent_id = winner_entry[parent_id_winner].parent_id
-        parent_trans_id = self.tt.trans_id_file_id(parent_id)
-        self.tt.adjust_path(winner_entry[name_winner].name, parent_trans_id,
-                            trans_id)
+        if parent_id is not None:
+            parent_trans_id = self.tt.trans_id_file_id(parent_id)
+            self.tt.adjust_path(winner_entry[name_winner].name, 
+                                parent_trans_id, trans_id)
 
     def merge_contents(self, file_id):
         """Performa a merge on file_id contents."""

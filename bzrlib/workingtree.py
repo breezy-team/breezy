@@ -486,6 +486,7 @@ class WorkingTree(bzrlib.tree.Tree):
     @needs_read_lock
     def copy_content_into(self, tree, revision_id=None):
         """Copy the current content and user files of this tree into tree."""
+        tree.set_root_id(self.get_root_id())
         if revision_id is None:
             transform_tree(tree, self)
         else:
@@ -1614,7 +1615,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             finally:
                 branch.unlock()
         revision = branch.last_revision()
-        inv = Inventory() 
+        inv = Inventory(root_id=gen_root_id()) 
         wt = WorkingTree(a_bzrdir.root_transport.base,
                          branch,
                          inv,
@@ -1693,7 +1694,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         branch = a_bzrdir.open_branch()
         if revision_id is None:
             revision_id = branch.last_revision()
-        inv = Inventory() 
+        inv = Inventory(root_id=gen_root_id()) 
         wt = WorkingTree3(a_bzrdir.root_transport.base,
                          branch,
                          inv,
