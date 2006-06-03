@@ -1,11 +1,3 @@
 # This file is for listing TODOs for branches that are being worked on.
 # It should ALWAYS be empty in the mainline or in integration branches.
-#
-
-Ensure changeset command behaves properly w/revisions (e.g. 0)
-Decide whether to bundle 'send-changeset' into 'changeset'.
-Decide whether to fix or kill 'verify-changeset'.
-Figure out whether testament-related bug is my problem
-Get rid of the 'old' directory
-Bundle signatures?
-What to do about ghost ancestors in remote branch that are present locally?
+# 

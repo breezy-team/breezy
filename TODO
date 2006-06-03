@@ -449,3 +449,10 @@ Selftest
 
 * Should plugins be able to offer benchmark tests ?
 
+CHANGESETS
+----------
+Ensure changeset command behaves properly w/revisions (e.g. 0)
+Figure out whether testament-related bug is my problem
+Get rid of the 'old' directory
+Bundle signatures
+What to do about ghost ancestors in remote branch that are present locally?
