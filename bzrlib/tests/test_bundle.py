@@ -25,7 +25,7 @@ from bzrlib.diff import internal_diff
 from bzrlib.errors import BzrError, TestamentMismatch
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
@@ -541,7 +541,10 @@ class CSetTester(TestCaseInTempDir):
         bundle = self.get_valid_bundle('a@cset-0-4', 'a@cset-0-5')
 
         # Handle international characters
-        f = open(u'b1/with Dod\xe9', 'wb')
+        try:
+            f = open(u'b1/with Dod\xe9', 'wb')
+        except UnicodeEncodeError:
+            raise TestSkipped("Filesystem doesn't support unicode")
         f.write((u'A file\n'
             u'With international man of mystery\n'
             u'William Dod\xe9\n').encode('utf-8'))
