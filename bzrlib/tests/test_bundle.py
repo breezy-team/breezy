@@ -380,6 +380,8 @@ class CSetTester(TestCaseInTempDir):
         s = StringIO()
         ancestors = write_bundle(self.b1.repository, rev_id, None, s)
         s.seek(0)
+        assert isinstance(s.getvalue(), str), (
+            "Bundle isn't a bytestring:\n %s..." % repr(s.getvalue())[:40])
         install_bundle(tree.branch.repository, BundleReader(s))
         for ancestor in ancestors:
             old = self.b1.repository.revision_tree(ancestor)
