@@ -103,14 +103,6 @@ class TestCommands(ExternalBase):
         self.runbzr("--pants off", retcode=3)
         self.runbzr("diff --message foo", retcode=3)
 
-    def test_remove_deleted(self):
-        self.runbzr("init")
-        self.build_tree(['a'])
-        self.runbzr(['add', 'a'])
-        self.runbzr(['commit', '-m', 'added a'])
-        os.unlink('a')
-        self.runbzr(['remove', 'a'])
-
     def test_ignore_patterns(self):
         self.runbzr('init')
         self.assertEquals(self.capture('unknowns'), '')
