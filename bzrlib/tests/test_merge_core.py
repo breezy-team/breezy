@@ -255,7 +255,7 @@ class MergeTest(TestCase):
     def test_reprocess_weave(self):
         # Reprocess works on weaves, and behaves as expected
         builder = MergeBuilder()
-        builder.add_file('a', 'TREE_ROOT', 'blah', 'a', False)
+        builder.add_file('a', builder.tree_root, 'blah', 'a', False)
         builder.change_contents('a', this='b\nc\nd\ne\n', other='z\nc\nd\ny\n')
         builder.merge(WeaveMerger, reprocess=True)
         expected = """<<<<<<< TREE
@@ -356,7 +356,7 @@ y
         builder.change_perms("2", base=False)
         builder.add_file("3", builder.tree_root, "name3", "text3", True)
         builder.change_perms("3", this=False)
-        builder.add_file('4', 'TREE_ROOT', 'name4', 'text4', False)
+        builder.add_file('4', builder.tree_root, 'name4', 'text4', False)
         builder.change_perms('4', this=True)
         builder.remove_file('4', base=True)
         builder.merge()
