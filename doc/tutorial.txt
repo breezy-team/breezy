@@ -499,5 +499,5 @@ the following three methods:
 
   (The directory that must already exist)
 
-* The push plugin that comes with BzrTools
+* The rspush plugin that comes with BzrTools
 
