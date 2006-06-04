@@ -426,11 +426,9 @@ class Merge3Merger(object):
         self.tt.cancel_versioning(other_root)
 
     def reparent_children(self, ie, target):
-        for child in ie.children:
-            if isinstance(child, str):
-                raise "Child of %r is a string: %r" % (ie.file_id, child)
+        for thing, child in ie.children.iteritems():
             trans_id = self.tt.trans_id_file_id(child.file_id)
-            self.tt.adjust_path(self.tt.final_name(trans_id), target)
+            self.tt.adjust_path(self.tt.final_name(trans_id), target, trans_id)
 
     def write_modified(self, results):
         modified_hashes = {}
