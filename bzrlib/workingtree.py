@@ -1645,11 +1645,13 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                          _internal=True,
                          _format=self,
                          _bzrdir=a_bzrdir)
-        wt._write_inventory(inv)
-        wt.set_root_id(inv.root.file_id)
         wt.set_last_revision(revision)
+        basis_tree = wt.basis_tree()
+        if basis_tree.inventory.root is not None:
+            inv.root.file_id = basis_tree.inventory.root.file_id
+        wt._write_inventory(inv)
         wt.set_pending_merges([])
-        build_tree(wt.basis_tree(), wt)
+        build_tree(basis_tree, wt)
         return wt
 
     def __init__(self):
@@ -1727,11 +1729,13 @@ class WorkingTreeFormat3(WorkingTreeFormat):
                          _control_files=control_files)
         wt.lock_write()
         try:
-            wt._write_inventory(inv)
-            wt.set_root_id(inv.root.file_id)
             wt.set_last_revision(revision_id)
+            basis_tree = wt.basis_tree()
+            wt._write_inventory(inv)
+            if basis_tree.inventory.root is not None:
+                inv.root.file_id = basis_tree.inventory.root.file_id
             wt.set_pending_merges([])
-            build_tree(wt.basis_tree(), wt)
+            build_tree(basis_tree, wt)
         finally:
             wt.unlock()
             control_files.unlock()
