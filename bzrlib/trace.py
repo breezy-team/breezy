@@ -1,4 +1,18 @@
-# Copyright (C) 2005, Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 """Messages and logging for bazaar-ng.
 
@@ -31,9 +45,6 @@ explanatory message.  This is not true for builtin excexceptions such as
 KeyError, which typically just str to "0".  They're printed in a different
 form.
 """
-
-# TODO: in debug mode, stderr should get full tracebacks and also
-# debug messages.  (Is this really needed?)
 
 # FIXME: Unfortunately it turns out that python's logging module
 # is quite expensive, even when the message is not printed by any handlers.
@@ -157,20 +168,6 @@ def log_startup(argv):
     debug('  working dir: %r', os.getcwdu())
 
 
-def log_exception(msg=None):
-    """Log the last exception to stderr and the trace file.
-
-    The exception string representation is used as the error
-    summary, unless msg is given.
-    """
-    if msg:
-        error(msg)
-    else:
-        exc_str = format_exception_short(sys.exc_info())
-        error(exc_str)
-    log_exception_quietly()
-
-
 def log_exception_quietly():
     """Log the last exception to the trace file only.
 
@@ -259,15 +256,51 @@ def disable_test_log((test_log_hdlr, old_trace_file, old_trace_depth)):
         enable_default_logging()
 
 
+def report_unhandled_exception(exc_info, err_file):
+    """Report to stderr than an exception hit the top level.
+
+    This is used only for exceptions that indicate a bug of some kind in bzr.
+    """
+    if isinstance(exc_info[1], (BzrError, BzrNewError)):
+        report_user_error(exc_info, err_file)
+    else:
+        report_bug(exc_info, err_file)
+
+
+# TODO: Should these be specially encoding the output?
+def report_user_error(exc_info, err_file):
+    exc_type, exc_object, exc_tb = exc_info
+    print >>err_file, "bzr:",
+    try:
+        print >>err_file, str(exc_object)
+    except Exception, formatting_exc:
+        # XXX: is this really better than just letting it run up?
+        print >>err_file, \
+                '(error formatting exception of type %s: %s)' \
+                % (exc_type, formatting_exc)
+
+
+def report_bug(exc_info, err_file):
+    import traceback
+    exc_type, exc_object, exc_tb = exc_info
+    print >>err_file, "bzr: unhandled error: %s: %s" % (exc_type, exc_object)
+    print >>err_file
+    traceback.print_exception(*exc_info)
+    print >>err_file
+    print >>err_file, "** please send this report to bazaar-ng@lists.ubuntu.com"
+
+
+# TODO: Is this still used?
 def format_exception_short(exc_info):
     """Make a short string form of an exception.
 
     This is used for display to stderr.  It specially handles exception
     classes without useful string methods.
 
-    The result has no trailing newline.
+    The result has no trailing newline, but does span a few lines and includes
+    the function and line.
 
-    exc_info - typically an exception from sys.exc_info()
+    :param exc_info: typically an exception from sys.exc_info()
     """
     exc_type, exc_object, exc_tb = exc_info
     try:

@@ -655,13 +655,13 @@ def run_bzr_catch_errors(argv):
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
         import errno
-        if (isinstance(e, IOError) 
+        if (isinstance(e, IOError)
             and hasattr(e, 'errno')
             and e.errno == errno.EPIPE):
             bzrlib.trace.note('broken pipe')
             return 3
         else:
-            bzrlib.trace.log_exception()
+            bzrlib.trace.report_unhandled_exception(sys.exc_info(), sys.stderr)
             if os.environ.get('BZR_PDB'):
                 print '**** entering debugger'
                 import pdb
