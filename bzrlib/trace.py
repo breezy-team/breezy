@@ -141,15 +141,6 @@ def open_tracefile(tracefilename='~/.bzr.log'):
         warning("failed to open trace file: %s" % (e))
 
 
-def log_startup(argv):
-    debug('\n\nbzr %s invoked on python %s (%s)',
-          bzrlib.__version__,
-          '.'.join(map(str, sys.version_info)),
-          sys.platform)
-    debug('  arguments: %r', argv)
-    debug('  working dir: %r', os.getcwdu())
-
-
 def log_exception_quietly():
     """Log the last exception to the trace file only.
 

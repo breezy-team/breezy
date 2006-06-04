@@ -637,7 +637,6 @@ def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
     ## bzrlib.trace.enable_default_logging()
-    bzrlib.trace.log_startup(argv)
     bzrlib.ui.ui_factory = TextUIFactory()
     ret = run_bzr_catch_errors(argv[1:])
     mutter("return code %d", ret)
