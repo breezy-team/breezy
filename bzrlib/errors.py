@@ -781,6 +781,16 @@ class MalformedTransform(BzrNewError):
     """Tree transform is malformed %(conflicts)r"""
 
 
+class NoFinalPath(BzrNewError):
+    """No final name for trans_id %(trans_id)r
+    file-id: %(file_id)r 
+    root trans-id: %(root_trans_id)r"""
+    def __init__(self, trans_id, transform):
+        self.trans_id = trans_id
+        self.file_id = transform.final_file_id(trans_id)
+        self.root_trans_id = transform.root
+
+
 class BzrBadParameter(BzrNewError):
     """A bad parameter : %(param)s is not usable.
     

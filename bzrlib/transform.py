@@ -20,7 +20,7 @@ from stat import S_ISREG
 
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
-                           ExistingLimbo, ImmortalLimbo)
+                           ExistingLimbo, ImmortalLimbo, NoFinalPath)
 from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
                             delete_any)
@@ -445,7 +445,7 @@ class TreeTransform(object):
             try:
                 return os.path.basename(self._tree_id_paths[trans_id])
             except KeyError:
-                raise self.final_file_id(trans_id)
+                raise NoFinalPath(trans_id, self)
 
     def by_parent(self):
         """Return a map of parent: children for known parents.
