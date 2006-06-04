@@ -28,7 +28,7 @@ class TestExceptionReporting(TestCase):
         """When an error occurs, display bug report details to stderr"""
         out, err = self.run_bzr("assert-fail", retcode=3)
         self.assertContainsRe(err,
-                r'bzr: unhandled error: exceptions\.AssertionError: always fails\n')
+                r'bzr: ERROR: exceptions\.AssertionError: always fails\n')
         self.assertContainsRe(err, r'please send this report to')
 
     # TODO: assert-fail doesn't need to always be present; we could just

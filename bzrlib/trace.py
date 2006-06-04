@@ -51,8 +51,9 @@ form.
 # We should perhaps change back to just simply doing it here.
 
 
-import sys
+import errno
 import os
+import sys
 import logging
 
 import bzrlib
@@ -67,25 +68,6 @@ _trace_depth = 0
 _bzr_log_file = None
 
 
-class QuietFormatter(logging.Formatter):
-    """Formatter that supresses the details of errors.
-
-    This is used by default on stderr so as not to scare the user.
-    """
-    # At first I tried overriding formatException to suppress the
-    # exception details, but that has global effect: no loggers
-    # can get the exception details is we suppress them here.
-
-    def format(self, record):
-        if record.levelno >= logging.WARNING:
-            s = 'bzr: ' + record.levelname + ': '
-        else:
-            s = ''
-        s += record.getMessage()
-        if record.exc_info:
-            s += '\n' + format_exception_short(record.exc_info)
-        return s
-        
 # configure convenient aliases for output routines
 
 _bzr_logger = logging.getLogger('bzr')
@@ -184,7 +166,6 @@ def enable_default_logging():
     # FIXME: if this is run twice, things get confused
     global _stderr_handler, _file_handler, _trace_file, _bzr_log_file
     _stderr_handler = logging.StreamHandler()
-    _stderr_handler.setFormatter(QuietFormatter())
     logging.getLogger('').addHandler(_stderr_handler)
     _stderr_handler.setLevel(logging.INFO)
     if not _file_handler:
@@ -192,8 +173,7 @@ def enable_default_logging():
     _trace_file = _bzr_log_file
     if _file_handler:
         _file_handler.setLevel(logging.DEBUG)
-    _bzr_logger.setLevel(logging.DEBUG) 
-
+    _bzr_logger.setLevel(logging.DEBUG)
 
 
 def be_quiet(quiet=True):
@@ -257,7 +237,13 @@ def disable_test_log((test_log_hdlr, old_trace_file, old_trace_depth)):
 
 
 def report_exception(exc_info, err_file):
-    if isinstance(exc_info[1], (BzrError, BzrNewError)):
+    exc_type, exc_object, exc_tb = exc_info
+    if (isinstance(exc_object, IOError)
+        and getattr(exc_object, 'errno', None) == errno.EPIPE):
+        print >>err_file, "bzr: broken pipe"
+    elif isinstance(exc_object, KeyboardInterrupt):
+        print >>err_file, "bzr: interrupted"
+    elif isinstance(exc_info[1], (BzrError, BzrNewError)):
         report_user_error(exc_info, err_file)
     else:
         report_bug(exc_info, err_file)
@@ -280,41 +266,15 @@ def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
     import traceback
     exc_type, exc_object, exc_tb = exc_info
-    print >>err_file, "bzr: unhandled error: %s: %s" % (exc_type, exc_object)
+    print >>err_file, "bzr: ERROR: %s: %s" % (exc_type, exc_object)
     print >>err_file
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
     print >>err_file
+    print >>err_file, 'bzr %s invoked on python %s (%s)' % \
+                       (bzrlib.__version__,
+                        '.'.join(map(str, sys.version_info)),
+                        sys.platform)
+    print >>err_file, '  arguments: %r' % sys.argv
+    print >>err_file
     print >>err_file, "** please send this report to bazaar-ng@lists.ubuntu.com"
-
-
-# TODO: Is this still used?
-def format_exception_short(exc_info):
-    """Make a short string form of an exception.
-
-    This is used for display to stderr.  It specially handles exception
-    classes without useful string methods.
-
-    The result has no trailing newline, but does span a few lines and includes
-    the function and line.
-
-    :param exc_info: typically an exception from sys.exc_info()
-    """
-    exc_type, exc_object, exc_tb = exc_info
-    try:
-        if exc_type is None:
-            return '(no exception)'
-        if isinstance(exc_object, (BzrError, BzrNewError)):
-            return str(exc_object)
-        else:
-            import traceback
-            tb = traceback.extract_tb(exc_tb)
-            msg = '%s: %s' % (exc_type, exc_object)
-            if msg[-1] == '\n':
-                msg = msg[:-1]
-            if tb:
-                msg += '\n  at %s line %d\n  in %s' % (tb[-1][:3])
-            return msg
-    except Exception, formatting_exc:
-        # XXX: is this really better than just letting it run up?
-        return '(error formatting exception of type %s: %s)' \
-                % (exc_type, formatting_exc)
+    print >>err_file, "   with a description of how and when the problem occurred"

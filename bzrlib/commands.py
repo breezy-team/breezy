@@ -654,19 +654,12 @@ def run_bzr_catch_errors(argv):
     except Exception, e:
         # used to handle AssertionError and KeyboardInterrupt
         # specially here, but hopefully they're handled ok by the logger now
-        import errno
-        if (isinstance(e, IOError)
-            and hasattr(e, 'errno')
-            and e.errno == errno.EPIPE):
-            bzrlib.trace.note('broken pipe')
-            return 3
-        else:
-            bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)
-            if os.environ.get('BZR_PDB'):
-                print '**** entering debugger'
-                import pdb
-                pdb.post_mortem(sys.exc_traceback)
-            return 3
+        bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)
+        if os.environ.get('BZR_PDB'):
+            print '**** entering debugger'
+            import pdb
+            pdb.post_mortem(sys.exc_traceback)
+        return 3
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))

@@ -45,9 +45,19 @@ class TestTrace(TestCase):
             pass
         err = _format_exception()
         self.assertEqualDiff(err.splitlines()[0],
-                'bzr: unhandled error: exceptions.NotImplementedError: time travel')
+                'bzr: ERROR: exceptions.NotImplementedError: time travel')
         self.assertContainsRe(err,
                 r'File.*test_trace.py')
+
+    def test_format_interrupt_exception(self):
+        try:
+            raise KeyboardInterrupt()
+        except KeyboardInterrupt():
+            # XXX: Some risk that a *real* keyboard interrupt won't be seen
+            pass
+        msg = _format_exception()
+        self.assertTrue(len(msg) > 0)
+        self.assertEqualDiff(msg, 'bzr: interrupted\n')
 
     def test_format_exception(self):
         """Short formatting of bzr exceptions"""
