@@ -24,7 +24,7 @@ from bzrlib.errors import NotBranchError, BzrError, BzrNewError
 
 class TestExceptionReporting(TestCase):
 
-    def test_report_unhandled_exception(self):
+    def test_report_exception(self):
         """When an error occurs, display bug report details to stderr"""
         out, err = self.run_bzr("assert-fail", retcode=3)
         self.assertContainsRe(err,

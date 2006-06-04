@@ -661,7 +661,7 @@ def run_bzr_catch_errors(argv):
             bzrlib.trace.note('broken pipe')
             return 3
         else:
-            bzrlib.trace.report_unhandled_exception(sys.exc_info(), sys.stderr)
+            bzrlib.trace.report_exception(sys.exc_info(), sys.stderr)
             if os.environ.get('BZR_PDB'):
                 print '**** entering debugger'
                 import pdb

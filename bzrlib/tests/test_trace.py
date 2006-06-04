@@ -1,5 +1,6 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
+#            Martin Pool
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,34 +22,42 @@
 
 import os
 import sys
+from StringIO import StringIO
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.trace import format_exception_short, mutter
+from bzrlib.trace import mutter, report_exception
 from bzrlib.errors import NotBranchError, BzrError, BzrNewError
 
+
+def _format_exception():
+    """Format an exception as it would normally be displayed to the user"""
+    buf = StringIO()
+    report_exception(sys.exc_info(), buf)
+    return buf.getvalue()
+
+
 class TestTrace(TestCase):
+
     def test_format_sys_exception(self):
-        """Short formatting of exceptions"""
         try:
             raise NotImplementedError, "time travel"
         except NotImplementedError:
             pass
-        error_lines = format_exception_short(sys.exc_info()).splitlines()
-        self.assertEqualDiff(error_lines[0], 
-                'exceptions.NotImplementedError: time travel')
-        self.assertContainsRe(error_lines[1], 
-                r'^  at .*trace\.py line \d+$')  
-        self.assertContainsRe(error_lines[2], 
-                r'^  in test_format_sys_exception$')
+        err = _format_exception()
+        self.assertEqualDiff(err.splitlines()[0],
+                'bzr: unhandled error: exceptions.NotImplementedError: time travel')
+        self.assertContainsRe(err,
+                r'File.*test_trace.py')
 
     def test_format_exception(self):
-        """Short formatting of exceptions"""
+        """Short formatting of bzr exceptions"""
         try:
             raise NotBranchError, 'wibble'
         except NotBranchError:
             pass
-        msg = format_exception_short(sys.exc_info())
-        self.assertEqualDiff(msg, 'Not a branch: wibble')
+        msg = _format_exception()
+        self.assertTrue(len(msg) > 0)
+        self.assertEqualDiff(msg, 'bzr: ERROR: Not a branch: wibble\n')
 
     def test_format_old_exception(self):
         # format a class that doesn't descend from BzrNewError; 
@@ -58,8 +67,8 @@ class TestTrace(TestCase):
             raise BzrError('some old error')
         except BzrError:
             pass
-        msg = format_exception_short(sys.exc_info())
-        self.assertEqualDiff(msg, 'some old error')
+        msg = _format_exception()
+        self.assertEqualDiff(msg, 'bzr: ERROR: some old error\n')
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""

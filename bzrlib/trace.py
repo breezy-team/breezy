@@ -256,11 +256,7 @@ def disable_test_log((test_log_hdlr, old_trace_file, old_trace_depth)):
         enable_default_logging()
 
 
-def report_unhandled_exception(exc_info, err_file):
-    """Report to stderr than an exception hit the top level.
-
-    This is used only for exceptions that indicate a bug of some kind in bzr.
-    """
+def report_exception(exc_info, err_file):
     if isinstance(exc_info[1], (BzrError, BzrNewError)):
         report_user_error(exc_info, err_file)
     else:
@@ -270,7 +266,7 @@ def report_unhandled_exception(exc_info, err_file):
 # TODO: Should these be specially encoding the output?
 def report_user_error(exc_info, err_file):
     exc_type, exc_object, exc_tb = exc_info
-    print >>err_file, "bzr:",
+    print >>err_file, "bzr: ERROR:",
     try:
         print >>err_file, str(exc_object)
     except Exception, formatting_exc:
@@ -281,11 +277,12 @@ def report_user_error(exc_info, err_file):
 
 
 def report_bug(exc_info, err_file):
+    """Report an exception that probably indicates a bug in bzr"""
     import traceback
     exc_type, exc_object, exc_tb = exc_info
     print >>err_file, "bzr: unhandled error: %s: %s" % (exc_type, exc_object)
     print >>err_file
-    traceback.print_exception(*exc_info)
+    traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
     print >>err_file
     print >>err_file, "** please send this report to bazaar-ng@lists.ubuntu.com"
 
