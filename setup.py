@@ -80,6 +80,26 @@ class bzr_build(build):
 ## Setup
 ########################
 
+command_classes = {'install_scripts': my_install_scripts,
+                  'build': bzr_build}
+ext_modules = []
+try:
+    from Pyrex.Distutils import build_ext
+except ImportError:
+    # try to build the extension from the prior generated source.
+    print ("Pyrex not available, while bzr will build"
+           ", you cannot modify the C extensions.")
+    from distutils.command import build_ext
+    from distutils.extension import Extension
+    #ext_modules.append(
+    #    Extension("bzrlib.modulename", ["bzrlib/foo.c"], libraries = []))
+else:
+    from distutils.extension import Extension
+    #ext_modules.append(
+    #    Extension("bzrlib.modulename", ["bzrlib/foo.pyx"], libraries = []))
+command_classes['build_ext'] = build_ext
+
+
 setup(name='bzr',
       version='0.8pre',
       author='Martin Pool',
@@ -116,7 +136,8 @@ setup(name='bzr',
                 'bzrlib.bundle.serializer'
                 ],
       scripts=['bzr'],
-      cmdclass={'install_scripts': my_install_scripts, 'build': bzr_build},
+      cmdclass=command_classes,
       data_files=[('man/man1', ['bzr.1'])],
+      ext_modules=ext_modules,
     #   todo: install the txt files from bzrlib.doc.api.
      )

@@ -1,4 +1,5 @@
 all: 
+	./setup.py build_ext -i
 
 check:
 	./bzr selftest -v $(tests)
