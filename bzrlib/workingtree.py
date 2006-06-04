@@ -963,11 +963,12 @@ class WorkingTree(bzrlib.tree.Tree):
                 repository = self.branch.repository
                 pb = bzrlib.ui.ui_factory.nested_progress_bar()
                 try:
-                    merge_inner(self.branch,
-                                self.branch.basis_tree(),
-                                basis_tree, 
-                                this_tree=self, 
-                                pb=pb)
+                    branch_basis = self.branch.basis_tree() 
+                    merge_inner(self.branch, branch_basis, basis_tree,
+                                this_tree=self, pb=pb)
+                    if (basis_tree.inventory.root is None and
+                        branch_basis.inventory.root is not None):
+                        self.set_root_id(branch_basis.inventory.root.file_id)
                 finally:
                     pb.finished()
                 self.set_last_revision(self.branch.last_revision())
