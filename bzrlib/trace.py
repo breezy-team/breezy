@@ -234,7 +234,7 @@ def report_exception(exc_info, err_file):
         print >>err_file, "bzr: broken pipe"
     elif isinstance(exc_object, KeyboardInterrupt):
         print >>err_file, "bzr: interrupted"
-    elif isinstance(exc_info[1], (BzrError, BzrNewError)):
+    elif isinstance(exc_info[1], (IOError, OSError, BzrError, BzrNewError)):
         report_user_error(exc_info, err_file)
     else:
         report_bug(exc_info, err_file)
@@ -242,15 +242,7 @@ def report_exception(exc_info, err_file):
 
 # TODO: Should these be specially encoding the output?
 def report_user_error(exc_info, err_file):
-    exc_type, exc_object, exc_tb = exc_info
-    print >>err_file, "bzr: ERROR:",
-    try:
-        print >>err_file, str(exc_object)
-    except Exception, formatting_exc:
-        # XXX: is this really better than just letting it run up?
-        print >>err_file, \
-                '(error formatting exception of type %s: %s)' \
-                % (exc_type, formatting_exc)
+    print >>err_file, "bzr: ERROR:", str(exc_info[1])
 
 
 def report_bug(exc_info, err_file):
