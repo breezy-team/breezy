@@ -401,8 +401,8 @@ class MultipleRevisionSources(object):
             source.unlock()
 
 
-@deprecated_method(zero_eight)
-def get_intervening_revisions(ancestor_id, rev_id, rev_source, 
+@deprecated_function(zero_eight)
+def get_intervening_revisions(ancestor_id, rev_id, rev_source,
                               revision_history=None):
     """Find the longest line of descent from maybe_ancestor to revision.
     Revision history is followed where possible.
