@@ -63,16 +63,19 @@ class TestNonAscii(TestCaseInTempDir):
         bzr('add', 'b')
         bzr('commit', '-m', self.info['message'])
 
+        fs_enc = sys.getfilesystemencoding()
         fname = self.info['filename']
-        try:
-            open(fname, 'wb').write('unicode filename\n')
-        except UnicodeEncodeError:
-            raise TestSkipped(('Unable to represent filename %r'
-                               ' in filesystem encoding %s')
-                                % (fname, sys.getfilesystemencoding()))
-
+        dir_name = self.info['directory']
+        for thing in [fname, dir_name]:
+            try:
+                thing.encode(fs_enc)
+            except UnicodeEncodeError:
+                raise TestSkipped(('Unable to represent path %r'
+                                   ' in filesystem encoding %s')
+                                    % (thing, fs_enc))
+        open(fname, 'wb').write('unicode filename\n')
         bzr('add', fname)
-        bzr('commit', '-m', u'And an unicode file\n')
+        bzr('commit', '-m', u'And a unicode file\n')
 
     def test_status(self):
         bzr = self.run_bzr_decode
@@ -187,9 +190,7 @@ class TestNonAscii(TestCaseInTempDir):
         # We should be able to branch into a directory that
         # has a unicode name, even if we can't display the name
         bzr = self.run_bzr_decode
-
         bzr('branch', u'.', self.info['directory'])
-
         bzr('branch', u'.', self.info['directory'] + '2', encoding='ascii')
 
     def test_pull(self):

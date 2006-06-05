@@ -909,6 +909,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
 
     def test_unicode_paths(self):
+        """Test that we can read/write files with Unicode names."""
         t = self.get_transport()
 
         files = [u'\xe5', # a w/ circle iso-8859-1
