@@ -101,7 +101,6 @@ class Revision(object):
         reversed_result.reverse()
         return reversed_result
 
-
 def is_ancestor(revision_id, candidate_id, branch):
     """Return true if candidate_id is an ancestor of revision_id.
 

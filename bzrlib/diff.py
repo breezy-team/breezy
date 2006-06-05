@@ -219,8 +219,13 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
     import sys
     output = sys.stdout
     def spec_tree(spec):
-        revision_id = spec.in_store(tree.branch).rev_id
-        return tree.branch.repository.revision_tree(revision_id)
+        if tree:
+            revision = spec.in_store(tree.branch)
+        else:
+            revision = spec.in_store(None)
+        revision_id = revision.rev_id
+        branch = revision.branch
+        return branch.repository.revision_tree(revision_id)
     if old_revision_spec is None:
         old_tree = tree.basis_tree()
     else:
