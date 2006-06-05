@@ -235,8 +235,15 @@ class PathNotChild(BzrNewError):
             self.extra = ''
 
 
+# TODO: This is given a URL; we try to unescape it but doing that from inside
+# the exception object is a bit undesirable.
+# TODO: Probably this behavior of should be a common superclass 
 class NotBranchError(PathError):
-    """Not a branch: %(path)s"""
+    "Not a branch: %(path)s" 
+
+    def __init__(self, path):
+       import bzrlib.urlutils as urlutils
+       self.path = urlutils.unescape_for_display(path, 'ascii')
 
 
 class AlreadyBranchError(PathError):
