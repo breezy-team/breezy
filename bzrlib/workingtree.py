@@ -1188,15 +1188,26 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def _cache_basis_inventory(self, new_revision):
         """Cache new_revision as the basis inventory."""
+        # TODO: this should allow the ready-to-use inventory to be passed in,
+        # as commit already has that ready-to-use [while the format is the
+        # same, that is].
         try:
             # this double handles the inventory - unpack and repack - 
             # but is easier to understand. We can/should put a conditional
             # in here based on whether the inventory is in the latest format
             # - perhaps we should repack all inventories on a repository
             # upgrade ?
-            inv = self.branch.repository.get_inventory(new_revision)
-            inv.revision_id = new_revision
-            xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
+            # the fast path is to copy the raw xml from the repository. If the
+            # xml contains 'revision_id="', then we assume the right 
+            # revision_id is set. We must check for this full string, because a
+            # root node id can legitimately look like 'revision_id' but cannot
+            # contain a '"'.
+            xml = self.branch.repository.get_inventory_xml(new_revision)
+            if not 'revision_id="' in xml.split('\n', 1)[0]:
+                inv = self.branch.repository.deserialise_inventory(
+                    new_revision, xml)
+                inv.revision_id = new_revision
+                xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
 
             path = self._basis_inventory_name()
             self._control_files.put_utf8(path, xml)

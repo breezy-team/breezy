@@ -362,7 +362,15 @@ class Repository(object):
     @needs_read_lock
     def get_inventory(self, revision_id):
         """Get Inventory object by hash."""
-        xml = self.get_inventory_xml(revision_id)
+        return self.deserialise_inventory(
+            revision_id, self.get_inventory_xml(revision_id))
+
+    def deserialise_inventory(self, revision_id, xml):
+        """Transform the xml into an inventory object. 
+
+        :param revision_id: The expected revision id of the inventory.
+        :param xml: A serialised inventory.
+        """
         return bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
 
     @needs_read_lock
