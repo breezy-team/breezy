@@ -507,8 +507,9 @@ class cmd_push(Command):
             if stored_loc is None:
                 raise BzrCommandError("No push location known or specified.")
             else:
-                self.outf.write("Using saved location: %s" 
-                    % urlutils.unescape_for_display(stored_loc))
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s" % display_url)
                 location = stored_loc
 
         transport = get_transport(location)
@@ -1980,20 +1981,14 @@ class cmd_merge(Command):
                      Option('show-base', help="Show base revision text in "
                             "conflicts")]
 
+
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False):
         if merge_type is None:
             merge_type = Merge3Merger
 
         tree = WorkingTree.open_containing(u'.')[0]
-        stored_loc = tree.branch.get_parent()
-        if branch is None:
-            if stored_loc is None:
-                raise BzrCommandError("No merge branch known or specified.")
-            else:
-                print (u"Using saved branch: %s" 
-                    % urlutils.unescape_for_display(stored_loc))
-                branch = stored_loc
+        branch = self._get_remembered_parent(tree, branch, 'Merging from')
 
         if revision is None or len(revision) < 1:
             base = [None, None]
@@ -2026,9 +2021,9 @@ class cmd_merge(Command):
         try:
             try:
                 conflict_count = merge(other, base, check_clean=(not force),
-                                       merge_type=merge_type, 
+                                       merge_type=merge_type,
                                        reprocess=reprocess,
-                                       show_base=show_base, 
+                                       show_base=show_base,
                                        pb=pb, file_list=interesting_files)
             finally:
                 pb.finished()
@@ -2044,6 +2039,21 @@ class cmd_merge(Command):
                  "please specify an explicit base with -r,\n"
                  "and (if you want) report this to the bzr developers\n")
             log_error(m)
+
+    # TODO: move up to common parent; this isn't merge-specific anymore. 
+    def _get_remembered_parent(self, tree, supplied_location, verb_string):
+        """Use tree.branch's parent if none was supplied.
+
+        Report if the remembered location was used.
+        """
+        if supplied_location is not None:
+            return supplied_location
+        stored_location = tree.branch.get_parent()
+        if stored_location is None:
+            raise BzrCommandError("No location specified or remembered")
+        display_url = urlutils.unescape_for_display(stored_location, self.outf.encoding)
+        self.outf.write("%s remembered location %s\n" % (verb_string, display_url))
+        return stored_location
 
 
 class cmd_remerge(Command):
