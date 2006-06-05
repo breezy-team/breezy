@@ -29,7 +29,6 @@ import bzrlib
 import bzrlib.errors as errors
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
-from bzrlib.osutils import safe_unicode
 from bzrlib.osutils import (
                             abspath,
                             pathjoin,
@@ -166,15 +165,14 @@ class BzrDir(object):
                     basis_repo = None
         return basis_repo, basis_branch, basis_tree
 
+    # TODO: This should be given a Transport, and should chdir up; otherwise
+    # this will open a new connection.
     def _make_tail(self, url):
-        segments = url.split('/')
-        if segments and segments[-1] not in ('', '.'):
-            parent = '/'.join(segments[:-1])
-            print '_make_tail(%s) => parent: %s, segment: %s' % (
-                url, parent, segments[-1])
-            t = bzrlib.transport.get_transport(parent)
+        head, tail = urlutils.split(url)
+        if tail and tail != '.':
+            t = bzrlib.transport.get_transport(head)
             try:
-                t.mkdir(segments[-1])
+                t.mkdir(tail)
             except errors.FileExists:
                 pass
 

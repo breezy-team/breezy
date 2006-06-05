@@ -252,6 +252,9 @@ def split(url, exclude_trailing_slash=True):
     :param url: A relative or absolute URL
     :param exclude_trailing_slash: Strip off a final '/' if it is part
         of the path (but not if it is part of the protocol specification)
+
+    :return: (parent_url, child_dir).  child_dir may be the empty string if we're at 
+        the root.
     """
     scheme_loc, first_path_slash = _find_scheme_and_separator(url)
 
