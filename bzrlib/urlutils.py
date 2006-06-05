@@ -376,16 +376,20 @@ def unescape_for_display(url, encoding):
     This will turn file:// urls into local paths, and try to decode
     any portions of a http:// style url that it can.
 
+    Any sections of the URL which can't be represented in the encoding or 
+    need to stay as escapes are left alone.
+
     :param url: A 7-bit ASCII URL
     :param encoding: The final output encoding
-    :return: A string which is encoded in the local encoding, suitable
-        for displaying on the terminal. Any section which cannot be
-        encoded in the given encoding will remain URL escaped.
+
+    :return: A unicode string which can be safely encoded into the 
+         specified encoding.
     """
     if url.startswith('file://'):
         try:
             path = local_path_from_url(url)
-            return path.encode(encoding)
+            path.encode(encoding)
+            return path
         except UnicodeError:
             return url
 
@@ -411,11 +415,12 @@ def unescape_for_display(url, encoding):
             pass
         else:
             try:
-                res[i] = decoded.encode(encoding)
+                decoded.encode(encoding)
             except UnicodeEncodeError:
                 # If this chunk cannot be encoded in the local
                 # encoding, then we should leave it alone
                 pass
-    return '/'.join(res)
-
-
+            else:
+                # Otherwise take the url decoded one
+                res[i] = decoded
+    return u'/'.join(res)

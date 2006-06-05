@@ -325,6 +325,7 @@ class TestUrlToPath(TestCase):
         # Test that URLs are converted to nice unicode strings for display
         def test(expected, url, encoding='utf-8'):
             disp_url = urlutils.unescape_for_display(url, encoding=encoding)
+            self.assertIsInstance(disp_url, unicode)
             self.assertEqual(expected, disp_url)
         test('http://foo', 'http://foo')
         if sys.platform == 'win32':
@@ -333,28 +334,31 @@ class TestUrlToPath(TestCase):
             test('/foo/path', 'file:///foo/path')
 
         test('http://foo/%2Fbaz', 'http://foo/%2Fbaz')
-        test(u'http://host/r\xe4ksm\xf6rg\xe5s'.encode('utf-8'), 
-                'http://host/r%C3%A4ksm%C3%B6rg%C3%A5s')
+        test(u'http://host/r\xe4ksm\xf6rg\xe5s',
+             'http://host/r%C3%A4ksm%C3%B6rg%C3%A5s')
 
         # Make sure special escaped characters stay escaped
         test(u'http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C%23',
-            'http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C%23')
+             'http://host/%3B%2F%3F%3A%40%26%3D%2B%24%2C%23')
 
         # Can we handle sections that don't have utf-8 encoding?
-        test('http://host/%EE%EE%EE/r\xc3\xa4ksm\xc3\xb6rg\xc3\xa5s',
-            'http://host/%EE%EE%EE/r%C3%A4ksm%C3%B6rg%C3%A5s')
+        test(u'http://host/%EE%EE%EE/r\xe4ksm\xf6rg\xe5s',
+             'http://host/%EE%EE%EE/r%C3%A4ksm%C3%B6rg%C3%A5s')
 
         # Test encoding into output that can handle some characters
-        test('http://host/%EE%EE%EE/r\xe4ksm\xf6rg\xe5s',
-            'http://host/%EE%EE%EE/r%C3%A4ksm%C3%B6rg%C3%A5s', 
-            encoding='iso-8859-1')
-        # Test utf-8 encoding, when some characters aren't handled
-        test('http://host/\xd8\xac\xd9\x88\xd8\xac\xd9\x88', 
-            'http://host/%d8%ac%d9%88%d8%ac%d9%88', 
-            encoding='utf-8')
-        test('http://host/%d8%ac%d9%88%d8%ac%d9%88', 
-            'http://host/%d8%ac%d9%88%d8%ac%d9%88', 
-            encoding='iso-8859-1')
+        test(u'http://host/%EE%EE%EE/r\xe4ksm\xf6rg\xe5s',
+             'http://host/%EE%EE%EE/r%C3%A4ksm%C3%B6rg%C3%A5s',
+             encoding='iso-8859-1')
+
+        # This one can be encoded into utf8
+        test(u'http://host/\u062c\u0648\u062c\u0648',
+             'http://host/%d8%ac%d9%88%d8%ac%d9%88',
+             encoding='utf-8')
+
+        # This can't be put into 8859-1 and so stays as escapes
+        test(u'http://host/%d8%ac%d9%88%d8%ac%d9%88',
+             'http://host/%d8%ac%d9%88%d8%ac%d9%88',
+             encoding='iso-8859-1')
 
     def test_escape(self):
         self.assertEqual('%25', urlutils.escape('%'))

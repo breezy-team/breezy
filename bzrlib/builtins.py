@@ -424,14 +424,15 @@ class cmd_pull(Command):
             branch_to = tree_to.branch
         except NoWorkingTree:
             tree_to = None
-            branch_to = Branch.open_containing(u'.')[0] 
+            branch_to = Branch.open_containing(u'.')[0]
         stored_loc = branch_to.get_parent()
         if location is None:
             if stored_loc is None:
                 raise BzrCommandError("No pull location known or specified.")
             else:
-                self.outf.write("Using saved location: %s\n" 
-                    % urlutils.unescape_for_display(stored_loc))
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
         branch_from = Branch.open(location)
