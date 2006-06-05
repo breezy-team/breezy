@@ -64,6 +64,9 @@ class Repository(object):
 
         returns the sha1 of the serialized inventory.
         """
+        assert inv.revision_id is None or inv.revision_id == revid, \
+            "Mismatch between inventory revision" \
+            " id and insertion revid (%r, %r)" % (inv.revision_id, revid)
         inv_text = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
         inv_sha1 = bzrlib.osutils.sha_string(inv_text)
         inv_vf = self.control_weaves.get_weave('inventory',
@@ -635,6 +638,10 @@ def install_revision(repository, rev, revision_tree):
                 repository.get_transaction())
         if ie.revision not in w:
             text_parents = []
+            # FIXME: TODO: The following loop *may* be overlapping/duplicate
+            # with inventoryEntry.find_previous_heads(). if it is, then there
+            # is a latent bug here where the parents may have ancestors of each
+            # other. RBC, AB
             for revision, tree in parent_trees.iteritems():
                 if ie.file_id not in tree:
                     continue
