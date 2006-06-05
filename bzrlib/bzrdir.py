@@ -176,6 +176,7 @@ class BzrDir(object):
             except errors.FileExists:
                 pass
 
+    # TODO: Should take a Transport
     @classmethod
     def create(cls, base):
         """Create a new BzrDir at the url 'base'.
@@ -191,7 +192,6 @@ class BzrDir(object):
                     "not one of %r" % cls)
         head, tail = urlutils.split(base)
         if tail and tail != '.':
-            # TODO: chdir to parent, don't use get_transport
             t = bzrlib.transport.get_transport(head)
             try:
                 t.mkdir(tail)
