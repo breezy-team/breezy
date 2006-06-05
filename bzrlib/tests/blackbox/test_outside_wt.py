@@ -31,10 +31,8 @@ class TestOutsideWT(ChrootedTestCase):
 
     def test_cwd_log(self):
         os.chdir(tempfile.mkdtemp())
-        cwd = urlutils.local_path_to_url(getcwd())
         out, err = self.run_bzr('log', retcode=3)
-
-        self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (cwd,),
+        self.assertEqual(u'bzr: ERROR: Not a branch: %s/\n' % (getcwd(),),
                          err)
 
     def test_url_log(self):
