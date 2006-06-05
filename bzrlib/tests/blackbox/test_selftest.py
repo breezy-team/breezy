@@ -78,7 +78,7 @@ class TestOptions(TestCase):
 
 class TestRunBzr(ExternalBase):
 
-    def run_bzr_captured(self, argv, retcode=0, stdin=None):
+    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None):
         self.stdin = stdin
 
     def test_stdin(self):
