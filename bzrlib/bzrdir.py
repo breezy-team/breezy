@@ -189,12 +189,12 @@ class BzrDir(object):
         if cls is not BzrDir:
             raise AssertionError("BzrDir.create always creates the default format, "
                     "not one of %r" % cls)
-        segments = base.split('/')
-        if segments and segments[-1] not in ('', '.'):
-            parent = '/'.join(segments[:-1])
-            t = bzrlib.transport.get_transport(parent)
+        head, tail = urlutils.split(base)
+        if tail and tail != '.':
+            # TODO: chdir to parent, don't use get_transport
+            t = bzrlib.transport.get_transport(head)
             try:
-                t.mkdir(segments[-1])
+                t.mkdir(tail)
             except errors.FileExists:
                 pass
         return BzrDirFormat.get_default_format().initialize(safe_unicode(base))
