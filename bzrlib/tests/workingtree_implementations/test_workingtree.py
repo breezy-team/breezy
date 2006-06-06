@@ -150,10 +150,22 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.revert(['hello.txt'])
         self.failUnlessExists('hello.txt')
 
-    def test_unknowns(self):
+    def test_unknowns_by_default_patterns(self):
+        """Backup files are ignored by default"""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt',
                          'hello.txt.~1~'])
+        self.assertEquals(list(tree.unknowns()),
+                          ['hello.txt'])
+
+    def test_versioned_files_not_unknown(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['hello.txt',
+                         'hello.txt.~1~'])
+        tree.add('hello.txt')
+        self.assertEquals(list(tree.unknowns()),
+                          [])
+        tree.remove('hello.txt')
         self.assertEquals(list(tree.unknowns()),
                           ['hello.txt'])
 

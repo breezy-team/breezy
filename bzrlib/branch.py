@@ -300,32 +300,6 @@ class Branch(object):
         
         If self and other have not diverged, return a list of the revisions
         present in other, but missing from self.
-
-        >>> from bzrlib.workingtree import WorkingTree
-        >>> bzrlib.trace.silent = True
-        >>> d1 = bzrdir.ScratchDir()
-        >>> br1 = d1.open_branch()
-        >>> wt1 = d1.open_workingtree()
-        >>> d2 = bzrdir.ScratchDir()
-        >>> br2 = d2.open_branch()
-        >>> wt2 = d2.open_workingtree()
-        >>> br1.missing_revisions(br2)
-        []
-        >>> wt2.commit("lala!", rev_id="REVISION-ID-1")
-        >>> br1.missing_revisions(br2)
-        [u'REVISION-ID-1']
-        >>> br2.missing_revisions(br1)
-        []
-        >>> wt1.commit("lala!", rev_id="REVISION-ID-1")
-        >>> br1.missing_revisions(br2)
-        []
-        >>> wt2.commit("lala!", rev_id="REVISION-ID-2A")
-        >>> br1.missing_revisions(br2)
-        [u'REVISION-ID-2A']
-        >>> wt1.commit("lala!", rev_id="REVISION-ID-2B")
-        >>> br1.missing_revisions(br2)
-        Traceback (most recent call last):
-        DivergedBranches: These branches have diverged.  Try merge.
         """
         self_history = self.revision_history()
         self_len = len(self_history)
@@ -1332,20 +1306,3 @@ class BranchTestProviderAdapter(object):
             new_test.id = make_new_test_id()
             result.addTest(new_test)
         return result
-
-
-######################################################################
-# predicates
-
-
-@deprecated_function(zero_eight)
-def ScratchBranch(*args, **kwargs):
-    """See bzrlib.bzrdir.ScratchDir."""
-    d = ScratchDir(*args, **kwargs)
-    return d.open_branch()
-
-
-@deprecated_function(zero_eight)
-def is_control_file(*args, **kwargs):
-    """See bzrlib.workingtree.is_control_file."""
-    return bzrlib.workingtree.is_control_file(*args, **kwargs)

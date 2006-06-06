@@ -907,19 +907,6 @@ class WorkingTree(bzrlib.tree.Tree):
 
         These are files in the working directory that are not versioned or
         control files or ignored.
-        
-        >>> from bzrlib.bzrdir import ScratchDir
-        >>> d = ScratchDir(files=['foo', 'foo~'])
-        >>> b = d.open_branch()
-        >>> tree = d.open_workingtree()
-        >>> map(str, tree.unknowns())
-        ['foo']
-        >>> tree.add('foo')
-        >>> list(b.unknowns())
-        []
-        >>> tree.remove('foo')
-        >>> list(b.unknowns())
-        [u'foo']
         """
         for subp in self.extras():
             if not self.is_ignored(subp):

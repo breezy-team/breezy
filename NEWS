@@ -59,6 +59,12 @@ IN DEVELOPMENT
     * bzrlib.delta.compare_trees now iterates in alphabetically sorted order,
       rather than randomly walking the inventories. (John Arbash Meinel)
 
+  TESTING:
+
+    * Doctests are now run in temporary directories which are cleaned up when
+      they finish, rather than using special ScratchDir/ScratchBranch objects.
+      (Martin Pool)
+
 bzr 0.8.2  2006-05-17
   
   BUG FIXES:

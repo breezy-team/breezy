@@ -281,23 +281,6 @@ class LocalTransport(Transport):
             return True
 
 
-class ScratchTransport(LocalTransport):
-    """A transport that works in a temporary dir and cleans up after itself.
-    
-    The dir only exists for the lifetime of the Python object.
-    Obviously you should not put anything precious in it.
-    """
-
-    def __init__(self, base=None):
-        if base is None:
-            base = tempfile.mkdtemp()
-        super(ScratchTransport, self).__init__(base)
-
-    def __del__(self):
-        rmtree(self.base, ignore_errors=True)
-        mutter("%r destroyed" % self)
-
-
 class LocalRelpathServer(Server):
     """A pretend server for local transports, using relpaths."""
 
