@@ -938,6 +938,12 @@ class TestamentMismatch(BzrNewError):
         self.measured = measured
 
 
+class NotABundle(BzrNewError):
+    """Not a bzr revision-bundle: %(text)r"""
+    def __init__(self, text):
+        self.text = text
+
+
 class BadBundle(Exception): pass
 
 
