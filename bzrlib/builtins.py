@@ -25,12 +25,14 @@ import bzrlib
 import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
+from bzrlib.bundle.read_bundle import BundleReader
+from bzrlib.bundle.apply_bundle import merge_bundle
 from bzrlib.commands import Command, display_command
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch,
-                           NotVersionedError)
+                           NotVersionedError, BadBundle)
 from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
@@ -793,13 +795,29 @@ class cmd_remove(Command):
 
     This makes bzr stop tracking changes to a versioned file.  It does
     not delete the working copy.
+
+    You can specify one or more files, and/or --new.  If you specify --new,
+    only 'added' files will be removed.  If you specify both, then new files
+    in the specified directories will be removed.  If the directories are
+    also new, they will also be removed.
     """
-    takes_args = ['file+']
-    takes_options = ['verbose']
+    takes_args = ['file*']
+    takes_options = ['verbose', Option('new', help='remove newly-added files')]
     aliases = ['rm']
     
-    def run(self, file_list, verbose=False):
+    def run(self, file_list, verbose=False, new=False):
         tree, file_list = tree_files(file_list)
+        if new is False:
+            if file_list is None:
+                raise BzrCommandError('Specify one or more files to remove, or'
+                                      ' use --new.')
+        else:
+            from bzrlib.delta import compare_trees
+            added = [compare_trees(tree.basis_tree(), tree,
+                                   specific_files=file_list).added]
+            file_list = sorted([f[0] for f in added[0]], reverse=True)
+            if len(file_list) == 0:
+                raise BzrCommandError('No matching files.')
         tree.remove(file_list, verbose=verbose)
 
 
@@ -1988,7 +2006,27 @@ class cmd_merge(Command):
         if merge_type is None:
             merge_type = Merge3Merger
 
+
         tree = WorkingTree.open_containing(u'.')[0]
+        try:
+            if branch is not None:
+                reader = BundleReader(file(branch, 'rb'))
+            else:
+                reader = None
+        except IOError, e:
+            if e.errno not in (errno.ENOENT, errno.EISDIR):
+                raise
+            reader = None
+        except BadBundle:
+            reader = None
+        if reader is not None:
+            conflicts = merge_bundle(reader, tree, not force, merge_type,
+                                        reprocess, show_base)
+            if conflicts == 0:
+                return 0
+            else:
+                return 1
+
         stored_loc = tree.branch.get_parent()
         if branch is None:
             if stored_loc is None:
@@ -2469,7 +2507,7 @@ class cmd_uncommit(bzrlib.commands.Command):
     --dry-run will go through all the motions, but not actually
     remove anything.
     
-    In the future, uncommit will create a changeset, which can then
+    In the future, uncommit will create a revision bundle, which can then
     be re-applied.
     """
 
@@ -2629,6 +2667,7 @@ def merge(other_revision, base_revision,
 # aliases.  ideally we would avoid loading the implementation until the
 # details were needed.
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
+from bzrlib.bundle.commands import cmd_bundle_revisions
 from bzrlib.sign_my_commits import cmd_sign_my_commits
 from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join, \
         cmd_weave_plan_merge, cmd_weave_merge_text
