@@ -1861,6 +1861,13 @@ class CommitBuilder(object):
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
         """
+        # TODO: new_revision_id is only known in some repositories after the
+        # commit completes, in others it can be created or assigned earlier.
+        # The public interface for CommitBuilder should not assume that any
+        # revision id exists to accomodate this. It should allow a 'request' to
+        # be made to force a revision, which will fail when they cannot be set
+        # in this manner.
+        self.new_revision_id = revision_id
         previous_entries = ie.find_previous_heads(
             parent_invs,
             self.repository.weave_store,
@@ -1870,7 +1877,45 @@ class CommitBuilder(object):
             # and inventory.
             ie.snapshot(revision_id, path, previous_entries,
                         tree, self.repository.weave_store,
-                        self.repository.get_transaction())
+                        self.repository.get_transaction(), self)
+    
+    def record_file_text(self, file_id, file_parents, get_content_byte_lines, 
+        text_sha1=None, text_size=None):
+        """Record the text of file file_id
+
+        :param file_id: The file_id of the file to record the text of.
+        :param file_parents: The per-file parent revision ids.
+        :param get_content_byte_lines: A callable which will return the byte
+            lines for the file.
+        :param text_sha1: Optional SHA1 of the file contents.
+        :param text_size: Optional size of the file contents.
+        """
+        mutter('storing text of file {%s} in revision {%s} into %r',
+               file_id, self.new_revision_id, self.repository.weave_store)
+        # special case to avoid diffing on renames or 
+        # reparenting
+        if (len(file_parents) == 1
+            and text_sha1 == file_parents.values()[0].text_sha1
+            and text_size == file_parents.values()[0].text_size):
+            previous_ie = file_parents.values()[0]
+            versionedfile = self.repository.weave_store.get_weave(file_id, 
+                self.repository.get_transaction())
+            versionedfile.clone_text(self.new_revision_id, 
+                previous_ie.revision, file_parents.keys())
+            return text_sha1, text_size
+        else:
+            new_lines = get_content_byte_lines()
+            # TODO: Rather than invoking sha_strings here, _add_text_to_weave
+            # should return the SHA1 and size
+            self._add_text_to_weave(file_id, new_lines, file_parents.keys())
+            return bzrlib.osutils.sha_strings(new_lines), \
+                sum(map(len, new_lines))
+
+    def _add_text_to_weave(self, file_id, new_lines, parents):
+        versionedfile = self.repository.weave_store.get_weave_or_empty(
+            file_id, self.repository.get_transaction())
+        versionedfile.add_lines(self.new_revision_id, parents, new_lines)
+        versionedfile.clear_cache()
 
 
 # Copied from xml.sax.saxutils
