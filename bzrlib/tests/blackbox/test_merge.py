@@ -23,6 +23,8 @@ import os
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
+from bzrlib.conflicts import ConflictList
+from bzrlib.delta import compare_trees
 from bzrlib.osutils import abspath
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
@@ -197,3 +199,10 @@ class TestMerge(ExternalBase):
                                               tree_b.last_revision())
         self.assertEqualDiff(testament_a.as_text(),
                          testament_b.as_text())
+        tree_a.set_conflicts(ConflictList())
+        tree_a.commit('message')
+        # it is legal to attempt to merge an already-merged bundle
+        self.runbzr('merge ../bundle')
+        # but it does nothing
+        self.assertFalse(compare_trees(tree_a.basis_tree(), 
+                                       tree_a).has_changed())
