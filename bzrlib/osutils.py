@@ -192,7 +192,7 @@ if os.name == "posix":
     # choke on a Unicode string containing a relative path if
     # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
     # string.
-    _fs_enc = sys.getfilesystemencoding()
+    _fs_enc = sys.getfilesystemencoding() or 'ascii'
     def abspath(path):
         return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
 
