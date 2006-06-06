@@ -122,7 +122,7 @@ def _get_revision_delta(branch, revno):
     # XXX: What are we supposed to do when showing a summary for something 
     # other than a mainline revision.  The delta to it's first parent, or
     # (more useful) the delta to a nominated other revision.
-    return branch.get_revision_delta(revno)
+    return branch.get_revision_delta(branch.get_rev_id(revno))
 
 
 def show_log(branch,
