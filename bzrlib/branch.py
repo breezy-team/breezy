@@ -249,6 +249,10 @@ class Branch(object):
         branch.
         """
         return None
+    
+    def get_commit_builder(self, parents):
+        """Obtain a CommitBuilder for this branch."""
+        return self.repository.get_commit_builder(self, parents)
 
     def get_master_branch(self):
         """Return the branch we are bound to.

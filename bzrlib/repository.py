@@ -219,6 +219,10 @@ class Repository(object):
         return InterRepository.get(source, self).fetch(revision_id=revision_id,
                                                        pb=pb)
 
+    def get_commit_builder(self, branch, parents):
+        """Obtain a CommitBuilder for this repository."""
+        return CommitBuilder(self)
+
     def unlock(self):
         self.control_files.unlock()
 
@@ -1834,6 +1838,39 @@ class CopyConverter(object):
         """Update the pb by a step."""
         self.count +=1
         self.pb.update(message, self.count, self.total)
+
+
+class CommitBuilder(object):
+    """Provides an interface to build up a commit.
+
+    This allows describing a tree to be committed without needing to 
+    know the internals of the format of the repository.
+    """
+
+    def __init__(self, repository):
+        self.repository = repository
+
+    def record_entry_contents(self, ie, parent_invs, revision_id, path, tree):
+        """Record the content of ie from tree into the commit if needed.
+
+        :param ie: An inventory entry present in the commit.
+        :param parent_invs: The inventories of the parent revisions of the
+            commit.
+        :param revision_id: The revision id of the revision being commited.
+        :param path: The path the entry is at in the tree.
+        :param tree: The tree which contains this entry and should be used to 
+        obtain content.
+        """
+        previous_entries = ie.find_previous_heads(
+            parent_invs,
+            self.repository.weave_store,
+            self.repository.get_transaction())
+        if ie.revision is None:
+            # we are creating a new revision for ie in the history store
+            # and inventory.
+            ie.snapshot(revision_id, path, previous_entries,
+                        tree, self.repository.weave_store,
+                        self.repository.get_transaction())
 
 
 # Copied from xml.sax.saxutils

@@ -322,6 +322,7 @@ class Commit(object):
                 raise NotImplementedError('selected-file commit of merges is not supported yet: files %r',
                         self.specific_files)
             self._check_parents_present()
+            self.builder = self.branch.get_commit_builder(self.parents)
             
             self._remove_deleted()
             self._populate_new_inv()
@@ -555,16 +556,8 @@ class Commit(object):
         self._emit_progress_update()
         for path, ie in self.new_inv.iter_entries():
             self._emit_progress_update()
-            previous_entries = ie.find_previous_heads(
-                self.parent_invs,
-                self.weave_store,
-                self.branch.repository.get_transaction())
-            if ie.revision is None:
-                # we are creating a new revision for ie in the history store
-                # and inventory.
-                ie.snapshot(self.rev_id, path, previous_entries,
-                    self.work_tree, self.weave_store,
-                    self.branch.repository.get_transaction())
+            self.builder.record_entry_contents(ie, self.parent_invs, 
+                self.rev_id, path, self.work_tree)
             # describe the nature of the change that has occured relative to
             # the basis inventory.
             if (self.basis_inv.has_id(ie.file_id)):
