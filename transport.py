@@ -30,6 +30,7 @@ class SvnTransport(Transport):
     """ Fake transport for Subversion-related namespaces. This implements 
     just as much of Transport as is necessary to fool Bazaar-NG. """
     def __init__(self, url="", ra=None, root_url=None, scheme=None):
+        from branch import auth_baton
         Transport.__init__(self,url)
 
         if url.startswith("svn://") or \
@@ -42,6 +43,7 @@ class SvnTransport(Transport):
         self.svn_url = self.svn_url.rstrip('/')
 
         callbacks = svn.ra.callbacks2_t()
+        callbacks.auth_baton = auth_baton
 
         if not ra:
             self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, None, None)
