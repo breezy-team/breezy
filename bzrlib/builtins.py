@@ -32,7 +32,7 @@ import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch,
-                           NotVersionedError, BadBundle)
+                           NotVersionedError, NotABundle)
 from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
@@ -2017,7 +2017,7 @@ class cmd_merge(Command):
             if e.errno not in (errno.ENOENT, errno.EISDIR):
                 raise
             reader = None
-        except BadBundle:
+        except NotABundle:
             reader = None
         if reader is not None:
             conflicts = merge_bundle(reader, tree, not force, merge_type,
