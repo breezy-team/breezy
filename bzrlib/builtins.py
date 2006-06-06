@@ -443,7 +443,6 @@ class cmd_pull(Command):
         if branch_to.get_parent() is None or remember:
             branch_to.set_parent(branch_from.base)
 
-
         if revision is None:
             rev_id = None
         elif len(revision) == 1:
@@ -2074,9 +2073,6 @@ class cmd_merge(Command):
 
         branch = self._get_remembered_parent(tree, branch, 'Merging from')
 
-        if tree.branch.get_parent() is None or remember:
-            tree.branch.set_parent(branch)
-
         if revision is None or len(revision) < 1:
             base = [None, None]
             other = [branch, -1]
@@ -2136,6 +2132,7 @@ class cmd_merge(Command):
         if supplied_location is not None:
             return supplied_location
         stored_location = tree.branch.get_parent()
+        mutter("%s", stored_location)
         if stored_location is None:
             raise BzrCommandError("No location specified or remembered")
         display_url = urlutils.unescape_for_display(stored_location, self.outf.encoding)

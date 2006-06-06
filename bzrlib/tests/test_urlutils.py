@@ -382,11 +382,33 @@ class TestUrlToPath(TestCase):
             self.assertEqual(expected, result)
             
         test('a', 'http://host/', 'http://host/a')
-        test('http://entirely/different', 'sftp://host/branch', 'http://entirely/different')
-        test('../person/feature', 'http://host/branch/mainline', 'http://host/branch/person/feature')
+        test('http://entirely/different', 'sftp://host/branch',
+                    'http://entirely/different')
+        test('../person/feature', 'http://host/branch/mainline',
+                    'http://host/branch/person/feature')
         test('..', 'http://host/branch', 'http://host/')
         test('http://host2/branch', 'http://host1/branch', 'http://host2/branch')
-        test('.', 'http://host1/branch' , 'http://host1/branch')
-        test('../../../branch/2b' , 'file:///home/jelmer/foo/bar/2b', 'file:///home/jelmer/branch/2b')
-        test('../../branch/2b' , 'sftp://host/home/jelmer/bar/2b', 'sftp://host/home/jelmer/branch/2b')
-        test('../../branch/feature/2b' , 'http://host/home/jelmer/bar/2b', 'http://host/home/jelmer/branch/feature/2b')
+        test('.', 'http://host1/branch', 'http://host1/branch')
+        test('../../../branch/2b', 'file:///home/jelmer/foo/bar/2b',
+                    'file:///home/jelmer/branch/2b')
+        test('../../branch/2b', 'sftp://host/home/jelmer/bar/2b',
+                    'sftp://host/home/jelmer/branch/2b')
+        test('../../branch/feature/2b', 'http://host/home/jelmer/bar/2b',
+                    'http://host/home/jelmer/branch/feature/2b')
+        test('../../branch/feature/2b', 'http://host/home/jelmer/bar/2b/', 
+                    'http://host/home/jelmer/branch/feature/2b')
+        # relative_url should preserve a trailing slash
+        test('../../branch/feature/2b/', 'http://host/home/jelmer/bar/2b/',
+                    'http://host/home/jelmer/branch/feature/2b/')
+        test('../../branch/feature/2b/', 'http://host/home/jelmer/bar/2b',
+                    'http://host/home/jelmer/branch/feature/2b/')
+
+        # TODO: treat http://host as http://host/
+        #       relative_url is typically called from a branch.base or
+        #       transport.base which always ends with a /
+        #test('a', 'http://host', 'http://host/a')
+        test('http://host/a', 'http://host', 'http://host/a')
+        #test('.', 'http://host', 'http://host/')
+        test('http://host/', 'http://host', 'http://host/')
+        #test('.', 'http://host/', 'http://host')
+        test('http://host', 'http://host/', 'http://host')

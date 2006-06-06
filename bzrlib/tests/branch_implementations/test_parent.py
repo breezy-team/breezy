@@ -51,9 +51,9 @@ class TestParent(TestCaseWithTransport):
         self.assertEquals(b.get_parent(), local_path_to_url('../other_branch'))
         path = local_path_to_url('../yanb')
         b.set_parent(path)
-        self.assertEqual(b.get_parent(), path)
         self.assertEqual(b.control_files.get('parent').read().strip('\n'), 
             '../yanb')
+        self.assertEqual(b.get_parent(), path)
 
 
         self.assertRaises(bzrlib.errors.InvalidURL, b.set_parent, u'\xb5')

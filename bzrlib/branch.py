@@ -1164,6 +1164,14 @@ class BzrBranch(Branch):
         if url is None:
             self.control_files._transport.delete('parent')
         else:
+            if isinstance(url, unicode):
+                try: 
+                    url = url.encode('ascii')
+                except UnicodeEncodeError:
+                    raise bzrlib.errors.InvalidURL(url,
+                        "Urls must be 7-bit ascii, "
+                        "use bzrlib.urlutils.escape")
+                    
             url = urlutils.relative_url(self.base, url)
             self.control_files.put('parent', url + '\n')
 
