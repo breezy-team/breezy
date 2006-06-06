@@ -18,7 +18,9 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.osutils import abspath, realpath
+import bzrlib.errors
+from bzrlib.osutils import abspath, realpath, getcwd
+from bzrlib.urlutils import local_path_from_url, local_path_to_url, escape
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -38,5 +40,26 @@ class TestParent(TestCaseWithTransport):
         url = 'http://bazaar-vcs.org/bzr/bzr.dev'
         b.set_parent(url)
         self.assertEquals(b.get_parent(), url)
+        self.assertEqual(b.control_files.get('parent').read().strip('\n'), url)
+
         b.set_parent(None)
         self.assertEquals(b.get_parent(), None)
+
+        b.set_parent('../other_branch')
+        cwd = getcwd()
+
+        self.assertEquals(b.get_parent(), local_path_to_url('../other_branch'))
+        path = local_path_to_url('../yanb')
+        b.set_parent(path)
+        self.assertEqual(b.get_parent(), path)
+        self.assertEqual(b.control_files.get('parent').read().strip('\n'), 
+            '../yanb')
+
+
+        self.assertRaises(bzrlib.errors.InvalidURL, b.set_parent, u'\xb5')
+        b.set_parent(escape(u'\xb5'))
+        self.assertEqual(b.control_files.get('parent').read().strip('\n'), 
+            '%C2%B5')
+
+        self.assertEqual(b.get_parent(), b.base + '%C2%B5')
+

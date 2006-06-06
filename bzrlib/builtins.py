@@ -519,6 +519,8 @@ class cmd_push(Command):
         location_url = transport.base
         if br_from.get_push_location() is None or remember:
             br_from.set_push_location(location_url)
+
+        old_rh = []
         try:
             dir_to = bzrlib.bzrdir.BzrDir.open(location_url)
             br_to = dir_to.open_branch()

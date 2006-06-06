@@ -127,7 +127,7 @@ if len(sys.argv) == 2:
         else:
             os.environ['BZR_EDITOR'] = 'rm'
 
-        self.assertRaises(IOError, bzrlib.msgeditor.edit_commit_message, '')
+        self.assertRaises((IOError, OSError), bzrlib.msgeditor.edit_commit_message, '')
 
     def test__get_editor(self):
         # Test that _get_editor can return a decent list of items

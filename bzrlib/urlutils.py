@@ -246,6 +246,38 @@ def normalize_url(url):
     return scheme + '://' + ''.join(path)
 
 
+def relative_url(base, other):
+    """Return a path to other from base.
+
+    If other is unrelated to base, return other. Else return a relative path.
+    This assumes no symlinks as part of the url.
+    """
+    base_scheme_loc, base_first_path_slash = _find_scheme_and_separator(base)
+    if base_first_path_slash is None:
+        return other
+    
+    other_scheme_loc, other_first_path_slash = _find_scheme_and_separator(other)
+    if other_first_path_slash is None:
+        return other
+
+    base_path = base[base_first_path_slash+1:]
+    other_path = other[other_first_path_slash+1:]
+
+    base_sections = base_path.split('/')
+    other_sections = other_path.split('/')
+
+    output_sections = []
+    for b, o in zip(base_sections, other_sections):
+        if b != o:
+            break
+        output_sections.append(b)
+    match_len = len(output_sections)
+    output_sections.extend(['..' for x in base_sections[match_len:]])
+    output_sections.extend(other_sections[match_len:])
+
+    return "/".join(output_sections) or "."
+
+
 def split(url, exclude_trailing_slash=True):
     """Split a URL into its parent directory and a child directory.
 

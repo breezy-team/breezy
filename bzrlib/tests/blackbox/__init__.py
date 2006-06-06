@@ -26,6 +26,7 @@ rather starts again from the run_bzr function.
 import sys
 
 from bzrlib.tests import (
+                          adapt_modules,
                           TestCaseWithTransport,
                           TestSuite,
                           TestLoader,
@@ -88,10 +89,7 @@ def test_suite():
     suite = loader.loadTestsFromModuleNames(testmod_names) 
 
     adapter = EncodingTestAdapter()
-    for mod_name in test_encodings:
-        mod = _load_module_by_name(mod_name)
-        for test in iter_suite_tests(loader.loadTestsFromModule(mod)):
-            suite.addTests(adapter.adapt(test))
+    adapt_modules(test_encodings, adapter, loader, suite)
 
     return suite
 

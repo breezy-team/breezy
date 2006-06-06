@@ -33,6 +33,7 @@ import re
 from stat import *
 import sys
 from unittest import TestSuite
+import urllib
 import urlparse
 
 import bzrlib.errors as errors
