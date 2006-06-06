@@ -509,10 +509,10 @@ class TestTestResult(TestCase):
         self.assertContainsRe(result_stream.getvalue(), 
             r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)\n"
             r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
-            r" +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n"
+            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?"
             r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n"
             r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
-            r" +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n"
+            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?"
             )
 
 

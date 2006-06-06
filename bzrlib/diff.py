@@ -31,7 +31,8 @@ from bzrlib.trace import mutter
 # list, write them out directly, etc etc.
 
 def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
-                  allow_binary=False, sequence_matcher=None):
+                  allow_binary=False, sequence_matcher=None,
+                  path_encoding='utf8'):
     # FIXME: difflib is wrong if there is no trailing newline.
     # The syntax used by patch seems to be "\ No newline at
     # end of file" following the last diff line from that
@@ -55,8 +56,8 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     if sequence_matcher is None:
         sequence_matcher = bzrlib.patiencediff.PatienceSequenceMatcher
     ud = unified_diff(oldlines, newlines,
-                      fromfile=old_filename, 
-                      tofile=new_filename,
+                      fromfile=old_filename.encode(path_encoding),
+                      tofile=new_filename.encode(path_encoding),
                       sequencematcher=sequence_matcher)
 
     ud = list(ud)

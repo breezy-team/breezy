@@ -73,13 +73,12 @@ class LockableFiles(object):
         :param lock_class: Class of lock strategy to use: typically
             either LockDir or TransportLock.
         """
-        object.__init__(self)
         self._transport = transport
         self.lock_name = lock_name
         self._transaction = None
-        self._find_modes()
         self._lock_mode = None
         self._lock_count = 0
+        self._find_modes()
         esc_name = self._escape(lock_name)
         self._lock = lock_class(transport, esc_name,
                                 file_modebits=self._file_mode,

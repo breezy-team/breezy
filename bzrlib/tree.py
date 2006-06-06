@@ -139,6 +139,10 @@ class RevisionTree(Tree):
         self._inventory = inv
         self._revision_id = revision_id
 
+    def get_revision_id(self):
+        """Return the revision id associated with this tree."""
+        return self._revision_id
+
     def get_weave(self, file_id):
         return self._weave_store.get_weave(file_id,
                 self._branch.get_transaction())
