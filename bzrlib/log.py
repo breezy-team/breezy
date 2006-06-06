@@ -461,7 +461,7 @@ class LineLogFormatter(LogFormatter):
             out.append("%d:" % revno)
         out.append(self.truncate(self.short_committer(rev), 20))
         out.append(self.date_string(rev))
-        out.append(self.message(rev).replace('\n', ' '))
+        out.append(rev.get_summary())
         return self.truncate(" ".join(out).rstrip('\n'), max_chars)
 
 

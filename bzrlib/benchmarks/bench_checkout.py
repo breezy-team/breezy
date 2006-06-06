@@ -23,7 +23,7 @@ class CheckoutBenchmark(Benchmark):
 
     def test_build_kernel_like_tree(self):
         """Checkout of a clean kernel sized tree should be (<10secs)."""
-        self.make_kernel_tree()
+        self.make_kernel_like_tree()
         self.run_bzr('add')
         self.run_bzr('commit', '-m', 'first post')
         # on robertc's machine the first sample of this took 105079ms/205417ms

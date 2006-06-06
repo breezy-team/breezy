@@ -458,13 +458,13 @@ class TestTestResult(TestCase):
         self.time(time.sleep, 0.001)
         result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^    [0-9]ms/   [ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^   [ 1-9][0-9]ms/   [ 1-9][0-9]ms$")
         # extracting the time from a non-bzrlib testcase sets to None
         result._recordTestStartTime()
         result.extractBenchmarkTime(
             unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^          [0-9]ms$")
+        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
         # cheat. Yes, wash thy mouth out with soap.
         self._benchtime = None
 
@@ -509,10 +509,10 @@ class TestTestResult(TestCase):
         self.assertContainsRe(result_stream.getvalue(), 
             r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)\n"
             r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
-            r" +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n"
+            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?"
             r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n"
             r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
-            r" +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n"
+            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?"
             )
 
 
