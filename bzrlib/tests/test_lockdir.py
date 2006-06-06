@@ -162,7 +162,10 @@ class TestLockDir(TestCaseWithTransport):
             self.assertRaises(LockContention, lf2.wait_lock,
                               timeout=0.4, poll=0.1)
             after = time.time()
-            self.assertTrue(after - before <= 1.0)
+            # it should only take about 0.4 seconds, but we allow more time in
+            # case the machine is heavily loaded
+            self.assertTrue(after - before <= 8.0, 
+                    "took %f seconds to detect lock contention" % (after - before))
         finally:
             lf1.unlock()
 

@@ -44,6 +44,7 @@ from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     Server,
+    split_url,
     Transport,
     )
 import bzrlib.ui
@@ -662,33 +663,8 @@ class SFTPTransport (Transport):
         return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
 
     def _split_url(self, url):
-        if isinstance(url, unicode):
-            # TODO: Disallow unicode urls
-            #raise InvalidURL(url, 'urls must not be unicode.')
-            url = url.encode('ascii')
-        (scheme, netloc, path, params,
-         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+        (scheme, username, password, host, port, path) = split_url(url)
         assert scheme == 'sftp'
-        username = password = host = port = None
-        if '@' in netloc:
-            username, host = netloc.split('@', 1)
-            if ':' in username:
-                username, password = username.split(':', 1)
-                password = urllib.unquote(password)
-            username = urllib.unquote(username)
-        else:
-            host = netloc
-
-        if ':' in host:
-            host, port = host.rsplit(':', 1)
-            try:
-                port = int(port)
-            except ValueError:
-                # TODO: Should this be ConnectionError?
-                raise TransportError('%s: invalid port number' % port)
-        host = urllib.unquote(host)
-
-        path = urlutils.unescape(path)
 
         # the initial slash should be removed from the path, and treated
         # as a homedir relative path (the path begins with a double slash
@@ -1021,6 +997,8 @@ class SFTPServerWithoutSSH(SFTPServer):
                 return '1'
             def get_hexdump(self):
                 return False
+            def close(self):
+                pass
 
         server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
                                      root=self._root, home=self._server_homedir)

@@ -167,6 +167,10 @@ class Repository(object):
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, 
+                           self.bzrdir.transport.base)
+
     def is_locked(self):
         return self.control_files.is_locked()
 
@@ -603,6 +607,45 @@ class AllInOneRepository(Repository):
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return True
+
+
+def install_revision(repository, rev, revision_tree):
+    """Install all revision data into a repository."""
+    present_parents = []
+    parent_trees = {}
+    for p_id in rev.parent_ids:
+        if repository.has_revision(p_id):
+            present_parents.append(p_id)
+            parent_trees[p_id] = repository.revision_tree(p_id)
+        else:
+            parent_trees[p_id] = EmptyTree()
+
+    inv = revision_tree.inventory
+    
+    # Add the texts that are not already present
+    for path, ie in inv.iter_entries():
+        w = repository.weave_store.get_weave_or_empty(ie.file_id,
+                repository.get_transaction())
+        if ie.revision not in w:
+            text_parents = []
+            for revision, tree in parent_trees.iteritems():
+                if ie.file_id not in tree:
+                    continue
+                parent_id = tree.inventory[ie.file_id].revision
+                if parent_id in text_parents:
+                    continue
+                text_parents.append(parent_id)
+                    
+            vfile = repository.weave_store.get_weave_or_empty(ie.file_id, 
+                repository.get_transaction())
+            lines = revision_tree.get_file(ie.file_id).readlines()
+            vfile.add_lines(rev.revision_id, text_parents, lines)
+    try:
+        # install the inventory
+        repository.add_inventory(rev.revision_id, inv, present_parents)
+    except errors.RevisionAlreadyPresent:
+        pass
+    repository.add_revision(rev.revision_id, rev, inv)
 
 
 class MetaDirRepository(Repository):
@@ -1452,7 +1495,8 @@ class InterRepository(InterObject):
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids.pop(0) == None
+            assert source_ids[0] == None
+            source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
         result_set = set(source_ids).difference(target_ids)
@@ -1561,7 +1605,8 @@ class InterWeaveRepo(InterRepository):
         # - RBC 20060209
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids.pop(0) == None
+            assert source_ids[0] == None
+            source_ids.pop(0)
         else:
             source_ids = self.source._all_possible_ids()
         source_ids_set = set(source_ids)
@@ -1623,7 +1668,8 @@ class InterKnitRepo(InterRepository):
         """See InterRepository.missing_revision_ids()."""
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids.pop(0) == None
+            assert source_ids[0] == None
+            source_ids.pop(0)
         else:
             source_ids = self.source._all_possible_ids()
         source_ids_set = set(source_ids)

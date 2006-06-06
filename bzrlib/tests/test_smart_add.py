@@ -206,7 +206,7 @@ class TestAddActions(TestCase):
         action = AddAction(to_file=stdout,
             should_print=bool(output), should_add=should_add)
 
-        self.apply_redirected(None, stdout, None, action, inv, 'path', 'file')
+        self.apply_redirected(None, stdout, None, action, inv, None, 'path', 'file')
         self.assertEqual(stdout.getvalue(), output)
 
         if should_add:

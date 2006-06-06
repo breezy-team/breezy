@@ -285,7 +285,6 @@ class TTYProgressBar(_BaseProgressBar):
         self.last_update = now
         return False
         
-
     def tick(self):
         self.update(self.last_msg, self.last_cnt, self.last_total, 
                     self.child_fraction)
@@ -303,10 +302,14 @@ class TTYProgressBar(_BaseProgressBar):
             self.last_msg = ''
         self.tick()
 
-
     def update(self, msg, current_cnt=None, total_cnt=None, 
                child_fraction=0):
         """Update and redraw progress bar."""
+        if msg is None:
+            msg = self.last_msg
+
+        if total_cnt is None:
+            total_cnt = self.last_total
 
         if current_cnt < 0:
             current_cnt = 0

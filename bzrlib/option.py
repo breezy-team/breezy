@@ -196,7 +196,8 @@ _global_option('short', help='Use moderately short log format. Same as --log-for
 _global_option('line', help='Use log format with one line per revision. Same as --log-format line')
 _global_option('root', type=str)
 _global_option('no-backup')
-_global_option('merge-type', type=_parse_merge_type)
+_global_option('merge-type', type=_parse_merge_type, 
+               help='Select a particular merge algorithm')
 _global_option('pattern', type=str)
 _global_option('quiet')
 _global_option('remember', help='Remember the specified location as a'

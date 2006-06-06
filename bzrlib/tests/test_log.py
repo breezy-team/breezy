@@ -20,9 +20,11 @@ import os
 from cStringIO import StringIO
 
 from bzrlib.tests import BzrTestBase, TestCaseWithTransport
-from bzrlib.log import LogFormatter, show_log, LongLogFormatter, ShortLogFormatter
+from bzrlib.log import (LogFormatter, show_log, LongLogFormatter,
+                        ShortLogFormatter, LineLogFormatter)
 from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionNumber
+
 
 class _LogEntry(object):
     # should probably move into bzrlib.log?
@@ -41,8 +43,7 @@ class LogCatcher(LogFormatter):
     def __init__(self):
         super(LogCatcher, self).__init__(to_file=None)
         self.logs = []
-        
-        
+
     def show(self, revno, rev, delta):
         le = _LogEntry()
         le.revno = revno
@@ -279,3 +280,24 @@ added:
   a
 ''')
 
+    def test_line_log(self):
+        """Line log should show revno
+        
+        bug #5162
+        """
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        self.build_tree(['a'])
+        wt.add('a')
+        b.nick = 'test-line-log'
+        wt.commit(message='add a', 
+                  timestamp=1132711707, 
+                  timezone=36000,
+                  committer='Line-Log-Formatter Tester <test@line.log>')
+        logfile = file('out.tmp', 'w+')
+        formatter = LineLogFormatter(to_file=logfile)
+        show_log(b, formatter)
+        logfile.flush()
+        logfile.seek(0)
+        log_contents = logfile.read()
+        self.assertEqualDiff(log_contents, '1: Line-Log-Formatte... 2005-11-23 add a\n')
