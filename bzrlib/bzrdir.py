@@ -941,9 +941,11 @@ class BzrDirFormat(object):
         """Return the format registered for URL."""
         try:
             format_string = transport.get(".bzr/branch-format").read()
-            return klass._formats[format_string]
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
+
+        try:
+            return klass._formats[format_string]
         except KeyError:
             raise errors.UnknownFormatError(format_string)
 
