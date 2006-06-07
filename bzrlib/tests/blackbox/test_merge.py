@@ -202,7 +202,8 @@ class TestMerge(ExternalBase):
         tree_a.set_conflicts(ConflictList())
         tree_a.commit('message')
         # it is legal to attempt to merge an already-merged bundle
-        self.runbzr('merge ../bundle')
+        output = self.runbzr('merge ../bundle')[1]
         # but it does nothing
         self.assertFalse(compare_trees(tree_a.basis_tree(), 
                                        tree_a).has_changed())
+        self.assertEqual('Nothing to do.\n', output)
