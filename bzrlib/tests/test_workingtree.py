@@ -314,3 +314,11 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
         regex_rules = tree._get_ignore_rules_as_regex()[0]
         self.assertEqual(len(reference_output[1]), regex_rules[0].groups)
         self.assertEqual(reference_output[1], regex_rules[1])
+
+    def test_is_detritus_name(self):
+        self.assertTrue(WorkingTree.is_detritus_name('hello~'))
+        self.assertTrue(WorkingTree.is_detritus_name('test1234.tmp'))
+        self.assertTrue(WorkingTree.is_detritus_name('test.py.BASE'))
+        self.assertTrue(WorkingTree.is_detritus_name('test.py.THIS'))
+        self.assertTrue(WorkingTree.is_detritus_name('test\n.py.OTHER'))
+        self.assertFalse(WorkingTree.is_detritus_name('test\n.py.OTHEP'))

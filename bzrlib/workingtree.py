@@ -110,6 +110,8 @@ import bzrlib.xml5
 _gen_file_id_re = re.compile(r'[^\w.]|(^\.*)')
 _gen_id_suffix = None
 _gen_id_serial = 0
+_detritus_pattern = re.compile(r'(?:(.|\n)*(?:(?:\.THIS$)|(?:\.BASE$)|'
+                               r'(?:\.OTHER$)|(?:~$))|test....\.tmp)')
 
 
 def _next_id_suffix():
@@ -692,7 +694,7 @@ class WorkingTree(bzrlib.tree.Tree):
         else:
             return '?'
 
-    def list_files(self):
+    def list_files(self, allow_detritus=False):
         """Recursively list all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
@@ -701,6 +703,8 @@ class WorkingTree(bzrlib.tree.Tree):
         tree.
 
         Skips the control directory.
+        :param allow_detritus: If specified, unversioned files that match the
+        detritus pattern will be returned as 'D'-type files
         """
         inv = self._inventory
         # Convert these into local objects to save lookup times
@@ -746,6 +750,8 @@ class WorkingTree(bzrlib.tree.Tree):
                 f_ie = inv.get_child(from_dir_id, f)
                 if f_ie:
                     c = 'V'
+                elif allow_detritus and self.is_detritus_name(fp[1:]):
+                    c = 'D'
                 elif self.is_ignored(fp[1:]):
                     c = 'I'
                 else:
@@ -1121,6 +1127,16 @@ class WorkingTree(bzrlib.tree.Tree):
                     mapping if groups[group] is not None]
                 return rules[0]
         return None
+
+    @staticmethod
+    def is_detritus_name(filename):
+        """Return True if the supplied filename may be junk from earlier ops.
+        
+        This does not attempt to determine whether the file is versioned, which
+        should be done before running this test, because versioned files
+        are not detritus, regardless of their name.
+        """
+        return _detritus_pattern.match(filename) is not None
 
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))

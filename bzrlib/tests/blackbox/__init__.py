@@ -56,6 +56,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_init',
                      'bzrlib.tests.blackbox.test_log',
                      'bzrlib.tests.blackbox.test_logformats',
+                     'bzrlib.tests.blackbox.test_ls',
                      'bzrlib.tests.blackbox.test_merge',
                      'bzrlib.tests.blackbox.test_missing',
                      'bzrlib.tests.blackbox.test_outside_wt',
