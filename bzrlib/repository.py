@@ -34,7 +34,7 @@ from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import (safe_unicode, rand_bytes, compact_date, 
                             local_time_offset)
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.store.versioned import VersionedFileStore, WeaveStore
 from bzrlib.store.text import TextStore
 from bzrlib.symbol_versioning import *
@@ -1918,13 +1918,28 @@ class CommitBuilder(object):
 
         self._generate_revision_if_needed()
 
+    def commit(self):
+        """Make the actual commit.
+
+        :return: The revision id of the recorded revision.
+        """
+        rev = Revision(timestamp=self._timestamp,
+                       timezone=self._timezone,
+                       committer=self._committer,
+                       message=self.message,
+                       inventory_sha1=self.inv_sha1,
+                       revision_id=self._new_revision_id,
+                       properties=self._revprops)
+        rev.parent_ids = self.parents
+        self.repository.add_revision(self._new_revision_id, rev, 
+            self.new_inventory, self._config)
+        return self._new_revision_id
+
     def finish_inventory(self):
         """Tell the builder that the inventory is finished.
-        
-        :return: SHA1 of the encoded inventory.
         """
         self.new_inventory.revision = self._new_revision_id
-        return self.repository.add_inventory(
+        self.inv_sha1 = self.repository.add_inventory(
             self._new_revision_id,
             self.new_inventory,
             self.parents

@@ -82,7 +82,6 @@ from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
-from bzrlib.revision import Revision
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
@@ -307,11 +306,10 @@ class Commit(object):
                 raise PointlessCommit()
 
             self._emit_progress_update()
-            self.inv_sha1 = self.builder.finish_inventory()
+            self.builder.finish_inventory()
             self._emit_progress_update()
             self.builder.set_message(self.message)
-            self._make_revision()
-            self.rev_id = self.builder._new_revision_id
+            self.rev_id = self.builder.commit()
             # revision data is in the local branch now.
             
             # upload revision data to the master.
@@ -473,19 +471,6 @@ class Commit(object):
                 else:
                     mutter("commit will ghost revision %r", parent_id)
             
-    def _make_revision(self):
-        """Record a new revision object for this commit."""
-        rev = Revision(timestamp=self.builder._timestamp,
-                       timezone=self.builder._timezone,
-                       committer=self.builder._committer,
-                       message=self.builder.message,
-                       inventory_sha1=self.inv_sha1,
-                       revision_id=self.builder._new_revision_id,
-                       properties=self.builder._revprops)
-        rev.parent_ids = self.builder.parents
-        self.branch.repository.add_revision(self.builder._new_revision_id, rev, 
-            self.builder.new_inventory, self.builder._config)
-
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.
 

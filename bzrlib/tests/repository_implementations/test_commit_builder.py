@@ -30,9 +30,17 @@ class TestCommitBuilder(TestCaseWithRepository):
     def testFinishInventory(self):
         tree = self.make_branch_and_tree(".")
         builder = tree.branch.get_commit_builder([])
-        self.assertIsInstance(builder.finish_inventory(), basestring)
+        builder.finish_inventory()
 
     def testSetMessage(self):
         tree = self.make_branch_and_tree(".")
         builder = tree.branch.get_commit_builder([], revision_id="foo")
         builder.set_message("foobar")
+
+    def testCommit(self):
+        tree = self.make_branch_and_tree(".")
+        builder = tree.branch.get_commit_builder([], revision_id="foo")
+        builder.finish_inventory()
+        builder.set_message('foo')
+        builder.commit()
+        self.assertTrue(tree.branch.repository.has_revision("foo"))
