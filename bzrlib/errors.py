@@ -247,7 +247,7 @@ class PathNotChild(BzrNewError):
 # the exception object is a bit undesirable.
 # TODO: Probably this behavior of should be a common superclass 
 class NotBranchError(PathError):
-    "Not a branch: %(path)s" 
+    """Not a branch: %(path)s"""
 
     def __init__(self, path):
        import bzrlib.urlutils as urlutils

@@ -329,7 +329,11 @@ class TextTestRunner(object):
         test_root = TestCaseInTempDir.TEST_ROOT
         if result.wasSuccessful() or not self.keep_output:
             if test_root is not None:
-                    osutils.rmtree(test_root.encode(sys.getfilesystemencoding()))
+                # If LANG=C we probably have created some bogus paths
+                # which rmtree(unicode) will fail to delete
+                # so make sure we are using rmtree(str) to delete everything
+                osutils.rmtree(test_root.encode(
+                    sys.getfilesystemencoding()))
         else:
             if self.pb is not None:
                 self.pb.note("Failed tests working directories are in '%s'\n",

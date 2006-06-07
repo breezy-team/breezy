@@ -225,7 +225,7 @@ class Command(object):
             r[o.name] = o
         return r
 
-    def _setup_stdout(self):
+    def _setup_outf(self):
         """Return a file linked to stdout, which has proper encoding."""
         assert self.encoding_type in ['strict', 'exact', 'replace']
 
@@ -276,7 +276,7 @@ class Command(object):
         all_cmd_args = cmdargs.copy()
         all_cmd_args.update(cmdopts)
 
-        self._setup_stdout()
+        self._setup_outf()
 
         return self.run(**all_cmd_args)
     

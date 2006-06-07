@@ -138,6 +138,7 @@ def join(base, *args):
                                 base, args)
                 else:
                     path.append(chunk)
+
     if scheme is None:
         return '/'.join(path)
     return scheme + '://' + '/'.join(path)
@@ -185,7 +186,6 @@ def _win32_local_path_to_url(path):
     """
     # importing directly from ntpath allows us to test this 
     # on non-win32 platforms
-    # TODO: jam 20060426 consider moving this import outside of the function
     win32_path = bzrlib.osutils._nt_normpath(
         bzrlib.osutils._win32_abspath(path)).replace('\\', '/')
     return 'file:///' + win32_path[0].upper() + ':' + escape(win32_path[2:])
@@ -228,8 +228,6 @@ def normalize_url(url):
     if not m:
         return local_path_to_url(url)
     if not isinstance(url, unicode):
-        # TODO: jam 20060510 We need to test for ascii characters that
-        #       shouldn't be allowed in URLs
         for c in url:
             if c not in _url_safe_characters:
                 raise errors.InvalidURL(url, 'URLs can only contain specific'
@@ -256,7 +254,6 @@ def relative_url(base, other):
     if base_first_slash is None:
         return other
     
-    # TODO: shorter names
     dummy, other_first_slash = _find_scheme_and_separator(other)
     if other_first_slash is None:
         return other
@@ -275,9 +272,6 @@ def relative_url(base, other):
 
     base_sections = base_path.split('/')
     other_sections = other_path.split('/')
-    # TODO: handle the case where base has a host part but no trailing slash
-    #           that might not be allowed, it only makes sense to have a link
-    #           relative to a directory-ish part, not to files
 
     if base_sections == ['']:
         base_sections = []
@@ -369,6 +363,7 @@ def strip_trailing_slash(url):
             return url[:-1]
         else:
             return url
+
     scheme_loc, first_path_slash = _find_scheme_and_separator(url)
     if scheme_loc is None:
         # This is a relative path, as it has no scheme
@@ -399,6 +394,7 @@ def unescape(url):
         url = str(url)
     except UnicodeError, e:
         raise errors.InvalidURL(url, 'URL was not a plain ASCII url: %s' % (e,))
+
     unquoted = urllib.unquote(url)
     try:
         unicode_path = unquoted.decode('utf-8')

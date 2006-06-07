@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
 """Tests of status command.
 
 Most of these depend on the particular formatting used.
@@ -23,12 +22,11 @@ tests are not using self.capture. If we add tests for the programmatic
 interface later, they will be non blackbox tests.
 """
 
-
 from cStringIO import StringIO
+import codecs
 from os import mkdir, chdir
 import sys
 from tempfile import TemporaryFile
-import codecs
 
 import bzrlib.branch
 from bzrlib.builtins import merge

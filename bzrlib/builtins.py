@@ -304,6 +304,7 @@ class cmd_mkdir(Command):
 
     This is equivalent to creating the directory and then adding it.
     """
+
     takes_args = ['dir+']
     encoding_type = 'replace'
 
@@ -312,11 +313,12 @@ class cmd_mkdir(Command):
             os.mkdir(d)
             wt, dd = WorkingTree.open_containing(d)
             wt.add([dd])
-            print >>self.outf, 'added', d
+            self.outf.write('added %s\n' % d)
 
 
 class cmd_relpath(Command):
     """Show path of a file relative to root"""
+
     takes_args = ['filename']
     hidden = True
     
@@ -335,6 +337,7 @@ class cmd_inventory(Command):
     It is possible to limit the output to a particular entry
     type using the --kind option.  For example; --kind file.
     """
+
     takes_options = ['revision', 'show-ids', 'kind']
     
     @display_command
@@ -374,9 +377,9 @@ class cmd_mv(Command):
 
     Files cannot be moved between branches.
     """
+
     takes_args = ['names*']
     aliases = ['move', 'rename']
-
     encoding_type = 'replace'
 
     def run(self, names_list):
@@ -418,6 +421,7 @@ class cmd_pull(Command):
     that, you can omit the location to use the default.  To change the
     default, use --remember.
     """
+
     takes_options = ['remember', 'overwrite', 'revision', 'verbose']
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -492,6 +496,7 @@ class cmd_push(Command):
     After that, you can omit the location to use the default.  To change the
     default, use --remember.
     """
+
     takes_options = ['remember', 'overwrite', 'verbose',
                      Option('create-prefix', 
                             help='Create the path leading up to the branch '
@@ -649,10 +654,7 @@ class cmd_branch(Command):
                         revision_id, basis_dir)
                 branch = dir.open_branch()
             except bzrlib.errors.NoSuchRevision:
-                # TODO: jam 20060426 This only works on local paths
-                #       and it would be nice if 'bzr branch' could
-                #       work on a remote path
-                rmtree(to_location)
+                to_transport.delete_tree('.')
                 msg = "The branch %s has no revision %s." % (from_location, revision[0])
                 raise BzrCommandError(msg)
             except bzrlib.errors.UnlistableBranch:
@@ -865,6 +867,7 @@ class cmd_file_id(Command):
     same through all revisions where the file exists, even when it is
     moved or renamed.
     """
+
     hidden = True
     takes_args = ['filename']
 
@@ -875,8 +878,7 @@ class cmd_file_id(Command):
         if i == None:
             raise BzrError("%r is not a versioned file" % filename)
         else:
-            self.outf.write(i)
-            self.outf.write('\n')
+            self.outf.write(i + '\n')
 
 
 class cmd_file_path(Command):
@@ -885,6 +887,7 @@ class cmd_file_path(Command):
     This prints one line for each directory down to the target,
     starting at the branch root.
     """
+
     hidden = True
     takes_args = ['filename']
 
@@ -896,8 +899,7 @@ class cmd_file_path(Command):
         if fid == None:
             raise BzrError("%r is not a versioned file" % filename)
         for fip in inv.get_idpath(fid):
-            self.outf.write(fip)
-            self.outf.write('\n')
+            self.outf.write(fip + '\n')
 
 
 class cmd_reconcile(Command):
@@ -1175,8 +1177,7 @@ class cmd_modified(Command):
         td = compare_trees(tree.basis_tree(), tree)
 
         for path, id, kind, text_modified, meta_modified in td.modified:
-            self.outf.write(path)
-            self.outf.write('\n')
+            self.outf.write(path + '\n')
 
 
 class cmd_added(Command):
@@ -1193,8 +1194,7 @@ class cmd_added(Command):
             path = inv.id2path(file_id)
             if not os.access(bzrlib.osutils.abspath(path), os.F_OK):
                 continue
-            self.outf.write(path)
-            self.outf.write('\n')
+            self.outf.write(path + '\n')
 
 
 class cmd_root(Command):
@@ -1207,8 +1207,7 @@ class cmd_root(Command):
     def run(self, filename=None):
         """Print the branch root."""
         tree = WorkingTree.open_containing(filename)[0]
-        self.outf.write(tree.basedir)
-        self.outf.write('\n')
+        self.outf.write(tree.basedir + '\n')
 
 
 class cmd_log(Command):
@@ -1339,7 +1338,9 @@ def get_log_format(long=False, short=False, line=False, default='long'):
 class cmd_touching_revisions(Command):
     """Return revision-ids which affected a particular file.
 
-    A more user-friendly interface is "bzr log FILE"."""
+    A more user-friendly interface is "bzr log FILE".
+    """
+
     hidden = True
     takes_args = ["filename"]
 
@@ -1401,12 +1402,10 @@ class cmd_ls(Command):
                     kindch = entry.kind_character()
                     self.outf.write('%-8s %s%s\n' % (fc, fp, kindch))
                 elif null:
-                    self.outf.write(fp)
-                    self.outf.write('\0')
+                    self.outf.write(fp + '\0')
                     self.outf.flush()
                 else:
-                    self.outf.write(fp)
-                    self.outf.write('\n')
+                    self.outf.write(fp + '\n')
 
 
 class cmd_unknowns(Command):
@@ -1415,8 +1414,7 @@ class cmd_unknowns(Command):
     def run(self):
         from bzrlib.osutils import quotefn
         for f in WorkingTree.open_containing(u'.')[0].unknowns():
-            self.outf.write(quotefn(f))
-            self.outf.write('\n')
+            self.outf.write(quotefn(f) + '\n')
 
 
 class cmd_ignore(Command):
