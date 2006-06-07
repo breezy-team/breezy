@@ -15,13 +15,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""\
-Adapter for running test cases against multiple encodings.
-"""
+"""Adapter for running test cases against multiple encodings."""
 
 from copy import deepcopy
 
 from bzrlib.tests import TestSuite
+
 
 # prefix for micro (1/1000000)
 _mu = u'\xb5'

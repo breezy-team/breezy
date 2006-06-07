@@ -180,6 +180,8 @@ class cmd_cat_revision(Command):
     hidden = True
     takes_args = ['revision_id?']
     takes_options = ['revision']
+    # cat-revision is more for frontends so should be exact
+    encoding = 'strict'
     
     @display_command
     def run(self, revision_id=None, revision=None):

@@ -1,26 +1,25 @@
 # Copyright (C) 2006 by Canonical Ltd
 # -*- coding: utf-8 -*-
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""\
-Black-box tests for bzr handling non-ascii characters.
-"""
+"""Black-box tests for bzr handling non-ascii characters."""
 
 import sys
 import os
+
 import bzrlib
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter, note
@@ -32,8 +31,6 @@ class TestNonAscii(TestCaseInTempDir):
 
     def setUp(self):
         super(TestNonAscii, self).setUp()
-        # TODO: jam 20060425 because of the confusion of URLs versus Unicode
-        #       'bzr add f' will not add a unicode filename
         self._orig_email = os.environ.get('BZREMAIL', None)
         self._orig_encoding = bzrlib.user_encoding
 
@@ -85,6 +82,11 @@ class TestNonAscii(TestCaseInTempDir):
         txt = bzr('status')
         self.assertEqual(u'modified:\n  %s\n' % (self.info['filename'],), txt)
 
+        txt = bzr('status', encoding='ascii')
+        expected = u'modified:\n  %s\n' % (
+                    self.info['filename'].encode('ascii', 'replace'),)
+        self.assertEqual(expected, txt)
+
     def test_cat(self):
         # bzr cat shouldn't change the contents
         # using run_bzr since that doesn't decode
@@ -97,7 +99,6 @@ class TestNonAscii(TestCaseInTempDir):
     def test_cat_revision(self):
         bzr = self.run_bzr_decode
 
-        # TODO: jam 20060112 should cat-revision always output utf-8?
         committer = self.info['committer']
         txt = bzr('cat-revision', '-r', '1')
         self.failUnless(committer in txt,
@@ -125,8 +126,6 @@ class TestNonAscii(TestCaseInTempDir):
         txt = bzr('relpath', self.info['filename'])
         self.assertEqual(self.info['filename'] + '\n', txt)
 
-        # TODO: jam 20060106 if relpath can return a munged string
-        #       this text needs to be fixed
         bzr('relpath', self.info['filename'], encoding='ascii', retcode=3)
 
     def test_inventory(self):
@@ -156,7 +155,8 @@ class TestNonAscii(TestCaseInTempDir):
 
         bzr('revision-info', '-r', '1')
 
-        # TODO: jam 20060105 We have no revisions with non-ascii characters.
+        # TODO: jam 20060105 If we support revisions with non-ascii characters,
+        # this should be strict and fail.
         bzr('revision-info', '-r', '1', encoding='ascii')
 
     def test_mv(self):
@@ -166,6 +166,7 @@ class TestNonAscii(TestCaseInTempDir):
         fname2 = self.info['filename'] + '2'
         dirname = self.info['directory']
 
+        # fname1 already exists
         bzr('mv', 'a', fname1, retcode=3)
 
         txt = bzr('mv', 'a', fname2)
@@ -212,8 +213,6 @@ class TestNonAscii(TestCaseInTempDir):
         os.chdir(u'../' + dirname2)
         txt = bzr('pull')
 
-        # TODO: jam 20060427 Should we be trying to print the original path
-        #       rather than the URL?
         self.assertEqual(u'Using saved location: %s/\n' % (pwd,), txt)
 
         os.chdir('../' + dirname1)
@@ -239,6 +238,7 @@ class TestNonAscii(TestCaseInTempDir):
         open('a', 'ab').write('adding more text\n')
         bzr('commit', '-m', 'added some stuff')
 
+        # TODO: check the output text is properly encoded
         bzr('push')
 
         f = open('a', 'ab')
