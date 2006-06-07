@@ -47,7 +47,8 @@ def get_test_permutations():
 
 class SvnRaCallbacks(svn.ra.callbacks2_t):
     def __init__(self):
-        super(SvnRaCallbacks, self).__init__()
+        svn.ra.callbacks2_t.__init__(self)
+        from branch import _global_pool
         self.auth_baton = _create_auth_baton(_global_pool)
 
     def open_tmp_file(self):
@@ -61,8 +62,7 @@ class SvnTransport(Transport):
     """Fake transport for Subversion-related namespaces. This implements 
     just as much of Transport as is necessary to fool Bazaar-NG. """
     def __init__(self, url="", ra=None, root_url=None, scheme=None):
-        from branch import _global_pool
-        Transport.__init__(self, url)
+        super(SvnTransport,self).__init__(url)
 
         if url.startswith("svn://") or \
            url.startswith("svn+ssh://"):
