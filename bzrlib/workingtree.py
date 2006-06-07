@@ -1240,7 +1240,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return result
 
     @needs_write_lock
-    def remove(self, files, verbose=False):
+    def remove(self, files, verbose=False, to_file=None):
         """Remove nominated files from the working inventory..
 
         This does not remove their text.  This does not run on XXX on what? RBC
@@ -1275,7 +1275,7 @@ class WorkingTree(bzrlib.tree.Tree):
                     new_status = 'I'
                 else:
                     new_status = '?'
-                show_status(new_status, inv[fid].kind, quotefn(f))
+                show_status(new_status, inv[fid].kind, quotefn(f), to_file=to_file)
             del inv[fid]
 
         self._write_inventory(inv)

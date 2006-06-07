@@ -16,8 +16,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import sys
 
-def show_status(state, kind, name):
+
+def show_status(state, kind, name, to_file=None):
     if kind == 'directory':
         # use this even on windows?
         kind_ch = '/'
@@ -29,5 +31,8 @@ def show_status(state, kind, name):
 
     assert len(state) == 1
         
-    print state + '       ' + name + kind_ch
+    if to_file is None:
+        to_file = sys.stdout
+
+    to_file.write(state + '       ' + name + kind_ch + '\n')
     

@@ -840,6 +840,7 @@ class cmd_remove(Command):
     takes_args = ['file*']
     takes_options = ['verbose', Option('new', help='remove newly-added files')]
     aliases = ['rm']
+    encoding_type = 'replace'
     
     def run(self, file_list, verbose=False, new=False):
         tree, file_list = tree_files(file_list)
@@ -854,7 +855,7 @@ class cmd_remove(Command):
             file_list = sorted([f[0] for f in added[0]], reverse=True)
             if len(file_list) == 0:
                 raise BzrCommandError('No matching files.')
-        tree.remove(file_list, verbose=verbose)
+        tree.remove(file_list, verbose=verbose, to_file=self.outf)
 
 
 class cmd_file_id(Command):

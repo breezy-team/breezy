@@ -276,7 +276,6 @@ class TestNonAscii(TestCaseInTempDir):
     def test_remove_verbose(self):
         bzr = self.run_bzr_decode
 
-        raise TestSkipped('bzr remove --verbose uses tree.remove, which calls print directly.')
         fname = self.info['filename']
         txt = bzr('remove', '--verbose', fname, encoding='ascii')
 
