@@ -54,15 +54,6 @@ class TestNonAscii(TestCaseInTempDir):
     def create_base(self):
         bzr = self.run_bzr
 
-        bzr('init')
-        open('a', 'wb').write('foo\n')
-        bzr('add', 'a')
-        bzr('commit', '-m', 'adding a')
-
-        open('b', 'wb').write('non-ascii \xFF\xFF\xFC\xFB\x00 in b\n')
-        bzr('add', 'b')
-        bzr('commit', '-m', self.info['message'])
-
         fs_enc = sys.getfilesystemencoding()
         fname = self.info['filename']
         dir_name = self.info['directory']
@@ -73,6 +64,16 @@ class TestNonAscii(TestCaseInTempDir):
                 raise TestSkipped(('Unable to represent path %r'
                                    ' in filesystem encoding %s')
                                     % (thing, fs_enc))
+
+        bzr('init')
+        open('a', 'wb').write('foo\n')
+        bzr('add', 'a')
+        bzr('commit', '-m', 'adding a')
+
+        open('b', 'wb').write('non-ascii \xFF\xFF\xFC\xFB\x00 in b\n')
+        bzr('add', 'b')
+        bzr('commit', '-m', self.info['message'])
+
         open(fname, 'wb').write('unicode filename\n')
         bzr('add', fname)
         bzr('commit', '-m', u'And a unicode file\n')

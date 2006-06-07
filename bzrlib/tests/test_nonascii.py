@@ -61,7 +61,10 @@ class UnicodeFilename(TestCaseWithTransport):
             self.assertEqual((a_circle_d, False), unicode_filename(a_circle_d))
 
     def test_platform(self):
-        self.build_tree([a_circle_c, a_dots_c, z_umlat_c])
+        try:
+            self.build_tree([a_circle_c, a_dots_c, z_umlat_c])
+        except UnicodeError:
+            raise TestSkipped("filesystem cannot create unicode files")
 
         if sys.platform == 'darwin':
             expected = sorted([a_circle_d, a_dots_d, z_umlat_d])
@@ -75,7 +78,10 @@ class UnicodeFilename(TestCaseWithTransport):
         # We should always be able to access files by the path returned
         # from unicode_filename
         files = [a_circle_c, a_dots_c, z_umlat_c]
-        self.build_tree(files)
+        try:
+            self.build_tree(files)
+        except UnicodeError:
+            raise TestSkipped("filesystem cannot create unicode files")
 
         for fname in files:
             path = unicode_filename(fname)[0]
