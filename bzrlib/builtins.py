@@ -19,24 +19,25 @@
 
 import errno
 import os
-from shutil import rmtree
 import sys
 
 import bzrlib
 import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
+from bzrlib.bundle.read_bundle import BundleReader
+from bzrlib.bundle.apply_bundle import merge_bundle
 from bzrlib.commands import Command, display_command
-from bzrlib.revision import common_ancestor
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch,
-                           NotVersionedError)
+                           NotVersionedError, BadBundle)
 from bzrlib.log import show_one_log
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
 from bzrlib.progress import DummyProgress, ProgressPhase
+from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 import bzrlib.trace
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet
@@ -85,14 +86,18 @@ def get_format_type(typestring):
     """Parse and return a format specifier."""
     if typestring == "weave":
         return bzrdir.BzrDirFormat6()
-    if typestring == "metadir":
+    if typestring == "default":
         return bzrdir.BzrDirMetaFormat1()
+    if typestring == "metaweave":
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = bzrlib.repository.RepositoryFormat7()
+        return format
     if typestring == "knit":
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = bzrlib.repository.RepositoryFormatKnit1()
         return format
-    msg = "No known bzr-dir format %s. Supported types are: weave, metadir\n" %\
-        (typestring)
+    msg = "Unknown bzr format %s. Current formats are: default, knit,\n" \
+          "metaweave and weave" % typestring
     raise BzrCommandError(msg)
 
 
@@ -270,14 +275,15 @@ class cmd_add(Command):
         added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
                                               action)
         if len(ignored) > 0:
-            for glob in sorted(ignored.keys()):
-                match_len = len(ignored[glob])
-                if verbose:
+            if verbose:
+                for glob in sorted(ignored.keys()):
                     for path in ignored[glob]:
                         print "ignored %s matching \"%s\"" % (path, glob)
-                else:
-                    print "ignored %d file(s) matching \"%s\"" % (match_len,
-                                                              glob)
+            else:
+                match_len = 0
+                for glob, paths in ignored.items():
+                    match_len += len(paths)
+                print "ignored %d file(s)." % match_len
             print "If you wish to add some of these files, please add them"\
                 " by name."
 
@@ -476,9 +482,8 @@ class cmd_push(Command):
         # command.
         from bzrlib.transport import get_transport
         
-        tree_from = WorkingTree.open_containing(u'.')[0]
-        br_from = tree_from.branch
-        stored_loc = tree_from.branch.get_push_location()
+        br_from = Branch.open_containing('.')[0]
+        stored_loc = br_from.get_push_location()
         if location is None:
             if stored_loc is None:
                 raise BzrCommandError("No push location known or specified.")
@@ -514,26 +519,26 @@ class cmd_push(Command):
                         if new_transport.base == transport.base:
                             raise BzrCommandError("Could not create "
                                                   "path prefix.")
-            dir_to = br_from.bzrdir.clone(location)
+            dir_to = br_from.bzrdir.clone(location,
+                revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
-        old_rh = br_to.revision_history()
-        try:
+            count = len(br_to.revision_history())
+        else:
+            old_rh = br_to.revision_history()
             try:
-                tree_to = dir_to.open_workingtree()
-            except errors.NotLocalUrl:
-                # TODO: This should be updated for branches which don't have a
-                # working tree, as opposed to ones where we just couldn't 
-                # update the tree.
-                warning('This transport does not update the working '
-                        'tree of: %s' % (br_to.base,))
-                count = br_to.pull(br_from, overwrite)
-            except NoWorkingTree:
-                count = br_to.pull(br_from, overwrite)
-            else:
-                count = tree_to.pull(br_from, overwrite)
-        except DivergedBranches:
-            raise BzrCommandError("These branches have diverged."
-                                  "  Try a merge then push with overwrite.")
+                try:
+                    tree_to = dir_to.open_workingtree()
+                except errors.NotLocalUrl:
+                    warning('This transport does not update the working '
+                            'tree of: %s' % (br_to.base,))
+                    count = br_to.pull(br_from, overwrite)
+                except NoWorkingTree:
+                    count = br_to.pull(br_from, overwrite)
+                else:
+                    count = tree_to.pull(br_from, overwrite)
+            except DivergedBranches:
+                raise BzrCommandError("These branches have diverged."
+                                      "  Try a merge then push with overwrite.")
         note('%d revision(s) pushed.' % (count,))
 
         if verbose:
@@ -562,6 +567,7 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
+        from bzrlib.osutils import rmtree
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -766,15 +772,22 @@ class cmd_update(Command):
 
 
 class cmd_info(Command):
-    """Show statistical information about a branch."""
-    takes_args = ['branch?']
+    """Show information about a working tree, branch or repository.
+
+    This command will show all known locations and formats associated to the
+    tree, branch or repository.  Statistical information is included with
+    each report.
+
+    Branches and working trees will also report any missing revisions.
+    """
+    takes_args = ['location?']
     takes_options = ['verbose']
-    
+
     @display_command
-    def run(self, branch=None, verbose=False):
-        import bzrlib.info
-        bzrlib.info.show_bzrdir_info(bzrdir.BzrDir.open_containing(branch)[0],
-                                     verbose=verbose)
+    def run(self, location=None, verbose=False):
+        from bzrlib.info import show_bzrdir_info
+        show_bzrdir_info(bzrdir.BzrDir.open_containing(location)[0],
+                         verbose=verbose)
 
 
 class cmd_remove(Command):
@@ -782,13 +795,29 @@ class cmd_remove(Command):
 
     This makes bzr stop tracking changes to a versioned file.  It does
     not delete the working copy.
+
+    You can specify one or more files, and/or --new.  If you specify --new,
+    only 'added' files will be removed.  If you specify both, then new files
+    in the specified directories will be removed.  If the directories are
+    also new, they will also be removed.
     """
-    takes_args = ['file+']
-    takes_options = ['verbose']
+    takes_args = ['file*']
+    takes_options = ['verbose', Option('new', help='remove newly-added files')]
     aliases = ['rm']
     
-    def run(self, file_list, verbose=False):
+    def run(self, file_list, verbose=False, new=False):
         tree, file_list = tree_files(file_list)
+        if new is False:
+            if file_list is None:
+                raise BzrCommandError('Specify one or more files to remove, or'
+                                      ' use --new.')
+        else:
+            from bzrlib.delta import compare_trees
+            added = [compare_trees(tree.basis_tree(), tree,
+                                   specific_files=file_list).added]
+            file_list = sorted([f[0] for f in added[0]], reverse=True)
+            if len(file_list) == 0:
+                raise BzrCommandError('No matching files.')
         tree.remove(file_list, verbose=verbose)
 
 
@@ -873,7 +902,10 @@ class cmd_ancestry(Command):
         tree = WorkingTree.open_containing(u'.')[0]
         b = tree.branch
         # FIXME. should be tree.last_revision
-        for revision_id in b.repository.get_ancestry(b.last_revision()):
+        revision_ids = b.repository.get_ancestry(b.last_revision())
+        assert revision_ids[0] == None
+        revision_ids.pop(0)
+        for revision_id in revision_ids:
             print revision_id
 
 
@@ -901,13 +933,16 @@ class cmd_init(Command):
     takes_args = ['location?']
     takes_options = [
                      Option('format', 
-                            help='Create a specific format rather than the'
-                                 ' current default format. Currently supports:'
-                                 ' metadir, knit, and weave',
+                            help='Specify a format for this branch. Current'
+                                 ' formats are: default, knit, metaweave and'
+                                 ' weave. Default is knit; metaweave and'
+                                 ' weave are deprecated',
                             type=get_format_type),
                      ]
     def run(self, location=None, format=None):
         from bzrlib.branch import Branch
+        if format is None:
+            format = get_format_type('default')
         if location is None:
             location = u'.'
         else:
@@ -950,19 +985,19 @@ class cmd_init_repository(Command):
     """
     takes_args = ["location"] 
     takes_options = [Option('format', 
-                            help='Use a specific format rather than the'
-                            ' current default format. Currently this'
-                            ' option accepts "weave", "metadir" and "knit"',
+                            help='Specify a format for this repository.'
+                                 ' Current formats are: default, knit,'
+                                 ' metaweave and weave. Default is knit;'
+                                 ' metaweave and weave are deprecated',
                             type=get_format_type),
                      Option('trees',
                              help='Allows branches in repository to have'
                              ' a working tree')]
     aliases = ["init-repo"]
     def run(self, location, format=None, trees=False):
-        from bzrlib.bzrdir import BzrDirMetaFormat1
         from bzrlib.transport import get_transport
         if format is None:
-            format = BzrDirMetaFormat1()
+            format = get_format_type('default')
         transport = get_transport(location)
         if not transport.has('.'):
             transport.mkdir('')
@@ -977,19 +1012,22 @@ class cmd_diff(Command):
     If files are listed, only the changes in those files are listed.
     Otherwise, all changes for the tree are listed.
 
+    "bzr diff -p1" is equivalent to "bzr diff --prefix old/:new/", and
+    produces patches suitable for "patch -p1".
+
     examples:
         bzr diff
         bzr diff -r1
         bzr diff -r1..2
+        bzr diff --diff-prefix old/:new/
+        bzr diff bzr.mine bzr.dev
+        bzr diff foo.c
     """
-    # TODO: Allow diff across branches.
     # TODO: Option to use external diff command; could be GNU diff, wdiff,
     #       or a graphical diff.
 
     # TODO: Python difflib is not exactly the same as unidiff; should
     #       either fix it up or prefer to use an external diff.
-
-    # TODO: If a directory is given, diff everything under that.
 
     # TODO: Selected-file diff is inefficient and doesn't show you
     #       deleted files.
@@ -997,21 +1035,25 @@ class cmd_diff(Command):
     # TODO: This probably handles non-Unix newlines poorly.
     
     takes_args = ['file*']
-    takes_options = ['revision', 'diff-options', 'diff-prefix']
+    takes_options = ['revision', 'diff-options', 'prefix']
     aliases = ['di', 'dif']
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-       diff_prefix=None):
+            prefix=None):
         from bzrlib.diff import diff_cmd_helper, show_diff_trees
 
-        if diff_prefix:
-            if not ':' in diff_prefix:
-                 raise BzrError("--diff-prefix expects two values separated by a colon")            
-            old_label,new_label=diff_prefix.split(":")
+        if (prefix is None) or (prefix == '0'):
+            # diff -p0 format
+            old_label = ''
+            new_label = ''
+        elif prefix == '1':
+            old_label = 'old/'
+            new_label = 'new/'
         else:
-            old_label='a/'
-            new_label='b/'
+            if not ':' in prefix:
+                 raise BzrError("--diff-prefix expects two values separated by a colon")
+            old_label, new_label = prefix.split(":")
         
         try:
             tree1, file_list = internal_tree_files(file_list)
@@ -1373,8 +1415,8 @@ class cmd_ignore(Command):
             igns += '\n'
         igns += name_pattern + '\n'
 
+        f = AtomicFile(ifn, 'wt')
         try:
-            f = AtomicFile(ifn, 'wt')
             f.write(igns.encode('utf-8'))
             f.commit()
         finally:
@@ -1560,6 +1602,12 @@ class cmd_commit(Command):
         # TODO: if the commit *does* happen to fail, then save the commit 
         # message to a temporary file where it can be recovered
         tree, selected_list = tree_files(selected_list)
+        if selected_list == ['']:
+            # workaround - commit of root of tree should be exactly the same
+            # as just default commit in that tree, and succeed even though
+            # selected-file merge commit is not done yet
+            selected_list = []
+
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
         if message is None and not file:
@@ -1652,16 +1700,18 @@ class cmd_upgrade(Command):
     takes_args = ['url?']
     takes_options = [
                      Option('format', 
-                            help='Upgrade to a specific format rather than the'
-                                 ' current default format. Currently this'
-                                 ' option accepts "weave", "metadir" and'
-                                 ' "knit".',
+                            help='Upgrade to a specific format. Current formats'
+                                 ' are: default, knit, metaweave and weave.'
+                                 ' Default is knit; metaweave and weave are'
+                                 ' deprecated',
                             type=get_format_type),
                     ]
 
 
     def run(self, url='.', format=None):
         from bzrlib.upgrade import upgrade
+        if format is None:
+            format = get_format_type('default')
         upgrade(url, format)
 
 
@@ -1751,16 +1801,25 @@ class cmd_selftest(Command):
                             help='Use a different transport by default '
                                  'throughout the test suite.',
                             type=get_transport_type),
-                    ]
+                     Option('benchmark', help='run the bzr bencharks.'),
+                     Option('lsprof-timed',
+                            help='generate lsprof output for benchmarked'
+                                 ' sections of code.'),
+                     ]
 
-    def run(self, testspecs_list=None, verbose=False, one=False,
-            keep_output=False, transport=None):
+    def run(self, testspecs_list=None, verbose=None, one=False,
+            keep_output=False, transport=None, benchmark=None,
+            lsprof_timed=None):
         import bzrlib.ui
         from bzrlib.tests import selftest
+        import bzrlib.benchmarks as benchmarks
         # we don't want progress meters from the tests to go to the
         # real output; and we don't want log messages cluttering up
         # the real logs.
         save_ui = bzrlib.ui.ui_factory
+        print '%10s: %s' % ('bzr', bzrlib.osutils.realpath(sys.argv[0]))
+        print '%10s: %s' % ('bzrlib', bzrlib.__path__[0])
+        print
         bzrlib.trace.info('running tests...')
         try:
             bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
@@ -1768,11 +1827,21 @@ class cmd_selftest(Command):
                 pattern = '|'.join(testspecs_list)
             else:
                 pattern = ".*"
+            if benchmark:
+                test_suite_factory = benchmarks.test_suite
+                if verbose is None:
+                    verbose = True
+            else:
+                test_suite_factory = None
+                if verbose is None:
+                    verbose = False
             result = selftest(verbose=verbose, 
                               pattern=pattern,
                               stop_on_failure=one, 
                               keep_output=keep_output,
-                              transport=transport)
+                              transport=transport,
+                              test_suite_factory=test_suite_factory,
+                              lsprof_timed=lsprof_timed)
             if result:
                 bzrlib.trace.info('tests passed')
             else:
@@ -1807,8 +1876,20 @@ def show_version():
         print "  nick: %s" % (branch.nick,)
         if rh:
             print "  revid: %s" % (rh[-1],)
+    print "Using python interpreter:", sys.executable
+    import site
+    print "Using python standard library:", os.path.dirname(site.__file__)
+    print "Using bzrlib:",
+    if len(bzrlib.__path__) > 1:
+        # print repr, which is a good enough way of making it clear it's
+        # more than one element (eg ['/foo/bar', '/foo/bzr'])
+        print repr(bzrlib.__path__)
+    else:
+        print bzrlib.__path__[0]
+
+    print
     print bzrlib.__copyright__
-    print "http://bazaar-ng.org/"
+    print "http://bazaar-vcs.org/"
     print
     print "bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and"
     print "you may use, modify and redistribute it under the terms of the GNU"
@@ -1907,18 +1988,45 @@ class cmd_merge(Command):
     
     merge refuses to run if there are any uncommitted changes, unless
     --force is given.
+
+    The following merge types are available:
     """
     takes_args = ['branch?']
     takes_options = ['revision', 'force', 'merge-type', 'reprocess', 'remember',
                      Option('show-base', help="Show base revision text in "
                             "conflicts")]
 
+    def help(self):
+        from merge import merge_type_help
+        from inspect import getdoc
+        return getdoc(self) + '\n' + merge_type_help() 
+
     def run(self, branch=None, revision=None, force=False, merge_type=None,
             show_base=False, reprocess=False, remember=False):
         if merge_type is None:
             merge_type = Merge3Merger
 
+
         tree = WorkingTree.open_containing(u'.')[0]
+        try:
+            if branch is not None:
+                reader = BundleReader(file(branch, 'rb'))
+            else:
+                reader = None
+        except IOError, e:
+            if e.errno not in (errno.ENOENT, errno.EISDIR):
+                raise
+            reader = None
+        except BadBundle:
+            reader = None
+        if reader is not None:
+            conflicts = merge_bundle(reader, tree, not force, merge_type,
+                                        reprocess, show_base)
+            if conflicts == 0:
+                return 0
+            else:
+                return 1
+
         stored_loc = tree.branch.get_parent()
         if branch is None:
             if stored_loc is None:
@@ -1979,11 +2087,34 @@ class cmd_merge(Command):
 
 class cmd_remerge(Command):
     """Redo a merge.
-    """
+
+    Use this if you want to try a different merge technique while resolving
+    conflicts.  Some merge techniques are better than others, and remerge 
+    lets you try different ones on different files.
+
+    The options for remerge have the same meaning and defaults as the ones for
+    merge.  The difference is that remerge can (only) be run when there is a
+    pending merge, and it lets you specify particular files.
+
+    Examples:
+    $ bzr remerge --show-base
+        Re-do the merge of all conflicted files, and show the base text in
+        conflict regions, in addition to the usual THIS and OTHER texts.
+
+    $ bzr remerge --merge-type weave --reprocess foobar
+        Re-do the merge of "foobar", using the weave merge algorithm, with
+        additional processing to reduce the size of conflict regions.
+    
+    The following merge types are available:"""
     takes_args = ['file*']
     takes_options = ['merge-type', 'reprocess',
                      Option('show-base', help="Show base revision text in "
                             "conflicts")]
+
+    def help(self):
+        from merge import merge_type_help
+        from inspect import getdoc
+        return getdoc(self) + '\n' + merge_type_help() 
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
@@ -2262,24 +2393,30 @@ class cmd_annotate(Command):
     shown only at the top, unless the --all option is given.
     """
     # TODO: annotate directories; showing when each file was last changed
-    # TODO: annotate a previous version of a file
     # TODO: if the working copy is modified, show annotations on that 
     #       with new uncommitted lines marked
     aliases = ['blame', 'praise']
     takes_args = ['filename']
     takes_options = [Option('all', help='show annotations on all lines'),
                      Option('long', help='show date in annotations'),
+                     'revision'
                      ]
 
     @display_command
-    def run(self, filename, all=False, long=False):
+    def run(self, filename, all=False, long=False, revision=None):
         from bzrlib.annotate import annotate_file
         tree, relpath = WorkingTree.open_containing(filename)
         branch = tree.branch
         branch.lock_read()
         try:
+            if revision is None:
+                revision_id = branch.last_revision()
+            elif len(revision) != 1:
+                raise BzrCommandError('bzr annotate --revision takes exactly 1 argument')
+            else:
+                revision_id = revision[0].in_history(branch).rev_id
             file_id = tree.inventory.path2id(relpath)
-            tree = branch.repository.revision_tree(branch.last_revision())
+            tree = branch.repository.revision_tree(revision_id)
             file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, sys.stdout)
         finally:
@@ -2348,9 +2485,10 @@ class cmd_bind(Command):
 
 
 class cmd_unbind(Command):
-    """Bind the current branch to its parent.
+    """Unbind the current branch from its master branch.
 
     After unbinding, the local branch is considered independent.
+    All subsequent commits will be local.
     """
 
     takes_args = []
@@ -2365,15 +2503,11 @@ class cmd_unbind(Command):
 class cmd_uncommit(bzrlib.commands.Command):
     """Remove the last committed revision.
 
-    By supplying the --all flag, it will not only remove the entry 
-    from revision_history, but also remove all of the entries in the
-    stores.
-
     --verbose will print out what is being removed.
     --dry-run will go through all the motions, but not actually
     remove anything.
     
-    In the future, uncommit will create a changeset, which can then
+    In the future, uncommit will create a revision bundle, which can then
     be re-applied.
     """
 
@@ -2439,18 +2573,23 @@ class cmd_break_lock(Command):
 
     CAUTION: Locks should only be broken when you are sure that the process
     holding the lock has been stopped.
+
+    You can get information on what locks are open via the 'bzr info' command.
     
     example:
-        bzr break-lock .
+        bzr break-lock
     """
-    takes_args = ['location']
-    takes_options = [Option('show',
-                            help="just show information on the lock, " \
-                                 "don't break it"),
-                    ]
-    def run(self, location, show=False):
-        raise NotImplementedError("sorry, break-lock is not complete yet; "
-                "you can remove the 'held' directory manually to break the lock")
+    takes_args = ['location?']
+
+    def run(self, location=None, show=False):
+        if location is None:
+            location = u'.'
+        control, relpath = bzrdir.BzrDir.open_containing(location)
+        try:
+            control.break_lock()
+        except NotImplementedError:
+            pass
+        
 
 
 # command-line interpretation helper for merge-related commands
@@ -2528,6 +2667,7 @@ def merge(other_revision, base_revision,
 # aliases.  ideally we would avoid loading the implementation until the
 # details were needed.
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
+from bzrlib.bundle.commands import cmd_bundle_revisions
 from bzrlib.sign_my_commits import cmd_sign_my_commits
 from bzrlib.weave_commands import cmd_weave_list, cmd_weave_join, \
         cmd_weave_plan_merge, cmd_weave_merge_text

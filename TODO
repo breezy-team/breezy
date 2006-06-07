@@ -184,6 +184,10 @@ __ http://mail.python.org/pipermail/python-list/2001-April/037847.html
 
 * BZRDIR should be in branch.py not __init__.py.
 
+* bzrlib.delta.compare_trees() shouldn't need to sort all of the result
+  lists, since they are being added in alphabetical order. Write tests
+  to guarantee this, and remove the sort() calls.
+
 Medium things
 -------------
 
@@ -434,3 +438,25 @@ Large things
   with removing the tags on the way back in.
 
 * ``bzr find``
+
+Selftest
+--------
+
+* Write some benchmark tests
+
+* we could display the ids of some tests selected by time to rune, or cputime,
+  rusage. 
+
+* We could run tests multiple times and report deviation/slowest/fastest.
+
+* Gather lsprofile output for each test individually - log that somewhere.
+
+* Should plugins be able to offer benchmark tests ?
+
+CHANGESETS
+----------
+Ensure changeset command behaves properly w/revisions (e.g. 0)
+Figure out whether testament-related bug is my problem
+Get rid of the 'old' directory
+Bundle signatures
+What to do about ghost ancestors in remote branch that are present locally?

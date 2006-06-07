@@ -16,7 +16,8 @@ class MoreTests(TestCaseWithTransport):
         job: given a path (either relative to cwd or absolute), work out
         if it is inside a branch and return the path relative to the base.
         """
-        import tempfile, shutil
+        import tempfile
+        from bzrlib.osutils import rmtree
         
         savedir = os.getcwdu()
         dtmp = tempfile.mkdtemp()
@@ -64,4 +65,4 @@ class MoreTests(TestCaseWithTransport):
 
         finally:
             os.chdir(savedir)
-            shutil.rmtree(dtmp)
+            rmtree(dtmp)

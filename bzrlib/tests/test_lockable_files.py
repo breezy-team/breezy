@@ -16,7 +16,9 @@
 
 from StringIO import StringIO
 
+import bzrlib
 from bzrlib.branch import Branch
+import bzrlib.errors as errors
 from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
@@ -95,6 +97,31 @@ class _TestLockableFiles_mixin(object):
     def test__escape_empty(self):
         self.assertEqual('', self.lockable._escape(''))
 
+    def test_break_lock(self):
+        # some locks are not breakable
+        self.lockable.lock_write()
+        try:
+            self.assertRaises(AssertionError, self.lockable.break_lock)
+        except NotImplementedError:
+            # this lock cannot be broken
+            self.lockable.unlock()
+            return
+        l2 = self.get_lockable()
+        orig_factory = bzrlib.ui.ui_factory
+        # silent ui - no need for stdout
+        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
+        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        try:
+            l2.break_lock()
+        finally:
+            bzrlib.ui.ui_factory = orig_factory
+        try:
+            l2.lock_write()
+            l2.unlock()
+        finally:
+            self.assertRaises(errors.LockBroken, self.lockable.unlock)
+            self.assertFalse(self.lockable.is_locked())
+
 
 # This method of adapting tests to parameters is different to 
 # the TestProviderAdapters used elsewhere, but seems simpler for this 
@@ -106,9 +133,18 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
         super(TestLockableFiles_TransportLock, self).setUp()
         transport = get_transport('.')
         transport.mkdir('.bzr')
-        sub_transport = transport.clone('.bzr')
-        self.lockable = LockableFiles(sub_transport, 'my-lock', TransportLock)
+        self.sub_transport = transport.clone('.bzr')
+        self.lockable = self.get_lockable()
         self.lockable.create_lock()
+
+    def tearDown(self):
+        super(TestLockableFiles_TransportLock, self).tearDown()
+        # free the subtransport so that we do not get a 5 second
+        # timeout due to the SFTP connection cache.
+        del self.sub_transport
+
+    def get_lockable(self):
+        return LockableFiles(self.sub_transport, 'my-lock', TransportLock)
         
 
 class TestLockableFiles_LockDir(TestCaseInTempDir,
@@ -118,21 +154,15 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
     def setUp(self):
         super(TestLockableFiles_LockDir, self).setUp()
         self.transport = get_transport('.')
-        self.lockable = LockableFiles(self.transport, 'my-lock', LockDir)
+        self.lockable = self.get_lockable()
         # the lock creation here sets mode - test_permissions on branch 
         # tests that implicitly, but it might be a good idea to factor 
         # out the mode checking logic and have it applied to loackable files
         # directly. RBC 20060418
         self.lockable.create_lock()
 
-    def test_lock_is_lockdir(self):
-        """Created instance should use a LockDir.
-        
-        This primarily tests the mixin adapter works properly.
-        """
-        ## self.assertIsInstance(self.lockable, LockableFiles)
-        ## self.assertIsInstance(self.lockable._lock_strategy,
-                              ## LockDirStrategy)
+    def get_lockable(self):
+        return LockableFiles(self.transport, 'my-lock', LockDir)
 
     def test_lock_created(self):
         self.assertTrue(self.transport.has('my-lock'))

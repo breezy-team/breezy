@@ -30,6 +30,7 @@ from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
                               find_interesting, build_tree, get_backup_name)
 
 class TestTreeTransform(TestCaseInTempDir):
+
     def setUp(self):
         super(TestTreeTransform, self).setUp()
         self.wt = BzrDir.create_standalone_workingtree('.')
@@ -57,6 +58,8 @@ class TestTreeTransform(TestCaseInTempDir):
         transform, root = self.get_transform() 
         self.assertIs(transform.get_tree_parent(root), ROOT_PARENT)
         imaginary_id = transform.trans_id_tree_path('imaginary')
+        imaginary_id2 = transform.trans_id_tree_path('imaginary/')
+        self.assertEqual(imaginary_id, imaginary_id2)
         self.assertEqual(transform.get_tree_parent(imaginary_id), root)
         self.assertEqual(transform.final_kind(root), 'directory')
         self.assertEqual(transform.final_file_id(root), self.wt.get_root_id())
@@ -489,6 +492,27 @@ class TestTreeTransform(TestCaseInTempDir):
                          set(['myfile-id']))
         self.assertRaises(NotVersionedError, find_interesting, wt, wt,
                           ['uvfile'])
+
+    def test_set_executability_order(self):
+        """Ensure that executability behaves the same, no matter what order.
+        
+        - create file and set executability simultaneously
+        - create file and set executability afterward
+        - unsetting the executability of a file whose executability has not been
+        declared should throw an exception (this may happen when a
+        merge attempts to create a file with a duplicate ID)
+        """
+        transform, root = self.get_transform()
+        wt = transform._tree
+        transform.new_file('set_on_creation', root, 'Set on creation', 'soc',
+                           True)
+        sac = transform.new_file('set_after_creation', root, 'Set after creation', 'sac')
+        transform.set_executability(True, sac)
+        uws = transform.new_file('unset_without_set', root, 'Unset badly', 'uws')
+        self.assertRaises(KeyError, transform.set_executability, None, uws)
+        transform.apply()
+        self.assertTrue(wt.is_executable('soc'))
+        self.assertTrue(wt.is_executable('sac'))
 
 
 class TransformGroup(object):

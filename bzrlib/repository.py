@@ -64,6 +64,9 @@ class Repository(object):
 
         returns the sha1 of the serialized inventory.
         """
+        assert inv.revision_id is None or inv.revision_id == revid, \
+            "Mismatch between inventory revision" \
+            " id and insertion revid (%r, %r)" % (inv.revision_id, revid)
         inv_text = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
         inv_sha1 = bzrlib.osutils.sha_string(inv_text)
         inv_vf = self.control_weaves.get_weave('inventory',
@@ -116,6 +119,14 @@ class Repository(object):
         result = self._all_possible_ids()
         return self._eliminate_revisions_not_present(result)
 
+    def break_lock(self):
+        """Break a lock if one is present from another instance.
+
+        Uses the ui factory to ask for confirmation if the lock may be from
+        an active process.
+        """
+        self.control_files.break_lock()
+
     @needs_read_lock
     def _eliminate_revisions_not_present(self, revision_ids):
         """Check every revision id in revision_ids to see if we have it.
@@ -159,14 +170,21 @@ class Repository(object):
         # TODO: make sure to construct the right store classes, etc, depending
         # on whether escaping is required.
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, 
+                           self.bzrdir.transport.base)
+
+    def is_locked(self):
+        return self.control_files.is_locked()
+
     def lock_write(self):
         self.control_files.lock_write()
 
     def lock_read(self):
         self.control_files.lock_read()
 
-    def is_locked(self):
-        return self.control_files.is_locked()
+    def get_physical_lock_status(self):
+        return self.control_files.get_physical_lock_status()
 
     @needs_read_lock
     def missing_revision_ids(self, other, revision_id=None):
@@ -295,89 +313,46 @@ class Repository(object):
                                                          signature,
                                                          self.get_transaction())
 
-    def fileid_involved_between_revs(self, from_revid, to_revid):
-        """Find file_id(s) which are involved in the changes between revisions.
+    def fileids_altered_by_revision_ids(self, revision_ids):
+        """Find the file ids and versions affected by revisions.
 
-        This determines the set of revisions which are involved, and then
-        finds all file ids affected by those revisions.
-        """
-        w = self.get_inventory_weave()
-        from_set = set(w.get_ancestry(from_revid))
-        to_set = set(w.get_ancestry(to_revid))
-        changed = to_set.difference(from_set)
-        return self._fileid_involved_by_set(changed)
-
-    def fileid_involved(self, last_revid=None):
-        """Find all file_ids modified in the ancestry of last_revid.
-
-        :param last_revid: If None, last_revision() will be used.
-        """
-        w = self.get_inventory_weave()
-        if not last_revid:
-            changed = set(w.versions())
-        else:
-            changed = set(w.get_ancestry(last_revid))
-        return self._fileid_involved_by_set(changed)
-
-    def fileid_involved_by_set(self, changes):
-        """Find all file_ids modified by the set of revisions passed in.
-
-        :param changes: A set() of revision ids
-        """
-        # TODO: jam 20060119 This line does *nothing*, remove it.
-        #       or better yet, change _fileid_involved_by_set so
-        #       that it takes the inventory weave, rather than
-        #       pulling it out by itself.
-        return self._fileid_involved_by_set(changes)
-
-    def _fileid_involved_by_set(self, changes):
-        """Find the set of file-ids affected by the set of revisions.
-
-        :param changes: A set() of revision ids.
-        :return: A set() of file ids.
-        
-        This peaks at the Weave, interpreting each line, looking to
-        see if it mentions one of the revisions. And if so, includes
-        the file id mentioned.
-        This expects both the Weave format, and the serialization
-        to have a single line per file/directory, and to have
-        fileid="" and revision="" on that line.
+        :param revisions: an iterable containing revision ids.
+        :return: a dictionary mapping altered file-ids to an iterable of
+        revision_ids. Each altered file-ids has the exact revision_ids that
+        altered it listed explicitly.
         """
         assert isinstance(self._format, (RepositoryFormat5,
                                          RepositoryFormat6,
                                          RepositoryFormat7,
                                          RepositoryFormatKnit1)), \
             "fileid_involved only supported for branches which store inventory as unnested xml"
-
+        selected_revision_ids = set(revision_ids)
         w = self.get_inventory_weave()
-        file_ids = set()
+        result = {}
 
-        # this code needs to read every line in every inventory for the
-        # inventories [changes]. Seeing a line twice is ok. Seeing a line
-        # not pesent in one of those inventories is unnecessary and not 
+        # this code needs to read every new line in every inventory for the
+        # inventories [revision_ids]. Seeing a line twice is ok. Seeing a line
+        # not pesent in one of those inventories is unnecessary but not 
         # harmful because we are filtering by the revision id marker in the
-        # inventory lines to only select file ids altered in one of those  
+        # inventory lines : we only select file ids altered in one of those  
         # revisions. We dont need to see all lines in the inventory because
         # only those added in an inventory in rev X can contain a revision=X
         # line.
-        for line in w.iter_lines_added_or_present_in_versions(changes):
+        for line in w.iter_lines_added_or_present_in_versions(selected_revision_ids):
             start = line.find('file_id="')+9
             if start < 9: continue
             end = line.find('"', start)
             assert end>= 0
             file_id = _unescape_xml(line[start:end])
 
-            # check if file_id is already present
-            if file_id in file_ids: continue
-
             start = line.find('revision="')+10
             if start < 10: continue
             end = line.find('"', start)
             assert end>= 0
             revision_id = _unescape_xml(line[start:end])
-            if revision_id in changes:
-                file_ids.add(file_id)
-        return file_ids
+            if revision_id in selected_revision_ids:
+                result.setdefault(file_id, set()).add(revision_id)
+        return result
 
     @needs_read_lock
     def get_inventory_weave(self):
@@ -387,7 +362,15 @@ class Repository(object):
     @needs_read_lock
     def get_inventory(self, revision_id):
         """Get Inventory object by hash."""
-        xml = self.get_inventory_xml(revision_id)
+        return self.deserialise_inventory(
+            revision_id, self.get_inventory_xml(revision_id))
+
+    def deserialise_inventory(self, revision_id, xml):
+        """Transform the xml into an inventory object. 
+
+        :param revision_id: The expected revision id of the inventory.
+        :param xml: A serialised inventory.
+        """
         return bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
 
     @needs_read_lock
@@ -489,10 +472,10 @@ class Repository(object):
         raise NotImplementedError(self.is_shared)
 
     @needs_write_lock
-    def reconcile(self):
+    def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from bzrlib.reconcile import RepoReconciler
-        reconciler = RepoReconciler(self)
+        reconciler = RepoReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
     
@@ -642,6 +625,49 @@ class AllInOneRepository(Repository):
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return True
+
+
+def install_revision(repository, rev, revision_tree):
+    """Install all revision data into a repository."""
+    present_parents = []
+    parent_trees = {}
+    for p_id in rev.parent_ids:
+        if repository.has_revision(p_id):
+            present_parents.append(p_id)
+            parent_trees[p_id] = repository.revision_tree(p_id)
+        else:
+            parent_trees[p_id] = EmptyTree()
+
+    inv = revision_tree.inventory
+    
+    # Add the texts that are not already present
+    for path, ie in inv.iter_entries():
+        w = repository.weave_store.get_weave_or_empty(ie.file_id,
+                repository.get_transaction())
+        if ie.revision not in w:
+            text_parents = []
+            # FIXME: TODO: The following loop *may* be overlapping/duplicate
+            # with inventoryEntry.find_previous_heads(). if it is, then there
+            # is a latent bug here where the parents may have ancestors of each
+            # other. RBC, AB
+            for revision, tree in parent_trees.iteritems():
+                if ie.file_id not in tree:
+                    continue
+                parent_id = tree.inventory[ie.file_id].revision
+                if parent_id in text_parents:
+                    continue
+                text_parents.append(parent_id)
+                    
+            vfile = repository.weave_store.get_weave_or_empty(ie.file_id, 
+                repository.get_transaction())
+            lines = revision_tree.get_file(ie.file_id).readlines()
+            vfile.add_lines(rev.revision_id, text_parents, lines)
+    try:
+        # install the inventory
+        repository.add_inventory(rev.revision_id, inv, present_parents)
+    except errors.RevisionAlreadyPresent:
+        pass
+    repository.add_revision(rev.revision_id, rev, inv)
 
 
 class MetaDirRepository(Repository):
@@ -806,10 +832,10 @@ class KnitRepository(MetaDirRepository):
         return vf
 
     @needs_write_lock
-    def reconcile(self):
+    def reconcile(self, other=None, thorough=False):
         """Reconcile this repository."""
         from bzrlib.reconcile import KnitReconciler
-        reconciler = KnitReconciler(self)
+        reconciler = KnitReconciler(self, thorough=thorough)
         reconciler.reconcile()
         return reconciler
     
@@ -1491,7 +1517,8 @@ class InterRepository(InterObject):
         target_ids = set(self.target.all_revision_ids())
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids.pop(0) == None
+            assert source_ids[0] == None
+            source_ids.pop(0)
         else:
             source_ids = self.source.all_revision_ids()
         result_set = set(source_ids).difference(target_ids)
@@ -1600,7 +1627,8 @@ class InterWeaveRepo(InterRepository):
         # - RBC 20060209
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids.pop(0) == None
+            assert source_ids[0] == None
+            source_ids.pop(0)
         else:
             source_ids = self.source._all_possible_ids()
         source_ids_set = set(source_ids)
@@ -1662,7 +1690,8 @@ class InterKnitRepo(InterRepository):
         """See InterRepository.missing_revision_ids()."""
         if revision_id is not None:
             source_ids = self.source.get_ancestry(revision_id)
-            assert source_ids.pop(0) == None
+            assert source_ids[0] == None
+            source_ids.pop(0)
         else:
             source_ids = self.source._all_possible_ids()
         source_ids_set = set(source_ids)

@@ -24,6 +24,8 @@ import errno
 import os
 import re
 import sha
+import shutil
+import stat
 import string
 import sys
 import time
@@ -37,7 +39,9 @@ from bzrlib.errors import (BzrError,
                            PathNotChild,
                            IllegalPath,
                            )
+from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
+import bzrlib.win32console
 
 
 def make_readonly(filename):
@@ -72,24 +76,20 @@ def quotefn(f):
         return f
 
 
-def file_kind(f):
-    mode = os.lstat(f)[ST_MODE]
-    if S_ISREG(mode):
-        return 'file'
-    elif S_ISDIR(mode):
-        return 'directory'
-    elif S_ISLNK(mode):
-        return 'symlink'
-    elif S_ISCHR(mode):
-        return 'chardev'
-    elif S_ISBLK(mode):
-        return 'block'
-    elif S_ISFIFO(mode):
-        return 'fifo'
-    elif S_ISSOCK(mode):
-        return 'socket'
-    else:
-        return 'unknown'
+_formats = {
+    stat.S_IFDIR:'directory',
+    stat.S_IFCHR:'chardev',
+    stat.S_IFBLK:'block',
+    stat.S_IFREG:'file',
+    stat.S_IFIFO:'fifo',
+    stat.S_IFLNK:'symlink',
+    stat.S_IFSOCK:'socket',
+}
+def file_kind(f, _formats=_formats, _unknown='unknown', _lstat=os.lstat):
+    try:
+        return _formats[_lstat(f).st_mode & 0170000]
+    except KeyError:
+        return _unknown
 
 
 def kind_marker(kind):
@@ -102,20 +102,21 @@ def kind_marker(kind):
     else:
         raise BzrError('invalid file kind %r' % kind)
 
-def lexists(f):
-    if hasattr(os.path, 'lexists'):
-        return os.path.lexists(f)
-    try:
-        if hasattr(os, 'lstat'):
-            os.lstat(f)
-        else:
-            os.stat(f)
-        return True
-    except OSError,e:
-        if e.errno == errno.ENOENT:
-            return False;
-        else:
-            raise BzrError("lstat/stat of (%r): %r" % (f, e))
+lexists = getattr(os.path, 'lexists', None)
+if lexists is None:
+    def lexists(f):
+        try:
+            if hasattr(os, 'lstat'):
+                os.lstat(f)
+            else:
+                os.stat(f)
+            return True
+        except OSError,e:
+            if e.errno == errno.ENOENT:
+                return False;
+            else:
+                raise BzrError("lstat/stat of (%r): %r" % (f, e))
+
 
 def fancy_rename(old, new, rename_func, unlink_func):
     """A fancy rename, when you don't have atomic rename.
@@ -171,7 +172,8 @@ def fancy_rename(old, new, rename_func, unlink_func):
             else:
                 rename_func(tmp_name, new)
 
-# Default is to just use the python builtins
+# Default is to just use the python builtins, but these can be rebound on
+# particular platforms.
 abspath = os.path.abspath
 realpath = os.path.realpath
 pathjoin = os.path.join
@@ -181,6 +183,7 @@ mkdtemp = tempfile.mkdtemp
 rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
+rmtree = shutil.rmtree
 
 MIN_ABS_PATHLENGTH = 1
 
@@ -189,7 +192,7 @@ if os.name == "posix":
     # choke on a Unicode string containing a relative path if
     # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
     # string.
-    _fs_enc = sys.getfilesystemencoding()
+    _fs_enc = sys.getfilesystemencoding() or 'ascii'
     def abspath(path):
         return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
 
@@ -221,6 +224,24 @@ if sys.platform == 'win32':
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
 
     MIN_ABS_PATHLENGTH = 3
+
+    def _win32_delete_readonly(function, path, excinfo):
+        """Error handler for shutil.rmtree function [for win32]
+        Helps to remove files and dirs marked as read-only.
+        """
+        type_, value = excinfo[:2]
+        if function in (os.remove, os.rmdir) \
+            and type_ == OSError \
+            and value.errno == errno.EACCES:
+            bzrlib.osutils.make_writable(path)
+            function(path)
+        else:
+            raise
+
+    def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
+        """Replacer for shutil.rmtree: could remove readonly dirs/files"""
+        return shutil.rmtree(path, ignore_errors, onerror)
+
 
 def normalizepath(f):
     if hasattr(os.path, 'realpath'):
@@ -525,6 +546,7 @@ def joinpath(p):
     return pathjoin(*p)
 
 
+@deprecated_function(zero_nine)
 def appendpath(p1, p2):
     if p1 == '':
         return p2
@@ -646,16 +668,26 @@ def safe_unicode(unicode_or_utf8_string):
 
 def terminal_width():
     """Return estimated terminal width."""
-
-    # TODO: Do something smart on Windows?
-
-    # TODO: Is there anything that gets a better update when the window
-    # is resized while the program is running? We could use the Python termcap
-    # library.
+    if sys.platform == 'win32':
+        import bzrlib.win32console
+        return bzrlib.win32console.get_console_size()[0]
+    width = 0
     try:
-        return int(os.environ['COLUMNS'])
-    except (IndexError, KeyError, ValueError):
-        return 80
+        import struct, fcntl, termios
+        s = struct.pack('HHHH', 0, 0, 0, 0)
+        x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
+        width = struct.unpack('HHHH', x)[1]
+    except IOError:
+        pass
+    if width <= 0:
+        try:
+            width = int(os.environ['COLUMNS'])
+        except:
+            pass
+    if width <= 0:
+        width = 80
+
+    return width
 
 def supports_executable():
     return sys.platform != "win32"

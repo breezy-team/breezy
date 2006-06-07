@@ -19,10 +19,10 @@
 # s: "i hate that."
 
 
-from difflib import SequenceMatcher
-
 from bzrlib.errors import CantReprocessAndShowBase
+import bzrlib.patiencediff
 from bzrlib.textfile import check_text_lines
+
 
 def intersect(ra, rb):
     """Given two ranges return the range where they intersect or None.
@@ -294,8 +294,8 @@ class Merge3(object):
             type, iz, zmatch, ia, amatch, ib, bmatch = region
             a_region = self.a[ia:amatch]
             b_region = self.b[ib:bmatch]
-            matches = SequenceMatcher(None, a_region, 
-                                      b_region).get_matching_blocks()
+            matches = bzrlib.patiencediff.PatienceSequenceMatcher(
+                    None, a_region, b_region).get_matching_blocks()
             next_a = ia
             next_b = ib
             for region_ia, region_ib, region_len in matches[:-1]:
@@ -327,8 +327,10 @@ class Merge3(object):
         """
 
         ia = ib = 0
-        amatches = SequenceMatcher(None, self.base, self.a).get_matching_blocks()
-        bmatches = SequenceMatcher(None, self.base, self.b).get_matching_blocks()
+        amatches = bzrlib.patiencediff.PatienceSequenceMatcher(
+                None, self.base, self.a).get_matching_blocks()
+        bmatches = bzrlib.patiencediff.PatienceSequenceMatcher(
+                None, self.base, self.b).get_matching_blocks()
         len_a = len(amatches)
         len_b = len(bmatches)
 
@@ -384,14 +386,10 @@ class Merge3(object):
 
     def find_unconflicted(self):
         """Return a list of ranges in base that are not conflicted."""
-
-        import re
-
-        # don't sync-up on lines containing only blanks or pounds
-        junk_re = re.compile(r'^[ \t#]*$')
-        
-        am = SequenceMatcher(junk_re.match, self.base, self.a).get_matching_blocks()
-        bm = SequenceMatcher(junk_re.match, self.base, self.b).get_matching_blocks()
+        am = bzrlib.patiencediff.PatienceSequenceMatcher(
+                None, self.base, self.a).get_matching_blocks()
+        bm = bzrlib.patiencediff.PatienceSequenceMatcher(
+                None, self.base, self.b).get_matching_blocks()
 
         unc = []
 

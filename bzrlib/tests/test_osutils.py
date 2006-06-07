@@ -17,7 +17,10 @@
 """Tests for the osutils wrapper.
 """
 
+import errno
 import os
+import socket
+import stat
 import sys
 
 import bzrlib
@@ -70,6 +73,59 @@ class TestOSUtils(TestCaseInTempDir):
         self.assertEqual(len(result), 100)
         self.assertEqual(type(result), str)
         self.assertContainsRe(result, r'^[a-z0-9]{100}$')
+
+
+    def test_rmtree(self):
+        # Check to remove tree with read-only files/dirs
+        os.mkdir('dir')
+        f = file('dir/file', 'w')
+        f.write('spam')
+        f.close()
+        # would like to also try making the directory readonly, but at the
+        # moment python shutil.rmtree doesn't handle that properly - it would
+        # need to chmod the directory before removing things inside it - deferred
+        # for now -- mbp 20060505
+        # osutils.make_readonly('dir')
+        osutils.make_readonly('dir/file')
+
+        osutils.rmtree('dir')
+
+        self.failIfExists('dir/file')
+        self.failIfExists('dir')
+
+    def test_file_kind(self):
+        self.build_tree(['file', 'dir/'])
+        self.assertEquals('file', osutils.file_kind('file'))
+        self.assertEquals('directory', osutils.file_kind('dir/'))
+        if osutils.has_symlinks():
+            os.symlink('symlink', 'symlink')
+            self.assertEquals('symlink', osutils.file_kind('symlink'))
+        
+        # TODO: jam 20060529 Test a block device
+        try:
+            os.lstat('/dev/null')
+        except OSError, e:
+            if e.errno not in (errno.ENOENT,):
+                raise
+        else:
+            self.assertEquals('chardev', osutils.file_kind('/dev/null'))
+
+        mkfifo = getattr(os, 'mkfifo', None)
+        if mkfifo:
+            mkfifo('fifo')
+            try:
+                self.assertEquals('fifo', osutils.file_kind('fifo'))
+            finally:
+                os.remove('fifo')
+
+        AF_UNIX = getattr(socket, 'AF_UNIX', None)
+        if AF_UNIX:
+            s = socket.socket(AF_UNIX)
+            s.bind('socket')
+            try:
+                self.assertEquals('socket', osutils.file_kind('socket'))
+            finally:
+                os.remove('socket')
 
 
 class TestSafeUnicode(TestCase):

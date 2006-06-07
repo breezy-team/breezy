@@ -44,6 +44,7 @@ class Serializer_v5(Serializer):
 
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
+        # TODO: should just be a plain assertion
         if not InventoryEntry.versionable_kind(ie.kind):
             raise AssertionError('unsupported entry kind %s' % ie.kind)
         e = Element(ie.kind)

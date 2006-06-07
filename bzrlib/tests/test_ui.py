@@ -19,6 +19,7 @@
 
 import os
 from StringIO import StringIO
+import re
 import sys
 
 import bzrlib
@@ -32,7 +33,6 @@ from bzrlib.ui.text import TextUIFactory
 class UITests(TestCase):
 
     def test_silent_factory(self):
-
         ui = SilentUIFactory()
         pb = ui.nested_progress_bar()
         try:
@@ -116,3 +116,61 @@ class UITests(TestCase):
         bar = factory.nested_progress_bar()
         bar.finished()
         self.assertIsInstance(bar, bzrlib.progress.DotsProgressBar)
+
+    def test_cli_stdin_is_default_stdin(self):
+        factory = bzrlib.ui.CLIUIFactory()
+        self.assertEqual(sys.stdin, factory.stdin)
+
+    def assert_get_bool_acceptance_of_user_input(self, factory):
+        factory.stdin = StringIO("y\nyes with garbage\nyes\nn\nnot an answer\nno\nfoo\n")
+        factory.stdout = StringIO()
+        # there is no output from the base factory
+        self.assertEqual(True, factory.get_boolean(""))
+        self.assertEqual(True, factory.get_boolean(""))
+        self.assertEqual(False, factory.get_boolean(""))
+        self.assertEqual(False, factory.get_boolean(""))
+        self.assertEqual("foo\n", factory.stdin.read())
+
+    def test_silent_ui_getbool(self):
+        factory = bzrlib.ui.SilentUIFactory()
+        self.assert_get_bool_acceptance_of_user_input(factory)
+
+    def test_silent_factory_prompts_silently(self):
+        factory = bzrlib.ui.SilentUIFactory()
+        stdout = StringIO()
+        factory.stdin = StringIO("y\n")
+        self.assertEqual(
+            True,
+            self.apply_redirected(
+                None, stdout, stdout, factory.get_boolean, "foo")
+            )
+        self.assertEqual("", stdout.getvalue())
+        
+    def test_text_ui_getbool(self):
+        factory = bzrlib.ui.text.TextUIFactory()
+        self.assert_get_bool_acceptance_of_user_input(factory)
+
+    def test_text_factory_prompts_and_clears(self):
+        # a get_boolean call should clear the pb before prompting
+        factory = bzrlib.ui.text.TextUIFactory()
+        factory.stdout = StringIO()
+        factory.stdin = StringIO("yada\ny\n")
+        pb = self.apply_redirected(
+            factory.stdin, factory.stdout, factory.stdout, factory.nested_progress_bar)
+        self.apply_redirected(
+            factory.stdin, factory.stdout, factory.stdout, pb.update, "foo", 0, 1)
+        self.assertEqual(
+            True,
+            self.apply_redirected(
+                None, factory.stdout, factory.stdout, factory.get_boolean, "what do you want")
+            )
+        # use a regular expression so that we don't depend on the particular
+        # screen width - could also set and restore $COLUMN if that has
+        # priority on all platforms, but it doesn't at present.
+        output = factory.stdout.getvalue()
+        if not re.match(
+            "\r/ \\[    *\\] foo 0/1"
+            "\r   *" 
+            "\rwhat do you want\\? \\[y/n\\]:what do you want\\? \\[y/n\\]:", 
+            output):
+            self.fail("didn't match factory output %r" % factory)

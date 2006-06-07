@@ -19,6 +19,9 @@ import os
 from bzrlib.workingtree import WorkingTree
 from bzrlib.tests.blackbox import ExternalBase
 
+# FIXME: These don't really look at the output of the conflict commands, just
+# the number of lines - there should be more examination.
+
 class TestConflicts(ExternalBase):
     def setUp(self):
         super(ExternalBase, self).setUp()

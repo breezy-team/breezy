@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 
 import os
 import errno
-from shutil import rmtree
 from tempfile import mkdtemp
 
 import bzrlib
@@ -39,7 +38,7 @@ from bzrlib.errors import (BzrCommandError,
                            )
 from bzrlib.merge3 import Merge3
 import bzrlib.osutils
-from bzrlib.osutils import rename, pathjoin
+from bzrlib.osutils import rename, pathjoin, rmtree
 from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
 from bzrlib.symbol_versioning import *
@@ -138,8 +137,8 @@ class Merger(object):
         trees = (self.this_basis_tree, self.other_tree)
         return [get_id(tree, file_id) for tree in trees]
 
-    def check_basis(self, check_clean):
-        if self.this_basis is None:
+    def check_basis(self, check_clean, require_commits=True):
+        if self.this_basis is None and require_commits is True:
             raise BzrCommandError("This branch has no commits")
         if check_clean:
             self.compare_basis()
@@ -205,6 +204,9 @@ class Merger(object):
                 raise NoCommits(other_branch)
         if other_branch.base != self.this_branch.base:
             self.this_branch.fetch(other_branch, last_revision=self.other_basis)
+
+    def find_base(self):
+        self.set_base([None, None])
 
     def set_base(self, base_revision):
         mutter("doing merge() with no base_revision specified")
@@ -920,3 +922,9 @@ merge_types = {     "merge3": (Merge3Merger, "Native diff3-style merge"),
                      "diff3": (Diff3Merger,  "Merge using external diff3"),
                      'weave': (WeaveMerger, "Weave-based merge")
               }
+
+
+def merge_type_help():
+    templ = '%s%%7s: %%s' % (' '*12)
+    lines = [templ % (f[0], f[1][1]) for f in merge_types.iteritems()]
+    return '\n'.join(lines)

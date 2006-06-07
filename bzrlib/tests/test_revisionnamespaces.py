@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 by Canonical Ltd
+# Copyright (C) 2004, 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,6 +50,8 @@ class TestRevisionNamespaces(TestCaseWithTransport):
 
         self.assertEquals(RevisionSpec('date:today').in_history(b),
                           (2, 'a@r-0-2'))
+        self.assertRaises(NoSuchRevision,
+                          RevisionSpec('date:tomorrow').in_history, b)
         self.assertEquals(RevisionSpec('date:yesterday').in_history(b),
                           (1, 'a@r-0-1'))
         self.assertEquals(RevisionSpec('before:date:today').in_history(b),
