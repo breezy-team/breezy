@@ -76,6 +76,7 @@ from bzrlib.atomicfile import AtomicFile
 from bzrlib.osutils import (local_time_offset,
                             rand_bytes, compact_date,
                             kind_marker, is_inside_any, quotefn,
+                            is_inside_or_parent_of_any,
                             sha_file, isdir, isfile,
                             split_lines)
 import bzrlib.config
@@ -592,36 +593,13 @@ class Commit(object):
             self._emit_progress_update()
             file_id = new_ie.file_id
             mutter('check %s {%s}', path, new_ie.file_id)
-            if self.specific_files:
-                if not is_inside_any(self.specific_files, path):
-                    mutter('%s not selected for commit', path)
-                    self._carry_entry(file_id)
-                    continue
-                else:
-                    # this is selected, ensure its parents are too.
-                    parent_id = new_ie.parent_id
-                    while parent_id != ROOT_ID:
-                        if not self.builder.new_inventory.has_id(parent_id):
-                            # when selectively committing a file in a new dir,
-                            # suck up the dir too.
-                            ie = self._select_entry(self.work_inv[parent_id])
-                            mutter('%s selected for commit because of %s',
-                                   self.builder.new_inventory.id2path(parent_id), 
-                                   path)
-                            parent_id = ie.parent_id
-                        else:
-                            ie = self.builder.new_inventory[parent_id]
-                            if ie.revision is not None:
-                                ie.revision = None
-                                mutter('%s selected for commit because of %s',
-                                       self.builder.new_inventory.id2path(parent_id), 
-                                       path)
-                                parent_id = ie.parent_id
-                            else:
-                                # our parent is already selected.
-                                parent_id = ROOT_ID
-            mutter('%s selected for commit', path)
-            self._select_entry(new_ie)
+            if (not self.specific_files or 
+                is_inside_or_parent_of_any(self.specific_files, path)):
+                    mutter('%s selected for commit', path)
+                    self._select_entry(new_ie)
+            else:
+                mutter('%s not selected for commit', path)
+                self._carry_entry(file_id)
 
     def _emit_progress_update(self):
         """Emit an update to the progress bar."""
