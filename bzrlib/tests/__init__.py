@@ -329,7 +329,7 @@ class TextTestRunner(object):
         test_root = TestCaseInTempDir.TEST_ROOT
         if result.wasSuccessful() or not self.keep_output:
             if test_root is not None:
-                    osutils.rmtree(test_root)
+                    osutils.rmtree(test_root.encode(sys.getfilesystemencoding()))
         else:
             if self.pb is not None:
                 self.pb.note("Failed tests working directories are in '%s'\n",

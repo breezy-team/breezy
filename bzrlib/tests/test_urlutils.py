@@ -22,7 +22,7 @@ import sys
 import bzrlib
 from bzrlib.errors import InvalidURL, InvalidURLJoin
 import bzrlib.urlutils as urlutils
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
 
 class TestUrlToPath(TestCase):
@@ -79,7 +79,14 @@ class TestUrlToPath(TestCase):
         norm_file('path/to/foo', '../path/to/foo')
 
         # Local paths are assumed to *not* be escaped at all
-        norm_file('uni/%C2%B5', u'uni/\xb5')
+        try:
+            u'uni/\xb5'.encode(bzrlib.user_encoding)
+        except UnicodeError:
+            # locale cannot handle unicode 
+            pass
+        else:
+            norm_file('uni/%C2%B5', u'uni/\xb5')
+
         norm_file('uni/%25C2%25B5', u'uni/%C2%B5')
         norm_file('uni/%20b', u'uni/ b')
         # All the crazy characters get escaped in local paths => file:/// urls
@@ -219,8 +226,13 @@ class TestUrlToPath(TestCase):
         to_url = urlutils._posix_local_path_to_url
         self.assertEqual('file:///path/to/foo',
             to_url('/path/to/foo'))
-        self.assertEqual('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s',
-            to_url(u'/path/to/r\xe4ksm\xf6rg\xe5s'))
+
+        try:
+            result = to_url(u'/path/to/r\xe4ksm\xf6rg\xe5s')
+        except UnicodeError:
+            raise TestSkipped("local encoding cannot handle unicode")
+
+        self.assertEqual('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
 
     def test_posix_local_path_from_url(self):
         from_url = urlutils._posix_local_path_from_url
@@ -237,8 +249,13 @@ class TestUrlToPath(TestCase):
         to_url = urlutils._win32_local_path_to_url
         self.assertEqual('file:///C|/path/to/foo',
             to_url('C:/path/to/foo'))
-        self.assertEqual('file:///D|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s',
-            to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s'))
+
+        try:
+            result = to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s')
+        except UnicodeError:
+            raise TestSkipped("local encoding cannot handle unicode")
+
+        self.assertEqual('file:///D|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
 
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url

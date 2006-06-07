@@ -25,7 +25,7 @@ import sys
 import bzrlib
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
 import bzrlib.osutils as osutils
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
 
 class TestOSUtils(TestCaseInTempDir):
