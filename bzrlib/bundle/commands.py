@@ -64,15 +64,15 @@ class cmd_bundle_revisions(Command):
 
     You can apply it to another tree using 'bzr merge'.
 
-    bzr bundle
+    bzr bundle-revisions
         - Bundle for the last commit
-    bzr bundle BASE
+    bzr bundle-revisions BASE
         - Bundle to apply the current tree into BASE
-    bzr bundle --revision A
+    bzr bundle-revisions --revision A
         - Bundle for revision A
-    bzr bundle --revision A..B
+    bzr bundle-revisions --revision A..B
         - Bundle to transform A into B
-    bzr bundle --revision A..B BASE
+    bzr bundle-revisions --revision A..B BASE
         - Bundle to transform revision A of BASE into revision B
           of the local tree
     """
