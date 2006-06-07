@@ -34,7 +34,8 @@ class TestUrlToPath(TestCase):
         if sys.platform == 'win32':
             self.assertRaises(InvalidURL, basename, 'file:///path/to/foo')
             self.assertEqual('foo', basename('file:///C|/foo'))
-            self.assertEqual('', basename('file:///C|/'))
+            self.assertEqual('foo', basename('file:///C:/foo'))
+            self.assertEqual('', basename('file:///C:/'))
         else:
             self.assertEqual('foo', basename('file:///foo'))
             self.assertEqual('', basename('file:///'))
@@ -247,7 +248,7 @@ class TestUrlToPath(TestCase):
 
     def test_win32_local_path_to_url(self):
         to_url = urlutils._win32_local_path_to_url
-        self.assertEqual('file:///C|/path/to/foo',
+        self.assertEqual('file:///C:/path/to/foo',
             to_url('C:/path/to/foo'))
 
         try:
@@ -255,7 +256,7 @@ class TestUrlToPath(TestCase):
         except UnicodeError:
             raise TestSkipped("local encoding cannot handle unicode")
 
-        self.assertEqual('file:///D|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
+        self.assertEqual('file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
 
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url

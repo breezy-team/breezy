@@ -327,7 +327,8 @@ class TestNonAscii(TestCaseInTempDir):
         # TODO: jam 20060106 diff is a difficult one to test, because it 
         #       shouldn't encode the file contents, but it needs some sort
         #       of encoding for the paths, etc which are displayed.
-        pass
+        open(self.info['filename'], 'ab').write('newline\n')
+        txt = self.run_bzr('diff', retcode=1)[0]
 
     def test_deleted(self):
         bzr = self.run_bzr_decode
@@ -419,9 +420,7 @@ class TestNonAscii(TestCaseInTempDir):
                         % (fname, fname, fname2))
         self.assertEqual(expected_txt, txt)
 
-        txt = bzr('touching-revisions', fname2, encoding='ascii')
-        expected_ascii = expected_txt.encode('ascii', 'replace')
-        self.assertEqual(expected_ascii, txt)
+        bzr('touching-revisions', fname2, encoding='ascii', retcode=3)
 
     def test_ls(self):
         bzr = self.run_bzr_decode

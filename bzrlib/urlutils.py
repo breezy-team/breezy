@@ -188,7 +188,7 @@ def _win32_local_path_to_url(path):
     # TODO: jam 20060426 consider moving this import outside of the function
     win32_path = bzrlib.osutils._nt_normpath(
         bzrlib.osutils._win32_abspath(path)).replace('\\', '/')
-    return 'file:///' + win32_path[0].upper() + '|' + escape(win32_path[2:])
+    return 'file:///' + win32_path[0].upper() + ':' + escape(win32_path[2:])
 
 
 local_path_to_url = _posix_local_path_to_url

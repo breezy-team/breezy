@@ -1342,7 +1342,6 @@ class cmd_touching_revisions(Command):
     A more user-friendly interface is "bzr log FILE"."""
     hidden = True
     takes_args = ["filename"]
-    encoding_type = 'replace'
 
     @display_command
     def run(self, filename):
