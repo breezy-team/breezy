@@ -291,13 +291,13 @@ class TestSnapshot(TestCaseWithTransport):
         self.inv_1 = self.branch.repository.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
         self.file_active = self.wt.inventory['fileid']
+        self.builder = self.branch.get_commit_builder([])
+        self.builder.set_revision_id('2')
 
     def test_snapshot_new_revision(self):
         # This tests that a simple commit with no parents makes a new
         # revision value in the inventory entry
-        self.file_active.snapshot('2', 'subdir/file', {}, self.wt, 
-                                  self.branch.repository.weave_store,
-                                  self.branch.get_transaction())
+        self.file_active.snapshot('2', 'subdir/file', {}, self.wt, self.builder)
         # expected outcome - file_1 has a revision id of '2', and we can get
         # its text of 'file contents' out of the weave.
         self.assertEqual(self.file_1.revision, '1')
@@ -312,9 +312,7 @@ class TestSnapshot(TestCaseWithTransport):
         #This tests that a simple commit does not make a new entry for
         # an unchanged inventory entry
         self.file_active.snapshot('2', 'subdir/file', {'1':self.file_1},
-                                  self.wt, 
-                                  self.branch.repository.weave_store,
-                                  self.branch.get_transaction())
+                                  self.wt, self.builder)
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '1')
         vf = self.branch.repository.weave_store.get_weave(
@@ -341,9 +339,7 @@ class TestSnapshot(TestCaseWithTransport):
         versionfile.clone_text('other', '1', ['1'])
         self.file_active.snapshot('2', 'subdir/file', 
                                   {'1':self.file_1, 'other':other_ie},
-                                  self.wt, 
-                                  self.branch.repository.weave_store,
-                                  self.branch.get_transaction())
+                                  self.wt, self.builder)
         self.assertEqual(self.file_active.revision, '2')
 
     def test_snapshot_changed(self):
@@ -352,9 +348,7 @@ class TestSnapshot(TestCaseWithTransport):
         self.file_active.name='newname'
         rename('subdir/file', 'subdir/newname')
         self.file_active.snapshot('2', 'subdir/newname', {'1':self.file_1}, 
-                                  self.wt,
-                                  self.branch.repository.weave_store,
-                                  self.branch.get_transaction())
+                                  self.wt, self.builder)
         # expected outcome - file_1 has a revision id of '2'
         self.assertEqual(self.file_active.revision, '2')
 

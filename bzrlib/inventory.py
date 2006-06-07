@@ -127,12 +127,6 @@ class InventoryEntry(object):
                  'text_id', 'parent_id', 'children', 'executable', 
                  'revision']
 
-    def _add_text_to_weave(self, new_lines, parents, weave_store, transaction):
-        versionedfile = weave_store.get_weave_or_empty(self.file_id,
-                                                       transaction)
-        versionedfile.add_lines(self.revision, parents, new_lines)
-        versionedfile.clear_cache()
-
     def detect_changes(self, old_entry):
         """Return a (text_modified, meta_modified) from this to old_entry.
         
@@ -410,7 +404,7 @@ class InventoryEntry(object):
                    self.parent_id))
 
     def snapshot(self, revision, path, previous_entries,
-                 work_tree, weave_store, transaction, commit_builder):
+                 work_tree, commit_builder):
         """Make a snapshot of this entry which may or may not have changed.
         
         This means that all its fields are populated, that it has its
@@ -428,10 +422,10 @@ class InventoryEntry(object):
                 self.revision = parent_ie.revision
                 return "unchanged"
         return self._snapshot_into_revision(revision, previous_entries, 
-                                            work_tree, weave_store, transaction, commit_builder)
+                                            work_tree, commit_builder)
 
     def _snapshot_into_revision(self, revision, previous_entries, work_tree,
-                                weave_store, transaction, commit_builder):
+                                commit_builder):
         """Record this revision unconditionally into a store.
 
         The entry's last-changed revision property (`revision`) is updated to 
@@ -443,17 +437,14 @@ class InventoryEntry(object):
         """
         mutter('new revision {%s} for {%s}', revision, self.file_id)
         self.revision = revision
-        self._snapshot_text(previous_entries, work_tree, weave_store,
-                            transaction, commit_builder)
+        self._snapshot_text(previous_entries, work_tree, commit_builder)
 
-    def _snapshot_text(self, file_parents, work_tree, weave_store, transaction, commit_builder): 
+    def _snapshot_text(self, file_parents, work_tree, commit_builder): 
         """Record the 'text' of this entry, whatever form that takes.
         
         This default implementation simply adds an empty text.
         """
-        mutter('storing file {%s} in revision {%s}',
-               self.file_id, self.revision)
-        self._add_text_to_weave([], file_parents.keys(), weave_store, transaction)
+        raise NotImplementedError(self._snapshot_text)
 
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
@@ -563,6 +554,10 @@ class InventoryDirectory(InventoryEntry):
     def _put_on_disk(self, fullpath, tree):
         """See InventoryEntry._put_on_disk."""
         os.mkdir(fullpath)
+
+    def _snapshot_text(self, file_parents, work_tree, commit_builder):
+        """See InventoryEntry._snapshot_text."""
+        commit_builder.modified_directory(self.file_id, file_parents)
 
 
 class InventoryFile(InventoryEntry):
@@ -680,11 +675,11 @@ class InventoryFile(InventoryEntry):
         self.text_sha1 = None
         self.executable = None
 
-    def _snapshot_text(self, file_parents, work_tree, versionedfile_store, transaction, commit_builder):
+    def _snapshot_text(self, file_parents, work_tree, commit_builder):
         """See InventoryEntry._snapshot_text."""
         def get_content_byte_lines():
             return work_tree.get_file(self.file_id).readlines()
-        self.text_sha1, self.text_size = commit_builder.record_file_text(
+        self.text_sha1, self.text_size = commit_builder.modified_file_text(
             self.file_id, file_parents, get_content_byte_lines, self.text_sha1, self.text_size)
 
     def _unchanged(self, previous_ie):
@@ -784,6 +779,11 @@ class InventoryLink(InventoryEntry):
         if self.symlink_target != previous_ie.symlink_target:
             compatible = False
         return compatible
+
+    def _snapshot_text(self, file_parents, work_tree, commit_builder):
+        """See InventoryEntry._snapshot_text."""
+        commit_builder.modified_link(
+            self.file_id, file_parents, self.symlink_target)
 
 
 class Inventory(object):

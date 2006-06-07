@@ -1850,6 +1850,17 @@ class CommitBuilder(object):
     def __init__(self, repository):
         self.repository = repository
 
+    def set_revision_id(self, revision_id):
+        """Set the revision id for this commit.
+
+        :raises UnsupportedOperation: This function can raise a 
+            UnsupportedOperation if the commit builder does not allow 
+            user-specified revision ids.
+
+        :param revision_id: The revision id to use
+        """
+        self._new_revision_id = revision_id
+
     def record_entry_contents(self, ie, parent_invs, revision_id, path, tree):
         """Record the content of ie from tree into the commit if needed.
 
@@ -1861,13 +1872,13 @@ class CommitBuilder(object):
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
         """
-        # TODO: new_revision_id is only known in some repositories after the
+        # TODO: _new_revision_id is only known in some repositories after the
         # commit completes, in others it can be created or assigned earlier.
         # The public interface for CommitBuilder should not assume that any
         # revision id exists to accomodate this. It should allow a 'request' to
         # be made to force a revision, which will fail when they cannot be set
         # in this manner.
-        self.new_revision_id = revision_id
+        self._new_revision_id = revision_id
         previous_entries = ie.find_previous_heads(
             parent_invs,
             self.repository.weave_store,
@@ -1875,12 +1886,19 @@ class CommitBuilder(object):
         if ie.revision is None:
             # we are creating a new revision for ie in the history store
             # and inventory.
-            ie.snapshot(revision_id, path, previous_entries,
-                        tree, self.repository.weave_store,
-                        self.repository.get_transaction(), self)
+            ie.snapshot(revision_id, path, previous_entries, tree, self)
+
+    def modified_directory(self, file_id, file_parents):
+        """Record the presence of a symbolic link.
+
+        :param file_id: The file_id of the link to record.
+        :param file_parents: The per-file parent revision ids.
+        """
+        self._add_text_to_weave(file_id, [], file_parents.keys())
     
-    def record_file_text(self, file_id, file_parents, get_content_byte_lines, 
-        text_sha1=None, text_size=None):
+    def modified_file_text(self, file_id, file_parents,
+                           get_content_byte_lines, text_sha1=None,
+                           text_size=None):
         """Record the text of file file_id
 
         :param file_id: The file_id of the file to record the text of.
@@ -1891,7 +1909,7 @@ class CommitBuilder(object):
         :param text_size: Optional size of the file contents.
         """
         mutter('storing text of file {%s} in revision {%s} into %r',
-               file_id, self.new_revision_id, self.repository.weave_store)
+               file_id, self._new_revision_id, self.repository.weave_store)
         # special case to avoid diffing on renames or 
         # reparenting
         if (len(file_parents) == 1
@@ -1900,7 +1918,7 @@ class CommitBuilder(object):
             previous_ie = file_parents.values()[0]
             versionedfile = self.repository.weave_store.get_weave(file_id, 
                 self.repository.get_transaction())
-            versionedfile.clone_text(self.new_revision_id, 
+            versionedfile.clone_text(self._new_revision_id, 
                 previous_ie.revision, file_parents.keys())
             return text_sha1, text_size
         else:
@@ -1911,10 +1929,19 @@ class CommitBuilder(object):
             return bzrlib.osutils.sha_strings(new_lines), \
                 sum(map(len, new_lines))
 
+    def modified_link(self, file_id, file_parents, link_target):
+        """Record the presence of a symbolic link.
+
+        :param file_id: The file_id of the link to record.
+        :param file_parents: The per-file parent revision ids.
+        :param link_target: Target location of this link.
+        """
+        self._add_text_to_weave(file_id, [], file_parents.keys())
+
     def _add_text_to_weave(self, file_id, new_lines, parents):
         versionedfile = self.repository.weave_store.get_weave_or_empty(
             file_id, self.repository.get_transaction())
-        versionedfile.add_lines(self.new_revision_id, parents, new_lines)
+        versionedfile.add_lines(self._new_revision_id, parents, new_lines)
         versionedfile.clear_cache()
 
 

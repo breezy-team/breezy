@@ -22,9 +22,18 @@ from bzrlib.tests.repository_implementations.test_repository import TestCaseWith
 
 class TestCommitBuilder(TestCaseWithRepository):
     
-    def testGetCommitBuilder(self):
+    def make_commit_builder(self):
         tree = self.make_branch_and_tree(".")
 
-        builder = tree.branch.get_commit_builder([])
+        return tree.branch.get_commit_builder([])
+
+    def testGetCommitBuilder(self):
+        builder = self.make_commit_builder()
 
         self.assertIsInstance(builder, CommitBuilder)
+
+    def testSetRevisionId(self):
+        builder = self.make_commit_builder()
+
+        builder.set_revision_id('foo')
+        
