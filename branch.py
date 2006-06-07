@@ -35,25 +35,6 @@ svn.ra.initialize()
 
 _global_pool = svn.core.svn_pool_create(None)
 
-def _create_auth_baton(pool):
-    """ Create a Subversion authentication baton.
-    
-    :param pool: An APR memory pool
-    """
-    import svn.client
-    # Give the client context baton a suite of authentication
-    # providers.h
-    providers = [
-        svn.client.svn_client_get_simple_provider(pool),
-        svn.client.svn_client_get_ssl_client_cert_file_provider(pool),
-        svn.client.svn_client_get_ssl_client_cert_pw_file_provider(pool),
-        svn.client.svn_client_get_ssl_server_trust_file_provider(pool),
-        svn.client.svn_client_get_username_provider(pool),
-        ]
-    return svn.core.svn_auth_open(providers, pool)
-
-auth_baton = _create_auth_baton(_global_pool)
-
 class FakeControlFiles(object):
     def get_utf8(self, name):
         raise NoSuchFile(name)
@@ -232,11 +213,6 @@ class SvnBranch(Branch):
         parent = self.get_parent()
         if parent:
             destination.set_parent(parent)
-
-    def commit(self, message):
-        callbacks = svn.ra.callbacks2_t()
-        editor, editor_baton = svn.ra.get_commit_editor2(self.repository.ra, 
-                message, callbacks, None, False)
 
     def submit(self, from_branch, stop_revision):
         if stop_revision is None:

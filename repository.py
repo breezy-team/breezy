@@ -26,7 +26,6 @@ from libsvn._core import SubversionException
 import svn.core
 import bzrlib
 from fakeweave import FakeFileStore, FakeInventoryWeave
-from branch import auth_baton
 import branch
 from bzrlib.weave import Weave
 from cStringIO import StringIO
@@ -534,3 +533,25 @@ class SvnRepository(Repository):
 
     def fetch(self, source, revision_id=None, pb=None):
         raise NotImplementedError(self.fetch)
+
+    def get_commit_builder(self, branch, parents, config, timestamp=None, 
+                           timezone=None, committer=None, revprops=None, 
+                           revision_id=None):
+        if timestamp != None:
+            raise NotImplementedError(self.get_commit_builder, 
+                "timestamp can not be user-specified for Subversion repositories")
+
+        if timezone != None:
+            raise NotImplementedError(self.get_commit_builder, 
+                "timezone can not be user-specified for Subversion repositories")
+
+        if committer != None:
+            raise NotImplementedError(self.get_commit_builder, 
+                "committer can not be user-specified for Subversion repositories")
+
+        if revision_id != None:
+            raise NotImplementedError(self.get_commit_builder, 
+                "revision_id can not be user-specified for Subversion repositories")
+
+        from commit import SvnCommitBuilder
+        return SvnCommitBuilder(self, branch, parents, config, revprops)
