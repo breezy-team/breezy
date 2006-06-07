@@ -29,7 +29,7 @@ class cmd_submit(Command):
     """
 
     takes_args = ["location?"]
-    takes_options = ["revision","verbose"]
+    takes_options = ["revision", "verbose"]
     
     def run(self, revid=None, verbose=True, location=None):
         (branch, _) = Branch.open_containing(".")

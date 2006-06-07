@@ -27,11 +27,11 @@ def get_test_permutations():
     return []
 
 class SvnTransport(Transport):
-    """ Fake transport for Subversion-related namespaces. This implements 
+    """Fake transport for Subversion-related namespaces. This implements 
     just as much of Transport as is necessary to fool Bazaar-NG. """
     def __init__(self, url="", ra=None, root_url=None, scheme=None):
         from branch import auth_baton
-        Transport.__init__(self,url)
+        Transport.__init__(self, url)
 
         if url.startswith("svn://") or \
            url.startswith("svn+ssh://"):
@@ -88,7 +88,7 @@ class SvnTransport(Transport):
                 pass
         return PhonyLock()
 
-    def clone(self,path):
+    def clone(self, path):
         parts = self.svn_url.split("/")
         
         # FIXME: Handle more complicated paths
@@ -97,4 +97,4 @@ class SvnTransport(Transport):
         elif path != '.':
             parts.append(path)
 
-        return SvnTransport("/".join(parts),ra=self.ra,root_url=self.svn_root_url)
+        return SvnTransport("/".join(parts), ra=self.ra, root_url=self.svn_root_url)

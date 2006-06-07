@@ -21,16 +21,16 @@ import svn.core, svn.wc
 from libsvn._core import SubversionException
 
 class SvnWorkingTree(WorkingTree):
-    """ Implementation of WorkingTree that uses a Subversion 
+    """Implementation of WorkingTree that uses a Subversion 
     Working Copy for storage."""
-    def __init__(self,path,branch):
-        WorkingTree.__init__(self,path,branch)
+    def __init__(self, path, branch):
+        WorkingTree.__init__(self, path, branch)
         self.path = path
         self.wc = svn.wc.open_adm3(self.path)
 
-    def revert(self,filenames,old_tree=None,backups=True):
+    def revert(self, filenames, old_tree=None, backups=True):
         # FIXME: Respect old_tree and backups
-        svn.wc.revert(filenames,True,self.wc,self.pool)
+        svn.wc.revert(filenames, True, self.wc, self.pool)
 
     def move(self, from_paths, to_name):
         revt = svn.core.svn_opt_revision_t()

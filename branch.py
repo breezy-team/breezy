@@ -15,7 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.branch import Branch, BranchFormat
-from bzrlib.errors import NotBranchError,NoWorkingTree,NoSuchRevision,NoSuchFile
+from bzrlib.errors import NotBranchError, NoWorkingTree, NoSuchRevision, \
+        NoSuchFile
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
             ROOT_ID
 from bzrlib.revision import Revision, NULL_REVISION
@@ -29,14 +30,19 @@ import svn.core, svn.ra
 import os
 from libsvn._core import SubversionException
 
+
 svn.ra.initialize()
 
 _global_pool = svn.core.svn_pool_create(None)
 
 def _create_auth_baton(pool):
+    """ Create a Subversion authentication baton.
+    
+    :param pool: An APR memory pool
+    """
     import svn.client
     # Give the client context baton a suite of authentication
-    # providers.
+    # providers.h
     providers = [
         svn.client.svn_client_get_simple_provider(pool),
         svn.client.svn_client_get_ssl_client_cert_file_provider(pool),
@@ -52,9 +58,10 @@ class FakeControlFiles(object):
     def get_utf8(self, name):
         raise NoSuchFile(name)
 
+
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """
-    def __init__(self,repos,branch_path):
+    def __init__(self, repos, branch_path):
         self.repository = repos
         self.branch_path = branch_path
         self.base_revnum = svn.ra.get_latest_revnum(self.repository.ra)
@@ -64,9 +71,14 @@ class SvnBranch(Branch):
         self._format = SvnBranchFormat()
         mutter("Connected to branch at %s" % branch_path)
         
-    def path_from_file_id(self,revision_id,file_id):
-        """Generate a full Subversion path from a bzr file id."""
-        return self.base+"/"+self.filename_from_file_id(revision_id,file_id)
+    def path_from_file_id(self, revision_id, file_id):
+        """Generate a full Subversion path from a bzr file id.
+        
+        :param revision_id: 
+        :param file_id: 
+        :return: Subversion 
+        """
+        return self.base+"/"+self.filename_from_file_id(revision_id, file_id)
 
     def _generate_revnum_map(self):
         #FIXME: Revids should be globally unique, so we should include the 
@@ -74,17 +86,16 @@ class SvnBranch(Branch):
         # that have the same id because they were created in the same commit.
         self._revision_history = []
 
-        def rcvr(paths,rev,author,date,message,pool):
-            revid = self.repository.generate_revision_id(rev,self.branch_path)
+        def rcvr(paths, rev, author, date, message, pool):
+            revid = self.repository.generate_revision_id(rev, self.branch_path)
             self._revision_history.append(revid)
 
-        svn.ra.get_log(self.repository.ra, [self.branch_path.encode('utf8')], 0, \
-                self.base_revnum, \
-                0, False, False, rcvr, 
-                self.repository.pool)
+        svn.ra.get_log(self.repository.ra, [self.branch_path.encode('utf8')], 
+                       0, self.base_revnum, 0, False, False, rcvr, 
+                       self.repository.pool)
 
     def set_root_id(self, file_id):
-        raise NotImplementedError('set_root_id not supported on Subversion Branches')
+        raise NotImplementedError(self.set_root_id)
             
     def get_root_id(self):
         inv = self.repository.get_inventory(self.last_revision())
@@ -99,22 +110,22 @@ class SvnBranch(Branch):
         return self.base+"/"+name
 
     def push_stores(self, branch_to):
-        raise NotImplementedError('push_stores is abstract') #FIXME
+        raise NotImplementedError(self.push_stores)
 
     def get_revision_inventory(self, revision_id):
-        raise NotImplementedError('get_revision_inventory is abstract') #FIXME
+        raise NotImplementedError(self.get_revision_inventory)
 
     def sign_revision(self, revision_id, gpg_strategy):
-        raise NotImplementedError('Subversion revisions can not be signed')
+        raise NotImplementedError(self.sign_revision)
 
     def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        raise NotImplementedError('Subversion revisions can not be signed')
+        raise NotImplementedError(self.store_revision_signature)
 
     def set_revision_history(self, rev_history):
-        raise NotImplementedError('set_revision_history not supported on Subversion branches')
+        raise NotImplementedError(self.set_revision_history)
 
     def set_push_location(self, location):
-        raise NotImplementedError('set_push_location not supported on Subversion')
+        raise NotImplementedError(self.set_push_location)
 
     def get_push_location(self):
         # get_push_location not supported on Subversion
@@ -141,21 +152,20 @@ class SvnBranch(Branch):
         try:
             i = self.revision_history().index(revision_id)
         except ValueError:
-            raise NoSuchRevision(revision_id,self)
+            raise NoSuchRevision(revision_id, self)
 
         # FIXME: Figure out if there are any merges here and where they come 
         # from
         return self.revision_history()[0:i+1]
 
     def pull(self, source, overwrite=False):
-        print "Pull from %s to %s" % (source,self)
-        raise NotImplementedError('pull is abstract') #FIXME
+        raise NotImplementedError(self.pull)
 
     def update_revisions(self, other, stop_revision=None):
-        raise NotImplementedError('update_revisions is abstract') #FIXME
+        raise NotImplementedError(self.update_revisions)
 
     def pullable_revisions(self, other, stop_revision):
-        raise NotImplementedError('pullable_revisions is abstract') #FIXME
+        raise NotImplementedError(self.pullable_revisions)
         
     # The remote server handles all this for us
     def lock_write(self):
@@ -171,13 +181,14 @@ class SvnBranch(Branch):
         return None
 
     def set_parent(self, url):
-        raise NotImplementedError('can not change parent of SVN branch')
+        raise NotImplementedError(self.set_parent, 
+                                  'can not change parent of SVN branch')
 
     def get_transaction(self):
-        raise NotImplementedError('get_transaction is abstract') #FIXME
+        raise NotImplementedError(self.get_transaction)
 
     def append_revision(self, *revision_ids):
-        raise NotImplementedError('append_revision is abstract') #FIXME
+        raise NotImplementedError(self.append_revision)
 
     def get_physical_lock_status(self):
         return False
@@ -224,7 +235,7 @@ class SvnBranch(Branch):
 
     def commit(self, message):
         callbacks = svn.ra.callbacks2_t()
-        svn.ra.get_commit_editor2(self.repository.ra, 
+        editor, editor_baton = svn.ra.get_commit_editor2(self.repository.ra, 
                 message, callbacks, None, False)
 
     def submit(self, from_branch, stop_revision):
@@ -240,13 +251,16 @@ class SvnBranch(Branch):
 
         print revisions
 
+
 class SvnBranchFormat(BranchFormat):
+    """ Branch format for Subversion Branches."""
     def __init__(self):
         BranchFormat.__init__(self)
 
     def get_format_description(self):
+        """See Branch.get_format_description."""
         return 'Subversion Smart Server'
 
-    def initialize(self,to_bzrdir):
+    def initialize(self, to_bzrdir):
         raise NotImplementedError(self.initialize)
 
