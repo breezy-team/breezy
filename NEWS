@@ -38,7 +38,10 @@ IN DEVELOPMENT
      ftp support has been improved, including support for supplying a
      non-standard port. (John Arbash Meinel).
 
-   * ``log --line`` shows the revision number.  (#5162, Alexander Belchenko)
+   * 'bzr log --line' shows the revision number, and uses only the
+     first line of the log message (#5162, Alexander Belchenko;
+     Matthieu Moy)
+  
 
   BUG FIXES:
 

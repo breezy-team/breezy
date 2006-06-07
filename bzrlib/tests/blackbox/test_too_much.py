@@ -823,7 +823,8 @@ class OldTests(ExternalBase):
         max_width = terminal_width() - 1
         for line in log_out.splitlines():
             self.assert_(len(line) <= max_width, len(line))
-        self.assert_("this is my new commit and" in log_out)
+        self.assert_("this is my new commit and" not in log_out)
+        self.assert_("this is my new commit" in log_out)
 
         progress("file with spaces in name")
         mkdir('sub directory')

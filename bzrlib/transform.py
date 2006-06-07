@@ -847,9 +847,12 @@ class TreeTransform(object):
         parent_id is the transaction id of the parent directory of the file.
         contents is an iterator of bytestrings, which will be used to produce
         the file.
-        file_id is the inventory ID of the file, if it is to be versioned.
+        :param file_id: The inventory ID of the file, if it is to be versioned.
+        :param executable: Only valid when a file_id has been supplied.
         """
         trans_id = self._new_entry(name, parent_id, file_id)
+        # TODO: rather than scheduling a set_executable call,
+        # have create_file create the file with the right mode.
         self.create_file(contents, trans_id)
         if executable is not None:
             self.set_executability(executable, trans_id)

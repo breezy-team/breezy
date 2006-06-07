@@ -101,6 +101,11 @@ class Revision(object):
         reversed_result.reverse()
         return reversed_result
 
+    def get_summary(self):
+        """Get the first line of the log message for this revision.
+        """
+        return self.message.split('\n', 1)[0]
+
 
 def is_ancestor(revision_id, candidate_id, branch):
     """Return true if candidate_id is an ancestor of revision_id.
