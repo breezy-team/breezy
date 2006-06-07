@@ -16,6 +16,7 @@
 
 from cStringIO import StringIO
 import os
+import time
 
 from bzrlib.branch import Branch
 import bzrlib.errors as errors
@@ -305,8 +306,7 @@ class TestSnapshot(TestCaseWithTransport):
         self.inv_1 = self.branch.repository.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
         self.file_active = self.wt.inventory['fileid']
-        self.builder = self.branch.get_commit_builder([])
-        self.builder.set_revision_id('2')
+        self.builder = self.branch.get_commit_builder([], timestamp=time.time(), revision_id='2')
 
     def test_snapshot_new_revision(self):
         # This tests that a simple commit with no parents makes a new

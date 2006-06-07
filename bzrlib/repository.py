@@ -14,8 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from binascii import hexlify
 from copy import deepcopy
 from cStringIO import StringIO
+import re
+import time
 from unittest import TestSuite
 
 import bzrlib.bzrdir as bzrdir
@@ -29,7 +32,8 @@ from bzrlib.inventory import Inventory
 from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
-from bzrlib.osutils import safe_unicode
+from bzrlib.osutils import (safe_unicode, rand_bytes, compact_date, 
+                            local_time_offset)
 from bzrlib.revision import NULL_REVISION
 from bzrlib.store.versioned import VersionedFileStore, WeaveStore
 from bzrlib.store.text import TextStore
@@ -228,9 +232,22 @@ class Repository(object):
         return InterRepository.get(source, self).fetch(revision_id=revision_id,
                                                        pb=pb)
 
-    def get_commit_builder(self, branch, parents):
-        """Obtain a CommitBuilder for this repository."""
-        return CommitBuilder(self, parents)
+    def get_commit_builder(self, branch, parents, config, timestamp=None, 
+                           timezone=None, committer=None, revprops=None, 
+                           revision_id=None):
+        """Obtain a CommitBuilder for this repository.
+        
+        :param branch: Branch to commit to.
+        :param parents: Revision ids of the parents of the new revision.
+        :param config: Configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.
+        """
+        return CommitBuilder(self, parents, config, timestamp, timezone,
+                             committer, revprops, revision_id)
 
     def unlock(self):
         self.control_files.unlock()
@@ -1858,54 +1875,90 @@ class CommitBuilder(object):
     This allows describing a tree to be committed without needing to 
     know the internals of the format of the repository.
     """
+    def __init__(self, repository, parents, config, timestamp=None, 
+                 timezone=None, committer=None, revprops=None, 
+                 revision_id=None):
+        """Initiate a CommitBuilder.
 
-    def __init__(self, repository, parents):
-        self.parents = parents
+        :param repository: Repository to commit to.
+        :param parents: Revision ids of the parents of the new revision.
+        :param config: Configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.
+        """
+        self._config = config
+
+        if committer is None:
+            self._committer = self._config.username()
+        else:
+            assert isinstance(committer, basestring), type(committer)
+            self._committer = committer
+
         self.new_inventory = Inventory()
+        self._new_revision_id = revision_id
+        self.parents = parents
         self.repository = repository
+
+        self._revprops = {}
+        if revprops is not None:
+            self._revprops.update(revprops)
+
+        if timestamp is None:
+            self._timestamp = time.time()
+        else:
+            self._timestamp = long(timestamp)
+
+        if timezone is None:
+            self._timezone = local_time_offset()
+        else:
+            self._timezone = int(timezone)
+
+        self._generate_revision_if_needed()
 
     def finish_inventory(self):
         """Tell the builder that the inventory is finished.
         
         :return: SHA1 of the encoded inventory.
         """
+        self.new_inventory.revision = self._new_revision_id
         return self.repository.add_inventory(
             self._new_revision_id,
             self.new_inventory,
             self.parents
             )
 
-    def set_revision_id(self, revision_id):
-        """Set the revision id for this commit.
+    def _gen_revision_id(self):
+        """Return new revision-id."""
+        s = '%s-%s-' % (self._config.user_email(), 
+                        compact_date(self._timestamp))
+        s += hexlify(rand_bytes(8))
+        return s
 
-        :raises UnsupportedOperation: This function can raise a 
-            UnsupportedOperation if the commit builder does not allow 
-            user-specified revision ids.
+    def _generate_revision_if_needed(self):
+        """Create a revision id if None was supplied.
+        
+        If the repository can not support user-specified revision ids
+        they should override this function and raise UnsupportedOperation
+        if _new_revision_id is not None.
 
-        :param revision_id: The revision id to use
+        :raises: UnsupportedOperation
         """
-        self._new_revision_id = revision_id
-        self.new_inventory.revision_id = revision_id
+        if self._new_revision_id is None:
+            self._new_revision_id = self._gen_revision_id()
 
-    def record_entry_contents(self, ie, parent_invs, revision_id, path, tree):
+    def record_entry_contents(self, ie, parent_invs, path, tree):
         """Record the content of ie from tree into the commit if needed.
 
         :param ie: An inventory entry present in the commit.
         :param parent_invs: The inventories of the parent revisions of the
             commit.
-        :param revision_id: The revision id of the revision being commited.
         :param path: The path the entry is at in the tree.
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
         """
-        # TODO: _new_revision_id is only known in some repositories after the
-        # commit completes, in others it can be created or assigned earlier.
-        # The public interface for CommitBuilder should not assume that any
-        # revision id exists to accomodate this. It should allow a 'request' to
-        # be made to force a revision, which will fail when they cannot be set
-        # in this manner.
-        self._new_revision_id = revision_id
-
         self.new_inventory.add(ie)
 
         # ie.revision is always None if the InventoryEntry is considered
@@ -1919,7 +1972,7 @@ class CommitBuilder(object):
             self.repository.get_transaction())
         # we are creating a new revision for ie in the history store
         # and inventory.
-        ie.snapshot(revision_id, path, previous_entries, tree, self)
+        ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
 
     def modified_directory(self, file_id, file_parents):
         """Record the presence of a symbolic link.
@@ -1976,6 +2029,13 @@ class CommitBuilder(object):
             file_id, self.repository.get_transaction())
         versionedfile.add_lines(self._new_revision_id, parents, new_lines)
         versionedfile.clear_cache()
+
+    def set_message(self, message):
+        """Set the log message for this commit.
+        
+        :param message: The commit message.
+        """
+        self.message = message
 
 
 # Copied from xml.sax.saxutils

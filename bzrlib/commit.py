@@ -69,16 +69,12 @@ import sys
 import time
 import pdb
 
-from binascii import hexlify
 from cStringIO import StringIO
 
 from bzrlib.atomicfile import AtomicFile
-from bzrlib.osutils import (local_time_offset,
-                            rand_bytes, compact_date,
-                            kind_marker, is_inside_any, quotefn,
-                            is_inside_or_parent_of_any,
-                            sha_file, isdir, isfile,
-                            split_lines)
+from bzrlib.osutils import (kind_marker, is_inside_any, 
+                            quotefn, is_inside_or_parent_of_any,
+                            sha_file, isdir, isfile, split_lines)
 import bzrlib.config
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
@@ -244,12 +240,8 @@ class Commit(object):
         self.local = local
         self.master_branch = None
         self.master_locked = False
-        self.rev_id = rev_id
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
-        self.revprops = {}
-        if revprops is not None:
-            self.revprops.update(revprops)
 
         if reporter is None and self.reporter is None:
             self.reporter = NullCommitReporter()
@@ -276,31 +268,10 @@ class Commit(object):
                 # raise an exception as soon as we find a single unknown.
                 for unknown in self.work_tree.unknowns():
                     raise StrictCommitFailed()
-    
-            if timestamp is None:
-                self.timestamp = time.time()
-            else:
-                self.timestamp = long(timestamp)
-                
+                   
             if self.config is None:
                 self.config = bzrlib.config.BranchConfig(self.branch)
-    
-            if rev_id is None:
-                self.rev_id = _gen_revision_id(self.config, self.timestamp)
-            else:
-                self.rev_id = rev_id
-    
-            if committer is None:
-                self.committer = self.config.username()
-            else:
-                assert isinstance(committer, basestring), type(committer)
-                self.committer = committer
-    
-            if timezone is None:
-                self.timezone = local_time_offset()
-            else:
-                self.timezone = int(timezone)
-    
+      
             if isinstance(message, str):
                 message = message.decode(bzrlib.user_encoding)
             assert isinstance(message, unicode), type(message)
@@ -323,8 +294,8 @@ class Commit(object):
                 raise NotImplementedError('selected-file commit of merges is not supported yet: files %r',
                         self.specific_files)
             self._check_parents_present()
-            self.builder = self.branch.get_commit_builder(self.parents)
-            self.builder.set_revision_id(self.rev_id)
+            self.builder = self.branch.get_commit_builder(self.parents, 
+                self.config, timestamp, timezone, committer, revprops, rev_id)
             
             self._remove_deleted()
             self._populate_new_inv()
@@ -338,7 +309,9 @@ class Commit(object):
             self._emit_progress_update()
             self.inv_sha1 = self.builder.finish_inventory()
             self._emit_progress_update()
+            self.builder.set_message(self.message)
             self._make_revision()
+            self.rev_id = self.builder._new_revision_id
             # revision data is in the local branch now.
             
             # upload revision data to the master.
@@ -502,16 +475,16 @@ class Commit(object):
             
     def _make_revision(self):
         """Record a new revision object for this commit."""
-        rev = Revision(timestamp=self.timestamp,
-                       timezone=self.timezone,
-                       committer=self.committer,
-                       message=self.message,
+        rev = Revision(timestamp=self.builder._timestamp,
+                       timezone=self.builder._timezone,
+                       committer=self.builder._committer,
+                       message=self.builder.message,
                        inventory_sha1=self.inv_sha1,
-                       revision_id=self.rev_id,
-                       properties=self.revprops)
-        rev.parent_ids = self.parents
-        self.branch.repository.add_revision(self.rev_id, rev, 
-            self.builder.new_inventory, self.config)
+                       revision_id=self.builder._new_revision_id,
+                       properties=self.builder._revprops)
+        rev.parent_ids = self.builder.parents
+        self.branch.repository.add_revision(self.builder._new_revision_id, rev, 
+            self.builder.new_inventory, self.builder._config)
 
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.
@@ -549,7 +522,6 @@ class Commit(object):
         revision set to their prior value.
         """
         mutter("Selecting files for commit with filter %s", self.specific_files)
-        self.new_inv = Inventory(revision_id=self.rev_id)
         # iter_entries does not visit the ROOT_ID node so we need to call
         # self._emit_progress_update once by hand.
         self._emit_progress_update()
@@ -573,7 +545,7 @@ class Commit(object):
                     continue
 
             self.builder.record_entry_contents(ie, self.parent_invs, 
-                self.rev_id, path, self.work_tree)
+                path, self.work_tree)
             # describe the nature of the change that has occured relative to
             # the basis inventory.
             if (self.basis_inv.has_id(ie.file_id)):
@@ -598,8 +570,4 @@ class Commit(object):
             if ie.file_id not in self.builder.new_inventory:
                 self.reporter.deleted(path)
 
-def _gen_revision_id(config, when):
-    """Return new revision-id."""
-    s = '%s-%s-' % (config.user_email(), compact_date(when))
-    s += hexlify(rand_bytes(8))
-    return s
+
