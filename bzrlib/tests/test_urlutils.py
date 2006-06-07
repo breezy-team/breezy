@@ -265,7 +265,7 @@ class TestUrlToPath(TestCase):
         self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
         self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
-            from_url('file:///d|/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
+            from_url('file:///d:/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
 
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
         # Not a valid _win32 url, no drive letter
@@ -277,7 +277,7 @@ class TestUrlToPath(TestCase):
         if sys.platform == 'win32':
             self.assertRaises(InvalidURL, split, 'file:///path/to/foo')
             self.assertEqual(('file:///C|/', 'foo'), split('file:///C|/foo'))
-            self.assertEqual(('file:///C|/', ''), split('file:///C|/'))
+            self.assertEqual(('file:///C:/', ''), split('file:///C:/'))
         else:
             self.assertEqual(('file:///', 'foo'), split('file:///foo'))
             self.assertEqual(('file:///', ''), split('file:///'))
@@ -310,7 +310,7 @@ class TestUrlToPath(TestCase):
         sts = urlutils.strip_trailing_slash
         if sys.platform == 'win32':
             self.assertEqual('file:///C|/', sts('file:///C|/'))
-            self.assertEqual('file:///C|/foo', sts('file:///C|/foo'))
+            self.assertEqual('file:///C:/foo', sts('file:///C:/foo'))
             self.assertEqual('file:///C|/foo', sts('file:///C|/foo/'))
         else:
             self.assertEqual('file:///', sts('file:///'))
@@ -345,9 +345,11 @@ class TestUrlToPath(TestCase):
             disp_url = urlutils.unescape_for_display(url, encoding=encoding)
             self.assertIsInstance(disp_url, unicode)
             self.assertEqual(expected, disp_url)
+
         test('http://foo', 'http://foo')
         if sys.platform == 'win32':
-            test('C:/foo/path', 'file:///C|foo/path')
+            test('C:/foo/path', 'file:///C|/foo/path')
+            test('C:/foo/path', 'file:///C:/foo/path')
         else:
             test('/foo/path', 'file:///foo/path')
 
@@ -411,8 +413,8 @@ class TestUrlToPath(TestCase):
                     'file:///home/jelmer/branch/2b')
         test('../../branch/2b', 'sftp://host/home/jelmer/bar/2b',
                     'sftp://host/home/jelmer/branch/2b')
-        test('../../branch/feature/2b', 'http://host/home/jelmer/bar/2b',
-                    'http://host/home/jelmer/branch/feature/2b')
+        test('../../branch/feature/%2b', 'http://host/home/jelmer/bar/%2b',
+                    'http://host/home/jelmer/branch/feature/%2b')
         test('../../branch/feature/2b', 'http://host/home/jelmer/bar/2b/', 
                     'http://host/home/jelmer/branch/feature/2b')
         # relative_url should preserve a trailing slash
