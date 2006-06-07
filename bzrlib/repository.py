@@ -25,6 +25,7 @@ from bzrlib.errors import InvalidRevisionId
 import bzrlib.gpg as gpg
 from bzrlib.graph import Graph
 from bzrlib.inter import InterObject
+from bzrlib.inventory import Inventory
 from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
@@ -1849,6 +1850,7 @@ class CommitBuilder(object):
 
     def __init__(self, repository):
         self.repository = repository
+        self.new_inventory = Inventory()
 
     def set_revision_id(self, revision_id):
         """Set the revision id for this commit.
@@ -1860,6 +1862,7 @@ class CommitBuilder(object):
         :param revision_id: The revision id to use
         """
         self._new_revision_id = revision_id
+        self.new_inventory.revision_id = revision_id
 
     def record_entry_contents(self, ie, parent_invs, revision_id, path, tree):
         """Record the content of ie from tree into the commit if needed.
@@ -1879,6 +1882,9 @@ class CommitBuilder(object):
         # be made to force a revision, which will fail when they cannot be set
         # in this manner.
         self._new_revision_id = revision_id
+        # ie.revision is always None if the InventoryEntry is considered
+        # for committing. ie.snapshot will record the correct revision 
+        # which may be the sole parent if it is untouched.
         previous_entries = ie.find_previous_heads(
             parent_invs,
             self.repository.weave_store,

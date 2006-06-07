@@ -331,13 +331,13 @@ class Commit(object):
 
             if not (self.allow_pointless
                     or len(self.parents) > 1
-                    or self.new_inv != self.basis_inv):
+                    or self.builder.new_inventory != self.basis_inv):
                 raise PointlessCommit()
 
             self._emit_progress_update()
             self.inv_sha1 = self.branch.repository.add_inventory(
                 self.rev_id,
-                self.new_inv,
+                self.builder.new_inventory,
                 self.present_parents
                 )
             self._emit_progress_update()
@@ -513,7 +513,8 @@ class Commit(object):
                        revision_id=self.rev_id,
                        properties=self.revprops)
         rev.parent_ids = self.parents
-        self.branch.repository.add_revision(self.rev_id, rev, self.new_inv, self.config)
+        self.branch.repository.add_revision(self.rev_id, rev, 
+            self.builder.new_inventory, self.config)
 
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.
@@ -554,7 +555,7 @@ class Commit(object):
         # iter_entries does not visit the ROOT_ID node so we need to call
         # self._emit_progress_update once by hand.
         self._emit_progress_update()
-        for path, ie in self.new_inv.iter_entries():
+        for path, ie in self.builder.new_inventory.iter_entries():
             self._emit_progress_update()
             self.builder.record_entry_contents(ie, self.parent_invs, 
                 self.rev_id, path, self.work_tree)
@@ -600,17 +601,25 @@ class Commit(object):
                     # this is selected, ensure its parents are too.
                     parent_id = new_ie.parent_id
                     while parent_id != ROOT_ID:
-                        if not self.new_inv.has_id(parent_id):
+                        if not self.builder.new_inventory.has_id(parent_id):
+                            # when selectively committing a file in a new dir,
+                            # suck up the dir too.
                             ie = self._select_entry(self.work_inv[parent_id])
                             mutter('%s selected for commit because of %s',
-                                   self.new_inv.id2path(parent_id), path)
-
-                        ie = self.new_inv[parent_id]
-                        if ie.revision is not None:
-                            ie.revision = None
-                            mutter('%s selected for commit because of %s',
-                                   self.new_inv.id2path(parent_id), path)
-                        parent_id = ie.parent_id
+                                   self.builder.new_inventory.id2path(parent_id), 
+                                   path)
+                            parent_id = ie.parent_id
+                        else:
+                            ie = self.builder.new_inventory[parent_id]
+                            if ie.revision is not None:
+                                ie.revision = None
+                                mutter('%s selected for commit because of %s',
+                                       self.builder.new_inventory.id2path(parent_id), 
+                                       path)
+                                parent_id = ie.parent_id
+                            else:
+                                # our parent is already selected.
+                                parent_id = ROOT_ID
             mutter('%s selected for commit', path)
             self._select_entry(new_ie)
 
@@ -623,20 +632,20 @@ class Commit(object):
         """Make new_ie be considered for committing."""
         ie = new_ie.copy()
         ie.revision = None
-        self.new_inv.add(ie)
+        self.builder.new_inventory.add(ie)
         return ie
 
     def _carry_entry(self, file_id):
         """Carry the file unchanged from the basis revision."""
         if self.basis_inv.has_id(file_id):
-            self.new_inv.add(self.basis_inv[file_id].copy())
+            self.builder.new_inventory.add(self.basis_inv[file_id].copy())
         else:
             # this entry is new and not being committed
             self.pb_total -= 1
 
     def _report_deletes(self):
         for path, ie in self.basis_inv.iter_entries():
-            if ie.file_id not in self.new_inv:
+            if ie.file_id not in self.builder.new_inventory:
                 self.reporter.deleted(path)
 
 def _gen_revision_id(config, when):
