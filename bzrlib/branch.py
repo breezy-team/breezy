@@ -28,7 +28,6 @@ import bzrlib
 import bzrlib.bzrdir as bzrdir
 from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.delta import compare_trees
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
                            NoSuchRevision, HistoryMissing, NotBranchError,
@@ -49,7 +48,7 @@ from bzrlib.osutils import (isdir, quotefn,
                             )
 from bzrlib.textui import show_status
 from bzrlib.trace import mutter, note
-from bzrlib.tree import EmptyTree, RevisionTree
+from bzrlib.tree import RevisionTree
 from bzrlib.repository import Repository
 from bzrlib.revision import (
                              is_ancestor,
@@ -60,7 +59,6 @@ from bzrlib.store import copy_all
 from bzrlib.symbol_versioning import *
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
-from bzrlib.tree import EmptyTree, RevisionTree
 import bzrlib.ui
 import bzrlib.xml5
 
@@ -1021,19 +1019,17 @@ class BzrBranch(Branch):
             # not really an object yet, and the transaction is for objects.
             # transaction.register_clean(history)
 
-    def get_revision_delta(self, revision_id):
+    def get_revision_delta(self, revno):
         """Return the delta for one revision.
 
-        The delta is relative to the left-hand predecessor of the
-        revision.
+        The delta is relative to its mainline predecessor, or the
+        empty tree for revision 1.
         """
-        revision = self.repository.get_revision(revision_id)
-        new_tree = self.repository.revision_tree(revision_id)
-        if not revision.parent_ids:
-            old_tree = EmptyTree()
-        else:
-            old_tree = self.repository.revision_tree(revision.parent_ids[0])
-        return compare_trees(old_tree, new_tree)
+        assert isinstance(revno, int)
+        rh = self.revision_history()
+        if not (1 <= revno <= len(rh)):
+            raise InvalidRevisionNumber(revno)
+        return self.repository.get_revision_delta(rh[revno-1])
 
     @needs_read_lock
     def revision_history(self):
