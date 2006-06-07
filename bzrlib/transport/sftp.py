@@ -956,7 +956,7 @@ class SFTPServer(Server):
         global _ssh_vendor
         self._original_vendor = _ssh_vendor
         _ssh_vendor = self._vendor
-        self._homedir = os.getcwdu()
+        self._homedir = os.getcwd()
         if self._server_homedir is None:
             self._server_homedir = self._homedir
         self._root = '/'

@@ -921,7 +921,10 @@ class TestTransportImplementation(TestCaseInTempDir):
                  u'\u65e5', # Kanji person
                 ]
 
-        self.build_tree(files, transport=t)
+        try:
+            self.build_tree(files, transport=t)
+        except UnicodeError:
+            raise TestSkipped("cannot handle unicode paths in current encoding")
 
         # A plain unicode string is not a valid url
         for fname in files:
