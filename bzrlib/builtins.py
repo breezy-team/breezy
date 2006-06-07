@@ -702,18 +702,8 @@ class cmd_checkout(Command):
         old_format = bzrlib.bzrdir.BzrDirFormat.get_default_format()
         bzrlib.bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
         try:
-            if lightweight:
-                checkout = bzrdir.BzrDirMetaFormat1().initialize(to_location)
-                bzrlib.branch.BranchReferenceFormat().initialize(checkout, source)
-            else:
-                checkout_branch =  bzrlib.bzrdir.BzrDir.create_branch_convenience(
-                    to_location, force_new_tree=False)
-                checkout = checkout_branch.bzrdir
-                checkout_branch.bind(source)
-                if revision_id is not None:
-                    rh = checkout_branch.revision_history()
-                    checkout_branch.set_revision_history(rh[:rh.index(revision_id) + 1])
-            checkout.create_workingtree(revision_id)
+            bzrdir.BzrDir.create_checkout_convenience(to_location, source,
+                                                      revision_id, lightweight)
         finally:
             bzrlib.bzrdir.BzrDirFormat.set_default_format(old_format)
 

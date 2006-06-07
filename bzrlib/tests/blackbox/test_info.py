@@ -579,10 +579,11 @@ Revision store:
         self.assertEqual('', err)
 
         # Create normal checkout
-        branch3 = bzrlib.bzrdir.BzrDir.create_branch_convenience('tree/checkout')
-        branch3.bind(branch1)
-        tree3 = branch3.bzrdir.open_workingtree()
-        tree3.update()
+        tree3 = bzrlib.bzrdir.BzrDir.create_checkout_convenience(
+            'tree/checkout', branch1)
+        branch3 = tree3.branch
+        assert tree3.basis_tree().inventory.root is not None
+        assert tree3.inventory.root is not None 
         out, err = self.runbzr('info tree/checkout --verbose')
         self.assertEqualDiff(
 """Location:
