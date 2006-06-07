@@ -324,10 +324,10 @@ class Commit(object):
                         self.specific_files)
             self._check_parents_present()
             self.builder = self.branch.get_commit_builder(self.parents)
+            self.builder.set_revision_id(self.rev_id)
             
             self._remove_deleted()
             self._populate_new_inv()
-            self._store_snapshot()
             self._report_deletes()
 
             if not (self.allow_pointless
@@ -336,11 +336,7 @@ class Commit(object):
                 raise PointlessCommit()
 
             self._emit_progress_update()
-            self.inv_sha1 = self.branch.repository.add_inventory(
-                self.rev_id,
-                self.builder.new_inventory,
-                self.present_parents
-                )
+            self.inv_sha1 = self.builder.finish_inventory()
             self._emit_progress_update()
             self._make_revision()
             # revision data is in the local branch now.
@@ -480,10 +476,11 @@ class Commit(object):
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""
+        # TODO: Make sure that this list doesn't contain duplicate 
+        # entries and the order is preserved when doing this.
         pending_merges = self.work_tree.pending_merges()
         self.parents = []
         self.parent_invs = []
-        self.present_parents = []
         precursor_id = self.branch.last_revision()
         if precursor_id:
             self.parents.append(precursor_id)
@@ -492,7 +489,6 @@ class Commit(object):
             if self.branch.repository.has_revision(revision):
                 inventory = self.branch.repository.get_inventory(revision)
                 self.parent_invs.append(inventory)
-                self.present_parents.append(revision)
 
     def _check_parents_present(self):
         for parent_id in self.parents:
@@ -542,22 +538,40 @@ class Commit(object):
                 del self.work_inv[file_id]
             self.work_tree._write_inventory(self.work_inv)
 
-    def _store_snapshot(self):
-        """Pass over inventory and record a snapshot.
+    def _populate_new_inv(self):
+        """Build revision inventory.
 
-        Entries get a new revision when they are modified in 
-        any way, which includes a merge with a new set of
-        parents that have the same entry. 
+        This creates a new empty inventory. Depending on
+        which files are selected for commit, and what is present in the
+        current tree, the new inventory is populated. inventory entries 
+        which are candidates for modification have their revision set to
+        None; inventory entries that are carried over untouched have their
+        revision set to their prior value.
         """
-        # XXX: Need to think more here about when the user has
-        # made a specific decision on a particular value -- c.f.
-        # mark-merge.  
-
+        mutter("Selecting files for commit with filter %s", self.specific_files)
+        self.new_inv = Inventory(revision_id=self.rev_id)
         # iter_entries does not visit the ROOT_ID node so we need to call
         # self._emit_progress_update once by hand.
         self._emit_progress_update()
-        for path, ie in self.builder.new_inventory.iter_entries():
+        self._emit_progress_update()
+        for path, new_ie in self.work_inv.iter_entries():
             self._emit_progress_update()
+            self._emit_progress_update()
+            file_id = new_ie.file_id
+            mutter('check %s {%s}', path, new_ie.file_id)
+            if (not self.specific_files or 
+                is_inside_or_parent_of_any(self.specific_files, path)):
+                    mutter('%s selected for commit', path)
+                    ie = new_ie.copy()
+                    ie.revision = None
+            else:
+                mutter('%s not selected for commit', path)
+                if self.basis_inv.has_id(file_id):
+                    ie = self.basis_inv[file_id].copy()
+                else:
+                    # this entry is new and not being committed
+                    continue
+
             self.builder.record_entry_contents(ie, self.parent_invs, 
                 self.rev_id, path, self.work_tree)
             # describe the nature of the change that has occured relative to
@@ -574,52 +588,10 @@ class Commit(object):
             else:
                 self.reporter.snapshot_change(change, path)
 
-    def _populate_new_inv(self):
-        """Build revision inventory.
-
-        This creates a new empty inventory. Depending on
-        which files are selected for commit, and what is present in the
-        current tree, the new inventory is populated. inventory entries 
-        which are candidates for modification have their revision set to
-        None; inventory entries that are carried over untouched have their
-        revision set to their prior value.
-        """
-        mutter("Selecting files for commit with filter %s", self.specific_files)
-        self.new_inv = Inventory(revision_id=self.rev_id)
-        # iter_entries does not visit the ROOT_ID node so we need to call
-        # self._emit_progress_update once by hand.
-        self._emit_progress_update()
-        for path, new_ie in self.work_inv.iter_entries():
-            self._emit_progress_update()
-            file_id = new_ie.file_id
-            mutter('check %s {%s}', path, new_ie.file_id)
-            if (not self.specific_files or 
-                is_inside_or_parent_of_any(self.specific_files, path)):
-                    mutter('%s selected for commit', path)
-                    self._select_entry(new_ie)
-            else:
-                mutter('%s not selected for commit', path)
-                self._carry_entry(file_id)
-
     def _emit_progress_update(self):
         """Emit an update to the progress bar."""
         self.pb.update("Committing", self.pb_count, self.pb_total)
         self.pb_count += 1
-
-    def _select_entry(self, new_ie):
-        """Make new_ie be considered for committing."""
-        ie = new_ie.copy()
-        ie.revision = None
-        self.builder.new_inventory.add(ie)
-        return ie
-
-    def _carry_entry(self, file_id):
-        """Carry the file unchanged from the basis revision."""
-        if self.basis_inv.has_id(file_id):
-            self.builder.new_inventory.add(self.basis_inv[file_id].copy())
-        else:
-            # this entry is new and not being committed
-            self.pb_total -= 1
 
     def _report_deletes(self):
         for path, ie in self.basis_inv.iter_entries():

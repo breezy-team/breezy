@@ -69,8 +69,16 @@ class Repository(object):
         inv_sha1 = bzrlib.osutils.sha_string(inv_text)
         inv_vf = self.control_weaves.get_weave('inventory',
                                                self.get_transaction())
-        inv_vf.add_lines(revid, parents, bzrlib.osutils.split_lines(inv_text))
+        self._inventory_add_lines(inv_vf, revid, parents, bzrlib.osutils.split_lines(inv_text))
         return inv_sha1
+
+    def _inventory_add_lines(self, inv_vf, revid, parents, lines):
+        final_parents = []
+        for parent in parents:
+            if parent in inv_vf:
+                final_parents.append(parent)
+
+        inv_vf.add_lines(revid, final_parents, lines)
 
     @needs_write_lock
     def add_revision(self, rev_id, rev, inv=None, config=None):
@@ -222,7 +230,7 @@ class Repository(object):
 
     def get_commit_builder(self, branch, parents):
         """Obtain a CommitBuilder for this repository."""
-        return CommitBuilder(self)
+        return CommitBuilder(self, parents)
 
     def unlock(self):
         self.control_files.unlock()
@@ -704,6 +712,9 @@ class MetaDirRepository(Repository):
 
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
+
+    def _inventory_add_lines(self, inv_vf, revid, parents, lines):
+        inv_vf.add_lines_with_ghosts(revid, parents, lines)
 
     @needs_read_lock
     def all_revision_ids(self):
@@ -1848,9 +1859,21 @@ class CommitBuilder(object):
     know the internals of the format of the repository.
     """
 
-    def __init__(self, repository):
-        self.repository = repository
+    def __init__(self, repository, parents):
+        self.parents = parents
         self.new_inventory = Inventory()
+        self.repository = repository
+
+    def finish_inventory(self):
+        """Tell the builder that the inventory is finished.
+        
+        :return: SHA1 of the encoded inventory.
+        """
+        return self.repository.add_inventory(
+            self._new_revision_id,
+            self.new_inventory,
+            self.parents
+            )
 
     def set_revision_id(self, revision_id):
         """Set the revision id for this commit.
@@ -1882,17 +1905,21 @@ class CommitBuilder(object):
         # be made to force a revision, which will fail when they cannot be set
         # in this manner.
         self._new_revision_id = revision_id
+
+        self.new_inventory.add(ie)
+
         # ie.revision is always None if the InventoryEntry is considered
         # for committing. ie.snapshot will record the correct revision 
         # which may be the sole parent if it is untouched.
+        if ie.revision is not None:
+            return
         previous_entries = ie.find_previous_heads(
             parent_invs,
             self.repository.weave_store,
             self.repository.get_transaction())
-        if ie.revision is None:
-            # we are creating a new revision for ie in the history store
-            # and inventory.
-            ie.snapshot(revision_id, path, previous_entries, tree, self)
+        # we are creating a new revision for ie in the history store
+        # and inventory.
+        ie.snapshot(revision_id, path, previous_entries, tree, self)
 
     def modified_directory(self, file_id, file_parents):
         """Record the presence of a symbolic link.
