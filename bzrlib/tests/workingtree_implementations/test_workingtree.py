@@ -397,6 +397,28 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.failUnlessExists('checkout/file')
         self.assertEqual('A', old_tree.last_revision())
 
+    def test_update_sets_root_id(self):
+        """Ensure tree root is set properly by update.
+        
+        Since empty trees don't have root_ids, but workingtrees do,
+        an update of a checkout of revision 0 to a new revision,  should set
+        the root id.
+        """
+        wt = self.make_branch_and_tree('tree')
+        main_branch = wt.branch
+        # create an out of date working tree by making a checkout in this
+        # current format
+        self.build_tree(['checkout/', 'tree/file'])
+        checkout = bzrdir.BzrDir.create_checkout_convenience('checkout',
+                                                             main_branch)
+        # now commit to 'tree'
+        wt.add('file')
+        wt.commit('A', rev_id='A')
+        # and update checkout 
+        self.assertEqual(0, checkout.update())
+        self.failUnlessExists('checkout/file')
+        self.assertEqual(wt.get_root_id(), checkout.get_root_id())
+
     def test_update_returns_conflict_count(self):
         # working tree formats from the meta-dir format and newer support
         # setting the last revision on a tree independently of that on the 

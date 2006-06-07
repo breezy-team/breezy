@@ -1350,21 +1350,27 @@ class WorkingTree(bzrlib.tree.Tree):
     def update(self):
         """Update a working tree along its branch.
 
-        This will update the branch if its bound too, which means we have multiple trees involved:
-        The new basis tree of the master.
-        The old basis tree of the branch.
-        The old basis tree of the working tree.
-        The current working tree state.
-        pathologically all three may be different, and non ancestors of each other.
-        Conceptually we want to:
-        Preserve the wt.basis->wt.state changes
-        Transform the wt.basis to the new master basis.
-        Apply a merge of the old branch basis to get any 'local' changes from it into the tree.
-        Restore the wt.basis->wt.state changes.
+        This will update the branch if its bound too, which means we have
+        multiple trees involved:
+
+        - The new basis tree of the master.
+        - The old basis tree of the branch.
+        - The old basis tree of the working tree.
+        - The current working tree state.
+
+        Pathologically, all three may be different, and non-ancestors of each
+        other.  Conceptually we want to:
+
+        - Preserve the wt.basis->wt.state changes
+        - Transform the wt.basis to the new master basis.
+        - Apply a merge of the old branch basis to get any 'local' changes from
+          it into the tree.
+        - Restore the wt.basis->wt.state changes.
 
         There isn't a single operation at the moment to do that, so we:
-        Merge current state -> basis tree of the master w.r.t. the old tree basis.
-        Do a 'normal' merge of the old branch basis if it is relevant.
+        - Merge current state -> basis tree of the master w.r.t. the old tree
+          basis.
+        - Do a 'normal' merge of the old branch basis if it is relevant.
         """
         old_tip = self.branch.update()
         if old_tip is not None:
@@ -1376,6 +1382,8 @@ class WorkingTree(bzrlib.tree.Tree):
                 # merge tree state up to new branch tip.
                 basis = self.basis_tree()
                 to_tree = self.branch.basis_tree()
+                if basis.inventory.root is None:
+                    self.set_root_id(to_tree.inventory.root.file_id)
                 result += merge_inner(self.branch,
                                       to_tree,
                                       basis,

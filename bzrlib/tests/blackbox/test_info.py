@@ -582,8 +582,6 @@ Revision store:
         tree3 = bzrlib.bzrdir.BzrDir.create_checkout_convenience(
             'tree/checkout', branch1)
         branch3 = tree3.branch
-        assert tree3.basis_tree().inventory.root is not None
-        assert tree3.inventory.root is not None 
         out, err = self.runbzr('info tree/checkout --verbose')
         self.assertEqualDiff(
 """Location:
