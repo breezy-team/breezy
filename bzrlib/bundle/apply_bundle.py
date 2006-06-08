@@ -6,6 +6,7 @@ import bzrlib.ui
 from bzrlib.progress import ProgressPhase
 from bzrlib.merge import Merger
 from bzrlib.repository import install_revision
+from bzrlib.trace import note
 
 
 def install_bundle(repository, bundle_reader):

@@ -47,9 +47,6 @@ from bzrlib.osutils import (isdir, quotefn,
                             safe_unicode,
                             rmtree,
                             )
-from bzrlib.textui import show_status
-from bzrlib.trace import mutter, note
-from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.repository import Repository
 from bzrlib.revision import (
                              is_ancestor,
@@ -58,10 +55,13 @@ from bzrlib.revision import (
                              )
 from bzrlib.store import copy_all
 from bzrlib.symbol_versioning import *
+from bzrlib.textui import show_status
+from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 from bzrlib.tree import EmptyTree, RevisionTree
 import bzrlib.ui
+import bzrlib.urlutils as urlutils
 import bzrlib.xml5
 
 
@@ -1133,9 +1133,11 @@ class BzrBranch(Branch):
         """See Branch.get_parent."""
         import errno
         _locs = ['parent', 'pull', 'x-pull']
+        assert self.base[-1] == '/'
         for l in _locs:
             try:
-                return self.control_files.get_utf8(l).read().strip('\n')
+                return urlutils.join(self.base[:-1], 
+                            self.control_files.get(l).read().strip('\n'))
             except NoSuchFile:
                 pass
         return None
@@ -1162,7 +1164,16 @@ class BzrBranch(Branch):
         if url is None:
             self.control_files._transport.delete('parent')
         else:
-            self.control_files.put_utf8('parent', url + '\n')
+            if isinstance(url, unicode):
+                try: 
+                    url = url.encode('ascii')
+                except UnicodeEncodeError:
+                    raise bzrlib.errors.InvalidURL(url,
+                        "Urls must be 7-bit ascii, "
+                        "use bzrlib.urlutils.escape")
+                    
+            url = urlutils.relative_url(self.base, url)
+            self.control_files.put('parent', url + '\n')
 
     def tree_config(self):
         return TreeConfig(self)

@@ -30,6 +30,7 @@ from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
+import bzrlib.urlutils as urlutils
 import bzrlib.workingtree as workingtree
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
@@ -78,16 +79,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         branch = self.make_branch_and_tree('.').branch
         wt, relpath = WorkingTree.open_containing()
         self.assertEqual('', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
         wt, relpath = WorkingTree.open_containing(u'.')
         self.assertEqual('', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
         wt, relpath = WorkingTree.open_containing('./foo')
         self.assertEqual('foo', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
         wt, relpath = WorkingTree.open_containing('file://' + getcwd() + '/foo')
         self.assertEqual('foo', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
 
     def test_basic_relpath(self):
         # for comprehensive relpath tests, see whitebox.py.
