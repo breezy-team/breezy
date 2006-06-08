@@ -340,6 +340,7 @@ class Transport(object):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
+        :rtype: File-like object.
         """
         raise NotImplementedError(self.get)
 

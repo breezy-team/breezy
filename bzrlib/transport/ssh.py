@@ -18,7 +18,20 @@
 
 Requests are sent as a command and list of arguments, followed by optional
 bulk body data.  Responses are similarly a response and list of arguments,
-followed by bulk body data.
+followed by bulk body data. ::
+
+  SEP := '\001'
+    Fields are separated by Ctrl-A.
+  BULK_DATA := CHUNK+ TRAILER
+    Chunks can be repeated as many times as necessary.
+  CHUNK := CHUNK_LEN CHUNK_BODY
+  CHUNK_LEN := DIGIT+ NEWLINE
+    Gives the number of bytes in the following chunk.
+  CHUNK_BODY := BYTE[chunk_len]
+  TRAILER := SUCCESS_TRAILER | ERROR_TRAILER
+  SUCCESS_TRAILER := 'done' NEWLINE
+  ERROR_TRAILER := 
+
 """
 
 # The plan is that the SSHTransport will hold an SSHConnection.  It will use
@@ -28,9 +41,6 @@ followed by bulk body data.
 
 # TODO: A plain integer from query_version is too simple; should give some
 # capabilities too?
-
-# TODO: Server needs an event loop that calls _serve_one_request 
-# repeatedly.
 
 # TODO: Server should probably catch exceptions within itself and send them
 # back across the network.  (But shouldn't catch KeyboardInterrupt etc)
@@ -42,9 +52,19 @@ followed by bulk body data.
 
 # TODO: Client and server warnings perhaps should contain some non-ascii bytes
 # to make sure the channel can carry them without trouble?  Test for this?
+#
+# TODO: get/put objects could be changed to gradually read back the data as it
+# comes across the network
+#
+# TODO: What should the server do if it hits an error and has to terminate?
+#
+# TODO: is it useful to allow multiple chunks in the bulk data?
 
 
+from cStringIO import StringIO
+import errno
 import os
+import sys
 
 from bzrlib import errors
 
@@ -52,6 +72,30 @@ from bzrlib import errors
 class BzrProtocolError(errors.TransportError):
     pass
 
+
+def _recv_tuple(from_file):
+    req_line = from_file.readline()
+    if req_line == None or req_line == '':
+        return None
+    if req_line[-1] != '\n':
+        raise BzrProtocolError("request %r not terminated" % req_line)
+    return tuple((a.decode('utf-8') for a in req_line[:-1].split('\1')))
+
+
+def _send_tuple(to_file, args):
+    to_file.write('\1'.join((a.encode('utf-8') for a in args)) + '\n')
+
+
+def _recv_bulk(from_file):
+    chunk_len = from_file.readline()
+    try:
+        chunk_len = int(chunk_len)
+    except ValueError:
+        raise BzrProtocolError("bad chunk length line %r" % chunk_len)
+    bulk = from_file.read(chunk_len)
+    if len(bulk) != chunk_len:
+        raise BzrProtocolError("short read fetching bulk data chunk")
+    return bulk
 
 
 class Server(object):
@@ -74,47 +118,65 @@ class Server(object):
 
     def _do_query_version(self):
         """Answer a version request with my version."""
-        self._send_response(('bzr server', '1'))
+        self._send_tuple(('bzr server', '1'))
 
     def _do_has(self, relpath):
         r = self._backing_transport.has(relpath) and 'yes' or 'no'
-        self._send_response((r,))
+        self._send_tuple((r,))
+
+    def _do_get(self, relpath):
+        backing_file = self._backing_transport.get(relpath)
+        self._send_tuple(('ok', ))
+        self._send_bulk_data(backing_file.read())
 
     def serve(self):
         """Serve requests until the client disconnects."""
-        while self._serve_one_request() != False:
-            pass
+        try:
+            while self._serve_one_request() != False:
+                pass
+        except Exception, e:
+            self._report_error("%s terminating on exception %s" % (self, e))
+            raise
+
+    def _report_error(self, msg):
+        sys.stderr.write(msg + '\n')
         
     def _serve_one_request(self):
         """Read one request from input, process, send back a response.
         
         :return: False if the server should terminate, otherwise None.
         """
-        req_args = self._read_request()
+        req_args = self._recv_tuple()
         if req_args == None:
             # client closed connection
-            return False
-        elif req_args == ('hello', '1'):
+            return False  # shutdown server
+        cmd = req_args[0]
+        if cmd == 'hello':
             self._do_query_version()
-        elif req_args[0] == 'has':
+        elif cmd == 'has':
             self._do_has(req_args[1])
+        elif cmd == 'get':
+            self._do_get(req_args[1])
         else:
             raise BzrProtocolError("bad request %r" % (req_args,))
 
-    def _read_request(self):
+    def _recv_tuple(self):
         """Read a request from the client and return as a tuple.
         
         Returns None at end of file (if the client closed the connection.)
         """
-        req_line = self._in.readline()
-        if req_line == None or req_line == '':
-            return None
-        if req_line[-1] != '\n':
-            raise BzrProtocolError("request %r not terminated" % req_line)
-        return tuple(req_line[:-1].split('\1'))
+        return _recv_tuple(self._in)
 
-    def _send_response(self, args):
-        self._out.write('\1'.join(args) + '\n')
+    def _send_tuple(self, args):
+        """Send response header"""
+        return _send_tuple(self._out, args)
+
+    def _send_bulk_data(self, body):
+        """Send chunked body data"""
+        assert isinstance(body, str)
+        self._out.write('%d\n' % len(body))
+        self._out.write(body)
+        self._out.write('done\n')
 
 
 class SSHConnection(object):
@@ -127,28 +189,43 @@ class SSHConnection(object):
     def query_version(self):
         """Return protocol version number of the server."""
         # XXX: should make sure it's empty
-        self._send_to_server('hello\0011\n')
-        resp = self._readline_from_server()
-        if resp == 'bzr server\0011\n':
+        self._send_tuple(('hello', '1'))
+        resp = self._recv_tuple()
+        if resp == ('bzr server', '1'):
             return 1
         else:
             raise BzrProtocolError("bad response %r" % (resp,))
         
     def has(self, relpath):
-        self._send_to_server('has\1%s\n' % relpath)
-        resp = self._readline_from_server()
-        if resp == 'yes\n':
+        self._send_tuple(('has', relpath))
+        resp = self._recv_tuple()
+        if resp == ('yes', ):
             return True
-        elif resp == 'no\n':
+        elif resp == ('no', ):
             return False
         else:
-            raise BzrProtocolError("bad response not handled")
+            raise BzrProtocolError("bad response to has: %r" % resp)
 
-    def _send_to_server(self, message):
-        self._to_server.write(message)
+    def get(self, relpath):
+        """Return file-like object reading the contents of a remote file."""
+        self._send_tuple(('get', relpath))
+        resp = self._recv_tuple()
+        if resp != ('ok', ):
+            raise BzrProtocolError('bad response to get: %r' % resp)
+        body = self._recv_bulk()
+        resp = self._recv_tuple()
+        if resp != ('done', ):
+            raise BzrProtocolError('bad trailer on get: %r' % resp)
+        return StringIO(body)
 
-    def _readline_from_server(self):
-        return self._from_server.readline()
+    def _recv_bulk(self):
+        return _recv_bulk(self._from_server)
+
+    def _send_tuple(self, args):
+        _send_tuple(self._to_server, args)
+
+    def _recv_tuple(self):
+        return _recv_tuple(self._from_server)
 
     def disconnect(self):
         self._to_server.close()

@@ -22,7 +22,7 @@ from cStringIO import StringIO
 import bzrlib
 import bzrlib.tests as tests
 import bzrlib.transport.ssh as ssh
-from bzrlib.transport import local
+from bzrlib.transport import local, memory
 
 class TestSSHTransport(tests.TestCase):
     
@@ -36,6 +36,19 @@ class TestSSHTransport(tests.TestCase):
         server = ssh.Server(to_server, from_server, local.LocalTransport('file:///'))
         server._serve_one_request()
         self.assertEqual('bzr server\0011\n',
+                         from_server.getvalue())
+
+    def test_canned_get_response(self):
+        transport = memory.MemoryTransport('memory:///')
+        transport.put('hello', StringIO('contents\nof\nfile\n'))
+        to_server = StringIO('get\001./hello\n')
+        from_server = StringIO()
+        server = ssh.Server(to_server, from_server, transport)
+        server._serve_one_request()
+        self.assertEqual('ok\n'
+                         '17\n'
+                         'contents\nof\nfile\n'
+                         'done\n',
                          from_server.getvalue())
 
     def test_open_loopback_server(self):
@@ -62,6 +75,20 @@ class TestSSHTransport(tests.TestCase):
         conn.backing_transport.put("foo", StringIO("contents of foo\n"))
         self.assertTrue(conn.has("foo"))
         self.assertFalse(conn.has("non-foo"))
+
+    def test_ssh_transport_get(self):
+        """Read back a file over ssh."""
+        conn = ssh.LoopbackSSHConnection()
+        conn.backing_transport.put("foo", StringIO("contents\nof\nfoo\n"))
+        fp = conn.get("foo")
+        self.assertEqual('contents\nof\nfoo\n', fp.read())
+        
+    def test_get_error(self):
+        """Error reported from server getting nonexistent file."""
+        return
+        conn = ssh.LoopbackSSHConnection()
+        fp = conn.get("non-foo")
+        # self.assertEqual('contents of foo\n', fp.read())
 
     # TODO: Try sending multiple requests; they should all get answers.
 
