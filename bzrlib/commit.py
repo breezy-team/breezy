@@ -306,10 +306,11 @@ class Commit(object):
                 raise PointlessCommit()
 
             self._emit_progress_update()
+            # TODO: Now the new inventory is known, check for conflicts and prompt the 
+            # user for a commit message.
             self.builder.finish_inventory()
             self._emit_progress_update()
-            self.builder.set_message(self.message)
-            self.rev_id = self.builder.commit()
+            self.rev_id = self.builder.commit(self.message)
             # revision data is in the local branch now.
             
             # upload revision data to the master.
@@ -515,7 +516,7 @@ class Commit(object):
             self._emit_progress_update()
             self._emit_progress_update()
             file_id = new_ie.file_id
-            mutter('check %s {%s}', path, new_ie.file_id)
+            mutter('check %s {%s}', path, file_id)
             if (not self.specific_files or 
                 is_inside_or_parent_of_any(self.specific_files, path)):
                     mutter('%s selected for commit', path)

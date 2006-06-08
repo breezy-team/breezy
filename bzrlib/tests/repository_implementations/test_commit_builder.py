@@ -16,6 +16,7 @@
 
 """Tests for repository commit builder."""
 
+from bzrlib.errors import UnsupportedOperation
 from bzrlib.repository import CommitBuilder
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 
@@ -34,13 +35,27 @@ class TestCommitBuilder(TestCaseWithRepository):
 
     def testSetMessage(self):
         tree = self.make_branch_and_tree(".")
-        builder = tree.branch.get_commit_builder([], revision_id="foo")
-        builder.set_message("foobar")
+        builder = tree.branch.get_commit_builder([])
+        builder.finish_inventory()
+        rev_id = builder.commit('foo bar blah')
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertEqual('foo bar blah', rev.message)
+
+    def testCommitWithRevisionId(self):
+        tree = self.make_branch_and_tree(".")
+        try:
+            builder = tree.branch.get_commit_builder([], revision_id="foo")
+        except UnsupportedOperation:
+            # This format doesn't support supplied revision ids
+            return
+        builder.finish_inventory()
+        self.assertEqual("foo", builder.commit('foo bar'))
+        self.assertTrue(tree.branch.repository.has_revision("foo"))
 
     def testCommit(self):
         tree = self.make_branch_and_tree(".")
-        builder = tree.branch.get_commit_builder([], revision_id="foo")
+        builder = tree.branch.get_commit_builder([])
         builder.finish_inventory()
-        builder.set_message('foo')
-        builder.commit()
-        self.assertTrue(tree.branch.repository.has_revision("foo"))
+        rev_id = builder.commit('foo bar')
+        self.assertNotEqual(None, rev_id)
+        self.assertTrue(tree.branch.repository.has_revision(rev_id))

@@ -1918,7 +1918,7 @@ class CommitBuilder(object):
 
         self._generate_revision_if_needed()
 
-    def commit(self):
+    def commit(self, message):
         """Make the actual commit.
 
         :return: The revision id of the recorded revision.
@@ -1926,7 +1926,7 @@ class CommitBuilder(object):
         rev = Revision(timestamp=self._timestamp,
                        timezone=self._timezone,
                        committer=self._committer,
-                       message=self.message,
+                       message=message,
                        inventory_sha1=self.inv_sha1,
                        revision_id=self._new_revision_id,
                        properties=self._revprops)
@@ -1936,8 +1936,7 @@ class CommitBuilder(object):
         return self._new_revision_id
 
     def finish_inventory(self):
-        """Tell the builder that the inventory is finished.
-        """
+        """Tell the builder that the inventory is finished."""
         self.new_inventory.revision = self._new_revision_id
         self.inv_sha1 = self.repository.add_inventory(
             self._new_revision_id,
@@ -2044,13 +2043,6 @@ class CommitBuilder(object):
             file_id, self.repository.get_transaction())
         versionedfile.add_lines(self._new_revision_id, parents, new_lines)
         versionedfile.clear_cache()
-
-    def set_message(self, message):
-        """Set the log message for this commit.
-        
-        :param message: The commit message.
-        """
-        self.message = message
 
 
 # Copied from xml.sax.saxutils
