@@ -9,7 +9,7 @@ import os
 import pprint
 
 from bzrlib.errors import (TestamentMismatch, BzrError, 
-                           MalformedHeader, MalformedPatches)
+                           MalformedHeader, MalformedPatches, NotABundle)
 from bzrlib.bundle.common import get_header, header_str
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
@@ -360,7 +360,7 @@ class BundleReader(object):
                                 ' a header, but did not match')
                     header.pop(0)
         else:
-            raise MalformedHeader('Did not find an opening header')
+            raise NotABundle('Did not find an opening header')
 
     def _read_revision_header(self):
         self.info.revisions.append(RevisionInfo(None))

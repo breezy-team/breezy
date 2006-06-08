@@ -64,6 +64,9 @@ class Repository(object):
 
         returns the sha1 of the serialized inventory.
         """
+        assert inv.revision_id is None or inv.revision_id == revid, \
+            "Mismatch between inventory revision" \
+            " id and insertion revid (%r, %r)" % (inv.revision_id, revid)
         inv_text = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
         inv_sha1 = bzrlib.osutils.sha_string(inv_text)
         inv_vf = self.control_weaves.get_weave('inventory',
@@ -359,7 +362,15 @@ class Repository(object):
     @needs_read_lock
     def get_inventory(self, revision_id):
         """Get Inventory object by hash."""
-        xml = self.get_inventory_xml(revision_id)
+        return self.deserialise_inventory(
+            revision_id, self.get_inventory_xml(revision_id))
+
+    def deserialise_inventory(self, revision_id, xml):
+        """Transform the xml into an inventory object. 
+
+        :param revision_id: The expected revision id of the inventory.
+        :param xml: A serialised inventory.
+        """
         return bzrlib.xml5.serializer_v5.read_inventory_from_string(xml)
 
     @needs_read_lock
@@ -508,17 +519,10 @@ class Repository(object):
         # use inventory as it was in that revision
         file_id = tree.inventory.path2id(file)
         if not file_id:
-            raise BzrError("%r is not present in revision %s" % (file, revno))
-            try:
-                revno = self.revision_id_to_revno(revision_id)
-            except errors.NoSuchRevision:
-                # TODO: This should not be BzrError,
-                # but NoSuchFile doesn't fit either
-                raise BzrError('%r is not present in revision %s' 
-                                % (file, revision_id))
-            else:
-                raise BzrError('%r is not present in revision %s'
-                                % (file, revno))
+            # TODO: jam 20060427 Write a test for this code path
+            #       it had a bug in it, and was raising the wrong
+            #       exception.
+            raise errors.BzrError("%r is not present in revision %s" % (file, revision_id))
         tree.print_file(file_id)
 
     def get_transaction(self):
@@ -635,6 +639,10 @@ def install_revision(repository, rev, revision_tree):
                 repository.get_transaction())
         if ie.revision not in w:
             text_parents = []
+            # FIXME: TODO: The following loop *may* be overlapping/duplicate
+            # with inventoryEntry.find_previous_heads(). if it is, then there
+            # is a latent bug here where the parents may have ancestors of each
+            # other. RBC, AB
             for revision, tree in parent_trees.iteritems():
                 if ie.file_id not in tree:
                     continue

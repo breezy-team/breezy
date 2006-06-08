@@ -218,6 +218,19 @@ class PermissionDenied(PathError):
     """Permission denied: %(path)r%(extra)s"""
 
 
+class InvalidURL(PathError):
+    """Invalid url supplied to transport: %(path)r%(extra)s"""
+
+
+class InvalidURLJoin(PathError):
+    """Invalid URL join request: %(args)s%(extra)s"""
+
+    def __init__(self, msg, base, args):
+        PathError.__init__(self, base, msg)
+        self.args = [base]
+        self.args.extend(args)
+
+
 class PathNotChild(BzrNewError):
     """Path %(path)r is not a child of path %(base)r%(extra)s"""
     def __init__(self, path, base, extra=None):
@@ -230,8 +243,15 @@ class PathNotChild(BzrNewError):
             self.extra = ''
 
 
+# TODO: This is given a URL; we try to unescape it but doing that from inside
+# the exception object is a bit undesirable.
+# TODO: Probably this behavior of should be a common superclass 
 class NotBranchError(PathError):
     """Not a branch: %(path)s"""
+
+    def __init__(self, path):
+       import bzrlib.urlutils as urlutils
+       self.path = urlutils.unescape_for_display(path, 'ascii')
 
 
 class AlreadyBranchError(PathError):
@@ -946,6 +966,13 @@ class TestamentMismatch(BzrNewError):
         self.revision_id = revision_id
         self.expected = expected
         self.measured = measured
+
+
+class NotABundle(BzrNewError):
+    """Not a bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        self.text = text
 
 
 class BadBundle(Exception): pass

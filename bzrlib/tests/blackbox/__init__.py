@@ -26,10 +26,13 @@ rather starts again from the run_bzr function.
 import sys
 
 from bzrlib.tests import (
+                          adapt_modules,
                           TestCaseWithTransport,
                           TestSuite,
                           TestLoader,
+                          iter_suite_tests,
                           )
+from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
 import bzrlib.ui as ui
 
 
@@ -45,6 +48,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_bound_branches',
                      'bzrlib.tests.blackbox.test_cat',
                      'bzrlib.tests.blackbox.test_checkout',
+                     'bzrlib.tests.blackbox.test_command_encoding',
                      'bzrlib.tests.blackbox.test_commit',
                      'bzrlib.tests.blackbox.test_conflicts',
                      'bzrlib.tests.blackbox.test_diff',
@@ -77,9 +81,17 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_upgrade',
                      'bzrlib.tests.blackbox.test_versioning',
                      ]
+    test_encodings = [
+        'bzrlib.tests.blackbox.test_non_ascii',
+    ]
 
     loader = TestLoader()
-    return loader.loadTestsFromModuleNames(testmod_names)
+    suite = loader.loadTestsFromModuleNames(testmod_names) 
+
+    adapter = EncodingTestAdapter()
+    adapt_modules(test_encodings, adapter, loader, suite)
+
+    return suite
 
 
 class ExternalBase(TestCaseWithTransport):

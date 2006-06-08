@@ -26,6 +26,8 @@ from bzrlib.osutils import file_iterator, safe_unicode
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
+import bzrlib.urlutils as urlutils
+
 
 # XXX: The tracking here of lock counts and whether the lock is held is
 # somewhat redundant with what's done in LockDir; the main difference is that
@@ -73,13 +75,12 @@ class LockableFiles(object):
         :param lock_class: Class of lock strategy to use: typically
             either LockDir or TransportLock.
         """
-        object.__init__(self)
         self._transport = transport
         self.lock_name = lock_name
         self._transaction = None
-        self._find_modes()
         self._lock_mode = None
         self._lock_count = 0
+        self._find_modes()
         esc_name = self._escape(lock_name)
         self._lock = lock_class(transport, esc_name,
                                 file_modebits=self._file_mode,
@@ -119,7 +120,7 @@ class LockableFiles(object):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
             return u''
-        return bzrlib.transport.urlescape(safe_unicode(file_or_path))
+        return urlutils.escape(safe_unicode(file_or_path))
 
     def _find_modes(self):
         """Determine the appropriate modes for files and directories."""
