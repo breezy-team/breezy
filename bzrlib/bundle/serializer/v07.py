@@ -279,8 +279,6 @@ class BundleSerializerV07(BundleSerializer):
             action = Action('removed', [kind, path]).write(self.to_file)
 
         for path, file_id, kind in delta.added:
-            if path == '':
-                pass
             action = Action('added', [kind, bundle_path(path)], 
                             [('file-id', file_id)])
             meta_modified = (kind=='file' and 
