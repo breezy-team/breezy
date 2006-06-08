@@ -99,6 +99,7 @@ from bzrlib.transform import build_tree
 from bzrlib.trace import mutter, note
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
+import bzrlib.urlutils as urlutils
 import bzrlib.ui
 import bzrlib.xml5
 
@@ -279,7 +280,7 @@ class WorkingTree(bzrlib.tree.Tree):
         # if needed, or, when the cache sees a change, append it to the hash
         # cache file, and have the parser take the most recent entry for a
         # given path only.
-        cache_filename = self.bzrdir.get_workingtree_transport(None).abspath('stat-cache')
+        cache_filename = self.bzrdir.get_workingtree_transport(None).local_abspath('stat-cache')
         hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
         hc.read()
         # is this scan needed ? it makes things kinda slow.
@@ -349,10 +350,13 @@ class WorkingTree(bzrlib.tree.Tree):
         run into /.  If there isn't one, raises NotBranchError.
         TODO: give this a new exception.
         If there is one, it is returned, along with the unused portion of path.
+
+        :return: The WorkingTree that contains 'path', and the rest of path
         """
         if path is None:
             path = os.getcwdu()
         control, relpath = bzrdir.BzrDir.open_containing(path)
+
         return control.open_workingtree(), relpath
 
     @staticmethod
@@ -1081,7 +1085,8 @@ class WorkingTree(bzrlib.tree.Tree):
         l = bzrlib.DEFAULT_IGNORE[:]
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
-            l.extend([line.rstrip("\n\r") for line in f.readlines()])
+            l.extend([line.rstrip("\n\r").decode('utf-8') 
+                      for line in f.readlines()])
         self._ignorelist = l
         self._ignore_regex = self._combine_ignore_rules(l)
         return l
@@ -1235,7 +1240,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return result
 
     @needs_write_lock
-    def remove(self, files, verbose=False):
+    def remove(self, files, verbose=False, to_file=None):
         """Remove nominated files from the working inventory..
 
         This does not remove their text.  This does not run on XXX on what? RBC
@@ -1270,7 +1275,7 @@ class WorkingTree(bzrlib.tree.Tree):
                     new_status = 'I'
                 else:
                     new_status = '?'
-                show_status(new_status, inv[fid].kind, quotefn(f))
+                show_status(new_status, inv[fid].kind, quotefn(f), to_file=to_file)
             del inv[fid]
 
         self._write_inventory(inv)
@@ -1653,7 +1658,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                 branch.unlock()
         revision = branch.last_revision()
         inv = Inventory() 
-        wt = WorkingTree(a_bzrdir.root_transport.base,
+        wt = WorkingTree(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
@@ -1681,7 +1686,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        return WorkingTree(a_bzrdir.root_transport.base,
+        return WorkingTree(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
                            _bzrdir=a_bzrdir)
@@ -1732,7 +1737,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         if revision_id is None:
             revision_id = branch.last_revision()
         inv = Inventory() 
-        wt = WorkingTree3(a_bzrdir.root_transport.base,
+        wt = WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
@@ -1767,7 +1772,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         control_files = self._open_control_files(a_bzrdir)
-        return WorkingTree3(a_bzrdir.root_transport.base,
+        return WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
                            _bzrdir=a_bzrdir,

@@ -27,6 +27,7 @@ from bzrlib.conflicts import ConflictList
 from bzrlib.delta import compare_trees
 from bzrlib.osutils import abspath
 from bzrlib.tests.blackbox import ExternalBase
+import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
 
 
@@ -143,7 +144,7 @@ class TestMerge(ExternalBase):
         os.chdir('branch_b')
         out = self.runbzr('merge', retcode=3)
         self.assertEquals(out,
-                ('','bzr: ERROR: No merge branch known or specified.\n'))
+                ('','bzr: ERROR: No location specified or remembered\n'))
         # test implicit --remember when no parent set, this merge conflicts
         self.build_tree(['d'])
         tree_b.add('d')
@@ -154,7 +155,9 @@ class TestMerge(ExternalBase):
         # test implicit --remember after resolving conflict
         tree_b.commit('commit d')
         out, err = self.runbzr('merge')
-        self.assertEquals(out, 'Using saved branch: ../branch_a\n')
+        
+        base = urlutils.local_path_from_url(branch_a.base)
+        self.assertEquals(out, 'Merging from remembered location %s\n' % (base,))
         self.assertEquals(err, 'All changes applied successfully.\n')
         self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
         # re-open tree as external runbzr modified it

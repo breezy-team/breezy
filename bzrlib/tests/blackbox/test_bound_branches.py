@@ -21,10 +21,11 @@
 import os
 from cStringIO import StringIO
 
-from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import (BzrDir, BzrDirFormat, BzrDirMetaFormat1)
 from bzrlib.osutils import getcwd
+from bzrlib.tests import TestCaseWithTransport
+import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
 
 
@@ -41,15 +42,19 @@ class TestLegacyFormats(TestCaseWithTransport):
         # bind on a format 6 bzrdir should error
         out,err = self.run_bzr('bind', '../master', retcode=3)
         self.assertEqual('', out)
+        # TODO: jam 20060427 Probably something like this really should
+        #       print out the actual path, rather than the URL
+        cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual('bzr: ERROR: To use this feature you must '
-                         'upgrade your branch at %s/.\n' % getcwd(), err)
+                         'upgrade your branch at %s/.\n' % cwd, err)
     
     def test_unbind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
         out,err = self.run_bzr('unbind', retcode=3)
         self.assertEqual('', out)
+        cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual('bzr: ERROR: To use this feature you must '
-                         'upgrade your branch at %s/.\n' % getcwd(), err)
+                         'upgrade your branch at %s/.\n' % cwd, err)
 
 
 class TestBoundBranches(TestCaseWithTransport):

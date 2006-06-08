@@ -31,6 +31,12 @@ import sys
 import time
 import types
 import tempfile
+import unicodedata
+from ntpath import (abspath as _nt_abspath,
+                    join as _nt_join,
+                    normpath as _nt_normpath,
+                    realpath as _nt_realpath,
+                    )
 
 import bzrlib
 from bzrlib.errors import (BzrError,
@@ -172,10 +178,57 @@ def fancy_rename(old, new, rename_func, unlink_func):
             else:
                 rename_func(tmp_name, new)
 
+
+# In Python 2.4.2 and older, os.path.abspath and os.path.realpath
+# choke on a Unicode string containing a relative path if
+# os.getcwd() returns a non-sys.getdefaultencoding()-encoded
+# string.
+_fs_enc = sys.getfilesystemencoding()
+def _posix_abspath(path):
+    return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
+    # jam 20060426 This is another possibility which mimics 
+    # os.path.abspath, only uses unicode characters instead
+    # if not os.path.isabs(path):
+    #     return os.path.join(os.getcwdu(), path)
+    # return path
+
+
+def _posix_realpath(path):
+    return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
+
+
+def _win32_abspath(path):
+    return _nt_abspath(path.encode(_fs_enc)).decode(_fs_enc).replace('\\', '/')
+
+
+def _win32_realpath(path):
+    return _nt_realpath(path.encode(_fs_enc)).decode(_fs_enc).replace('\\', '/')
+
+
+def _win32_pathjoin(*args):
+    return _nt_join(*args).replace('\\', '/')
+
+
+def _win32_normpath(path):
+    return _nt_normpath(path).replace('\\', '/')
+
+
+def _win32_getcwd():
+    return os.getcwdu().replace('\\', '/')
+
+
+def _win32_mkdtemp(*args, **kwargs):
+    return tempfile.mkdtemp(*args, **kwargs).replace('\\', '/')
+
+
+def _win32_rename(old, new):
+    fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+
+
 # Default is to just use the python builtins, but these can be rebound on
 # particular platforms.
-abspath = os.path.abspath
-realpath = os.path.realpath
+abspath = _posix_abspath
+realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = os.path.normpath
 getcwd = os.getcwdu
@@ -187,41 +240,15 @@ rmtree = shutil.rmtree
 
 MIN_ABS_PATHLENGTH = 1
 
-if os.name == "posix":
-    # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
-    # choke on a Unicode string containing a relative path if
-    # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
-    # string.
-    _fs_enc = sys.getfilesystemencoding() or 'ascii'
-    def abspath(path):
-        return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
-
-    def realpath(path):
-        return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
 
 if sys.platform == 'win32':
-    # We need to use the Unicode-aware os.path.abspath and
-    # os.path.realpath on Windows systems.
-    def abspath(path):
-        return os.path.abspath(path).replace('\\', '/')
-
-    def realpath(path):
-        return os.path.realpath(path).replace('\\', '/')
-
-    def pathjoin(*args):
-        return os.path.join(*args).replace('\\', '/')
-
-    def normpath(path):
-        return os.path.normpath(path).replace('\\', '/')
-
-    def getcwd():
-        return os.getcwdu().replace('\\', '/')
-
-    def mkdtemp(*args, **kwargs):
-        return tempfile.mkdtemp(*args, **kwargs).replace('\\', '/')
-
-    def rename(old, new):
-        fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+    abspath = _win32_abspath
+    realpath = _win32_realpath
+    pathjoin = _win32_pathjoin
+    normpath = _win32_normpath
+    getcwd = _win32_getcwd
+    mkdtemp = _win32_mkdtemp
+    rename = _win32_rename
 
     MIN_ABS_PATHLENGTH = 3
 
@@ -629,6 +656,7 @@ def relpath(base, path):
     assert len(base) >= MIN_ABS_PATHLENGTH, ('Length of base must be equal or'
         ' exceed the platform minimum length (which is %d)' % 
         MIN_ABS_PATHLENGTH)
+
     rp = abspath(path)
 
     s = []
@@ -640,8 +668,6 @@ def relpath(base, path):
         if tail:
             s.insert(0, tail)
     else:
-        # XXX This should raise a NotChildPath exception, as its not tied
-        # to branch anymore.
         raise PathNotChild(rp, base)
 
     if s:
@@ -664,6 +690,54 @@ def safe_unicode(unicode_or_utf8_string):
         return unicode_or_utf8_string.decode('utf8')
     except UnicodeDecodeError:
         raise BzrBadParameterNotUnicode(unicode_or_utf8_string)
+
+
+_platform_normalizes_filenames = False
+if sys.platform == 'darwin':
+    _platform_normalizes_filenames = True
+
+
+def normalizes_filenames():
+    """Return True if this platform normalizes unicode filenames.
+
+    Mac OSX does, Windows/Linux do not.
+    """
+    return _platform_normalizes_filenames
+
+
+if _platform_normalizes_filenames:
+    def unicode_filename(path):
+        """Make sure 'path' is a properly normalized filename.
+
+        On platforms where the system normalizes filenames (Mac OSX),
+        you can access a file by any path which will normalize
+        correctly.
+        Internally, bzr only supports NFC/NFKC normalization, since
+        that is the standard for XML documents.
+        So we return an normalized path, and indicate this has been
+        properly normalized.
+
+        :return: (path, is_normalized) Return a path which can
+                access the file, and whether or not this path is
+                normalized.
+        """
+        return unicodedata.normalize('NFKC', path), True
+else:
+    def unicode_filename(path):
+        """Make sure 'path' is a properly normalized filename.
+
+        On platforms where the system does not normalize filenames 
+        (Windows, Linux), you have to access a file by its exact path.
+        Internally, bzr only supports NFC/NFKC normalization, since
+        that is the standard for XML documents.
+        So we return the original path, and indicate if this is
+        properly normalized.
+
+        :return: (path, is_normalized) Return a path which can
+                access the file, and whether or not this path is
+                normalized.
+        """
+        return path, unicodedata.normalize('NFKC', path) == path
 
 
 def terminal_width():
@@ -691,16 +765,6 @@ def terminal_width():
 
 def supports_executable():
     return sys.platform != "win32"
-
-
-def strip_trailing_slash(path):
-    """Strip trailing slash, except for root paths.
-    The definition of 'root path' is platform-dependent.
-    """
-    if len(path) != MIN_ABS_PATHLENGTH and path[-1] == '/':
-        return path[:-1]
-    else:
-        return path
 
 
 _validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
