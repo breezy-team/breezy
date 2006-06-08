@@ -16,16 +16,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from shutil import copyfile
-from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
-                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 from cStringIO import StringIO
 import errno
 import os
+from os import listdir
 import re
 import sha
 import shutil
+from shutil import copyfile
 import stat
+from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
+                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 import string
 import sys
 import time
@@ -82,8 +83,10 @@ def quotefn(f):
         return f
 
 
+_directory_kind = 'directory'
+
 _formats = {
-    stat.S_IFDIR:'directory',
+    stat.S_IFDIR:_directory_kind,
     stat.S_IFCHR:'chardev',
     stat.S_IFBLK:'block',
     stat.S_IFREG:'file',
@@ -91,17 +94,27 @@ _formats = {
     stat.S_IFLNK:'symlink',
     stat.S_IFSOCK:'socket',
 }
-def file_kind(f, _formats=_formats, _unknown='unknown', _lstat=os.lstat):
+
+
+def file_kind_from_stat_mode(stat_mode, _formats=_formats, _unknown='unknown'):
+    """Generate a file kind from a stat mode. This is used in walkdirs.
+
+    Its performance is critical: Do not mutate without careful benchmarking.
+    """
     try:
-        return _formats[_lstat(f).st_mode & 0170000]
+        return _formats[stat_mode & 0170000]
     except KeyError:
         return _unknown
+
+
+def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
+    return _mapper(_lstat(f).st_mode)
 
 
 def kind_marker(kind):
     if kind == 'file':
         return ''
-    elif kind == 'directory':
+    elif kind == _directory_kind:
         return '/'
     elif kind == 'symlink':
         return '@'
@@ -788,3 +801,40 @@ def check_legal_path(path):
         return
     if _validWin32PathRE.match(path) is None:
         raise IllegalPath(path)
+
+
+def walkdirs(top):
+    """Yield data about all the directories in a tree.
+    
+    This yields all the data about the contents of a directory at a time.
+    After each directory has been yielded, if the caller has mutated the list
+    to exclude some directories, they are then not descended into.
+    
+    The data yielded is of the form:
+    [(relpath, basename, kind, lstat, path_from_top), ...]
+
+    :return: an iterator over the dirs.
+    """
+    lstat = os.lstat
+    pending = []
+    _directory = _directory_kind
+    _listdir = listdir
+    pending = [("", "", _directory, None, top)]
+    while pending:
+        dirblock = []
+        currentdir = pending.pop()
+        # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
+        top = currentdir[4]
+        if currentdir[0]:
+            relroot = currentdir[0] + '/'
+        else:
+            relroot = ""
+        for name in sorted(_listdir(top)):
+            abspath = top + '/' + name
+            statvalue = lstat(abspath)
+            dirblock.append ((relroot + name, name, file_kind_from_stat_mode(statvalue.st_mode), statvalue, abspath))
+        yield dirblock
+        # push the user specified dirs from dirblock
+        for dir in reversed(dirblock):
+            if dir[2] == _directory:
+                pending.append(dir)
