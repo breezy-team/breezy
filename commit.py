@@ -24,20 +24,18 @@ class SvnCommitBuilder(CommitBuilder):
     def __init__(self, repository, branch, parents, config, revprops):
         super(SvnCommitBuilder, self).__init__(repository, parents, 
             config, None, None, None, revprops, None)
+        self.branch = branch
+
+        # TODO: Allow revision id to be specified, but only if it 
+        # matches the format for Subversion revision ids, the UUID
+        # matches and the revnum is in the future. Set the 
+        # revision num on the delta editor using set_target_revision
 
     def _generate_revision_if_needed(self):
         pass
 
-    @staticmethod
-    def done(info, pool):
-        if not info.post_commit_err is None:
-            raise BzrError(info.post_commit_err)
-
-        self.revnum = info.revnum
-
     def set_message(self, message):
-        self.editor, self.editor_baton = svn.ra.get_commit_editor2(
-            self.repository.ra, message, self.done, None, False)
+        self.message = message
 
     def finish_inventory(self):
         # Subversion doesn't have an inventory
@@ -62,9 +60,21 @@ class SvnCommitBuilder(CommitBuilder):
         pass
 
     def commit(self):
-        root = svn.delta.editor_invoke_open_root(self.editor, self.editor_baton, 4)
+        def done(info, pool):
+            if not info.post_commit_err is None:
+                raise BzrError(info.post_commit_err)
 
-        svn.delta.editor_invoke_close_edit(self.editor, self.editor_baton)
+            self.revnum = info.revision
+
+        editor, editor_baton = svn.ra.get_commit_editor2(
+            self.repository.ra, self.message, done, None, False)
+
+        root = svn.delta.editor_invoke_open_root(editor, editor_baton, 4)
+
+        svn.delta.editor_invoke_close_edit(editor, editor_baton)
+
+        # Throw away the cache of revision ids
+        self.branch._generate_revnum_map()
 
         return self.repository.generate_revision_id(self.revnum, 
-                                                    branch.branch_path)
+                                                    self.branch.branch_path)

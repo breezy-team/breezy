@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.branch import BranchCheckResult
 from bzrlib.repository import Repository
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.trace import mutter
@@ -109,7 +110,7 @@ class SvnRepository(Repository):
         self.ra = bzrdir.transport.ra
 
         self.uuid = svn.ra.get_uuid(self.ra)
-        self.url = url
+        self.base = self.url = url
         self.fileid_map = {}
         self.text_cache = {}
         self.dir_cache = {}
@@ -123,6 +124,12 @@ class SvnRepository(Repository):
 
     def __del__(self):
         svn.core.svn_pool_destroy(self.pool)
+
+    def check(self, revision_ids):
+        if not revision_ids:
+            raise ValueError("revision_ids must be non-empty in %s.check" 
+                    % (self,))
+        return BranchCheckResult(self)
 
     def get_inventory(self, revision_id):
         (path, revnum) = self.parse_revision_id(revision_id)

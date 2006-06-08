@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.branch import Branch, BranchFormat
+from bzrlib.branch import Branch, BranchFormat, BranchCheckResult
 from bzrlib.errors import NotBranchError, NoWorkingTree, NoSuchRevision, \
         NoSuchFile
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
@@ -51,6 +51,9 @@ class SvnBranch(Branch):
         self.base = "%s/%s" % (repos.url, branch_path)
         self._format = SvnBranchFormat()
         mutter("Connected to branch at %s" % branch_path)
+
+    def check(self):
+        return BranchCheckResult(self)
         
     def path_from_file_id(self, revision_id, file_id):
         """Generate a full Subversion path from a bzr file id.
@@ -62,9 +65,6 @@ class SvnBranch(Branch):
         return self.base+"/"+self.filename_from_file_id(revision_id, file_id)
 
     def _generate_revnum_map(self):
-        #FIXME: Revids should be globally unique, so we should include the 
-        # branch path somehow. If we don't do this there might be revisions 
-        # that have the same id because they were created in the same commit.
         self._revision_history = []
 
         def rcvr(paths, rev, author, date, message, pool):
@@ -169,7 +169,8 @@ class SvnBranch(Branch):
         raise NotImplementedError(self.get_transaction)
 
     def append_revision(self, *revision_ids):
-        raise NotImplementedError(self.append_revision)
+        # FIXME: raise NotImplementedError(self.append_revision)
+        pass
 
     def get_physical_lock_status(self):
         return False
@@ -235,6 +236,9 @@ class SvnBranchFormat(BranchFormat):
 
     def get_format_description(self):
         """See Branch.get_format_description."""
+        return 'Subversion Smart Server'
+
+    def get_format_string(self):
         return 'Subversion Smart Server'
 
     def initialize(self, to_bzrdir):
