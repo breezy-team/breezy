@@ -249,6 +249,26 @@ class Branch(object):
         branch.
         """
         return None
+    
+    def get_commit_builder(self, parents, config=None, timestamp=None, 
+                           timezone=None, committer=None, revprops=None, 
+                           revision_id=None):
+        """Obtain a CommitBuilder for this branch.
+        
+        :param parents: Revision ids of the parents of the new revision.
+        :param config: Optional configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.
+        """
+
+        if config is None:
+            config = bzrlib.config.BranchConfig(self)
+        
+        return self.repository.get_commit_builder(self, parents, config, 
+            timestamp, timezone, committer, revprops, revision_id)
 
     def get_master_branch(self):
         """Return the branch we are bound to.

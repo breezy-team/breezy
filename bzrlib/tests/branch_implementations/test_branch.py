@@ -316,6 +316,10 @@ class TestBranch(TestCaseWithBranch):
         text = tree.branch._format.get_format_description()
         self.failUnless(len(text))
 
+    def test_get_commit_builder(self):
+        self.assertIsInstance(self.make_branch(".").get_commit_builder([]), 
+            bzrlib.repository.CommitBuilder)
+
 
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.

@@ -16,6 +16,7 @@
 
 from cStringIO import StringIO
 import os
+import time
 
 from bzrlib.branch import Branch
 import bzrlib.errors as errors
@@ -23,7 +24,8 @@ from bzrlib.diff import internal_diff
 from bzrlib.inventory import (Inventory, ROOT_ID, InventoryFile,
     InventoryDirectory, InventoryEntry)
 import bzrlib.inventory as inventory
-from bzrlib.osutils import has_symlinks, rename, pathjoin
+from bzrlib.osutils import (has_symlinks, rename, pathjoin, is_inside_any, 
+    is_inside_or_parent_of_any)
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transform import TreeTransform
 from bzrlib.uncommit import uncommit
@@ -32,7 +34,6 @@ from bzrlib.uncommit import uncommit
 class TestInventory(TestCase):
 
     def test_is_within(self):
-        from bzrlib.osutils import is_inside_any
 
         SRC_FOO_C = pathjoin('src', 'foo.c')
         for dirs, fn in [(['src', 'doc'], SRC_FOO_C),
@@ -44,7 +45,21 @@ class TestInventory(TestCase):
         for dirs, fn in [(['src'], 'srccontrol'),
                          (['src'], 'srccontrol/foo')]:
             self.assertFalse(is_inside_any(dirs, fn))
+
+    def test_is_within_or_parent(self):
+        for dirs, fn in [(['src', 'doc'], 'src/foo.c'),
+                         (['src'], 'src/foo.c'),
+                         (['src/bar.c'], 'src'),
+                         (['src/bar.c', 'bla/foo.c'], 'src'),
+                         (['src'], 'src'),
+                         ]:
+            self.assert_(is_inside_or_parent_of_any(dirs, fn))
             
+        for dirs, fn in [(['src'], 'srccontrol'),
+                         (['srccontrol/foo.c'], 'src'),
+                         (['src'], 'srccontrol/foo')]:
+            self.assertFalse(is_inside_or_parent_of_any(dirs, fn))
+
     def test_ids(self):
         """Test detection of files within selected directories."""
         inv = Inventory()
@@ -291,13 +306,12 @@ class TestSnapshot(TestCaseWithTransport):
         self.inv_1 = self.branch.repository.get_inventory('1')
         self.file_1 = self.inv_1['fileid']
         self.file_active = self.wt.inventory['fileid']
+        self.builder = self.branch.get_commit_builder([], timestamp=time.time(), revision_id='2')
 
     def test_snapshot_new_revision(self):
         # This tests that a simple commit with no parents makes a new
         # revision value in the inventory entry
-        self.file_active.snapshot('2', 'subdir/file', {}, self.wt, 
-                                  self.branch.repository.weave_store,
-                                  self.branch.get_transaction())
+        self.file_active.snapshot('2', 'subdir/file', {}, self.wt, self.builder)
         # expected outcome - file_1 has a revision id of '2', and we can get
         # its text of 'file contents' out of the weave.
         self.assertEqual(self.file_1.revision, '1')
@@ -312,9 +326,7 @@ class TestSnapshot(TestCaseWithTransport):
         #This tests that a simple commit does not make a new entry for
         # an unchanged inventory entry
         self.file_active.snapshot('2', 'subdir/file', {'1':self.file_1},
-                                  self.wt, 
-                                  self.branch.repository.weave_store,
-                                  self.branch.get_transaction())
+                                  self.wt, self.builder)
         self.assertEqual(self.file_1.revision, '1')
         self.assertEqual(self.file_active.revision, '1')
         vf = self.branch.repository.weave_store.get_weave(
@@ -341,9 +353,7 @@ class TestSnapshot(TestCaseWithTransport):
         versionfile.clone_text('other', '1', ['1'])
         self.file_active.snapshot('2', 'subdir/file', 
                                   {'1':self.file_1, 'other':other_ie},
-                                  self.wt, 
-                                  self.branch.repository.weave_store,
-                                  self.branch.get_transaction())
+                                  self.wt, self.builder)
         self.assertEqual(self.file_active.revision, '2')
 
     def test_snapshot_changed(self):
@@ -352,9 +362,7 @@ class TestSnapshot(TestCaseWithTransport):
         self.file_active.name='newname'
         rename('subdir/file', 'subdir/newname')
         self.file_active.snapshot('2', 'subdir/newname', {'1':self.file_1}, 
-                                  self.wt,
-                                  self.branch.repository.weave_store,
-                                  self.branch.get_transaction())
+                                  self.wt, self.builder)
         # expected outcome - file_1 has a revision id of '2'
         self.assertEqual(self.file_active.revision, '2')
 

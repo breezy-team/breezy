@@ -14,8 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from binascii import hexlify
 from copy import deepcopy
 from cStringIO import StringIO
+import re
+import time
 from unittest import TestSuite
 
 import bzrlib.bzrdir as bzrdir
@@ -25,11 +28,13 @@ from bzrlib.errors import InvalidRevisionId
 import bzrlib.gpg as gpg
 from bzrlib.graph import Graph
 from bzrlib.inter import InterObject
+from bzrlib.inventory import Inventory
 from bzrlib.knit import KnitVersionedFile, KnitPlainFactory
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
-from bzrlib.osutils import safe_unicode
-from bzrlib.revision import NULL_REVISION
+from bzrlib.osutils import (safe_unicode, rand_bytes, compact_date, 
+                            local_time_offset)
+from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.store.versioned import VersionedFileStore, WeaveStore
 from bzrlib.store.text import TextStore
 from bzrlib.symbol_versioning import *
@@ -71,8 +76,16 @@ class Repository(object):
         inv_sha1 = bzrlib.osutils.sha_string(inv_text)
         inv_vf = self.control_weaves.get_weave('inventory',
                                                self.get_transaction())
-        inv_vf.add_lines(revid, parents, bzrlib.osutils.split_lines(inv_text))
+        self._inventory_add_lines(inv_vf, revid, parents, bzrlib.osutils.split_lines(inv_text))
         return inv_sha1
+
+    def _inventory_add_lines(self, inv_vf, revid, parents, lines):
+        final_parents = []
+        for parent in parents:
+            if parent in inv_vf:
+                final_parents.append(parent)
+
+        inv_vf.add_lines(revid, final_parents, lines)
 
     @needs_write_lock
     def add_revision(self, rev_id, rev, inv=None, config=None):
@@ -221,6 +234,23 @@ class Repository(object):
         """
         return InterRepository.get(source, self).fetch(revision_id=revision_id,
                                                        pb=pb)
+
+    def get_commit_builder(self, branch, parents, config, timestamp=None, 
+                           timezone=None, committer=None, revprops=None, 
+                           revision_id=None):
+        """Obtain a CommitBuilder for this repository.
+        
+        :param branch: Branch to commit to.
+        :param parents: Revision ids of the parents of the new revision.
+        :param config: Configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.
+        """
+        return CommitBuilder(self, parents, config, timestamp, timezone,
+                             committer, revprops, revision_id)
 
     def unlock(self):
         self.control_files.unlock()
@@ -707,6 +737,9 @@ class MetaDirRepository(Repository):
 
 class KnitRepository(MetaDirRepository):
     """Knit format repository."""
+
+    def _inventory_add_lines(self, inv_vf, revid, parents, lines):
+        inv_vf.add_lines_with_ghosts(revid, parents, lines)
 
     @needs_read_lock
     def all_revision_ids(self):
@@ -1842,6 +1875,182 @@ class CopyConverter(object):
         """Update the pb by a step."""
         self.count +=1
         self.pb.update(message, self.count, self.total)
+
+
+class CommitBuilder(object):
+    """Provides an interface to build up a commit.
+
+    This allows describing a tree to be committed without needing to 
+    know the internals of the format of the repository.
+    """
+    def __init__(self, repository, parents, config, timestamp=None, 
+                 timezone=None, committer=None, revprops=None, 
+                 revision_id=None):
+        """Initiate a CommitBuilder.
+
+        :param repository: Repository to commit to.
+        :param parents: Revision ids of the parents of the new revision.
+        :param config: Configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.
+        """
+        self._config = config
+
+        if committer is None:
+            self._committer = self._config.username()
+        else:
+            assert isinstance(committer, basestring), type(committer)
+            self._committer = committer
+
+        self.new_inventory = Inventory()
+        self._new_revision_id = revision_id
+        self.parents = parents
+        self.repository = repository
+
+        self._revprops = {}
+        if revprops is not None:
+            self._revprops.update(revprops)
+
+        if timestamp is None:
+            self._timestamp = time.time()
+        else:
+            self._timestamp = long(timestamp)
+
+        if timezone is None:
+            self._timezone = local_time_offset()
+        else:
+            self._timezone = int(timezone)
+
+        self._generate_revision_if_needed()
+
+    def commit(self, message):
+        """Make the actual commit.
+
+        :return: The revision id of the recorded revision.
+        """
+        rev = Revision(timestamp=self._timestamp,
+                       timezone=self._timezone,
+                       committer=self._committer,
+                       message=message,
+                       inventory_sha1=self.inv_sha1,
+                       revision_id=self._new_revision_id,
+                       properties=self._revprops)
+        rev.parent_ids = self.parents
+        self.repository.add_revision(self._new_revision_id, rev, 
+            self.new_inventory, self._config)
+        return self._new_revision_id
+
+    def finish_inventory(self):
+        """Tell the builder that the inventory is finished."""
+        self.new_inventory.revision = self._new_revision_id
+        self.inv_sha1 = self.repository.add_inventory(
+            self._new_revision_id,
+            self.new_inventory,
+            self.parents
+            )
+
+    def _gen_revision_id(self):
+        """Return new revision-id."""
+        s = '%s-%s-' % (self._config.user_email(), 
+                        compact_date(self._timestamp))
+        s += hexlify(rand_bytes(8))
+        return s
+
+    def _generate_revision_if_needed(self):
+        """Create a revision id if None was supplied.
+        
+        If the repository can not support user-specified revision ids
+        they should override this function and raise UnsupportedOperation
+        if _new_revision_id is not None.
+
+        :raises: UnsupportedOperation
+        """
+        if self._new_revision_id is None:
+            self._new_revision_id = self._gen_revision_id()
+
+    def record_entry_contents(self, ie, parent_invs, path, tree):
+        """Record the content of ie from tree into the commit if needed.
+
+        :param ie: An inventory entry present in the commit.
+        :param parent_invs: The inventories of the parent revisions of the
+            commit.
+        :param path: The path the entry is at in the tree.
+        :param tree: The tree which contains this entry and should be used to 
+        obtain content.
+        """
+        self.new_inventory.add(ie)
+
+        # ie.revision is always None if the InventoryEntry is considered
+        # for committing. ie.snapshot will record the correct revision 
+        # which may be the sole parent if it is untouched.
+        if ie.revision is not None:
+            return
+        previous_entries = ie.find_previous_heads(
+            parent_invs,
+            self.repository.weave_store,
+            self.repository.get_transaction())
+        # we are creating a new revision for ie in the history store
+        # and inventory.
+        ie.snapshot(self._new_revision_id, path, previous_entries, tree, self)
+
+    def modified_directory(self, file_id, file_parents):
+        """Record the presence of a symbolic link.
+
+        :param file_id: The file_id of the link to record.
+        :param file_parents: The per-file parent revision ids.
+        """
+        self._add_text_to_weave(file_id, [], file_parents.keys())
+    
+    def modified_file_text(self, file_id, file_parents,
+                           get_content_byte_lines, text_sha1=None,
+                           text_size=None):
+        """Record the text of file file_id
+
+        :param file_id: The file_id of the file to record the text of.
+        :param file_parents: The per-file parent revision ids.
+        :param get_content_byte_lines: A callable which will return the byte
+            lines for the file.
+        :param text_sha1: Optional SHA1 of the file contents.
+        :param text_size: Optional size of the file contents.
+        """
+        mutter('storing text of file {%s} in revision {%s} into %r',
+               file_id, self._new_revision_id, self.repository.weave_store)
+        # special case to avoid diffing on renames or 
+        # reparenting
+        if (len(file_parents) == 1
+            and text_sha1 == file_parents.values()[0].text_sha1
+            and text_size == file_parents.values()[0].text_size):
+            previous_ie = file_parents.values()[0]
+            versionedfile = self.repository.weave_store.get_weave(file_id, 
+                self.repository.get_transaction())
+            versionedfile.clone_text(self._new_revision_id, 
+                previous_ie.revision, file_parents.keys())
+            return text_sha1, text_size
+        else:
+            new_lines = get_content_byte_lines()
+            # TODO: Rather than invoking sha_strings here, _add_text_to_weave
+            # should return the SHA1 and size
+            self._add_text_to_weave(file_id, new_lines, file_parents.keys())
+            return bzrlib.osutils.sha_strings(new_lines), \
+                sum(map(len, new_lines))
+
+    def modified_link(self, file_id, file_parents, link_target):
+        """Record the presence of a symbolic link.
+
+        :param file_id: The file_id of the link to record.
+        :param file_parents: The per-file parent revision ids.
+        :param link_target: Target location of this link.
+        """
+        self._add_text_to_weave(file_id, [], file_parents.keys())
+
+    def _add_text_to_weave(self, file_id, new_lines, parents):
+        versionedfile = self.repository.weave_store.get_weave_or_empty(
+            file_id, self.repository.get_transaction())
+        versionedfile.add_lines(self._new_revision_id, parents, new_lines)
+        versionedfile.clear_cache()
 
 
 # Copied from xml.sax.saxutils
