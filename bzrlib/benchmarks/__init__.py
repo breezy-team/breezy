@@ -47,6 +47,7 @@ def test_suite():
                    'bzrlib.benchmarks.bench_add',
                    'bzrlib.benchmarks.bench_checkout',
                    'bzrlib.benchmarks.bench_commit',
+                   'bzrlib.benchmarks.bench_rocks',
                    'bzrlib.benchmarks.bench_status',
                    'bzrlib.benchmarks.bench_transform',
                    'bzrlib.benchmarks.bench_workingtree',
