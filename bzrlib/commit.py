@@ -72,9 +72,6 @@ import pdb
 from cStringIO import StringIO
 
 from bzrlib.atomicfile import AtomicFile
-from bzrlib.osutils import (kind_marker, is_inside_any, 
-                            quotefn, is_inside_or_parent_of_any,
-                            sha_file, isdir, isfile, split_lines)
 import bzrlib.config
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
@@ -82,6 +79,9 @@ from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
+from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any, 
+                            is_inside_or_parent_of_any,
+                            quotefn, sha_file, split_lines)
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
@@ -239,6 +239,7 @@ class Commit(object):
         self.local = local
         self.master_branch = None
         self.master_locked = False
+        self.rev_id = None
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
 
@@ -285,7 +286,7 @@ class Commit(object):
             # note that this estimate is too long when we do a partial tree
             # commit which excludes some new files from being considered.
             # The estimate is corrected when we populate the new inv.
-            self.pb_total = len(self.basis_inv) + len(self.work_inv) + 3 - 1
+            self.pb_total = len(self.work_inv) + 5
             self.pb_count = 0
 
             self._gather_parents()
@@ -311,6 +312,7 @@ class Commit(object):
             self.builder.finish_inventory()
             self._emit_progress_update()
             self.rev_id = self.builder.commit(self.message)
+            self._emit_progress_update()
             # revision data is in the local branch now.
             
             # upload revision data to the master.
@@ -511,9 +513,7 @@ class Commit(object):
         # iter_entries does not visit the ROOT_ID node so we need to call
         # self._emit_progress_update once by hand.
         self._emit_progress_update()
-        self._emit_progress_update()
         for path, new_ie in self.work_inv.iter_entries():
-            self._emit_progress_update()
             self._emit_progress_update()
             file_id = new_ie.file_id
             mutter('check %s {%s}', path, file_id)

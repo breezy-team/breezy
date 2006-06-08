@@ -23,17 +23,17 @@ from bzrlib.tests.repository_implementations.test_repository import TestCaseWith
 
 class TestCommitBuilder(TestCaseWithRepository):
 
-    def testGetCommitBuilder(self):
+    def test_get_commit_builder(self):
         tree = self.make_branch_and_tree(".")
         builder = tree.branch.get_commit_builder([])
         self.assertIsInstance(builder, CommitBuilder)
 
-    def testFinishInventory(self):
+    def test_finish_inventory(self):
         tree = self.make_branch_and_tree(".")
         builder = tree.branch.get_commit_builder([])
         builder.finish_inventory()
 
-    def testSetMessage(self):
+    def test_commit_message(self):
         tree = self.make_branch_and_tree(".")
         builder = tree.branch.get_commit_builder([])
         builder.finish_inventory()
@@ -41,7 +41,7 @@ class TestCommitBuilder(TestCaseWithRepository):
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('foo bar blah', rev.message)
 
-    def testCommitWithRevisionId(self):
+    def test_commit_with_revision_id(self):
         tree = self.make_branch_and_tree(".")
         try:
             builder = tree.branch.get_commit_builder([], revision_id="foo")
@@ -52,7 +52,7 @@ class TestCommitBuilder(TestCaseWithRepository):
         self.assertEqual("foo", builder.commit('foo bar'))
         self.assertTrue(tree.branch.repository.has_revision("foo"))
 
-    def testCommit(self):
+    def test_commit(self):
         tree = self.make_branch_and_tree(".")
         builder = tree.branch.get_commit_builder([])
         builder.finish_inventory()
