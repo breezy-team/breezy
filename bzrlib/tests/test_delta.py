@@ -30,3 +30,4 @@ class TestDelta(TestCaseInTempDir):
         self.assertEqual(len(delta.added), 0)
         delta = compare_trees(wt.basis_tree(), wt, include_root=True)
         self.assertEqual(len(delta.added), 1)
+        self.assertEqual(delta.added[0][0], '')

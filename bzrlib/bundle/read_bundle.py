@@ -647,11 +647,20 @@ class BundleTree(Tree):
         self.revision_id = revision_id
         self._inventory = None
 
+    @staticmethod
+    def _true_path(path):
+        if path != '.':
+            return path
+        else:
+            return ''
+
     def __str__(self):
         return pprint.pformat(self.__dict__)
 
     def note_rename(self, old_path, new_path):
         """A file/directory has been renamed from old_path => new_path"""
+        new_path = self._true_path(new_path)
+        old_path = self._true_path(old_path)
         assert not self._renamed.has_key(new_path)
         assert not self._renamed_r.has_key(old_path)
         self._renamed[new_path] = old_path
@@ -659,6 +668,7 @@ class BundleTree(Tree):
 
     def note_id(self, new_id, new_path, kind='file'):
         """Files that don't exist in base need a new id."""
+        new_path = self._true_path(new_path)
         self._new_id[new_path] = new_id
         self._new_id_r[new_id] = new_path
         self._kinds[new_id] = kind
@@ -674,21 +684,22 @@ class BundleTree(Tree):
 
     def note_patch(self, new_path, patch):
         """There is a patch for a given filename."""
-        self.patches[new_path] = patch
+        self.patches[self._true_path(new_path)] = patch
 
     def note_target(self, new_path, target):
         """The symlink at the new path has the given target"""
-        self._targets[new_path] = target
+        self._targets[self._true_path(new_path)] = target
 
     def note_deletion(self, old_path):
         """The file at old_path has been deleted."""
-        self.deleted.append(old_path)
+        self.deleted.append(self._true_path(old_path))
 
     def note_executable(self, new_path, executable):
-        self._executable[new_path] = executable
+        self._executable[self._true_path(new_path)] = executable
 
     def old_path(self, new_path):
         """Get the old_path (path in the base_tree) for the file at new_path"""
+        new_path = self._true_path(new_path)
         assert new_path[:1] not in ('\\', '/')
         old_path = self._renamed.get(new_path)
         if old_path is not None:
@@ -715,6 +726,7 @@ class BundleTree(Tree):
         """Get the new_path (path in the target_tree) for the file at old_path
         in the base tree.
         """
+        old_path = self._true_path(old_path)
         assert old_path[:1] not in ('\\', '/')
         new_path = self._renamed_r.get(old_path)
         if new_path is not None:
@@ -821,6 +833,8 @@ class BundleTree(Tree):
 
     def get_last_changed(self, file_id):
         path = self.id2path(file_id)
+        if path == '':
+            return None
         if path in self._last_changed:
             return self._last_changed[path]
         return self.base_tree.inventory[file_id].revision
@@ -856,6 +870,10 @@ class BundleTree(Tree):
         root_id = ROOT_ID
         if base_inv.root is not None:
             root_id = base_inv.root.file_id
+        try:
+            root_id = self._new_id['']
+        except KeyError:
+            pass
         try:
             # New inventories have a unique root_id
             inv = Inventory(root_id, self.revision_id)
