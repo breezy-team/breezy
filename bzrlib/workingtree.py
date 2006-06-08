@@ -693,7 +693,7 @@ class WorkingTree(bzrlib.tree.Tree):
         else:
             return '?'
 
-    def list_files(self):
+    def list_files(self, include_root=False):
         """Recursively list all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
@@ -722,6 +722,8 @@ class WorkingTree(bzrlib.tree.Tree):
         # list and just reverse() them.
         children = collections.deque(children)
         stack = [(inv.root.file_id, u'', self.basedir, children)]
+        if include_root:
+            yield u'', 'V', 'directory', inv.root.file_id, inv.root
         while stack:
             from_dir_id, from_dir_relpath, from_dir_abspath, children = stack[-1]
 

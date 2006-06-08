@@ -142,13 +142,14 @@ class TreeDelta(object):
 
 
 
-def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None):
+def compare_trees(old_tree, new_tree, want_unchanged=False, 
+                  specific_files=None, include_root=False):
     """Describe changes from one tree to another.
 
     Returns a TreeDelta with details of added, modified, renamed, and
     deleted entries.
 
-    The root entry is specifically exempt.
+    The root entry is specifically exempt, unless include_root is specified.
 
     This only considers versioned files.
 
@@ -168,14 +169,15 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
         new_tree.lock_read()
         try:
             return _compare_trees(old_tree, new_tree, want_unchanged,
-                                  specific_files)
+                                  specific_files, include_root)
         finally:
             new_tree.unlock()
     finally:
         old_tree.unlock()
 
 
-def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
+def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
+                   include_root):
 
     from osutils import is_inside_any
     
@@ -189,8 +191,8 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
     # Perhaps should take a list of file-ids instead?   Need to indicate any
     # ids or names which were not found in the trees.
 
-    old_files = old_tree.list_files()
-    new_files = new_tree.list_files()
+    old_files = old_tree.list_files(include_root)
+    new_files = new_tree.list_files(include_root)
 
     more_old = True
     more_new = True
@@ -272,8 +274,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
             # mark it as added
             assert entry.file_id not in added
             added[entry.file_id] = path, entry
-
-    while old_path or new_path:
+    while (old_path is not None or new_path is not None):
         # list_files() returns files in alphabetical path sorted order
         if old_path == new_path:
             if old_file_id == new_file_id:
