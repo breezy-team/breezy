@@ -127,12 +127,6 @@ class InventoryEntry(object):
                  'text_id', 'parent_id', 'children', 'executable', 
                  'revision']
 
-    def _add_text_to_weave(self, new_lines, parents, weave_store, transaction):
-        versionedfile = weave_store.get_weave_or_empty(self.file_id,
-                                                       transaction)
-        versionedfile.add_lines(self.revision, parents, new_lines)
-        versionedfile.clear_cache()
-
     def detect_changes(self, old_entry):
         """Return a (text_modified, meta_modified) from this to old_entry.
         
@@ -410,7 +404,7 @@ class InventoryEntry(object):
                    self.parent_id))
 
     def snapshot(self, revision, path, previous_entries,
-                 work_tree, weave_store, transaction):
+                 work_tree, commit_builder):
         """Make a snapshot of this entry which may or may not have changed.
         
         This means that all its fields are populated, that it has its
@@ -418,6 +412,8 @@ class InventoryEntry(object):
         """
         mutter('new parents of %s are %r', path, previous_entries)
         self._read_tree_state(path, work_tree)
+        # TODO: Where should we determine whether to reuse a
+        # previous revision id or create a new revision? 20060606
         if len(previous_entries) == 1:
             # cannot be unchanged unless there is only one parent file rev.
             parent_ie = previous_entries.values()[0]
@@ -426,10 +422,10 @@ class InventoryEntry(object):
                 self.revision = parent_ie.revision
                 return "unchanged"
         return self._snapshot_into_revision(revision, previous_entries, 
-                                            work_tree, weave_store, transaction)
+                                            work_tree, commit_builder)
 
     def _snapshot_into_revision(self, revision, previous_entries, work_tree,
-                                weave_store, transaction):
+                                commit_builder):
         """Record this revision unconditionally into a store.
 
         The entry's last-changed revision property (`revision`) is updated to 
@@ -441,17 +437,14 @@ class InventoryEntry(object):
         """
         mutter('new revision {%s} for {%s}', revision, self.file_id)
         self.revision = revision
-        self._snapshot_text(previous_entries, work_tree, weave_store,
-                            transaction)
+        self._snapshot_text(previous_entries, work_tree, commit_builder)
 
-    def _snapshot_text(self, file_parents, work_tree, weave_store, transaction): 
+    def _snapshot_text(self, file_parents, work_tree, commit_builder): 
         """Record the 'text' of this entry, whatever form that takes.
         
         This default implementation simply adds an empty text.
         """
-        mutter('storing file {%s} in revision {%s}',
-               self.file_id, self.revision)
-        self._add_text_to_weave([], file_parents.keys(), weave_store, transaction)
+        raise NotImplementedError(self._snapshot_text)
 
     def __eq__(self, other):
         if not isinstance(other, InventoryEntry):
@@ -562,6 +555,10 @@ class InventoryDirectory(InventoryEntry):
         """See InventoryEntry._put_on_disk."""
         os.mkdir(fullpath)
 
+    def _snapshot_text(self, file_parents, work_tree, commit_builder):
+        """See InventoryEntry._snapshot_text."""
+        commit_builder.modified_directory(self.file_id, file_parents)
+
 
 class InventoryFile(InventoryEntry):
     """A file in an inventory."""
@@ -670,31 +667,20 @@ class InventoryFile(InventoryEntry):
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
         self.text_sha1 = work_tree.get_file_sha1(self.file_id, path=path)
+        # FIXME: 20050930 probe for the text size when getting sha1
+        # in _read_tree_state
         self.executable = work_tree.is_executable(self.file_id, path=path)
 
     def _forget_tree_state(self):
         self.text_sha1 = None
         self.executable = None
 
-    def _snapshot_text(self, file_parents, work_tree, versionedfile_store, transaction):
+    def _snapshot_text(self, file_parents, work_tree, commit_builder):
         """See InventoryEntry._snapshot_text."""
-        mutter('storing text of file {%s} in revision {%s} into %r',
-               self.file_id, self.revision, versionedfile_store)
-        # special case to avoid diffing on renames or 
-        # reparenting
-        if (len(file_parents) == 1
-            and self.text_sha1 == file_parents.values()[0].text_sha1
-            and self.text_size == file_parents.values()[0].text_size):
-            previous_ie = file_parents.values()[0]
-            versionedfile = versionedfile_store.get_weave(self.file_id, transaction)
-            versionedfile.clone_text(self.revision, previous_ie.revision, file_parents.keys())
-        else:
-            new_lines = work_tree.get_file(self.file_id).readlines()
-            self._add_text_to_weave(new_lines, file_parents.keys(), versionedfile_store,
-                                    transaction)
-            self.text_sha1 = sha_strings(new_lines)
-            self.text_size = sum(map(len, new_lines))
-
+        def get_content_byte_lines():
+            return work_tree.get_file(self.file_id).readlines()
+        self.text_sha1, self.text_size = commit_builder.modified_file_text(
+            self.file_id, file_parents, get_content_byte_lines, self.text_sha1, self.text_size)
 
     def _unchanged(self, previous_ie):
         """See InventoryEntry._unchanged."""
@@ -720,7 +706,7 @@ class InventoryLink(InventoryEntry):
         if self.text_sha1 != None or self.text_size != None or self.text_id != None:
             raise BzrCheckError('symlink {%s} has text in revision {%s}'
                     % (self.file_id, rev_id))
-        if self.symlink_target == None:
+        if self.symlink_target is None:
             raise BzrCheckError('symlink {%s} has no target in revision {%s}'
                     % (self.file_id, rev_id))
 
@@ -794,6 +780,11 @@ class InventoryLink(InventoryEntry):
             compatible = False
         return compatible
 
+    def _snapshot_text(self, file_parents, work_tree, commit_builder):
+        """See InventoryEntry._snapshot_text."""
+        commit_builder.modified_link(
+            self.file_id, file_parents, self.symlink_target)
+
 
 class Inventory(object):
     """Inventory of versioned files in a tree.
@@ -851,7 +842,6 @@ class Inventory(object):
         self.revision_id = revision_id
         self._byid = {self.root.file_id: self.root}
 
-
     def copy(self):
         # TODO: jam 20051218 Should copy also copy the revision_id?
         other = Inventory(self.root.file_id)
@@ -863,19 +853,16 @@ class Inventory(object):
             other.add(entry.copy())
         return other
 
-
     def __iter__(self):
         return iter(self._byid)
-
 
     def __len__(self):
         """Returns number of entries."""
         return len(self._byid)
 
-
     def iter_entries(self, from_dir=None):
         """Return (path, entry) pairs, in order by name."""
-        if from_dir == None:
+        if from_dir is None:
             assert self.root
             from_dir = self.root
         elif isinstance(from_dir, basestring):
@@ -915,6 +902,39 @@ class Inventory(object):
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
+    def iter_entries_by_dir(self, from_dir=None):
+        """Iterate over the entries in a directory first order.
+
+        This returns all entries for a directory before returning
+        the entries for children of a directory. This is not
+        lexicographically sorted order, and is a hybrid between
+        depth-first and breadth-first.
+
+        :return: This yields (path, entry) pairs
+        """
+        # TODO? Perhaps this should return the from_dir so that the root is
+        # yielded? or maybe an option?
+        if from_dir is None:
+            assert self.root
+            from_dir = self.root
+        elif isinstance(from_dir, basestring):
+            from_dir = self._byid[from_dir]
+            
+        stack = [(u'', from_dir)]
+        while stack:
+            cur_relpath, cur_dir = stack.pop()
+
+            child_dirs = []
+            for child_name, child_ie in sorted(cur_dir.children.iteritems()):
+
+                child_relpath = cur_relpath + child_name
+
+                yield child_relpath, child_ie
+
+                if child_ie.kind == 'directory':
+                    child_dirs.append((child_relpath+'/', child_ie))
+            stack.extend(reversed(child_dirs))
+
     def entries(self):
         """Return list of (path, ie) for all entries except the root.
 
@@ -933,7 +953,6 @@ class Inventory(object):
         descend(self.root, u'')
         return accum
 
-
     def directories(self):
         """Return (path, entry) pairs for all directories, including the root.
         """
@@ -950,8 +969,6 @@ class Inventory(object):
         descend(self.root, u'')
         return accum
         
-
-
     def __contains__(self, file_id):
         """True if this entry contains a file with given id.
 
@@ -965,7 +982,6 @@ class Inventory(object):
         """
         return file_id in self._byid
 
-
     def __getitem__(self, file_id):
         """Return the entry for given file_id.
 
@@ -978,18 +994,16 @@ class Inventory(object):
         try:
             return self._byid[file_id]
         except KeyError:
-            if file_id == None:
+            if file_id is None:
                 raise BzrError("can't look up file_id None")
             else:
                 raise BzrError("file_id {%s} not in inventory" % file_id)
-
 
     def get_file_kind(self, file_id):
         return self._byid[file_id].kind
 
     def get_child(self, parent_id, filename):
         return self[parent_id].children.get(filename)
-
 
     def add(self, entry):
         """Add entry to inventory.
@@ -1018,7 +1032,6 @@ class Inventory(object):
         parent.children[entry.name] = entry
         return entry
 
-
     def add_path(self, relpath, kind, file_id=None, parent_id=None):
         """Add entry from a path.
 
@@ -1037,7 +1050,7 @@ class Inventory(object):
         else:
             parent_path = parts[:-1]
             parent_id = self.path2id(parent_path)
-            if parent_id == None:
+            if parent_id is None:
                 raise NotVersionedError(path=parent_path)
         ie = make_entry(kind, parts[-1], parent_id, file_id)
         return self.add(ie)
@@ -1062,7 +1075,6 @@ class Inventory(object):
         del self._byid[file_id]
         if ie.parent_id is not None:
             del self[ie.parent_id].children[ie.name]
-
 
     def __eq__(self, other):
         """Compare two sets by comparing their contents.
@@ -1089,10 +1101,8 @@ class Inventory(object):
 
         return self._byid == other._byid
 
-
     def __ne__(self, other):
         return not self.__eq__(other)
-
 
     def __hash__(self):
         raise ValueError('not hashable')
@@ -1163,14 +1173,11 @@ class Inventory(object):
 
         return parent.file_id
 
-
     def has_filename(self, names):
         return bool(self.path2id(names))
 
-
     def has_id(self, file_id):
         return self._byid.has_key(file_id)
-
 
     def rename(self, file_id, new_parent_id, new_name):
         """Move a file within the inventory.
@@ -1227,7 +1234,7 @@ _NAME_RE = None
 
 def is_valid_name(name):
     global _NAME_RE
-    if _NAME_RE == None:
+    if _NAME_RE is None:
         _NAME_RE = re.compile(r'^[^/\\]+$')
         
     return bool(_NAME_RE.match(name))

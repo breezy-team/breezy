@@ -101,10 +101,10 @@ command_classes['build_ext'] = build_ext
 
 
 setup(name='bzr',
-      version='0.8pre',
-      author='Martin Pool',
-      author_email='mbp@sourcefrog.net',
-      url='http://www.bazaar-ng.org/',
+      version='0.9pre',
+      author='Canonical Ltd',
+      author_email='bazaar-ng@lists.ubuntu.com',
+      url='http://bazaar-vcs.org/',
       description='Friendly distributed version control system',
       license='GNU GPL v2',
       packages=['bzrlib',

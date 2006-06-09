@@ -58,21 +58,25 @@ class cmd_sign_my_commits(Command):
         gpg_strategy = bzrlib.gpg.GPGStrategy(config)
 
         count = 0
-        # return in partial topological order for the sake of reproducibility
-        for rev_id in repo.all_revision_ids():
-            if repo.has_signature_for_revision_id(rev_id):
-                continue
-            
-            rev = repo.get_revision(rev_id)
-            if rev.committer != committer:
-                continue
+        repo.lock_write()
+        try:
+            # return in partial topological order for the sake of reproducibility
+            for rev_id in repo.all_revision_ids():
+                if repo.has_signature_for_revision_id(rev_id):
+                    continue
+                
+                rev = repo.get_revision(rev_id)
+                if rev.committer != committer:
+                    continue
 
-            # We have a revision without a signature who has a 
-            # matching committer, start signing
-            print rev_id
-            count += 1
-            if not dry_run:
-                repo.sign_revision(rev_id, gpg_strategy)
+                # We have a revision without a signature who has a 
+                # matching committer, start signing
+                print rev_id
+                count += 1
+                if not dry_run:
+                    repo.sign_revision(rev_id, gpg_strategy)
+        finally:
+            repo.unlock()
         print 'Signed %d revisions' % (count,)
 
 

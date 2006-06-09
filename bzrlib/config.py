@@ -568,6 +568,7 @@ def extract_email_address(e):
                               "a reasonable email address" % e)
     return m.group(0)
 
+
 class TreeConfig(object):
     """Branch configuration data associated with its contents, not location"""
     def __init__(self, branch):

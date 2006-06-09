@@ -1,19 +1,20 @@
 # Copyright (C) 2005 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import sys
 from os.path import dirname
 
 import bzrlib.errors as errors
@@ -22,6 +23,7 @@ from bzrlib.trace import mutter, note, warning
 from bzrlib.errors import NotBranchError
 import bzrlib.osutils
 from bzrlib.workingtree import WorkingTree
+
 
 def glob_expand_for_win32(file_list):
     if not file_list:
@@ -42,7 +44,6 @@ def glob_expand_for_win32(file_list):
 
 def _prepare_file_list(file_list):
     """Prepare a file list for use by smart_add_*."""
-    import sys
     if sys.platform == 'win32':
         file_list = glob_expand_for_win32(file_list)
     if not file_list:
@@ -51,34 +52,63 @@ def _prepare_file_list(file_list):
     return file_list
 
 
-def add_action_null(inv, parent_ie, path, kind):
-    """Absorb add actions and do nothing."""
-    pass
+class AddAction(object):
+    """A class which defines what action to take when adding a file."""
+
+    def __init__(self, to_file=None, should_add=None, should_print=None):
+        self._to_file = to_file
+        if to_file is None:
+            self._to_file = sys.stdout
+        self.should_add = False
+        if should_add is not None:
+            self.should_add = should_add
+        self.should_print = False
+        if should_print is not None:
+            self.should_print = should_print
+
+    def __call__(self, inv, parent_ie, path, kind):
+        """Add path to inventory.
+
+        The default action does nothing.
+
+        :param inv: The inventory we are working with.
+        :param path: The path being added
+        :param kind: The kind of the object being added.
+        """
+        if self.should_add:
+            self._add_to_inv(inv, parent_ie, path, kind)
+        if self.should_print:
+            self._print(inv, parent_ie, path, kind)
+
+    def _print(self, inv, parent_ie, path, kind):
+        """Print a line to self._to_file for each file that would be added."""
+        self._to_file.write('added ')
+        self._to_file.write(bzrlib.osutils.quotefn(path))
+        self._to_file.write('\n')
+
+    def _add_to_inv(self, inv, parent_ie, path, kind):
+        """Add each file to the given inventory. Produce no output."""
+        if parent_ie is not None:
+            entry = bzrlib.inventory.make_entry(
+                kind, bzrlib.osutils.basename(path),  parent_ie.file_id)
+            inv.add(entry)
+        else:
+            entry = inv.add_path(path, kind=kind)
+        # mutter("added %r kind %r file_id={%s}", path, kind, entry.file_id)
 
 
-def add_action_print(inv, parent_ie, path, kind):
-    """Print a line to stdout for each file that would be added."""
-    print "added", bzrlib.osutils.quotefn(path)
+# TODO: jam 20050105 These could be used for compatibility
+#       however, they bind against the current stdout, not the
+#       one which exists at the time they are called, so they
+#       don't work for the test suite.
+# deprecated
+add_action_null = AddAction()
+add_action_add = AddAction(should_add=True)
+add_action_print = AddAction(should_print=True)
+add_action_add_and_print = AddAction(should_add=True, should_print=True)
 
 
-def add_action_add(inv, parent_ie, path, kind):
-    """Add each file to the given inventory. Produce no output."""
-    if parent_ie is not None:
-        entry = bzrlib.inventory.make_entry(
-            kind, bzrlib.osutils.basename(path),  parent_ie.file_id)
-        inv.add(entry)
-    else:
-        entry = inv.add_path(path, kind=kind)
-    # mutter("added %r kind %r file_id={%s}" % (path, kind, entry.file_id))
-
-
-def add_action_add_and_print(inv, parent_ie, path, kind):
-    """Add each file to the given inventory, and print a line to stdout."""
-    add_action_add(inv, parent_ie, path, kind)
-    add_action_print(inv, parent_ie, path, kind)
-
-
-def smart_add(file_list, recurse=True, action=add_action_add):
+def smart_add(file_list, recurse=True, action=None):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
@@ -88,10 +118,10 @@ def smart_add(file_list, recurse=True, action=add_action_add):
     """
     file_list = _prepare_file_list(file_list)
     tree = WorkingTree.open_containing(file_list[0])[0]
-    return smart_add_tree(tree, file_list, recurse, action)
+    return smart_add_tree(tree, file_list, recurse, action=action)
 
 
-def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
+def smart_add_tree(tree, file_list, recurse=True, action=None):
     """Add files to version, optionally recursing into directories.
 
     This is designed more towards DWIM for humans than API simplicity.
@@ -104,6 +134,8 @@ def smart_add_tree(tree, file_list, recurse=True, action=add_action_add):
     import os, errno
     from bzrlib.errors import BadFileKindError, ForbiddenFileError
     assert isinstance(recurse, bool)
+    if action is None:
+        action = AddAction(should_add=True)
     
     prepared_list = _prepare_file_list(file_list)
     mutter("smart add of %r, originally %r", prepared_list, file_list)

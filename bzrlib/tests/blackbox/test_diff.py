@@ -19,10 +19,17 @@
 """
 
 import os
+import re
 
 import bzrlib
 from bzrlib.branch import Branch
 from bzrlib.tests.blackbox import ExternalBase
+
+
+def subst_dates(string):
+    """Replace date strings with constant values."""
+    return re.sub(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [-\+]\d{4}',
+                  'YYYY-MM-DD HH:MM:SS +ZZZZ', string)
 
 
 class TestDiff(ExternalBase):
@@ -56,10 +63,10 @@ class TestDiff(ExternalBase):
         file('hello', 'wt').write('hello world!\n')
         out, err = self.runbzr('diff --prefix old/:new/', retcode=1)
         self.assertEquals(err, '')
-        self.assertEqualDiff(out, '''\
+        self.assertEqualDiff(subst_dates(out), '''\
 === modified file 'hello'
---- old/hello\t
-+++ new/hello\t
+--- old/hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
++++ new/hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
 @@ -1,1 +1,1 @@
 -foo
 +hello world!
@@ -72,10 +79,10 @@ class TestDiff(ExternalBase):
         file('hello', 'wt').write('hello world!\n')
         out, err = self.runbzr('diff -p1', retcode=1)
         self.assertEquals(err, '')
-        self.assertEqualDiff(out, '''\
+        self.assertEqualDiff(subst_dates(out), '''\
 === modified file 'hello'
---- old/hello\t
-+++ new/hello\t
+--- old/hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
++++ new/hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
 @@ -1,1 +1,1 @@
 -foo
 +hello world!
@@ -88,10 +95,10 @@ class TestDiff(ExternalBase):
         file('hello', 'wt').write('hello world!\n')
         out, err = self.runbzr('diff -p0', retcode=1)
         self.assertEquals(err, '')
-        self.assertEqualDiff(out, '''\
+        self.assertEqualDiff(subst_dates(out), '''\
 === modified file 'hello'
---- hello\t
-+++ hello\t
+--- hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
++++ hello\tYYYY-MM-DD HH:MM:SS +ZZZZ
 @@ -1,1 +1,1 @@
 -foo
 +hello world!
@@ -127,25 +134,27 @@ class TestDiff(ExternalBase):
     def test_diff_branches(self):
         self.example_branches()
         # should open branch1 and diff against branch2, 
-        output = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 
-                                        'branch1'],
-                                       retcode=1)
-        self.assertEquals(("=== modified file 'file'\n"
-                           "--- file\t\n"
-                           "+++ file\t\n"
-                           "@@ -1,1 +1,1 @@\n"
-                           "-new content\n"
-                           "+contents of branch1/file\n"
-                           "\n", ''), output)
-        output = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
-                                       retcode=1)
-        self.assertEqualDiff(("=== modified file 'file'\n"
-                              "--- file\t\n"
-                              "+++ file\t\n"
+        out, err = self.run_bzr_captured(['diff', '-r', 'branch:branch2', 
+                                          'branch1'],
+                                         retcode=1)
+        self.assertEquals('', err)
+        self.assertEquals("=== modified file 'file'\n"
+                          "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                          "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                          "@@ -1,1 +1,1 @@\n"
+                          "-new content\n"
+                          "+contents of branch1/file\n"
+                          "\n", subst_dates(out))
+        out, ett = self.run_bzr_captured(['diff', 'branch2', 'branch1'],
+                                         retcode=1)
+        self.assertEquals('', err)
+        self.assertEqualDiff("=== modified file 'file'\n"
+                              "--- file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
+                              "+++ file\tYYYY-MM-DD HH:MM:SS +ZZZZ\n"
                               "@@ -1,1 +1,1 @@\n"
                               "-new content\n"
                               "+contents of branch1/file\n"
-                              "\n", ''), output)
+                              "\n", subst_dates(out))
 
     def example_branch2(self):
         self.build_tree(['branch1/', 'branch1/file1'], line_endings='binary')

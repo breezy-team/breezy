@@ -41,7 +41,6 @@ class Serializer_v5(Serializer):
             e.append(self._pack_entry(ie))
         return e
 
-
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
         # TODO: should just be a plain assertion
@@ -68,11 +67,8 @@ class Serializer_v5(Serializer):
         if ie.parent_id != ROOT_ID:
             assert isinstance(ie.parent_id, basestring)
             e.set('parent_id', ie.parent_id)
-
         e.tail = '\n'
-
         return e
-
 
     def _pack_revision(self, rev):
         """Revision object -> xml tree"""
