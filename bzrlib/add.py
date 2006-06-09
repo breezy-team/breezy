@@ -72,7 +72,7 @@ class AddAction(object):
         The default action does nothing.
 
         :param inv: The inventory we are working with.
-        :param path: The path being added
+        :param path: The FastPath being added
         :param kind: The kind of the object being added.
         """
         if self.should_add:
@@ -83,17 +83,17 @@ class AddAction(object):
     def _print(self, inv, parent_ie, path, kind):
         """Print a line to self._to_file for each file that would be added."""
         self._to_file.write('added ')
-        self._to_file.write(bzrlib.osutils.quotefn(path))
+        self._to_file.write(bzrlib.osutils.quotefn(path.raw_path))
         self._to_file.write('\n')
 
     def _add_to_inv(self, inv, parent_ie, path, kind):
         """Add each file to the given inventory. Produce no output."""
         if parent_ie is not None:
             entry = bzrlib.inventory.make_entry(
-                kind, bzrlib.osutils.basename(path),  parent_ie.file_id)
+                kind, bzrlib.osutils.basename(path.raw_path),  parent_ie.file_id)
             inv.add(entry)
         else:
-            entry = inv.add_path(path, kind=kind)
+            entry = inv.add_path(path.raw_path, kind=kind)
         # mutter("added %r kind %r file_id={%s}", path, kind, entry.file_id)
 
 
@@ -119,6 +119,20 @@ def smart_add(file_list, recurse=True, action=None):
     file_list = _prepare_file_list(file_list)
     tree = WorkingTree.open_containing(file_list[0])[0]
     return smart_add_tree(tree, file_list, recurse, action=action)
+
+
+class FastPath(object):
+    """A path object with fast accessors for things like basename."""
+
+    __slots__ = ['raw_path', 'base_path']
+
+    def __init__(self, path, base_path=None):
+        """Construct a FastPath from path."""
+        if base_path is None:
+            self.base_path = bzrlib.osutils.basename(path)
+        else:
+            self.base_path = base_path
+        self.raw_path = path
 
 
 def smart_add_tree(tree, file_list, recurse=True, action=None):
@@ -149,17 +163,17 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
     # relative : its cheaper to make a tree relative path an abspath
     # than to convert an abspath to tree relative.
     for filepath in prepared_list:
-        rf = tree.relpath(filepath)
+        rf = FastPath(tree.relpath(filepath))
         user_files.add(rf)
         files_to_add.append((rf, None))
         # validate user parameters. Our recursive code avoids adding new files
         # that need such validation 
-        if tree.is_control_filename(rf):
+        if tree.is_control_filename(rf.raw_path):
             raise ForbiddenFileError('cannot add control file %s' % filepath)
 
     for filepath, parent_ie in files_to_add:
         # filepath is tree-relative
-        abspath = tree.abspath(filepath)
+        abspath = tree.abspath(filepath.raw_path)
 
         # find the kind of the path being added. This is not
         # currently determined when we list directories 
@@ -186,11 +200,11 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
                 continue
 
         if parent_ie is not None:
-            versioned = bzrlib.osutils.basename(filepath) in parent_ie.children
+            versioned = filepath.base_path in parent_ie.children
         else:
             # without the parent ie, use the relatively slower inventory 
             # probing method
-            versioned = inv.has_filename(filepath)
+            versioned = inv.has_filename(filepath.raw_path)
 
         if kind == 'directory':
             try:
@@ -203,7 +217,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
         else:
             sub_tree = False
 
-        if filepath == '':
+        if filepath.raw_path == '':
             # mutter("tree root doesn't need to be added")
             sub_tree = False
         elif versioned:
@@ -218,11 +232,11 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
             try:
                 if parent_ie is not None:
                     # must be present:
-                    this_ie = parent_ie.children[bzrlib.osutils.basename(filepath)]
+                    this_ie = parent_ie.children[filepath.base_path]
                 else:
                     # without the parent ie, use the relatively slower inventory 
                     # probing method
-                    this_id = inv.path2id(filepath)
+                    this_id = inv.path2id(filepath.raw_path)
                     if this_id is None:
                         this_ie = None
                     else:
@@ -233,7 +247,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
             for subf in os.listdir(abspath):
                 # here we could use TreeDirectory rather than 
                 # string concatenation.
-                subp = bzrlib.osutils.pathjoin(filepath, subf)
+                subp = bzrlib.osutils.pathjoin(filepath.raw_path, subf)
                 # TODO: is_control_filename is very slow. Make it faster. 
                 # TreeDirectory.is_control_filename could also make this 
                 # faster - its impossible for a non root dir to have a 
@@ -251,7 +265,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
                         ignored[ignore_glob].append(subp)
                     else:
                         #mutter("queue to add sub-file %r", subp)
-                        files_to_add.append((subp, this_ie))
+                        files_to_add.append((FastPath(subp, subf), this_ie))
 
     if len(added) > 0:
         tree._write_inventory(inv)
@@ -280,13 +294,16 @@ def __add_one(tree, inv, parent_ie, path, kind, action):
         added = []
     else:
         # slower but does not need parent_ie
-        if inv.has_filename(path):
+        if inv.has_filename(path.raw_path):
             return []
-        # add parent
-        added = __add_one(tree, inv, None, dirname(path), 'directory', action)
-        parent_id = inv.path2id(dirname(path))
+        # its really not there : add the parent
+        # note that the dirname use leads to some extra str copying etc but as
+        # there are a limited number of dirs we can be nested under, it should
+        # generally find it very fast and not recurse after that.
+        added = __add_one(tree, inv, None, dirname(path.raw_path), 'directory', action)
+        parent_id = inv.path2id(dirname(path.raw_path))
         if parent_id is not None:
-            parent_ie = inv[inv.path2id(dirname(path))]
+            parent_ie = inv[inv.path2id(dirname(path.raw_path))]
         else:
             parent_ie = None
     action(inv, parent_ie, path, kind)
