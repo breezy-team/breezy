@@ -156,55 +156,52 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
     inv = tree.read_working_inventory()
     added = []
     ignored = {}
-    user_files = set()
-    files_to_add = []
+    dirs_to_add = []
 
     # validate user file paths and convert all paths to tree 
     # relative : its cheaper to make a tree relative path an abspath
     # than to convert an abspath to tree relative.
     for filepath in prepared_list:
         rf = FastPath(tree.relpath(filepath))
-        user_files.add(rf)
-        files_to_add.append((rf, None))
         # validate user parameters. Our recursive code avoids adding new files
         # that need such validation 
         if tree.is_control_filename(rf.raw_path):
             raise ForbiddenFileError('cannot add control file %s' % filepath)
-
-    for filepath, parent_ie in files_to_add:
-        # filepath is tree-relative
-        abspath = tree.abspath(filepath.raw_path)
-
-        # find the kind of the path being added. This is not
-        # currently determined when we list directories 
-        # recursively, but in theory we can determine while 
-        # doing the directory listing on *some* platformans.
-        # TODO: a safe, portable, clean interface which will 
-        # be faster than os.listdir() + stat. Specifically,
-        # readdir - dirent.d_type supplies the file type when
-        # it is defined. (Apparently Mac OSX has the field but
-        # does not fill it in ?!) Robert C, Martin P.
-        try:
-            kind = bzrlib.osutils.file_kind(abspath)
-        except OSError, e:
-            if hasattr(e, 'errno') and e.errno == errno.ENOENT:
-                raise errors.NoSuchFile(abspath)
-            raise
-
-        # we need to call this to determine the inventory kind to create.
-        if not InventoryEntry.versionable_kind(kind):
-            if filepath in user_files:
+        
+        abspath = tree.abspath(rf.raw_path)
+        kind = bzrlib.osutils.file_kind(abspath)
+        if kind == 'directory':
+            # schedule the dir for later
+            dirs_to_add.append((rf, None))
+        else:
+            if not InventoryEntry.versionable_kind(kind):
                 raise BadFileKindError("cannot add %s of type %s" % (abspath, kind))
-            else:
-                warning("skipping %s (can't add file of kind '%s')", abspath, kind)
+            # we dont have a parent ie known yet.: use the relatively slower inventory 
+            # probing method
+            versioned = inv.has_filename(rf.raw_path)
+            if versioned:
                 continue
+            added.extend(__add_one(tree, inv, None, rf, kind, action))
+
+    # this will eventually be *just* directories, right now it starts off with 
+    # just directories.
+    for directory, parent_ie in dirs_to_add:
+        # directory is tree-relative
+        abspath = tree.abspath(directory.raw_path)
+
+        # find the kind of the path being added.
+        kind = bzrlib.osutils.file_kind(abspath)
+
+        if not InventoryEntry.versionable_kind(kind):
+            warning("skipping %s (can't add file of kind '%s')", abspath, kind)
+            continue
 
         if parent_ie is not None:
-            versioned = filepath.base_path in parent_ie.children
+            versioned = directory.base_path in parent_ie.children
         else:
             # without the parent ie, use the relatively slower inventory 
             # probing method
-            versioned = inv.has_filename(filepath.raw_path)
+            versioned = inv.has_filename(directory.raw_path)
 
         if kind == 'directory':
             try:
@@ -217,7 +214,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
         else:
             sub_tree = False
 
-        if filepath.raw_path == '':
+        if directory.raw_path == '':
             # mutter("tree root doesn't need to be added")
             sub_tree = False
         elif versioned:
@@ -226,17 +223,17 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
         elif sub_tree:
             mutter("%r is a nested bzr tree", abspath)
         else:
-            added.extend(__add_one(tree, inv, parent_ie, filepath, kind, action))
+            added.extend(__add_one(tree, inv, parent_ie, directory, kind, action))
 
         if kind == 'directory' and recurse and not sub_tree:
             try:
                 if parent_ie is not None:
                     # must be present:
-                    this_ie = parent_ie.children[filepath.base_path]
+                    this_ie = parent_ie.children[directory.base_path]
                 else:
                     # without the parent ie, use the relatively slower inventory 
                     # probing method
-                    this_id = inv.path2id(filepath.raw_path)
+                    this_id = inv.path2id(directory.raw_path)
                     if this_id is None:
                         this_ie = None
                     else:
@@ -247,7 +244,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
             for subf in os.listdir(abspath):
                 # here we could use TreeDirectory rather than 
                 # string concatenation.
-                subp = bzrlib.osutils.pathjoin(filepath.raw_path, subf)
+                subp = bzrlib.osutils.pathjoin(directory.raw_path, subf)
                 # TODO: is_control_filename is very slow. Make it faster. 
                 # TreeDirectory.is_control_filename could also make this 
                 # faster - its impossible for a non root dir to have a 
@@ -265,7 +262,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
                         ignored[ignore_glob].append(subp)
                     else:
                         #mutter("queue to add sub-file %r", subp)
-                        files_to_add.append((FastPath(subp, subf), this_ie))
+                        dirs_to_add.append((FastPath(subp, subf), this_ie))
 
     if len(added) > 0:
         tree._write_inventory(inv)

@@ -1443,23 +1443,17 @@ class WorkingTree(bzrlib.tree.Tree):
             try:
                 if file_kind(self.abspath(conflicted)) != "file":
                     text = False
-            except OSError, e:
-                if e.errno == errno.ENOENT:
-                    text = False
-                else:
-                    raise
+            except errors.NoSuchFile:
+                text = False
             if text is True:
                 for suffix in ('.THIS', '.OTHER'):
                     try:
                         kind = file_kind(self.abspath(conflicted+suffix))
-                    except OSError, e:
-                        if e.errno == errno.ENOENT:
+                        if kind != "file":
                             text = False
-                            break
-                        else:
-                            raise
-                    if kind != "file":
+                    except errors.NoSuchFile:
                         text = False
+                    if text == False:
                         break
             ctype = {True: 'text conflict', False: 'contents conflict'}[text]
             conflicts.append(Conflict.factory(ctype, path=conflicted,

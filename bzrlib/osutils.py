@@ -108,6 +108,13 @@ def file_kind_from_stat_mode(stat_mode, _formats=_formats, _unknown='unknown'):
 
 
 def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
+    try:
+        return _mapper(_lstat(f).st_mode)
+    except OSError, e:
+        if getattr(e, 'errno', None) == errno.ENOENT:
+            raise bzrlib.errors.NoSuchFile(f)
+        raise
+
     return _mapper(_lstat(f).st_mode)
 
 
