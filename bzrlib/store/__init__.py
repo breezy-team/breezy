@@ -34,8 +34,9 @@ import bzrlib.errors as errors
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
-from bzrlib.transport import Transport, urlescape
+from bzrlib.transport import Transport
 from bzrlib.transport.local import LocalTransport
+import bzrlib.urlutils as urlutils
 
 ######################################################################
 # stores
@@ -302,7 +303,7 @@ class TransportStore(Store):
             prefix = ''
         path = prefix + fileid
         full_path = u'.'.join([path] + suffixes)
-        return urlescape(full_path)
+        return urlutils.escape(full_path)
 
     def _escape_file_id(self, file_id):
         """Turn a file id into a filesystem safe string.

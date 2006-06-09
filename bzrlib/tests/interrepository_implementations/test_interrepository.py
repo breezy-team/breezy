@@ -134,6 +134,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         # for during pull operations
         inv = source.get_inventory('a')
         inv['id'].revision = 'b'
+        inv.revision_id = 'b'
         sha1 = source.add_inventory('b', inv, ['a'])
         rev = Revision(timestamp=0,
                        timezone=None,

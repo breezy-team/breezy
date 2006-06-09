@@ -56,8 +56,13 @@ def test_suite():
     """Build and return a TestSuite which contains benchmark tests only."""
     testmod_names = [ \
                    'bzrlib.benchmarks.bench_add',
+                   'bzrlib.benchmarks.bench_bench',
                    'bzrlib.benchmarks.bench_checkout',
                    'bzrlib.benchmarks.bench_commit',
+                   'bzrlib.benchmarks.bench_rocks',
+                   'bzrlib.benchmarks.bench_osutils',
                    'bzrlib.benchmarks.bench_status',
+                   'bzrlib.benchmarks.bench_transform',
+                   'bzrlib.benchmarks.bench_workingtree',
                    ]
     return TestLoader().loadTestsFromModuleNames(testmod_names)

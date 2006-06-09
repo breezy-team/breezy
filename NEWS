@@ -2,6 +2,16 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * Tests updates to ensure proper URL handling, UNICODE support, and
+     proper printing when the user's terminal encoding cannot display 
+     the path of a file that has been versioned.
+     ``bzr branch`` can take a target URL rather than only a local directory.
+     Branch.get_parent()/set_parent() now save a relative path if possible,
+     and normalize the parent based on root, allowing access across
+     different transports. (John Arbash Meinel, Wouter van Heyst, Martin Pool)
+     (Malone #48906, #42699, #40675, #5281, #3980, #36363, #43689,
+      #42517, #42514)
+
    * On Unix, detect terminal width using an ioctl not just $COLUMNS.
      Use terminal width for single-line logs from ``bzr log --line`` and
      pending-merge display.  (Robert Widhopf-Fenk, Gustavo Niemeyer)
@@ -38,7 +48,10 @@ IN DEVELOPMENT
      ftp support has been improved, including support for supplying a
      non-standard port. (John Arbash Meinel).
 
-   * ``log --line`` shows the revision number.  (#5162, Alexander Belchenko)
+   * 'bzr log --line' shows the revision number, and uses only the
+     first line of the log message (#5162, Alexander Belchenko;
+     Matthieu Moy)
+  
 
   BUG FIXES:
 
@@ -55,6 +68,9 @@ IN DEVELOPMENT
     * 'bzr push' should only push the ancestry of the current revision, not
       all of the history in the repository. This is especially important for
       shared repositories. (John Arbash Meinel)
+
+    * bzrlib.delta.compare_trees now iterates in alphabetically sorted order,
+      rather than randomly walking the inventories. (John Arbash Meinel)
 
 bzr 0.8.2  2006-05-17
   

@@ -29,6 +29,7 @@ it.
 import errno
 from collections import deque
 from copy import deepcopy
+import re
 from stat import *
 import sys
 from unittest import TestSuite
@@ -38,9 +39,11 @@ import urlparse
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import DependencyNotPresent
+import bzrlib.osutils as osutils
 from bzrlib.osutils import pumpfile
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, warning
+import bzrlib.urlutils as urlutils
 
 # {prefix: [transport_classes]}
 # Transports are inserted onto the list LIFO and tried in order; as a result
@@ -129,6 +132,7 @@ def register_urlparse_netloc_protocol(protocol):
 
 
 def split_url(url):
+    # TODO: jam 20060606 urls should only be ascii, or they should raise InvalidURL
     if isinstance(url, unicode):
         url = url.encode('utf-8')
     (scheme, netloc, path, params,
@@ -284,6 +288,16 @@ class Transport(object):
             raise errors.PathNotChild(abspath, self.base)
         pl = len(self.base)
         return abspath[pl:].strip('/')
+
+    def local_abspath(self, relpath):
+        """Return the absolute path on the local filesystem.
+
+        This function will only be defined for Transports which have a
+        physical local filesystem representation.
+        """
+        # TODO: jam 20060426 Should this raise NotLocalUrl instead?
+        raise errors.TransportNotPossible('This is not a LocalTransport,'
+            ' so there is no local representation for a path')
 
     def has(self, relpath):
         """Does the file relpath exist?
@@ -663,6 +677,13 @@ class Transport(object):
         return False
 
 
+# jam 20060426 For compatibility we copy the functions here
+# TODO: The should be marked as deprecated
+urlescape = urlutils.escape
+urlunescape = urlutils.unescape
+_urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<path>.*)$')
+
+
 def get_transport(base):
     """Open a transport to access a URL or directory.
 
@@ -672,14 +693,37 @@ def get_transport(base):
     # handler for the scheme?
     global _protocol_handlers
     if base is None:
-        base = u'.'
-    else:
-        base = unicode(base)
+        base = '.'
+
+    def convert_path_to_url(base, error_str):
+        m = _urlRE.match(base)
+        if m:
+            # This looks like a URL, but we weren't able to 
+            # instantiate it as such raise an appropriate error
+            raise errors.InvalidURL(base, error_str % m.group('proto'))
+        # This doesn't look like a protocol, consider it a local path
+        new_base = urlutils.local_path_to_url(base)
+        mutter('converting os path %r => url %s' , base, new_base)
+        return new_base
+
+    # Catch any URLs which are passing Unicode rather than ASCII
+    try:
+        base = base.encode('ascii')
+    except UnicodeError:
+        # Only local paths can be Unicode
+        base = convert_path_to_url(base,
+            'URLs must be properly escaped (protocol: %s)')
+    
     for proto, factory_list in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
             t = _try_transport_factories(base, factory_list)
             if t:
                 return t
+
+    # We tried all the different protocols, now try one last time
+    # as a local protocol
+    base = convert_path_to_url(base, 'Unsupported protocol: %s')
+
     # The default handler is the filesystem handler, stored as protocol None
     return _try_transport_factories(base, _protocol_handlers[None])
 
@@ -693,19 +737,6 @@ def _try_transport_factories(base, factory_list):
                     (factory, base, e))
             continue
     return None
-
-
-def urlescape(relpath):
-    """Escape relpath to be a valid url."""
-    if isinstance(relpath, unicode):
-        relpath = relpath.encode('utf-8')
-    return urllib.quote(relpath)
-
-
-def urlunescape(relpath):
-    """Unescape relpath from url format."""
-    return urllib.unquote(relpath)
-    # TODO de-utf8 it last. relpath = utf8relpath.decode('utf8')
 
 
 class Server(object):
@@ -832,7 +863,7 @@ register_lazy_transport('http://', 'bzrlib.transport.http._pycurl', 'PyCurlTrans
 register_lazy_transport('https://', 'bzrlib.transport.http._pycurl', 'PyCurlTransport')
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
-register_lazy_transport('memory:/', 'bzrlib.transport.memory', 'MemoryTransport')
+register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
 register_lazy_transport('vfat+', 

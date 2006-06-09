@@ -120,7 +120,7 @@ class KnitContent(object):
         """Generate line-based delta from this content to new_lines."""
         new_texts = [text for origin, text in new_lines._lines]
         old_texts = [text for origin, text in self._lines]
-        s = SequenceMatcher(None, old_texts, new_texts)
+        s = KnitSequenceMatcher(None, old_texts, new_texts)
         for op in s.get_opcodes():
             if op[0] == 'equal':
                 continue
@@ -427,7 +427,7 @@ class KnitVersionedFile(VersionedFile):
             else:
                 old_texts = []
             new_texts = new_content.text()
-            delta_seq = SequenceMatcher(None, old_texts, new_texts)
+            delta_seq = KnitSequenceMatcher(None, old_texts, new_texts)
             return parent, sha1, noeol, self._make_line_delta(delta_seq, new_content)
         else:
             delta = self.factory.parse_line_delta(data, version_idx)
@@ -481,7 +481,7 @@ class KnitVersionedFile(VersionedFile):
             delta_seq = None
             for parent_id in parents:
                 merge_content = self._get_content(parent_id, parent_texts)
-                seq = SequenceMatcher(None, merge_content.text(), content.text())
+                seq = KnitSequenceMatcher(None, merge_content.text(), content.text())
                 if delta_seq is None:
                     # setup a delta seq to reuse.
                     delta_seq = seq
@@ -498,7 +498,7 @@ class KnitVersionedFile(VersionedFile):
                 reference_content = self._get_content(parents[0], parent_texts)
                 new_texts = content.text()
                 old_texts = reference_content.text()
-                delta_seq = SequenceMatcher(None, old_texts, new_texts)
+                delta_seq = KnitSequenceMatcher(None, old_texts, new_texts)
             return self._make_line_delta(delta_seq, content)
 
     def _make_line_delta(self, delta_seq, new_content):
@@ -861,7 +861,7 @@ class KnitVersionedFile(VersionedFile):
         annotated_b = self.annotate(ver_b)
         plain_a = [t for (a, t) in annotated_a]
         plain_b = [t for (a, t) in annotated_b]
-        blocks = SequenceMatcher(None, plain_a, plain_b).get_matching_blocks()
+        blocks = KnitSequenceMatcher(None, plain_a, plain_b).get_matching_blocks()
         a_cur = 0
         b_cur = 0
         for ai, bi, l in blocks:
@@ -1603,7 +1603,7 @@ class WeaveToKnit(InterVersionedFile):
 InterVersionedFile.register_optimiser(WeaveToKnit)
 
 
-class SequenceMatcher(difflib.SequenceMatcher):
+class KnitSequenceMatcher(difflib.SequenceMatcher):
     """Knit tuned sequence matcher.
 
     This is based on profiling of difflib which indicated some improvements

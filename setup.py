@@ -81,10 +81,10 @@ class bzr_build(build):
 ########################
 
 setup(name='bzr',
-      version='0.8pre',
-      author='Martin Pool',
-      author_email='mbp@sourcefrog.net',
-      url='http://www.bazaar-ng.org/',
+      version='0.9pre',
+      author='Canonical Ltd',
+      author_email='bazaar-ng@lists.ubuntu.com',
+      url='http://bazaar-vcs.org/',
       description='Friendly distributed version control system',
       license='GNU GPL v2',
       packages=['bzrlib',
@@ -112,6 +112,8 @@ setup(name='bzr',
                 'bzrlib.util.elementtree',
                 'bzrlib.util.effbot.org',
                 'bzrlib.util.configobj',
+                'bzrlib.bundle',
+                'bzrlib.bundle.serializer'
                 ],
       scripts=['bzr'],
       cmdclass={'install_scripts': my_install_scripts, 'build': bzr_build},
