@@ -132,6 +132,8 @@ class LocalTransport(Transport):
         """
         from bzrlib.atomicfile import AtomicFile
 
+        if mode is None:
+            mode = 0666
         path = relpath
         try:
             path = self._abspath(relpath)
@@ -171,6 +173,8 @@ class LocalTransport(Transport):
     def append(self, relpath, f, mode=0666):
         """Append the text in the file-like object into the final location."""
         abspath = self._abspath(relpath)
+        if mode is None:
+            mode = 0666
         try:
             fd = os.open(abspath, os.O_CREAT | os.O_APPEND | os.O_WRONLY, mode)
         except (IOError, OSError),e:
