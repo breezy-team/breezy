@@ -387,4 +387,39 @@ into their integration branch, which I'll merge regularly.  (If you do
 so, please reply and say so.)
 
 
+C Extension Modules
+===================
+
+We write some extensions in C using pyrex. We design these to work in
+three scenarios:
+ * User with no C compiler
+ * User with C compiler
+ * Developers
+
+The recommended way to install bzr is to have a C compiler so that the
+extensions can be built, but if no C compiler is present, the pure python
+versions we supply will work, though more slowly.
+
+For developers we recommend that pyrex be installed, so that the C
+extensions can be changed if needed.
+
+For the C extensions, the extension module should always match the
+original python one in all respects (modulo speed). This should be
+maintained over time.
+
+To create an extension, add rules to setup.py for building it with pyrex,
+and with distutils. Now start with an empty .pyx file. At the top add
+"include 'yourmodule.py'". This will import the contents of foo.py into this 
+file at build time - remember that only one module will be loaded at
+runtime. Now you can subclass classes, or replace functions, and only your
+changes need to be present in the .pyx file.
+
+Note that pyrex does not support all 2.4 programming idioms, so some
+syntax changes may be required. I.e. 
+ - 'from foo import (bar, gam)' needs to change to not use the brackets. 
+ - 'import foo.bar as bar' needs to be 'import foo.bar; bar = foo.bar' 
+If the changes are too dramatic, consider
+maintaining the python code twice - once in the .pyx, and once in the .py,
+and no longer including the .py file.
+
 :: vim:tw=74:ai
