@@ -223,8 +223,7 @@ class HashCache(object):
                    self.stat_count,
                    self.danger_count, self.update_count)
         finally:
-            if not outf.closed:
-                outf.abort()
+            outf.close()
 
     def read(self):
         """Reinstate cache from file.

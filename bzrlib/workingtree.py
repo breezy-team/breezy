@@ -50,7 +50,6 @@ import re
 import stat
 from time import time
 
-from bzrlib.atomicfile import AtomicFile
 from bzrlib.branch import (Branch,
                            quotefn)
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES

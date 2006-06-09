@@ -121,7 +121,7 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
-    def put(self, relpath, f, mode=None):
+    def put(self, relpath, f, mode=0666):
         """Copy the file-like or string object into the location.
 
         :param relpath: Location to put the contents, relative to base.
@@ -165,21 +165,29 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
-    def append(self, relpath, f, mode=None):
+    def append(self, relpath, f, mode=0666):
         """Append the text in the file-like object into the final location."""
         abspath = self._abspath(relpath)
         try:
-            fp = open(abspath, 'ab')
-            # FIXME should we really be chmodding every time ? RBC 20060523
-            if mode is not None:
-                os.chmod(abspath, mode)
+            fd = os.open(abspath, os.O_CREAT | os.O_APPEND | os.O_WRONLY, mode)
         except (IOError, OSError),e:
             self._translate_error(e, relpath)
-        # win32 workaround (tell on an unwritten file returns 0)
-        fp.seek(0, 2)
-        result = fp.tell()
-        self._pump(f, fp)
+        try:
+            result = os.lseek(fd, 0, 2)
+            # TODO: make a raw FD version of _pump ?
+            self._pump_to_fd(f, fd)
+        finally:
+            os.close(fd)
         return result
+
+    def _pump_to_fd(self, fromfile, to_fd):
+        """Copy contents of one file to another."""
+        BUFSIZE = 32768
+        while True:
+            b = fromfile.read(BUFSIZE)
+            if not b:
+                break
+            os.write(to_fd, b)
 
     def copy(self, rel_from, rel_to):
         """Copy the item at rel_from to the location at rel_to"""

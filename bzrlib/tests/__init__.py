@@ -890,6 +890,8 @@ class TestCaseInTempDir(TestCase):
         shape is a sequence of file specifications.  If the final
         character is '/', a directory is created.
 
+        This assumes that all the elements in the tree being built are new.
+
         This doesn't add anything to a branch.
         :param line_endings: Either 'binary' or 'native'
                              in binary mode, exact contents are written
@@ -900,7 +902,7 @@ class TestCaseInTempDir(TestCase):
                           VFS's. If the transport is readonly or None,
                           "." is opened automatically.
         """
-        # XXX: It's OK to just create them using forward slashes on windows?
+        # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
             transport = get_transport(".")
         for name in shape:
@@ -915,7 +917,7 @@ class TestCaseInTempDir(TestCase):
                 else:
                     raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
-                transport.put(urlutils.escape(name), StringIO(content))
+                transport.append(urlutils.escape(name), StringIO(content))
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)

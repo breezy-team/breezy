@@ -15,10 +15,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-
-from warnings import warn
-from bzrlib.osutils import rename
+import codecs
 import errno
+import os
+import socket
+import sys
+from warnings import warn
+
+from bzrlib.osutils import rename
+
+# not forksafe - but we dont fork.
+_pid = os.getpid()
 
 class AtomicFile(object):
     """A file that does an atomic-rename to move into place.
@@ -31,74 +38,67 @@ class AtomicFile(object):
     An encoding can be specified; otherwise the default is ascii.
     """
 
-    def __init__(self, filename, mode='wb', encoding=None, new_mode=None):
-        if mode != 'wb' and mode != 'wt':
-            raise ValueError("invalid AtomicFile mode %r" % mode)
+    __slots__ = ['f', 'tmpfilename', 'realfilename', 'write']
 
-        import os, socket
-        self.tmpfilename = '%s.%d.%s.tmp' % (filename, os.getpid(),
-                                             socket.gethostname())
+    def __init__(self, filename, mode='wb', new_mode=0666):
+        self.f = None
+        assert mode in ('wb', 'wt'), \
+            "invalid AtomicFile mode %r" % mode
+
+        # old version:
+        #self.tmpfilename = '%s.%d.%s.tmp' % (filename, os.getpid(),
+        #                                     socket.gethostname())
+        # new version:
+        # This is 'broken' on NFS: it wmay collide with another NFS client.
+        # however, we use this to write files within a directory that we have
+        # locked, so it being racy on NFS is not a concern. The only other
+        # files we use this for are .bzr.ignore, which can race anyhow.
+        self.tmpfilename = '%s.%d.tmp' % (filename, _pid)
         self.realfilename = filename
         
-        if encoding:
-            import codecs
-            self.f = codecs.open(self.tmpfilename, mode, encoding)
-        else:
-            self.f = open(self.tmpfilename, mode)
-
+        # Use a low level fd operation to avoid chmodding later.
+        fd = os.open(self.tmpfilename, os.O_EXCL | os.O_CREAT | os.O_WRONLY,
+            new_mode)
+        # open a normal python file to get the text vs binary support needed
+        # for windows.
+        try:
+            self.f = os.fdopen(fd, mode)
+        except:
+            os.close(fd)
+            raise
         self.write = self.f.write
-        self.closed = False
-        self._new_mode = new_mode
-
 
     def __repr__(self):
         return '%s(%r)' % (self.__class__.__name__,
                            self.realfilename)
-    
 
     def commit(self):
         """Close the file and move to final name."""
-        import sys, os
         
-        if self.closed:
+        if self.f is None:
             raise Exception('%r is already closed' % self)
 
-        self.closed = True
-        self.f.close()
+        f = self.f
         self.f = None
-        
-        try:
-            if self._new_mode is None:
-                self._new_mode = os.lstat(self.realfilename).st_mode
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
-        else:
-            os.chmod(self.tmpfilename, self._new_mode)
-
+        f.close()
         rename(self.tmpfilename, self.realfilename)
-
 
     def abort(self):
         """Discard temporary file without committing changes."""
-        import os
 
-        if self.closed:
+        if self.f is None:
             raise Exception('%r is already closed' % self)
 
-        self.closed = True
-        self.f.close()
+        f = self.f
         self.f = None
+        f.close()
         os.remove(self.tmpfilename)
-
 
     def close(self):
         """Discard the file unless already committed."""
-        if not self.closed:
+        if self.f is not None:
             self.abort()
 
-
     def __del__(self):
-        if hasattr(self, 'closed') and not self.closed:
+        if self.f is not None:
             warn("%r leaked" % self)
-        
