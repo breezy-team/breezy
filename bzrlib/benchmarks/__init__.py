@@ -17,18 +17,29 @@
 
 """Benchmark test suite for bzr."""
 
+import bzrlib
 from bzrlib.tests import TestLoader
 from bzrlib.tests.blackbox import ExternalBase
 
 class Benchmark(ExternalBase):
 
-    def make_kernel_like_tree(self):
-        """Setup a temporary tree roughly like a kernel tree."""
+    def make_kernel_like_tree(self, url=None):
+        """Setup a temporary tree roughly like a kernel tree.
+        
+        :param url: Creat the kernel like tree as a lightweight checkout
+        of a new branch created at url.
+        """
         # a kernel tree has ~10000 and 500 directory, with most files around 
         # 3-4 levels deep. 
         # we simulate this by three levels of dirs named 0-7, givin 512 dirs,
         # and 20 files each.
-        self.run_bzr('init')
+        if url is not None:
+            b = bzrlib.bzrdir.BzrDir.create_branch_convenience(url)
+            d = bzrlib.bzrdir.BzrDir.create('.')
+            bzrlib.branch.BranchReferenceFormat().initialize(d, b)
+            d.create_workingtree()
+        else:
+            self.run_bzr('init')
         files = []
         for outer in range(8):
             files.append("%s/" % outer)
@@ -45,6 +56,7 @@ def test_suite():
     """Build and return a TestSuite which contains benchmark tests only."""
     testmod_names = [ \
                    'bzrlib.benchmarks.bench_add',
+                   'bzrlib.benchmarks.bench_bench',
                    'bzrlib.benchmarks.bench_checkout',
                    'bzrlib.benchmarks.bench_commit',
                    'bzrlib.benchmarks.bench_rocks',

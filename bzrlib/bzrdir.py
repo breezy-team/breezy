@@ -344,16 +344,23 @@ class BzrDir(object):
             pass
         next_transport = self.root_transport.clone('..')
         while True:
+            # find the next containing bzrdir
             try:
                 found_bzrdir = BzrDir.open_containing_from_transport(
                     next_transport)[0]
             except errors.NotBranchError:
+                # none found
                 raise errors.NoRepositoryPresent(self)
+            # does it have a repository ?
             try:
                 repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
                 next_transport = found_bzrdir.root_transport.clone('..')
-                continue
+                if (found_bzrdir.root_transport.base == next_transport.base):
+                    # top of the file system
+                    break
+                else:
+                    continue
             if ((found_bzrdir.root_transport.base == 
                  self.root_transport.base) or repository.is_shared()):
                 return repository
