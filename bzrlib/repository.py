@@ -1945,7 +1945,7 @@ class CommitBuilder(object):
 
     def finish_inventory(self):
         """Tell the builder that the inventory is finished."""
-        self.new_inventory.revision = self._new_revision_id
+        self.new_inventory.revision_id = self._new_revision_id
         self.inv_sha1 = self.repository.add_inventory(
             self._new_revision_id,
             self.new_inventory,
