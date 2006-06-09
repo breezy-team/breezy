@@ -199,14 +199,14 @@ class TestAddActions(TestCase):
         self.run_action("added path\n", False)
 
     def run_action(self, output, should_add):
-        from bzrlib.add import AddAction
+        from bzrlib.add import AddAction, FastPath
         from cStringIO import StringIO
         inv = Inventory()
         stdout = StringIO()
         action = AddAction(to_file=stdout,
             should_print=bool(output), should_add=should_add)
 
-        self.apply_redirected(None, stdout, None, action, inv, None, 'path', 'file')
+        self.apply_redirected(None, stdout, None, action, inv, None, FastPath('path'), 'file')
         self.assertEqual(stdout.getvalue(), output)
 
         if should_add:

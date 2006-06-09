@@ -300,7 +300,7 @@ def __add_one(tree, inv, parent_ie, path, kind, action):
         # note that the dirname use leads to some extra str copying etc but as
         # there are a limited number of dirs we can be nested under, it should
         # generally find it very fast and not recurse after that.
-        added = __add_one(tree, inv, None, dirname(path.raw_path), 'directory', action)
+        added = __add_one(tree, inv, None, FastPath(dirname(path.raw_path)), 'directory', action)
         parent_id = inv.path2id(dirname(path.raw_path))
         if parent_id is not None:
             parent_ie = inv[inv.path2id(dirname(path.raw_path))]
@@ -308,4 +308,4 @@ def __add_one(tree, inv, parent_ie, path, kind, action):
             parent_ie = None
     action(inv, parent_ie, path, kind)
 
-    return added + [path]
+    return added + [path.raw_path]
