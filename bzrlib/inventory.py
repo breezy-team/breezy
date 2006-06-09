@@ -906,6 +906,37 @@ class Inventory(object):
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
+    def iter_entries_by_dir(self, from_dir=None):
+        """Iterate over the entries in a directory first order.
+
+        This returns all entries for a directory before returning
+        the entries for children of a directory. This is not
+        lexicographically sorted order, and is a hybrid between
+        depth-first and breadth-first.
+
+        :return: This yields (path, entry) pairs
+        """
+        if from_dir == None:
+            assert self.root
+            from_dir = self.root
+        elif isinstance(from_dir, basestring):
+            from_dir = self._byid[from_dir]
+            
+        stack = [(u'', from_dir)]
+        while stack:
+            cur_relpath, cur_dir = stack.pop()
+
+            child_dirs = []
+            for child_name, child_ie in sorted(cur_dir.children.iteritems()):
+
+                child_relpath = cur_relpath + child_name
+
+                yield child_relpath, child_ie
+
+                if child_ie.kind == 'directory':
+                    child_dirs.append((child_relpath+'/', child_ie))
+            stack.extend(reversed(child_dirs))
+
     def entries(self):
         """Return list of (path, ie) for all entries except the root.
 
