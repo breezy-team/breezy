@@ -237,8 +237,13 @@ class Command(object):
 
         output_encoding = getattr(sys.stdout, 'encoding', None)
         if not output_encoding:
-            output_encoding = bzrlib.user_encoding
-            mutter('encoding stdout bzrlib.user_encoding %r', output_encoding)
+            input_encoding = getattr(sys.stdin, 'encoding', None)
+            if not input_encoding:
+                output_encoding = bzrlib.user_encoding
+                mutter('encoding stdout bzrlib.user_encoding %r', output_encoding)
+            else:
+                output_encoding = input_encoding
+                mutter('encoding stdout log as sys.stdin encoding %r', output_encoding)
         else:
             mutter('encoding stdout log as sys.stdout encoding %r', output_encoding)
 
