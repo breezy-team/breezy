@@ -33,7 +33,9 @@ import errno
 import logging
 import os
 import re
+import shlex
 import stat
+from subprocess import Popen, PIPE
 import sys
 import tempfile
 import unittest
@@ -718,6 +720,22 @@ class TestCase(unittest.TestCase):
         else:
             encoding = bzrlib.user_encoding
         return self.run_bzr(*args, **kwargs)[0].decode(encoding)
+
+    def run_bzr_external(self, *args, **kwargs):
+        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        if len(args) == 1:
+            args = shlex.split(args[0])
+        args = list(args)
+        process = Popen([bzr_path]+args, stdout=PIPE, stderr=PIPE)
+        out = process.stdout.read()
+        err = process.stderr.read()
+        retcode = process.wait()
+        supplied_retcode = kwargs.get('retcode')
+        if supplied_retcode is not None:
+            assert supplied_retcode == retcode
+        else:
+            assert retcode == 0
+        return [out, err]
 
     def check_inventory_shape(self, inv, shape):
         """Compare an inventory to a list of expected names.
