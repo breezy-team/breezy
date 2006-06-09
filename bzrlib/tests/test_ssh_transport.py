@@ -20,9 +20,8 @@
 from cStringIO import StringIO
 
 import bzrlib
-import bzrlib.tests as tests
-import bzrlib.transport.ssh as ssh
-from bzrlib.transport import local, memory
+from bzrlib import tests, errors
+from bzrlib.transport import local, memory, ssh
 
 class TestSSHTransport(tests.TestCase):
     
@@ -83,12 +82,29 @@ class TestSSHTransport(tests.TestCase):
         fp = conn.get("foo")
         self.assertEqual('contents\nof\nfoo\n', fp.read())
         
-    def test_get_error(self):
+    def test_get_error_enoent(self):
         """Error reported from server getting nonexistent file."""
-        return
         conn = ssh.LoopbackSSHConnection()
-        fp = conn.get("non-foo")
-        # self.assertEqual('contents of foo\n', fp.read())
+        try:
+            conn.get('not a file')
+        except errors.NoSuchFile, e:
+            self.assertEqual('not a file', e.path)
+        else:
+            self.fail("get did not raise expected error")
+
+    def test_get_error_unexpected(self):
+        """Error reported by server with no specific representation"""
+        class FlakyTransport(object):
+            def get(self, path):
+                raise Exception("some random exception from inside server")
+        conn = ssh.LoopbackSSHConnection(transport=FlakyTransport())
+        try:
+            conn.get('something')
+        except errors.TransportError, e:
+            self.assertContainsRe(str(e), 'some random exception')
+        else:
+            self.fail("get did not raise expected error")
+
 
     # TODO: Try sending multiple requests; they should all get answers.
 

@@ -59,6 +59,9 @@ followed by bulk body data. ::
 # TODO: What should the server do if it hits an error and has to terminate?
 #
 # TODO: is it useful to allow multiple chunks in the bulk data?
+#
+# TODO: If we get an exception during transmission of bulk data we can't just
+# emit the exception because it won't be seen.
 
 
 from cStringIO import StringIO
@@ -150,15 +153,32 @@ class Server(object):
         if req_args == None:
             # client closed connection
             return False  # shutdown server
-        cmd = req_args[0]
+        try:
+            self._dispatch_command(req_args[0], req_args[1:])
+        except errors.NoSuchFile, e:
+            self._send_tuple(('enoent', e.path))
+        except KeyboardInterrupt:
+            raise
+        except Exception, e:
+            # everything else: pass to client, flush, and quit
+            self._send_error_and_disconnect(e)
+            return False
+
+    def _send_error_and_disconnect(self, exception):
+        self._send_tuple(('error', str(exception)))
+        self._out.flush()
+        self._out.close()
+        self._in.close()
+
+    def _dispatch_command(self, cmd, args):
         if cmd == 'hello':
             self._do_query_version()
         elif cmd == 'has':
-            self._do_has(req_args[1])
+            self._do_has(*args)
         elif cmd == 'get':
-            self._do_get(req_args[1])
+            self._do_get(*args)
         else:
-            raise BzrProtocolError("bad request %r" % (req_args,))
+            raise BzrProtocolError("bad request %r" % (cmd,))
 
     def _recv_tuple(self):
         """Read a request from the client and return as a tuple.
@@ -197,26 +217,41 @@ class SSHConnection(object):
             raise BzrProtocolError("bad response %r" % (resp,))
         
     def has(self, relpath):
-        self._send_tuple(('has', relpath))
-        resp = self._recv_tuple()
+        resp = self._call('has', relpath)
         if resp == ('yes', ):
             return True
         elif resp == ('no', ):
             return False
         else:
-            raise BzrProtocolError("bad response to has: %r" % resp)
+            self._translate_error(resp)
 
     def get(self, relpath):
         """Return file-like object reading the contents of a remote file."""
-        self._send_tuple(('get', relpath))
-        resp = self._recv_tuple()
+        resp = self._call('get', relpath)
         if resp != ('ok', ):
-            raise BzrProtocolError('bad response to get: %r' % resp)
+            self._translate_error(resp)
         body = self._recv_bulk()
-        resp = self._recv_tuple()
-        if resp != ('done', ):
-            raise BzrProtocolError('bad trailer on get: %r' % resp)
+        self._recv_trailer()
         return StringIO(body)
+
+    def _recv_trailer(self):
+        resp = self._recv_tuple()
+        if resp == ('done', ):
+            return
+        else:
+            self._translate_error(resp)
+
+    def _call(self, *args):
+        self._send_tuple(args)
+        return self._recv_tuple()
+
+    def _translate_error(self, resp):
+        """Raise an exception from a response"""
+        what = resp[0]
+        if what == 'enoent':
+            raise errors.NoSuchFile(resp[1])
+        else:
+            raise BzrProtocolError('bad trailer on get: %r' % (resp,))
 
     def _recv_bulk(self):
         return _recv_bulk(self._from_server)
@@ -245,9 +280,12 @@ class LoopbackSSHConnection(SSHConnection):
     :ivar backing_transport: The transport used by the real server.
     """
 
-    def __init__(self):
-        from bzrlib.transport import memory
-        self.backing_transport = memory.MemoryTransport('memory:///')
+    def __init__(self, transport=None):
+        if transport is None:
+            from bzrlib.transport import memory
+            self.backing_transport = memory.MemoryTransport('memory:///')
+        else:
+            self.backing_transport = transport
         self._start_server()
 
     def _start_server(self):
