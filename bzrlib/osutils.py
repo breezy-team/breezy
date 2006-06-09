@@ -46,6 +46,7 @@ from bzrlib.errors import (BzrError,
                            PathNotChild,
                            IllegalPath,
                            )
+from bzrlib.readdir import read_dir
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 import bzrlib.win32console
@@ -818,7 +819,7 @@ def walkdirs(top):
     lstat = os.lstat
     pending = []
     _directory = _directory_kind
-    _listdir = listdir
+    _listdir = read_dir
     pending = [("", "", _directory, None, top)]
     while pending:
         dirblock = []
@@ -829,10 +830,14 @@ def walkdirs(top):
             relroot = currentdir[0] + '/'
         else:
             relroot = ""
-        for name in sorted(_listdir(top)):
+        for name, kind in sorted(_listdir(top)):
             abspath = top + '/' + name
-            statvalue = lstat(abspath)
-            dirblock.append ((relroot + name, name, file_kind_from_stat_mode(statvalue.st_mode), statvalue, abspath))
+            if kind == 'unknown':
+                statvalue = lstat(abspath)
+                kind = file_kind_from_stat_mode(statvalue.st_mode)
+            else:
+                statvalue = None
+            dirblock.append ((relroot + name, name, kind, statvalue, abspath))
         yield dirblock
         # push the user specified dirs from dirblock
         for dir in reversed(dirblock):

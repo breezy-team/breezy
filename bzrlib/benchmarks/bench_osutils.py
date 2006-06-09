@@ -27,6 +27,7 @@ class WalkDirsBenchmark(Benchmark):
         self.make_kernel_like_tree()
         # on roberts machine: this originally took:  157ms/4177ms
         # plain os.walk takes 213ms on this tree
+        # with the pyrex readdir module:              77ms/5423ms
         def dowalk():
             for dirblock in osutils.walkdirs('.'):
                 if dirblock[0][1] == '.bzr':

@@ -25,6 +25,7 @@ import sys
 import bzrlib
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
 import bzrlib.osutils as osutils
+import bzrlib.readdir as readdir
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
 
@@ -259,3 +260,24 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertTrue(found_bzrdir)
         self.assertEqual(expected_dirblocks,
             [[line[0:3] for line in block] for block in result])
+
+    def test_readdir(self):
+        tree = [
+            '.bzr/',
+            '0file',
+            '1dir/',
+            '1dir/0file',
+            '1dir/1dir/',
+            '2file'
+            ]
+        self.build_tree(tree)
+        expected_names = ['.bzr', '0file', '1dir', '2file']
+        # read_dir either returns None, or a value
+        read_result = readdir.read_dir('.')
+        if read_result[0][1] is None:
+            expected_kind = ['unknown', 'unknown', 'unknown', 'unknown']
+        else:
+            expected_kind = ['directory', 'file', 'directory', 'file']
+        expected = zip(expected_names, expected_kind)
+        self.assertEqual(expected, sorted(read_result))
+        

@@ -91,12 +91,14 @@ except ImportError:
            ", you cannot modify the C extensions.")
     from distutils.command import build_ext
     from distutils.extension import Extension
+    ext_modules.append(
+        Extension("bzrlib.readdir", ["bzrlib/readdir.c"], libraries = []))
     #ext_modules.append(
     #    Extension("bzrlib.modulename", ["bzrlib/foo.c"], libraries = []))
 else:
     from distutils.extension import Extension
-    #ext_modules.append(
-    #    Extension("bzrlib.modulename", ["bzrlib/foo.pyx"], libraries = []))
+    ext_modules.append(
+        Extension("bzrlib.readdir", ["bzrlib/readdir.pyx"], libraries = []))
 command_classes['build_ext'] = build_ext
 
 
