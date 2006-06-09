@@ -31,4 +31,4 @@ def read_dir(path):
     :param path: the directory to list.
     :return: a list of (basename, None) tuples.
     """
-    return [(name, None) for name in os.listdir(path)]
+    return [(name, 'unknown') for name in os.listdir(path)]
