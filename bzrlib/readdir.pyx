@@ -106,7 +106,9 @@ def read_dir(path):
                     type = _unknown
                 result.append((entry.d_name, type))
             entry = readdir(the_dir)
-        if entry == NULL and errno != ENOENT:
+        if entry == NULL and errno != ENOENT and errno != 0:
+	    # ENOENT is listed as 'invalid position in the dir stream' for
+	    # readdir. We swallow this for now.
             raise OSError(errno, strerror(errno))
     finally:
         closedir(the_dir)
