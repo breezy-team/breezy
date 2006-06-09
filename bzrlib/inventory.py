@@ -706,7 +706,7 @@ class InventoryLink(InventoryEntry):
         if self.text_sha1 != None or self.text_size != None or self.text_id != None:
             raise BzrCheckError('symlink {%s} has text in revision {%s}'
                     % (self.file_id, rev_id))
-        if self.symlink_target == None:
+        if self.symlink_target is None:
             raise BzrCheckError('symlink {%s} has no target in revision {%s}'
                     % (self.file_id, rev_id))
 
@@ -866,7 +866,7 @@ class Inventory(object):
 
     def iter_entries(self, from_dir=None):
         """Return (path, entry) pairs, in order by name."""
-        if from_dir == None:
+        if from_dir is None:
             assert self.root
             from_dir = self.root
         elif isinstance(from_dir, basestring):
@@ -905,6 +905,39 @@ class Inventory(object):
             else:
                 # if we finished all children, pop it off the stack
                 stack.pop()
+
+    def iter_entries_by_dir(self, from_dir=None):
+        """Iterate over the entries in a directory first order.
+
+        This returns all entries for a directory before returning
+        the entries for children of a directory. This is not
+        lexicographically sorted order, and is a hybrid between
+        depth-first and breadth-first.
+
+        :return: This yields (path, entry) pairs
+        """
+        # TODO? Perhaps this should return the from_dir so that the root is
+        # yielded? or maybe an option?
+        if from_dir is None:
+            assert self.root
+            from_dir = self.root
+        elif isinstance(from_dir, basestring):
+            from_dir = self._byid[from_dir]
+            
+        stack = [(u'', from_dir)]
+        while stack:
+            cur_relpath, cur_dir = stack.pop()
+
+            child_dirs = []
+            for child_name, child_ie in sorted(cur_dir.children.iteritems()):
+
+                child_relpath = cur_relpath + child_name
+
+                yield child_relpath, child_ie
+
+                if child_ie.kind == 'directory':
+                    child_dirs.append((child_relpath+'/', child_ie))
+            stack.extend(reversed(child_dirs))
 
     def entries(self):
         """Return list of (path, ie) for all entries except the root.
@@ -969,7 +1002,7 @@ class Inventory(object):
         try:
             return self._byid[file_id]
         except KeyError:
-            if file_id == None:
+            if file_id is None:
                 raise BzrError("can't look up file_id None")
             else:
                 raise BzrError("file_id {%s} not in inventory" % file_id)
@@ -1028,7 +1061,7 @@ class Inventory(object):
         else:
             parent_path = parts[:-1]
             parent_id = self.path2id(parent_path)
-            if parent_id == None:
+            if parent_id is None:
                 raise NotVersionedError(path=parent_path)
         ie = make_entry(kind, parts[-1], parent_id, file_id)
         return self.add(ie)
@@ -1218,7 +1251,7 @@ _NAME_RE = None
 
 def is_valid_name(name):
     global _NAME_RE
-    if _NAME_RE == None:
+    if _NAME_RE is None:
         _NAME_RE = re.compile(r'^[^/\\]+$')
         
     return bool(_NAME_RE.match(name))
