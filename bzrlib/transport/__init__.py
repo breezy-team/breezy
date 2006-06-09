@@ -36,9 +36,11 @@ from unittest import TestSuite
 import urllib
 import urlparse
 
+import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import DependencyNotPresent
 import bzrlib.osutils as osutils
+from bzrlib.osutils import pumpfile
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, warning
 import bzrlib.urlutils as urlutils
@@ -220,7 +222,6 @@ class Transport(object):
         if isinstance(from_file, basestring):
             to_file.write(from_file)
         else:
-            from bzrlib.osutils import pumpfile
             pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
