@@ -93,6 +93,9 @@ class StubSFTPServer (SFTPServerInterface):
         path = self._realpath(path)
         try:
             out = [ ]
+            # TODO: win32 incorrectly lists paths with non-ascii if path is not
+            # unicode. However on Linux the server should only deal with
+            # bytestreams and posix.listdir does the right thing 
             flist = os.listdir(path)
             for fname in flist:
                 attr = SFTPAttributes.from_stat(os.stat(pathjoin(path, fname)))
@@ -127,6 +130,7 @@ class StubSFTPServer (SFTPServerInterface):
                 fd = os.open(path, flags)
         except OSError, e:
             return SFTPServer.convert_errno(e.errno)
+
         if (flags & os.O_CREAT) and (attr is not None):
             attr._flags &= ~attr.FLAG_PERMISSIONS
             SFTPServer.set_file_attr(path, attr)

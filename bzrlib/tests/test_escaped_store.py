@@ -50,7 +50,7 @@ class TestEscaped(TestCaseWithTransport):
         # hash_prefix() is not defined for unicode characters
         # it is only defined for byte streams.
         # so hash_prefix() needs to operate on *at most* utf-8
-        # encoded. However urlescape() does both encoding to utf-8
+        # encoded. However urlutils.escape() does both encoding to utf-8
         # and urllib quoting, so we will use the escaped form
         # as the path passed to hash_prefix
 

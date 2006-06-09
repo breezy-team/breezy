@@ -137,7 +137,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertEqual(None, master.last_revision())
         
 
-class TestCommmitProgress(TestCaseWithWorkingTree):
+class TestCommitProgress(TestCaseWithWorkingTree):
     
     def restoreDefaults(self):
         ui.ui_factory = self.old_ui_factory
@@ -167,19 +167,18 @@ class TestCommmitProgress(TestCaseWithWorkingTree):
         # into the factory for this test - just make the test ui factory
         # pun as a reporter. Then we can check the ordering is right.
         tree.commit('second post', specific_files=['b'])
-        # 11 steps: 1 for rev, 1 for inventory, 1 for finishing. 2 for root
-        # and 3 for basis files, and 3 for new inventory files.
+        # 9 steps: 1 for rev, 2 for inventory, 1 for finishing. 2 for root
+        # and 6 for inventory files.
+        # 2 steps don't trigger an update, as 'a' and 'c' are not 
+        # committed.
         self.assertEqual(
-            [("update", 0, 10),
-             ("update", 1, 10),
-             ("update", 2, 10),
-             ("update", 3, 10),
-             ("update", 4, 10),
-             ("update", 5, 10),
-             ("update", 6, 10),
-             ("update", 7, 10),
-             ("update", 8, 10),
-             ("update", 9, 10),
-             ("update", 10, 10)],
+            [("update", 0, 9),
+             ("update", 1, 9),
+             ("update", 2, 9),
+             ("update", 3, 9),
+             ("update", 4, 9),
+             ("update", 5, 9),
+             ("update", 6, 9),
+             ("update", 7, 9)],
             factory._calls
            )

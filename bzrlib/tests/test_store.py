@@ -81,7 +81,7 @@ class TestStores(object):
 class TestCompressedTextStore(TestCaseInTempDir, TestStores):
 
     def get_store(self, path=u'.'):
-        t = LocalTransport(path)
+        t = transport.get_transport(path)
         return TextStore(t, compressed=True)
 
     def test_total_size(self):
@@ -138,7 +138,7 @@ class TestMemoryStore(TestCase):
 class TestTextStore(TestCaseInTempDir, TestStores):
 
     def get_store(self, path=u'.'):
-        t = LocalTransport(path)
+        t = transport.get_transport(path)
         return TextStore(t, compressed=False)
 
     def test_total_size(self):
@@ -156,7 +156,7 @@ class TestTextStore(TestCaseInTempDir, TestStores):
 class TestMixedTextStore(TestCaseInTempDir, TestStores):
 
     def get_store(self, path=u'.', compressed=True):
-        t = LocalTransport(path)
+        t = transport.get_transport(path)
         return TextStore(t, compressed=compressed)
 
     def test_get_mixed(self):
