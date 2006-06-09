@@ -16,7 +16,8 @@
 
 """Transport for the local filesystem.
 
-This is a fairly thin wrapper on regular file IO."""
+This is a fairly thin wrapper on regular file IO.
+"""
 
 import os
 import shutil
@@ -71,6 +72,8 @@ class LocalTransport(Transport):
          - relative_reference does not contain '..'
          - relative_reference is url escaped.
         """
+        if relative_reference in ('.', ''):
+            return self._local_base
         return self._local_base + urlutils.unescape(relative_reference)
 
     def abspath(self, relpath):
