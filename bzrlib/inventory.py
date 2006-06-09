@@ -706,7 +706,7 @@ class InventoryLink(InventoryEntry):
         if self.text_sha1 != None or self.text_size != None or self.text_id != None:
             raise BzrCheckError('symlink {%s} has text in revision {%s}'
                     % (self.file_id, rev_id))
-        if self.symlink_target == None:
+        if self.symlink_target is None:
             raise BzrCheckError('symlink {%s} has no target in revision {%s}'
                     % (self.file_id, rev_id))
 
@@ -866,7 +866,7 @@ class Inventory(object):
 
     def iter_entries(self, from_dir=None):
         """Return (path, entry) pairs, in order by name."""
-        if from_dir == None:
+        if from_dir is None:
             assert self.root
             from_dir = self.root
         elif isinstance(from_dir, basestring):
@@ -916,7 +916,7 @@ class Inventory(object):
 
         :return: This yields (path, entry) pairs
         """
-        if from_dir == None:
+        if from_dir is None:
             assert self.root
             from_dir = self.root
         elif isinstance(from_dir, basestring):
@@ -1000,7 +1000,7 @@ class Inventory(object):
         try:
             return self._byid[file_id]
         except KeyError:
-            if file_id == None:
+            if file_id is None:
                 raise BzrError("can't look up file_id None")
             else:
                 raise BzrError("file_id {%s} not in inventory" % file_id)
@@ -1059,7 +1059,7 @@ class Inventory(object):
         else:
             parent_path = parts[:-1]
             parent_id = self.path2id(parent_path)
-            if parent_id == None:
+            if parent_id is None:
                 raise NotVersionedError(path=parent_path)
         ie = make_entry(kind, parts[-1], parent_id, file_id)
         return self.add(ie)
@@ -1249,7 +1249,7 @@ _NAME_RE = None
 
 def is_valid_name(name):
     global _NAME_RE
-    if _NAME_RE == None:
+    if _NAME_RE is None:
         _NAME_RE = re.compile(r'^[^/\\]+$')
         
     return bool(_NAME_RE.match(name))
