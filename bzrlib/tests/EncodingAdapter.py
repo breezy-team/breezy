@@ -39,8 +39,8 @@ _juju_alt = u'j\xfbj\xfa'
 
 # Russian, 'Alexander' in russian
 _alexander = u'\u0410\u043b\u0435\u043a\u0441\u0430\u043d\u0434\u0440'
-# No idea if this means anything, but we need another string
-_alex = u'\u0410\u043b\u0435\u043a'
+# The word 'test' in Russian
+_russian_test = u'\u0422\u0435\u0441\u0442'
 
 # Kanji
 # It is a kanji sequence for nihonjin, or Japanese in English.
@@ -100,8 +100,8 @@ class EncodingTestAdapter(object):
                   , 'directory':_something}),
         ('cp1251', 0, {'committer':_alexander
                   , 'message':u'Testing ' + _mu
-                  , 'filename':_alex
-                  , 'directory':_alex + 'dir'}),
+                  , 'filename':_russian_test
+                  , 'directory':_russian_test + 'dir'}),
     ]
 
     def adapt(self, test):
