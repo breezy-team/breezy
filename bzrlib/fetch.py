@@ -273,7 +273,7 @@ class KnitRepoFetcher(RepoFetcher):
 
 
 class Fetcher(object):
-    """Backwards compatability glue for branch.fetch()."""
+    """Backwards compatibility glue for branch.fetch()."""
 
     @deprecated_method(zero_eight)
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):

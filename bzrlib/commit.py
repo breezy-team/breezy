@@ -316,7 +316,7 @@ class Commit(object):
             # revision data is in the local branch now.
             
             # upload revision data to the master.
-            # this will propogate merged revisions too if needed.
+            # this will propagate merged revisions too if needed.
             if self.bound_branch:
                 self.master_branch.repository.fetch(self.branch.repository,
                                                     revision_id=self.rev_id)
@@ -532,7 +532,7 @@ class Commit(object):
 
             self.builder.record_entry_contents(ie, self.parent_invs, 
                 path, self.work_tree)
-            # describe the nature of the change that has occured relative to
+            # describe the nature of the change that has occurred relative to
             # the basis inventory.
             if (self.basis_inv.has_id(ie.file_id)):
                 basis_ie = self.basis_inv[ie.file_id]

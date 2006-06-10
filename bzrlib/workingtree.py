@@ -149,7 +149,7 @@ def gen_root_id():
 
 
 class TreeEntry(object):
-    """An entry that implements the minium interface used by commands.
+    """An entry that implements the minimum interface used by commands.
 
     This needs further inspection, it may be better to have 
     InventoryEntries without ids - though that seems wrong. For now,
@@ -1348,8 +1348,8 @@ class WorkingTree(bzrlib.tree.Tree):
         # of a nasty hack; probably it's better to have a transaction object,
         # which can do some finalization when it's either successfully or
         # unsuccessfully completed.  (Denys's original patch did that.)
-        # RBC 20060206 hookinhg into transaction will couple lock and transaction
-        # wrongly. Hookinh into unllock on the control files object is fine though.
+        # RBC 20060206 hooking into transaction will couple lock and transaction
+        # wrongly. Hooking into unlock on the control files object is fine though.
         
         # TODO: split this per format so there is no ugly if block
         if self._hashcache.needs_write and (
@@ -1401,7 +1401,7 @@ class WorkingTree(bzrlib.tree.Tree):
                                       this_tree=self)
                 self.set_last_revision(self.branch.last_revision())
             if old_tip and old_tip != self.last_revision():
-                # our last revision was not the prior branch last reivison
+                # our last revision was not the prior branch last revision
                 # and we have converted that last revision to a pending merge.
                 # base is somewhere between the branch tip now
                 # and the now pending merge
@@ -1723,7 +1723,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
     def initialize(self, a_bzrdir, revision_id=None):
         """See WorkingTreeFormat.initialize().
         
-        revision_id allows creating a working tree at a differnet
+        revision_id allows creating a working tree at a different
         revision than the branch is at.
         """
         if not isinstance(a_bzrdir.transport, LocalTransport):

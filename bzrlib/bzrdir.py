@@ -373,7 +373,7 @@ class BzrDir(object):
 
         Note that bzr dirs that do not support format strings will raise
         IncompatibleFormat if the branch format they are given has
-        a format string, and vice verca.
+        a format string, and vice versa.
 
         If branch_format is None, the transport is returned with no 
         checking. if it is not None, then the returned transport is
@@ -386,7 +386,7 @@ class BzrDir(object):
 
         Note that bzr dirs that do not support format strings will raise
         IncompatibleFormat if the repository format they are given has
-        a format string, and vice verca.
+        a format string, and vice versa.
 
         If repository_format is None, the transport is returned with no 
         checking. if it is not None, then the returned transport is
@@ -399,7 +399,7 @@ class BzrDir(object):
 
         Note that bzr dirs that do not support format strings will raise
         IncompatibleFormat if the workingtree format they are given has
-        a format string, and vice verca.
+        a format string, and vice versa.
 
         If workingtree_format is None, the transport is returned with no 
         checking. if it is not None, then the returned transport is
@@ -434,7 +434,7 @@ class BzrDir(object):
         # this might be better on the BzrDirFormat class because it refers to 
         # all the possible bzrdir disk formats. 
         # This method is tested via the workingtree is_control_filename tests- 
-        # it was extractd from WorkingTree.is_control_filename. If the methods
+        # it was extracted from WorkingTree.is_control_filename. If the methods
         # contract is extended beyond the current trivial  implementation please
         # add new tests for it to the appropriate place.
         return filename == '.bzr' or filename.startswith('.bzr/')
@@ -980,10 +980,10 @@ class BzrDirFormat(object):
         This returns a bzrlib.bzrdir.Converter object.
 
         This should return the best upgrader to step this format towards the
-        current default format. In the case of plugins we can/shouold provide
+        current default format. In the case of plugins we can/should provide
         some means for them to extend the range of returnable converters.
 
-        :param format: Optional format to override the default foramt of the 
+        :param format: Optional format to override the default format of the 
                        library.
         """
         raise NotImplementedError(self.get_converter)
@@ -998,7 +998,7 @@ class BzrDirFormat(object):
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
-        # Since we don'transport have a .bzr directory, inherit the
+        # Since we don't have a .bzr directory, inherit the
         # mode from the root directory
         temp_control = LockableFiles(transport, '', TransportLock)
         temp_control._transport.mkdir('.bzr',

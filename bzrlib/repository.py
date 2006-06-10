@@ -174,7 +174,7 @@ class Repository(object):
         self.control_files = control_files
         self._revision_store = _revision_store
         self.text_store = text_store
-        # backwards compatability
+        # backwards compatibility
         self.weave_store = text_store
         # not right yet - should be more semantically clear ? 
         # 
@@ -362,7 +362,7 @@ class Repository(object):
 
         # this code needs to read every new line in every inventory for the
         # inventories [revision_ids]. Seeing a line twice is ok. Seeing a line
-        # not pesent in one of those inventories is unnecessary but not 
+        # not present in one of those inventories is unnecessary but not 
         # harmful because we are filtering by the revision id marker in the
         # inventory lines : we only select file ids altered in one of those  
         # revisions. We dont need to see all lines in the inventory because
@@ -670,7 +670,7 @@ def install_revision(repository, rev, revision_tree):
         if ie.revision not in w:
             text_parents = []
             # FIXME: TODO: The following loop *may* be overlapping/duplicate
-            # with inventoryEntry.find_previous_heads(). if it is, then there
+            # with InventoryEntry.find_previous_heads(). if it is, then there
             # is a latent bug here where the parents may have ancestors of each
             # other. RBC, AB
             for revision, tree in parent_trees.iteritems():
@@ -928,7 +928,7 @@ class RepositoryFormat(object):
         raise NotImplementedError(self.get_format_string)
 
     def get_format_description(self):
-        """Return the short desciption for this format."""
+        """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
 
     def _get_revision_store(self, repo_transport, control_files):
@@ -1095,7 +1095,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
      - TextStores for texts, inventories,revisions.
 
     This format is deprecated: it indexes texts using a text id which is
-    removed in format 5; initializationa and write support for this format
+    removed in format 5; initialization and write support for this format
     has been removed.
     """
 
@@ -1200,7 +1200,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
 
 class MetaDirRepositoryFormat(RepositoryFormat):
-    """Common base class for the new repositories using the metadir layour."""
+    """Common base class for the new repositories using the metadir layout."""
 
     def __init__(self):
         super(MetaDirRepositoryFormat, self).__init__()
@@ -1571,7 +1571,7 @@ class InterWeaveRepo(InterRepository):
     def is_compatible(source, target):
         """Be compatible with known Weave formats.
         
-        We dont test for the stores being of specific types becase that
+        We dont test for the stores being of specific types because that
         could lead to confusing results, and there is no need to be 
         overly general.
         """
@@ -1592,7 +1592,7 @@ class InterWeaveRepo(InterRepository):
         if basis is not None:
             # copy the basis in, then fetch remaining data.
             basis.copy_content_into(self.target, revision_id)
-            # the basis copy_content_into could misset this.
+            # the basis copy_content_into could missed this.
             try:
                 self.target.set_make_working_trees(self.source.make_working_trees())
             except NotImplementedError:
@@ -1689,7 +1689,7 @@ class InterKnitRepo(InterRepository):
     def is_compatible(source, target):
         """Be compatible with known Knit formats.
         
-        We dont test for the stores being of specific types becase that
+        We dont test for the stores being of specific types because that
         could lead to confusing results, and there is no need to be 
         overly general.
         """

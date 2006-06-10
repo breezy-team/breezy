@@ -164,7 +164,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
         # find the kind of the path being added. This is not
         # currently determined when we list directories 
         # recursively, but in theory we can determine while 
-        # doing the directory listing on *some* platformans.
+        # doing the directory listing on *some* platforms.
         # TODO: a safe, portable, clean interface which will 
         # be faster than os.listdir() + stat. Specifically,
         # readdir - dirent.d_type supplies the file type when

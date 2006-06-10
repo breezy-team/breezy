@@ -160,7 +160,7 @@ class InventoryEntry(object):
                             versioned_file_store,
                             transaction,
                             entry_vf=None):
-        """Return the revisions and entries that directly preceed this.
+        """Return the revisions and entries that directly precede this.
 
         Returned as a map from revision to inventory entry.
 
@@ -471,7 +471,7 @@ class InventoryEntry(object):
     def _unchanged(self, previous_ie):
         """Has this entry changed relative to previous_ie.
 
-        This method should be overriden in child classes.
+        This method should be overridden in child classes.
         """
         compatible = True
         # different inv parent

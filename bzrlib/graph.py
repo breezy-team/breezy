@@ -109,7 +109,7 @@ def all_descendants(descendants, start):
 
 
 class Graph(object):
-    """A graph object which can memoise and cache results for performance."""
+    """A graph object which can memorize and cache results for performance."""
 
     def __init__(self):
         super(Graph, self).__init__()
