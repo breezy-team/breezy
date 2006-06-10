@@ -157,6 +157,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
     added = []
     ignored = {}
     dirs_to_add = []
+    user_dirs = set()
 
     # validate user file paths and convert all paths to tree 
     # relative : its cheaper to make a tree relative path an abspath
@@ -172,7 +173,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
         kind = bzrlib.osutils.file_kind(abspath)
         if kind == 'directory':
             # schedule the dir for later
-            dirs_to_add.append((rf, None))
+            user_dirs.add(rf.raw_path)
         else:
             if not InventoryEntry.versionable_kind(kind):
                 raise BadFileKindError("cannot add %s of type %s" % (abspath, kind))
@@ -182,6 +183,15 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
             if versioned:
                 continue
             added.extend(__add_one(tree, inv, None, rf, kind, action))
+
+    # only walk the minimal parents needed: we have user_dirs to override
+    # ignores.
+    prev_dir = None
+    for path in sorted(user_dirs):
+        if (prev_dir is None or not
+            bzrlib.osutils.is_inside_or_parent_of_any([prev_dir], path)):
+            dirs_to_add.append((rf, None))
+        prev_dir = path
 
     # this will eventually be *just* directories, right now it starts off with 
     # just directories.
@@ -252,6 +262,10 @@ def smart_add_tree(tree, file_list, recurse=True, action=None):
                 if tree.is_control_filename(subp):
                     mutter("skip control directory %r", subp)
                 else:
+                    # user selection overrides ignoes
+                    if subp in user_dirs:
+                        dirs_to_add.append((FastPath(subp, subf), this_ie))
+                        continue
                     # ignore while selecting files - if we globbed in the
                     # outer loop we would ignore user files.
                     ignore_glob = tree.is_ignored(subp)

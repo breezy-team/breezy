@@ -75,10 +75,20 @@ class TestSmartAdd(TestCaseWithTransport):
         paths = ("file1", "file2")
         self.build_tree(paths)
         wt = self.make_branch_and_tree('.')
-        branch = wt.branch
         smart_add_tree(wt, paths)
         for path in paths:
             self.assertNotEqual(wt.path2id(path), None)
+    
+    def test_add_ignored_nested_paths(self):
+        """Test smart-adding a list of paths which includes ignored ones."""
+        wt = self.make_branch_and_tree('.')
+        tree_shape = ("adir/", "adir/CVS/", "adir/CVS/afile", "adir/CVS/afile2")
+        add_paths = ("adir/CVS", "adir/CVS/afile", "adir")
+        expected_paths = ("adir", "adir/CVS", "adir/CVS/afile", "adir/CVS/afile2")
+        self.build_tree(tree_shape)
+        smart_add_tree(wt, add_paths)
+        for path in expected_paths:
+            self.assertNotEqual(wt.path2id(path), None, "No id added for %s" % path)
 
     def test_add_dry_run(self):
         """Test a dry run add, make sure nothing is added."""
