@@ -782,6 +782,31 @@ class KnitRepository(MetaDirRepository):
         # it's always possible even if they're on an unlistable transport.
         return self._revision_store.all_revision_ids(self.get_transaction())
 
+    def fileid_involved_between_revs(self, from_revid, to_revid):
+        """Find file_id(s) which are involved in the changes between revisions.
+
+        This determines the set of revisions which are involved, and then
+        finds all file ids affected by those revisions.
+        """
+        vf = self._get_revision_vf()
+        from_set = set(vf.get_ancestry(from_revid))
+        to_set = set(vf.get_ancestry(to_revid))
+        changed = to_set.difference(from_set)
+        return self._fileid_involved_by_set(changed)
+
+    def fileid_involved(self, last_revid=None):
+        """Find all file_ids modified in the ancestry of last_revid.
+
+        :param last_revid: If None, last_revision() will be used.
+        """
+        if not last_revid:
+            changed = set(self.all_revision_ids())
+        else:
+            changed = set(self.get_ancestry(last_revid))
+        if None in changed:
+            changed.remove(None)
+        return self._fileid_involved_by_set(changed)
+
     @needs_read_lock
     def get_ancestry(self, revision_id):
         """Return a list of revision-ids integrated by a revision.
