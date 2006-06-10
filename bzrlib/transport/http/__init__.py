@@ -30,8 +30,7 @@ from warnings import warn
 
 from bzrlib.transport import Transport, register_transport, Server
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
-                           TransportError, ConnectionError)
-from bzrlib.errors import BzrError, BzrCheckError
+                           TransportError, ConnectionError, InvalidURL)
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 # TODO: load these only when running http tests
@@ -113,6 +112,8 @@ class HttpTransportBase(Transport):
         implementation qualifier.
         """
         assert isinstance(relpath, basestring)
+        if isinstance(relpath, unicode):
+            raise InvalidURL(relpath, 'paths must not be unicode.')
         if isinstance(relpath, basestring):
             relpath_parts = relpath.split('/')
         else:

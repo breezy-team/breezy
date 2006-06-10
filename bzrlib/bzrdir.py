@@ -29,7 +29,6 @@ import bzrlib
 import bzrlib.errors as errors
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.lockdir import LockDir
-from bzrlib.osutils import safe_unicode
 from bzrlib.osutils import (
                             abspath,
                             pathjoin,
@@ -43,11 +42,12 @@ from bzrlib.store.versioned import WeaveStore
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 from bzrlib.transactions import WriteTransaction
-from bzrlib.transport import get_transport, urlunescape
+from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
+import bzrlib.urlutils as urlutils
 from bzrlib.weave import Weave
 from bzrlib.xml4 import serializer_v4
-from bzrlib.xml5 import serializer_v5
+import bzrlib.xml5
 
 
 class BzrDir(object):
@@ -173,16 +173,18 @@ class BzrDir(object):
                     basis_repo = None
         return basis_repo, basis_branch, basis_tree
 
+    # TODO: This should be given a Transport, and should chdir up; otherwise
+    # this will open a new connection.
     def _make_tail(self, url):
-        segments = url.split('/')
-        if segments and segments[-1] not in ('', '.'):
-            parent = '/'.join(segments[:-1])
-            t = bzrlib.transport.get_transport(parent)
+        head, tail = urlutils.split(url)
+        if tail and tail != '.':
+            t = bzrlib.transport.get_transport(head)
             try:
-                t.mkdir(segments[-1])
+                t.mkdir(tail)
             except errors.FileExists:
                 pass
 
+    # TODO: Should take a Transport
     @classmethod
     def create(cls, base):
         """Create a new BzrDir at the url 'base'.
@@ -196,12 +198,11 @@ class BzrDir(object):
         if cls is not BzrDir:
             raise AssertionError("BzrDir.create always creates the default format, "
                     "not one of %r" % cls)
-        segments = base.split('/')
-        if segments and segments[-1] not in ('', '.'):
-            parent = '/'.join(segments[:-1])
-            t = bzrlib.transport.get_transport(parent)
+        head, tail = urlutils.split(base)
+        if tail and tail != '.':
+            t = bzrlib.transport.get_transport(head)
             try:
-                t.mkdir(segments[-1])
+                t.mkdir(tail)
             except errors.FileExists:
                 pass
         return BzrDirFormat.get_default_format().initialize(safe_unicode(base))
@@ -343,16 +344,23 @@ class BzrDir(object):
             pass
         next_transport = self.root_transport.clone('..')
         while True:
+            # find the next containing bzrdir
             try:
                 found_bzrdir = BzrDir.open_containing_from_transport(
                     next_transport)[0]
             except errors.NotBranchError:
+                # none found
                 raise errors.NoRepositoryPresent(self)
+            # does it have a repository ?
             try:
                 repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
                 next_transport = found_bzrdir.root_transport.clone('..')
-                continue
+                if (found_bzrdir.root_transport.base == next_transport.base):
+                    # top of the file system
+                    break
+                else:
+                    continue
             if ((found_bzrdir.root_transport.base == 
                  self.root_transport.base) or repository.is_shared()):
                 return repository
@@ -489,6 +497,9 @@ class BzrDir(object):
         If there is one and it is either an unrecognised format or an unsupported 
         format, UnknownFormatError or UnsupportedFormatError are raised.
         If there is one, it is returned, along with the unused portion of url.
+
+        :return: The BzrDir that contains the path, and a Unicode path 
+                for the rest of the URL.
         """
         # this gets the normalised url back. I.e. '.' -> the full path.
         url = a_transport.base
@@ -496,9 +507,10 @@ class BzrDir(object):
             try:
                 format = BzrDirFormat.find_format(a_transport)
                 BzrDir._check_supported(format, False)
-                return format.open(a_transport), a_transport.relpath(url)
+                return format.open(a_transport), urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
-                mutter('not a branch in: %r %s', a_transport.base, e)
+                ## mutter('not a branch in: %r %s', a_transport.base, e)
+                pass
             new_t = a_transport.clone('..')
             if new_t.base == a_transport.base:
                 # reached the root, whatever that may be
@@ -610,6 +622,8 @@ class BzrDir(object):
             source_branch.sprout(result, revision_id=revision_id)
         else:
             result.create_branch()
+        # TODO: jam 20060426 we probably need a test in here in the
+        #       case that the newly sprouted branch is a remote one
         if result_repo is None or result_repo.make_working_trees():
             result.create_workingtree()
         return result
@@ -1464,7 +1478,7 @@ class ConvertBzrDir4To5(Converter):
 
     def _convert_working_inv(self):
         inv = serializer_v4.read_inventory(self.branch.control_files.get('inventory'))
-        new_inv_xml = serializer_v5.write_inventory_to_string(inv)
+        new_inv_xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
         # FIXME inventory is a working tree change.
         self.branch.control_files.put('inventory', new_inv_xml)
 
@@ -1538,7 +1552,7 @@ class ConvertBzrDir4To5(Converter):
     def _load_updated_inventory(self, rev_id):
         assert rev_id in self.converted_revs
         inv_xml = self.inv_weave.get_text(rev_id)
-        inv = serializer_v5.read_inventory_from_string(inv_xml)
+        inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(inv_xml)
         return inv
 
     def _convert_one_rev(self, rev_id):
@@ -1561,7 +1575,7 @@ class ConvertBzrDir4To5(Converter):
                 assert hasattr(ie, 'revision'), \
                     'no revision on {%s} in {%s}' % \
                     (file_id, rev.revision_id)
-        new_inv_xml = serializer_v5.write_inventory_to_string(inv)
+        new_inv_xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
         new_inv_sha1 = sha_string(new_inv_xml)
         self.inv_weave.add_lines(rev.revision_id, 
                                  present_parents,
@@ -1672,7 +1686,7 @@ class ConvertBzrDir5To6(Converter):
             store_transport = self.bzrdir.transport.clone(store_name)
             store = TransportStore(store_transport, prefixed=True)
             for urlfilename in store_transport.list_dir('.'):
-                filename = urlunescape(urlfilename)
+                filename = urlutils.unescape(urlfilename)
                 if (filename.endswith(".weave") or
                     filename.endswith(".gz") or
                     filename.endswith(".sig")):

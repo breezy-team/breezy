@@ -1,0 +1,933 @@
+#!/usr/bin/env python
+"""\
+Read in a bundle stream, and process it into a BundleReader object.
+"""
+
+import base64
+from cStringIO import StringIO
+import os
+import pprint
+
+from bzrlib.errors import (TestamentMismatch, BzrError, 
+                           MalformedHeader, MalformedPatches, NotABundle)
+from bzrlib.bundle.common import get_header, header_str
+from bzrlib.inventory import (Inventory, InventoryEntry,
+                              InventoryDirectory, InventoryFile,
+                              InventoryLink)
+from bzrlib.osutils import sha_file, sha_string
+from bzrlib.revision import Revision, NULL_REVISION
+from bzrlib.testament import StrictTestament
+from bzrlib.trace import mutter, warning
+from bzrlib.tree import Tree
+from bzrlib.xml5 import serializer_v5
+
+
+class RevisionInfo(object):
+    """Gets filled out for each revision object that is read.
+    """
+    def __init__(self, revision_id):
+        self.revision_id = revision_id
+        self.sha1 = None
+        self.committer = None
+        self.date = None
+        self.timestamp = None
+        self.timezone = None
+        self.inventory_sha1 = None
+
+        self.parent_ids = None
+        self.base_id = None
+        self.message = None
+        self.properties = None
+        self.tree_actions = None
+
+    def __str__(self):
+        return pprint.pformat(self.__dict__)
+
+    def as_revision(self):
+        rev = Revision(revision_id=self.revision_id,
+            committer=self.committer,
+            timestamp=float(self.timestamp),
+            timezone=int(self.timezone),
+            inventory_sha1=self.inventory_sha1,
+            message='\n'.join(self.message))
+
+        if self.parent_ids:
+            rev.parent_ids.extend(self.parent_ids)
+
+        if self.properties:
+            for property in self.properties:
+                key_end = property.find(': ')
+                assert key_end is not None
+                key = property[:key_end].encode('utf-8')
+                value = property[key_end+2:].encode('utf-8')
+                rev.properties[key] = value
+
+        return rev
+
+
+class BundleInfo(object):
+    """This contains the meta information. Stuff that allows you to
+    recreate the revision or inventory XML.
+    """
+    def __init__(self):
+        self.committer = None
+        self.date = None
+        self.message = None
+
+        # A list of RevisionInfo objects
+        self.revisions = []
+
+        # The next entries are created during complete_info() and
+        # other post-read functions.
+
+        # A list of real Revision objects
+        self.real_revisions = []
+
+        self.timestamp = None
+        self.timezone = None
+
+    def __str__(self):
+        return pprint.pformat(self.__dict__)
+
+    def complete_info(self):
+        """This makes sure that all information is properly
+        split up, based on the assumptions that can be made
+        when information is missing.
+        """
+        from bzrlib.bundle.common import unpack_highres_date
+        # Put in all of the guessable information.
+        if not self.timestamp and self.date:
+            self.timestamp, self.timezone = unpack_highres_date(self.date)
+
+        self.real_revisions = []
+        for rev in self.revisions:
+            if rev.timestamp is None:
+                if rev.date is not None:
+                    rev.timestamp, rev.timezone = \
+                            unpack_highres_date(rev.date)
+                else:
+                    rev.timestamp = self.timestamp
+                    rev.timezone = self.timezone
+            if rev.message is None and self.message:
+                rev.message = self.message
+            if rev.committer is None and self.committer:
+                rev.committer = self.committer
+            self.real_revisions.append(rev.as_revision())
+
+    def get_base(self, revision):
+        revision_info = self.get_revision_info(revision.revision_id)
+        if revision_info.base_id is not None:
+            if revision_info.base_id == NULL_REVISION:
+                return None
+            else:
+                return revision_info.base_id
+        if len(revision.parent_ids) == 0:
+            # There is no base listed, and
+            # the lowest revision doesn't have a parent
+            # so this is probably against the empty tree
+            # and thus base truly is None
+            return None
+        else:
+            return revision.parent_ids[-1]
+
+    def _get_target(self):
+        """Return the target revision."""
+        if len(self.real_revisions) > 0:
+            return self.real_revisions[0].revision_id
+        elif len(self.revisions) > 0:
+            return self.revisions[0].revision_id
+        return None
+
+    target = property(_get_target, doc='The target revision id')
+
+    def get_revision(self, revision_id):
+        for r in self.real_revisions:
+            if r.revision_id == revision_id:
+                return r
+        raise KeyError(revision_id)
+
+    def get_revision_info(self, revision_id):
+        for r in self.revisions:
+            if r.revision_id == revision_id:
+                return r
+        raise KeyError(revision_id)
+
+
+class BundleReader(object):
+    """This class reads in a bundle from a file, and returns
+    a Bundle object, which can then be applied against a tree.
+    """
+    def __init__(self, from_file):
+        """Read in the bundle from the file.
+
+        :param from_file: A file-like object (must have iterator support).
+        """
+        object.__init__(self)
+        self.from_file = iter(from_file)
+        self._next_line = None
+        
+        self.info = BundleInfo()
+        # We put the actual inventory ids in the footer, so that the patch
+        # is easier to read for humans.
+        # Unfortunately, that means we need to read everything before we
+        # can create a proper bundle.
+        self._read()
+        self._validate()
+
+    def _read(self):
+        self._read_header()
+        while self._next_line is not None:
+            self._read_revision_header()
+            if self._next_line is None:
+                break
+            self._read_patches()
+            self._read_footer()
+
+    def _validate(self):
+        """Make sure that the information read in makes sense
+        and passes appropriate checksums.
+        """
+        # Fill in all the missing blanks for the revisions
+        # and generate the real_revisions list.
+        self.info.complete_info()
+
+    def _validate_revision(self, inventory, revision_id):
+        """Make sure all revision entries match their checksum."""
+
+        # This is a mapping from each revision id to it's sha hash
+        rev_to_sha1 = {}
+        
+        rev = self.info.get_revision(revision_id)
+        rev_info = self.info.get_revision_info(revision_id)
+        assert rev.revision_id == rev_info.revision_id
+        assert rev.revision_id == revision_id
+        sha1 = StrictTestament(rev, inventory).as_sha1()
+        if sha1 != rev_info.sha1:
+            raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
+        if rev_to_sha1.has_key(rev.revision_id):
+            raise BzrError('Revision {%s} given twice in the list'
+                    % (rev.revision_id))
+        rev_to_sha1[rev.revision_id] = sha1
+
+    def _validate_references_from_repository(self, repository):
+        """Now that we have a repository which should have some of the
+        revisions we care about, go through and validate all of them
+        that we can.
+        """
+        rev_to_sha = {}
+        inv_to_sha = {}
+        def add_sha(d, revision_id, sha1):
+            if revision_id is None:
+                if sha1 is not None:
+                    raise BzrError('A Null revision should always'
+                        'have a null sha1 hash')
+                return
+            if revision_id in d:
+                # This really should have been validated as part
+                # of _validate_revisions but lets do it again
+                if sha1 != d[revision_id]:
+                    raise BzrError('** Revision %r referenced with 2 different'
+                            ' sha hashes %s != %s' % (revision_id,
+                                sha1, d[revision_id]))
+            else:
+                d[revision_id] = sha1
+
+        # All of the contained revisions were checked
+        # in _validate_revisions
+        checked = {}
+        for rev_info in self.info.revisions:
+            checked[rev_info.revision_id] = True
+            add_sha(rev_to_sha, rev_info.revision_id, rev_info.sha1)
+                
+        for (rev, rev_info) in zip(self.info.real_revisions, self.info.revisions):
+            add_sha(inv_to_sha, rev_info.revision_id, rev_info.inventory_sha1)
+
+        count = 0
+        missing = {}
+        for revision_id, sha1 in rev_to_sha.iteritems():
+            if repository.has_revision(revision_id):
+                testament = StrictTestament.from_revision(repository, 
+                                                          revision_id)
+                local_sha1 = testament.as_sha1()
+                if sha1 != local_sha1:
+                    raise BzrError('sha1 mismatch. For revision id {%s}' 
+                            'local: %s, bundle: %s' % (revision_id, local_sha1, sha1))
+                else:
+                    count += 1
+            elif revision_id not in checked:
+                missing[revision_id] = sha1
+
+        for inv_id, sha1 in inv_to_sha.iteritems():
+            if repository.has_revision(inv_id):
+                # Note: branch.get_inventory_sha1() just returns the value that
+                # is stored in the revision text, and that value may be out
+                # of date. This is bogus, because that means we aren't
+                # validating the actual text, just that we wrote and read the
+                # string. But for now, what the hell.
+                local_sha1 = repository.get_inventory_sha1(inv_id)
+                if sha1 != local_sha1:
+                    raise BzrError('sha1 mismatch. For inventory id {%s}' 
+                                   'local: %s, bundle: %s' % 
+                                   (inv_id, local_sha1, sha1))
+                else:
+                    count += 1
+
+        if len(missing) > 0:
+            # I don't know if this is an error yet
+            warning('Not all revision hashes could be validated.'
+                    ' Unable validate %d hashes' % len(missing))
+        mutter('Verified %d sha hashes for the bundle.' % count)
+
+    def _validate_inventory(self, inv, revision_id):
+        """At this point we should have generated the BundleTree,
+        so build up an inventory, and make sure the hashes match.
+        """
+
+        assert inv is not None
+
+        # Now we should have a complete inventory entry.
+        s = serializer_v5.write_inventory_to_string(inv)
+        sha1 = sha_string(s)
+        # Target revision is the last entry in the real_revisions list
+        rev = self.info.get_revision(revision_id)
+        assert rev.revision_id == revision_id
+        if sha1 != rev.inventory_sha1:
+            open(',,bogus-inv', 'wb').write(s)
+            warning('Inventory sha hash mismatch for revision %s. %s'
+                    ' != %s' % (revision_id, sha1, rev.inventory_sha1))
+
+    def get_bundle(self, repository):
+        """Return the meta information, and a Bundle tree which can
+        be used to populate the local stores and working tree, respectively.
+        """
+        return self.info, self.revision_tree(repository, self.info.target)
+
+    def revision_tree(self, repository, revision_id, base=None):
+        revision = self.info.get_revision(revision_id)
+        base = self.info.get_base(revision)
+        assert base != revision_id
+        self._validate_references_from_repository(repository)
+        revision_info = self.info.get_revision_info(revision_id)
+        inventory_revision_id = revision_id
+        bundle_tree = BundleTree(repository.revision_tree(base), 
+                                  inventory_revision_id)
+        self._update_tree(bundle_tree, revision_id)
+
+        inv = bundle_tree.inventory
+        self._validate_inventory(inv, revision_id)
+        self._validate_revision(inv, revision_id)
+
+        return bundle_tree
+
+    def _next(self):
+        """yield the next line, but secretly
+        keep 1 extra line for peeking.
+        """
+        for line in self.from_file:
+            last = self._next_line
+            self._next_line = line
+            if last is not None:
+                #mutter('yielding line: %r' % last)
+                yield last
+        last = self._next_line
+        self._next_line = None
+        #mutter('yielding line: %r' % last)
+        yield last
+
+    def _read_header(self):
+        """Read the bzr header"""
+        header = get_header()
+        found = False
+        for line in self._next():
+            if found:
+                # not all mailers will keep trailing whitespace
+                if line == '#\n':
+                    line = '# \n'
+                if (not line.startswith('# ') or not line.endswith('\n')
+                        or line[2:-1].decode('utf-8') != header[0]):
+                    raise MalformedHeader('Found a header, but it'
+                        ' was improperly formatted')
+                header.pop(0) # We read this line.
+                if not header:
+                    break # We found everything.
+            elif (line.startswith('#') and line.endswith('\n')):
+                line = line[1:-1].strip().decode('utf-8')
+                if line[:len(header_str)] == header_str:
+                    if line == header[0]:
+                        found = True
+                    else:
+                        raise MalformedHeader('Found what looks like'
+                                ' a header, but did not match')
+                    header.pop(0)
+        else:
+            raise NotABundle('Did not find an opening header')
+
+    def _read_revision_header(self):
+        self.info.revisions.append(RevisionInfo(None))
+        for line in self._next():
+            # The bzr header is terminated with a blank line
+            # which does not start with '#'
+            if line is None or line == '\n':
+                break
+            self._handle_next(line)
+
+    def _read_next_entry(self, line, indent=1):
+        """Read in a key-value pair
+        """
+        if not line.startswith('#'):
+            raise MalformedHeader('Bzr header did not start with #')
+        line = line[1:-1].decode('utf-8') # Remove the '#' and '\n'
+        if line[:indent] == ' '*indent:
+            line = line[indent:]
+        if not line:
+            return None, None# Ignore blank lines
+
+        loc = line.find(': ')
+        if loc != -1:
+            key = line[:loc]
+            value = line[loc+2:]
+            if not value:
+                value = self._read_many(indent=indent+2)
+        elif line[-1:] == ':':
+            key = line[:-1]
+            value = self._read_many(indent=indent+2)
+        else:
+            raise MalformedHeader('While looking for key: value pairs,'
+                    ' did not find the colon %r' % (line))
+
+        key = key.replace(' ', '_')
+        #mutter('found %s: %s' % (key, value))
+        return key, value
+
+    def _handle_next(self, line):
+        if line is None:
+            return
+        key, value = self._read_next_entry(line, indent=1)
+        mutter('_handle_next %r => %r' % (key, value))
+        if key is None:
+            return
+
+        revision_info = self.info.revisions[-1]
+        if hasattr(revision_info, key):
+            if getattr(revision_info, key) is None:
+                setattr(revision_info, key, value)
+            else:
+                raise MalformedHeader('Duplicated Key: %s' % key)
+        else:
+            # What do we do with a key we don't recognize
+            raise MalformedHeader('Unknown Key: "%s"' % key)
+    
+    def _read_many(self, indent):
+        """If a line ends with no entry, that means that it should be
+        followed with multiple lines of values.
+
+        This detects the end of the list, because it will be a line that
+        does not start properly indented.
+        """
+        values = []
+        start = '#' + (' '*indent)
+
+        if self._next_line is None or self._next_line[:len(start)] != start:
+            return values
+
+        for line in self._next():
+            values.append(line[len(start):-1].decode('utf-8'))
+            if self._next_line is None or self._next_line[:len(start)] != start:
+                break
+        return values
+
+    def _read_one_patch(self):
+        """Read in one patch, return the complete patch, along with
+        the next line.
+
+        :return: action, lines, do_continue
+        """
+        #mutter('_read_one_patch: %r' % self._next_line)
+        # Peek and see if there are no patches
+        if self._next_line is None or self._next_line.startswith('#'):
+            return None, [], False
+
+        first = True
+        lines = []
+        for line in self._next():
+            if first:
+                if not line.startswith('==='):
+                    raise MalformedPatches('The first line of all patches'
+                        ' should be a bzr meta line "==="'
+                        ': %r' % line)
+                action = line[4:-1].decode('utf-8')
+            elif line.startswith('... '):
+                action += line[len('... '):-1].decode('utf-8')
+
+            if (self._next_line is not None and 
+                self._next_line.startswith('===')):
+                return action, lines, True
+            elif self._next_line is None or self._next_line.startswith('#'):
+                return action, lines, False
+
+            if first:
+                first = False
+            elif not line.startswith('... '):
+                lines.append(line)
+
+        return action, lines, False
+            
+    def _read_patches(self):
+        do_continue = True
+        revision_actions = []
+        while do_continue:
+            action, lines, do_continue = self._read_one_patch()
+            if action is not None:
+                revision_actions.append((action, lines))
+        assert self.info.revisions[-1].tree_actions is None
+        self.info.revisions[-1].tree_actions = revision_actions
+
+    def _read_footer(self):
+        """Read the rest of the meta information.
+
+        :param first_line:  The previous step iterates past what it
+                            can handle. That extra line is given here.
+        """
+        for line in self._next():
+            self._handle_next(line)
+            if not self._next_line.startswith('#'):
+                self._next().next()
+                break
+            if self._next_line is None:
+                break
+
+    def _update_tree(self, bundle_tree, revision_id):
+        """This fills out a BundleTree based on the information
+        that was read in.
+
+        :param bundle_tree: A BundleTree to update with the new information.
+        """
+
+        def get_rev_id(last_changed, path, kind):
+            if last_changed is not None:
+                changed_revision_id = last_changed.decode('utf-8')
+            else:
+                changed_revision_id = revision_id
+            bundle_tree.note_last_changed(path, changed_revision_id)
+            return changed_revision_id
+
+        def extra_info(info, new_path):
+            last_changed = None
+            encoding = None
+            for info_item in info:
+                try:
+                    name, value = info_item.split(':', 1)
+                except ValueError:
+                    raise 'Value %r has no colon' % info_item
+                if name == 'last-changed':
+                    last_changed = value
+                elif name == 'executable':
+                    assert value in ('yes', 'no'), value
+                    val = (value == 'yes')
+                    bundle_tree.note_executable(new_path, val)
+                elif name == 'target':
+                    bundle_tree.note_target(new_path, value)
+                elif name == 'encoding':
+                    encoding = value
+            return last_changed, encoding
+
+        def do_patch(path, lines, encoding):
+            if encoding is not None:
+                assert encoding == 'base64'
+                patch = base64.decodestring(''.join(lines))
+            else:
+                patch =  ''.join(lines)
+            bundle_tree.note_patch(path, patch)
+
+        def renamed(kind, extra, lines):
+            info = extra.split(' // ')
+            if len(info) < 2:
+                raise BzrError('renamed action lines need both a from and to'
+                        ': %r' % extra)
+            old_path = info[0]
+            if info[1].startswith('=> '):
+                new_path = info[1][3:]
+            else:
+                new_path = info[1]
+
+            bundle_tree.note_rename(old_path, new_path)
+            last_modified, encoding = extra_info(info[2:], new_path)
+            revision = get_rev_id(last_modified, new_path, kind)
+            if lines:
+                do_patch(new_path, lines, encoding)
+
+        def removed(kind, extra, lines):
+            info = extra.split(' // ')
+            if len(info) > 1:
+                # TODO: in the future we might allow file ids to be
+                # given for removed entries
+                raise BzrError('removed action lines should only have the path'
+                        ': %r' % extra)
+            path = info[0]
+            bundle_tree.note_deletion(path)
+
+        def added(kind, extra, lines):
+            info = extra.split(' // ')
+            if len(info) <= 1:
+                raise BzrError('add action lines require the path and file id'
+                        ': %r' % extra)
+            elif len(info) > 5:
+                raise BzrError('add action lines have fewer than 5 entries.'
+                        ': %r' % extra)
+            path = info[0]
+            if not info[1].startswith('file-id:'):
+                raise BzrError('The file-id should follow the path for an add'
+                        ': %r' % extra)
+            file_id = info[1][8:]
+
+            bundle_tree.note_id(file_id, path, kind)
+            # this will be overridden in extra_info if executable is specified.
+            bundle_tree.note_executable(path, False)
+            last_changed, encoding = extra_info(info[2:], path)
+            revision = get_rev_id(last_changed, path, kind)
+            if kind == 'directory':
+                return
+            do_patch(path, lines, encoding)
+
+        def modified(kind, extra, lines):
+            info = extra.split(' // ')
+            if len(info) < 1:
+                raise BzrError('modified action lines have at least'
+                        'the path in them: %r' % extra)
+            path = info[0]
+
+            last_modified, encoding = extra_info(info[1:], path)
+            revision = get_rev_id(last_modified, path, kind)
+            if lines:
+                do_patch(path, lines, encoding)
+            
+        valid_actions = {
+            'renamed':renamed,
+            'removed':removed,
+            'added':added,
+            'modified':modified
+        }
+        for action_line, lines in \
+            self.info.get_revision_info(revision_id).tree_actions:
+            first = action_line.find(' ')
+            if first == -1:
+                raise BzrError('Bogus action line'
+                        ' (no opening space): %r' % action_line)
+            second = action_line.find(' ', first+1)
+            if second == -1:
+                raise BzrError('Bogus action line'
+                        ' (missing second space): %r' % action_line)
+            action = action_line[:first]
+            kind = action_line[first+1:second]
+            if kind not in ('file', 'directory', 'symlink'):
+                raise BzrError('Bogus action line'
+                        ' (invalid object kind %r): %r' % (kind, action_line))
+            extra = action_line[second+1:]
+
+            if action not in valid_actions:
+                raise BzrError('Bogus action line'
+                        ' (unrecognized action): %r' % action_line)
+            valid_actions[action](kind, extra, lines)
+
+
+class BundleTree(Tree):
+    def __init__(self, base_tree, revision_id):
+        self.base_tree = base_tree
+        self._renamed = {} # Mapping from old_path => new_path
+        self._renamed_r = {} # new_path => old_path
+        self._new_id = {} # new_path => new_id
+        self._new_id_r = {} # new_id => new_path
+        self._kinds = {} # new_id => kind
+        self._last_changed = {} # new_id => revision_id
+        self._executable = {} # new_id => executable value
+        self.patches = {}
+        self._targets = {} # new path => new symlink target
+        self.deleted = []
+        self.contents_by_id = True
+        self.revision_id = revision_id
+        self._inventory = None
+
+    def __str__(self):
+        return pprint.pformat(self.__dict__)
+
+    def note_rename(self, old_path, new_path):
+        """A file/directory has been renamed from old_path => new_path"""
+        assert not self._renamed.has_key(new_path)
+        assert not self._renamed_r.has_key(old_path)
+        self._renamed[new_path] = old_path
+        self._renamed_r[old_path] = new_path
+
+    def note_id(self, new_id, new_path, kind='file'):
+        """Files that don't exist in base need a new id."""
+        self._new_id[new_path] = new_id
+        self._new_id_r[new_id] = new_path
+        self._kinds[new_id] = kind
+
+    def note_last_changed(self, file_id, revision_id):
+        if (self._last_changed.has_key(file_id)
+                and self._last_changed[file_id] != revision_id):
+            raise BzrError('Mismatched last-changed revision for file_id {%s}'
+                    ': %s != %s' % (file_id,
+                                    self._last_changed[file_id],
+                                    revision_id))
+        self._last_changed[file_id] = revision_id
+
+    def note_patch(self, new_path, patch):
+        """There is a patch for a given filename."""
+        self.patches[new_path] = patch
+
+    def note_target(self, new_path, target):
+        """The symlink at the new path has the given target"""
+        self._targets[new_path] = target
+
+    def note_deletion(self, old_path):
+        """The file at old_path has been deleted."""
+        self.deleted.append(old_path)
+
+    def note_executable(self, new_path, executable):
+        self._executable[new_path] = executable
+
+    def old_path(self, new_path):
+        """Get the old_path (path in the base_tree) for the file at new_path"""
+        assert new_path[:1] not in ('\\', '/')
+        old_path = self._renamed.get(new_path)
+        if old_path is not None:
+            return old_path
+        dirname,basename = os.path.split(new_path)
+        # dirname is not '' doesn't work, because
+        # dirname may be a unicode entry, and is
+        # requires the objects to be identical
+        if dirname != '':
+            old_dir = self.old_path(dirname)
+            if old_dir is None:
+                old_path = None
+            else:
+                old_path = os.path.join(old_dir, basename)
+        else:
+            old_path = new_path
+        #If the new path wasn't in renamed, the old one shouldn't be in
+        #renamed_r
+        if self._renamed_r.has_key(old_path):
+            return None
+        return old_path 
+
+    def new_path(self, old_path):
+        """Get the new_path (path in the target_tree) for the file at old_path
+        in the base tree.
+        """
+        assert old_path[:1] not in ('\\', '/')
+        new_path = self._renamed_r.get(old_path)
+        if new_path is not None:
+            return new_path
+        if self._renamed.has_key(new_path):
+            return None
+        dirname,basename = os.path.split(old_path)
+        if dirname != '':
+            new_dir = self.new_path(dirname)
+            if new_dir is None:
+                new_path = None
+            else:
+                new_path = os.path.join(new_dir, basename)
+        else:
+            new_path = old_path
+        #If the old path wasn't in renamed, the new one shouldn't be in
+        #renamed_r
+        if self._renamed.has_key(new_path):
+            return None
+        return new_path 
+
+    def path2id(self, path):
+        """Return the id of the file present at path in the target tree."""
+        file_id = self._new_id.get(path)
+        if file_id is not None:
+            return file_id
+        old_path = self.old_path(path)
+        if old_path is None:
+            return None
+        if old_path in self.deleted:
+            return None
+        if hasattr(self.base_tree, 'path2id'):
+            return self.base_tree.path2id(old_path)
+        else:
+            return self.base_tree.inventory.path2id(old_path)
+
+    def id2path(self, file_id):
+        """Return the new path in the target tree of the file with id file_id"""
+        path = self._new_id_r.get(file_id)
+        if path is not None:
+            return path
+        old_path = self.base_tree.id2path(file_id)
+        if old_path is None:
+            return None
+        if old_path in self.deleted:
+            return None
+        return self.new_path(old_path)
+
+    def old_contents_id(self, file_id):
+        """Return the id in the base_tree for the given file_id.
+        Return None if the file did not exist in base.
+        """
+        if self.contents_by_id:
+            if self.base_tree.has_id(file_id):
+                return file_id
+            else:
+                return None
+        new_path = self.id2path(file_id)
+        return self.base_tree.path2id(new_path)
+        
+    def get_file(self, file_id):
+        """Return a file-like object containing the new contents of the
+        file given by file_id.
+
+        TODO:   It might be nice if this actually generated an entry
+                in the text-store, so that the file contents would
+                then be cached.
+        """
+        base_id = self.old_contents_id(file_id)
+        if base_id is not None:
+            patch_original = self.base_tree.get_file(base_id)
+        else:
+            patch_original = None
+        file_patch = self.patches.get(self.id2path(file_id))
+        if file_patch is None:
+            if (patch_original is None and 
+                self.get_kind(file_id) == 'directory'):
+                return StringIO()
+            assert patch_original is not None, "None: %s" % file_id
+            return patch_original
+
+        assert not file_patch.startswith('\\'), \
+            'Malformed patch for %s, %r' % (file_id, file_patch)
+        return patched_file(file_patch, patch_original)
+
+    def get_symlink_target(self, file_id):
+        new_path = self.id2path(file_id)
+        try:
+            return self._targets[new_path]
+        except KeyError:
+            return self.base_tree.get_symlink_target(file_id)
+
+    def get_kind(self, file_id):
+        if file_id in self._kinds:
+            return self._kinds[file_id]
+        return self.base_tree.inventory[file_id].kind
+
+    def is_executable(self, file_id):
+        path = self.id2path(file_id)
+        if path in self._executable:
+            return self._executable[path]
+        else:
+            return self.base_tree.inventory[file_id].executable
+
+    def get_last_changed(self, file_id):
+        path = self.id2path(file_id)
+        if path in self._last_changed:
+            return self._last_changed[path]
+        return self.base_tree.inventory[file_id].revision
+
+    def get_size_and_sha1(self, file_id):
+        """Return the size and sha1 hash of the given file id.
+        If the file was not locally modified, this is extracted
+        from the base_tree. Rather than re-reading the file.
+        """
+        new_path = self.id2path(file_id)
+        if new_path is None:
+            return None, None
+        if new_path not in self.patches:
+            # If the entry does not have a patch, then the
+            # contents must be the same as in the base_tree
+            ie = self.base_tree.inventory[file_id]
+            if ie.text_size is None:
+                return ie.text_size, ie.text_sha1
+            return int(ie.text_size), ie.text_sha1
+        fileobj = self.get_file(file_id)
+        content = fileobj.read()
+        return len(content), sha_string(content)
+
+    def _get_inventory(self):
+        """Build up the inventory entry for the BundleTree.
+
+        This need to be called before ever accessing self.inventory
+        """
+        from os.path import dirname, basename
+
+        assert self.base_tree is not None
+        base_inv = self.base_tree.inventory
+        root_id = base_inv.root.file_id
+        try:
+            # New inventories have a unique root_id
+            inv = Inventory(root_id, self.revision_id)
+        except TypeError:
+            inv = Inventory(revision_id=self.revision_id)
+
+        def add_entry(file_id):
+            path = self.id2path(file_id)
+            if path is None:
+                return
+            parent_path = dirname(path)
+            if parent_path == u'':
+                parent_id = root_id
+            else:
+                parent_id = self.path2id(parent_path)
+
+            kind = self.get_kind(file_id)
+            revision_id = self.get_last_changed(file_id)
+
+            name = basename(path)
+            if kind == 'directory':
+                ie = InventoryDirectory(file_id, name, parent_id)
+            elif kind == 'file':
+                ie = InventoryFile(file_id, name, parent_id)
+                ie.executable = self.is_executable(file_id)
+            elif kind == 'symlink':
+                ie = InventoryLink(file_id, name, parent_id)
+                ie.symlink_target = self.get_symlink_target(file_id)
+            ie.revision = revision_id
+
+            if kind in ('directory', 'symlink'):
+                ie.text_size, ie.text_sha1 = None, None
+            else:
+                ie.text_size, ie.text_sha1 = self.get_size_and_sha1(file_id)
+            if (ie.text_size is None) and (kind == 'file'):
+                raise BzrError('Got a text_size of None for file_id %r' % file_id)
+            inv.add(ie)
+
+        sorted_entries = self.sorted_path_id()
+        for path, file_id in sorted_entries:
+            if file_id == inv.root.file_id:
+                continue
+            add_entry(file_id)
+
+        return inv
+
+    # Have to overload the inherited inventory property
+    # because _get_inventory is only called in the parent.
+    # Reading the docs, property() objects do not use
+    # overloading, they use the function as it was defined
+    # at that instant
+    inventory = property(_get_inventory)
+
+    def __iter__(self):
+        for path, entry in self.inventory.iter_entries():
+            yield entry.file_id
+
+    def sorted_path_id(self):
+        paths = []
+        for result in self._new_id.iteritems():
+            paths.append(result)
+        for id in self.base_tree:
+            path = self.id2path(id)
+            if path is None:
+                continue
+            paths.append((path, id))
+        paths.sort()
+        return paths
+
+
+def patched_file(file_patch, original):
+    """Produce a file-like object with the patched version of a text"""
+    from bzrlib.patches import iter_patched
+    from bzrlib.iterablefile import IterableFile
+    if file_patch == "":
+        return IterableFile(())
+    return IterableFile(iter_patched(original, file_patch.splitlines(True)))

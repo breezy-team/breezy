@@ -169,7 +169,16 @@ class RepoFetcher(object):
                     self.from_repository.get_transaction())
                 # we fetch all the texts, because texts do
                 # not reference anything, and its cheap enough
-                to_weave.join(from_weave, version_ids=required_versions)
+                to_weave.join(from_weave, version_ids=required_versions) 
+                # we dont need *all* of this data anymore, but we dont know
+                # what we do. This cache clearing will result in a new read 
+                # of the knit data when we do the checkout, but probably we
+                # want to emit the needed data on the fly rather than at the
+                # end anyhow.
+                # the from weave should know not to cache data being joined,
+                # but its ok to ask it to clear.
+                from_weave.clear_cache()
+                to_weave.clear_cache()
         finally:
             texts_pb.finished()
 

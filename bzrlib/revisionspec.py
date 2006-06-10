@@ -261,18 +261,6 @@ class RevisionSpec_revs:
         return len(self.revs)
 
 
-class RevisionSpec_revs:
-    def __init__(self, revs, branch):
-        self.revs = revs
-        self.branch = branch
-    def __getitem__(self, index):
-        r = self.branch.repository.get_revision(self.revs[index])
-        # TODO: Handle timezone.
-        return datetime.datetime.fromtimestamp(r.timestamp)
-    def __len__(self):
-        return len(self.revs)
-
-
 class RevisionSpec_date(RevisionSpec):
     prefix = 'date:'
     _date_re = re.compile(

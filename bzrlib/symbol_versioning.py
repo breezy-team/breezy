@@ -115,7 +115,10 @@ def deprecated_passed(parameter_value):
 
 def _decorate_docstring(callable, deprecation_version, label,
                         decorated_callable):
-    docstring_lines = callable.__doc__.split('\n')
+    if callable.__doc__:
+        docstring_lines = callable.__doc__.split('\n')
+    else:
+        docstring_lines = []
     if len(docstring_lines) == 0:
         decorated_callable.__doc__ = deprecation_version % ("This " + label)
     elif len(docstring_lines) == 1:
