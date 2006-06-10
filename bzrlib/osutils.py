@@ -810,7 +810,7 @@ def check_legal_path(path):
         raise IllegalPath(path)
 
 
-def walkdirs(top):
+def walkdirs(top, prefix=""):
     """Yield data about all the directories in a tree.
     
     This yields all the data about the contents of a directory at a time.
@@ -820,13 +820,14 @@ def walkdirs(top):
     The data yielded is of the form:
     [(relpath, basename, kind, lstat, path_from_top), ...]
 
+    :param prefix: Treat prefix as the initial root of the tree, rather than ""
     :return: an iterator over the dirs.
     """
     lstat = os.lstat
     pending = []
     _directory = _directory_kind
     _listdir = listdir
-    pending = [("", "", _directory, None, top)]
+    pending = [(prefix, "", _directory, None, top)]
     while pending:
         dirblock = []
         currentdir = pending.pop()
