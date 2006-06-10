@@ -436,6 +436,7 @@ def unescape_for_display(url, encoding):
     :return: A unicode string which can be safely encoded into the 
          specified encoding.
     """
+    assert encoding is not None, 'you cannot specify None for the display encoding.'
     if url.startswith('file://'):
         try:
             path = local_path_from_url(url)
