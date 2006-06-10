@@ -107,6 +107,9 @@ class RevisionStore(object):
         raise NotImplementedError(self.all_revision_ids)
 
     def get_revision(self, revision_id, transaction):
+        return self.get_revisions([revision_id], transaction)[0]
+
+    def get_revisions(self, revision_ids, transaction):
         """Return the Revision object for a named revision."""
         raise NotImplementedError(self.get_revision)
 

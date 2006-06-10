@@ -293,8 +293,12 @@ class Repository(object):
         """
         if not revision_id or not isinstance(revision_id, basestring):
             raise InvalidRevisionId(revision_id=revision_id, branch=self)
-        return self._revision_store.get_revision(revision_id,
-                                                 self.get_transaction())
+        return self._revision_store.get_revisions([revision_id],
+                                                  self.get_transaction())[0]
+    @needs_read_lock
+    def get_revisions(self, revision_ids):
+        return self._revision_store.get_revisions(revision_ids,
+                                                  self.get_transaction())
 
     @needs_read_lock
     def get_revision_xml(self, revision_id):

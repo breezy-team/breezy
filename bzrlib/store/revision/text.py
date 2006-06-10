@@ -85,18 +85,21 @@ class TextRevisionStore(RevisionStore):
                     del parents[parents.index(parent)]
         return topo_sort(result_graph.items())
 
-    def get_revision(self, revision_id, transaction):
-        """See RevisionStore.get_revision()."""
-        xml_file = self._get_revision_xml_file(revision_id)
+    def get_revisions(self, revision_ids, transaction):
+        """See RevisionStore.get_revisions()."""
+        revisions = []
         try:
-            r = self._serializer.read_revision(xml_file)
+            for revision_id in revision_ids:
+                xml_file = self._get_revision_xml_file(revision_id)
+                r = self._serializer.read_revision(xml_file)
+                xml_file.close()
+            assert r.revision_id == revision_id
+            revisions.append(r)
         except SyntaxError, e:
             raise errors.BzrError('failed to unpack revision_xml',
                                    [revision_id,
                                    str(e)])
-            
-        assert r.revision_id == revision_id
-        return r
+        return revisions 
 
     def _get_revision_xml_file(self, revision_id):
         try:
