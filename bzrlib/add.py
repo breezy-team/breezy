@@ -173,7 +173,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
         versioned = inv.has_filename(rf.raw_path)
         if versioned:
             continue
-        added.extend(__add_one(tree, inv, None, rf, kind, action))
+        added.extend(__add_one_and_parent(tree, inv, None, rf, kind, action))
 
     if not recurse:
         # no need to walk any directories at all.
@@ -195,6 +195,8 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
     for directory, parent_ie in dirs_to_add:
         # directory is tree-relative
         abspath = tree.abspath(directory.raw_path)
+
+        # get the contents of this directory.
 
         # find the kind of the path being added.
         kind = bzrlib.osutils.file_kind(abspath)
@@ -230,7 +232,8 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
         elif sub_tree:
             mutter("%r is a nested bzr tree", abspath)
         else:
-            added.extend(__add_one(tree, inv, parent_ie, directory, kind, action))
+            __add_one(tree, inv, parent_ie, directory, kind, action)
+            added.append(directory.raw_path)
 
         if kind == 'directory' and not sub_tree:
             if parent_ie is not None:
@@ -277,10 +280,8 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
     return added, ignored
 
 
-def __add_one(tree, inv, parent_ie, path, kind, action):
+def __add_one_and_parent(tree, inv, parent_ie, path, kind, action):
     """Add a new entry to the inventory and automatically add unversioned parents.
-
-    Actual adding of the entry is delegated to the action callback.
 
     :param inv: Inventory which will receive the new entry.
     :param parent_ie: Parent inventory entry if known, or None.  If
@@ -290,7 +291,6 @@ def __add_one(tree, inv, parent_ie, path, kind, action):
     :param action: callback(inv, parent_ie, path, kind); return ignored.
     :returns: A list of paths which have been added.
     """
-
     # Nothing to do if path is already versioned.
     # This is safe from infinite recursion because the tree root is
     # always versioned.
@@ -305,19 +305,25 @@ def __add_one(tree, inv, parent_ie, path, kind, action):
         # note that the dirname use leads to some extra str copying etc but as
         # there are a limited number of dirs we can be nested under, it should
         # generally find it very fast and not recurse after that.
-        added = __add_one(tree, inv, None, FastPath(dirname(path.raw_path)), 'directory', action)
+        added = __add_one_and_parent(tree, inv, None, FastPath(dirname(path.raw_path)), 'directory', action)
         parent_id = inv.path2id(dirname(path.raw_path))
         if parent_id is None:
             parent_ie = inv[inv.path2id(dirname(path.raw_path))]
         else:
             parent_ie = inv[parent_id]
-    action(inv, parent_ie, path, kind)
-    #if parent_ie is not None:
-    entry = bzrlib.inventory.make_entry(
-        kind, bzrlib.osutils.basename(path.raw_path),  parent_ie.file_id)
-    inv.add(entry)
-    #else:
-    #    entry = inv.add_path(path.raw_path, kind=kind)
-
-
+    __add_one(tree, inv, parent_ie, path, kind, action)
     return added + [path.raw_path]
+
+
+def __add_one(tree, inv, parent_ie, path, kind, action):
+    """Add a new entry to the inventory.
+
+    :param inv: Inventory which will receive the new entry.
+    :param parent_ie: Parent inventory entry.
+    :param kind: Kind of new entry (file, directory, etc)
+    :param action: callback(inv, parent_ie, path, kind); return ignored.
+    :returns: None
+    """
+    action(inv, parent_ie, path, kind)
+    entry = bzrlib.inventory.make_entry(kind, path.base_path, parent_ie.file_id)
+    inv.add(entry)

@@ -1024,7 +1024,7 @@ class Inventory(object):
         except KeyError:
             raise BzrError("parent_id {%s} not in inventory" % entry.parent_id)
 
-        if parent.children.has_key(entry.name):
+        if entry.name in parent.children:
             raise BzrError("%s is already versioned" %
                     pathjoin(self.id2path(parent.file_id), entry.name))
 
