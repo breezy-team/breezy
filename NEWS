@@ -59,6 +59,9 @@ IN DEVELOPMENT
       tests not to run.  (#32587, Erik Bågfors, Michael Ellerman, 
       Martin Pool)
 
+    * Fix unnecessary requirement of sign-my-commits that it be run from
+      a working directory.  (Martin Pool, Robert Collins)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
@@ -71,6 +74,14 @@ IN DEVELOPMENT
 
     * bzrlib.delta.compare_trees now iterates in alphabetically sorted order,
       rather than randomly walking the inventories. (John Arbash Meinel)
+
+    * Split ``check`` into separate methods on the branch and on the repository,
+      so that it can be specialized in ways that are useful or efficient for
+      different formats.  (Martin Pool, Robert Collins)
+
+    * Deprecate Repository.all_revision_ids; most methods don't really need
+      the global revision graph but only that part leading up to a particular
+      revision.  (Martin Pool, Robert Collins)
 
 bzr 0.8.2  2006-05-17
   
