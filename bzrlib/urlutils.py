@@ -165,27 +165,31 @@ def _posix_local_path_to_url(path):
 
 
 def _win32_local_path_from_url(url):
-    """Convert a url like file:///C|/path/to/foo into C:/path/to/foo"""
+    """Convert a url like file:///C:/path/to/foo into C:/path/to/foo"""
     if not url.startswith('file:///'):
         raise errors.InvalidURL(url, 'local urls must start with file:///')
     # We strip off all 3 slashes
     win32_url = url[len('file:///'):]
-    if (win32_url[0] not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    if (win32_url[0] not in ('abcdefghijklmnopqrstuvwxyz'
+                             'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
         or win32_url[1] not in  '|:'
         or win32_url[2] != '/'):
-        raise errors.InvalidURL(url, 'Win32 file urls start with file:///X|/, where X is a valid drive letter')
-    # TODO: jam 20060426, we could .upper() or .lower() the drive letter
-    #       for better consistency.
+        raise errors.InvalidURL(url, 'Win32 file urls start with'
+                ' file:///X:/, where X is a valid drive letter')
     return win32_url[0].upper() + u':' + unescape(win32_url[2:])
 
 
 def _win32_local_path_to_url(path):
-    """Convert a local path like ./foo into a URL like file:///C|/path/to/foo
+    """Convert a local path like ./foo into a URL like file:///C:/path/to/foo
 
     This also handles transforming escaping unicode characters, etc.
     """
     # importing directly from ntpath allows us to test this 
-    # on non-win32 platforms
+    # on non-win32 platform
+    # FIXME: It turns out that on nt, ntpath.abspath uses nt._getfullpathname
+    #       which actually strips trailing space characters.
+    #       The worst part is that under linux ntpath.abspath has different
+    #       semantics, since 'nt' is not an available module.
     win32_path = bzrlib.osutils._nt_normpath(
         bzrlib.osutils._win32_abspath(path)).replace('\\', '/')
     return 'file:///' + win32_path[0].upper() + ':' + escape(win32_path[2:])
@@ -199,7 +203,7 @@ if sys.platform == 'win32':
     local_path_to_url = _win32_local_path_to_url
     local_path_from_url = _win32_local_path_from_url
 
-    MIN_ABS_FILEURL_LENGTH = len('file:///C|/')
+    MIN_ABS_FILEURL_LENGTH = len('file:///C:/')
 
 
 _url_scheme_re = re.compile(r'^(?P<scheme>[^:/]{2,})://(?P<path>.*)$')
@@ -352,7 +356,7 @@ def strip_trailing_slash(url):
         file:///foo/      => file:///foo
         # This is unique on win32 platforms, and is the only URL
         # format which does it differently.
-        file:///C|/       => file:///C|/
+        file:///C|/       => file:///C:/
     """
     if not url.endswith('/'):
         # Nothing to do

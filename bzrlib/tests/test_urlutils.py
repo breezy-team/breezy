@@ -91,7 +91,9 @@ class TestUrlToPath(TestCase):
         norm_file('uni/%25C2%25B5', u'uni/%C2%B5')
         norm_file('uni/%20b', u'uni/ b')
         # All the crazy characters get escaped in local paths => file:/// urls
-        norm_file('%27%3B/%3F%3A%40%26%3D%2B%24%2C%23%20', "';/?:@&=+$,# ")
+        # The ' ' character must not be at the end, because on win32
+        # it gets stripped off by ntpath.abspath
+        norm_file('%27%20%3B/%3F%3A%40%26%3D%2B%24%2C%23', "' ;/?:@&=+$,#")
 
     def test_normalize_url_hybrid(self):
         # Anything with a scheme:// should be treated as a hybrid url
@@ -250,6 +252,14 @@ class TestUrlToPath(TestCase):
         to_url = urlutils._win32_local_path_to_url
         self.assertEqual('file:///C:/path/to/foo',
             to_url('C:/path/to/foo'))
+        # BOGUS: on win32, ntpath.abspath will strip trailing
+        #       whitespace, so this will always fail
+        #       Though under linux, it fakes abspath support
+        #       and thus will succeed
+        # self.assertEqual('file:///C:/path/to/foo%20',
+        #     to_url('C:/path/to/foo '))
+        self.assertEqual('file:///C:/path/to/f%20oo',
+            to_url('C:/path/to/f oo'))
 
         try:
             result = to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s')
