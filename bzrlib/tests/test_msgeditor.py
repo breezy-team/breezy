@@ -123,7 +123,7 @@ if len(sys.argv) == 2:
         working_tree = self.make_uncommitted_tree()
 
         if sys.platform == 'win32':
-            os.environ['BZR_EDITOR'] = 'del'
+            os.environ['BZR_EDITOR'] = 'cmd.exe /c del'
         else:
             os.environ['BZR_EDITOR'] = 'rm'
 
