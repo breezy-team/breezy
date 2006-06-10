@@ -19,7 +19,7 @@
 """A collection of function for handling URL operations."""
 
 import os
-from posixpath import split as _posix_split
+from posixpath import split as _posix_split, normpath as _posix_normpath
 import re
 import sys
 import urllib
@@ -160,8 +160,8 @@ def _posix_local_path_to_url(path):
     """
     # importing directly from posixpath allows us to test this 
     # on non-posix platforms
-    from posixpath import normpath
-    return 'file://' + escape(normpath(bzrlib.osutils._posix_abspath(path)))
+    return 'file://' + escape(_posix_normpath(
+        bzrlib.osutils._posix_abspath(path)))
 
 
 def _win32_local_path_from_url(url):

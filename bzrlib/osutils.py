@@ -18,8 +18,14 @@
 
 from cStringIO import StringIO
 import errno
+from ntpath import (abspath as _nt_abspath,
+                    join as _nt_join,
+                    normpath as _nt_normpath,
+                    realpath as _nt_realpath,
+                    )
 import os
 from os import listdir
+import posixpath
 import re
 import sha
 import shutil
@@ -33,11 +39,6 @@ import time
 import types
 import tempfile
 import unicodedata
-from ntpath import (abspath as _nt_abspath,
-                    join as _nt_join,
-                    normpath as _nt_normpath,
-                    realpath as _nt_realpath,
-                    )
 
 import bzrlib
 from bzrlib.errors import (BzrError,
@@ -198,16 +199,15 @@ def fancy_rename(old, new, rename_func, unlink_func):
 # string.
 _fs_enc = sys.getfilesystemencoding()
 def _posix_abspath(path):
-    return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
-    # jam 20060426 This is another possibility which mimics 
-    # os.path.abspath, only uses unicode characters instead
-    # if not os.path.isabs(path):
-    #     return os.path.join(os.getcwdu(), path)
-    # return path
+    # jam 20060426 rather than encoding to fsencoding
+    # copy posixpath.abspath, but use os.getcwdu instead
+    if not posixpath.isabs(path):
+        path = posixpath.join(getcwd(), path)
+    return posixpath.normpath(path)
 
 
 def _posix_realpath(path):
-    return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
+    return posixpath.realpath(path.encode(_fs_enc)).decode(_fs_enc)
 
 
 def _win32_abspath(path):
