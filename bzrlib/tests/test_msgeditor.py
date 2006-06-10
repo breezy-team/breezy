@@ -102,7 +102,7 @@ if len(sys.argv) == 2:
             f = file('fed.bat', 'w')
             f.write("""\
 @echo off
-%s fed.py %%1
+"%s" fed.py %%1
 """ % sys.executable)
             f.close()
             os.environ['BZR_EDITOR'] = 'fed.bat'
