@@ -19,10 +19,11 @@
 There are separate implementation modules for each http client implementation.
 """
 
-import errno
-import os
 from collections import deque
 from cStringIO import StringIO
+import errno
+import os
+import posixpath
 import re
 import urlparse
 import urllib
@@ -397,6 +398,30 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             return
         method = getattr(self, mname)
         method()
+
+    def translate_path(self, path):
+        """Translate a /-separated PATH to the local filename syntax.
+
+        For bzr, all url paths are considered to be utf8 paths.
+        On Linux, you can access these paths directly over the bytestream
+        request, but on win32, you must decode them, and access them
+        as Unicode files.
+        """
+        # TODO: jam 20060610 Figure out if we should not decode('utf8')
+        #       on platforms where it isn't strictly necessary
+        # abandon query parameters
+        path = urlparse.urlparse(path)[2]
+        path = posixpath.normpath(urllib.unquote(path))
+        path = path.decode('utf-8')
+        words = path.split('/')
+        words = filter(None, words)
+        path = os.getcwdu()
+        for word in words:
+            drive, word = os.path.splitdrive(word)
+            head, word = os.path.split(word)
+            if word in (os.curdir, os.pardir): continue
+            path = os.path.join(path, word)
+        return path
 
 
 class TestingHTTPServer(BaseHTTPServer.HTTPServer):
