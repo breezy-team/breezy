@@ -123,9 +123,7 @@ class InventoryEntry(object):
     RENAMED = 'renamed'
     MODIFIED_AND_RENAMED = 'modified and renamed'
     
-    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', 'executable', 
-                 'revision']
+    __slots__ = []
 
     def detect_changes(self, old_entry):
         """Return a (text_modified, meta_modified) from this to old_entry.
@@ -499,6 +497,10 @@ class InventoryEntry(object):
 
 class RootEntry(InventoryEntry):
 
+    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
+                 'text_id', 'parent_id', 'children', 'executable', 
+                 'revision', 'symlink_target']
+
     def _check(self, checker, rev_id, tree):
         """See InventoryEntry._check"""
 
@@ -519,6 +521,10 @@ class RootEntry(InventoryEntry):
 
 class InventoryDirectory(InventoryEntry):
     """A directory in an inventory."""
+
+    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
+                 'text_id', 'parent_id', 'children', 'executable', 
+                 'revision', 'symlink_target']
 
     def _check(self, checker, rev_id, tree):
         """See InventoryEntry._check"""
@@ -562,6 +568,10 @@ class InventoryDirectory(InventoryEntry):
 
 class InventoryFile(InventoryEntry):
     """A file in an inventory."""
+
+    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
+                 'text_id', 'parent_id', 'children', 'executable', 
+                 'revision', 'symlink_target']
 
     def _check(self, checker, tree_revision_id, tree):
         """See InventoryEntry._check"""
@@ -699,7 +709,9 @@ class InventoryFile(InventoryEntry):
 class InventoryLink(InventoryEntry):
     """A file in an inventory."""
 
-    __slots__ = ['symlink_target']
+    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
+                 'text_id', 'parent_id', 'children', 'executable', 
+                 'revision', 'symlink_target']
 
     def _check(self, checker, rev_id, tree):
         """See InventoryEntry._check"""
