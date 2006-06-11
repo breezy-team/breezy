@@ -43,3 +43,15 @@ class WorkingTreeBenchmark(Benchmark):
             tree.add(root)
         self.time(list, tree.list_files())
 
+    def test_is_ignored_single_call(self):
+        """How long does is_ignored take to initialise and check one file."""
+        t = self.make_branch_and_tree('.')
+        self.time(t.is_ignored, "CVS")
+        
+    def test_is_ignored_10824_calls(self):
+        """How long does is_ignored take to initialise and check one file."""
+        t = self.make_branch_and_tree('.')
+        def call_is_ignored_10824_not_ignored():
+            for x in xrange(10824):
+                t.is_ignored(str(x))
+        self.time(call_is_ignored_10824_not_ignored)
