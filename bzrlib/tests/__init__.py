@@ -721,20 +721,27 @@ class TestCase(unittest.TestCase):
             encoding = bzrlib.user_encoding
         return self.run_bzr(*args, **kwargs)[0].decode(encoding)
 
-    def run_bzr_external(self, *args, **kwargs):
+    def run_bzr_subprocess(self, *args, **kwargs):
+        """Run bzr in a subprocess for testing.
+
+        This starts a new Python interpreter and runs bzr in there. 
+        This should only be used for tests that have a justifiable need for
+        this isolation: e.g. they are testing startup time, or signal
+        handling, or early startup code, etc.  Subprocess code can't be 
+        profiled or debugged so easily.
+        """
         bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
         if len(args) == 1:
             args = shlex.split(args[0])
         args = list(args)
-        process = Popen([bzr_path]+args, stdout=PIPE, stderr=PIPE)
+        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
+                         stderr=PIPE)
         out = process.stdout.read()
         err = process.stderr.read()
         retcode = process.wait()
-        supplied_retcode = kwargs.get('retcode')
+        supplied_retcode = kwargs.get('retcode', 0)
         if supplied_retcode is not None:
             assert supplied_retcode == retcode
-        else:
-            assert retcode == 0
         return [out, err]
 
     def check_inventory_shape(self, inv, shape):

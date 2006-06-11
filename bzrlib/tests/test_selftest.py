@@ -680,16 +680,17 @@ class TestSelftest(TestCase):
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
 
-    def test_run_bzr_external(self):
+    def test_run_bzr_subprocess(self):
         """The run_bzr_helper_external comand behaves nicely."""
-        result = self.run_bzr_external('--version')
+        result = self.run_bzr_subprocess('--version')
         self.assertContainsRe(result[0], 'is free software')
-        self.assertRaises(AssertionError, self.run_bzr_external, '--versionn')
-        result = self.run_bzr_external('--versionn', retcode=3)
+        self.assertRaises(AssertionError, self.run_bzr_subprocess, 
+                          '--versionn')
+        result = self.run_bzr_subprocess('--versionn', retcode=3)
         self.assertContainsRe(result[1], 'unknown command')
-        err = self.run_bzr_external('merge --merge-type "magic merge"', 
-                                    retcode=3)[1]
+        err = self.run_bzr_subprocess('merge --merge-type "magic merge"', 
+                                      retcode=3)[1]
         self.assertContainsRe(err, 'No known merge type magic merge')
-        err = self.run_bzr_external('merge', '--merge-type', 'magic merge', 
-                                    retcode=3)[1]
+        err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
+                                      retcode=3)[1]
         self.assertContainsRe(err, 'No known merge type magic merge')
