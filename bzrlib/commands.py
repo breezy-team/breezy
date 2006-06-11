@@ -237,14 +237,23 @@ class Command(object):
 
         output_encoding = getattr(sys.stdout, 'encoding', None)
         if not output_encoding:
-            output_encoding = bzrlib.user_encoding
-            mutter('encoding stdout bzrlib.user_encoding %r', output_encoding)
+            input_encoding = getattr(sys.stdin, 'encoding', None)
+            if not input_encoding:
+                output_encoding = bzrlib.user_encoding
+                mutter('encoding stdout as bzrlib.user_encoding %r', output_encoding)
+            else:
+                output_encoding = input_encoding
+                mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
         else:
-            mutter('encoding stdout log as sys.stdout encoding %r', output_encoding)
+            mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
 
         # use 'replace' so that we don't abort if trying to write out
         # in e.g. the default C locale.
         self.outf = codecs.getwriter(output_encoding)(sys.stdout, errors=self.encoding_type)
+        # For whatever reason codecs.getwriter() does not advertise its encoding
+        # it just returns the encoding of the wrapped file, which is completely
+        # bogus. So set the attribute, so we can find the correct encoding later.
+        self.outf.encoding = output_encoding
 
     @deprecated_method(zero_eight)
     def run_argv(self, argv):

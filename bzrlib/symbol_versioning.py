@@ -25,7 +25,8 @@ __all__ = ['deprecated_function',
            'DEPRECATED_PARAMETER',
            'deprecated_passed',
            'warn', 'set_warning_method', 'zero_seven',
-           'zero_eight', 'zero_nine'
+           'zero_eight',
+           'zero_nine',
            ]
 
 from warnings import warn
