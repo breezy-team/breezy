@@ -53,6 +53,7 @@ class TestNonAscii(TestCaseInTempDir):
         bzr = self.run_bzr
 
         fs_enc = sys.getfilesystemencoding()
+        terminal_enc = osutils.get_terminal_encoding()
         fname = self.info['filename']
         dir_name = self.info['directory']
         for thing in [fname, dir_name]:
@@ -60,8 +61,16 @@ class TestNonAscii(TestCaseInTempDir):
                 thing.encode(fs_enc)
             except UnicodeEncodeError:
                 raise TestSkipped(('Unable to represent path %r'
-                                   ' in filesystem encoding %s')
+                                   ' in filesystem encoding "%s"')
                                     % (thing, fs_enc))
+            try:
+                thing.encode(terminal_enc)
+            except UnicodeEncodeError:
+                raise TestSkipped(('Unable to represent path %r'
+                                   ' in terminal encoding "%s"'
+                                   ' (even though it is valid in'
+                                   ' filesystem encoding "%s")')
+                                   % (thing, terminal_enc, fs_enc))
 
         bzr('init')
         open('a', 'wb').write('foo\n')
