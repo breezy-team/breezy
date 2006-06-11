@@ -250,7 +250,7 @@ class TestUrlToPath(TestCase):
 
     def test_win32_local_path_to_url(self):
         to_url = urlutils._win32_local_path_to_url
-        self.assertEqual('file:///C:/path/to/foo',
+        self.assertEqual('file:///c:/path/to/foo',
             to_url('C:/path/to/foo'))
         # BOGUS: on win32, ntpath.abspath will strip trailing
         #       whitespace, so this will always fail
@@ -258,7 +258,7 @@ class TestUrlToPath(TestCase):
         #       and thus will succeed
         # self.assertEqual('file:///C:/path/to/foo%20',
         #     to_url('C:/path/to/foo '))
-        self.assertEqual('file:///C:/path/to/f%20oo',
+        self.assertEqual('file:///c:/path/to/f%20oo',
             to_url('C:/path/to/f oo'))
 
         try:
@@ -266,15 +266,15 @@ class TestUrlToPath(TestCase):
         except UnicodeError:
             raise TestSkipped("local encoding cannot handle unicode")
 
-        self.assertEqual('file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
+        self.assertEqual('file:///d:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
 
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
-        self.assertEqual('C:/path/to/foo',
+        self.assertEqual('c:/path/to/foo',
             from_url('file:///C|/path/to/foo'))
-        self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
+        self.assertEqual(u'd:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
-        self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
+        self.assertEqual(u'd:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d:/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
 
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
@@ -358,8 +358,8 @@ class TestUrlToPath(TestCase):
 
         test('http://foo', 'http://foo')
         if sys.platform == 'win32':
-            test('C:/foo/path', 'file:///C|/foo/path')
-            test('C:/foo/path', 'file:///C:/foo/path')
+            test('c:/foo/path', 'file:///C|/foo/path')
+            test('c:/foo/path', 'file:///C:/foo/path')
         else:
             test('/foo/path', 'file:///foo/path')
 

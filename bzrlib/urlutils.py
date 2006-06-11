@@ -175,8 +175,11 @@ def _win32_local_path_from_url(url):
         or win32_url[1] not in  '|:'
         or win32_url[2] != '/'):
         raise errors.InvalidURL(url, 'Win32 file urls start with'
-                ' file:///X:/, where X is a valid drive letter')
-    return win32_url[0].upper() + u':' + unescape(win32_url[2:])
+                ' file:///x:/, where x is a valid drive letter')
+    # Preferentially using .lower() because os.getcwd() returns
+    # paths with lowercase drive letters, and that helps
+    # bzrlib.osutils.relpath() work correctly
+    return win32_url[0].lower() + u':' + unescape(win32_url[2:])
 
 
 def _win32_local_path_to_url(path):
@@ -192,7 +195,7 @@ def _win32_local_path_to_url(path):
     #       semantics, since 'nt' is not an available module.
     win32_path = bzrlib.osutils._nt_normpath(
         bzrlib.osutils._win32_abspath(path)).replace('\\', '/')
-    return 'file:///' + win32_path[0].upper() + ':' + escape(win32_path[2:])
+    return 'file:///' + win32_path[0].lower() + ':' + escape(win32_path[2:])
 
 
 local_path_to_url = _posix_local_path_to_url
@@ -328,7 +331,7 @@ def split(url, exclude_trailing_slash=True):
         if path[2:3] not in ':|' or path[3:4] not in '\\/':
             raise errors.InvalidURL(url, 
                 'win32 file:/// paths need a drive letter')
-        url_base += path[0:3] # file:// + /C:
+        url_base += path[0:3] # file:// + /c:
         path = path[3:] # /foo
 
     if exclude_trailing_slash and len(path) > 1 and path.endswith('/'):
@@ -356,7 +359,7 @@ def strip_trailing_slash(url):
         file:///foo/      => file:///foo
         # This is unique on win32 platforms, and is the only URL
         # format which does it differently.
-        file:///C|/       => file:///C:/
+        file:///c|/       => file:///c:/
     """
     if not url.endswith('/'):
         # Nothing to do
