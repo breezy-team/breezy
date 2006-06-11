@@ -25,6 +25,15 @@ from bzrlib.tests import TestSuite
 # prefix for micro (1/1000000)
 _mu = u'\xb5'
 
+# greek letter omega, not to be confused with
+# the Ohm sign, u'\u2126'. Though they are probably identical
+# cp437 can handle the first, but not the second
+_omega = u'\u03a9'
+
+# smallest error possible, epsilon
+# cp437 handles u03b5, but not u2208 the 'element of' operator
+_epsilon = u'\u03b5'
+
 # Swedish?
 _erik = u'Erik B\xe5gfors'
 
@@ -102,6 +111,10 @@ class EncodingTestAdapter(object):
                   , 'message':u'Testing ' + _mu
                   , 'filename':_russian_test
                   , 'directory':_russian_test + 'dir'}),
+        ('cp437', 0, {'committer':_erik
+                  , 'message':u'Testing ' + _mu
+                  , 'filename':'file_' + _omega
+                  , 'directory':_epsilon + '_dir'}),
     ]
 
     def adapt(self, test):
