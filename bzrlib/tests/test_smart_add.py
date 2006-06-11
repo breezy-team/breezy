@@ -59,7 +59,7 @@ class TestSmartAdd(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         child_tree = self.make_branch_and_tree('original/child')
-        smart_add_tree(wt, (u".",))
+        smart_add_tree(wt, (".",))
         for path in paths:
             self.assertNotEqual((path, wt.path2id(path)),
                                 (path, None))
