@@ -317,9 +317,7 @@ class InventoryEntry(object):
         raise BzrError("don't know how to export {%s} of kind %r" % (self.file_id, self.kind))
 
     def sorted_children(self):
-        l = self.children.items()
-        l.sort()
-        return l
+        return sorted(self.children.items())
 
     @staticmethod
     def versionable_kind(kind):
