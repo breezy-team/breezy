@@ -23,4 +23,4 @@ class RocksBenchmark(Benchmark):
 
     def test_rocks(self):
         """Test the startup overhead by running a do-nothing command"""
-        self.time(self.run_bzr, 'rocks')
+        self.time(self.run_bzr_external, 'rocks')
