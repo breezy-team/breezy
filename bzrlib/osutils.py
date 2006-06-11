@@ -212,12 +212,12 @@ def _posix_realpath(path):
 
 def _win32_abspath(path):
     # Real _nt_abspath doesn't have a problem with a unicode cwd
-    return _nt_abspath(path).replace('\\', '/')
+    return _nt_abspath(unicode(path)).replace('\\', '/')
 
 
 def _win32_realpath(path):
     # Real _nt_realpath doesn't have a problem with a unicode cwd
-    return _nt_realpath(path).replace('\\', '/')
+    return _nt_realpath(unicode(path)).replace('\\', '/')
 
 
 def _win32_pathjoin(*args):
@@ -225,7 +225,7 @@ def _win32_pathjoin(*args):
 
 
 def _win32_normpath(path):
-    return _nt_normpath(path).replace('\\', '/')
+    return _nt_normpath(unicode(path)).replace('\\', '/')
 
 
 def _win32_getcwd():

@@ -21,6 +21,7 @@ import sys
 import os
 
 import bzrlib
+import bzrlib.osutils as osutils
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter, note
 import bzrlib.urlutils as urlutils
@@ -208,7 +209,7 @@ class TestNonAscii(TestCaseInTempDir):
         open('a', 'ab').write('more text\n')
         bzr('commit', '-m', 'mod a')
 
-        pwd = os.getcwdu()
+        pwd = osutils.getcwd()
 
         os.chdir(u'../' + dirname2)
         txt = bzr('pull')
