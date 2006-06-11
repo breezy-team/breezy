@@ -285,6 +285,33 @@ if sys.platform == 'win32':
         return shutil.rmtree(path, ignore_errors, onerror)
 
 
+def get_terminal_encoding():
+    """Find the best encoding for printing to the screen.
+
+    This attempts to check both sys.stdout and sys.stdin to see
+    what encoding they are in, and if that fails it falls back to
+    bzrlib.user_encoding.
+    The problem is that on Windows, locale.getpreferredencoding()
+    is not the same encoding as that used by the console:
+    http://mail.python.org/pipermail/python-list/2003-May/162357.html
+
+    On my standard US Windows XP, the preferred encoding is
+    cp1252, but the console is cp437
+    """
+    output_encoding = getattr(sys.stdout, 'encoding', None)
+    if not output_encoding:
+        input_encoding = getattr(sys.stdin, 'encoding', None)
+        if not input_encoding:
+            output_encoding = bzrlib.user_encoding
+            mutter('encoding stdout as bzrlib.user_encoding %r', output_encoding)
+        else:
+            output_encoding = input_encoding
+            mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
+    else:
+        mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+    return output_encoding
+
+
 def normalizepath(f):
     if hasattr(os.path, 'realpath'):
         F = realpath

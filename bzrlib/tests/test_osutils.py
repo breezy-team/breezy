@@ -25,7 +25,12 @@ import sys
 import bzrlib
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
 import bzrlib.osutils as osutils
-from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
+from bzrlib.tests import (
+        StringIOWrapper,
+        TestCase, 
+        TestCaseInTempDir, 
+        TestSkipped,
+        )
 
 
 class TestOSUtils(TestCaseInTempDir):
@@ -259,3 +264,42 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertTrue(found_bzrdir)
         self.assertEqual(expected_dirblocks,
             [[line[0:3] for line in block] for block in result])
+
+
+class TestTerminalEncoding(TestCase):
+    """Test the auto-detection of proper terminal encoding."""
+
+    def setUp(self):
+        self._stdout = sys.stdout
+        self._stderr = sys.stderr
+        self._stdin = sys.stdin
+        self._user_encoding = bzrlib.user_encoding
+
+        self.addCleanup(self._reset)
+
+        sys.stdout = StringIOWrapper()
+        sys.stdout.encoding = 'stdout_encoding'
+        sys.stderr = StringIOWrapper()
+        sys.stderr.encoding = 'stderr_encoding'
+        sys.stdin = StringIOWrapper()
+        sys.stdin.encoding = 'stdin_encoding'
+        bzrlib.user_encoding = 'user_encoding'
+
+    def _reset(self):
+        sys.stdout = self._stdout
+        sys.stderr = self._stderr
+        sys.stdin = self._stdin
+        bzrlib.user_encoding = self._user_encoding
+
+    def test_get_terminal_encoding(self):
+        # first preference is stdout encoding
+        self.assertEqual('stdout_encoding', osutils.get_terminal_encoding())
+
+        sys.stdout.encoding = None
+        # if sys.stdout is None, fall back to sys.stdin
+        self.assertEqual('stdin_encoding', osutils.get_terminal_encoding())
+
+        sys.stdin.encoding = None
+        # and in the worst case, use bzrlib.user_encoding
+        self.assertEqual('user_encoding', osutils.get_terminal_encoding())
+
