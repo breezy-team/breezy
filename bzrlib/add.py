@@ -63,7 +63,7 @@ class AddAction(object):
         if should_print is not None:
             self.should_print = should_print
 
-    def __call__(self, inv, parent_ie, path, kind):
+    def __call__(self, inv, parent_ie, path, kind, _quote=bzrlib.osutils.quotefn):
         """Add path to inventory.
 
         The default action does nothing.
@@ -74,9 +74,7 @@ class AddAction(object):
         """
         if not self.should_print:
             return
-        self._to_file.write('added ')
-        self._to_file.write(bzrlib.osutils.quotefn(path.raw_path))
-        self._to_file.write('\n')
+        self._to_file.write('added %s\n' % _quote(path.raw_path))
 
 
 # TODO: jam 20050105 These could be used for compatibility
