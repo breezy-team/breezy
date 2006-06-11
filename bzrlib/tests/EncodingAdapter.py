@@ -111,10 +111,13 @@ class EncodingTestAdapter(object):
                   , 'message':u'Testing ' + _mu
                   , 'filename':_russian_test
                   , 'directory':_russian_test + 'dir'}),
-        ('cp437', 0, {'committer':_erik
-                  , 'message':u'Testing ' + _mu
-                  , 'filename':'file_' + _omega
-                  , 'directory':_epsilon + '_dir'}),
+# The iso-8859-1 tests run on a default windows cp437 installation
+# and it takes a long time to run an extra permutation of the tests
+# But just in case we want to add this back in:
+#        ('cp437', 0, {'committer':_erik
+#                  , 'message':u'Testing ' + _mu
+#                  , 'filename':'file_' + _omega
+#                  , 'directory':_epsilon + '_dir'}),
     ]
 
     def adapt(self, test):
