@@ -13,14 +13,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Benchmarks of bzr commit."""
+"""Tests for bzr benchmark utilities performance."""
 
 
 from bzrlib.benchmarks import Benchmark
 
 
-class RocksBenchmark(Benchmark):
+class MakeKernelLikeTreeBenchmark(Benchmark):
 
-    def test_rocks(self):
-        """Test the startup overhead by running a do-nothing command"""
-        self.time(self.run_bzr_subprocess, 'rocks')
+    def test_make_kernel_like_tree(self):
+        """Making a kernel sized tree should be ~ 5seconds on modern disk.""" 
+        # on roberts machine: this originally took:  7372ms/ 7479ms
+        # with the LocalTransport._abspath call:     3730ms/ 3778ms
+        self.time(self.make_kernel_like_tree)

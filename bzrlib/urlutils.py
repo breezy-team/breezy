@@ -320,11 +320,12 @@ def split(url, exclude_trailing_slash=True):
 
     if sys.platform == 'win32' and url.startswith('file:///'):
         # Strip off the drive letter
-        if path[2:3] not in '\\/':
+        # path is currently /C:/foo
+        if path[2:3] not in ':|' or path[3:4] not in '\\/':
             raise errors.InvalidURL(url, 
                 'win32 file:/// paths need a drive letter')
-        url_base += path[1:4] # file:///C|/
-        path = path[3:]
+        url_base += path[0:3] # file:// + /C:
+        path = path[3:] # /foo
 
     if exclude_trailing_slash and len(path) > 1 and path.endswith('/'):
         path = path[:-1]
@@ -435,6 +436,7 @@ def unescape_for_display(url, encoding):
     :return: A unicode string which can be safely encoded into the 
          specified encoding.
     """
+    assert encoding is not None, 'you cannot specify None for the display encoding.'
     if url.startswith('file://'):
         try:
             path = local_path_from_url(url)

@@ -119,8 +119,18 @@ class Repository(object):
         """Return all the possible revisions that we could find."""
         return self.get_inventory_weave().versions()
 
-    @needs_read_lock
+    @deprecated_method(zero_nine)
     def all_revision_ids(self):
+        """Returns a list of all the revision ids in the repository. 
+
+        This is deprecated because code should generally work on the graph
+        reachable from a particular revision, and ignore any other revisions
+        that might be present.  There is no direct replacement method.
+        """
+        return self._all_revision_ids()
+
+    @needs_read_lock
+    def _all_revision_ids(self):
         """Returns a list of all the revision ids in the repository. 
 
         These are in as much topological order as the underlying store can 
@@ -359,7 +369,8 @@ class Repository(object):
                                          RepositoryFormat6,
                                          RepositoryFormat7,
                                          RepositoryFormatKnit1)), \
-            "fileid_involved only supported for branches which store inventory as unnested xml"
+            ("fileids_altered_by_revision_ids only supported for branches " 
+             "which store inventory as unnested xml, not on %r" % self)
         selected_revision_ids = set(revision_ids)
         w = self.get_inventory_weave()
         result = {}
@@ -530,6 +541,10 @@ class Repository(object):
     @needs_read_lock
     def get_ancestry(self, revision_id):
         """Return a list of revision-ids integrated by a revision.
+
+        The first element of the list is always None, indicating the origin 
+        revision.  This might change when we have history horizons, or 
+        perhaps we should have a new API.
         
         This is topologically sorted.
         """
@@ -597,6 +612,25 @@ class Repository(object):
         """Return the text for a signature."""
         return self._revision_store.get_signature_text(revision_id,
                                                        self.get_transaction())
+
+    @needs_read_lock
+    def check(self, revision_ids):
+        """Check consistency of all history of given revision_ids.
+
+        Different repository implementations should override _check().
+
+        :param revision_ids: A non-empty list of revision_ids whose ancestry
+             will be checked.  Typically the last revision_id of a branch.
+        """
+        if not revision_ids:
+            raise ValueError("revision_ids must be non-empty in %s.check" 
+                    % (self,))
+        return self._check(revision_ids)
+
+    def _check(self, revision_ids):
+        result = bzrlib.check.Check(self)
+        result.check()
+        return result
 
 
 class AllInOneRepository(Repository):
@@ -746,8 +780,10 @@ class KnitRepository(MetaDirRepository):
         inv_vf.add_lines_with_ghosts(revid, parents, lines)
 
     @needs_read_lock
-    def all_revision_ids(self):
+    def _all_revision_ids(self):
         """See Repository.all_revision_ids()."""
+        # Knits get the revision graph from the index of the revision knit, so
+        # it's always possible even if they're on an unlistable transport.
         return self._revision_store.all_revision_ids(self.get_transaction())
 
     def fileid_involved_between_revs(self, from_revid, to_revid):
@@ -1949,7 +1985,7 @@ class CommitBuilder(object):
 
     def finish_inventory(self):
         """Tell the builder that the inventory is finished."""
-        self.new_inventory.revision = self._new_revision_id
+        self.new_inventory.revision_id = self._new_revision_id
         self.inv_sha1 = self.repository.add_inventory(
             self._new_revision_id,
             self.new_inventory,

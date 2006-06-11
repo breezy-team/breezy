@@ -51,6 +51,10 @@ class TestCommitBuilder(TestCaseWithRepository):
         builder.finish_inventory()
         self.assertEqual("foo", builder.commit('foo bar'))
         self.assertTrue(tree.branch.repository.has_revision("foo"))
+        # the revision id must be set on the inventory when saving it. This does not
+        # precisely test that - a repository that wants to can add it on deserialisation,
+        # but thats all the current contract guarantees anyway.
+        self.assertEqual('foo', tree.branch.repository.get_inventory('foo').revision_id)
 
     def test_commit(self):
         tree = self.make_branch_and_tree(".")
@@ -59,3 +63,7 @@ class TestCommitBuilder(TestCaseWithRepository):
         rev_id = builder.commit('foo bar')
         self.assertNotEqual(None, rev_id)
         self.assertTrue(tree.branch.repository.has_revision(rev_id))
+        # the revision id must be set on the inventory when saving it. This does not
+        # precisely test that - a repository that wants to can add it on deserialisation,
+        # but thats all the current contract guarantees anyway.
+        self.assertEqual(rev_id, tree.branch.repository.get_inventory(rev_id).revision_id)

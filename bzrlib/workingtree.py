@@ -1218,16 +1218,17 @@ class WorkingTree(bzrlib.tree.Tree):
                     new_revision, xml)
                 inv.revision_id = new_revision
                 xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
-
+            assert isinstance(xml, str), 'serialised xml must be bytestring.'
             path = self._basis_inventory_name()
-            self._control_files.put_utf8(path, xml)
+            sio = StringIO(xml)
+            self._control_files.put(path, sio)
         except WeaveRevisionNotPresent:
             pass
 
     def read_basis_inventory(self):
         """Read the cached basis inventory."""
         path = self._basis_inventory_name()
-        return self._control_files.get_utf8(path).read()
+        return self._control_files.get(path).read()
         
     @needs_read_lock
     def read_working_inventory(self):
