@@ -16,11 +16,16 @@
 
 """Tests for ssh transport"""
 
+# TODO: Try sending multiple requests; they should all get answers.
+
+# TODO: If the server raises an error within its processing that should be
+# caught and propagated back to the client.
+
 # all of this deals with byte strings so this is safe
 from cStringIO import StringIO
 
 import bzrlib
-from bzrlib import tests, errors
+from bzrlib import tests, errors, bzrdir
 from bzrlib.transport import local, memory, ssh
 
 class TestSSHTransport(tests.TestCase):
@@ -97,7 +102,7 @@ class TestSSHTransport(tests.TestCase):
         class FlakyTransport(object):
             def get(self, path):
                 raise Exception("some random exception from inside server")
-        conn = ssh.LoopbackSSHConnection(transport=FlakyTransport())
+        conn = ssh.LoopbackSSHConnection(backing_transport=FlakyTransport())
         try:
             conn.get('something')
         except errors.TransportError, e:
@@ -105,8 +110,38 @@ class TestSSHTransport(tests.TestCase):
         else:
             self.fail("get did not raise expected error")
 
+    def test_loopback_conn_has_base_url(self):
+        conn = ssh.LoopbackSSHConnection()
+        self.assertEquals('ssh+loopback:///', conn.base)
 
-    # TODO: Try sending multiple requests; they should all get answers.
+    def test_simple_clone_conn(self):
+        """Test that cloning reuses the same connection."""
+        conn = ssh.LoopbackSSHConnection()
+        # we create a real connection not a loopback one, but it will use the
+        # same server and pipes
+        conn2 = ssh.SSHConnection('ssh+loopback:///', clone_from=conn)
+        conn2.query_version()
 
-    # TODO: If the server raises an error within its processing that should be
-    # caught and propagated back to the client.
+    def test_abspath(self):
+        conn = ssh.LoopbackSSHConnection()
+        self.assertEquals('ssh+loopback:///foo/bar',
+                          conn.abspath('foo/bar'))
+
+    def test_open_dir(self):
+        """Test changing directory"""
+        return ################################################
+        conn = ssh.LoopbackSSHConnection()
+        conn.backing_transport.mkdir('toffee')
+        conn.backing_transport.mkdir('toffee/apple')
+        self.assertTrue(conn.has('toffee'))
+
+        sub_conn = conn.clone('toffee')
+        self.assertTrue(sub_conn.has('apple'))
+
+    def test_open_bzrdir(self):
+        """Open an existing bzrdir over ssh transport"""
+        return ################################################
+        conn = ssh.LoopbackSSHConnection()
+        t = conn.backing_transport
+        bzrdir.BzrDirFormat.get_default_format().initialize_on_transport(t)
+        result_dir = bzrdir.BzrDir.open_containing_from_transport(conn)

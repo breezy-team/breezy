@@ -62,6 +62,19 @@ followed by bulk body data. ::
 #
 # TODO: If we get an exception during transmission of bulk data we can't just
 # emit the exception because it won't be seen.
+#
+# TODO: Clone method on Transport; should work up towards parent directory;
+# unclear how this should be stored or communicated to the server... maybe
+# just pass it on all relevant requests?
+#
+# TODO: Better name than clone() for changing between directories.  How about
+# open_dir or change_dir or chdir?
+#
+# TODO: Is it really good to have the notion of current directory within the
+# connection?  Perhaps all Transports should factor out a common connection
+# from the thing that has the directory context?
+#
+# TODO: Pull more things common to sftp and ssh to a higher level.
 
 
 from cStringIO import StringIO
@@ -70,7 +83,7 @@ import os
 import sys
 
 from bzrlib import errors
-
+from bzrlib.transport import sftp
 
 class BzrProtocolError(errors.TransportError):
     pass
@@ -199,12 +212,36 @@ class Server(object):
         self._out.write('done\n')
 
 
-class SSHConnection(object):
+class SSHConnection(sftp.SFTPUrlHandling):
     """Connection to a bzr ssh server.
+
+    The connection holds references to pipes that can be used to send requests
+    to the server.
+
+    The connection has a notion of the current directory to which it's
+    connected; this is incorporated in filenames passed to the server.
     
     This supports some higher-level RPC operations and can also be treated 
     like a Transport to do file-like operations.
     """
+
+    def __init__(self, server_url, clone_from=None):
+        assert (server_url.startswith('ssh://')
+                or server_url.startswith('ssh+'))
+        super(SSHConnection, self).__init__(self, server_url)
+        if clone_from is None:
+            self._start_server()
+        else:
+            # reuse same connection
+            self._to_server = clone_from._to_server
+            self._from_server = clone_from._from_server
+
+    def clone(self, relative_url):
+        """Make a new SSHConnection related to me, sharing the same connection.
+
+        This essentially opens a handle on a different remote directory.
+        """
+        return SSHConnection(self.abspath(relative_url), self)
     
     def query_version(self):
         """Return protocol version number of the server."""
@@ -280,13 +317,12 @@ class LoopbackSSHConnection(SSHConnection):
     :ivar backing_transport: The transport used by the real server.
     """
 
-    def __init__(self, transport=None):
-        if transport is None:
+    def __init__(self, backing_transport=None):
+        if backing_transport is None:
             from bzrlib.transport import memory
-            self.backing_transport = memory.MemoryTransport('memory:///')
-        else:
-            self.backing_transport = transport
-        self._start_server()
+            backing_transport = memory.MemoryTransport('memory:///')
+        self.backing_transport = backing_transport
+        super(LoopbackSSHConnection, self).__init__('ssh+loopback:///')
 
     def _start_server(self):
         import threading

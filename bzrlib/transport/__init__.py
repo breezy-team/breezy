@@ -169,6 +169,8 @@ class Transport(object):
     implementations can do pipelining.
     In general implementations should support having a generator or a list
     as an argument (ie always iterate, never index)
+
+    :ivar base: Base URL for the transport; should always end in a slash.
     """
 
     def __init__(self, base):
@@ -267,11 +269,54 @@ class Transport(object):
     def abspath(self, relpath):
         """Return the full url to the given relative path.
         This can be supplied with a string or a list
-
-        XXX: Robert Collins 20051016 - is this really needed in the public
-             interface ?
         """
+
+        # XXX: Robert Collins 20051016 - is this really needed in the public
+        # interface ?
         raise NotImplementedError(self.abspath)
+
+    def _combine_paths(self, base_path, relpath):
+        """Transform a Transport-relative path to a remote absolute path.
+
+        This does not handle substitution of ~ but does handle '..' and '.'
+        components.
+
+        Examples::
+
+            >>> t = Transport('/')
+            >>> t._combine_paths('/home/sarah', 'project/foo')
+            '/home/sarah/project/foo'
+            >>> t._combine_paths('/home/sarah', '../../etc')
+            '/etc'
+
+        :param base_path: urlencoded path for the transport root; typically a 
+             URL but need not contain scheme/host/etc.
+        :param relpath: relative url string for relative part of remote path.
+        :return: urlencoded string for final path.
+        """
+        # FIXME: share the common code across more transports; variants of
+        # this likely occur in http and sftp too.
+        #
+        # TODO: Also need to consider handling of ~, which might vary between
+        # transports?
+        if not isinstance(relpath, str):
+            raise errors.InvalidURL("not a valid url: %r" % relpath)
+        base_parts = base_path.split('/')
+        if len(base_parts) > 0 and base_parts[-1] == '':
+            base_parts = base_parts[:-1]
+        for p in relpath.split('/'):
+            if p == '..':
+                if len(base_parts) == 0:
+                    # In most filesystems, a request for the parent
+                    # of root, just returns root.
+                    continue
+                base_parts.pop()
+            elif p == '.':
+                continue # No-op
+            else:
+                base_parts.append(p)
+        path = '/'.join(base_parts)
+        return path
 
     def relpath(self, abspath):
         """Return the local path portion from a given absolute path.

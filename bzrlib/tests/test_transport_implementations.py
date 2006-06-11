@@ -770,7 +770,7 @@ class TestTransportImplementation(TestCaseInTempDir):
             os.mkdir('wd')
         t = t.clone('wd')
 
-        self.assertEqual([], sorted_list(u'.'))
+        self.assertEqual([], sorted_list('.'))
         # c2 is precisely one letter longer than c here to test that
         # suffixing is not confused.
         if not t.is_readonly():
@@ -778,8 +778,8 @@ class TestTransportImplementation(TestCaseInTempDir):
         else:
             self.build_tree(['wd/a', 'wd/b', 'wd/c/', 'wd/c/d', 'wd/c/e', 'wd/c2/'])
 
-        self.assertEqual([u'a', u'b', u'c', u'c2'], sorted_list(u'.'))
-        self.assertEqual([u'd', u'e'], sorted_list(u'c'))
+        self.assertEqual([u'a', u'b', u'c', u'c2'], sorted_list('.'))
+        self.assertEqual([u'd', u'e'], sorted_list('c'))
 
         if not t.is_readonly():
             t.delete('c/d')
@@ -789,7 +789,7 @@ class TestTransportImplementation(TestCaseInTempDir):
             os.unlink('wd/b')
             
         self.assertEqual([u'a', u'c', u'c2'], sorted_list('.'))
-        self.assertEqual([u'e'], sorted_list(u'c'))
+        self.assertEqual([u'e'], sorted_list('c'))
 
         self.assertListRaises(PathError, t.list_dir, 'q')
         self.assertListRaises(PathError, t.list_dir, 'c/f')
@@ -827,6 +827,10 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.failUnless(t1.has('b/d'))
         self.failUnless(t2.has('d'))
         self.failUnless(t3.has('b/d'))
+
+    def test_base_url(self):
+        t = self.get_transport()
+        self.assertEqual('/', t.base[-1])
 
     def test_relpath(self):
         t = self.get_transport()

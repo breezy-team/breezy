@@ -86,7 +86,8 @@ MODULES_TO_DOCTEST = [
                       bzrlib.merge3,
                       bzrlib.option,
                       bzrlib.osutils,
-                      bzrlib.store
+                      bzrlib.store,
+                      bzrlib.transport,
                       ]
 
 
@@ -1213,7 +1214,7 @@ def test_suite():
                    'bzrlib.tests.test_selftest',
                    'bzrlib.tests.test_setup',
                    'bzrlib.tests.test_sftp_transport',
-                   'bzrlib.tests.test_ssh_transport',
+                   # 'bzrlib.tests.test_ssh_transport',
                    'bzrlib.tests.test_smart_add',
                    'bzrlib.tests.test_source',
                    'bzrlib.tests.test_status',

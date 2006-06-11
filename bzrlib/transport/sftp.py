@@ -269,8 +269,15 @@ def save_host_keys():
 
 
 class SFTPLock(object):
-    """This fakes a lock in a remote location."""
+    """This fakes a lock in a remote location.
+    
+    A present lock is indicated just by the existence of a file.  This
+    doesn't work well on all transports and they are only used in 
+    deprecated storage formats.
+    """
+    
     __slots__ = ['path', 'lock_path', 'lock_file', 'transport']
+
     def __init__(self, path, transport):
         assert isinstance(transport, SFTPTransport)
 
@@ -302,18 +309,78 @@ class SFTPLock(object):
             # What specific errors should we catch here?
             pass
 
-class SFTPTransport (Transport):
-    """
-    Transport implementation for SFTP access.
-    """
-    _do_prefetch = _default_do_prefetch
 
-    def __init__(self, base, clone_from=None):
-        assert base.startswith('sftp://')
+class SFTPUrlHandling(Transport):
+    """Mix-in that does common handling of SSH/SFTP URLs."""
+
+    def __init__(self, base):
         self._parse_url(base)
         base = self._unparse_url()
         if base[-1] != '/':
             base += '/'
+        super(SFTPUrlHandling, self).__init__(base)
+
+    def _parse_url(self, url):
+        (self._scheme,
+         self._username, self._password,
+         self._host, self._port, self._path) = self._split_url(url)
+        base = self._unparse_url()
+
+    def _unparse_url(self, path=None):
+        if path is None:
+            path = self._path
+        path = urllib.quote(path)
+        # handle homedir paths
+        if not path.startswith('/'):
+            path = "/~/" + path
+        netloc = urllib.quote(self._host)
+        if self._username is not None:
+            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
+        if self._port is not None:
+            netloc = '%s:%d' % (netloc, self._port)
+        return urlparse.urlunparse((self._scheme, netloc, path, '', '', ''))
+
+    def _split_url(self, url):
+        (scheme, username, password, host, port, path) = split_url(url)
+        ## assert scheme == 'sftp'
+
+        # the initial slash should be removed from the path, and treated
+        # as a homedir relative path (the path begins with a double slash
+        # if it is absolute).
+        # see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
+        # RBC 20060118 we are not using this as its too user hostile. instead
+        # we are following lftp and using /~/foo to mean '~/foo'.
+        # handle homedir paths
+        if path.startswith('/~/'):
+            path = path[3:]
+        elif path == '/~':
+            path = ''
+        return (scheme, username, password, host, port, path)
+
+    def abspath(self, relpath):
+        """Return the full url to the given relative path.
+        
+        @param relpath: the relative path or path components
+        @type relpath: str or list
+        """
+        return self._unparse_url(self._remote_path(relpath))
+    
+    def _remote_path(self, relpath):
+        """Return the path to be passed along the sftp protocol for relpath.
+        
+        :param relpath: is a urlencoded string.
+        """
+        return self._combine_paths(self._path, relpath)
+
+
+class SFTPTransport(SFTPUrlHandling):
+    """
+    Transport implementation for SFTP access.
+    """
+
+    _do_prefetch = _default_do_prefetch
+
+    def __init__(self, base, clone_from=None):
         super(SFTPTransport, self).__init__(base)
         if clone_from is None:
             self._sftp_connect()
@@ -339,44 +406,8 @@ class SFTPTransport (Transport):
         else:
             return SFTPTransport(self.abspath(offset), self)
 
-    def abspath(self, relpath):
-        """
-        Return the full url to the given relative path.
-        
-        @param relpath: the relative path or path components
-        @type relpath: str or list
-        """
-        return self._unparse_url(self._remote_path(relpath))
-    
-    def _remote_path(self, relpath):
-        """Return the path to be passed along the sftp protocol for relpath.
-        
-        relpath is a urlencoded string.
-        """
-        # FIXME: share the common code across transports
-        assert isinstance(relpath, basestring)
-        relpath = urlutils.unescape(relpath).split('/')
-        basepath = self._path.split('/')
-        if len(basepath) > 0 and basepath[-1] == '':
-            basepath = basepath[:-1]
-
-        for p in relpath:
-            if p == '..':
-                if len(basepath) == 0:
-                    # In most filesystems, a request for the parent
-                    # of root, just returns root.
-                    continue
-                basepath.pop()
-            elif p == '.':
-                continue # No-op
-            else:
-                basepath.append(p)
-
-        path = '/'.join(basepath)
-        return path
-
     def relpath(self, abspath):
-        username, password, host, port, path = self._split_url(abspath)
+        scheme, username, password, host, port, path = self._split_url(abspath)
         error = []
         if (username != self._username):
             error.append('username mismatch')
@@ -647,41 +678,6 @@ class SFTPTransport (Transport):
         # that there is a lock, and if it doesn't, the we assume
         # that we have taken the lock.
         return SFTPLock(relpath, self)
-
-    def _unparse_url(self, path=None):
-        if path is None:
-            path = self._path
-        path = urllib.quote(path)
-        # handle homedir paths
-        if not path.startswith('/'):
-            path = "/~/" + path
-        netloc = urllib.quote(self._host)
-        if self._username is not None:
-            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
-        if self._port is not None:
-            netloc = '%s:%d' % (netloc, self._port)
-        return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
-
-    def _split_url(self, url):
-        (scheme, username, password, host, port, path) = split_url(url)
-        assert scheme == 'sftp'
-
-        # the initial slash should be removed from the path, and treated
-        # as a homedir relative path (the path begins with a double slash
-        # if it is absolute).
-        # see draft-ietf-secsh-scp-sftp-ssh-uri-03.txt
-        # RBC 20060118 we are not using this as its too user hostile. instead
-        # we are following lftp and using /~/foo to mean '~/foo'.
-        # handle homedir paths
-        if path.startswith('/~/'):
-            path = path[3:]
-        elif path == '/~':
-            path = ''
-        return (username, password, host, port, path)
-
-    def _parse_url(self, url):
-        (self._username, self._password,
-         self._host, self._port, self._path) = self._split_url(url)
 
     def _sftp_connect(self):
         """Connect to the remote sftp server.
