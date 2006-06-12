@@ -1082,7 +1082,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if hasattr(self, '_ignorelist'):
             return self._ignorelist
 
-        l = bzrlib.DEFAULT_IGNORE[:]
+        l = []
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
             l.extend([line.rstrip("\n\r").decode('utf-8') 

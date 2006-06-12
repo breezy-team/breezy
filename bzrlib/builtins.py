@@ -19,7 +19,7 @@
 
 import codecs
 import errno
-import os
+import os.path
 from shutil import rmtree
 import sys
 
@@ -1436,15 +1436,23 @@ class cmd_ignore(Command):
         bzr ignore '*.class'
     """
     # TODO: Complain if the filename is absolute
-    takes_args = ['name_pattern']
+    takes_args = ['name_pattern?']
+    takes_options = [
+                     Option('old-default-rules',
+                            help='Out the ignore rules bzr < 0.9 always used.')
+                     ]
     
-    def run(self, name_pattern):
+    def run(self, name_pattern=None, old_default_rules=None):
         from bzrlib.atomicfile import AtomicFile
-        import os.path
-
+        if old_default_rules is not None:
+            # dump the rules and exit
+            for pattern in bzrlib.DEFAULT_IGNORE:
+                print pattern
+            return
+        if name_pattern is None:
+            raise BzrCommandError("ignore requires a NAME_PATTERN")
         tree, relpath = WorkingTree.open_containing(u'.')
         ifn = tree.abspath('.bzrignore')
-
         if os.path.exists(ifn):
             f = open(ifn, 'rt')
             try:
@@ -1535,7 +1543,6 @@ class cmd_export(Command):
     takes_args = ['dest']
     takes_options = ['revision', 'format', 'root']
     def run(self, dest, revision=None, format=None, root=None):
-        import os.path
         from bzrlib.export import export
         tree = WorkingTree.open_containing(u'.')[0]
         b = tree.branch

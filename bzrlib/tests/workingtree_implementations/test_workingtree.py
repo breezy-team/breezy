@@ -155,6 +155,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt',
                          'hello.txt.~1~'])
+        self.build_tree_contents([('.bzrignore', '*.~*\n')])
+        tree.add('.bzrignore')
         self.assertEquals(list(tree.unknowns()),
                           ['hello.txt'])
 

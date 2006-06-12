@@ -103,33 +103,6 @@ class TestCommands(ExternalBase):
         self.runbzr("--pants off", retcode=3)
         self.runbzr("diff --message foo", retcode=3)
 
-    def test_ignore_patterns(self):
-        self.runbzr('init')
-        self.assertEquals(self.capture('unknowns'), '')
-
-        file('foo.tmp', 'wt').write('tmp files are ignored')
-        self.assertEquals(self.capture('unknowns'), '')
-
-        file('foo.c', 'wt').write('int main() {}')
-        self.assertEquals(self.capture('unknowns'), 'foo.c\n')
-
-        self.runbzr(['add', 'foo.c'])
-        self.assertEquals(self.capture('unknowns'), '')
-
-        # 'ignore' works when creating the .bzignore file
-        file('foo.blah', 'wt').write('blah')
-        self.assertEquals(self.capture('unknowns'), 'foo.blah\n')
-        self.runbzr('ignore *.blah')
-        self.assertEquals(self.capture('unknowns'), '')
-        self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\n')
-
-        # 'ignore' works when then .bzrignore file already exists
-        file('garh', 'wt').write('garh')
-        self.assertEquals(self.capture('unknowns'), 'garh\n')
-        self.runbzr('ignore garh')
-        self.assertEquals(self.capture('unknowns'), '')
-        self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\ngarh\n')
-
     def test_revert(self):
         self.runbzr('init')
 
@@ -296,41 +269,54 @@ class TestCommands(ExternalBase):
             self.assertEquals(out, value)
 
         bzr('init')
-        open('a', 'wb').write('hello\n')
+        self.build_tree_contents(
+            [('.bzrignore', '*.pyo\n'),
+             ('a', 'hello\n'),
+             ])
 
         # Can't supply both
         bzr('ls --verbose --null', retcode=3)
 
-        ls_equals('a\n')
-        ls_equals('?        a\n', '--verbose')
-        ls_equals('a\n', '--unknown')
+        ls_equals('.bzrignore\na\n')
+        ls_equals('?        .bzrignore\n'
+                  '?        a\n',
+                  '--verbose')
+        ls_equals('.bzrignore\n'
+                  'a\n',
+                  '--unknown')
         ls_equals('', '--ignored')
         ls_equals('', '--versioned')
-        ls_equals('a\n', '--unknown', '--ignored', '--versioned')
+        ls_equals('.bzrignore\n'
+                  'a\n',
+                  '--unknown', '--ignored', '--versioned')
         ls_equals('', '--ignored', '--versioned')
-        ls_equals('a\0', '--null')
+        ls_equals('.bzrignore\0a\0', '--null')
 
         bzr('add a')
-        ls_equals('V        a\n', '--verbose')
+        ls_equals('?        .bzrignore\nV        a\n', '--verbose')
         bzr('commit -m add')
         
         os.mkdir('subdir')
-        ls_equals('V        a\n'
+        ls_equals('?        .bzrignore\n'
+                  'V        a\n'
                   '?        subdir/\n'
                   , '--verbose')
         open('subdir/b', 'wb').write('b\n')
         bzr('add')
-        ls_equals('V        a\n'
+        ls_equals('V        .bzrignore\n'
+                  'V        a\n'
                   'V        subdir/\n'
                   'V        subdir/b\n'
                   , '--verbose')
         bzr('commit -m subdir')
 
-        ls_equals('a\n'
+        ls_equals('.bzrignore\n'
+                  'a\n'
                   'subdir\n'
                   , '--non-recursive')
 
-        ls_equals('V        a\n'
+        ls_equals('V        .bzrignore\n'
+                  'V        a\n'
                   'V        subdir/\n'
                   , '--verbose', '--non-recursive')
 
@@ -339,15 +325,18 @@ class TestCommands(ExternalBase):
         ls_equals('b\n')
         ls_equals('b\0'
                   , '--null')
-        ls_equals('a\n'
+        ls_equals('.bzrignore\n'
+                  'a\n'
                   'subdir\n'
                   'subdir/b\n'
                   , '--from-root')
-        ls_equals('a\0'
+        ls_equals('.bzrignore\0'
+                  'a\0'
                   'subdir\0'
                   'subdir/b\0'
                   , '--from-root', '--null')
-        ls_equals('a\n'
+        ls_equals('.bzrignore\n'
+                  'a\n'
                   'subdir\n'
                   , '--from-root', '--non-recursive')
 
@@ -365,12 +354,14 @@ class TestCommands(ExternalBase):
         os.chdir('..')
         open('blah.py', 'wb').write('unknown\n')
         open('blah.pyo', 'wb').write('ignored\n')
-        ls_equals('a\n'
+        ls_equals('.bzrignore\n'
+                  'a\n'
                   'blah.py\n'
                   'blah.pyo\n'
                   'subdir\n'
                   'subdir/b\n')
-        ls_equals('V        a\n'
+        ls_equals('V        .bzrignore\n'
+                  'V        a\n'
                   '?        blah.py\n'
                   'I        blah.pyo\n'
                   'V        subdir/\n'
@@ -380,7 +371,8 @@ class TestCommands(ExternalBase):
                   , '--ignored')
         ls_equals('blah.py\n'
                   , '--unknown')
-        ls_equals('a\n'
+        ls_equals('.bzrignore\n'
+                  'a\n'
                   'subdir\n'
                   'subdir/b\n'
                   , '--versioned')
