@@ -96,11 +96,9 @@ class KnitRevisionStore(RevisionStore):
         texts = []
         vf = self.get_revision_file(transaction)
         try:
-            for revision_id in revision_ids:
-                texts.append(vf.get_text(revision_id))
-        except (errors.RevisionNotPresent):
-            raise errors.NoSuchRevision(self, revision_id)
-        return texts
+            return vf.get_texts(revision_ids)
+        except (errors.RevisionNotPresent), e:
+            raise errors.NoSuchRevision(self, e.revision_id)
 
     def _get_revision_xml(self, revision_id, transaction):
         try:

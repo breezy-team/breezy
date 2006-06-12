@@ -252,6 +252,14 @@ class VersionedFile(object):
         return ''.join(self.get_lines(version_id))
     get_string = get_text
 
+    def get_texts(self, version_ids):
+        """Return the texts of listed versions as a list of strings.
+
+        Raises RevisionNotPresent if version is not present in
+        file history.
+        """
+        return [''.join(self.get_lines(v)) for v in version_ids]
+
     def get_lines(self, version_id):
         """Return version contents as a sequence of lines.
 

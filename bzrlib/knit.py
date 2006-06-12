@@ -724,6 +724,45 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.get_lines()."""
         return self._get_content(version_id).text()
 
+    def get_texts(self, version_ids):
+        """Return the texts of listed versions as a list of strings."""
+        texts = []
+        for version_id in version_ids:
+            if not self.has_version(version_id):
+                raise RevisionNotPresent(version_id, self.filename)
+
+            if self.basis_knit and version_id in self.basis_knit:
+                continue
+
+        for version_id in version_ids:
+            if self.basis_knit and version_id in self.basis_knit:
+                texts.append(''.join(self.basis_knit._get_content(version_id).text()))
+                continue
+
+            content = None
+            components = self._get_components(version_id)
+            for component_id, method, (data, digest) in components:
+                version_idx = self._index.lookup(component_id)
+                if method == 'fulltext':
+                    assert content is None
+                    content = self.factory.parse_fulltext(data, version_idx)
+                elif method == 'line-delta':
+                    delta = self.factory.parse_line_delta(data, version_idx)
+                    content._lines = self._apply_delta(content._lines, delta)
+
+            if 'no-eol' in self._index.get_options(version_id):
+                line = content._lines[-1][1].rstrip('\n')
+                content._lines[-1] = (content._lines[-1][0], line)
+
+            # digest here is the digest from the last applied component.
+            if sha_strings(content.text()) != digest:
+                import pdb;pdb.set_trace()
+                raise KnitCorrupt(self.filename, 'sha-1 does not match %s' % version_id)
+
+            texts.append(''.join(content.text()))
+        return texts
+            
+
     def iter_lines_added_or_present_in_versions(self, version_ids=None):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         if version_ids is None:
