@@ -157,12 +157,8 @@ def show_log(branch,
     """
     branch.lock_read()
     try:
-        branch.repository.lock_read()
-        try:
-            _show_log(branch, lf, specific_fileid, verbose, direction,
-                      start_revision, end_revision, search)
-        finally:
-            branch.repository.unlock()
+        _show_log(branch, lf, specific_fileid, verbose, direction,
+                  start_revision, end_revision, search)
     finally:
         branch.unlock()
     
