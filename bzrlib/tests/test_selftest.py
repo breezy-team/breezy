@@ -16,21 +16,24 @@
 """Tests for the test framework."""
 
 import os
+from StringIO import StringIO
 import sys
+import time
 import unittest
 import warnings
 
 import bzrlib
 from bzrlib.progress import _BaseProgressBar
 from bzrlib.tests import (
-                          _load_module_by_name,
                           ChrootedTestCase,
                           TestCase,
                           TestCaseInTempDir,
                           TestCaseWithTransport,
                           TestSkipped,
+                          TestSuite,
                           TextTestRunner,
                           )
+from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
 
 
@@ -392,11 +395,11 @@ class MockProgress(_BaseProgressBar):
         self.calls.append(('clear',))
 
 
-class TestResult(TestCase):
+class TestTestResult(TestCase):
 
     def test_progress_bar_style_quiet(self):
         # test using a progress bar.
-        dummy_test = TestResult('test_progress_bar_style_quiet')
+        dummy_test = TestTestResult('test_progress_bar_style_quiet')
         dummy_error = (Exception, None, [])
         mypb = MockProgress()
         mypb.update('Running tests', 0, 4)
@@ -439,6 +442,78 @@ class TestResult(TestCase):
         result.addSkipped(dummy_test, dummy_error)
         self.assertEqual(last_calls + [('update', 'SKIP         ', 4, None)], mypb.calls)
         last_calls = mypb.calls[:]
+
+    def test_elapsed_time_with_benchmarking(self):
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1,
+                                        )
+        result._recordTestStartTime()
+        time.sleep(0.003)
+        result.extractBenchmarkTime(self)
+        timed_string = result._testTimeString()
+        # without explicit benchmarking, we should get a simple time.
+        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
+        # if a benchmark time is given, we want a x of y style result.
+        self.time(time.sleep, 0.001)
+        result.extractBenchmarkTime(self)
+        timed_string = result._testTimeString()
+        self.assertContainsRe(timed_string, "^   [ 1-9][0-9]ms/   [ 1-9][0-9]ms$")
+        # extracting the time from a non-bzrlib testcase sets to None
+        result._recordTestStartTime()
+        result.extractBenchmarkTime(
+            unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
+        timed_string = result._testTimeString()
+        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
+        # cheat. Yes, wash thy mouth out with soap.
+        self._benchtime = None
+
+    def _time_hello_world_encoding(self):
+        """Profile two sleep calls
+        
+        This is used to exercise the test framework.
+        """
+        self.time(unicode, 'hello', errors='replace')
+        self.time(unicode, 'world', errors='replace')
+
+    def test_lsprofiling(self):
+        """Verbose test result prints lsprof statistics from test cases."""
+        try:
+            import bzrlib.lsprof
+        except ImportError:
+            raise TestSkipped("lsprof not installed.")
+        result_stream = StringIO()
+        result = bzrlib.tests._MyResult(
+            unittest._WritelnDecorator(result_stream),
+            descriptions=0,
+            verbosity=2,
+            )
+        # we want profile a call of some sort and check it is output by
+        # addSuccess. We dont care about addError or addFailure as they
+        # are not that interesting for performance tuning.
+        # make a new test instance that when run will generate a profile
+        example_test_case = TestTestResult("_time_hello_world_encoding")
+        example_test_case._gather_lsprof_in_benchmarks = True
+        # execute the test, which should succeed and record profiles
+        example_test_case.run(result)
+        # lsprofile_something()
+        # if this worked we want 
+        # LSProf output for <built in function unicode> (['hello'], {'errors': 'replace'})
+        #    CallCount    Recursive    Total(ms)   Inline(ms) module:lineno(function)
+        # (the lsprof header)
+        # ... an arbitrary number of lines
+        # and the function call which is time.sleep.
+        #           1        0            ???         ???       ???(sleep) 
+        # and then repeated but with 'world', rather than 'hello'.
+        # this should appear in the output stream of our test result.
+        self.assertContainsRe(result_stream.getvalue(), 
+            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)\n"
+            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
+            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?"
+            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n"
+            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
+            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?"
+            )
 
 
 class TestRunner(TestCase):
@@ -524,7 +599,45 @@ class TestTestCase(TestCase):
                                         verbosity=1)
         outer_test.run(result)
         self.assertEqual(original_trace, bzrlib.trace._trace_file)
+
+    def method_that_times_a_bit_twice(self):
+        # call self.time twice to ensure it aggregates
+        self.time(time.sleep, 0.007)
+        self.time(time.sleep, 0.007)
+
+    def test_time_creates_benchmark_in_result(self):
+        """Test that the TestCase.time() method accumulates a benchmark time."""
+        sample_test = TestTestCase("method_that_times_a_bit_twice")
+        output_stream = StringIO()
+        result = bzrlib.tests._MyResult(
+            unittest._WritelnDecorator(output_stream),
+            descriptions=0,
+            verbosity=2)
+        sample_test.run(result)
+        self.assertContainsRe(
+            output_stream.getvalue(),
+            "[1-9][0-9]ms/   [1-9][0-9]ms\n$")
         
+    def test__gather_lsprof_in_benchmarks(self):
+        """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
+        
+        Each self.time() call is individually and separately profiled.
+        """
+        try:
+            import bzrlib.lsprof
+        except ImportError:
+            raise TestSkipped("lsprof not installed.")
+        # overrides the class member with an instance member so no cleanup 
+        # needed.
+        self._gather_lsprof_in_benchmarks = True
+        self.time(time.sleep, 0.000)
+        self.time(time.sleep, 0.003)
+        self.assertEqual(2, len(self._benchcalls))
+        self.assertEqual((time.sleep, (0.000,), {}), self._benchcalls[0][0])
+        self.assertEqual((time.sleep, (0.003,), {}), self._benchcalls[1][0])
+        self.assertIsInstance(self._benchcalls[0][1], bzrlib.lsprof.Stats)
+        self.assertIsInstance(self._benchcalls[1][1], bzrlib.lsprof.Stats)
+
 
 class TestExtraAssertions(TestCase):
     """Tests for new test assertions in bzrlib test suite"""
@@ -551,3 +664,32 @@ class TestConvenienceMakers(TestCaseWithTransport):
                               bzrlib.bzrdir.BzrDirMetaFormat1)
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
                               bzrlib.bzrdir.BzrDirFormat6)
+
+
+class TestSelftest(TestCase):
+    """Tests of bzrlib.tests.selftest."""
+
+    def test_selftest_benchmark_parameter_invokes_test_suite__benchmark__(self):
+        factory_called = []
+        def factory():
+            factory_called.append(True)
+            return TestSuite()
+        out = StringIO()
+        err = StringIO()
+        self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
+            test_suite_factory=factory)
+        self.assertEqual([True], factory_called)
+
+    def test_run_bzr_subprocess(self):
+        """The run_bzr_helper_external comand behaves nicely."""
+        result = self.run_bzr_subprocess('--version')
+        result = self.run_bzr_subprocess('--version', retcode=None)
+        self.assertContainsRe(result[0], 'is free software')
+        self.assertRaises(AssertionError, self.run_bzr_subprocess, 
+                          '--versionn')
+        result = self.run_bzr_subprocess('--versionn', retcode=3)
+        result = self.run_bzr_subprocess('--versionn', retcode=None)
+        self.assertContainsRe(result[1], 'unknown command')
+        err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
+                                      retcode=3)[1]
+        self.assertContainsRe(err, 'No known merge type magic merge')

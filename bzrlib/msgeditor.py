@@ -17,12 +17,13 @@
 
 """Commit message editor support."""
 
-
+import codecs
 import errno
 import os
 from subprocess import call
 import sys
 
+import bzrlib
 import bzrlib.config as config
 from bzrlib.errors import BzrError
 
@@ -89,13 +90,15 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
     """
     import tempfile
 
+    msgfilename = None
     try:
         tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.', dir=u'.')
         msgfile = os.close(tmp_fileno)
         if infotext is not None and infotext != "":
             hasinfo = True
             msgfile = file(msgfilename, "w")
-            msgfile.write("\n%s\n\n%s" % (ignoreline, infotext))
+            msgfile.write("\n\n%s\n\n%s" % (ignoreline,
+                infotext.encode(bzrlib.user_encoding, 'replace')))
             msgfile.close()
         else:
             hasinfo = False
@@ -106,7 +109,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
         started = False
         msg = []
         lastline, nlines = 0, 0
-        for line in file(msgfilename, "r"):
+        for line in codecs.open(msgfilename, 'r', bzrlib.user_encoding):
             stripped_line = line.strip()
             # strip empty line before the log message starts
             if not started:
@@ -135,8 +138,11 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
             return "".join(msg)
     finally:
         # delete the msg file in any case
-        try: os.unlink(msgfilename)
-        except IOError: pass
+        if msgfilename is not None:
+            try:
+                os.unlink(msgfilename)
+            except IOError, e:
+                mutter("failed to unlink %s: %s; ignored", msgfilename, e)
 
 
 def make_commit_message_template(working_tree, specific_files):

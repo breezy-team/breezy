@@ -77,10 +77,20 @@ class TestOptions(TestCase):
             TestOptions.current_test = None
             TestCaseInTempDir.TEST_ROOT = old_root
 
+    def test_benchmark_runs_benchmark_tests(self):
+        """bzr selftest --benchmark should not run the default test suite."""
+        # We test this by passing a regression test name to --benchmark, which
+        # should result in 0 rests run.
+        out, err = self.run_bzr('selftest', '--benchmark', 'workingtree_implementations')
+        self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
+        self.assertEqual(
+            'running tests...\ntests passed\n',
+            err)
+        
 
 class TestRunBzr(ExternalBase):
 
-    def run_bzr_captured(self, argv, retcode=0, stdin=None):
+    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None):
         self.stdin = stdin
 
     def test_stdin(self):

@@ -47,9 +47,6 @@ from bzrlib.osutils import (isdir, quotefn,
                             safe_unicode,
                             rmtree,
                             )
-from bzrlib.textui import show_status
-from bzrlib.trace import mutter, note
-from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.repository import Repository
 from bzrlib.revision import (
                              is_ancestor,
@@ -58,10 +55,13 @@ from bzrlib.revision import (
                              )
 from bzrlib.store import copy_all
 from bzrlib.symbol_versioning import *
+from bzrlib.textui import show_status
+from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 from bzrlib.tree import EmptyTree, RevisionTree
 import bzrlib.ui
+import bzrlib.urlutils as urlutils
 import bzrlib.xml5
 
 
@@ -249,6 +249,26 @@ class Branch(object):
         branch.
         """
         return None
+    
+    def get_commit_builder(self, parents, config=None, timestamp=None, 
+                           timezone=None, committer=None, revprops=None, 
+                           revision_id=None):
+        """Obtain a CommitBuilder for this branch.
+        
+        :param parents: Revision ids of the parents of the new revision.
+        :param config: Optional configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.
+        """
+
+        if config is None:
+            config = bzrlib.config.BranchConfig(self)
+        
+        return self.repository.get_commit_builder(self, parents, config, 
+            timestamp, timezone, committer, revprops, revision_id)
 
     def get_master_branch(self):
         """Return the branch we are bound to.
@@ -536,6 +556,34 @@ class Branch(object):
         parent = self.get_parent()
         if parent:
             destination.set_parent(parent)
+
+    @needs_read_lock
+    def check(self):
+        """Check consistency of the branch.
+
+        In particular this checks that revisions given in the revision-history
+        do actually match up in the revision graph, and that they're all 
+        present in the repository.
+
+        :return: A BranchCheckResult.
+        """
+        mainline_parent_id = None
+        for revision_id in self.revision_history():
+            try:
+                revision = self.repository.get_revision(revision_id)
+            except errors.NoSuchRevision, e:
+                raise BzrCheckError("mainline revision {%s} not in repository"
+                        % revision_id)
+            # In general the first entry on the revision history has no parents.
+            # But it's not illegal for it to have parents listed; this can happen
+            # in imports from Arch when the parents weren't reachable.
+            if mainline_parent_id is not None:
+                if mainline_parent_id not in revision.parent_ids:
+                    raise BzrCheckError("previous revision {%s} not listed among "
+                                        "parents of {%s}"
+                                        % (mainline_parent_id, revision_id))
+            mainline_parent_id = revision_id
+        return BranchCheckResult(self)
 
 
 class BranchFormat(object):
@@ -1133,9 +1181,11 @@ class BzrBranch(Branch):
         """See Branch.get_parent."""
         import errno
         _locs = ['parent', 'pull', 'x-pull']
+        assert self.base[-1] == '/'
         for l in _locs:
             try:
-                return self.control_files.get_utf8(l).read().strip('\n')
+                return urlutils.join(self.base[:-1], 
+                            self.control_files.get(l).read().strip('\n'))
             except NoSuchFile:
                 pass
         return None
@@ -1162,7 +1212,16 @@ class BzrBranch(Branch):
         if url is None:
             self.control_files._transport.delete('parent')
         else:
-            self.control_files.put_utf8('parent', url + '\n')
+            if isinstance(url, unicode):
+                try: 
+                    url = url.encode('ascii')
+                except UnicodeEncodeError:
+                    raise bzrlib.errors.InvalidURL(url,
+                        "Urls must be 7-bit ascii, "
+                        "use bzrlib.urlutils.escape")
+                    
+            url = urlutils.relative_url(self.base, url)
+            self.control_files.put('parent', url + '\n')
 
     def tree_config(self):
         return TreeConfig(self)
@@ -1332,6 +1391,26 @@ class BranchTestProviderAdapter(object):
             new_test.id = make_new_test_id()
             result.addTest(new_test)
         return result
+
+
+class BranchCheckResult(object):
+    """Results of checking branch consistency.
+
+    :see: Branch.check
+    """
+
+    def __init__(self, branch):
+        self.branch = branch
+
+    def report_results(self, verbose):
+        """Report the check results via trace.note.
+        
+        :param verbose: Requests more detailed display of what was checked,
+            if any.
+        """
+        note('checked branch %s format %s',
+             self.branch.base,
+             self.branch._format)
 
 
 ######################################################################
