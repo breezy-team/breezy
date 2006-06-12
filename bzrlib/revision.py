@@ -101,6 +101,11 @@ class Revision(object):
         reversed_result.reverse()
         return reversed_result
 
+    def get_summary(self):
+        """Get the first line of the log message for this revision.
+        """
+        return self.message.split('\n', 1)[0]
+
 
 def is_ancestor(revision_id, candidate_id, branch):
     """Return true if candidate_id is an ancestor of revision_id.
@@ -401,8 +406,8 @@ class MultipleRevisionSources(object):
             source.unlock()
 
 
-@deprecated_method(zero_eight)
-def get_intervening_revisions(ancestor_id, rev_id, rev_source, 
+@deprecated_function(zero_eight)
+def get_intervening_revisions(ancestor_id, rev_id, rev_source,
                               revision_history=None):
     """Find the longest line of descent from maybe_ancestor to revision.
     Revision history is followed where possible.

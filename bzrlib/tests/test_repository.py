@@ -1,15 +1,15 @@
-# (C) 2006 Canonical Ltd
-
+# Copyright (C) 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -44,14 +44,13 @@ class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
         old_format = repository.RepositoryFormat.get_default_format()
-        # default is None - we cannot create a Repository independently yet
-        self.assertTrue(isinstance(old_format, repository.RepositoryFormat7))
+        self.assertTrue(isinstance(old_format, repository.RepositoryFormatKnit1))
         repository.RepositoryFormat.set_default_format(SampleRepositoryFormat())
         # creating a repository should now create an instrumented dir.
         try:
             # the default branch format is used by the meta dir format
             # which is not the default bzrdir format at this point
-            dir = bzrdir.BzrDirMetaFormat1().initialize('memory:/')
+            dir = bzrdir.BzrDirMetaFormat1().initialize('memory:///')
             result = dir.create_repository()
             self.assertEqual(result, 'A bzr repository dir')
         finally:
@@ -268,7 +267,7 @@ class TestFormatKnit1(TestCaseWithTransport):
 
     def assertHasKnit(self, t, knit_name):
         """Assert that knit_name exists on t."""
-        self.assertEqualDiff('# bzr knit index 7\n',
+        self.assertEqualDiff('# bzr knit index 8\n',
                              t.get(knit_name + '.kndx').read())
         # no default content
         self.assertTrue(t.has(knit_name + '.knit'))

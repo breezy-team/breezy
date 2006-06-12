@@ -22,11 +22,13 @@ Adapted from the one in paramiko's unit tests.
 import os
 from paramiko import ServerInterface, SFTPServerInterface, SFTPServer, SFTPAttributes, \
     SFTPHandle, SFTP_OK, AUTH_SUCCESSFUL, OPEN_SUCCEEDED
+
 from bzrlib.osutils import pathjoin
 from bzrlib.trace import mutter
 
 
 class StubServer (ServerInterface):
+
     def __init__(self, test_case):
         ServerInterface.__init__(self)
         self._test_case = test_case
@@ -59,6 +61,7 @@ class StubSFTPHandle (SFTPHandle):
 
 
 class StubSFTPServer (SFTPServerInterface):
+
     def __init__(self, server, root, home=None):
         SFTPServerInterface.__init__(self, server)
         self.root = root
@@ -90,6 +93,9 @@ class StubSFTPServer (SFTPServerInterface):
         path = self._realpath(path)
         try:
             out = [ ]
+            # TODO: win32 incorrectly lists paths with non-ascii if path is not
+            # unicode. However on Linux the server should only deal with
+            # bytestreams and posix.listdir does the right thing 
             flist = os.listdir(path)
             for fname in flist:
                 attr = SFTPAttributes.from_stat(os.stat(pathjoin(path, fname)))
@@ -124,6 +130,7 @@ class StubSFTPServer (SFTPServerInterface):
                 fd = os.open(path, flags)
         except OSError, e:
             return SFTPServer.convert_errno(e.errno)
+
         if (flags & os.O_CREAT) and (attr is not None):
             attr._flags &= ~attr.FLAG_PERMISSIONS
             SFTPServer.set_file_attr(path, attr)

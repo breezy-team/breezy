@@ -19,7 +19,7 @@
 
 import os
 
-
+import bzrlib
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import (BzrDir,
                            BzrDirFormat,
@@ -55,6 +55,11 @@ class BoundSFTPBranch(TestCaseWithSFTPServer):
         self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
 
         return b_base, wt_child
+
+    def tearDown(self):
+        self.sftp_base = None
+        bzrlib.transport.sftp.clear_connection_cache()
+        super(BoundSFTPBranch, self).tearDown()
 
     def test_simple_binding(self):
         self.build_tree(['base/', 'base/a', 'base/b', 'child/'])

@@ -28,7 +28,7 @@ from bzrlib.errors import (FileExists,
                            NotBranchError,
                            )
 import bzrlib.repository as repository
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport import get_transport
@@ -39,11 +39,11 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
     def setUp(self):
         super(TestCaseWithInterRepository, self).setUp()
 
-    def make_branch(self, relpath):
-        repo = self.make_repository(relpath)
+    def make_branch(self, relpath, format=None):
+        repo = self.make_repository(relpath, format=format)
         return repo.bzrdir.create_branch()
 
-    def make_bzrdir(self, relpath, bzrdir_format=None):
+    def make_bzrdir(self, relpath, format=None):
         try:
             url = self.get_url(relpath)
             segments = url.split('/')
@@ -54,14 +54,14 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
                     t.mkdir(segments[-1])
                 except FileExists:
                     pass
-            if bzrdir_format is None:
-                bzrdir_format = self.repository_format._matchingbzrdir
-            return bzrdir_format.initialize(url)
+            if format is None:
+                format = self.repository_format._matchingbzrdir
+            return format.initialize(url)
         except UninitializableFormat:
-            raise TestSkipped("Format %s is not initializable.")
+            raise TestSkipped("Format %s is not initializable." % format)
 
-    def make_repository(self, relpath):
-        made_control = self.make_bzrdir(relpath)
+    def make_repository(self, relpath, format=None):
+        made_control = self.make_bzrdir(relpath, format=format)
         return self.repository_format.initialize(made_control)
 
     def make_to_repository(self, relpath):
@@ -118,6 +118,34 @@ class TestInterRepository(TestCaseWithInterRepository):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
         repo_a.fetch(repo_b)
+
+    def test_fetch_missing_text_other_location_fails(self):
+        source_tree = self.make_branch_and_tree('source')
+        source = source_tree.branch.repository
+        target = self.make_to_repository('target')
+    
+        # start by adding a file so the data for hte file exists.
+        self.build_tree(['source/id'])
+        source_tree.add(['id'], ['id'])
+        source_tree.commit('a', rev_id='a')
+        # now we manually insert a revision with an inventory referencing
+        # 'id' at revision 'b', but we do not insert revision b.
+        # this should ensure that the new versions of files are being checked
+        # for during pull operations
+        inv = source.get_inventory('a')
+        inv['id'].revision = 'b'
+        inv.revision_id = 'b'
+        sha1 = source.add_inventory('b', inv, ['a'])
+        rev = Revision(timestamp=0,
+                       timezone=None,
+                       committer="Foo Bar <foo@example.com>",
+                       message="Message",
+                       inventory_sha1=sha1,
+                       revision_id='b')
+        rev.parent_ids = ['a']
+        source.add_revision('b', rev)
+        self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
+        self.assertFalse(target.has_revision('b'))
 
 
 class TestCaseWithComplexRepository(TestCaseWithInterRepository):

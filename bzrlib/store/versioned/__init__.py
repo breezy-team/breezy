@@ -118,18 +118,26 @@ class VersionedFileStore(TransportStore):
             self._transport.mkdir(os.path.dirname(fn), mode=self._dir_mode)
             return self._transport.put(fn, f, mode=self._file_mode)
 
-    def get_weave(self, file_id, transaction):
+    def get_weave(self, file_id, transaction, _filename=None):
+        """Return the VersionedFile for file_id.
+
+        :param _filename: filename that would be returned from self.filename for
+        file_id. This is used to reduce duplicate filename calculations when
+        using 'get_weave_or_empty'. FOR INTERNAL USE ONLY.
+        """
         weave = transaction.map.find_weave(file_id)
         if weave is not None:
             #mutter("cache hit in %s for %s", self, file_id)
             return weave
+        if _filename is None:
+            _filename = self.filename(file_id)
         if transaction.writeable():
-            w = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode,
+            w = self._versionedfile_class(_filename, self._transport, self._file_mode,
                                           **self._versionedfile_kwargs)
             transaction.map.add_weave(file_id, w)
             transaction.register_dirty(w)
         else:
-            w = self._versionedfile_class(self.filename(file_id),
+            w = self._versionedfile_class(_filename,
                                           self._transport,
                                           self._file_mode,
                                           create=False,
@@ -148,37 +156,51 @@ class VersionedFileStore(TransportStore):
         w = self.get_weave(file_id, transaction)
         return w.get_lines(rev_id)
     
-    def _new_weave(self, file_id, transaction):
-        """Make a new weave for file_id and return it."""
-        weave = self._make_new_versionedfile(file_id, transaction)
-        transaction.map.add_weave(file_id, weave)
-        # has to be dirty - its able to mutate on its own.
-        transaction.register_dirty(weave)
-        return weave
-
-    def _make_new_versionedfile(self, file_id, transaction):
-        if self.has_id(file_id):
+    def _make_new_versionedfile(self, file_id, transaction,
+        known_missing=False, _filename=None):
+        """Make a new versioned file.
+        
+        :param _filename: filename that would be returned from self.filename for
+        file_id. This is used to reduce duplicate filename calculations when
+        using 'get_weave_or_empty'. FOR INTERNAL USE ONLY.
+        """
+        if not known_missing and self.has_id(file_id):
             self.delete(file_id, transaction)
+        if _filename is None:
+            _filename = self.filename(file_id)
         try:
-            weave = self._versionedfile_class(self.filename(file_id), self._transport, self._file_mode, create=True,
+            # we try without making the directory first because thats optimising
+            # for the common case.
+            weave = self._versionedfile_class(_filename, self._transport, self._file_mode, create=True,
                                               **self._versionedfile_kwargs)
         except NoSuchFile:
             if not self._prefixed:
-                # unexpected error - NoSuchFile is raised on a missing dir only and that
-                # only occurs when we are prefixed.
+                # unexpected error - NoSuchFile is expected to be raised on a
+                # missing dir only and that only occurs when we are prefixed.
                 raise
             self._transport.mkdir(self.hash_prefix(file_id), mode=self._dir_mode)
-            weave = self._versionedfile_class(self.filename(file_id), self._transport, 
+            weave = self._versionedfile_class(_filename, self._transport, 
                                               self._file_mode, create=True,
                                               **self._versionedfile_kwargs)
         return weave
 
     def get_weave_or_empty(self, file_id, transaction):
-        """Return a weave, or an empty one if it doesn't exist.""" 
+        """Return a weave, or an empty one if it doesn't exist."""
+        # This is typically used from 'commit' and 'fetch/push/pull' where 
+        # we scan across many versioned files once. As such the small overhead
+        # of calculating the filename before doing a cache lookup is more than
+        # compensated for by not calculating the filename when making new
+        # versioned files.
+        _filename = self.filename(file_id)
         try:
-            return self.get_weave(file_id, transaction)
+            return self.get_weave(file_id, transaction, _filename=_filename)
         except NoSuchFile:
-            return self._new_weave(file_id, transaction)
+            weave = self._make_new_versionedfile(file_id, transaction,
+                known_missing=True, _filename=_filename)
+            transaction.map.add_weave(file_id, weave)
+            # has to be dirty - its able to mutate on its own.
+            transaction.register_dirty(weave)
+            return weave
 
     @deprecated_method(zero_eight)
     def put_weave(self, file_id, weave, transaction):
@@ -190,7 +212,7 @@ class VersionedFileStore(TransportStore):
         Its maintained for backwards compatability but will only work on
         weave stores - pre 0.8 repositories.
         """
-        self._put_weave(self, file_id, weave, transaction)
+        self._put_weave(file_id, weave, transaction)
 
     def _put_weave(self, file_id, weave, transaction):
         """Preserved here for upgrades-to-weaves to use."""

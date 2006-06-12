@@ -157,32 +157,28 @@ class RepoFetcher(object):
     def _fetch_weave_texts(self, revs):
         texts_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            file_ids = self.from_repository.fileid_involved_by_set(revs)
+            file_ids = self.from_repository.fileids_altered_by_revision_ids(revs)
             count = 0
             num_file_ids = len(file_ids)
-            for file_id in file_ids:
+            for file_id, required_versions in file_ids.items():
                 texts_pb.update("fetch texts", count, num_file_ids)
                 count +=1
-                try:
-                    to_weave = self.to_weaves.get_weave(file_id,
-                        self.to_repository.get_transaction())
-                except errors.NoSuchFile:
-                    # destination is empty, just copy it.
-                    # this copies all the texts, which is useful and 
-                    # on per-file basis quite cheap.
-                    self.to_weaves.copy_multi(
-                        self.from_weaves,
-                        [file_id],
-                        None,
-                        self.from_repository.get_transaction(),
-                        self.to_repository.get_transaction())
-                else:
-                    # destination has contents, must merge
-                    from_weave = self.from_weaves.get_weave(file_id,
-                        self.from_repository.get_transaction())
-                    # we fetch all the texts, because texts do
-                    # not reference anything, and its cheap enough
-                    to_weave.join(from_weave)
+                to_weave = self.to_weaves.get_weave_or_empty(file_id,
+                    self.to_repository.get_transaction())
+                from_weave = self.from_weaves.get_weave(file_id,
+                    self.from_repository.get_transaction())
+                # we fetch all the texts, because texts do
+                # not reference anything, and its cheap enough
+                to_weave.join(from_weave, version_ids=required_versions) 
+                # we dont need *all* of this data anymore, but we dont know
+                # what we do. This cache clearing will result in a new read 
+                # of the knit data when we do the checkout, but probably we
+                # want to emit the needed data on the fly rather than at the
+                # end anyhow.
+                # the from weave should know not to cache data being joined,
+                # but its ok to ask it to clear.
+                from_weave.clear_cache()
+                to_weave.clear_cache()
         finally:
             texts_pb.finished()
 

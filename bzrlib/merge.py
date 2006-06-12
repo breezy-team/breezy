@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,12 +17,11 @@
 
 import os
 import errno
-from shutil import rmtree
 from tempfile import mkdtemp
 
 import bzrlib
 from bzrlib.branch import Branch
-from bzrlib.conflicts import ConflictList
+from bzrlib.conflicts import ConflictList, Conflict
 from bzrlib.delta import compare_trees
 from bzrlib.errors import (BzrCommandError,
                            BzrError,
@@ -35,16 +34,19 @@ from bzrlib.errors import (BzrCommandError,
                            UnrelatedBranches,
                            UnsupportedOperation,
                            WorkingTreeNotRevision,
+                           BinaryFile,
                            )
 from bzrlib.merge3 import Merge3
 import bzrlib.osutils
-from bzrlib.osutils import rename, pathjoin
+from bzrlib.osutils import rename, pathjoin, rmtree
 from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
 from bzrlib.symbol_versioning import *
+from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               FinalPaths, create_by_entry, unique_add)
+from bzrlib.versionedfile import WeaveMerge
 import bzrlib.ui
 
 # TODO: Report back as changes are merged in
@@ -135,8 +137,8 @@ class Merger(object):
         trees = (self.this_basis_tree, self.other_tree)
         return [get_id(tree, file_id) for tree in trees]
 
-    def check_basis(self, check_clean):
-        if self.this_basis is None:
+    def check_basis(self, check_clean, require_commits=True):
+        if self.this_basis is None and require_commits is True:
             raise BzrCommandError("This branch has no commits")
         if check_clean:
             self.compare_basis()
@@ -203,6 +205,9 @@ class Merger(object):
         if other_branch.base != self.this_branch.base:
             self.this_branch.fetch(other_branch, last_revision=self.other_basis)
 
+    def find_base(self):
+        self.set_base([None, None])
+
     def set_base(self, base_revision):
         mutter("doing merge() with no base_revision specified")
         if base_revision == [None, None]:
@@ -244,8 +249,8 @@ class Merger(object):
         if self.merge_type.supports_reprocess:
             kwargs['reprocess'] = self.reprocess
         elif self.reprocess:
-            raise BzrError("Reprocess is not supported for this merge"
-                                  " type. %s" % merge_type)
+            raise BzrError("Conflict reduction is not supported for merge"
+                                  " type %s." % self.merge_type)
         if self.merge_type.supports_show_base:
             kwargs['show_base'] = self.show_base
         elif self.show_base:
@@ -526,6 +531,18 @@ class Merge3Merger(object):
             else:
                 contents = None
             return kind, contents
+
+        def contents_conflict():
+            trans_id = self.tt.trans_id_file_id(file_id)
+            name = self.tt.final_name(trans_id)
+            parent_id = self.tt.final_parent(trans_id)
+            if file_id in self.this_tree.inventory:
+                self.tt.unversion_file(trans_id)
+                self.tt.delete_contents(trans_id)
+            file_group = self._dump_conflicts(name, parent_id, file_id, 
+                                              set_version=True)
+            self._raw_conflicts.append(('contents conflict', file_group))
+
         # See SPOT run.  run, SPOT, run.
         # So we're not QUITE repeating ourselves; we do tricky things with
         # file kind...
@@ -562,9 +579,12 @@ class Merge3Merger(object):
                 # THIS and OTHER are both files, so text merge.  Either
                 # BASE is a file, or both converted to files, so at least we
                 # have agreement that output should be a file.
+                try:
+                    self.text_merge(file_id, trans_id)
+                except BinaryFile:
+                    return contents_conflict()
                 if file_id not in self.this_tree.inventory:
                     self.tt.version_file(file_id, trans_id)
-                self.text_merge(file_id, trans_id)
                 try:
                     self.tt.tree_kind(trans_id)
                     self.tt.delete_contents(trans_id)
@@ -573,15 +593,7 @@ class Merge3Merger(object):
                 return "modified"
             else:
                 # Scalar conflict, can't text merge.  Dump conflicts
-                trans_id = self.tt.trans_id_file_id(file_id)
-                name = self.tt.final_name(trans_id)
-                parent_id = self.tt.final_parent(trans_id)
-                if file_id in self.this_tree.inventory:
-                    self.tt.unversion_file(trans_id)
-                    self.tt.delete_contents(trans_id)
-                file_group = self._dump_conflicts(name, parent_id, file_id, 
-                                                  set_version=True)
-                self._raw_conflicts.append(('contents conflict', file_group))
+                return contents_conflict()
 
     def get_lines(self, tree, file_id):
         """Return the lines in a file, or an empty list."""
@@ -761,21 +773,23 @@ class Merge3Merger(object):
             c = Conflict.factory('path conflict', path=this_path,
                                  conflict_path=other_path, file_id=file_id)
             self.cooked_conflicts.append(c)
+        self.cooked_conflicts.sort(key=Conflict.sort_key)
 
 
 class WeaveMerger(Merge3Merger):
     """Three-way tree merger, text weave merger."""
-    supports_reprocess = False
+    supports_reprocess = True
     supports_show_base = False
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree, 
-                 interesting_ids=None, pb=DummyProgress(), pp=None):
+                 interesting_ids=None, pb=DummyProgress(), pp=None,
+                 reprocess=False):
         self.this_revision_tree = self._get_revision_tree(this_tree)
         self.other_revision_tree = self._get_revision_tree(other_tree)
         super(WeaveMerger, self).__init__(working_tree, this_tree, 
                                           base_tree, other_tree, 
                                           interesting_ids=interesting_ids, 
-                                          pb=pb, pp=pp)
+                                          pb=pb, pp=pp, reprocess=reprocess)
 
     def _get_revision_tree(self, tree):
         """Return a revision tree releated to this tree.
@@ -805,9 +819,9 @@ class WeaveMerger(Merge3Merger):
         this_revision_id = self.this_revision_tree.inventory[file_id].revision
         other_revision_id = \
             self.other_revision_tree.inventory[file_id].revision
-        plan =  weave.plan_merge(this_revision_id, other_revision_id)
-        return weave.weave_merge(plan, '<<<<<<< TREE\n', 
-                                       '>>>>>>> MERGE-SOURCE\n')
+        wm = WeaveMerge(weave, this_revision_id, other_revision_id, 
+                        '<<<<<<< TREE\n', '>>>>>>> MERGE-SOURCE\n')
+        return wm.merge_lines(self.reprocess)
 
     def text_merge(self, file_id, trans_id):
         """Perform a (weave) text merge for a given file and file-id.
@@ -815,8 +829,11 @@ class WeaveMerger(Merge3Merger):
         and a conflict will be noted.
         """
         self._check_file(file_id)
-        lines = list(self._merged_lines(file_id))
-        conflicts = '<<<<<<< TREE\n' in lines
+        lines, conflicts = self._merged_lines(file_id)
+        lines = list(lines)
+        # Note we're checking whether the OUTPUT is binary in this case, 
+        # because we don't want to get into weave merge guts.
+        check_text_lines(lines)
         self.tt.create_file(lines, trans_id)
         if conflicts:
             self._raw_conflicts.append(('text conflict', trans_id))
@@ -905,3 +922,9 @@ merge_types = {     "merge3": (Merge3Merger, "Native diff3-style merge"),
                      "diff3": (Diff3Merger,  "Merge using external diff3"),
                      'weave': (WeaveMerger, "Weave-based merge")
               }
+
+
+def merge_type_help():
+    templ = '%s%%7s: %%s' % (' '*12)
+    lines = [templ % (f[0], f[1][1]) for f in merge_types.iteritems()]
+    return '\n'.join(lines)

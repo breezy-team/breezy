@@ -1,20 +1,20 @@
-# Copyright (C) 2005 by Canonical Ltd
-# -*- coding: utf-8 -*-
-
+# Copyright (C) 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
+#
+# Author: Aaron Bentley <aaron.bentley@utoronto.ca>
 
 """Black-box tests for bzr merge.
 """
@@ -22,11 +22,102 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.bzrdir import BzrDir
+from bzrlib.conflicts import ConflictList
+from bzrlib.delta import compare_trees
 from bzrlib.osutils import abspath
+from bzrlib.tests.blackbox import ExternalBase
+import bzrlib.urlutils as urlutils
+from bzrlib.workingtree import WorkingTree
 
 
 class TestMerge(ExternalBase):
+
+    def example_branch(test):
+        test.runbzr('init')
+        file('hello', 'wt').write('foo')
+        test.runbzr('add hello')
+        test.runbzr('commit -m setup hello')
+        file('goodbye', 'wt').write('baz')
+        test.runbzr('add goodbye')
+        test.runbzr('commit -m setup goodbye')
+
+    def test_merge_reprocess(self):
+        d = BzrDir.create_standalone_workingtree('.')
+        d.commit('h')
+        self.run_bzr('merge', '.', '--reprocess', '--merge-type', 'weave')
+
+    def test_merge(self):
+        from bzrlib.branch import Branch
+        
+        os.mkdir('a')
+        os.chdir('a')
+        self.example_branch()
+        os.chdir('..')
+        self.runbzr('branch a b')
+        os.chdir('b')
+        file('goodbye', 'wt').write('quux')
+        self.runbzr(['commit',  '-m',  "more u's are always good"])
+
+        os.chdir('../a')
+        file('hello', 'wt').write('quuux')
+        # We can't merge when there are in-tree changes
+        self.runbzr('merge ../b', retcode=3)
+        self.runbzr(['commit', '-m', "Like an epidemic of u's"])
+        self.runbzr('merge ../b -r last:1..last:1 --merge-type blooof',
+                    retcode=3)
+        self.runbzr('merge ../b -r last:1..last:1 --merge-type merge3')
+        self.runbzr('revert --no-backup')
+        self.runbzr('merge ../b -r last:1..last:1 --merge-type weave')
+        self.runbzr('revert --no-backup')
+        self.runbzr('merge ../b -r last:1..last:1 --reprocess')
+        self.runbzr('revert --no-backup')
+        self.runbzr('merge ../b -r last:1')
+        self.check_file_contents('goodbye', 'quux')
+        # Merging a branch pulls its revision into the tree
+        a = WorkingTree.open('.')
+        b = Branch.open('../b')
+        a.branch.repository.get_revision_xml(b.last_revision())
+        self.log('pending merges: %s', a.pending_merges())
+        self.assertEquals(a.pending_merges(),
+                          [b.last_revision()])
+        self.runbzr('commit -m merged')
+        self.runbzr('merge ../b -r last:1')
+        self.assertEqual(a.pending_merges(), [])
+
+    def test_merge_with_missing_file(self):
+        """Merge handles missing file conflicts"""
+        os.mkdir('a')
+        os.chdir('a')
+        os.mkdir('sub')
+        print >> file('sub/a.txt', 'wb'), "hello"
+        print >> file('b.txt', 'wb'), "hello"
+        print >> file('sub/c.txt', 'wb'), "hello"
+        self.runbzr('init')
+        self.runbzr('add')
+        self.runbzr(('commit', '-m', 'added a'))
+        self.runbzr('branch . ../b')
+        print >> file('sub/a.txt', 'ab'), "there"
+        print >> file('b.txt', 'ab'), "there"
+        print >> file('sub/c.txt', 'ab'), "there"
+        self.runbzr(('commit', '-m', 'Added there'))
+        os.unlink('sub/a.txt')
+        os.unlink('sub/c.txt')
+        os.rmdir('sub')
+        os.unlink('b.txt')
+        self.runbzr(('commit', '-m', 'Removed a.txt'))
+        os.chdir('../b')
+        print >> file('sub/a.txt', 'ab'), "something"
+        print >> file('b.txt', 'ab'), "something"
+        print >> file('sub/c.txt', 'ab'), "something"
+        self.runbzr(('commit', '-m', 'Modified a.txt'))
+        self.runbzr('merge ../a/', retcode=1)
+        self.assert_(os.path.exists('sub/a.txt.THIS'))
+        self.assert_(os.path.exists('sub/a.txt.BASE'))
+        os.chdir('../a')
+        self.runbzr('merge ../b/', retcode=1)
+        self.assert_(os.path.exists('sub/a.txt.OTHER'))
+        self.assert_(os.path.exists('sub/a.txt.BASE'))
 
     def test_merge_remember(self):
         """Merge changes from one branch to another and test parent location."""
@@ -53,7 +144,7 @@ class TestMerge(ExternalBase):
         os.chdir('branch_b')
         out = self.runbzr('merge', retcode=3)
         self.assertEquals(out,
-                ('','bzr: ERROR: No merge branch known or specified.\n'))
+                ('','bzr: ERROR: No location specified or remembered\n'))
         # test implicit --remember when no parent set, this merge conflicts
         self.build_tree(['d'])
         tree_b.add('d')
@@ -64,7 +155,9 @@ class TestMerge(ExternalBase):
         # test implicit --remember after resolving conflict
         tree_b.commit('commit d')
         out, err = self.runbzr('merge')
-        self.assertEquals(out, 'Using saved branch: ../branch_a\n')
+        
+        base = urlutils.local_path_from_url(branch_a.base)
+        self.assertEquals(out, 'Merging from remembered location %s\n' % (base,))
         self.assertEquals(err, 'All changes applied successfully.\n')
         self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
         # re-open tree as external runbzr modified it
@@ -79,3 +172,41 @@ class TestMerge(ExternalBase):
         # re-open tree as external runbzr modified it
         tree_b = branch_b.bzrdir.open_workingtree()
         tree_b.commit('merge branch_c')
+
+    def test_merge_bundle(self):
+        from bzrlib.testament import Testament
+        tree_a = self.make_branch_and_tree('branch_a')
+        f = file('branch_a/a', 'wb')
+        f.write('hello')
+        f.close()
+        tree_a.add('a')
+        tree_a.commit('message')
+
+        tree_b = tree_a.bzrdir.sprout('branch_b').open_workingtree()
+        f = file('branch_a/a', 'wb')
+        f.write('hey there')
+        f.close()
+        tree_a.commit('message')
+
+        f = file('branch_b/a', 'wb')
+        f.write('goodbye')
+        f.close()
+        tree_b.commit('message')
+        os.chdir('branch_b')
+        file('../bundle', 'wb').write(self.runbzr('bundle ../branch_a')[0])
+        os.chdir('../branch_a')
+        self.runbzr('merge ../bundle', retcode=1)
+        testament_a = Testament.from_revision(tree_a.branch.repository, 
+                                              tree_b.last_revision())
+        testament_b = Testament.from_revision(tree_b.branch.repository,
+                                              tree_b.last_revision())
+        self.assertEqualDiff(testament_a.as_text(),
+                         testament_b.as_text())
+        tree_a.set_conflicts(ConflictList())
+        tree_a.commit('message')
+        # it is legal to attempt to merge an already-merged bundle
+        output = self.runbzr('merge ../bundle')[1]
+        # but it does nothing
+        self.assertFalse(compare_trees(tree_a.basis_tree(), 
+                                       tree_a).has_changed())
+        self.assertEqual('Nothing to do.\n', output)

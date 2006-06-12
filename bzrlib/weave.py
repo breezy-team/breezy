@@ -70,7 +70,6 @@
 
 from copy import copy
 from cStringIO import StringIO
-from difflib import SequenceMatcher
 import os
 import sha
 import time
@@ -84,6 +83,7 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
         )
 import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings
+import bzrlib.patiencediff
 from bzrlib.symbol_versioning import *
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
@@ -180,9 +180,9 @@ class Weave(VersionedFile):
     """
 
     __slots__ = ['_weave', '_parents', '_sha1s', '_names', '_name_map',
-                 '_weave_name']
+                 '_weave_name', '_matcher']
     
-    def __init__(self, weave_name=None, access_mode='w'):
+    def __init__(self, weave_name=None, access_mode='w', matcher=None):
         super(Weave, self).__init__(access_mode)
         self._weave = []
         self._parents = []
@@ -190,6 +190,10 @@ class Weave(VersionedFile):
         self._names = []
         self._name_map = {}
         self._weave_name = weave_name
+        if matcher is None:
+            self._matcher = bzrlib.patiencediff.PatienceSequenceMatcher
+        else:
+            self._matcher = matcher
 
     def __repr__(self):
         return "Weave(%r)" % self._weave_name
@@ -463,6 +467,8 @@ class Weave(VersionedFile):
         """
 
         assert isinstance(version_id, basestring)
+        self._check_lines_not_unicode(lines)
+        self._check_lines_are_lines(lines)
         if not sha1:
             sha1 = sha_strings(lines)
         if version_id in self._name_map:
@@ -526,7 +532,7 @@ class Weave(VersionedFile):
         #print 'basis_lines:', basis_lines
         #print 'new_lines:  ', lines
 
-        s = SequenceMatcher(None, basis_lines, lines)
+        s = self._matcher(None, basis_lines, lines)
 
         # offset gives the number of lines that have been inserted
         # into the weave up to the current point; if the original edit instruction
@@ -710,6 +716,53 @@ class Weave(VersionedFile):
             raise WeaveFormatError("unclosed deletion blocks at end of weave: %s"
                                    % dset)
 
+    def plan_merge(self, ver_a, ver_b):
+        """Return pseudo-annotation indicating how the two versions merge.
+
+        This is computed between versions a and b and their common
+        base.
+
+        Weave lines present in none of them are skipped entirely.
+        """
+        inc_a = set(self.get_ancestry([ver_a]))
+        inc_b = set(self.get_ancestry([ver_b]))
+        inc_c = inc_a & inc_b
+
+        for lineno, insert, deleteset, line in\
+            self.walk([ver_a, ver_b]):
+            if deleteset & inc_c:
+                # killed in parent; can't be in either a or b
+                # not relevant to our work
+                yield 'killed-base', line
+            elif insert in inc_c:
+                # was inserted in base
+                killed_a = bool(deleteset & inc_a)
+                killed_b = bool(deleteset & inc_b)
+                if killed_a and killed_b:
+                    yield 'killed-both', line
+                elif killed_a:
+                    yield 'killed-a', line
+                elif killed_b:
+                    yield 'killed-b', line
+                else:
+                    yield 'unchanged', line
+            elif insert in inc_a:
+                if deleteset & inc_a:
+                    yield 'ghost-a', line
+                else:
+                    # new in A; not in B
+                    yield 'new-a', line
+            elif insert in inc_b:
+                if deleteset & inc_b:
+                    yield 'ghost-b', line
+                else:
+                    yield 'new-b', line
+            else:
+                # not in either revision
+                yield 'irrelevant', line
+
+        yield 'unchanged', ''           # terminator
+
     def _extract(self, versions):
         """Yield annotation of lines in included set.
 
@@ -839,12 +892,9 @@ class Weave(VersionedFile):
                        expected_sha1, measured_sha1))
         return result
 
-    def get_sha1(self, name):
-        """Get the stored sha1 sum for the given revision.
-        
-        :param name: The name of the version to lookup
-        """
-        return self._sha1s[self._lookup(name)]
+    def get_sha1(self, version_id):
+        """See VersionedFile.get_sha1()."""
+        return self._sha1s[self._lookup(version_id)]
 
     @deprecated_method(zero_eight)
     def numversions(self):
@@ -931,12 +981,9 @@ class Weave(VersionedFile):
         if not other.versions():
             return          # nothing to update, easy
 
-        if version_ids:
-            for version_id in version_ids:
-                if not other.has_version(version_id) and not ignore_missing:
-                    raise RevisionNotPresent(version_id, self._weave_name)
-        else:
-            version_ids = other.versions()
+        if not version_ids:
+            # versions is never none, InterWeave checks this.
+            return 0
 
         # two loops so that we do not change ourselves before verifying it
         # will be ok
@@ -1313,13 +1360,12 @@ def main(argv):
         sys.stdout.writelines(w.get_iter(int(argv[3])))
         
     elif cmd == 'diff':
-        from difflib import unified_diff
         w = readit()
         fn = argv[2]
         v1, v2 = map(int, argv[3:5])
         lines1 = w.get(v1)
         lines2 = w.get(v2)
-        diff_gen = unified_diff(lines1, lines2,
+        diff_gen = bzrlib.patiencediff.unified_diff(lines1, lines2,
                                 '%s version %d' % (fn, v1),
                                 '%s version %d' % (fn, v2))
         sys.stdout.writelines(diff_gen)
@@ -1419,7 +1465,8 @@ if __name__ == '__main__':
 class InterWeave(InterVersionedFile):
     """Optimised code paths for weave to weave operations."""
     
-    _matching_file_factory = staticmethod(WeaveFile)
+    _matching_file_from_factory = staticmethod(WeaveFile)
+    _matching_file_to_factory = staticmethod(WeaveFile)
     
     @staticmethod
     def is_compatible(source, target):
@@ -1432,8 +1479,8 @@ class InterWeave(InterVersionedFile):
 
     def join(self, pb=None, msg=None, version_ids=None, ignore_missing=False):
         """See InterVersionedFile.join."""
-        if self.target.versions() == []:
-            # optimised copy
+        version_ids = self._get_source_version_ids(version_ids, ignore_missing)
+        if self.target.versions() == [] and version_ids is None:
             self.target._copy_weave_content(self.source)
             return
         try:

@@ -45,23 +45,23 @@ from bzrlib.osutils import (isdir, quotefn,
                             rename, splitpath, sha_file,
                             file_kind, abspath, normpath, pathjoin,
                             safe_unicode,
+                            rmtree,
                             )
-from bzrlib.textui import show_status
-from bzrlib.trace import mutter, note
-from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.repository import Repository
 from bzrlib.revision import (
-                             get_intervening_revisions,
                              is_ancestor,
                              NULL_REVISION,
                              Revision,
                              )
 from bzrlib.store import copy_all
 from bzrlib.symbol_versioning import *
+from bzrlib.textui import show_status
+from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
 from bzrlib.tree import EmptyTree, RevisionTree
 import bzrlib.ui
+import bzrlib.urlutils as urlutils
 import bzrlib.xml5
 
 
@@ -94,6 +94,20 @@ class Branch(object):
 
     def __init__(self, *ignored, **ignored_too):
         raise NotImplementedError('The Branch class is abstract')
+
+    def break_lock(self):
+        """Break a lock if one is present from another instance.
+
+        Uses the ui factory to ask for confirmation if the lock may be from
+        an active process.
+
+        This will probe the repository for its lock as well.
+        """
+        self.control_files.break_lock()
+        self.repository.break_lock()
+        master = self.get_master_branch()
+        if master is not None:
+            master.break_lock()
 
     @staticmethod
     @deprecated_method(zero_eight)
@@ -154,10 +168,13 @@ class Branch(object):
         assert cfg.get_option("nickname") == nick
 
     nick = property(_get_nick, _set_nick)
-        
+
+    def is_locked(self):
+        raise NotImplementedError('is_locked is abstract')
+
     def lock_write(self):
         raise NotImplementedError('lock_write is abstract')
-        
+
     def lock_read(self):
         raise NotImplementedError('lock_read is abstract')
 
@@ -167,6 +184,9 @@ class Branch(object):
     def peek_lock_mode(self):
         """Return lock mode for the Branch: 'r', 'w' or None"""
         raise NotImplementedError(self.peek_lock_mode)
+
+    def get_physical_lock_status(self):
+        raise NotImplementedError('get_physical_lock_status is abstract')
 
     def abspath(self, name):
         """Return absolute filename for something in the branch
@@ -229,6 +249,26 @@ class Branch(object):
         branch.
         """
         return None
+    
+    def get_commit_builder(self, parents, config=None, timestamp=None, 
+                           timezone=None, committer=None, revprops=None, 
+                           revision_id=None):
+        """Obtain a CommitBuilder for this branch.
+        
+        :param parents: Revision ids of the parents of the new revision.
+        :param config: Optional configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.
+        """
+
+        if config is None:
+            config = bzrlib.config.BranchConfig(self)
+        
+        return self.repository.get_commit_builder(self, parents, config, 
+            timestamp, timezone, committer, revprops, revision_id)
 
     def get_master_branch(self):
         """Return the branch we are bound to.
@@ -516,6 +556,34 @@ class Branch(object):
         parent = self.get_parent()
         if parent:
             destination.set_parent(parent)
+
+    @needs_read_lock
+    def check(self):
+        """Check consistency of the branch.
+
+        In particular this checks that revisions given in the revision-history
+        do actually match up in the revision graph, and that they're all 
+        present in the repository.
+
+        :return: A BranchCheckResult.
+        """
+        mainline_parent_id = None
+        for revision_id in self.revision_history():
+            try:
+                revision = self.repository.get_revision(revision_id)
+            except errors.NoSuchRevision, e:
+                raise BzrCheckError("mainline revision {%s} not in repository"
+                        % revision_id)
+            # In general the first entry on the revision history has no parents.
+            # But it's not illegal for it to have parents listed; this can happen
+            # in imports from Arch when the parents weren't reachable.
+            if mainline_parent_id is not None:
+                if mainline_parent_id not in revision.parent_ids:
+                    raise BzrCheckError("previous revision {%s} not listed among "
+                                        "parents of {%s}"
+                                        % (mainline_parent_id, revision_id))
+            mainline_parent_id = revision_id
+        return BranchCheckResult(self)
 
 
 class BranchFormat(object):
@@ -880,7 +948,7 @@ class BzrBranch(Branch):
         # XXX: cache_root seems to be unused, 2006-01-13 mbp
         if hasattr(self, 'cache_root') and self.cache_root is not None:
             try:
-                shutil.rmtree(self.cache_root)
+                rmtree(self.cache_root)
             except:
                 pass
             self.cache_root = None
@@ -939,6 +1007,9 @@ class BzrBranch(Branch):
         tree = self.repository.revision_tree(self.last_revision())
         return tree.inventory.root.file_id
 
+    def is_locked(self):
+        return self.control_files.is_locked()
+
     def lock_write(self):
         # TODO: test for failed two phase locks. This is known broken.
         self.control_files.lock_write()
@@ -951,14 +1022,19 @@ class BzrBranch(Branch):
 
     def unlock(self):
         # TODO: test for failed two phase locks. This is known broken.
-        self.repository.unlock()
-        self.control_files.unlock()
+        try:
+            self.repository.unlock()
+        finally:
+            self.control_files.unlock()
         
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:
             return None
         else:
             return self.control_files._lock_mode
+
+    def get_physical_lock_status(self):
+        return self.control_files.get_physical_lock_status()
 
     @needs_read_lock
     def print_file(self, file, revision_id):
@@ -1069,25 +1145,6 @@ class BzrBranch(Branch):
         finally:
             other.unlock()
 
-    @deprecated_method(zero_eight)
-    def pullable_revisions(self, other, stop_revision):
-        """Please use bzrlib.missing instead."""
-        other_revno = other.revision_id_to_revno(stop_revision)
-        try:
-            return self.missing_revisions(other, other_revno)
-        except DivergedBranches, e:
-            try:
-                pullable_revs = get_intervening_revisions(self.last_revision(),
-                                                          stop_revision, 
-                                                          self.repository)
-                assert self.last_revision() not in pullable_revs
-                return pullable_revs
-            except bzrlib.errors.NotAncestor:
-                if is_ancestor(self.last_revision(), stop_revision, self):
-                    return []
-                else:
-                    raise e
-        
     def basis_tree(self):
         """See Branch.basis_tree."""
         return self.repository.revision_tree(self.last_revision())
@@ -1124,9 +1181,11 @@ class BzrBranch(Branch):
         """See Branch.get_parent."""
         import errno
         _locs = ['parent', 'pull', 'x-pull']
+        assert self.base[-1] == '/'
         for l in _locs:
             try:
-                return self.control_files.get_utf8(l).read().strip('\n')
+                return urlutils.join(self.base[:-1], 
+                            self.control_files.get(l).read().strip('\n'))
             except NoSuchFile:
                 pass
         return None
@@ -1153,7 +1212,16 @@ class BzrBranch(Branch):
         if url is None:
             self.control_files._transport.delete('parent')
         else:
-            self.control_files.put_utf8('parent', url + '\n')
+            if isinstance(url, unicode):
+                try: 
+                    url = url.encode('ascii')
+                except UnicodeEncodeError:
+                    raise bzrlib.errors.InvalidURL(url,
+                        "Urls must be 7-bit ascii, "
+                        "use bzrlib.urlutils.escape")
+                    
+            url = urlutils.relative_url(self.base, url)
+            self.control_files.put('parent', url + '\n')
 
     def tree_config(self):
         return TreeConfig(self)
@@ -1323,6 +1391,26 @@ class BranchTestProviderAdapter(object):
             new_test.id = make_new_test_id()
             result.addTest(new_test)
         return result
+
+
+class BranchCheckResult(object):
+    """Results of checking branch consistency.
+
+    :see: Branch.check
+    """
+
+    def __init__(self, branch):
+        self.branch = branch
+
+    def report_results(self, verbose):
+        """Report the check results via trace.note.
+        
+        :param verbose: Requests more detailed display of what was checked,
+            if any.
+        """
+        note('checked branch %s format %s',
+             self.branch.base,
+             self.branch._format)
 
 
 ######################################################################

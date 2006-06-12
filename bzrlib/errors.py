@@ -34,7 +34,7 @@ This means that exceptions can used like this:
 ... except:
 ...   print sys.exc_type
 ...   print sys.exc_value
-...   path = getattr(sys.exc_value, 'path')
+...   path = getattr(sys.exc_value, 'path', None)
 ...   if path is not None:
 ...     print path
 bzrlib.errors.NotBranchError
@@ -55,6 +55,13 @@ fullstop.
 
 from warnings import warn
 
+from bzrlib.patches import (PatchSyntax, 
+                            PatchConflict, 
+                            MalformedPatchHeader,
+                            MalformedHunkHeader,
+                            MalformedLine,)
+
+
 # based on Scott James Remnant's hct error classes
 
 # TODO: is there any value in providing the .args field used by standard
@@ -67,6 +74,10 @@ from warnings import warn
 
 # TODO: Convert all the other error classes here to BzrNewError, and eliminate
 # the old one.
+
+# TODO: The pattern (from hct) of using classes docstrings as message
+# templates is cute but maybe not such a great idea - perhaps should have a
+# separate static message_template.
 
 
 class BzrError(StandardError):
@@ -130,13 +141,14 @@ class InvalidRevisionNumber(BzrNewError):
 class InvalidRevisionId(BzrNewError):
     """Invalid revision-id {%(revision_id)s} in %(branch)s"""
     def __init__(self, revision_id, branch):
+        # branch can be any string or object with __str__ defined
         BzrNewError.__init__(self)
         self.revision_id = revision_id
         self.branch = branch
 
 
 class NoWorkingTree(BzrNewError):
-    """No WorkingTree exists for %s(base)."""
+    """No WorkingTree exists for %(base)s."""
     
     def __init__(self, base):
         BzrNewError.__init__(self)
@@ -144,7 +156,7 @@ class NoWorkingTree(BzrNewError):
 
 
 class NotLocalUrl(BzrNewError):
-    """%s(url) is not a local path."""
+    """%(url)s is not a local path."""
     
     def __init__(self, url):
         BzrNewError.__init__(self)
@@ -172,6 +184,8 @@ class StrictCommitFailed(Exception):
     """Commit refused because there are unknowns in the tree."""
 
 
+# XXX: Should be unified with TransportError; they seem to represent the
+# same thing
 class PathError(BzrNewError):
     """Generic path error: %(path)r%(extra)s)"""
 
@@ -204,6 +218,19 @@ class PermissionDenied(PathError):
     """Permission denied: %(path)r%(extra)s"""
 
 
+class InvalidURL(PathError):
+    """Invalid url supplied to transport: %(path)r%(extra)s"""
+
+
+class InvalidURLJoin(PathError):
+    """Invalid URL join request: %(args)s%(extra)s"""
+
+    def __init__(self, msg, base, args):
+        PathError.__init__(self, base, msg)
+        self.args = [base]
+        self.args.extend(args)
+
+
 class PathNotChild(BzrNewError):
     """Path %(path)r is not a child of path %(base)r%(extra)s"""
     def __init__(self, path, base, extra=None):
@@ -216,16 +243,28 @@ class PathNotChild(BzrNewError):
             self.extra = ''
 
 
+# TODO: This is given a URL; we try to unescape it but doing that from inside
+# the exception object is a bit undesirable.
+# TODO: Probably this behavior of should be a common superclass 
 class NotBranchError(PathError):
     """Not a branch: %(path)s"""
 
+    def __init__(self, path):
+       import bzrlib.urlutils as urlutils
+       self.path = urlutils.unescape_for_display(path, 'ascii')
+
 
 class AlreadyBranchError(PathError):
-    """Already a branch: %(path)s. Use `bzr checkout` to build a working tree."""
+    """Already a branch: %(path)s."""
+
+
+class BranchExistsWithoutWorkingTree(PathError):
+    """Directory contains a branch, but no working tree \
+(use bzr checkout if you wish to build a working tree): %(path)s"""
 
 
 class NoRepositoryPresent(BzrNewError):
-    """Not repository present: %(path)r"""
+    """No repository present: %(path)r"""
     def __init__(self, bzrdir):
         BzrNewError.__init__(self)
         self.path = bzrdir.transport.clone('..').base
@@ -274,6 +313,20 @@ class PathsNotVersionedError(BzrNewError):
     """Path(s) are not versioned: %(paths_as_string)s"""
 
     def __init__(self, paths):
+        from bzrlib.osutils import quotefn
+        BzrNewError.__init__(self)
+        self.paths = paths
+        self.paths_as_string = ' '.join([quotefn(p) for p in paths])
+
+
+class PathsDoNotExist(BzrNewError):
+    """Path(s) do not exist: %(paths_as_string)s"""
+
+    # used when reporting that paths are neither versioned nor in the working
+    # tree
+
+    def __init__(self, paths):
+        # circular import
         from bzrlib.osutils import quotefn
         BzrNewError.__init__(self)
         self.paths = paths
@@ -714,6 +767,21 @@ class MustUseDecorated(Exception):
     """
 
 
+class NoBundleFound(BzrNewError):
+    """No bundle was found in %(filename)s"""
+    def __init__(self, filename):
+        BzrNewError.__init__(self)
+        self.filename = filename
+
+
+class BundleNotSupported(BzrNewError):
+    """Unable to handle bundle version %(version)s: %(msg)s"""
+    def __init__(self, version, msg):
+        BzrNewError.__init__(self)
+        self.version = version
+        self.msg = msg
+
+
 class MissingText(BzrNewError):
     """Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"""
 
@@ -762,6 +830,14 @@ class BzrBadParameterNotString(BzrBadParameter):
 
 class BzrBadParameterMissing(BzrBadParameter):
     """Parameter $(param)s is required but not present."""
+
+
+class BzrBadParameterUnicode(BzrBadParameter):
+    """Parameter %(param)s is unicode but only byte-strings are permitted."""
+
+
+class BzrBadParameterContainsNewline(BzrBadParameter):
+    """Parameter %(param)s contains a newline."""
 
 
 class DependencyNotPresent(BzrNewError):
@@ -857,3 +933,45 @@ class UnsupportedOperation(BzrNewError):
         self.method = method
         self.mname = method.__name__
         self.tname = type(method_self).__name__
+
+
+class BinaryFile(BzrNewError):
+    """File is binary but should be text."""
+
+
+class IllegalPath(BzrNewError):
+    """The path %(path)s is not permitted on this platform"""
+
+    def __init__(self, path):
+        BzrNewError.__init__(self)
+        self.path = path
+
+
+class TestamentMismatch(BzrNewError):
+    """Testament did not match expected value.  
+       For revision_id {%(revision_id)s}, expected {%(expected)s}, measured 
+       {%(measured)s}
+    """
+    def __init__(self, revision_id, expected, measured):
+        self.revision_id = revision_id
+        self.expected = expected
+        self.measured = measured
+
+
+class NotABundle(BzrNewError):
+    """Not a bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        self.text = text
+
+
+class BadBundle(Exception): pass
+
+
+class MalformedHeader(BadBundle): pass
+
+
+class MalformedPatches(BadBundle): pass
+
+
+class MalformedFooter(BadBundle): pass

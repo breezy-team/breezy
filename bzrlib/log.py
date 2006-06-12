@@ -342,11 +342,11 @@ def deltas_for_log_forward(branch, which_revs):
 
 class LogFormatter(object):
     """Abstract class to display log messages."""
+
     def __init__(self, to_file, show_ids=False, show_timezone='original'):
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
-
 
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
@@ -424,6 +424,7 @@ class ShortLogFormatter(LogFormatter):
             delta.show(to_file, self.show_ids)
         print >>to_file, ''
 
+
 class LineLogFormatter(LogFormatter):
     def truncate(self, str, max_len):
         if len(str) <= max_len:
@@ -443,17 +444,30 @@ class LineLogFormatter(LogFormatter):
             return rev.message
 
     def show(self, revno, rev, delta):
-        print >> self.to_file, self.log_string(rev, 79) 
+        from bzrlib.osutils import terminal_width
+        print >> self.to_file, self.log_string(revno, rev, terminal_width()-1)
 
-    def log_string(self, rev, max_chars):
-        out = [self.truncate(self.short_committer(rev), 20)]
+    def log_string(self, revno, rev, max_chars):
+        """Format log info into one string. Truncate tail of string
+        :param  revno:      revision number (int) or None.
+                            Revision numbers counts from 1.
+        :param  rev:        revision info object
+        :param  max_chars:  maximum length of resulting string
+        :return:            formatted truncated string
+        """
+        out = []
+        if revno:
+            # show revno only when is not None
+            out.append("%d:" % revno)
+        out.append(self.truncate(self.short_committer(rev), 20))
         out.append(self.date_string(rev))
-        out.append(self.message(rev).replace('\n', ' '))
+        out.append(rev.get_summary())
         return self.truncate(" ".join(out).rstrip('\n'), max_chars)
+
 
 def line_log(rev, max_chars):
     lf = LineLogFormatter(None)
-    return lf.log_string(rev, max_chars)
+    return lf.log_string(None, rev, max_chars)
 
 FORMATTERS = {
               'long': LongLogFormatter,

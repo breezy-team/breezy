@@ -27,9 +27,11 @@ import re
 from stat import *
 from cStringIO import StringIO
 
-from bzrlib.trace import mutter
 from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
-from bzrlib.transport import Transport, register_transport, Server
+from bzrlib.trace import mutter
+from bzrlib.transport import (Transport, register_transport, Server)
+import bzrlib.urlutils as urlutils
+
 
 
 class MemoryStat(object):
@@ -52,13 +54,13 @@ class MemoryTransport(Transport):
     def __init__(self, url=""):
         """Set the 'base' path where files will be stored."""
         if url == "":
-            url = "memory:/"
+            url = "memory:///"
         if url[-1] != '/':
             url = url + '/'
         super(MemoryTransport, self).__init__(url)
-        self._cwd = url[url.find(':') + 1:]
+        self._cwd = url[url.find(':') + 3:]
         # dictionaries from absolute path to file mode
-        self._dirs = {}
+        self._dirs = {'/':None}
         self._files = {}
         self._locks = {}
 
@@ -77,7 +79,7 @@ class MemoryTransport(Transport):
                     cwdsegments.pop()
                 continue
             cwdsegments.append(segment)
-        url = self.base[:self.base.find(':') + 1] + '/'.join(cwdsegments) + '/'
+        url = self.base[:self.base.find(':') + 3] + '/'.join(cwdsegments) + '/'
         result = MemoryTransport(url)
         result._dirs = self._dirs
         result._files = self._files
@@ -90,17 +92,19 @@ class MemoryTransport(Transport):
         # current environment - XXX RBC 20060404 move the clone '..' handling
         # into here and call abspath from clone
         temp_t = self.clone(relpath)
-        if temp_t.base.count('/') == 1:
+        if temp_t.base.count('/') == 3:
             return temp_t.base
         else:
             return temp_t.base[:-1]
 
-    def append(self, relpath, f):
+    def append(self, relpath, f, mode=None):
         """See Transport.append()."""
         _abspath = self._abspath(relpath)
         self._check_parent(_abspath)
         orig_content, orig_mode = self._files.get(_abspath, ("", None))
-        self._files[_abspath] = (orig_content + f.read(), orig_mode)
+        if mode is None:
+            mode = orig_mode
+        self._files[_abspath] = (orig_content + f.read(), mode)
         return len(orig_content)
 
     def _check_parent(self, _abspath):
@@ -213,8 +217,6 @@ class MemoryTransport(Transport):
         if _abspath in self._files:
             return MemoryStat(len(self._files[_abspath][0]), False, 
                               self._files[_abspath][1])
-        elif _abspath == '':
-            return MemoryStat(0, True, None)
         elif _abspath in self._dirs:
             return MemoryStat(0, True, self._dirs[_abspath])
         else:
@@ -230,9 +232,12 @@ class MemoryTransport(Transport):
 
     def _abspath(self, relpath):
         """Generate an internal absolute path."""
+        relpath = urlutils.unescape(relpath)
         if relpath.find('..') != -1:
             raise AssertionError('relpath contains ..')
         if relpath == '.':
+            if (self._cwd == '/'):
+                return self._cwd
             return self._cwd[:-1]
         if relpath.endswith('/'):
             relpath = relpath[:-1]
@@ -268,10 +273,10 @@ class MemoryServer(Server):
 
     def setUp(self):
         """See bzrlib.transport.Server.setUp."""
-        self._dirs = {}
+        self._dirs = {'/':None}
         self._files = {}
         self._locks = {}
-        self._scheme = "memory+%s:" % id(self)
+        self._scheme = "memory+%s:///" % id(self)
         def memory_factory(url):
             result = MemoryTransport(url)
             result._dirs = self._dirs

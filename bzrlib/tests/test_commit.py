@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 from bzrlib.workingtree import WorkingTree
-from bzrlib.commit import Commit
+from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import BranchConfig
 from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed, 
                            LockContention)
@@ -43,6 +43,26 @@ class BranchWithHooks(BranchConfig):
 
     def post_commit(self):
         return "bzrlib.ahook bzrlib.ahook"
+
+
+class CapturingReporter(NullCommitReporter):
+    """This reporter captures the calls made to it for evaluation later."""
+
+    def __init__(self):
+        # a list of the calls this received
+        self.calls = []
+
+    def snapshot_change(self, change, path):
+        self.calls.append(('change', change, path))
+
+    def deleted(self, file_id):
+        self.calls.append(('deleted', file_id))
+
+    def missing(self, path):
+        self.calls.append(('missing', path))
+
+    def renamed(self, change, old_path, new_path):
+        self.calls.append(('renamed', change, old_path, new_path))
 
 
 class TestCommit(TestCaseWithTransport):
@@ -392,3 +412,98 @@ class TestCommit(TestCaseWithTransport):
             self.assertRaises(LockContention, wt.commit, 'silly')
         finally:
             master_branch.unlock()
+
+    def test_commit_bound_merge(self):
+        # see bug #43959; commit of a merge in a bound branch fails to push
+        # the new commit into the master
+        master_branch = self.make_branch('master')
+        bound_tree = self.make_branch_and_tree('bound')
+        bound_tree.branch.bind(master_branch)
+
+        self.build_tree_contents([('bound/content_file', 'initial contents\n')])
+        bound_tree.add(['content_file'])
+        bound_tree.commit(message='woo!')
+
+        other_bzrdir = master_branch.bzrdir.sprout('other')
+        other_tree = other_bzrdir.open_workingtree()
+
+        # do a commit to the the other branch changing the content file so
+        # that our commit after merging will have a merged revision in the
+        # content file history.
+        self.build_tree_contents([('other/content_file', 'change in other\n')])
+        other_tree.commit('change in other')
+
+        # do a merge into the bound branch from other, and then change the
+        # content file locally to force a new revision (rather than using the
+        # revision from other). This forces extra processing in commit.
+        self.merge(other_tree.branch, bound_tree)
+        self.build_tree_contents([('bound/content_file', 'change in bound\n')])
+
+        # before #34959 was fixed, this failed with 'revision not present in
+        # weave' when trying to implicitly push from the bound branch to the master
+        bound_tree.commit(message='commit of merge in bound tree')
+
+    def test_commit_reporting_after_merge(self):
+        # when doing a commit of a merge, the reporter needs to still 
+        # be called for each item that is added/removed/deleted.
+        this_tree = self.make_branch_and_tree('this')
+        # we need a bunch of files and dirs, to perform one action on each.
+        self.build_tree([
+            'this/dirtorename/',
+            'this/dirtoreparent/',
+            'this/dirtoleave/',
+            'this/dirtoremove/',
+            'this/filetoreparent',
+            'this/filetorename',
+            'this/filetomodify',
+            'this/filetoremove',
+            'this/filetoleave']
+            )
+        this_tree.add([
+            'dirtorename',
+            'dirtoreparent',
+            'dirtoleave',
+            'dirtoremove',
+            'filetoreparent',
+            'filetorename',
+            'filetomodify',
+            'filetoremove',
+            'filetoleave']
+            )
+        this_tree.commit('create_files')
+        other_dir = this_tree.bzrdir.sprout('other')
+        other_tree = other_dir.open_workingtree()
+        other_tree.lock_write()
+        # perform the needed actions on the files and dirs.
+        try:
+            other_tree.rename_one('dirtorename', 'renameddir')
+            other_tree.rename_one('dirtoreparent', 'renameddir/reparenteddir')
+            other_tree.rename_one('filetorename', 'renamedfile')
+            other_tree.rename_one('filetoreparent', 'renameddir/reparentedfile')
+            other_tree.remove(['dirtoremove', 'filetoremove'])
+            self.build_tree_contents([
+                ('other/newdir/', ),
+                ('other/filetomodify', 'new content'),
+                ('other/newfile', 'new file content')])
+            other_tree.add('newfile')
+            other_tree.add('newdir/')
+            other_tree.commit('modify all sample files and dirs.')
+        finally:
+            other_tree.unlock()
+        self.merge(other_tree.branch, this_tree)
+        reporter = CapturingReporter()
+        this_tree.commit('do the commit', reporter=reporter)
+        self.assertEqual([
+            ('change', 'unchanged', 'dirtoleave'),
+            ('change', 'unchanged', 'filetoleave'),
+            ('change', 'modified', 'filetomodify'),
+            ('change', 'added', 'newdir'),
+            ('change', 'added', 'newfile'),
+            ('renamed', 'renamed', 'dirtorename', 'renameddir'),
+            ('renamed', 'renamed', 'dirtoreparent', 'renameddir/reparenteddir'),
+            ('renamed', 'renamed', 'filetoreparent', 'renameddir/reparentedfile'),
+            ('renamed', 'renamed', 'filetorename', 'renamedfile'),
+            ('deleted', 'dirtoremove'),
+            ('deleted', 'filetoremove'),
+            ],
+            reporter.calls)

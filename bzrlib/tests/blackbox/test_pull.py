@@ -16,14 +16,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-"""Black-box tests for bzr pull.
-"""
+"""Black-box tests for bzr pull."""
 
 import os
 import sys
 
 from bzrlib.branch import Branch
-from bzrlib.osutils import abspath
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.uncommit import uncommit
 
@@ -49,15 +47,9 @@ class TestPull(ExternalBase):
         self.runbzr('missing', retcode=3)
         self.runbzr('missing .')
         self.runbzr('missing')
-        if sys.platform not in ('win32', 'cygwin'):
-            # This is equivalent to doing "bzr pull ."
-            # Which means that bzr creates 2 branches grabbing
-            # the same location, and tries to pull.
-            # However, 2 branches mean 2 locks on the same file
-            # which ultimately implies a deadlock.
-            # (non windows platforms allow multiple locks on the
-            # same file by the same calling process)
-            self.runbzr('pull')
+        # this will work on windows because we check for the same branch
+        # in pull - if it fails, it is a regression
+        self.runbzr('pull')
         self.runbzr('pull /', retcode=3)
         if sys.platform not in ('win32', 'cygwin'):
             self.runbzr('pull')
@@ -233,10 +225,10 @@ class TestPull(ExternalBase):
         self.build_tree(['branch_a/a'])
         tree_a.add('a')
         tree_a.commit('commit a')
-        branch_b = branch_a.bzrdir.sprout('branch_b').open_branch()
-        tree_b = branch_b.bzrdir.open_workingtree()
-        branch_c = branch_a.bzrdir.sprout('branch_c').open_branch()
-        tree_c = branch_c.bzrdir.open_workingtree()
+        tree_b = branch_a.bzrdir.sprout('branch_b').open_workingtree()
+        branch_b = tree_b.branch
+        tree_c = branch_a.bzrdir.sprout('branch_c').open_workingtree()
+        branch_c = tree_c.branch
         self.build_tree(['branch_a/b'])
         tree_a.add('b')
         tree_a.commit('commit b')
@@ -256,13 +248,13 @@ class TestPull(ExternalBase):
         out = self.runbzr('pull ../branch_a', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: These branches have diverged.  Try merge.\n'))
-        self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
+        self.assertEquals(branch_b.get_parent(), parent)
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/d')
         self.runbzr('pull')
-        self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
+        self.assertEquals(branch_b.get_parent(), parent)
         # test explicit --remember
         self.runbzr('pull ../branch_c --remember')
-        self.assertEquals(abspath(branch_b.get_parent()),
-                          abspath(branch_c.bzrdir.root_transport.base))
+        self.assertEquals(branch_b.get_parent(),
+                          branch_c.bzrdir.root_transport.base)

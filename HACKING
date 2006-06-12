@@ -194,6 +194,21 @@ what can be done inside them.
     may not catch every case but it's still useful sometimes.
 
 
+Factories
+---------
+
+In some places we have variables which point to callables that construct
+new instances.  That is to say, they can be used a lot like class objects,
+but they shouldn't be *named* like classes:
+
+> I think that things named FooBar should create instances of FooBar when
+> called. Its plain confusing for them to do otherwise. When we have
+> something that is going to be used as a class - that is, checked for via
+> isinstance or other such idioms, them I would call it foo_class, so that
+> it is clear that a callable is not sufficient. If it is only used as a
+> factory, then yes, foo_factory is what I would use.
+
+
 Writing output
 ==============
 
@@ -292,6 +307,56 @@ revno
     Integer identifier for a revision on the main line of a branch.
     Revision 0 is always the null revision; others are 1-based
     indexes into the branch's revision history.
+
+
+Transport
+=========
+
+The ``Transport`` layer handles access to local or remote directories.
+Each Transport object acts like a logical connection to a particular
+directory, and it allows various operations on files within it.  You can
+*clone* a transport to get a new Transport connected to a subdirectory or
+parent directory.
+
+Transports are not used for access to the working tree.  At present
+working trees are always local and they are accessed through the regular
+Python file io mechanisms.
+
+filenames vs URLs
+-----------------
+
+Transports work in URLs.  Take note that URLs are by definition only
+ASCII - the decision of how to encode a Unicode string into a URL must be
+taken at a higher level, typically in the Store.  (Note that Stores also
+escape filenames which cannot be safely stored on all filesystems, but
+this is a different level.)
+
+The main reason for this is that it's not possible to safely roundtrip a
+URL into Unicode and then back into the same URL.  The URL standard
+gives a way to represent non-ASCII bytes in ASCII (as %-escapes), but
+doesn't say how those bytes represent non-ASCII characters.  (They're not
+guaranteed to be UTF-8 -- that is common but doesn't happen everywhere.)
+
+For example if the user enters the url ``http://example/%e0`` there's no
+way to tell whether that character represents "latin small letter a with
+grave" in iso-8859-1, or "latin small letter r with acute" in iso-8859-2
+or malformed UTF-8.  So we can't convert their URL to Unicode reliably.
+
+Equally problematic if we're given a url-like string containing non-ascii
+characters (such as the accented a) we can't be sure how to convert that
+to the correct URL, because we don't know what encoding the server expects
+for those characters.  (Although this is not totally reliable we might still
+accept these and assume they should be put into UTF-8.)
+
+A similar edge case is that the url ``http://foo/sweet%2Fsour" contains
+one directory component whose name is "sweet/sour".  The escaped slash is
+not a directory separator.  If we try to convert URLs to regular Unicode
+paths this information will be lost.
+
+This implies that Transports must natively deal with URLs; for simplicity
+they *only* deal with URLs and conversion of other strings to URLs is done
+elsewhere.  Information they return, such as from ``list_dir``, is also in
+the form of URL components.
 
 
 Merge/review process

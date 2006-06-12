@@ -292,6 +292,15 @@ class Conflict(object):
         global ctype
         return ctype[type](**kwargs)
 
+    @staticmethod
+    def sort_key(conflict):
+        if conflict.path is not None:
+            return conflict.path, conflict.typestring
+        elif getattr(conflict, "conflict_path", None) is not None:
+            return conflict.conflict_path, conflict.typestring
+        else:
+            return None, conflict.typestring
+
 
 class PathConflict(Conflict):
     """A conflict was encountered merging file paths"""
