@@ -16,12 +16,14 @@
 
 import os
 from cStringIO import StringIO
+import errno
 from tempfile import TemporaryFile
 
 from bzrlib.diff import internal_diff, external_diff, show_diff_trees
 from bzrlib.errors import BinaryFile
 import bzrlib.patiencediff
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestCaseInTempDir
+from bzrlib.tests import (
+    TestCase, TestCaseWithTransport, TestCaseInTempDir, TestSkipped)
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -32,12 +34,16 @@ def udiff_lines(old, new, allow_binary=False):
 
 def external_udiff_lines(old, new):
     output = TemporaryFile()
-    external_diff('old', old, 'new', new, output, diff_opts=['-u'])
+    try:
+        external_diff('old', old, 'new', new, output, diff_opts=['-u'])
+    except OSError, e:
+        # if the diff program could not be found, skip the test
+        if e.errno == errno.ENOENT:
+            raise TestSkipped
     output.seek(0, 0)
     lines = output.readlines()
     output.close()
     return lines
-
 
 
 class TestDiff(TestCase):

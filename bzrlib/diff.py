@@ -14,10 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import sys
 import subprocess
+import sys
 from tempfile import NamedTemporaryFile
-
 import time
 
 from bzrlib.delta import compare_trees
