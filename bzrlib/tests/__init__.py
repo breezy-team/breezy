@@ -484,6 +484,12 @@ class TestCase(unittest.TestCase):
             raise AssertionError('pattern "%s" not found in "%s"'
                     % (needle_re, haystack))
 
+    def assertNotContainsRe(self, haystack, needle_re):
+        """Assert that a does not match a regular expression"""
+        if re.search(needle_re, haystack):
+            raise AssertionError('pattern "%s" found in "%s"'
+                    % (needle_re, haystack))
+
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
         missing = []
