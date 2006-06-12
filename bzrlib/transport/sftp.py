@@ -723,7 +723,7 @@ class SFTPTransport (Transport):
             t.set_log_channel('bzr.paramiko')
             t.start_client()
         except paramiko.SSHException, e:
-            raise ConnectionError('Unable to reach SSH host %s:%d' %
+            raise ConnectionError('Unable to reach SSH host %s:%s' %
                                   (self._host, self._port), e)
             
         server_key = t.get_remote_server_key()
