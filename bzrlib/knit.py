@@ -453,7 +453,7 @@ class KnitVersionedFile(VersionedFile):
         # maybe we have it
         if self.has_version(version_id):
             return False
-        # optimisable if needed by memorizing the _ghosts set.
+        # optimisable if needed by memoising the _ghosts set.
         items = self._index.get_graph()
         for node, parents in items:
             for parent in parents:
@@ -728,7 +728,7 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         if version_ids is None:
             version_ids = self.versions()
-        # we dont care about inclusions, the caller cares.
+        # we don't care about inclusions, the caller cares.
         # but we need to setup a list of records to visit.
         # we need version_id, position, length
         version_id_records = []
@@ -1469,7 +1469,7 @@ class InterKnit(InterVersionedFile):
                     # if source has the parent, we must :
                     # * already have it or
                     # * have it scheduled already
-                    # otherwise we dont care
+                    # otherwise we don't care
                     assert (self.target.has_version(parent) or
                             parent in copy_set or
                             not self.source.has_version(parent))

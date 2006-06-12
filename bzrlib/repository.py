@@ -365,7 +365,7 @@ class Repository(object):
         # not present in one of those inventories is unnecessary but not 
         # harmful because we are filtering by the revision id marker in the
         # inventory lines : we only select file ids altered in one of those  
-        # revisions. We dont need to see all lines in the inventory because
+        # revisions. We don't need to see all lines in the inventory because
         # only those added in an inventory in rev X can contain a revision=X
         # line.
         for line in w.iter_lines_added_or_present_in_versions(selected_revision_ids):
@@ -838,7 +838,7 @@ class KnitRepository(MetaDirRepository):
                     raise errors.NoSuchRevision(self, revision_id)
                 # a ghost
                 result.add_ghost(revision_id)
-                # mark it as done so we dont try for it again.
+                # mark it as done so we don't try for it again.
                 done.add(revision_id)
                 continue
             parent_ids = vf.get_parents_with_ghosts(revision_id)
@@ -1043,7 +1043,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         files = [('inventory.weave', StringIO(empty_weave)),
                  ]
         
-        # FIXME: RBC 20060125 dont peek under the covers
+        # FIXME: RBC 20060125 don't peek under the covers
         # NB: no need to escape relative paths that are url safe.
         control_files = LockableFiles(a_bzrdir.transport, 'branch-lock',
                                       TransportLock)
@@ -1208,7 +1208,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
 
     def _create_control_files(self, a_bzrdir):
         """Create the required files and the initial control_files object."""
-        # FIXME: RBC 20060125 dont peek under the covers
+        # FIXME: RBC 20060125 don't peek under the covers
         # NB: no need to escape relative paths that are url safe.
         repository_transport = a_bzrdir.get_repository_transport(self)
         control_files = LockableFiles(repository_transport, 'lock', LockDir)
@@ -1474,7 +1474,7 @@ class InterRepository(InterObject):
         # grab the basis available data
         if basis is not None:
             self.target.fetch(basis, revision_id=revision_id)
-        # but dont bother fetching if we have the needed data now.
+        # but don't bother fetching if we have the needed data now.
         if (revision_id not in (None, NULL_REVISION) and 
             self.target.has_revision(revision_id)):
             return
@@ -1571,7 +1571,7 @@ class InterWeaveRepo(InterRepository):
     def is_compatible(source, target):
         """Be compatible with known Weave formats.
         
-        We dont test for the stores being of specific types because that
+        We don't test for the stores being of specific types because that
         could lead to confusing results, and there is no need to be 
         overly general.
         """
@@ -1592,7 +1592,7 @@ class InterWeaveRepo(InterRepository):
         if basis is not None:
             # copy the basis in, then fetch remaining data.
             basis.copy_content_into(self.target, revision_id)
-            # the basis copy_content_into could missed this.
+            # the basis copy_content_into could miss-set this.
             try:
                 self.target.set_make_working_trees(self.source.make_working_trees())
             except NotImplementedError:
@@ -1641,7 +1641,7 @@ class InterWeaveRepo(InterRepository):
     def missing_revision_ids(self, revision_id=None):
         """See InterRepository.missing_revision_ids()."""
         # we want all revisions to satisfy revision_id in source.
-        # but we dont want to stat every file here and there.
+        # but we don't want to stat every file here and there.
         # we want then, all revisions other needs to satisfy revision_id 
         # checked, but not those that we have locally.
         # so the first thing is to get a subset of the revisions to 
@@ -1660,7 +1660,7 @@ class InterWeaveRepo(InterRepository):
         source_ids_set = set(source_ids)
         # source_ids is the worst possible case we may need to pull.
         # now we want to filter source_ids against what we actually
-        # have in target, but dont try to check for existence where we know
+        # have in target, but don't try to check for existence where we know
         # we do not have a revision as that would be pointless.
         target_ids = set(self.target._all_possible_ids())
         possibly_present_revisions = target_ids.intersection(source_ids_set)
@@ -1689,7 +1689,7 @@ class InterKnitRepo(InterRepository):
     def is_compatible(source, target):
         """Be compatible with known Knit formats.
         
-        We dont test for the stores being of specific types because that
+        We don't test for the stores being of specific types because that
         could lead to confusing results, and there is no need to be 
         overly general.
         """
@@ -1723,7 +1723,7 @@ class InterKnitRepo(InterRepository):
         source_ids_set = set(source_ids)
         # source_ids is the worst possible case we may need to pull.
         # now we want to filter source_ids against what we actually
-        # have in target, but dont try to check for existence where we know
+        # have in target, but don't try to check for existence where we know
         # we do not have a revision as that would be pointless.
         target_ids = set(self.target._all_possible_ids())
         possibly_present_revisions = target_ids.intersection(source_ids_set)

@@ -1239,9 +1239,9 @@ class BzrBranch5(BzrBranch):
         
         :return: Either a Branch, or None
 
-        This could memorize the branch, but if thats done
+        This could memoise the branch, but if thats done
         it must be revalidated on each new lock.
-        So for now we just dont memorize it.
+        So for now we just don't memoise it.
         # RBC 20060304 review this decision.
         """
         bound_loc = self.get_bound_location()

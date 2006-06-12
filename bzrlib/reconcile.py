@@ -222,7 +222,7 @@ class RepoReconciler(object):
     def _parents_are_inconsistent(self, rev_id, parents):
         """Return True if the parents list of rev_id does not match the weave.
 
-        This detect inconsistencies based on the self.thorough value:
+        This detects inconsistencies based on the self.thorough value:
         if thorough is on, the first parent value is checked as well as ghost
         differences.
         Otherwise only the ghost differences are evaluated.

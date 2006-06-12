@@ -411,7 +411,7 @@ class Commit(object):
             except Exception, e:
                 found_exception = e
         if found_exception is not None: 
-            # dont do a plan raise, because the last exception may have been
+            # don't do a plan raise, because the last exception may have been
             # trashed, e is our sure-to-work exception even though it loses the
             # full traceback. XXX: RBC 20060421 perhaps we could check the
             # exc_info and if its the same one do a plain raise otherwise 

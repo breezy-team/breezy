@@ -607,7 +607,7 @@ class BzrDir(object):
             result.create_repository()
         elif source_repository is not None and result_repo is None:
             # have source, and want to make a new target repo
-            # we dont clone the repo because that preserves attributes
+            # we don't clone the repo because that preserves attributes
             # like is_shared(), and we have not yet implemented a 
             # repository sprout().
             result_repo = result.create_repository()
@@ -1002,7 +1002,7 @@ class BzrDirFormat(object):
         # mode from the root directory
         temp_control = LockableFiles(transport, '', TransportLock)
         temp_control._transport.mkdir('.bzr',
-                                      # FIXME: RBC 20060121 dont peek under
+                                      # FIXME: RBC 20060121 don't peek under
                                       # the covers
                                       mode=temp_control._dir_mode)
         file_mode = temp_control._file_mode

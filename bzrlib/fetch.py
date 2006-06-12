@@ -170,7 +170,7 @@ class RepoFetcher(object):
                 # we fetch all the texts, because texts do
                 # not reference anything, and its cheap enough
                 to_weave.join(from_weave, version_ids=required_versions) 
-                # we dont need *all* of this data anymore, but we dont know
+                # we don't need *all* of this data anymore, but we dont know
                 # what we do. This cache clearing will result in a new read 
                 # of the knit data when we do the checkout, but probably we
                 # want to emit the needed data on the fly rather than at the
@@ -191,7 +191,7 @@ class RepoFetcher(object):
     
             child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
             try:
-                # just merge, this is optimisable and its means we dont
+                # just merge, this is optimisable and its means we don't
                 # copy unreferenced data such as not-needed inventories.
                 pb.update("fetch inventory", 1, 3)
                 from_weave = self.from_repository.get_inventory_weave()

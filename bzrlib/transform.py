@@ -891,7 +891,7 @@ def joinpath(parent, child):
 
 
 class FinalPaths(object):
-    """Make path calculation cheap by memorizing paths.
+    """Make path calculation cheap by memoizing paths.
 
     The underlying tree must not be manipulated between calls, or else
     the results will likely be incorrect.

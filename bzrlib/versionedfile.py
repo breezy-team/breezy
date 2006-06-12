@@ -388,7 +388,7 @@ class VersionedFile(object):
         specific version marker at this point. The api may be changed
         during development to include the version that the versioned file
         thinks is relevant, but given that such hints are just guesses,
-        its better not to have it if we dont need it.
+        its better not to have it if we don't need it.
 
         NOTES: Lines are normalised: they will all have \n terminators.
                Lines are returned in arbitrary order.

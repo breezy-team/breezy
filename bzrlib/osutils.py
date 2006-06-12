@@ -553,7 +553,7 @@ def rand_chars(num):
 
 
 ## TODO: We could later have path objects that remember their list
-## decomposition (might be too tricky though.)
+## decomposition (might be too tricksy though.)
 
 def splitpath(p):
     """Turn string into list of parts.
