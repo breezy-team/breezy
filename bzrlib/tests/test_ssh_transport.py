@@ -127,14 +127,20 @@ class TestSSHTransport(tests.TestCase):
         self.assertEquals('ssh+loopback:///foo/bar',
                           conn.abspath('foo/bar'))
 
+    def test_clone_changes_base(self):
+        """Cloning transport produces one with a new base location"""
+        conn = ssh.LoopbackSSHConnection()
+        conn2 = conn.clone('subdir')
+        self.assertEquals(conn.base + 'subdir/',
+                          conn2.base)
+
     def test_open_dir(self):
         """Test changing directory"""
-        return ################################################
         conn = ssh.LoopbackSSHConnection()
         conn.backing_transport.mkdir('toffee')
         conn.backing_transport.mkdir('toffee/apple')
         self.assertTrue(conn.has('toffee'))
-
+        return ################################################
         sub_conn = conn.clone('toffee')
         self.assertTrue(sub_conn.has('apple'))
 

@@ -228,7 +228,7 @@ class SSHConnection(sftp.SFTPUrlHandling):
     def __init__(self, server_url, clone_from=None):
         assert (server_url.startswith('ssh://')
                 or server_url.startswith('ssh+'))
-        super(SSHConnection, self).__init__(self, server_url)
+        super(SSHConnection, self).__init__(server_url)
         if clone_from is None:
             self._start_server()
         else:
