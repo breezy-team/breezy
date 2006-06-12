@@ -280,6 +280,23 @@ class TestRepository(TestCaseWithRepository):
         result.report_results(verbose=True)
         result.report_results(verbose=False)
 
+    def test_get_revisions(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('initial empty commit', rev_id='a-rev',
+                    allow_pointless=True)
+        tree.commit('second empty commit', rev_id='b-rev',
+                    allow_pointless=True)
+        tree.commit('third empty commit', rev_id='c-rev',
+                    allow_pointless=True)
+        repo = tree.branch.repository
+        revision_ids = ['a-rev', 'b-rev', 'c-rev']
+        revisions = repo.get_revisions(revision_ids)
+        assert len(revisions) == 3, repr(revisions)
+        zipped = zip(revisions, revision_ids)
+        self.assertEqual(len(zipped), 3)
+        for revision, revision_id in zipped:
+            self.assertEqual(revision.revision_id, revision_id)
+            self.assertEqual(revision, repo.get_revision(revision_id))
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 

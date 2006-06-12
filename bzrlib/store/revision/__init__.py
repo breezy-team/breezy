@@ -107,10 +107,11 @@ class RevisionStore(object):
         raise NotImplementedError(self.all_revision_ids)
 
     def get_revision(self, revision_id, transaction):
+        """Return the Revision object for a named revision."""
         return self.get_revisions([revision_id], transaction)[0]
 
     def get_revisions(self, revision_ids, transaction):
-        """Return the Revision object for a named revision."""
+        """Return the Revision objects for a list of named revisions."""
         raise NotImplementedError(self.get_revision)
 
     def get_signature_text(self, revision_id, transaction):
