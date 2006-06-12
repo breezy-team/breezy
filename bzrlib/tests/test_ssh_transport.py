@@ -145,15 +145,14 @@ class TestSSHTransport(tests.TestCase):
         conn.backing_transport.mkdir('toffee')
         conn.backing_transport.mkdir('toffee/apple')
         self.assertEquals('/toffee', conn._remote_path('toffee'))
-        # import pdb;pdb.set_trace()
         self.assertTrue(conn.has('toffee'))
         sub_conn = conn.clone('toffee')
         self.assertTrue(sub_conn.has('apple'))
 
     def test_open_bzrdir(self):
         """Open an existing bzrdir over ssh transport"""
-        return ################################################
         conn = ssh.LoopbackSSHConnection()
         t = conn.backing_transport
         bzrdir.BzrDirFormat.get_default_format().initialize_on_transport(t)
         result_dir = bzrdir.BzrDir.open_containing_from_transport(conn)
+        

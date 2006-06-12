@@ -137,6 +137,9 @@ class Server(object):
         self._out = out_file
         self._backing_transport = backing_transport
 
+    def setUp(self):
+        """Register this server for use in tests."""
+
     def _do_query_version(self):
         """Answer a version request with my version."""
         self._send_tuple(('bzr server', '1'))
