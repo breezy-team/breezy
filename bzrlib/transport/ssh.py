@@ -82,8 +82,13 @@ import errno
 import os
 import sys
 
-from bzrlib import errors
+from bzrlib import errors, transport
 from bzrlib.transport import sftp
+
+
+# must do this otherwise we can't parse the urls properly
+transport.register_urlparse_netloc_protocol('ssh')
+transport.register_urlparse_netloc_protocol('ssh+loopback')
 
 class BzrProtocolError(errors.TransportError):
     pass
@@ -254,7 +259,7 @@ class SSHConnection(sftp.SFTPUrlHandling):
             raise BzrProtocolError("bad response %r" % (resp,))
         
     def has(self, relpath):
-        resp = self._call('has', relpath)
+        resp = self._call('has', self._remote_path(relpath))
         if resp == ('yes', ):
             return True
         elif resp == ('no', ):
@@ -264,7 +269,7 @@ class SSHConnection(sftp.SFTPUrlHandling):
 
     def get(self, relpath):
         """Return file-like object reading the contents of a remote file."""
-        resp = self._call('get', relpath)
+        resp = self._call('get', self._remote_path(relpath))
         if resp != ('ok', ):
             self._translate_error(resp)
         body = self._recv_bulk()
@@ -322,7 +327,7 @@ class LoopbackSSHConnection(SSHConnection):
             from bzrlib.transport import memory
             backing_transport = memory.MemoryTransport('memory:///')
         self.backing_transport = backing_transport
-        super(LoopbackSSHConnection, self).__init__('ssh+loopback:///')
+        super(LoopbackSSHConnection, self).__init__('ssh+loopback://localhost/')
 
     def _start_server(self):
         import threading

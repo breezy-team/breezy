@@ -93,7 +93,7 @@ class TestSSHTransport(tests.TestCase):
         try:
             conn.get('not a file')
         except errors.NoSuchFile, e:
-            self.assertEqual('not a file', e.path)
+            self.assertEqual('/not a file', e.path)
         else:
             self.fail("get did not raise expected error")
 
@@ -112,19 +112,24 @@ class TestSSHTransport(tests.TestCase):
 
     def test_loopback_conn_has_base_url(self):
         conn = ssh.LoopbackSSHConnection()
-        self.assertEquals('ssh+loopback:///', conn.base)
+        self.assertEquals('ssh+loopback://localhost/', conn.base)
 
     def test_simple_clone_conn(self):
         """Test that cloning reuses the same connection."""
         conn = ssh.LoopbackSSHConnection()
         # we create a real connection not a loopback one, but it will use the
         # same server and pipes
-        conn2 = ssh.SSHConnection('ssh+loopback:///', clone_from=conn)
+        conn2 = ssh.SSHConnection('ssh+loopback://localhost/', clone_from=conn)
         conn2.query_version()
+
+    def test_remote_path(self):
+        conn = ssh.LoopbackSSHConnection()
+        self.assertEquals('/foo/bar',
+                          conn._remote_path('foo/bar'))
 
     def test_abspath(self):
         conn = ssh.LoopbackSSHConnection()
-        self.assertEquals('ssh+loopback:///foo/bar',
+        self.assertEquals('ssh+loopback://localhost/foo/bar',
                           conn.abspath('foo/bar'))
 
     def test_clone_changes_base(self):
@@ -139,8 +144,9 @@ class TestSSHTransport(tests.TestCase):
         conn = ssh.LoopbackSSHConnection()
         conn.backing_transport.mkdir('toffee')
         conn.backing_transport.mkdir('toffee/apple')
+        self.assertEquals('/toffee', conn._remote_path('toffee'))
+        # import pdb;pdb.set_trace()
         self.assertTrue(conn.has('toffee'))
-        return ################################################
         sub_conn = conn.clone('toffee')
         self.assertTrue(sub_conn.has('apple'))
 
