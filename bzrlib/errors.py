@@ -166,7 +166,7 @@ class NotLocalUrl(BzrNewError):
 class BzrCommandError(BzrError):
     # Error from malformed user command
     # This is being misused as a generic exception
-    # pleae subclass. RBC 20051030
+    # please subclass. RBC 20051030
     #
     # I think it's a waste of effort to differentiate between errors that
     # are not intended to be caught anyway.  UI code need not subclass
@@ -511,7 +511,7 @@ class AmbiguousBase(BzrError):
     def __init__(self, bases):
         warn("BzrError AmbiguousBase has been deprecated as of bzrlib 0.8.",
                 DeprecationWarning)
-        msg = "The correct base is unclear, becase %s are all equally close" %\
+        msg = "The correct base is unclear, because %s are all equally close" %\
             ", ".join(bases)
         BzrError.__init__(self, msg)
         self.bases = bases

@@ -354,7 +354,7 @@ def parse_patches(iter_lines):
 
 
 def difference_index(atext, btext):
-    """Find the indext of the first character that differs betweeen two texts
+    """Find the indext of the first character that differs between two texts
 
     :param atext: The first text
     :type atext: str
