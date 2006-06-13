@@ -945,10 +945,10 @@ class BzrDirFormat(object):
     _formats = {}
     """The known formats."""
 
-    _control_formats = set()
+    _control_formats = []
     """The registered control formats - .bzr, ....
     
-    This is a set of BzrDirFormat objects.
+    This is a list of BzrDirFormat objects.
     """
 
     _lock_file_name = 'branch-lock'
@@ -1102,7 +1102,7 @@ class BzrDirFormat(object):
         there. It has been done without that for now for simplicity of
         implementation.
         """
-        klass._control_formats.add(format)
+        klass._control_formats.append(format)
 
     @classmethod
     def set_default_format(klass, format):
