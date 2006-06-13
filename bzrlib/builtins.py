@@ -2646,6 +2646,17 @@ class cmd_break_lock(Command):
             pass
         
 
+class cmd_serve(Command):
+    """Run the bzr server.
+    """
+    takes_options = [Option('inet', help='serve on stdin/stdout for use from inetd or sshd')]
+
+    def run(self, inet=False):
+        from bzrlib.transport import souk
+        from bzrlib.transport import get_transport
+        server = souk.SoukStreamServer(sys.stdin, sys.stdout, get_transport('.'))
+        server.serve()
+
 
 # command-line interpretation helper for merge-related commands
 def merge(other_revision, base_revision,

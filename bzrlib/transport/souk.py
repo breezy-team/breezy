@@ -79,6 +79,11 @@ followed by bulk body data. ::
 #
 # TODO: What to do when a client connection is garbage collected?  Maybe just
 # abruptly drop the connection?
+#
+# TODO: Server in some cases will need to restrict access to files outside of
+# a particular root directory.
+#
+# TODO: Handle close for tcp and stream clients.
 
 
 from cStringIO import StringIO
@@ -113,6 +118,7 @@ def _recv_tuple(from_file):
 
 def _send_tuple(to_file, args):
     to_file.write('\1'.join((a.encode('utf-8') for a in args)) + '\n')
+    to_file.flush()
 
 
 def _recv_bulk(from_file):
@@ -229,6 +235,7 @@ class SoukStreamServer(object):
         self._out.write('%d\n' % len(body))
         self._out.write(body)
         self._out.write('done\n')
+        self._out.flush()
 
 
 class SoukTCPServer(object):
@@ -254,8 +261,8 @@ class SoukTCPServer(object):
 
     def accept_and_serve(self):
         conn, client_addr = self._server_socket.accept()
-        from_client = conn.makefile('r', 1)
-        to_client = conn.makefile('w', 1)
+        from_client = conn.makefile('r')
+        to_client = conn.makefile('w')
         handler = SoukStreamServer(from_client, to_client,
                 self.backing_transport)
         handler.serve()
@@ -441,6 +448,15 @@ class SoukTransport(sftp.SFTPUrlHandling):
         return BogusLock(relpath)
 
 
+class SoukStreamClient(SoukTransport):
+    """Connection to smart server over externally provided fifos"""
+    def __init__(self, from_server, to_server):
+        ## super(SoukTCPClient, self).__init__('bzr://<pipe>/')
+        self.base = 'bzr://<pipe>/'
+        self._from_server = from_server
+        self._to_server = to_server
+
+
 class SoukTCPClient(SoukTransport):
     """Connection to smart server over plain tcp"""
 
@@ -455,15 +471,13 @@ class SoukTCPClient(SoukTransport):
         if result:
             raise errors.ConnectionError("failed to connect to %s:%d: %s" %
                     (self._host, self._port, os.strerror(result)))
-        LINE_BUFFERED = 1
         # TODO: May be more efficient to just treat them as sockets
         # throughout?  But what about pipes to ssh?...
-        self._to_server = self._socket.makefile('w', LINE_BUFFERED)
+        self._to_server = self._socket.makefile('w')
         self._from_server = self._socket.makefile('r')
 
-    def close(self):
-        self._to_server.close()
-        self._from_server.close()
+    def disconnect(self):
+        super(SoukTCPClient, self).disconnect()
         self._socket.close()
 
 
@@ -489,11 +503,10 @@ class LoopbackSoukConnection(SoukTransport):
         import threading
         from_client_fd, to_server_fd = os.pipe()
         from_server_fd, to_client_fd = os.pipe()
-        LINE_BUFFERED = 1
-        self._to_server = os.fdopen(to_server_fd, 'wb', LINE_BUFFERED)
-        self._from_server = os.fdopen(from_server_fd, 'rb', LINE_BUFFERED)
-        self._server = SoukStreamServer(os.fdopen(from_client_fd, 'rb', LINE_BUFFERED),
-                                        os.fdopen(to_client_fd, 'wb', LINE_BUFFERED),
+        self._to_server = os.fdopen(to_server_fd, 'wb')
+        self._from_server = os.fdopen(from_server_fd, 'rb')
+        self._server = SoukStreamServer(os.fdopen(from_client_fd, 'rb'),
+                                        os.fdopen(to_client_fd, 'wb'),
                                         self.backing_transport)
         self._server_thread = threading.Thread(None,
                 self._server.serve,

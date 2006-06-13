@@ -23,6 +23,8 @@
 
 # all of this deals with byte strings so this is safe
 from cStringIO import StringIO
+import subprocess
+import sys
 
 import bzrlib
 from bzrlib import tests, errors, bzrdir
@@ -153,6 +155,22 @@ class BasicSoukTests(tests.TestCase):
         bzrdir.BzrDirFormat.get_default_format().initialize_on_transport(t)
         result_dir = bzrdir.BzrDir.open_containing_from_transport(conn)
 
+    def test_server_subprocess(self):
+        """Talk to a server started as a subprocess
+        
+        This is similar to running it over ssh, except that it runs in the same machine 
+        without ssh intermediating.
+        """
+        args = [sys.executable, sys.argv[0], 'serve', '--inet']
+        child = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                 close_fds=True)
+        conn = souk.SoukStreamClient(to_server=child.stdin, from_server=child.stdout)
+        conn.query_version()
+        conn.query_version()
+        conn.disconnect()
+        returncode = child.wait()
+        self.assertEquals(0, returncode)
+
 
 class SoukTCPTests(tests.TestCase):
     """Tests for connection to TCP server"""
@@ -177,4 +195,4 @@ class SoukTCPTests(tests.TestCase):
         try:
             conn.query_version()
         finally:
-            conn.close()
+            conn.disconnect()
