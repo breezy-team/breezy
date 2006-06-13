@@ -62,7 +62,7 @@ class BasicSoukTests(tests.TestCase):
         server = souk.SoukTCPServer(backing_transport=FlakyTransport())
         server.start_background_thread()
         try:
-            conn = souk.SoukTCPClient(server.get_url()) 
+            conn = souk.SoukTCPClient(server.get_url())
             try:
                 conn.get('something')
             except errors.TransportError, e:
@@ -71,7 +71,6 @@ class BasicSoukTests(tests.TestCase):
                 self.fail("get did not raise expected error")
         finally:
             server.stop_background_thread()
-
 
     def test_server_subprocess(self):
         """Talk to a server started as a subprocess

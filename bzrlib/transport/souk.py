@@ -95,9 +95,15 @@ limited to a directory?
 # abruptly drop the connection?
 #
 # TODO: Server in some cases will need to restrict access to files outside of
-# a particular root directory.
+# a particular root directory.  LocalTransport doesn't do anything to stop you
+# ascending above the base directory, so we need to prevent paths
+# containing '..' in either the server or transport layers.  (Also need to
+# consider what happens if someone creates a symlink pointing outside the 
+# directory tree...)
 #
-# TODO: Handle close for tcp and stream clients.
+# TODO: Server should rebase absolute paths coming across the network to put
+# them under the virtual root, if one is in use.  LocalTransport currently
+# doesn't do that; if you give it an absolute path it just uses it.
 
 
 from cStringIO import StringIO
@@ -108,7 +114,7 @@ import sys
 import threading
 import urllib
 
-from bzrlib import errors, transport
+from bzrlib import errors, transport, trace
 from bzrlib.transport import sftp, local
 
 
@@ -281,6 +287,9 @@ class SoukTCPServer(object):
             except socket.timeout:
                 # just check if we're asked to stop
                 pass
+            except socket.error, e:
+                trace.warning("client disconnected: %s", e)
+                pass
 
     def get_url(self):
         """Return the url of the server"""
@@ -374,7 +383,7 @@ class SoukTransport(sftp.SFTPUrlHandling):
             netloc = '%s@%s' % (urllib.quote(self._username), netloc)
         if self._port is not None:
             netloc = '%s:%d' % (netloc, self._port)
-        new_url = self._scheme + '://' + netloc + new_path
+        new_url = self._scheme + '://' + netloc + '/' + new_path
         return SoukTransport(new_url, clone_from=self)
 
     def is_readonly(self):
