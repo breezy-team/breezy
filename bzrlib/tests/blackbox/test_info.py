@@ -1508,6 +1508,9 @@ Revision store:
         lco_tree.branch.unlock()
 
     def test_info_locking_oslocks(self):
+        if sys.platform == "win32":
+            raise TestSkipped("don't use oslocks on win32 in unix manner")
+
         tree = self.make_branch_and_tree('branch',
                                          format=bzrlib.bzrdir.BzrDirFormat6())
 
