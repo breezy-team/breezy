@@ -2649,12 +2649,27 @@ class cmd_break_lock(Command):
 class cmd_serve(Command):
     """Run the bzr server.
     """
-    takes_options = [Option('inet', help='serve on stdin/stdout for use from inetd or sshd')]
+    takes_options = [
+        Option('inet',
+               help='serve on stdin/out for use from inetd or sshd'),
+        Option('port',
+               help='listen for connections on nominated port',
+               type=int),
+        Option('directory',
+               help='serve contents of directory',
+               type=unicode),
+        ]
 
-    def run(self, inet=False):
+    def run(self, port=None, inet=False, directory=None):
         from bzrlib.transport import souk
         from bzrlib.transport import get_transport
-        server = souk.SoukStreamServer(sys.stdin, sys.stdout, get_transport('.'))
+        if directory is None:
+            directory = os.getcwd()
+        t = get_transport(directory)
+        if inet:
+            server = souk.SoukStreamServer(sys.stdin, sys.stdout, t)
+        elif port is not None:
+            server = souk.SoukTCPServer(t, port=port)
         server.serve()
 
 

@@ -241,19 +241,31 @@ class SoukStreamServer(object):
 class SoukTCPServer(object):
     """Listens on a TCP socket and accepts connections from souk clients"""
 
-    def __init__(self, backing_transport=None):
+    def __init__(self, backing_transport=None, port=0):
+        """Construct a new server.
+
+        To actually start it running, call either start_background_thread or
+        serve.
+
+        :param port: TCP port to listen on, or 0 to allocate a transient port.
+        """
         if backing_transport is None:
             backing_transport = memory.MemoryTransport()
         self._server_socket = socket.socket()
-        self._server_socket.bind(('127.0.0.1', 0))
+        self._server_socket.bind(('127.0.0.1', port))
         self._server_socket.listen(1)
-        self._server_socket.settimeout(0.2)
+        self._server_socket.settimeout(1)
         self.backing_transport = backing_transport
 
-    def serve_until_stopped(self):
+    def serve(self):
         # let connections timeout so that we get a chance to terminate
+        self._should_terminate = False
         while not self._should_terminate:
-            self.accept_and_serve()
+            try:
+                self.accept_and_serve()
+            except socket.timeout:
+                # just check if we're asked to stop
+                pass
 
     def get_url(self):
         """Return the url of the server"""
@@ -268,16 +280,15 @@ class SoukTCPServer(object):
         handler.serve()
 
     def start_background_thread(self):
-        self._should_terminate = False
         self._server_thread = threading.Thread(None,
-                self.serve_until_stopped,
+                self.serve,
                 name='server-' + self.get_url())
         self._server_thread.setDaemon(True)
         self._server_thread.start()
 
     def stop_background_thread(self):
         self._should_terminate = True
-        self._server_socket.close()
+        # self._server_socket.close()
         # we used to join the thread, but it's not really necessary; it will
         # terminate in time
         ## self._server_thread.join()
@@ -368,12 +379,15 @@ class SoukTransport(sftp.SFTPUrlHandling):
 
     def get(self, relpath):
         """Return file-like object reading the contents of a remote file."""
+        ## print 'get %s' % self._remote_path(relpath)
         resp = self._call('get', self._remote_path(relpath))
         if resp != ('ok', ):
             self._translate_error(resp)
         body = self._recv_bulk()
         self._recv_trailer()
-        return StringIO(body)
+        ret = StringIO(body)
+        ## print '  got %d bytes' % len(body)
+        return ret
 
     def _recv_trailer(self):
         resp = self._recv_tuple()
