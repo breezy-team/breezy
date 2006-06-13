@@ -275,6 +275,18 @@ class Branch(object):
         """
         return None
 
+    def get_revision_delta(self, revno):
+        """Return the delta for one revision.
+
+        The delta is relative to its mainline predecessor, or the
+        empty tree for revision 1.
+        """
+        assert isinstance(revno, int)
+        rh = self.revision_history()
+        if not (1 <= revno <= len(rh)):
+            raise InvalidRevisionNumber(revno)
+        return self.repository.get_revision_delta(rh[revno-1])
+
     def get_root_id(self):
         """Return the id of this branches root"""
         raise NotImplementedError('get_root_id is abstract')
@@ -1066,18 +1078,6 @@ class BzrBranch(Branch):
             # this call is disabled because revision_history is 
             # not really an object yet, and the transaction is for objects.
             # transaction.register_clean(history)
-
-    def get_revision_delta(self, revno):
-        """Return the delta for one revision.
-
-        The delta is relative to its mainline predecessor, or the
-        empty tree for revision 1.
-        """
-        assert isinstance(revno, int)
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
-        return self.repository.get_revision_delta(rh[revno-1])
 
     @needs_read_lock
     def revision_history(self):
