@@ -287,7 +287,7 @@ class VersionedFile(object):
         
         Ghosts are not listed or referenced in the graph.
         :param version_ids: Versions to select.
-                            None means retreive all versions.
+                            None means retrieve all versions.
         """
         result = {}
         if version_ids is None:
@@ -388,7 +388,7 @@ class VersionedFile(object):
         specific version marker at this point. The api may be changed
         during development to include the version that the versioned file
         thinks is relevant, but given that such hints are just guesses,
-        its better not to have it if we dont need it.
+        its better not to have it if we don't need it.
 
         NOTES: Lines are normalised: they will all have \n terminators.
                Lines are returned in arbitrary order.
@@ -483,7 +483,7 @@ class PlanWeaveMerge(TextMerge):
        
         # We previously considered either 'unchanged' or 'killed-both' lines
         # to be possible places to resynchronize.  However, assuming agreement
-        # on killed-both lines may be too agressive. -- mbp 20060324
+        # on killed-both lines may be too aggressive. -- mbp 20060324
         for state, line in self.plan:
             if state == 'unchanged':
                 # resync and flush queued conflicts changes if any
@@ -638,7 +638,7 @@ class InterVersionedFile(InterObject):
 class InterVersionedFileTestProviderAdapter(object):
     """A tool to generate a suite testing multiple inter versioned-file classes.
 
-    This is done by copying the test once for each interversionedfile provider
+    This is done by copying the test once for each InterVersionedFile provider
     and injecting the transport_server, transport_readonly_server,
     versionedfile_factory and versionedfile_factory_to classes into each copy.
     Each copy is also given a new id() to make it easy to identify.

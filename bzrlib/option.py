@@ -135,7 +135,7 @@ class Option(object):
         argname -- name of option argument, if any
         """
         # TODO: perhaps a subclass that automatically does 
-        # --option, --no-option for reversable booleans
+        # --option, --no-option for reversible booleans
         self.name = name
         self.help = help
         self.type = type
