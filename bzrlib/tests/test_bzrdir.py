@@ -45,7 +45,7 @@ class TestDefaultFormat(TestCase):
         bzrdir.BzrDirFormat.set_default_format(SampleBzrDirFormat())
         # creating a bzr dir should now create an instrumented dir.
         try:
-            result = bzrdir.BzrDir.create('memory:/')
+            result = bzrdir.BzrDir.create('memory:///')
             self.failUnless(isinstance(result, SampleBzrDir))
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
@@ -250,6 +250,20 @@ class TestBzrDirFormat(TestCaseWithTransport):
         try:
             branch = bzrdir.BzrDir.create_branch_convenience('.')
             branch.bzrdir.open_workingtree()
+            branch.bzrdir.open_repository()
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_convenience_root(self):
+        """Creating a branch at the root of a fs should work."""
+        self.transport_server = MemoryServer
+        # outside a repo the default convenience output is a repo+branch_tree
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            branch = bzrdir.BzrDir.create_branch_convenience(self.get_url())
+            self.assertRaises(errors.NoWorkingTree,
+                              branch.bzrdir.open_workingtree)
             branch.bzrdir.open_repository()
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)

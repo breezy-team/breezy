@@ -27,7 +27,7 @@ from bzrlib.errors import BzrError
 class _Serializer_v4(Serializer):
     """Version 0.0.4 serializer
 
-    You should use the serialzer_v4 singleton."""
+    You should use the serializer_v4 singleton."""
     
     __slots__ = []
     

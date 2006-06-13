@@ -16,20 +16,28 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from shutil import copyfile
-from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
-                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 from cStringIO import StringIO
 import errno
 import os
+from os import listdir
 import re
 import sha
 import shutil
+from shutil import copyfile
+import stat
+from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
+                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 import string
 import sys
 import time
 import types
 import tempfile
+import unicodedata
+from ntpath import (abspath as _nt_abspath,
+                    join as _nt_join,
+                    normpath as _nt_normpath,
+                    realpath as _nt_realpath,
+                    )
 
 import bzrlib
 from bzrlib.errors import (BzrError,
@@ -38,6 +46,7 @@ from bzrlib.errors import (BzrError,
                            PathNotChild,
                            IllegalPath,
                            )
+from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 import bzrlib.win32console
 
@@ -74,50 +83,59 @@ def quotefn(f):
         return f
 
 
-def file_kind(f):
-    mode = os.lstat(f)[ST_MODE]
-    if S_ISREG(mode):
-        return 'file'
-    elif S_ISDIR(mode):
-        return 'directory'
-    elif S_ISLNK(mode):
-        return 'symlink'
-    elif S_ISCHR(mode):
-        return 'chardev'
-    elif S_ISBLK(mode):
-        return 'block'
-    elif S_ISFIFO(mode):
-        return 'fifo'
-    elif S_ISSOCK(mode):
-        return 'socket'
-    else:
-        return 'unknown'
+_directory_kind = 'directory'
+
+_formats = {
+    stat.S_IFDIR:_directory_kind,
+    stat.S_IFCHR:'chardev',
+    stat.S_IFBLK:'block',
+    stat.S_IFREG:'file',
+    stat.S_IFIFO:'fifo',
+    stat.S_IFLNK:'symlink',
+    stat.S_IFSOCK:'socket',
+}
+
+
+def file_kind_from_stat_mode(stat_mode, _formats=_formats, _unknown='unknown'):
+    """Generate a file kind from a stat mode. This is used in walkdirs.
+
+    Its performance is critical: Do not mutate without careful benchmarking.
+    """
+    try:
+        return _formats[stat_mode & 0170000]
+    except KeyError:
+        return _unknown
+
+
+def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
+    return _mapper(_lstat(f).st_mode)
 
 
 def kind_marker(kind):
     if kind == 'file':
         return ''
-    elif kind == 'directory':
+    elif kind == _directory_kind:
         return '/'
     elif kind == 'symlink':
         return '@'
     else:
         raise BzrError('invalid file kind %r' % kind)
 
-def lexists(f):
-    if hasattr(os.path, 'lexists'):
-        return os.path.lexists(f)
-    try:
-        if hasattr(os, 'lstat'):
-            os.lstat(f)
-        else:
-            os.stat(f)
-        return True
-    except OSError,e:
-        if e.errno == errno.ENOENT:
-            return False;
-        else:
-            raise BzrError("lstat/stat of (%r): %r" % (f, e))
+lexists = getattr(os.path, 'lexists', None)
+if lexists is None:
+    def lexists(f):
+        try:
+            if hasattr(os, 'lstat'):
+                os.lstat(f)
+            else:
+                os.stat(f)
+            return True
+        except OSError,e:
+            if e.errno == errno.ENOENT:
+                return False;
+            else:
+                raise BzrError("lstat/stat of (%r): %r" % (f, e))
+
 
 def fancy_rename(old, new, rename_func, unlink_func):
     """A fancy rename, when you don't have atomic rename.
@@ -173,10 +191,57 @@ def fancy_rename(old, new, rename_func, unlink_func):
             else:
                 rename_func(tmp_name, new)
 
+
+# In Python 2.4.2 and older, os.path.abspath and os.path.realpath
+# choke on a Unicode string containing a relative path if
+# os.getcwd() returns a non-sys.getdefaultencoding()-encoded
+# string.
+_fs_enc = sys.getfilesystemencoding()
+def _posix_abspath(path):
+    return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
+    # jam 20060426 This is another possibility which mimics 
+    # os.path.abspath, only uses unicode characters instead
+    # if not os.path.isabs(path):
+    #     return os.path.join(os.getcwdu(), path)
+    # return path
+
+
+def _posix_realpath(path):
+    return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
+
+
+def _win32_abspath(path):
+    return _nt_abspath(path.encode(_fs_enc)).decode(_fs_enc).replace('\\', '/')
+
+
+def _win32_realpath(path):
+    return _nt_realpath(path.encode(_fs_enc)).decode(_fs_enc).replace('\\', '/')
+
+
+def _win32_pathjoin(*args):
+    return _nt_join(*args).replace('\\', '/')
+
+
+def _win32_normpath(path):
+    return _nt_normpath(path).replace('\\', '/')
+
+
+def _win32_getcwd():
+    return os.getcwdu().replace('\\', '/')
+
+
+def _win32_mkdtemp(*args, **kwargs):
+    return tempfile.mkdtemp(*args, **kwargs).replace('\\', '/')
+
+
+def _win32_rename(old, new):
+    fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+
+
 # Default is to just use the python builtins, but these can be rebound on
 # particular platforms.
-abspath = os.path.abspath
-realpath = os.path.realpath
+abspath = _posix_abspath
+realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = os.path.normpath
 getcwd = os.getcwdu
@@ -188,41 +253,15 @@ rmtree = shutil.rmtree
 
 MIN_ABS_PATHLENGTH = 1
 
-if os.name == "posix":
-    # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
-    # choke on a Unicode string containing a relative path if
-    # os.getcwd() returns a non-sys.getdefaultencoding()-encoded
-    # string.
-    _fs_enc = sys.getfilesystemencoding()
-    def abspath(path):
-        return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
-
-    def realpath(path):
-        return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
 
 if sys.platform == 'win32':
-    # We need to use the Unicode-aware os.path.abspath and
-    # os.path.realpath on Windows systems.
-    def abspath(path):
-        return os.path.abspath(path).replace('\\', '/')
-
-    def realpath(path):
-        return os.path.realpath(path).replace('\\', '/')
-
-    def pathjoin(*args):
-        return os.path.join(*args).replace('\\', '/')
-
-    def normpath(path):
-        return os.path.normpath(path).replace('\\', '/')
-
-    def getcwd():
-        return os.getcwdu().replace('\\', '/')
-
-    def mkdtemp(*args, **kwargs):
-        return tempfile.mkdtemp(*args, **kwargs).replace('\\', '/')
-
-    def rename(old, new):
-        fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+    abspath = _win32_abspath
+    realpath = _win32_realpath
+    pathjoin = _win32_pathjoin
+    normpath = _win32_normpath
+    getcwd = _win32_getcwd
+    mkdtemp = _win32_mkdtemp
+    rename = _win32_rename
 
     MIN_ABS_PATHLENGTH = 3
 
@@ -347,6 +386,15 @@ def is_inside_any(dir_list, fname):
     """True if fname is inside any of given dirs."""
     for dirname in dir_list:
         if is_inside(dirname, fname):
+            return True
+    else:
+        return False
+
+
+def is_inside_or_parent_of_any(dir_list, fname):
+    """True if fname is a child or a parent of any of the given files."""
+    for dirname in dir_list:
+        if is_inside(dirname, fname) or is_inside(fname, dirname):
             return True
     else:
         return False
@@ -547,6 +595,7 @@ def joinpath(p):
     return pathjoin(*p)
 
 
+@deprecated_function(zero_nine)
 def appendpath(p1, p2):
     if p1 == '':
         return p2
@@ -629,6 +678,7 @@ def relpath(base, path):
     assert len(base) >= MIN_ABS_PATHLENGTH, ('Length of base must be equal or'
         ' exceed the platform minimum length (which is %d)' % 
         MIN_ABS_PATHLENGTH)
+
     rp = abspath(path)
 
     s = []
@@ -640,8 +690,6 @@ def relpath(base, path):
         if tail:
             s.insert(0, tail)
     else:
-        # XXX This should raise a NotChildPath exception, as its not tied
-        # to branch anymore.
         raise PathNotChild(rp, base)
 
     if s:
@@ -664,6 +712,54 @@ def safe_unicode(unicode_or_utf8_string):
         return unicode_or_utf8_string.decode('utf8')
     except UnicodeDecodeError:
         raise BzrBadParameterNotUnicode(unicode_or_utf8_string)
+
+
+_platform_normalizes_filenames = False
+if sys.platform == 'darwin':
+    _platform_normalizes_filenames = True
+
+
+def normalizes_filenames():
+    """Return True if this platform normalizes unicode filenames.
+
+    Mac OSX does, Windows/Linux do not.
+    """
+    return _platform_normalizes_filenames
+
+
+if _platform_normalizes_filenames:
+    def unicode_filename(path):
+        """Make sure 'path' is a properly normalized filename.
+
+        On platforms where the system normalizes filenames (Mac OSX),
+        you can access a file by any path which will normalize
+        correctly.
+        Internally, bzr only supports NFC/NFKC normalization, since
+        that is the standard for XML documents.
+        So we return an normalized path, and indicate this has been
+        properly normalized.
+
+        :return: (path, is_normalized) Return a path which can
+                access the file, and whether or not this path is
+                normalized.
+        """
+        return unicodedata.normalize('NFKC', path), True
+else:
+    def unicode_filename(path):
+        """Make sure 'path' is a properly normalized filename.
+
+        On platforms where the system does not normalize filenames 
+        (Windows, Linux), you have to access a file by its exact path.
+        Internally, bzr only supports NFC/NFKC normalization, since
+        that is the standard for XML documents.
+        So we return the original path, and indicate if this is
+        properly normalized.
+
+        :return: (path, is_normalized) Return a path which can
+                access the file, and whether or not this path is
+                normalized.
+        """
+        return path, unicodedata.normalize('NFKC', path) == path
 
 
 def terminal_width():
@@ -693,16 +789,6 @@ def supports_executable():
     return sys.platform != "win32"
 
 
-def strip_trailing_slash(path):
-    """Strip trailing slash, except for root paths.
-    The definition of 'root path' is platform-dependent.
-    """
-    if len(path) != MIN_ABS_PATHLENGTH and path[-1] == '/':
-        return path[:-1]
-    else:
-        return path
-
-
 _validWin32PathRE = re.compile(r'^([A-Za-z]:[/\\])?[^:<>*"?\|]*$')
 
 
@@ -715,3 +801,40 @@ def check_legal_path(path):
         return
     if _validWin32PathRE.match(path) is None:
         raise IllegalPath(path)
+
+
+def walkdirs(top):
+    """Yield data about all the directories in a tree.
+    
+    This yields all the data about the contents of a directory at a time.
+    After each directory has been yielded, if the caller has mutated the list
+    to exclude some directories, they are then not descended into.
+    
+    The data yielded is of the form:
+    [(relpath, basename, kind, lstat, path_from_top), ...]
+
+    :return: an iterator over the dirs.
+    """
+    lstat = os.lstat
+    pending = []
+    _directory = _directory_kind
+    _listdir = listdir
+    pending = [("", "", _directory, None, top)]
+    while pending:
+        dirblock = []
+        currentdir = pending.pop()
+        # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
+        top = currentdir[4]
+        if currentdir[0]:
+            relroot = currentdir[0] + '/'
+        else:
+            relroot = ""
+        for name in sorted(_listdir(top)):
+            abspath = top + '/' + name
+            statvalue = lstat(abspath)
+            dirblock.append ((relroot + name, name, file_kind_from_stat_mode(statvalue.st_mode), statvalue, abspath))
+        yield dirblock
+        # push the user specified dirs from dirblock
+        for dir in reversed(dirblock):
+            if dir[2] == _directory:
+                pending.append(dir)

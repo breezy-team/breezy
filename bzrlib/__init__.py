@@ -72,6 +72,9 @@ DEFAULT_IGNORE = [
                   'stamp-h.in',
                   'stamp-h1',
                   '{arch}',
+                  # Our setup tests dump .python-eggs in the bzr source tree
+                  # root
+                  './.python-eggs',
                   ]
 
 IGNORE_FILENAME = ".bzrignore"
