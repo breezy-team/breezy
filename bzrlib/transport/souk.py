@@ -32,6 +32,20 @@ followed by bulk body data. ::
   SUCCESS_TRAILER := 'done' NEWLINE
   ERROR_TRAILER := 
 
+Paths are passed across the network.  The client needs to see a namespace that
+includes any repository that might need to be referenced, and the client needs
+to know about a root directory beyond which it cannot ascend.
+
+Servers run over ssh will typically want to be able to access any path the user 
+can access.  Public servers on the other hand (which might be over http, ssh
+or tcp) will typically want to restrict access to only a particular directory 
+and its children, so will want to do a software virtual root at that level.
+In other words they'll want to rewrite incoming paths to be under that level
+(and prevent escaping using ../ tricks.)
+
+URLs that include ~ should probably be passed across to the server verbatim
+and the server can expand them.  This will proably not be meaningful when 
+limited to a directory?
 """
 
 
@@ -92,6 +106,7 @@ import os
 import socket
 import sys
 import threading
+import urllib
 
 from bzrlib import errors, transport
 from bzrlib.transport import sftp, local
@@ -340,6 +355,7 @@ class SoukTransport(sftp.SFTPUrlHandling):
 
     def __init__(self, server_url, clone_from=None):
         super(SoukTransport, self).__init__(server_url)
+        print 'init transport url=%r' % server_url
         if clone_from is None:
             self._connect_to_server()
         else:
@@ -352,7 +368,14 @@ class SoukTransport(sftp.SFTPUrlHandling):
 
         This essentially opens a handle on a different remote directory.
         """
-        return SoukTransport(self.abspath(relative_url), self)
+        new_path = self._combine_paths(self._path, relative_url)
+        netloc = urllib.quote(self._host)
+        if self._username is not None:
+            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
+        if self._port is not None:
+            netloc = '%s:%d' % (netloc, self._port)
+        new_url = self._scheme + '://' + netloc + new_path
+        return SoukTransport(new_url, clone_from=self)
 
     def is_readonly(self):
         """Souk protocol currently only supports readonly operations."""
@@ -367,6 +390,14 @@ class SoukTransport(sftp.SFTPUrlHandling):
             return 1
         else:
             raise BzrProtocolError("bad response %r" % (resp,))
+
+    def _remote_path(self, relpath):
+        return self._combine_paths(self._path, relpath)
+
+    def abspath(self, relpath):
+        r = sftp.SFTPUrlHandling.abspath(self, relpath)
+        ## print 'abspath %s => %s' % (relpath, r)
+        return r
         
     def has(self, relpath):
         resp = self._call('has', self._remote_path(relpath))
@@ -386,7 +417,7 @@ class SoukTransport(sftp.SFTPUrlHandling):
         body = self._recv_bulk()
         self._recv_trailer()
         ret = StringIO(body)
-        ## print '  got %d bytes' % len(body)
+        ## print '  got %d bytes: %s' % (len(body), body[:30])
         return ret
 
     def _recv_trailer(self):
@@ -481,7 +512,7 @@ class SoukTCPClient(SoukTransport):
 
     def _connect_to_server(self):
         self._socket = socket.socket()
-        result = self._socket.connect_ex((self._host, self._port))
+        result = self._socket.connect_ex((self._host, int(self._port)))
         if result:
             raise errors.ConnectionError("failed to connect to %s:%d: %s" %
                     (self._host, self._port, os.strerror(result)))
