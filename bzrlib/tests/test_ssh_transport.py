@@ -28,7 +28,7 @@ import bzrlib
 from bzrlib import tests, errors, bzrdir
 from bzrlib.transport import local, memory, ssh
 
-class TestSSHTransport(tests.TestCase):
+class BasicSoukTests(tests.TestCase):
     
     def test_ssh_query_version(self):
         """Feed a canned query version to a server"""
@@ -116,7 +116,7 @@ class TestSSHTransport(tests.TestCase):
         conn = ssh.LoopbackSSHConnection()
         # we create a real connection not a loopback one, but it will use the
         # same server and pipes
-        conn2 = ssh.SSHConnection('ssh+loopback://localhost/', clone_from=conn)
+        conn2 = ssh.SoukTransport('ssh+loopback://localhost/', clone_from=conn)
         conn2.query_version()
 
     def test_remote_path(self):
@@ -152,25 +152,29 @@ class TestSSHTransport(tests.TestCase):
         t = conn.backing_transport
         bzrdir.BzrDirFormat.get_default_format().initialize_on_transport(t)
         result_dir = bzrdir.BzrDir.open_containing_from_transport(conn)
+
+
+class SoukTCPTests(tests.TestCase):
+    """Tests for connection to TCP server"""
+
+    def setUp(self):
+        super(SoukTCPTests, self).setUp()
+        self.server = ssh.SoukTCPServer(memory.MemoryTransport())
+        self.server.start_background_thread()
+
+    def tearDown(self):
+        if hasattr(self, 'server'):
+            self.server.stop_background_thread()
+        super(SoukTCPTests, self).tearDown()
         
     def test_start_tcp_server(self):
-        server = ssh.SoukTCPServer(memory.MemoryTransport())
-        server.start_background_thread()
-        try:
-            url = server.get_url()
-            self.assertContainsRe(url, r'^bzr://127\.0\.0\.1:[0-9]{2,}/')
-        finally:
-            server.stop_background_thread()
+        url = self.server.get_url()
+        self.assertContainsRe(url, r'^bzr://127\.0\.0\.1:[0-9]{2,}/')
 
     def test_connect_to_tcp_server(self):
-        server = ssh.SoukTCPServer(memory.MemoryTransport())
-        server.start_background_thread()
+        url = self.server.get_url()
+        conn = ssh.SoukTCPClient(url)
         try:
-            url = server.get_url()
-            conn = ssh.SoukTCPClient(url)
-            try:
-                conn.query_version()
-            finally:
-                conn.close()
+            conn.query_version()
         finally:
-            server.stop_background_thread()
+            conn.close()

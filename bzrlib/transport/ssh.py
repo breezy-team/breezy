@@ -34,9 +34,6 @@ followed by bulk body data. ::
 
 """
 
-# The plan is that the SSHTransport will hold an SSHConnection.  It will use
-# this to map Transport operations into low-level RPCs; it will also allow its
-# clients to ask for an RPC interface.
 
 
 # TODO: A plain integer from query_version is too simple; should give some
@@ -92,7 +89,7 @@ import sys
 import threading
 
 from bzrlib import errors, transport
-from bzrlib.transport import sftp
+from bzrlib.transport import sftp, local
 
 
 # must do this otherwise we can't parse the urls properly
@@ -237,20 +234,19 @@ class SoukStreamServer(object):
 class SoukTCPServer(object):
     """Listens on a TCP socket and accepts connections from souk clients"""
 
-    def __init__(self, backing_transport):
+    def __init__(self, backing_transport=None):
+        if backing_transport is None:
+            backing_transport = memory.MemoryTransport()
         self._server_socket = socket.socket()
         self._server_socket.bind(('127.0.0.1', 0))
         self._server_socket.listen(1)
+        self._server_socket.settimeout(0.2)
         self.backing_transport = backing_transport
 
     def serve_until_stopped(self):
         # let connections timeout so that we get a chance to terminate
-        self._server_socket.settimeout(0.1)
         while not self._should_terminate:
-            try:
-                self.accept_and_serve()
-            except socket.timeout:
-                pass
+            self.accept_and_serve()
 
     def get_url(self):
         """Return the url of the server"""
@@ -269,15 +265,46 @@ class SoukTCPServer(object):
         self._server_thread = threading.Thread(None,
                 self.serve_until_stopped,
                 name='server-' + self.get_url())
+        self._server_thread.setDaemon(True)
         self._server_thread.start()
 
     def stop_background_thread(self):
         self._should_terminate = True
-        self._server_thread.join()
+        self._server_socket.close()
+        # we used to join the thread, but it's not really necessary; it will
+        # terminate in time
+        ## self._server_thread.join()
 
 
-class SSHConnection(sftp.SFTPUrlHandling):
-    """Connection to a bzr ssh server.
+class SoukTCPServer_for_testing(SoukTCPServer):
+    """Server suitable for use by transport tests.
+    
+    This server is backed by the process's cwd.
+    """
+
+    def __init__(self):
+        self._homedir = os.getcwd()
+        SoukTCPServer.__init__(self, transport.get_transport(self._homedir))
+        
+    def setUp(self):
+        """Set up server for testing"""
+        self.start_background_thread()
+
+    def tearDown(self):
+        self.stop_background_thread()
+
+    def get_url(self):
+        """Return the url of the server"""
+        host, port = self._server_socket.getsockname()
+        return "bzr://%s:%d/%s" % (host, port, self._homedir)
+
+    def get_bogus_url(self):
+        """Return a URL which will fail to connect"""
+        return 'bzr://127.0.0.1:1/'
+
+
+class SoukTransport(sftp.SFTPUrlHandling):
+    """Connection to a souk server.
 
     The connection holds references to pipes that can be used to send requests
     to the server.
@@ -287,10 +314,14 @@ class SSHConnection(sftp.SFTPUrlHandling):
     
     This supports some higher-level RPC operations and can also be treated 
     like a Transport to do file-like operations.
+
+    The connection can be made over a tcp socket, or (in future) an ssh pipe
+    or a series of http requests.  There are concrete subclasses for each
+    type: SoukTCPClient, etc.
     """
 
     def __init__(self, server_url, clone_from=None):
-        super(SSHConnection, self).__init__(server_url)
+        super(SoukTransport, self).__init__(server_url)
         if clone_from is None:
             self._connect_to_server()
         else:
@@ -299,11 +330,15 @@ class SSHConnection(sftp.SFTPUrlHandling):
             self._from_server = clone_from._from_server
 
     def clone(self, relative_url):
-        """Make a new SSHConnection related to me, sharing the same connection.
+        """Make a new SoukTransport related to me, sharing the same connection.
 
         This essentially opens a handle on a different remote directory.
         """
-        return SSHConnection(self.abspath(relative_url), self)
+        return SoukTransport(self.abspath(relative_url), self)
+
+    def is_readonly(self):
+        """Souk protocol currently only supports readonly operations."""
+        return True
     
     def query_version(self):
         """Return protocol version number of the server."""
@@ -365,8 +400,48 @@ class SSHConnection(sftp.SFTPUrlHandling):
         self._to_server.close()
         self._from_server.close()
 
+    def append(self, relpath, from_file):
+        raise errors.TransportNotPossible("writing to souk servers not supported yet")
 
-class SoukTCPClient(SSHConnection):
+    def delete(self, relpath):
+        raise errors.TransportNotPossible('readonly transport')
+
+    def delete_tree(self, relpath):
+        raise errors.TransportNotPossible('readonly transport')
+
+    def put(self, relpath, f, mode=None):
+        raise errors.TransportNotPossible('readonly transport')
+
+    def mkdir(self, relpath, mode=None):
+        raise errors.TransportNotPossible('readonly transport')
+
+    def rmdir(self, relpath):
+        raise errors.TransportNotPossible('readonly transport')
+
+    def stat(self, relpath):
+        raise errors.TransportNotPossible('souk does not support stat()')
+
+    def lock_write(self, relpath):
+        raise errors.TransportNotPossible('readonly transport')
+
+    def listable(self):
+        return False
+
+    def lock_read(self, relpath):
+        """Lock the given file for shared (read) access.
+        :return: A lock object, which should be passed to Transport.unlock()
+        """
+        # The old RemoteBranch ignore lock for reading, so we will
+        # continue that tradition and return a bogus lock object.
+        class BogusLock(object):
+            def __init__(self, path):
+                self.path = path
+            def unlock(self):
+                pass
+        return BogusLock(relpath)
+
+
+class SoukTCPClient(SoukTransport):
     """Connection to smart server over plain tcp"""
 
     def __init__(self, url):
@@ -375,8 +450,11 @@ class SoukTCPClient(SSHConnection):
                 transport.split_url(url)
 
     def _connect_to_server(self):
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.connect((self._host, self._port))
+        self._socket = socket.socket()
+        result = self._socket.connect_ex((self._host, self._port))
+        if result:
+            raise errors.ConnectionError("failed to connect to %s:%d: %s" %
+                    (self._host, self._port, os.strerror(result)))
         LINE_BUFFERED = 1
         # TODO: May be more efficient to just treat them as sockets
         # throughout?  But what about pipes to ssh?...
@@ -389,13 +467,13 @@ class SoukTCPClient(SSHConnection):
         self._socket.close()
 
 
-class LoopbackSSHConnection(SSHConnection):
+class LoopbackSSHConnection(SoukTransport):
     """This replaces the "ssh->network->sshd" pipe in a typical network.
 
     It just connects together the ssh client and server, and creates
     a server for us just like running ssh will.
 
-    The difference between this and a real SSHConnection is that the latter
+    The difference between this and a real SoukTransport is that the latter
     really runs /usr/bin/ssh and we don't.  Instead we start a new thread 
     running the server, connected by a pair of fifos.
 
@@ -422,4 +500,10 @@ class LoopbackSSHConnection(SSHConnection):
         self._server_thread = threading.Thread(None,
                 self._server.serve,
                 name='loopback-bzr-server-%x' % id(self._server))
+        self._server_thread.setDaemon(True)
         self._server_thread.start()
+
+
+def get_test_permutations():
+    """Return (transport, server) permutations for testing"""
+    return [(SoukTCPClient, SoukTCPServer_for_testing)]

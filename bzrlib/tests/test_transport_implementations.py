@@ -694,14 +694,18 @@ class TestTransportImplementation(TestCaseInTempDir):
         # TODO: test copy_multi
 
     def test_connection_error(self):
-        """ConnectionError is raised when connection is impossible"""
+        """ConnectionError is raised when connection is impossible.
+        
+        The error may be raised from either the constructor or the first
+        operation on the transport.
+        """
         try:
             url = self._server.get_bogus_url()
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        t = bzrlib.transport.get_transport(url)
         try:
+            t = bzrlib.transport.get_transport(url)
             t.get('.bzr/branch')
         except (ConnectionError, NoSuchFile), e:
             pass

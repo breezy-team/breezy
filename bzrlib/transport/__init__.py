@@ -911,6 +911,9 @@ register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_lazy_transport('memory://', 'bzrlib.transport.memory', 'MemoryTransport')
 register_lazy_transport('readonly+', 'bzrlib.transport.readonly', 'ReadonlyTransportDecorator')
 register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTransportDecorator')
-register_lazy_transport('vfat+', 
+register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
+register_lazy_transport('bzr://',
+                        'bzrlib.transport.ssh',
+                        'SoukTCPClient')
