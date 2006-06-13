@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.branch import Branch, BranchFormat, BranchCheckResult
+from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, BzrBranch
 from bzrlib.errors import NotBranchError, NoWorkingTree, NoSuchRevision, \
         NoSuchFile
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
@@ -175,26 +175,7 @@ class SvnBranch(Branch):
     def get_physical_lock_status(self):
         return False
 
-    def get_revision_delta(self, revno):
-        """Return the delta for one revision.
-
-        The delta is relative to its mainline predecessor, or the
-        empty tree for revision 1.
-        """
-
-        assert isinstance(revno, int)
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
-
-        # revno is 1-based; list is 0-based
-
-        new_tree = self.repository.revision_tree(rh[revno-1])
-        if revno == 1:
-            old_tree = EmptyTree()
-        else:
-            old_tree = self.repository.revision_tree(rh[revno-2])
-        return compare_trees(old_tree, new_tree)
+    get_revision_delta = BzrBranch.get_revision_delta
 
     def sprout(self, to_bzrdir, revision_id=None):
         result = BranchFormat.get_default_format().initialize(to_bzrdir)

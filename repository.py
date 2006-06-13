@@ -26,9 +26,7 @@ from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
 from libsvn._core import SubversionException
 import svn.core
 import bzrlib
-from fakeweave import FakeFileStore, FakeInventoryWeave
 import branch
-from bzrlib.weave import Weave
 from cStringIO import StringIO
 from bzrlib.graph import Graph
 
@@ -97,12 +95,10 @@ class SvnRepository(Repository):
     """
     def __init__(self, bzrdir, url):
         _revision_store = None
-        control_store = None
 
-        text_store = FakeFileStore(self)
         control_files = LockableFiles(bzrdir.transport, '', TransportLock)
         Repository.__init__(self, 'Subversion Smart Server', bzrdir, 
-            control_files, _revision_store, control_store, text_store)
+            control_files, None, None, None)
 
         self.pool = svn.core.svn_pool_create(None)
 
@@ -200,7 +196,7 @@ class SvnRepository(Repository):
         raise NotImplementedError(self.all_revision_ids)
 
     def get_inventory_weave(self):
-        return FakeInventoryWeave(self)
+        raise NotImplementedError(self.get_inventory_weave)
 
     def get_ancestry(self, revision_id):
         if revision_id is None: # FIXME: Is this correct?

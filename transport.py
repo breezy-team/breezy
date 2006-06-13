@@ -96,8 +96,11 @@ class SvnRaTransport(Transport):
         self._scheme = scheme
         self.is_branch_root = scheme.is_branch(self.path)
 
+    def has(self, relpath):
+        return False
+
     def get(self, relpath):
-        raise NotImplementedError(self.get)
+        raise NoSuchFile(relpath)
 
     def stat(self, relpath):
         return os.stat('.') #FIXME
