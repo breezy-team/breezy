@@ -39,10 +39,11 @@ from bzrlib.store.versioned import VersionedFileStore, WeaveStore
 from bzrlib.store.text import TextStore
 from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter, note
-from bzrlib.tree import RevisionTree
+from bzrlib.tree import RevisionTree, EmptyTree
 from bzrlib.tsort import topo_sort
 from bzrlib.testament import Testament
 from bzrlib.tree import EmptyTree
+from bzrlib.delta import compare_trees
 import bzrlib.ui
 from bzrlib.weave import WeaveFile
 import bzrlib.xml5
@@ -329,6 +330,20 @@ class Repository(object):
         inv = self.get_inventory_weave()
         self._check_revision_parents(r, inv)
         return r
+
+    def get_revision_delta(self, revision_id):
+        """Return the delta for one revision.
+
+        The delta is relative to the left-hand predecessor of the
+        revision.
+        """
+        revision = self.get_revision(revision_id)
+        new_tree = self.revision_tree(revision_id)
+        if not revision.parent_ids:
+            old_tree = EmptyTree()
+        else:
+            old_tree = self.revision_tree(revision.parent_ids[0])
+        return compare_trees(old_tree, new_tree)
 
     def _check_revision_parents(self, revision, inventory):
         """Private to Repository and Fetch.
