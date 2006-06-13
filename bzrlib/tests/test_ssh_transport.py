@@ -30,14 +30,11 @@ from bzrlib.transport import local, memory, ssh
 
 class TestSSHTransport(tests.TestCase):
     
-    def test_loopback_ssh_connection_exists(self):
-        ssh.LoopbackSSHConnection()
-
     def test_ssh_query_version(self):
         """Feed a canned query version to a server"""
         to_server = StringIO('hello\0011\n')
         from_server = StringIO()
-        server = ssh.Server(to_server, from_server, local.LocalTransport('file:///'))
+        server = ssh.SoukStreamServer(to_server, from_server, local.LocalTransport('file:///'))
         server._serve_one_request()
         self.assertEqual('bzr server\0011\n',
                          from_server.getvalue())
@@ -47,7 +44,7 @@ class TestSSHTransport(tests.TestCase):
         transport.put('hello', StringIO('contents\nof\nfile\n'))
         to_server = StringIO('get\001./hello\n')
         from_server = StringIO()
-        server = ssh.Server(to_server, from_server, transport)
+        server = ssh.SoukStreamServer(to_server, from_server, transport)
         server._serve_one_request()
         self.assertEqual('ok\n'
                          '17\n'
@@ -156,3 +153,24 @@ class TestSSHTransport(tests.TestCase):
         bzrdir.BzrDirFormat.get_default_format().initialize_on_transport(t)
         result_dir = bzrdir.BzrDir.open_containing_from_transport(conn)
         
+    def test_start_tcp_server(self):
+        server = ssh.SoukTCPServer(memory.MemoryTransport())
+        server.start_background_thread()
+        try:
+            url = server.get_url()
+            self.assertContainsRe(url, r'^bzr://127\.0\.0\.1:[0-9]{2,}/')
+        finally:
+            server.stop_background_thread()
+
+    def test_connect_to_tcp_server(self):
+        server = ssh.SoukTCPServer(memory.MemoryTransport())
+        server.start_background_thread()
+        try:
+            url = server.get_url()
+            conn = ssh.SoukTCPClient(url)
+            try:
+                conn.query_version()
+            finally:
+                conn.close()
+        finally:
+            server.stop_background_thread()

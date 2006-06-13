@@ -75,20 +75,31 @@ followed by bulk body data. ::
 # from the thing that has the directory context?
 #
 # TODO: Pull more things common to sftp and ssh to a higher level.
+#
+# TODO: The server that manages a connection should be quite small and retain
+# minimum state because each of the requests are supposed to be stateless.
+# Then we can write another implementation that maps to http.
+#
+# TODO: What to do when a client connection is garbage collected?  Maybe just
+# abruptly drop the connection?
 
 
 from cStringIO import StringIO
 import errno
 import os
+import socket
 import sys
+import threading
 
 from bzrlib import errors, transport
 from bzrlib.transport import sftp
 
 
 # must do this otherwise we can't parse the urls properly
-transport.register_urlparse_netloc_protocol('ssh')
-transport.register_urlparse_netloc_protocol('ssh+loopback')
+for scheme in ['ssh', 'bzr', 'ssh+loopback']:
+    transport.register_urlparse_netloc_protocol(scheme)
+del scheme
+
 
 class BzrProtocolError(errors.TransportError):
     pass
@@ -119,11 +130,17 @@ def _recv_bulk(from_file):
     return bulk
 
 
-class Server(object):
-    """Handles bzr ssh commands over input/output pipes.
+class SoukStreamServer(object):
+    """Handles souk commands coming over a stream.
 
-    In the real world the pipes will be stdin/stdout for a process 
-    run from sshd.
+    The stream may be a pipe connected to sshd, or a tcp socket, or an
+    in-process fifo for testing.
+
+    One instance is created for each connected client; it can serve multiple
+    requests in the lifetime of the connection.
+
+    The server passes requests through to an underlying backing transport, 
+    which will typically be a LocalTransport looking at the server's filesystem.
     """
 
     def __init__(self, in_file, out_file, backing_transport):
@@ -136,9 +153,6 @@ class Server(object):
         self._in = in_file
         self._out = out_file
         self._backing_transport = backing_transport
-
-    def setUp(self):
-        """Register this server for use in tests."""
 
     def _do_query_version(self):
         """Answer a version request with my version."""
@@ -220,6 +234,48 @@ class Server(object):
         self._out.write('done\n')
 
 
+class SoukTCPServer(object):
+    """Listens on a TCP socket and accepts connections from souk clients"""
+
+    def __init__(self, backing_transport):
+        self._server_socket = socket.socket()
+        self._server_socket.bind(('127.0.0.1', 0))
+        self._server_socket.listen(1)
+        self.backing_transport = backing_transport
+
+    def serve_until_stopped(self):
+        # let connections timeout so that we get a chance to terminate
+        self._server_socket.settimeout(0.1)
+        while not self._should_terminate:
+            try:
+                self.accept_and_serve()
+            except socket.timeout:
+                pass
+
+    def get_url(self):
+        """Return the url of the server"""
+        return "bzr://%s:%d/" % self._server_socket.getsockname()
+
+    def accept_and_serve(self):
+        conn, client_addr = self._server_socket.accept()
+        from_client = conn.makefile('r', 1)
+        to_client = conn.makefile('w', 1)
+        handler = SoukStreamServer(from_client, to_client,
+                self.backing_transport)
+        handler.serve()
+
+    def start_background_thread(self):
+        self._should_terminate = False
+        self._server_thread = threading.Thread(None,
+                self.serve_until_stopped,
+                name='server-' + self.get_url())
+        self._server_thread.start()
+
+    def stop_background_thread(self):
+        self._should_terminate = True
+        self._server_thread.join()
+
+
 class SSHConnection(sftp.SFTPUrlHandling):
     """Connection to a bzr ssh server.
 
@@ -234,11 +290,9 @@ class SSHConnection(sftp.SFTPUrlHandling):
     """
 
     def __init__(self, server_url, clone_from=None):
-        assert (server_url.startswith('ssh://')
-                or server_url.startswith('ssh+'))
         super(SSHConnection, self).__init__(server_url)
         if clone_from is None:
-            self._start_server()
+            self._connect_to_server()
         else:
             # reuse same connection
             self._to_server = clone_from._to_server
@@ -312,6 +366,29 @@ class SSHConnection(sftp.SFTPUrlHandling):
         self._from_server.close()
 
 
+class SoukTCPClient(SSHConnection):
+    """Connection to smart server over plain tcp"""
+
+    def __init__(self, url):
+        super(SoukTCPClient, self).__init__(url)
+        self._scheme, self._username, self._password, self._host, self._port, self._path = \
+                transport.split_url(url)
+
+    def _connect_to_server(self):
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket.connect((self._host, self._port))
+        LINE_BUFFERED = 1
+        # TODO: May be more efficient to just treat them as sockets
+        # throughout?  But what about pipes to ssh?...
+        self._to_server = self._socket.makefile('w', LINE_BUFFERED)
+        self._from_server = self._socket.makefile('r')
+
+    def close(self):
+        self._to_server.close()
+        self._from_server.close()
+        self._socket.close()
+
+
 class LoopbackSSHConnection(SSHConnection):
     """This replaces the "ssh->network->sshd" pipe in a typical network.
 
@@ -332,16 +409,16 @@ class LoopbackSSHConnection(SSHConnection):
         self.backing_transport = backing_transport
         super(LoopbackSSHConnection, self).__init__('ssh+loopback://localhost/')
 
-    def _start_server(self):
+    def _connect_to_server(self):
         import threading
         from_client_fd, to_server_fd = os.pipe()
         from_server_fd, to_client_fd = os.pipe()
         LINE_BUFFERED = 1
         self._to_server = os.fdopen(to_server_fd, 'wb', LINE_BUFFERED)
         self._from_server = os.fdopen(from_server_fd, 'rb', LINE_BUFFERED)
-        self._server = Server(os.fdopen(from_client_fd, 'rb', LINE_BUFFERED),
-                              os.fdopen(to_client_fd, 'wb', LINE_BUFFERED),
-                              self.backing_transport)
+        self._server = SoukStreamServer(os.fdopen(from_client_fd, 'rb', LINE_BUFFERED),
+                                        os.fdopen(to_client_fd, 'wb', LINE_BUFFERED),
+                                        self.backing_transport)
         self._server_thread = threading.Thread(None,
                 self._server.serve,
                 name='loopback-bzr-server-%x' % id(self._server))
