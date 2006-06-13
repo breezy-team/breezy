@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Transport carried over SSH
+"""Souk: smart-server protocol.
 
 Requests are sent as a command and list of arguments, followed by optional
 bulk body data.  Responses are similarly a response and list of arguments,
@@ -93,7 +93,7 @@ from bzrlib.transport import sftp, local
 
 
 # must do this otherwise we can't parse the urls properly
-for scheme in ['ssh', 'bzr', 'ssh+loopback']:
+for scheme in ['ssh', 'bzr', 'bzr+loopback']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
 
@@ -467,15 +467,13 @@ class SoukTCPClient(SoukTransport):
         self._socket.close()
 
 
-class LoopbackSSHConnection(SoukTransport):
-    """This replaces the "ssh->network->sshd" pipe in a typical network.
+class LoopbackSoukConnection(SoukTransport):
+    """Souk server talking over pipe within process for testing.
 
     It just connects together the ssh client and server, and creates
     a server for us just like running ssh will.
 
-    The difference between this and a real SoukTransport is that the latter
-    really runs /usr/bin/ssh and we don't.  Instead we start a new thread 
-    running the server, connected by a pair of fifos.
+    This hides from the caller the details of setting up a transport, etc.  
 
     :ivar backing_transport: The transport used by the real server.
     """
@@ -485,7 +483,7 @@ class LoopbackSSHConnection(SoukTransport):
             from bzrlib.transport import memory
             backing_transport = memory.MemoryTransport('memory:///')
         self.backing_transport = backing_transport
-        super(LoopbackSSHConnection, self).__init__('ssh+loopback://localhost/')
+        super(LoopbackSoukConnection, self).__init__('bzr+loopback://localhost/')
 
     def _connect_to_server(self):
         import threading
