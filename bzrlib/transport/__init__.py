@@ -399,7 +399,7 @@ class Transport(object):
             total_size = 0
             for offset, size in combined_offsets:
                 total_size += size
-            mutter('readv coalesced %d reads.', len(combined_offsets))
+            ## mutter('readv coalesced %d reads.', len(combined_offsets))
             offset = combined_offsets[0][0]
             fp.seek(offset)
             data = fp.read(total_size)
