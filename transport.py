@@ -21,16 +21,16 @@ import os
 from bzrlib.errors import NoSuchFile
 from scheme import DefaultBranchingScheme
 
-# Don't run any tests on SvnTransport as it is not intended to be 
+# Don't run any tests on SvnRaTransport as it is not intended to be 
 # a full implementation of Transport
 def get_test_permutations():
     return []
 
-class SvnTransport(Transport):
+class SvnRaTransport(Transport):
     """ Fake transport for Subversion-related namespaces. This implements 
     just as much of Transport as is necessary to fool Bazaar-NG. """
     def __init__(self, url="", ra=None, root_url=None, scheme=None):
-        Transport.__init__(self,url)
+        Transport.__init__(self, url)
 
         if url.startswith("svn://") or \
            url.startswith("svn+ssh://"):
@@ -89,4 +89,4 @@ class SvnTransport(Transport):
         elif path != '.':
             parts.append(path)
 
-        return SvnTransport("/".join(parts),ra=self.ra,root_url=self.svn_root_url)
+        return SvnRaTransport("/".join(parts),ra=self.ra,root_url=self.svn_root_url)

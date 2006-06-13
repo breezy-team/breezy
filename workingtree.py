@@ -15,6 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
+from bzrlib.lockable_files import TransportLock
+from bzrlib.bzrdir import BzrDirFormat
+from transport import SvnRaTransport
+from format import SvnRemoteAccess, SvnFormat
 import bzrlib
 
 import svn.core, svn.wc
@@ -61,3 +65,55 @@ class SvnWorkingTreeFormat(WorkingTreeFormat):
     def open(self, a_bzrdir):
         # FIXME
         raise NotImplementedError(self.initialize)
+
+
+class SvnLocalAccess(SvnRemoteAccess):
+    def __init__(self, transport, format):
+        self.wc = svn.wc.adm_open3(None, transport.base.rstrip("/"), False, 0, None)
+        self.transport = transport
+        self.wc_entry = svn.wc.entry(transport.base.rstrip("/"), self.wc, True)
+
+        # Open related remote repository + branch
+        url = self.wc_entry.url
+        if not url.startswith("svn"):
+            url = "svn+" + url
+        format = SvnFormat()
+        try:
+            remote_transport = SvnRaTransport(url)
+        except Exception, e:
+            print e
+        while True:
+            print remote_transport.base
+            try:
+                format = SvnFormat.probe_transport(remote_transport)
+            except errors.NotBranchError, e:
+                pass
+            new_t = remote_transport.clone('..')
+            assert new_t.base != remote_transport.base
+            remote_transport = new_t
+
+        super(SvnLocalAccess, self).__init__(remote_transport)
+
+class SvnWorkingTreeDirFormat(BzrDirFormat):
+    _lock_class = TransportLock
+
+    @classmethod
+    def probe_transport(klass, transport):
+        format = klass()
+
+        if transport.has('.svn'):
+            return format
+
+        raise NotBranchError(path=transport.base)
+
+    def _open(self, transport):
+        return SvnLocalAccess(transport, self)
+
+    def get_format_string(self):
+        return 'Subversion Local Checkout'
+
+    def get_format_description(self):
+        return 'Subversion Local Checkout'
+
+    def initialize(self,url):
+        raise NotImplementedError(SvnFormat.initialize)

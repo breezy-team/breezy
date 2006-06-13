@@ -21,14 +21,14 @@ from libsvn._core import SubversionException
 from bzrlib.errors import NotBranchError, NotLocalUrl
 from bzrlib.lockable_files import TransportLock
 import svn.core
-from transport import SvnTransport
+from transport import SvnRaTransport
 
 class SvnRemoteAccess(BzrDir):
     def __init__(self, _transport, _format):
         self.root_transport = self.transport = _transport
         self._format = _format
 
-        assert isinstance(_transport, SvnTransport)
+        assert isinstance(_transport, SvnRaTransport)
 
         self.url = _transport.base
         self.branch_path = _transport.path
@@ -86,7 +86,7 @@ class SvnFormat(BzrDirFormat):
     def probe_transport(klass, transport):
         format = klass()
 
-        if isinstance(transport, SvnTransport):
+        if isinstance(transport, SvnRaTransport):
             return format
 
         raise NotBranchError(path=transport.base)

@@ -23,17 +23,19 @@ import transport
 import format
 import branch
 import submit
+import workingtree
 
 sys.path.append(os.path.dirname(__file__))
 
 from bzrlib.transport import register_transport
-register_transport('svn', transport.SvnTransport)
+register_transport('svn', transport.SvnRaTransport)
 
 from bzrlib.bzrdir import BzrDirFormat
 #BzrDirFormat.register_format(format.SvnFormat())
 
 BzrDirFormat.register_control_format(format.SvnFormat)
 
+BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
 
 def test_suite():
     from unittest import TestSuite, TestLoader
