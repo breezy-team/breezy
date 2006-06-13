@@ -946,7 +946,10 @@ class BzrDirFormat(object):
     """The known formats."""
 
     _control_formats = set()
-    """The core control formats - .bzr, ...."""
+    """The registered control formats - .bzr, ....
+    
+    This is a set of BzrDirFormat objects.
+    """
 
     _lock_file_name = 'branch-lock'
 
@@ -1055,6 +1058,9 @@ class BzrDirFormat(object):
         
         Concrete formats should override _known_formats.
         """
+        # There is double indirection here to make sure that control 
+        # formats used by more than one dir format will only be probed 
+        # once. This can otherwise be quite expensive for remote connections.
         result = set()
         for format in klass._control_formats:
             result.update(format._known_formats())
