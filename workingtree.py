@@ -14,12 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
-from bzrlib.lockable_files import TransportLock
+import bzrlib
 from bzrlib.bzrdir import BzrDirFormat
+from bzrlib.errors import NotBranchError
+from bzrlib.lockable_files import TransportLock
+from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 from transport import SvnRaTransport
 from format import SvnRemoteAccess, SvnFormat
-import bzrlib
 
 import svn.core, svn.wc
 from libsvn._core import SubversionException
@@ -69,9 +70,13 @@ class SvnWorkingTreeFormat(WorkingTreeFormat):
 
 class SvnLocalAccess(SvnRemoteAccess):
     def __init__(self, transport, format):
-        self.wc = svn.wc.adm_open3(None, transport.base.rstrip("/"), False, 0, None)
+        self.local_path = transport.base.rstrip("/")
+        if self.local_path.startswith("file://"):
+            self.local_path = self.local_path[len("file://"):]
+        
+        self.wc = svn.wc.adm_open3(None, self.local_path, False, 0, None)
         self.transport = transport
-        self.wc_entry = svn.wc.entry(transport.base.rstrip("/"), self.wc, True)
+        self.wc_entry = svn.wc.entry(self.local_path, self.wc, True)
 
         # Open related remote repository + branch
         url = self.wc_entry.url
@@ -86,7 +91,7 @@ class SvnLocalAccess(SvnRemoteAccess):
             print remote_transport.base
             try:
                 format = SvnFormat.probe_transport(remote_transport)
-            except errors.NotBranchError, e:
+            except NotBranchError, e:
                 pass
             new_t = remote_transport.clone('..')
             assert new_t.base != remote_transport.base
