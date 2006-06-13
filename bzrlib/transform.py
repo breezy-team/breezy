@@ -1066,9 +1066,7 @@ def _entry_changes(file_id, entry, working_tree):
     try:
         working_kind = working_tree.kind(file_id)
         has_contents = True
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise
+    except NoSuchFile:
         has_contents = False
         contents_mod = True
         meta_mod = False
