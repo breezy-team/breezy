@@ -42,7 +42,7 @@ class SvnRemoteAccess(BzrDir):
         repo = self.open_repository()
         result_repo = repo.clone(result, revision_id, basis)
         branch = self.open_branch()
-        branch.sprout(result,revision_id)
+        branch.sprout(result, revision_id)
         result.create_workingtree()
         return result
 
@@ -100,5 +100,5 @@ class SvnFormat(BzrDirFormat):
     def get_format_description(self):
         return 'Subversion Smart Server'
 
-    def initialize(self,url):
+    def initialize(self, url):
         raise NotImplementedError(SvnFormat.initialize)

@@ -28,7 +28,8 @@ import workingtree
 sys.path.append(os.path.dirname(__file__))
 
 from bzrlib.transport import register_transport
-register_transport('svn', transport.SvnRaTransport)
+register_transport('svn:', transport.SvnRaTransport)
+register_transport('svn+', transport.SvnRaTransport)
 
 from bzrlib.bzrdir import BzrDirFormat
 #BzrDirFormat.register_format(format.SvnFormat())

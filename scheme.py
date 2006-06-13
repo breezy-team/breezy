@@ -44,9 +44,9 @@ class DefaultBranchingScheme:
     def unprefix(path):
         parts = path.lstrip("/").split("/")
         if parts[0] == "trunk" or parts[0] == "hooks":
-            return (parts[0],"/".join(parts[1:]))
+            return (parts[0], "/".join(parts[1:]))
         elif parts[0] == "tags" or parts[0] == "branches":
-            return ("/".join(parts[0:2]),"/".join(parts[2:]))
+            return ("/".join(parts[0:2]), "/".join(parts[2:]))
         else:
             raise BzrError("Unable to unprefix path %s" % path)
 

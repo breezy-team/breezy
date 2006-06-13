@@ -21,13 +21,44 @@ import os
 from bzrlib.errors import NoSuchFile
 from scheme import DefaultBranchingScheme
 
-# Don't run any tests on SvnRaTransport as it is not intended to be 
+def _create_auth_baton(pool):
+    """ Create a Subversion authentication baton.
+    
+    :param pool: An APR memory pool
+    """
+    import svn.client
+    # Give the client context baton a suite of authentication
+    # providers.h
+    providers = [
+        svn.client.svn_client_get_simple_provider(pool),
+        svn.client.svn_client_get_ssl_client_cert_file_provider(pool),
+        svn.client.svn_client_get_ssl_client_cert_pw_file_provider(pool),
+        svn.client.svn_client_get_ssl_server_trust_file_provider(pool),
+        svn.client.svn_client_get_username_provider(pool),
+        ]
+    return svn.core.svn_auth_open(providers, pool)
+
+
+# Don't run any tests on SvnTransport as it is not intended to be 
 # a full implementation of Transport
 def get_test_permutations():
     return []
 
+class SvnRaCallbacks(svn.ra.callbacks2_t):
+    def __init__(self):
+        svn.ra.callbacks2_t.__init__(self)
+        from branch import _global_pool
+        self.auth_baton = _create_auth_baton(_global_pool)
+
+    def open_tmp_file(self):
+        print "foo"
+
+    def progress(self, f, c, pool):
+        print "%s: %d / %d" % (self, f, c)
+
+
 class SvnRaTransport(Transport):
-    """ Fake transport for Subversion-related namespaces. This implements 
+    """Fake transport for Subversion-related namespaces. This implements 
     just as much of Transport as is necessary to fool Bazaar-NG. """
     def __init__(self, url="", ra=None, root_url=None, scheme=None):
         Transport.__init__(self, url)
@@ -41,7 +72,7 @@ class SvnRaTransport(Transport):
         # The SVN libraries don't like trailing slashes...
         self.svn_url = self.svn_url.rstrip('/')
 
-        callbacks = svn.ra.callbacks2_t()
+        callbacks = SvnRaCallbacks()
 
         if not ra:
             self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, None, None)
@@ -80,7 +111,7 @@ class SvnRaTransport(Transport):
                 pass
         return PhonyLock()
 
-    def clone(self,path):
+    def clone(self, path):
         parts = self.svn_url.split("/")
         
         # FIXME: Handle more complicated paths

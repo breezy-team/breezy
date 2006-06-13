@@ -21,8 +21,10 @@ from libsvn.core import SubversionException
 import svn.ra
 
 class FakeFileWeave(VersionedFile):
-    def __init__(self,repository,weave_name,access_mode='w'):
-        VersionedFile.__init__(self,access_mode)
+    """Implementation of VersionedFile that calls back to a 
+    repository for the actual content."""
+    def __init__(self, repository, weave_name, access_mode='w'):
+        VersionedFile.__init__(self, access_mode)
         self.repository = repository
         self.file_id = weave_name
         assert self.file_id
@@ -30,12 +32,14 @@ class FakeFileWeave(VersionedFile):
     def get_lines(self, version_id):
         assert version_id != None
 
-        (path,revnum) = self.repository.path_from_file_id(version_id, self.file_id)
+        (path, revnum) = self.repository.path_from_file_id(version_id,
+            self.file_id)
 
         stream = StringIO()
         mutter('svn cat -r %r %s' % (revnum, path))
         try:
-            (revnum,props) = svn.ra.get_file(self.repository.ra, path.encode('utf8'), revnum, stream)
+            (revnum, props) = svn.ra.get_file(self.repository.ra, 
+                path.encode('utf8'), revnum, stream)
         except SubversionException, (_, num):
             if num == svn.core.SVN_ERR_FS_NOT_FILE:
                 return []
@@ -45,40 +49,41 @@ class FakeFileWeave(VersionedFile):
 
         return stream.readlines()
 
-    def has_version(self,version_id):
+    def has_version(self, version_id):
         assert version_id
-        (path,path_revnum) = self.repository.path_from_file_id(version_id, self.file_id)
+        (path, path_revnum) = self.repository.path_from_file_id(version_id, 
+            self.file_id)
 
-        mutter("svn check_path -r%d %s" % (path_revnum,path))
+        mutter("svn check_path -r%d %s" % (path_revnum, path))
         kind = svn.ra.check_path(self.repository.ra, path.encode('utf8'), path_revnum)
 
         return (kind != svn.core.svn_node_none)
 
-    def get_parents(self,version):
+    def get_parents(self, version):
         #FIXME
-        mutter("GET_PARENTS: %s,%s" % (version,self.file_id))
+        mutter("GET_PARENTS: %s, %s" % (version, self.file_id))
         return []
 
 class FakeFileStore(object):
-    def __init__(self,repository):
+    def __init__(self, repository):
         self.repository = repository
 
-    def get_weave(self,file_id,transaction):
-        return FakeFileWeave(self.repository,file_id)
+    def get_weave(self, file_id, transaction):
+        return FakeFileWeave(self.repository, file_id)
 
 
 class FakeInventoryWeave(VersionedFile):
-    def __init__(self,repository,access_mode='w'):
-        VersionedFile.__init__(self,access_mode)
+    def __init__(self, repository, access_mode='w'):
+        VersionedFile.__init__(self, access_mode)
         self.repository = repository
 
-    def has_version(self,version):
+    def has_version(self, version):
         return self.repository.has_revision(version)
 
-    def get_parents(self,version):
+    def get_parents(self, version):
         return self.repository.revision_parents(version)
 
-    def get_ancestry(self,version):
+    def get_ancestry(self, version):
         return self.repository.get_ancestry(version)
 
     def versions(self):
@@ -89,7 +94,7 @@ class FakeInventoryWeave(VersionedFile):
             return []
         return self.repository.get_inventory_xml(version_id).splitlines()
 
-    def get_graph(self,versions):
+    def get_graph(self, versions):
         if versions is None:
             return self.repository.get_revision_graph()
 
