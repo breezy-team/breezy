@@ -355,7 +355,7 @@ class SoukTransport(sftp.SFTPUrlHandling):
 
     def __init__(self, server_url, clone_from=None):
         super(SoukTransport, self).__init__(server_url)
-        print 'init transport url=%r' % server_url
+        ## print 'init transport url=%r' % server_url
         if clone_from is None:
             self._connect_to_server()
         else:
@@ -524,40 +524,6 @@ class SoukTCPClient(SoukTransport):
     def disconnect(self):
         super(SoukTCPClient, self).disconnect()
         self._socket.close()
-
-
-class LoopbackSoukConnection(SoukTransport):
-    """Souk server talking over pipe within process for testing.
-
-    It just connects together the ssh client and server, and creates
-    a server for us just like running ssh will.
-
-    This hides from the caller the details of setting up a transport, etc.  
-
-    :ivar backing_transport: The transport used by the real server.
-    """
-
-    def __init__(self, backing_transport=None):
-        if backing_transport is None:
-            from bzrlib.transport import memory
-            backing_transport = memory.MemoryTransport('memory:///')
-        self.backing_transport = backing_transport
-        super(LoopbackSoukConnection, self).__init__('bzr+loopback://localhost/')
-
-    def _connect_to_server(self):
-        import threading
-        from_client_fd, to_server_fd = os.pipe()
-        from_server_fd, to_client_fd = os.pipe()
-        self._to_server = os.fdopen(to_server_fd, 'wb')
-        self._from_server = os.fdopen(from_server_fd, 'rb')
-        self._server = SoukStreamServer(os.fdopen(from_client_fd, 'rb'),
-                                        os.fdopen(to_client_fd, 'wb'),
-                                        self.backing_transport)
-        self._server_thread = threading.Thread(None,
-                self._server.serve,
-                name='loopback-bzr-server-%x' % id(self._server))
-        self._server_thread.setDaemon(True)
-        self._server_thread.start()
 
 
 def get_test_permutations():

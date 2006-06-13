@@ -54,106 +54,24 @@ class BasicSoukTests(tests.TestCase):
                          'done\n',
                          from_server.getvalue())
 
-    def test_open_loopback_server(self):
-        conn = souk.LoopbackSoukConnection()
-        version = conn.query_version()
-        self.assertEqual(1, version)
-
-    def test_server_shutdown_on_client_disconnect(self):
-        conn = souk.LoopbackSoukConnection()
-        conn.disconnect()
-        conn._server_thread.join()
-        self.assertFalse(conn._server_thread.isAlive())
-
-    def test_multiple_requests(self):
-        conn = souk.LoopbackSoukConnection()
-        version = conn.query_version()
-        self.assertEqual(1, version)
-        version = conn.query_version()
-        self.assertEqual(1, version)
-
-    def test_souk_transport_has(self):
-        """Checking for file existence over souk."""
-        conn = souk.LoopbackSoukConnection()
-        conn.backing_transport.put("foo", StringIO("contents of foo\n"))
-        self.assertTrue(conn.has("foo"))
-        self.assertFalse(conn.has("non-foo"))
-
-    def test_souk_transport_get(self):
-        """Read back a file over souk."""
-        conn = souk.LoopbackSoukConnection()
-        conn.backing_transport.put("foo", StringIO("contents\nof\nfoo\n"))
-        fp = conn.get("foo")
-        self.assertEqual('contents\nof\nfoo\n', fp.read())
-        
-    def test_get_error_enoent(self):
-        """Error reported from server getting nonexistent file."""
-        conn = souk.LoopbackSoukConnection()
-        try:
-            conn.get('not a file')
-        except errors.NoSuchFile, e:
-            self.assertEqual('/not a file', e.path)
-        else:
-            self.fail("get did not raise expected error")
-
     def test_get_error_unexpected(self):
         """Error reported by server with no specific representation"""
         class FlakyTransport(object):
             def get(self, path):
                 raise Exception("some random exception from inside server")
-        conn = souk.LoopbackSoukConnection(backing_transport=FlakyTransport())
+        server = souk.SoukTCPServer(backing_transport=FlakyTransport())
+        server.start_background_thread()
         try:
-            conn.get('something')
-        except errors.TransportError, e:
-            self.assertContainsRe(str(e), 'some random exception')
-        else:
-            self.fail("get did not raise expected error")
+            conn = souk.SoukTCPClient(server.get_url()) 
+            try:
+                conn.get('something')
+            except errors.TransportError, e:
+                self.assertContainsRe(str(e), 'some random exception')
+            else:
+                self.fail("get did not raise expected error")
+        finally:
+            server.stop_background_thread()
 
-    def test_loopback_conn_has_base_url(self):
-        conn = souk.LoopbackSoukConnection()
-        self.assertEquals('bzr+loopback://localhost/', conn.base)
-
-    def test_simple_clone_conn(self):
-        """Test that cloning reuses the same connection."""
-        conn = souk.LoopbackSoukConnection()
-        # we create a real connection not a loopback one, but it will use the
-        # same server and pipes
-        conn2 = souk.SoukTransport('bzr+loopback://localhost/', clone_from=conn)
-        conn2.query_version()
-
-    def test_remote_path(self):
-        conn = souk.LoopbackSoukConnection()
-        self.assertEquals('/foo/bar',
-                          conn._remote_path('foo/bar'))
-
-    def test_abspath(self):
-        conn = souk.LoopbackSoukConnection()
-        self.assertEquals('bzr+loopback://localhost/foo/bar',
-                          conn.abspath('foo/bar'))
-
-    def test_clone_changes_base(self):
-        """Cloning transport produces one with a new base location"""
-        conn = souk.LoopbackSoukConnection()
-        conn2 = conn.clone('subdir')
-        self.assertEquals(conn.base + 'subdir/',
-                          conn2.base)
-
-    def test_open_dir(self):
-        """Test changing directory"""
-        conn = souk.LoopbackSoukConnection()
-        conn.backing_transport.mkdir('toffee')
-        conn.backing_transport.mkdir('toffee/apple')
-        self.assertEquals('/toffee', conn._remote_path('toffee'))
-        self.assertTrue(conn.has('toffee'))
-        sub_conn = conn.clone('toffee')
-        self.assertTrue(sub_conn.has('apple'))
-
-    def test_open_bzrdir(self):
-        """Open an existing bzrdir over souk transport"""
-        conn = souk.LoopbackSoukConnection()
-        t = conn.backing_transport
-        bzrdir.BzrDirFormat.get_default_format().initialize_on_transport(t)
-        result_dir = bzrdir.BzrDir.open_containing_from_transport(conn)
 
     def test_server_subprocess(self):
         """Talk to a server started as a subprocess
@@ -173,14 +91,22 @@ class BasicSoukTests(tests.TestCase):
 
 
 class SoukTCPTests(tests.TestCase):
-    """Tests for connection to TCP server"""
+    """Tests for connection to TCP server.
+    
+    All of these tests are run with a server running on another thread serving
+    a MemoryTransport, and a connection to it already open.
+    """
 
     def setUp(self):
         super(SoukTCPTests, self).setUp()
-        self.server = souk.SoukTCPServer(memory.MemoryTransport())
+        self.backing_transport = memory.MemoryTransport()
+        self.server = souk.SoukTCPServer(self.backing_transport)
         self.server.start_background_thread()
+        self.conn = souk.SoukTCPClient(self.server.get_url())
 
     def tearDown(self):
+        if hasattr(self, 'conn'):
+            self.conn.disconnect()
         if hasattr(self, 'server'):
             self.server.stop_background_thread()
         super(SoukTCPTests, self).tearDown()
@@ -190,9 +116,68 @@ class SoukTCPTests(tests.TestCase):
         self.assertContainsRe(url, r'^bzr://127\.0\.0\.1:[0-9]{2,}/')
 
     def test_connect_to_tcp_server(self):
-        url = self.server.get_url()
-        conn = souk.SoukTCPClient(url)
+        self.conn.query_version()
+
+    def test_multiple_requests(self):
+        version = self.conn.query_version()
+        self.assertEqual(1, version)
+        version = self.conn.query_version()
+        self.assertEqual(1, version)
+
+    def test_souk_transport_has(self):
+        """Checking for file existence over souk."""
+        self.backing_transport.put("foo", StringIO("contents of foo\n"))
+        self.assertTrue(self.conn.has("foo"))
+        self.assertFalse(self.conn.has("non-foo"))
+
+    def test_souk_transport_get(self):
+        """Read back a file over souk."""
+        self.backing_transport.put("foo", StringIO("contents\nof\nfoo\n"))
+        fp = self.conn.get("foo")
+        self.assertEqual('contents\nof\nfoo\n', fp.read())
+        
+    def test_get_error_enoent(self):
+        """Error reported from server getting nonexistent file."""
         try:
-            conn.query_version()
-        finally:
-            conn.disconnect()
+            self.conn.get('not a file')
+        except errors.NoSuchFile, e:
+            self.assertEqual('/not a file', e.path)
+        else:
+            self.fail("get did not raise expected error")
+
+    def test_simple_clone_conn(self):
+        """Test that cloning reuses the same connection."""
+        # we create a real connection not a loopback one, but it will use the
+        # same server and pipes
+        conn = self.conn
+        conn2 = souk.SoukTransport(self.conn.base, clone_from=self.conn)
+        conn.query_version()
+        conn2.query_version()
+
+    def test_remote_path(self):
+        self.assertEquals('/foo/bar',
+                          self.conn._remote_path('foo/bar'))
+
+    def test_clone_changes_base(self):
+        """Cloning transport produces one with a new base location"""
+        conn = self.conn
+        conn2 = conn.clone('subdir')
+        self.assertEquals(conn.base + 'subdir/',
+                          conn2.base)
+
+    def test_open_dir(self):
+        """Test changing directory"""
+        conn = self.conn
+        self.backing_transport.mkdir('toffee')
+        self.backing_transport.mkdir('toffee/apple')
+        self.assertEquals('/toffee', conn._remote_path('toffee'))
+        self.assertTrue(conn.has('toffee'))
+        sub_conn = conn.clone('toffee')
+        self.assertTrue(sub_conn.has('apple'))
+
+    def test_open_bzrdir(self):
+        """Open an existing bzrdir over souk transport"""
+        conn = self.conn
+        t = self.backing_transport
+        bzrdir.BzrDirFormat.get_default_format().initialize_on_transport(t)
+        result_dir = bzrdir.BzrDir.open_containing_from_transport(conn)
