@@ -305,10 +305,7 @@ def __add_one_and_parent(tree, inv, parent_ie, path, kind, action):
         # generally find it very fast and not recurse after that.
         added = __add_one_and_parent(tree, inv, None, FastPath(dirname(path.raw_path)), 'directory', action)
         parent_id = inv.path2id(dirname(path.raw_path))
-        if parent_id is None:
-            parent_ie = inv[inv.path2id(dirname(path.raw_path))]
-        else:
-            parent_ie = inv[parent_id]
+        parent_ie = inv[parent_id]
     __add_one(tree, inv, parent_ie, path, kind, action)
     return added + [path.raw_path]
 

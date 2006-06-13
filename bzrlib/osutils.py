@@ -115,8 +115,6 @@ def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
             raise bzrlib.errors.NoSuchFile(f)
         raise
 
-    return _mapper(_lstat(f).st_mode)
-
 
 def kind_marker(kind):
     if kind == 'file':
@@ -820,7 +818,9 @@ def walkdirs(top, prefix=""):
     The data yielded is of the form:
     [(relpath, basename, kind, lstat, path_from_top), ...]
 
-    :param prefix: Treat prefix as the initial root of the tree, rather than ""
+    :param prefix: Prefix the relpaths that are yielded with 'prefix'. This 
+        allows one to walk a subtree but get paths that are relative to a tree
+        rooted higher up.
     :return: an iterator over the dirs.
     """
     lstat = os.lstat

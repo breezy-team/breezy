@@ -28,10 +28,10 @@ class InvBenchmark(Benchmark):
         def make_10824_entries():
             for counter in xrange(10000):
                 bzrlib.inventory.make_entry('file', 'foo',
-                    bzrlib.inventory.ROOT_ID)
+                    "a_parent_id")
             for counter in xrange(824):
                 bzrlib.inventory.make_entry('directory', 'foo',
-                    bzrlib.inventory.ROOT_ID)
+                    "a_parent_id")
         # on roberts machine: this originally took:  533ms/  600ms
         # fixing slots to be vaguely accurate :      365ms/  419ms
         self.time(make_10824_entries)
