@@ -18,10 +18,9 @@
 
 """Tests for the info command of bzr."""
 
+import sys
 
 import bzrlib
-
-
 from bzrlib.osutils import format_date
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
@@ -30,9 +29,13 @@ from bzrlib.tests.blackbox import ExternalBase
 class TestInfo(ExternalBase):
 
     def test_info_non_existing(self):
-        out, err = self.runbzr('info /i/do/not/exist/', retcode=3)
+        if sys.platform == "win32":
+            location = "C:/i/do/not/exist/"
+        else:
+            location = "/i/do/not/exist/"
+        out, err = self.runbzr('info '+location, retcode=3)
         self.assertEqual(out, '')
-        self.assertEqual(err, 'bzr: ERROR: Not a branch: /i/do/not/exist/\n')
+        self.assertEqual(err, 'bzr: ERROR: Not a branch: %s\n' % location)
 
     def test_info_standalone(self):
         transport = self.get_transport()
