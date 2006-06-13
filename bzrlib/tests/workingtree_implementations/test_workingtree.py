@@ -419,6 +419,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(0, checkout.update())
         self.failUnlessExists('checkout/file')
         self.assertEqual(wt.get_root_id(), checkout.get_root_id())
+        self.assertNotEqual(None, wt.get_root_id())
 
     def test_update_returns_conflict_count(self):
         # working tree formats from the meta-dir format and newer support
