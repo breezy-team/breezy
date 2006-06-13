@@ -125,10 +125,7 @@ class SvnRepository(Repository):
     def __del__(self):
         svn.core.svn_pool_destroy(self.pool)
 
-    def check(self, revision_ids):
-        if not revision_ids:
-            raise ValueError("revision_ids must be non-empty in %s.check" 
-                    % (self,))
+    def _check(self, revision_ids):
         return BranchCheckResult(self)
 
     def get_inventory(self, revision_id):
