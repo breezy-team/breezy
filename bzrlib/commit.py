@@ -234,7 +234,6 @@ class Commit(object):
         if message is None:
             raise BzrError("The message keyword parameter is required for commit().")
 
-        self.weave_store = self.branch.repository.weave_store
         self.bound_branch = None
         self.local = local
         self.master_branch = None
