@@ -280,10 +280,10 @@ class cmd_add(Command):
         import bzrlib.add
 
         action = bzrlib.add.AddAction(to_file=self.outf,
-            should_add=(not dry_run), should_print=(not is_quiet()))
+            should_print=(not is_quiet()))
 
         added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
-                                              action=action)
+                                              action=action, save=not dry_run)
         if len(ignored) > 0:
             if verbose:
                 for glob in sorted(ignored.keys()):
