@@ -945,6 +945,12 @@ class BzrDirFormat(object):
     _formats = {}
     """The known formats."""
 
+    _control_formats = []
+    """The registered control formats - .bzr, ....
+    
+    This is a list of BzrDirFormat objects.
+    """
+
     _lock_file_name = 'branch-lock'
 
     # _lock_class must be set in subclasses to the lock type, typ.
@@ -952,7 +958,18 @@ class BzrDirFormat(object):
 
     @classmethod
     def find_format(klass, transport):
-        """Return the format registered for URL."""
+        """Return the format present at transport."""
+        for format in klass._control_formats:
+            try:
+                return format.probe_transport(transport)
+            except errors.NotBranchError:
+                # this format does not find a control dir here.
+                pass
+        raise errors.NotBranchError(path=transport.base)
+
+    @classmethod
+    def probe_transport(klass, transport):
+        """Return the .bzrdir style transport present at URL."""
         try:
             format_string = transport.get(".bzr/branch-format").read()
             return klass._formats[format_string]
@@ -1035,6 +1052,25 @@ class BzrDirFormat(object):
         """
         return True
 
+    @classmethod
+    def known_formats(klass):
+        """Return all the known formats.
+        
+        Concrete formats should override _known_formats.
+        """
+        # There is double indirection here to make sure that control 
+        # formats used by more than one dir format will only be probed 
+        # once. This can otherwise be quite expensive for remote connections.
+        result = set()
+        for format in klass._control_formats:
+            result.update(format._known_formats())
+        return result
+    
+    @classmethod
+    def _known_formats(klass):
+        """Return the known format instances for this control format."""
+        return set(klass._formats.values())
+
     def open(self, transport, _found=False):
         """Return an instance of this format for the dir transport points at.
         
@@ -1058,6 +1094,17 @@ class BzrDirFormat(object):
         klass._formats[format.get_format_string()] = format
 
     @classmethod
+    def register_control_format(klass, format):
+        """Register a format that does not use '.bzrdir' for its control dir.
+
+        TODO: This should be pulled up into a 'ControlDirFormat' base class
+        which BzrDirFormat can inherit from, and renamed to register_format 
+        there. It has been done without that for now for simplicity of
+        implementation.
+        """
+        klass._control_formats.append(format)
+
+    @classmethod
     def set_default_format(klass, format):
         klass._default_format = format
 
@@ -1068,6 +1115,14 @@ class BzrDirFormat(object):
     def unregister_format(klass, format):
         assert klass._formats[format.get_format_string()] is format
         del klass._formats[format.get_format_string()]
+
+    @classmethod
+    def unregister_control_format(klass, format):
+        klass._control_formats.remove(format)
+
+
+# register BzrDirFormat as a control format
+BzrDirFormat.register_control_format(BzrDirFormat)
 
 
 class BzrDirFormat4(BzrDirFormat):

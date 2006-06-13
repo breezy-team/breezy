@@ -77,31 +77,31 @@ class InventoryEntry(object):
     >>> i.path2id('')
     'TREE_ROOT'
     >>> i.add(InventoryDirectory('123', 'src', ROOT_ID))
-    InventoryDirectory('123', 'src', parent_id='TREE_ROOT')
+    InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None)
     >>> i.add(InventoryFile('2323', 'hello.c', parent_id='123'))
-    InventoryFile('2323', 'hello.c', parent_id='123')
+    InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None)
     >>> shouldbe = {0: 'src', 1: pathjoin('src','hello.c')}
     >>> for ix, j in enumerate(i.iter_entries()):
     ...   print (j[0] == shouldbe[ix], j[1])
     ... 
-    (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT'))
-    (True, InventoryFile('2323', 'hello.c', parent_id='123'))
+    (True, InventoryDirectory('123', 'src', parent_id='TREE_ROOT', revision=None))
+    (True, InventoryFile('2323', 'hello.c', parent_id='123', sha1=None, len=None))
     >>> i.add(InventoryFile('2323', 'bye.c', '123'))
     Traceback (most recent call last):
     ...
     BzrError: inventory already contains entry with id {2323}
     >>> i.add(InventoryFile('2324', 'bye.c', '123'))
-    InventoryFile('2324', 'bye.c', parent_id='123')
+    InventoryFile('2324', 'bye.c', parent_id='123', sha1=None, len=None)
     >>> i.add(InventoryDirectory('2325', 'wibble', '123'))
-    InventoryDirectory('2325', 'wibble', parent_id='123')
+    InventoryDirectory('2325', 'wibble', parent_id='123', revision=None)
     >>> i.path2id('src/wibble')
     '2325'
     >>> '2325' in i
     True
     >>> i.add(InventoryFile('2326', 'wibble.c', '2325'))
-    InventoryFile('2326', 'wibble.c', parent_id='2325')
+    InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None)
     >>> i['2326']
-    InventoryFile('2326', 'wibble.c', parent_id='2325')
+    InventoryFile('2326', 'wibble.c', parent_id='2325', sha1=None, len=None)
     >>> for path, entry in i.iter_entries():
     ...     print path
     ...     assert i.path2id(path)
@@ -393,11 +393,12 @@ class InventoryEntry(object):
         return 'unchanged'
 
     def __repr__(self):
-        return ("%s(%r, %r, parent_id=%r)"
+        return ("%s(%r, %r, parent_id=%r, revision=%r)"
                 % (self.__class__.__name__,
                    self.file_id,
                    self.name,
-                   self.parent_id))
+                   self.parent_id,
+                   self.revision))
 
     def snapshot(self, revision, path, previous_entries,
                  work_tree, commit_builder):
@@ -508,6 +509,7 @@ class RootEntry(InventoryEntry):
         self.kind = 'root_directory'
         self.parent_id = None
         self.name = u''
+        self.revision = None
 
     def __eq__(self, other):
         if not isinstance(other, RootEntry):
@@ -679,6 +681,15 @@ class InventoryFile(InventoryEntry):
         # in _read_tree_state
         self.executable = work_tree.is_executable(self.file_id, path=path)
 
+    def __repr__(self):
+        return ("%s(%r, %r, parent_id=%r, sha1=%r, len=%s)"
+                % (self.__class__.__name__,
+                   self.file_id,
+                   self.name,
+                   self.parent_id,
+                   self.text_sha1,
+                   self.text_size))
+
     def _forget_tree_state(self):
         self.text_sha1 = None
         self.executable = None
@@ -815,7 +826,7 @@ class Inventory(object):
 
     >>> inv = Inventory()
     >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
-    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT')
+    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None)
     >>> inv['123-123'].name
     'hello.c'
 
@@ -832,7 +843,7 @@ class Inventory(object):
     [u'hello.c']
     >>> inv = Inventory('TREE_ROOT-12345678-12345678')
     >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
-    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678')
+    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678', sha1=None, len=None)
     """
     def __init__(self, root_id=ROOT_ID, revision_id=None):
         """Create or read an inventory.
@@ -849,6 +860,8 @@ class Inventory(object):
         #if root_id is None:
         #    root_id = bzrlib.branch.gen_file_id('TREE_ROOT')
         self.root = RootEntry(root_id)
+        # FIXME: this isn't ever used, changing it to self.revision may break
+        # things. TODO make everything use self.revision_id
         self.revision_id = revision_id
         self._byid = {self.root.file_id: self.root}
 
@@ -984,7 +997,7 @@ class Inventory(object):
 
         >>> inv = Inventory()
         >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
-        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT')
+        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None)
         >>> '123' in inv
         True
         >>> '456' in inv
@@ -997,7 +1010,7 @@ class Inventory(object):
 
         >>> inv = Inventory()
         >>> inv.add(InventoryFile('123123', 'hello.c', ROOT_ID))
-        InventoryFile('123123', 'hello.c', parent_id='TREE_ROOT')
+        InventoryFile('123123', 'hello.c', parent_id='TREE_ROOT', sha1=None, len=None)
         >>> inv['123123'].name
         'hello.c'
         """
@@ -1070,7 +1083,7 @@ class Inventory(object):
 
         >>> inv = Inventory()
         >>> inv.add(InventoryFile('123', 'foo.c', ROOT_ID))
-        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT')
+        InventoryFile('123', 'foo.c', parent_id='TREE_ROOT', sha1=None, len=None)
         >>> '123' in inv
         True
         >>> del inv['123']
@@ -1094,20 +1107,16 @@ class Inventory(object):
         >>> i1 == i2
         True
         >>> i1.add(InventoryFile('123', 'foo', ROOT_ID))
-        InventoryFile('123', 'foo', parent_id='TREE_ROOT')
+        InventoryFile('123', 'foo', parent_id='TREE_ROOT', sha1=None, len=None)
         >>> i1 == i2
         False
         >>> i2.add(InventoryFile('123', 'foo', ROOT_ID))
-        InventoryFile('123', 'foo', parent_id='TREE_ROOT')
+        InventoryFile('123', 'foo', parent_id='TREE_ROOT', sha1=None, len=None)
         >>> i1 == i2
         True
         """
         if not isinstance(other, Inventory):
             return NotImplemented
-
-        if len(self._byid) != len(other._byid):
-            # shortcut: obviously not the same
-            return False
 
         return self._byid == other._byid
 
