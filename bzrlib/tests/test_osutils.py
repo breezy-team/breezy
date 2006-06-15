@@ -266,3 +266,38 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertEqual(expected_dirblocks[1:],
             [[line[0:3] for line in block] for block in result])
 
+    def assertPathCompare(self, path_less, path_greater):
+        """check that path_less and path_greater compare correctly."""
+        self.assertEqual(0, osutils.compare_paths_prefix_order(
+            path_less, path_less))
+        self.assertEqual(0, osutils.compare_paths_prefix_order(
+            path_greater, path_greater))
+        self.assertEqual(-1, osutils.compare_paths_prefix_order(
+            path_less, path_greater))
+        self.assertEqual(1, osutils.compare_paths_prefix_order(
+            path_greater, path_less))
+
+    def test_compare_paths_prefix_order(self):
+        # root before all else
+        self.assertPathCompare("/", "/a")
+        # alpha within a dir
+        self.assertPathCompare("/a", "/b")
+        self.assertPathCompare("/b", "/z")
+        # high dirs before lower.
+        self.assertPathCompare("/z", "/a/a")
+        # lexical betwen dirs of the same height
+        self.assertPathCompare("/a/z", "/z/z")
+        self.assertPathCompare("/a/c/z", "/a/d/e")
+
+        # this should also be consistent for no leading / paths
+        # root before all else
+        self.assertPathCompare("", "a")
+        # alpha within a dir
+        self.assertPathCompare("a", "b")
+        self.assertPathCompare("b", "z")
+        # high dirs before lower.
+        self.assertPathCompare("z", "a/a")
+        # lexical betwen dirs of the same height
+        self.assertPathCompare("a/z", "z/z")
+        self.assertPathCompare("a/c/z", "a/d/e")
+

@@ -846,3 +846,18 @@ def walkdirs(top, prefix=""):
         for dir in reversed(dirblock):
             if dir[2] == _directory:
                 pending.append(dir)
+
+
+def path_prefix_key(path):
+    """Generate a prefix-order path key for path.
+
+    This can be used to sort paths in the same way that walkdirs does.
+    """
+    return (path.count('/'), path)
+
+
+def compare_paths_prefix_order(path_a, path_b):
+    """Compare path_a and path_b to generate the same order walkdirs uses."""
+    key_a = path_prefix_key(path_a)
+    key_b = path_prefix_key(path_b)
+    return cmp(key_a, key_b)
