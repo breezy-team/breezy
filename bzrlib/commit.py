@@ -234,7 +234,6 @@ class Commit(object):
         if message is None:
             raise BzrError("The message keyword parameter is required for commit().")
 
-        self.weave_store = self.branch.repository.weave_store
         self.bound_branch = None
         self.local = local
         self.master_branch = None
@@ -316,7 +315,7 @@ class Commit(object):
             # revision data is in the local branch now.
             
             # upload revision data to the master.
-            # this will propogate merged revisions too if needed.
+            # this will propagate merged revisions too if needed.
             if self.bound_branch:
                 self.master_branch.repository.fetch(self.branch.repository,
                                                     revision_id=self.rev_id)
@@ -411,7 +410,7 @@ class Commit(object):
             except Exception, e:
                 found_exception = e
         if found_exception is not None: 
-            # dont do a plan raise, because the last exception may have been
+            # don't do a plan raise, because the last exception may have been
             # trashed, e is our sure-to-work exception even though it loses the
             # full traceback. XXX: RBC 20060421 perhaps we could check the
             # exc_info and if its the same one do a plain raise otherwise 
@@ -532,7 +531,7 @@ class Commit(object):
 
             self.builder.record_entry_contents(ie, self.parent_invs, 
                 path, self.work_tree)
-            # describe the nature of the change that has occured relative to
+            # describe the nature of the change that has occurred relative to
             # the basis inventory.
             if (self.basis_inv.has_id(ie.file_id)):
                 basis_ie = self.basis_inv[ie.file_id]

@@ -259,3 +259,10 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertTrue(found_bzrdir)
         self.assertEqual(expected_dirblocks,
             [[line[0:3] for line in block] for block in result])
+        # you can search a subdir only, with a supplied prefix.
+        result = []
+        for dirblock in osutils.walkdirs('1dir', '1dir'):
+            result.append(dirblock)
+        self.assertEqual(expected_dirblocks[1:],
+            [[line[0:3] for line in block] for block in result])
+

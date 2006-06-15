@@ -27,7 +27,7 @@
 # property.
 
 # TODO: Nothing here so far assumes the lines are really \n newlines,
-# rather than being split up in some other way.  We could accomodate
+# rather than being split up in some other way.  We could accommodate
 # binaries, perhaps by naively splitting on \n or perhaps using
 # something like a rolling checksum.
 
@@ -231,7 +231,7 @@ class Weave(VersionedFile):
 
     @deprecated_method(zero_eight)
     def lookup(self, name):
-        """Backwards compatability thunk:
+        """Backwards compatibility thunk:
 
         Return name, as name is valid in the api now, and spew deprecation
         warnings everywhere.
@@ -522,7 +522,7 @@ class Weave(VersionedFile):
         if lines == basis_lines:
             return new_version            
 
-        # add a sentinal, because we can also match against the final line
+        # add a sentinel, because we can also match against the final line
         basis_lineno.append(len(self._weave))
 
         # XXX: which line of the weave should we really consider
@@ -1069,7 +1069,7 @@ class Weave(VersionedFile):
 
     @deprecated_method(zero_eight)
     def reweave(self, other, pb=None, msg=None):
-        """reweave has been superceded by plain use of join."""
+        """reweave has been superseded by plain use of join."""
         return self.join(other, pb, msg)
 
     def _reweave(self, other, pb, msg):
