@@ -20,7 +20,7 @@ import os
 import sys
 
 from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.errors import NotBranchError, BzrError, BzrNewError
+from bzrlib.errors import NotBranchError
 
 class TestExceptionReporting(TestCase):
 

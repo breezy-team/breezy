@@ -867,7 +867,7 @@ class RepositoryFormat(object):
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
         except KeyError:
-            raise errors.UnknownFormatError(format_string)
+            raise errors.UnknownFormatError(format=format_string)
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""

@@ -31,7 +31,7 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.delta import compare_trees
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
-                           NoSuchRevision, HistoryMissing, NotBranchError,
+                           NoSuchRevision, NotBranchError,
                            DivergedBranches, LockError,
                            UninitializableFormat,
                            UnlistableStore,
@@ -300,32 +300,6 @@ class Branch(object):
         
         If self and other have not diverged, return a list of the revisions
         present in other, but missing from self.
-
-        >>> from bzrlib.workingtree import WorkingTree
-        >>> bzrlib.trace.silent = True
-        >>> d1 = bzrdir.ScratchDir()
-        >>> br1 = d1.open_branch()
-        >>> wt1 = d1.open_workingtree()
-        >>> d2 = bzrdir.ScratchDir()
-        >>> br2 = d2.open_branch()
-        >>> wt2 = d2.open_workingtree()
-        >>> br1.missing_revisions(br2)
-        []
-        >>> wt2.commit("lala!", rev_id="REVISION-ID-1")
-        >>> br1.missing_revisions(br2)
-        [u'REVISION-ID-1']
-        >>> br2.missing_revisions(br1)
-        []
-        >>> wt1.commit("lala!", rev_id="REVISION-ID-1")
-        >>> br1.missing_revisions(br2)
-        []
-        >>> wt2.commit("lala!", rev_id="REVISION-ID-2A")
-        >>> br1.missing_revisions(br2)
-        [u'REVISION-ID-2A']
-        >>> wt1.commit("lala!", rev_id="REVISION-ID-2B")
-        >>> br1.missing_revisions(br2)
-        Traceback (most recent call last):
-        DivergedBranches: These branches have diverged.  Try merge.
         """
         self_history = self.revision_history()
         self_len = len(self_history)
@@ -572,7 +546,7 @@ class BranchFormat(object):
         except NoSuchFile:
             raise NotBranchError(path=transport.base)
         except KeyError:
-            raise errors.UnknownFormatError(format_string)
+            raise errors.UnknownFormatError(format=format_string)
 
     @classmethod
     def get_default_format(klass):
@@ -872,11 +846,7 @@ class BzrBranch(Branch):
                  stacklevel=2)
             if (not relax_version_check
                 and not self._format.is_supported()):
-                raise errors.UnsupportedFormatError(
-                        'sorry, branch format %r not supported' % fmt,
-                        ['use a different bzr version',
-                         'or remove the .bzr directory'
-                         ' and "bzr init" again'])
+                raise errors.UnsupportedFormatError(format=fmt)
         if deprecated_passed(transport):
             warn("BzrBranch.__init__(transport=XXX...): The transport "
                  "parameter is deprecated as of bzr 0.8. "

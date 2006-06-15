@@ -1937,18 +1937,6 @@ class cmd_find_merge_base(Command):
         base_rev_id = common_ancestor(last1, last2, source)
 
         print 'merge base is revision %s' % base_rev_id
-        
-        return
-
-        if base_revno is None:
-            raise bzrlib.errors.UnrelatedBranches()
-
-        print ' r%-6d in %s' % (base_revno, branch)
-
-        other_revno = branch2.revision_id_to_revno(base_revid)
-        
-        print ' r%-6d in %s' % (other_revno, other)
-
 
 
 class cmd_merge(Command):

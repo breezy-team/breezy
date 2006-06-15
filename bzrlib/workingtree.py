@@ -60,7 +60,6 @@ import bzrlib.errors as errors
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
                            ConflictFormatError,
-                           DivergedBranches,
                            WeaveRevisionNotPresent,
                            NotBranchError,
                            NoSuchFile,
@@ -1554,7 +1553,7 @@ class WorkingTreeFormat(object):
         except NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)
         except KeyError:
-            raise errors.UnknownFormatError(format_string)
+            raise errors.UnknownFormatError(format=format_string)
 
     @classmethod
     def get_default_format(klass):

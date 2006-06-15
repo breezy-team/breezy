@@ -234,7 +234,11 @@ def report_exception(exc_info, err_file):
         print >>err_file, "bzr: broken pipe"
     elif isinstance(exc_object, KeyboardInterrupt):
         print >>err_file, "bzr: interrupted"
-    elif isinstance(exc_info[1], (IOError, OSError, BzrError, BzrNewError)):
+    elif getattr(exc_object, 'is_user_error', False):
+        report_user_error(exc_info, err_file)
+    elif isinstance(exc_object, (OSError, IOError)):
+        # Might be nice to catch all of these and show them as something more
+        # specific, but there are too many cases at the moment.
         report_user_error(exc_info, err_file)
     else:
         report_bug(exc_info, err_file)
@@ -253,11 +257,10 @@ def report_bug(exc_info, err_file):
     print >>err_file
     traceback.print_exception(exc_type, exc_object, exc_tb, file=err_file)
     print >>err_file
-    print >>err_file, 'bzr %s invoked on python %s (%s)' % \
+    print >>err_file, 'bzr %s on python %s (%s)' % \
                        (bzrlib.__version__,
                         '.'.join(map(str, sys.version_info)),
                         sys.platform)
-    print >>err_file, '  arguments: %r' % sys.argv
+    print >>err_file, 'arguments: %r' % sys.argv
     print >>err_file
     print >>err_file, "** please send this report to bazaar-ng@lists.ubuntu.com"
-    print >>err_file, "   with a description of how and when the problem occurred"

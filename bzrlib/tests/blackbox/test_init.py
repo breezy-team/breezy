@@ -71,7 +71,7 @@ class TestInit(ExternalBase):
         out, err = self.run_bzr('init', 'subdir2/nothere', retcode=3)
         self.assertEqual('', out)
         self.assertContainsRe(err,
-            r'^bzr: ERROR: exceptions.OSError: '
+            r'^bzr: ERROR: .*'
             '\[Errno 2\] No such file or directory: ')
         
         os.mkdir('subdir2')
