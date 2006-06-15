@@ -29,3 +29,10 @@ class StatusBenchmark(Benchmark):
         self.run_bzr('add')
         # on robertc's machine the first sample of this took 1687ms/15994ms
         self.time(self.run_bzr, 'status')
+
+    def test_no_changes_known_kernel_like_tree(self):
+        """Status in a kernel sized tree with no ignored, unknowns, or added.""" 
+        self.make_kernel_like_tree()
+        self.run_bzr('add')
+        self.run_bzr('commit', '-m', 'initial import')
+        self.time(self.run_bzr, 'status')

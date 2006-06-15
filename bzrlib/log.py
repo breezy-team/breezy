@@ -461,7 +461,7 @@ class LineLogFormatter(LogFormatter):
             out.append("%d:" % revno)
         out.append(self.truncate(self.short_committer(rev), 20))
         out.append(self.date_string(rev))
-        out.append(self.message(rev).replace('\n', ' '))
+        out.append(rev.get_summary())
         return self.truncate(" ".join(out).rstrip('\n'), max_chars)
 
 
@@ -491,7 +491,7 @@ def log_formatter(name, *args, **kwargs):
         raise BzrCommandError("unknown log formatter: %r" % name)
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
-    # deprecated; for compatability
+    # deprecated; for compatibility
     lf = LongLogFormatter(to_file=to_file, show_timezone=show_timezone)
     lf.show(revno, rev, delta)
 

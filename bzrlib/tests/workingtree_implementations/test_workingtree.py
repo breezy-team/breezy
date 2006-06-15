@@ -30,6 +30,7 @@ from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
+import bzrlib.urlutils as urlutils
 import bzrlib.workingtree as workingtree
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
@@ -37,10 +38,9 @@ from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
 
 class TestWorkingTree(TestCaseWithWorkingTree):
 
-    def test_listfiles(self):
+    def test_list_files(self):
         tree = self.make_branch_and_tree('.')
-        os.mkdir('dir')
-        print >> open('file', 'w'), "content"
+        self.build_tree(['dir/', 'file'])
         if has_symlinks():
             os.symlink('target', 'symlink')
         files = list(tree.list_files())
@@ -49,20 +49,46 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if has_symlinks():
             self.assertEqual(files[2], ('symlink', '?', 'symlink', None, TreeLink()))
 
+    def test_list_files_sorted(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'file', 'dir/file', 'dir/b', 'dir/subdir/', 'a', 'dir/subfile',
+                'zz_dir/', 'zz_dir/subfile'])
+        files = [(path, kind) for (path, versioned, kind, file_id, entry) in tree.list_files()]
+        self.assertEqual([
+            ('a', 'file'),
+            ('dir', 'directory'),
+            ('file', 'file'),
+            ('zz_dir', 'directory'),
+            ], files)
+
+        tree.add(['dir', 'zz_dir'])
+        files = [(path, kind) for (path, versioned, kind, file_id, entry) in tree.list_files()]
+        self.assertEqual([
+            ('a', 'file'),
+            ('dir', 'directory'),
+            ('dir/b', 'file'),
+            ('dir/file', 'file'),
+            ('dir/subdir', 'directory'),
+            ('dir/subfile', 'file'),
+            ('file', 'file'),
+            ('zz_dir', 'directory'),
+            ('zz_dir/subfile', 'file'),
+            ], files)
+
     def test_open_containing(self):
         branch = self.make_branch_and_tree('.').branch
         wt, relpath = WorkingTree.open_containing()
         self.assertEqual('', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
         wt, relpath = WorkingTree.open_containing(u'.')
         self.assertEqual('', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
         wt, relpath = WorkingTree.open_containing('./foo')
         self.assertEqual('foo', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
         wt, relpath = WorkingTree.open_containing('file://' + getcwd() + '/foo')
         self.assertEqual('foo', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
 
     def test_basic_relpath(self):
         # for comprehensive relpath tests, see whitebox.py.

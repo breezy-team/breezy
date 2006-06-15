@@ -27,7 +27,7 @@ others may be just emitted as messages.
 
 Exceptions are reported in a brief form to stderr so as not to look scary.
 BzrErrors are required to be able to format themselves into a properly
-explanatory message.  This is not true for builtin excexceptions such as
+explanatory message.  This is not true for builtin exceptions such as
 KeyError, which typically just str to "0".  They're printed in a different
 form.
 """
@@ -57,11 +57,11 @@ _bzr_log_file = None
 
 
 class QuietFormatter(logging.Formatter):
-    """Formatter that supresses the details of errors.
+    """Formatter that suppresses the details of errors.
 
     This is used by default on stderr so as not to scare the user.
     """
-    # At first I tried overriding formatException to suppress the
+    # At first I tried overriding FormatException to suppress the
     # exception details, but that has global effect: no loggers
     # can get the exception details is we suppress them here.
 
@@ -100,11 +100,20 @@ def mutter(fmt, *args):
     if hasattr(_trace_file, 'closed') and _trace_file.closed:
         return
     if len(args) > 0:
-        out = fmt % args
+        # It seems that if we do ascii % (unicode, ascii) we can
+        # get a unicode cannot encode ascii error, so make sure that "fmt"
+        # is a unicode string
+        out = unicode(fmt) % args
     else:
         out = fmt
     out += '\n'
-    _trace_file.write(out)
+    try:
+        _trace_file.write(out)
+    except UnicodeError, e:
+        warning('UnicodeError: %s', e)
+        _trace_file.write(repr(out))
+    # TODO: jam 20051227 Consider flushing the trace file to help debugging
+    #_trace_file.flush()
 debug = mutter
 
 

@@ -89,7 +89,7 @@ import bzrlib.weave
 # TODO: Can we put in some kind of value to check that the index and data
 # files belong together?
 
-# TODO: accomodate binaries, perhaps by storing a byte count
+# TODO: accommodate binaries, perhaps by storing a byte count
 
 # TODO: function to check whole file
 
@@ -172,7 +172,7 @@ class KnitAnnotateFactory(_KnitFactory):
         intstart intend intcount
         1..count lines:
         revid(utf8) newline\n
-        internal represnetation is
+        internal representation is
         (start, end, count, [1..count tuples (revid, newline)])
         """
         result = []
@@ -362,7 +362,7 @@ class KnitVersionedFile(VersionedFile):
         :param records: A list of tuples(version_id, options, parents, size).
         :param data: The data for the records. When it is written, the records
                      are adjusted to have pos pointing into data by the sum of
-                     the preceeding records sizes.
+                     the preceding records sizes.
         """
         # write all the data
         pos = self._data.add_raw_record(data)
@@ -728,7 +728,7 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         if version_ids is None:
             version_ids = self.versions()
-        # we dont care about inclusions, the caller cares.
+        # we don't care about inclusions, the caller cares.
         # but we need to setup a list of records to visit.
         # we need version_id, position, length
         version_id_records = []
@@ -932,7 +932,7 @@ class _KnitIndex(_KnitComponentFile):
 
     The index file on disc contains a header, followed by one line per knit
     record. The same revision can be present in an index file more than once.
-    The first occurence gets assigned a sequence number starting from 0. 
+    The first occurrence gets assigned a sequence number starting from 0. 
     
     The format of a single line is
     REVISION_ID FLAGS BYTE_OFFSET LENGTH( PARENT_ID|PARENT_SEQUENCE_ID)* :\n
@@ -954,7 +954,7 @@ class _KnitIndex(_KnitComponentFile):
     the end of the file, then the record that is missing it will be ignored by
     the parser.
 
-    When writing new records to the index file, the data is preceeded by '\n'
+    When writing new records to the index file, the data is preceded by '\n'
     to ensure that records always start on new lines even if the last write was
     interrupted. As a result its normal for the last line in the index to be
     missing a trailing newline. One can be added with no harmful effects.
@@ -991,7 +991,7 @@ class _KnitIndex(_KnitComponentFile):
         self._cache = {}
         # position in _history is the 'official' index for a revision
         # but the values may have come from a newer entry.
-        # so - wc -l of a knit index is != the number of uniqe names
+        # so - wc -l of a knit index is != the number of unique names
         # in the weave.
         self._history = []
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
@@ -1213,7 +1213,7 @@ class _KnitIndex(_KnitComponentFile):
                 if parent in self._cache]
 
     def get_parents_with_ghosts(self, version_id):
-        """Return parents of specified version wth ghosts."""
+        """Return parents of specified version with ghosts."""
         return self._cache[version_id][4] 
 
     def check_versions_present(self, version_ids):
@@ -1374,7 +1374,7 @@ class _KnitData(_KnitComponentFile):
 
         if len(needed_records):
             # We take it that the transport optimizes the fetching as good
-            # as possible (ie, reads continous ranges.)
+            # as possible (ie, reads continuous ranges.)
             response = self._transport.readv(self._filename,
                 [(pos, size) for version_id, pos, size in needed_records])
 
@@ -1469,7 +1469,7 @@ class InterKnit(InterVersionedFile):
                     # if source has the parent, we must :
                     # * already have it or
                     # * have it scheduled already
-                    # otherwise we dont care
+                    # otherwise we don't care
                     assert (self.target.has_version(parent) or
                             parent in copy_set or
                             not self.source.has_version(parent))
@@ -1680,7 +1680,7 @@ class KnitSequenceMatcher(difflib.SequenceMatcher):
             j2lenget = j2len.get
             newj2len = {}
             
-            # changing b2j.get(a[i], nothing) to a try:Keyerror pair produced the
+            # changing b2j.get(a[i], nothing) to a try:KeyError pair produced the
             # following improvement
             #     704  0   4650.5320   2620.7410   bzrlib.knit:1336(find_longest_match)
             # +326674  0   1655.1210   1655.1210   +<method 'get' of 'dict' objects>
