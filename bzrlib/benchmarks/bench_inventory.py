@@ -13,14 +13,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Benchmarks of bzr commit."""
+"""Tests for bzr add performance."""
 
 
+import bzrlib
 from bzrlib.benchmarks import Benchmark
 
 
-class RocksBenchmark(Benchmark):
+class InvBenchmark(Benchmark):
 
-    def test_rocks(self):
-        """Test the startup overhead by running a do-nothing command"""
-        self.time(self.run_bzr_subprocess, 'rocks')
+    def test_make_10824_inv_entries(self):
+        """Making 10824 inv entries should be quick."""
+        entries = []
+        def make_10824_entries():
+            for counter in xrange(10000):
+                bzrlib.inventory.make_entry('file', 'foo',
+                    "a_parent_id")
+            for counter in xrange(824):
+                bzrlib.inventory.make_entry('directory', 'foo',
+                    "a_parent_id")
+        # on roberts machine: this originally took:  533ms/  600ms
+        # fixing slots to be vaguely accurate :      365ms/  419ms
+        self.time(make_10824_entries)

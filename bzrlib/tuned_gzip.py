@@ -139,7 +139,7 @@ class GzipFile(gzip.GzipFile):
         4168 in 200
         """
         # We've read to the end of the file, so we should have 8 bytes of 
-        # unused data in the decompressor. If we dont, there is a corrupt file.
+        # unused data in the decompressor. If we don't, there is a corrupt file.
         # We use these 8 bytes to calculate the CRC and the recorded file size.
         # We then check the that the computed CRC and size of the
         # uncompressed data matches the stored values.  Note that the size

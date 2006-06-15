@@ -119,8 +119,18 @@ class Repository(object):
         """Return all the possible revisions that we could find."""
         return self.get_inventory_weave().versions()
 
-    @needs_read_lock
+    @deprecated_method(zero_nine)
     def all_revision_ids(self):
+        """Returns a list of all the revision ids in the repository. 
+
+        This is deprecated because code should generally work on the graph
+        reachable from a particular revision, and ignore any other revisions
+        that might be present.  There is no direct replacement method.
+        """
+        return self._all_revision_ids()
+
+    @needs_read_lock
+    def _all_revision_ids(self):
         """Returns a list of all the revision ids in the repository. 
 
         These are in as much topological order as the underlying store can 
@@ -174,7 +184,7 @@ class Repository(object):
         self.control_files = control_files
         self._revision_store = _revision_store
         self.text_store = text_store
-        # backwards compatability
+        # backwards compatibility
         self.weave_store = text_store
         # not right yet - should be more semantically clear ? 
         # 
@@ -355,17 +365,18 @@ class Repository(object):
                                          RepositoryFormat6,
                                          RepositoryFormat7,
                                          RepositoryFormatKnit1)), \
-            "fileid_involved only supported for branches which store inventory as unnested xml"
+            ("fileids_altered_by_revision_ids only supported for branches " 
+             "which store inventory as unnested xml, not on %r" % self)
         selected_revision_ids = set(revision_ids)
         w = self.get_inventory_weave()
         result = {}
 
         # this code needs to read every new line in every inventory for the
         # inventories [revision_ids]. Seeing a line twice is ok. Seeing a line
-        # not pesent in one of those inventories is unnecessary but not 
+        # not present in one of those inventories is unnecessary but not 
         # harmful because we are filtering by the revision id marker in the
         # inventory lines : we only select file ids altered in one of those  
-        # revisions. We dont need to see all lines in the inventory because
+        # revisions. We don't need to see all lines in the inventory because
         # only those added in an inventory in rev X can contain a revision=X
         # line.
         for line in w.iter_lines_added_or_present_in_versions(selected_revision_ids):
@@ -526,6 +537,10 @@ class Repository(object):
     @needs_read_lock
     def get_ancestry(self, revision_id):
         """Return a list of revision-ids integrated by a revision.
+
+        The first element of the list is always None, indicating the origin 
+        revision.  This might change when we have history horizons, or 
+        perhaps we should have a new API.
         
         This is topologically sorted.
         """
@@ -593,6 +608,25 @@ class Repository(object):
         """Return the text for a signature."""
         return self._revision_store.get_signature_text(revision_id,
                                                        self.get_transaction())
+
+    @needs_read_lock
+    def check(self, revision_ids):
+        """Check consistency of all history of given revision_ids.
+
+        Different repository implementations should override _check().
+
+        :param revision_ids: A non-empty list of revision_ids whose ancestry
+             will be checked.  Typically the last revision_id of a branch.
+        """
+        if not revision_ids:
+            raise ValueError("revision_ids must be non-empty in %s.check" 
+                    % (self,))
+        return self._check(revision_ids)
+
+    def _check(self, revision_ids):
+        result = bzrlib.check.Check(self)
+        result.check()
+        return result
 
 
 class AllInOneRepository(Repository):
@@ -670,7 +704,7 @@ def install_revision(repository, rev, revision_tree):
         if ie.revision not in w:
             text_parents = []
             # FIXME: TODO: The following loop *may* be overlapping/duplicate
-            # with inventoryEntry.find_previous_heads(). if it is, then there
+            # with InventoryEntry.find_previous_heads(). if it is, then there
             # is a latent bug here where the parents may have ancestors of each
             # other. RBC, AB
             for revision, tree in parent_trees.iteritems():
@@ -742,8 +776,10 @@ class KnitRepository(MetaDirRepository):
         inv_vf.add_lines_with_ghosts(revid, parents, lines)
 
     @needs_read_lock
-    def all_revision_ids(self):
+    def _all_revision_ids(self):
         """See Repository.all_revision_ids()."""
+        # Knits get the revision graph from the index of the revision knit, so
+        # it's always possible even if they're on an unlistable transport.
         return self._revision_store.all_revision_ids(self.get_transaction())
 
     def fileid_involved_between_revs(self, from_revid, to_revid):
@@ -838,7 +874,7 @@ class KnitRepository(MetaDirRepository):
                     raise errors.NoSuchRevision(self, revision_id)
                 # a ghost
                 result.add_ghost(revision_id)
-                # mark it as done so we dont try for it again.
+                # mark it as done so we don't try for it again.
                 done.add(revision_id)
                 continue
             parent_ids = vf.get_parents_with_ghosts(revision_id)
@@ -928,7 +964,7 @@ class RepositoryFormat(object):
         raise NotImplementedError(self.get_format_string)
 
     def get_format_description(self):
-        """Return the short desciption for this format."""
+        """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
 
     def _get_revision_store(self, repo_transport, control_files):
@@ -1043,7 +1079,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         files = [('inventory.weave', StringIO(empty_weave)),
                  ]
         
-        # FIXME: RBC 20060125 dont peek under the covers
+        # FIXME: RBC 20060125 don't peek under the covers
         # NB: no need to escape relative paths that are url safe.
         control_files = LockableFiles(a_bzrdir.transport, 'branch-lock',
                                       TransportLock)
@@ -1095,7 +1131,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
      - TextStores for texts, inventories,revisions.
 
     This format is deprecated: it indexes texts using a text id which is
-    removed in format 5; initializationa and write support for this format
+    removed in format 5; initialization and write support for this format
     has been removed.
     """
 
@@ -1200,7 +1236,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
 
 class MetaDirRepositoryFormat(RepositoryFormat):
-    """Common base class for the new repositories using the metadir layour."""
+    """Common base class for the new repositories using the metadir layout."""
 
     def __init__(self):
         super(MetaDirRepositoryFormat, self).__init__()
@@ -1208,7 +1244,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
 
     def _create_control_files(self, a_bzrdir):
         """Create the required files and the initial control_files object."""
-        # FIXME: RBC 20060125 dont peek under the covers
+        # FIXME: RBC 20060125 don't peek under the covers
         # NB: no need to escape relative paths that are url safe.
         repository_transport = a_bzrdir.get_repository_transport(self)
         control_files = LockableFiles(repository_transport, 'lock', LockDir)
@@ -1474,7 +1510,7 @@ class InterRepository(InterObject):
         # grab the basis available data
         if basis is not None:
             self.target.fetch(basis, revision_id=revision_id)
-        # but dont bother fetching if we have the needed data now.
+        # but don't bother fetching if we have the needed data now.
         if (revision_id not in (None, NULL_REVISION) and 
             self.target.has_revision(revision_id)):
             return
@@ -1571,7 +1607,7 @@ class InterWeaveRepo(InterRepository):
     def is_compatible(source, target):
         """Be compatible with known Weave formats.
         
-        We dont test for the stores being of specific types becase that
+        We don't test for the stores being of specific types because that
         could lead to confusing results, and there is no need to be 
         overly general.
         """
@@ -1592,7 +1628,7 @@ class InterWeaveRepo(InterRepository):
         if basis is not None:
             # copy the basis in, then fetch remaining data.
             basis.copy_content_into(self.target, revision_id)
-            # the basis copy_content_into could misset this.
+            # the basis copy_content_into could miss-set this.
             try:
                 self.target.set_make_working_trees(self.source.make_working_trees())
             except NotImplementedError:
@@ -1641,7 +1677,7 @@ class InterWeaveRepo(InterRepository):
     def missing_revision_ids(self, revision_id=None):
         """See InterRepository.missing_revision_ids()."""
         # we want all revisions to satisfy revision_id in source.
-        # but we dont want to stat every file here and there.
+        # but we don't want to stat every file here and there.
         # we want then, all revisions other needs to satisfy revision_id 
         # checked, but not those that we have locally.
         # so the first thing is to get a subset of the revisions to 
@@ -1660,7 +1696,7 @@ class InterWeaveRepo(InterRepository):
         source_ids_set = set(source_ids)
         # source_ids is the worst possible case we may need to pull.
         # now we want to filter source_ids against what we actually
-        # have in target, but dont try to check for existence where we know
+        # have in target, but don't try to check for existence where we know
         # we do not have a revision as that would be pointless.
         target_ids = set(self.target._all_possible_ids())
         possibly_present_revisions = target_ids.intersection(source_ids_set)
@@ -1689,7 +1725,7 @@ class InterKnitRepo(InterRepository):
     def is_compatible(source, target):
         """Be compatible with known Knit formats.
         
-        We dont test for the stores being of specific types becase that
+        We don't test for the stores being of specific types because that
         could lead to confusing results, and there is no need to be 
         overly general.
         """
@@ -1723,7 +1759,7 @@ class InterKnitRepo(InterRepository):
         source_ids_set = set(source_ids)
         # source_ids is the worst possible case we may need to pull.
         # now we want to filter source_ids against what we actually
-        # have in target, but dont try to check for existence where we know
+        # have in target, but don't try to check for existence where we know
         # we do not have a revision as that would be pointless.
         target_ids = set(self.target._all_possible_ids())
         possibly_present_revisions = target_ids.intersection(source_ids_set)
