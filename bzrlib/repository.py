@@ -1983,7 +1983,7 @@ class CommitBuilder(object):
         """Tell the builder that the inventory is finished."""
         # FIXME: Should this really be an assert or rather a
         # more user friendly exception ?
-        assert self.new_inventory.root != None
+        assert self.new_inventory.root is not None
         self.new_inventory.revision_id = self._new_revision_id
         self.inv_sha1 = self.repository.add_inventory(
             self._new_revision_id,
@@ -2010,10 +2010,10 @@ class CommitBuilder(object):
         if self._new_revision_id is None:
             self._new_revision_id = self._gen_revision_id()
 
-    def set_root_id(self, root_id):
+    def set_root_id(self, root_id=None):
         """Convenience function for setting the file id of the root node. 
 
-        :param root_id: The new file_id of the root node.
+        :param root_id: The optional new file_id of the root node.
         """
         self.new_inventory.add_path('', 'directory', root_id)
 
