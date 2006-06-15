@@ -315,10 +315,24 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
         self.assertEqual(len(reference_output[1]), regex_rules[0].groups)
         self.assertEqual(reference_output[1], regex_rules[1])
 
-    def test_is_detritus_name(self):
-        self.assertTrue(WorkingTree.is_detritus_name('hello~'))
-        self.assertTrue(WorkingTree.is_detritus_name('test1234.tmp'))
-        self.assertTrue(WorkingTree.is_detritus_name('test.py.BASE'))
-        self.assertTrue(WorkingTree.is_detritus_name('test.py.THIS'))
-        self.assertTrue(WorkingTree.is_detritus_name('test\n.py.OTHER'))
-        self.assertFalse(WorkingTree.is_detritus_name('test\n.py.OTHEP'))
+    def test_is_debris_name(self):
+        self.assertTrue(WorkingTree.is_debris_name('hello~'))
+        self.assertTrue(WorkingTree.is_debris_name('test1234.tmp'))
+        self.assertTrue(WorkingTree.is_debris_name('test.py.BASE'))
+        self.assertTrue(WorkingTree.is_debris_name('test.py.THIS'))
+        self.assertTrue(WorkingTree.is_debris_name('test\n.py.OTHER'))
+        self.assertFalse(WorkingTree.is_debris_name('test\n.py.OTHEP'))
+
+    def test_list_files_classifiers(self):
+        def foo_classifier(filename):
+            if filename.startswith('foo'):
+                return 'F'
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo1', 'foo2', 'bar'])
+        tree.add('foo2')
+        namedict = {}
+        for fp, fc, kind, fid, entry, in tree.list_files([foo_classifier]):
+            namedict[fp] = (fc, kind, fid, entry)
+        self.assertEqual(namedict['foo1'][0], 'F')
+        self.assertEqual(namedict['foo2'][0], 'V')
+        self.assertEqual(namedict['bar'][0], '?')

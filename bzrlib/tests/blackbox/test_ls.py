@@ -128,7 +128,7 @@ class TestCommands(ExternalBase):
                   'subdir/b\n'
                   , '--versioned')
 
-    def test_ls_detritus(self):
+    def test_ls_debris(self):
         self.build_tree(['file',
                          'file~',
                          'file.BASE',
@@ -137,7 +137,7 @@ class TestCommands(ExternalBase):
                          'test1234.tmp',
                          'file.pyc'])
         BzrDir.create_standalone_workingtree('.')
-        output = self.runbzr('ls --detritus', backtick=True)
+        output = self.runbzr('ls --debris', backtick=True)
         self.assertEqualDiff(output, 
                              'file.BASE\n'
                              'file.OTHER\n'
@@ -146,5 +146,5 @@ class TestCommands(ExternalBase):
                              'test1234.tmp\n')
         wt = WorkingTree.open('.')
         wt.add(['file.BASE', 'file~', 'test1234.tmp'])
-        output = self.runbzr('ls --detritus', backtick=True)
+        output = self.runbzr('ls --debris', backtick=True)
         self.assertEqualDiff(output, 'file.OTHER\n' 'file.THIS\n')

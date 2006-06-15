@@ -703,7 +703,7 @@ class WorkingTree(bzrlib.tree.Tree):
         else:
             return '?'
 
-    def list_files(self, allow_detritus=False):
+    def list_files(self, classifiers=()):
         """Recursively list all files as (path, class, kind, id, entry).
 
         Lists, but does not descend into unversioned directories.
@@ -712,8 +712,17 @@ class WorkingTree(bzrlib.tree.Tree):
         tree.
 
         Skips the control directory.
-        :param allow_detritus: If specified, unversioned files that match the
-        detritus pattern will be returned as 'D'-type files
+
+        Additional classifiers may be specified.  If provided, they are
+        are callables that take a single filename arguments, and return a
+        letter if the filename matches that class.  If the filename does not
+        match, they should return None.  See WorkingTree.debris_classifier for
+        an example.
+        
+        Classifiers are tried in order and the first match is used.  They can
+        supersede an Ignored or Unknown classification, but not Versioned.
+
+        :param classifiers: If specified, additional classifiers to use.
         """
         inv = self._inventory
         # Convert these into local objects to save lookup times
@@ -759,12 +768,17 @@ class WorkingTree(bzrlib.tree.Tree):
                 f_ie = inv.get_child(from_dir_id, f)
                 if f_ie:
                     c = 'V'
-                elif allow_detritus and self.is_detritus_name(fp[1:]):
-                    c = 'D'
-                elif self.is_ignored(fp[1:]):
-                    c = 'I'
                 else:
-                    c = '?'
+                    c = None
+                    for classifier in classifiers:
+                        c = classifier(fp[1:])
+                        if c is not None:
+                            break
+                if c is None:
+                    if self.is_ignored(fp[1:]):
+                        c = 'I'
+                    else:
+                        c = '?'
 
                 fk = file_kind(fap)
 
@@ -1139,7 +1153,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return None
 
     @staticmethod
-    def is_detritus_name(filename):
+    def is_debris_name(filename):
         """Return True if the supplied filename may be junk from earlier ops.
         
         This does not attempt to determine whether the file is versioned, which
@@ -1147,6 +1161,13 @@ class WorkingTree(bzrlib.tree.Tree):
         are not detritus, regardless of their name.
         """
         return _detritus_pattern.match(filename) is not None
+
+    @staticmethod
+    def debris_classifier(filename):
+        if WorkingTree.is_debris_name(filename):
+            return 'D'
+        else:
+            return None
 
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
