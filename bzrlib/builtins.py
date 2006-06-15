@@ -2053,17 +2053,10 @@ class cmd_merge(Command):
         tree = WorkingTree.open_containing(u'.')[0]
 
         try:
-            if branch is not None:
-                reader = BundleReader(file(branch, 'rb'))
-            else:
-                reader = None
-        except IOError, e:
-            if e.errno not in (errno.ENOENT, errno.EISDIR):
-                raise
-            reader = None
+            reader = read_bundle(branch)
         except NotABundle:
-            reader = None
-        if reader is not None:
+            pass # Continue on considering this url a Branch
+        else:
             conflicts = merge_bundle(reader, tree, not force, merge_type,
                                         reprocess, show_base)
             if conflicts == 0:
