@@ -332,17 +332,21 @@ class Branch(object):
         >>> br1.missing_revisions(br2)
         []
         >>> wt2.commit("lala!", rev_id="REVISION-ID-1")
+        'REVISION-ID-1'
         >>> br1.missing_revisions(br2)
         [u'REVISION-ID-1']
         >>> br2.missing_revisions(br1)
         []
         >>> wt1.commit("lala!", rev_id="REVISION-ID-1")
+        'REVISION-ID-1'
         >>> br1.missing_revisions(br2)
         []
         >>> wt2.commit("lala!", rev_id="REVISION-ID-2A")
+        'REVISION-ID-2A'
         >>> br1.missing_revisions(br2)
         [u'REVISION-ID-2A']
         >>> wt1.commit("lala!", rev_id="REVISION-ID-2B")
+        'REVISION-ID-2B'
         >>> br1.missing_revisions(br2)
         Traceback (most recent call last):
         DivergedBranches: These branches have diverged.  Try merge.
@@ -477,7 +481,7 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        # for API compatability, until 0.8 releases we provide the old api:
+        # for API compatibility, until 0.8 releases we provide the old api:
         # def clone(self, to_location, revision=None, basis_branch=None, to_branch_format=None):
         # after 0.8 releases, the *args and **kwargs should be changed:
         # def clone(self, to_bzrdir, revision_id=None):
@@ -485,7 +489,7 @@ class Branch(object):
             kwargs.get('revision', None) or
             kwargs.get('basis_branch', None) or
             (len(args) and isinstance(args[0], basestring))):
-            # backwards compatability api:
+            # backwards compatibility api:
             warn("Branch.clone() has been deprecated for BzrDir.clone() from"
                  " bzrlib 0.8.", DeprecationWarning, stacklevel=3)
             # get basis_branch
@@ -637,7 +641,7 @@ class BranchFormat(object):
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
-        raise NotImplementedError(self.initialized)
+        raise NotImplementedError(self.initialize)
 
     def is_supported(self):
         """Is this format supported?
@@ -1269,7 +1273,7 @@ class BzrBranch5(BzrBranch):
 
         This could memoise the branch, but if thats done
         it must be revalidated on each new lock.
-        So for now we just dont memoise it.
+        So for now we just don't memoise it.
         # RBC 20060304 review this decision.
         """
         bound_loc = self.get_bound_location()
@@ -1321,7 +1325,7 @@ class BzrBranch5(BzrBranch):
         # There may be a different check you could do here
         # rather than actually trying to install revisions remotely.
         # TODO: capture an exception which indicates the remote branch
-        #       is not writeable. 
+        #       is not writable. 
         #       If it is up-to-date, this probably should not be a failure
         
         # lock other for write so the revision-history syncing cannot race

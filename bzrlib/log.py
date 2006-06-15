@@ -494,7 +494,7 @@ def log_formatter(name, *args, **kwargs):
         raise BzrCommandError("unknown log formatter: %r" % name)
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
-    # deprecated; for compatability
+    # deprecated; for compatibility
     lf = LongLogFormatter(to_file=to_file, show_timezone=show_timezone)
     lf.show(revno, rev, delta)
 

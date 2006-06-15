@@ -31,12 +31,12 @@ log_format=name-of-format
 
 in branches.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
-set in both bazaar.conf and branches.conf are overriden by the branches.conf
+set in both bazaar.conf and branches.conf are overridden by the branches.conf
 setting.
 [/home/robertc/source]
 recurse=False|True(default)
 email= as above
-check_signatures= as abive 
+check_signatures= as above 
 create_signatures= as above.
 
 explanation of options
