@@ -194,12 +194,13 @@ def _win32_local_path_to_url(path):
 local_path_to_url = _posix_local_path_to_url
 local_path_from_url = _posix_local_path_from_url
 MIN_ABS_FILEURL_LENGTH = len('file:///')
+WIN32_MIN_ABS_FILEURL_LENGTH = len('file:///C|/')
 
 if sys.platform == 'win32':
     local_path_to_url = _win32_local_path_to_url
     local_path_from_url = _win32_local_path_from_url
 
-    MIN_ABS_FILEURL_LENGTH = len('file:///C|/')
+    MIN_ABS_FILEURL_LENGTH = WIN32_MIN_ABS_FILEURL_LENGTH
 
 
 _url_scheme_re = re.compile(r'^(?P<scheme>[^:/]{2,})://(?P<path>.*)$')
@@ -343,6 +344,14 @@ def split(url, exclude_trailing_slash=True):
     return url_base + head, tail
 
 
+def _win32_strip_local_trailing_slash(url):
+    """Strip slashes after the drive letter"""
+    if len(url) > WIN32_MIN_ABS_FILEURL_LENGTH:
+        return url[:-1]
+    else:
+        return url
+
+
 def strip_trailing_slash(url):
     """Strip trailing slash, except for root paths.
 
@@ -368,12 +377,7 @@ def strip_trailing_slash(url):
         # Nothing to do
         return url
     if sys.platform == 'win32' and url.startswith('file:///'):
-        # This gets handled specially, because the 'top-level'
-        # of a win32 path is actually the drive letter
-        if len(url) > MIN_ABS_FILEURL_LENGTH:
-            return url[:-1]
-        else:
-            return url
+        return _win32_strip_local_trailing_slash(url)
 
     scheme_loc, first_path_slash = _find_scheme_and_separator(url)
     if scheme_loc is None:
