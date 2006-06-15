@@ -336,3 +336,6 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
         self.assertEqual(namedict['foo1'][0], 'F')
         self.assertEqual(namedict['foo2'][0], 'V')
         self.assertEqual(namedict['bar'][0], '?')
+        tree.basis_tree().list_files(classifiers=[foo_classifier])
+        tree.commit('message')
+        tree.basis_tree().list_files(classifiers=[foo_classifier])

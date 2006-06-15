@@ -137,7 +137,7 @@ class TestCommands(ExternalBase):
                          'test1234.tmp',
                          'file.pyc'])
         BzrDir.create_standalone_workingtree('.')
-        output = self.runbzr('ls --debris', backtick=True)
+        output = self.run_bzr('ls', '--debris')[0]
         self.assertEqualDiff(output, 
                              'file.BASE\n'
                              'file.OTHER\n'
@@ -146,5 +146,7 @@ class TestCommands(ExternalBase):
                              'test1234.tmp\n')
         wt = WorkingTree.open('.')
         wt.add(['file.BASE', 'file~', 'test1234.tmp'])
-        output = self.runbzr('ls --debris', backtick=True)
+        output = self.run_bzr('ls', '--debris')[0]
         self.assertEqualDiff(output, 'file.OTHER\n' 'file.THIS\n')
+        self.run_bzr('commit', '-m', 'foo')
+        output = self.run_bzr('ls', '--debris', '-r', '-1')
