@@ -28,14 +28,23 @@ class TestCommitBuilder(TestCaseWithRepository):
         builder = tree.branch.get_commit_builder([])
         self.assertIsInstance(builder, CommitBuilder)
 
+    def test_set_root_id(self):
+        tree = self.make_branch_and_tree(".")
+        builder = tree.branch.get_commit_builder([])
+        self.assertEqual(None, builder.new_inventory.root)
+        builder.set_root_id('foo')
+        self.assertEqual('foo', builder.new_inventory.root.file_id)
+
     def test_finish_inventory(self):
         tree = self.make_branch_and_tree(".")
         builder = tree.branch.get_commit_builder([])
+        builder.set_root_id(None)
         builder.finish_inventory()
 
     def test_commit_message(self):
         tree = self.make_branch_and_tree(".")
         builder = tree.branch.get_commit_builder([])
+        builder.set_root_id(None)
         builder.finish_inventory()
         rev_id = builder.commit('foo bar blah')
         rev = tree.branch.repository.get_revision(rev_id)
@@ -48,6 +57,7 @@ class TestCommitBuilder(TestCaseWithRepository):
         except UnsupportedOperation:
             # This format doesn't support supplied revision ids
             return
+        builder.set_root_id(None)
         builder.finish_inventory()
         self.assertEqual("foo", builder.commit('foo bar'))
         self.assertTrue(tree.branch.repository.has_revision("foo"))
@@ -59,6 +69,7 @@ class TestCommitBuilder(TestCaseWithRepository):
     def test_commit(self):
         tree = self.make_branch_and_tree(".")
         builder = tree.branch.get_commit_builder([])
+        builder.set_root_id(None)
         builder.finish_inventory()
         rev_id = builder.commit('foo bar')
         self.assertNotEqual(None, rev_id)

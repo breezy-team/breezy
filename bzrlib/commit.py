@@ -513,8 +513,10 @@ class Commit(object):
         mutter("Selecting files for commit with filter %s", self.specific_files)
         # iter_entries does not visit the root node so we need to call
         # self._emit_progress_update once by hand.
-        self.builder.new_inventory.add_path('', 'directory',
-                                            self.work_inv.root.file_id)
+        new_ie = self.work_inv.root.copy()
+        new_ie.revision = None
+        self.builder.record_entry_contents(new_ie, self.parent_invs, '', 
+                                           self.work_tree)
         self._emit_progress_update()
         for path, new_ie in self.work_inv.iter_entries():
             self._emit_progress_update()

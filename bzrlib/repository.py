@@ -1981,6 +1981,9 @@ class CommitBuilder(object):
 
     def finish_inventory(self):
         """Tell the builder that the inventory is finished."""
+        # FIXME: Should this really be an assert or rather a
+        # more user friendly exception ?
+        assert self.new_inventory.root != None
         self.new_inventory.revision_id = self._new_revision_id
         self.inv_sha1 = self.repository.add_inventory(
             self._new_revision_id,
@@ -2007,6 +2010,13 @@ class CommitBuilder(object):
         if self._new_revision_id is None:
             self._new_revision_id = self._gen_revision_id()
 
+    def set_root_id(self, root_id):
+        """Convenience function for setting the file id of the root node. 
+
+        :param root_id: The new file_id of the root node.
+        """
+        self.new_inventory.add_path('', 'directory', root_id)
+
     def record_entry_contents(self, ie, parent_invs, path, tree):
         """Record the content of ie from tree into the commit if needed.
 
@@ -2017,7 +2027,11 @@ class CommitBuilder(object):
         :param tree: The tree which contains this entry and should be used to 
         obtain content.
         """
-        self.new_inventory.add(ie)
+        if path == '':
+            self.set_root_id(ie.file_id)
+            return
+        else:
+            self.new_inventory.add(ie)
 
         # ie.revision is always None if the InventoryEntry is considered
         # for committing. ie.snapshot will record the correct revision 
