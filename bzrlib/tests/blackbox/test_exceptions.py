@@ -33,7 +33,5 @@ class TestExceptionReporting(TestCase):
 
     # TODO: assert-fail doesn't need to always be present; we could just
     # register (and unregister) it from tests that want to touch it.
-
-    # TODO: Check that broken pipe gets a good message
     #
-    # TODO: Something about how to get into pdb
+    # TODO: Some kind of test for the feature of invoking pdb

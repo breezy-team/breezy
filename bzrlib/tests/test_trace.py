@@ -20,6 +20,7 @@
 
 """Tests for trace library"""
 
+import errno
 import os
 import sys
 from StringIO import StringIO
@@ -83,3 +84,12 @@ class TestTrace(TestCase):
         self.log(u'the unicode character for benzene is \N{BENZENE RING}')
         self.assertContainsRe('the unicode character',
                 self._get_log())
+
+    def test_report_broken_pipe(self):
+        try:
+            raise IOError(errno.EPIPE, 'broken pipe foofofo')
+        except IOError, e:
+            msg = _format_exception()
+            self.assertEquals(msg, "bzr: broken pipe\n")
+        else:
+            self.fail("expected error not raised")
