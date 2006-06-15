@@ -89,8 +89,16 @@ class TestCommit(TestCaseWithWorkingTree):
 
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
-        tree.commit('foo', rev_id='foo', allow_pointless=True)
+        committed_id = tree.commit('foo', rev_id='foo', allow_pointless=True)
         self.assertEqual('foo', tree.last_revision())
+        # the commit should have returned the same id we asked for.
+        self.assertEqual('foo', committed_id)
+
+    def test_commit_returns_revision_id(self):
+        tree = self.make_branch_and_tree('.')
+        committed_id = tree.commit('message', allow_pointless=True)
+        self.assertTrue(tree.branch.repository.has_revision(committed_id))
+        self.assertNotEqual(None, committed_id)
 
     def test_commit_local_unbound(self):
         # using the library api to do a local commit on unbound branches is 

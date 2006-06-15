@@ -332,17 +332,21 @@ class Branch(object):
         >>> br1.missing_revisions(br2)
         []
         >>> wt2.commit("lala!", rev_id="REVISION-ID-1")
+        'REVISION-ID-1'
         >>> br1.missing_revisions(br2)
         [u'REVISION-ID-1']
         >>> br2.missing_revisions(br1)
         []
         >>> wt1.commit("lala!", rev_id="REVISION-ID-1")
+        'REVISION-ID-1'
         >>> br1.missing_revisions(br2)
         []
         >>> wt2.commit("lala!", rev_id="REVISION-ID-2A")
+        'REVISION-ID-2A'
         >>> br1.missing_revisions(br2)
         [u'REVISION-ID-2A']
         >>> wt1.commit("lala!", rev_id="REVISION-ID-2B")
+        'REVISION-ID-2B'
         >>> br1.missing_revisions(br2)
         Traceback (most recent call last):
         DivergedBranches: These branches have diverged.  Try merge.
