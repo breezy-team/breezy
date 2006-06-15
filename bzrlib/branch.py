@@ -1194,7 +1194,7 @@ class BzrBranch(Branch):
             # This is an old-format absolute path to a local branch
             # turn it into a url
             if parent.startswith('/'):
-                parent = urlutils.local_path_to_url(parent)
+                parent = urlutils.local_path_to_url(parent.decode('utf8')
             return urlutils.join(self.base[:-1], parent)
         return None
 
