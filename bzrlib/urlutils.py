@@ -291,6 +291,18 @@ def relative_url(base, other):
     return "/".join(output_sections) or "."
 
 
+def _win32_extract_drive_letter(url_base, path):
+    """On win32 the drive letter needs to be added to the url base."""
+    # Strip off the drive letter
+    # path is currently /C:/foo
+    if len(path) < 3 or path[2] not in ':|' or path[3] != '/':
+        raise errors.InvalidURL(url_base + path, 
+            'win32 file:/// paths need a drive letter')
+    url_base += path[0:3] # file:// + /C:
+    path = path[3:] # /foo
+    return url_base, path
+
+
 def split(url, exclude_trailing_slash=True):
     """Split a URL into its parent directory and a child directory.
 
@@ -320,12 +332,10 @@ def split(url, exclude_trailing_slash=True):
 
     if sys.platform == 'win32' and url.startswith('file:///'):
         # Strip off the drive letter
+        # url_base is currently file://
         # path is currently /C:/foo
-        if path[2:3] not in ':|' or path[3:4] not in '\\/':
-            raise errors.InvalidURL(url, 
-                'win32 file:/// paths need a drive letter')
-        url_base += path[0:3] # file:// + /C:
-        path = path[3:] # /foo
+        url_base, path = _win32_extract_drive_letter(url_base, path)
+        # now it should be file:///C: and /foo
 
     if exclude_trailing_slash and len(path) > 1 and path.endswith('/'):
         path = path[:-1]

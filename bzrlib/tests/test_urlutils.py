@@ -271,6 +271,12 @@ class TestUrlToPath(TestCase):
         # Not a valid _win32 url, no drive letter
         self.assertRaises(InvalidURL, from_url, 'file:///path/to/foo')
 
+    def test__win32_extract_drive_letter(self):
+        extract = urlutils._win32_extract_drive_letter
+        self.assertEqual(('file:///C:', '/foo'), extract('file://', '/C:/foo'))
+        self.assertEqual(('file:///d|', '/path'), extract('file://', '/d|/path'))
+        self.assertRaises(InvalidURL, extract, 'file://', '/path')
+
     def test_split(self):
         # Test bzrlib.urlutils.split()
         split = urlutils.split
