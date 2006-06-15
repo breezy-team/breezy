@@ -13,18 +13,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""Tests for bzr add performance."""
+"""Tests for bzr osutils functions performance."""
 
 
 from bzrlib.benchmarks import Benchmark
+import bzrlib.osutils as osutils
 
 
-class AddBenchmark(Benchmark):
+class WalkDirsBenchmark(Benchmark):
 
-    def test_one_add_kernel_like_tree(self):
-        """Adding a kernel sized tree should be bearable (<5secs) fast.""" 
+    def test_walkdirs_kernel_like_tree(self):
+        """Walking a kernel sized tree is fast!(150ms)."""
         self.make_kernel_like_tree()
-        # on roberts machine: this originally took:  25936ms/32244ms
-        # after making smart_add use the parent_ie:   5033ms/ 9368ms
+        # on roberts machine: this originally took:  157ms/4177ms
         # plain os.walk takes 213ms on this tree
-        self.time(self.run_bzr, 'add')
+        def dowalk():
+            for dirblock in osutils.walkdirs('.'):
+                if dirblock[0][1] == '.bzr':
+                    del dirblock[0]
+        self.time(dowalk)

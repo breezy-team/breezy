@@ -16,15 +16,22 @@
 """Tests for bzr add performance."""
 
 
+import bzrlib
 from bzrlib.benchmarks import Benchmark
 
 
-class AddBenchmark(Benchmark):
+class InvBenchmark(Benchmark):
 
-    def test_one_add_kernel_like_tree(self):
-        """Adding a kernel sized tree should be bearable (<5secs) fast.""" 
-        self.make_kernel_like_tree()
-        # on roberts machine: this originally took:  25936ms/32244ms
-        # after making smart_add use the parent_ie:   5033ms/ 9368ms
-        # plain os.walk takes 213ms on this tree
-        self.time(self.run_bzr, 'add')
+    def test_make_10824_inv_entries(self):
+        """Making 10824 inv entries should be quick."""
+        entries = []
+        def make_10824_entries():
+            for counter in xrange(10000):
+                bzrlib.inventory.make_entry('file', 'foo',
+                    "a_parent_id")
+            for counter in xrange(824):
+                bzrlib.inventory.make_entry('directory', 'foo',
+                    "a_parent_id")
+        # on roberts machine: this originally took:  533ms/  600ms
+        # fixing slots to be vaguely accurate :      365ms/  419ms
+        self.time(make_10824_entries)

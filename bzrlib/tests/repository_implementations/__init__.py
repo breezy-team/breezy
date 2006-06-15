@@ -41,6 +41,7 @@ def test_suite():
     result = TestSuite()
     test_repository_implementations = [
         'bzrlib.tests.repository_implementations.test_break_lock',
+        'bzrlib.tests.repository_implementations.test_commit_builder',
         'bzrlib.tests.repository_implementations.test_fileid_involved',
         'bzrlib.tests.repository_implementations.test_reconcile',
         'bzrlib.tests.repository_implementations.test_repository',

@@ -819,7 +819,7 @@ class WeaveMerger(Merge3Merger):
                                           pb=pb, pp=pp, reprocess=reprocess)
 
     def _get_revision_tree(self, tree):
-        """Return a revision tree releated to this tree.
+        """Return a revision tree related to this tree.
         If the tree is a WorkingTree, the basis will be returned.
         """
         if getattr(tree, 'get_weave', False) is False:

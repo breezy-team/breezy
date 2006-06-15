@@ -33,7 +33,9 @@ import errno
 import logging
 import os
 import re
+import shlex
 import stat
+from subprocess import Popen, PIPE
 import sys
 import tempfile
 import unittest
@@ -482,6 +484,12 @@ class TestCase(unittest.TestCase):
             raise AssertionError('pattern "%s" not found in "%s"'
                     % (needle_re, haystack))
 
+    def assertNotContainsRe(self, haystack, needle_re):
+        """Assert that a does not match a regular expression"""
+        if re.search(needle_re, haystack):
+            raise AssertionError('pattern "%s" found in "%s"'
+                    % (needle_re, haystack))
+
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
         missing = []
@@ -718,6 +726,30 @@ class TestCase(unittest.TestCase):
         else:
             encoding = bzrlib.user_encoding
         return self.run_bzr(*args, **kwargs)[0].decode(encoding)
+
+    def run_bzr_subprocess(self, *args, **kwargs):
+        """Run bzr in a subprocess for testing.
+
+        This starts a new Python interpreter and runs bzr in there. 
+        This should only be used for tests that have a justifiable need for
+        this isolation: e.g. they are testing startup time, or signal
+        handling, or early startup code, etc.  Subprocess code can't be 
+        profiled or debugged so easily.
+
+        :param retcode: The status code that is expected.  Defaults to 0.  If
+        None is supplied, the status code is not checked.
+        """
+        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        args = list(args)
+        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
+                         stderr=PIPE)
+        out = process.stdout.read()
+        err = process.stderr.read()
+        retcode = process.wait()
+        supplied_retcode = kwargs.get('retcode', 0)
+        if supplied_retcode is not None:
+            assert supplied_retcode == retcode
+        return [out, err]
 
     def check_inventory_shape(self, inv, shape):
         """Compare an inventory to a list of expected names.

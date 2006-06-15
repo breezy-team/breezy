@@ -220,3 +220,49 @@ class TestSplitLines(TestCase):
     def test_split_with_carriage_returns(self):
         self.assertEqual(['foo\rbar\n'],
                          osutils.split_lines('foo\rbar\n'))
+
+
+class TestWalkDirs(TestCaseInTempDir):
+
+    def test_walkdirs(self):
+        tree = [
+            '.bzr',
+            '0file',
+            '1dir/',
+            '1dir/0file',
+            '1dir/1dir/',
+            '2file'
+            ]
+        self.build_tree(tree)
+        expected_dirblocks = [
+                [
+                    ('0file', '0file', 'file'),
+                    ('1dir', '1dir', 'directory'),
+                    ('2file', '2file', 'file'),
+                ],
+                [
+                    ('1dir/0file', '0file', 'file'),
+                    ('1dir/1dir', '1dir', 'directory'),
+                ],
+                [
+                ],
+            ]
+        result = []
+        found_bzrdir = False
+        for dirblock in osutils.walkdirs('.'):
+            if len(dirblock) and dirblock[0][1] == '.bzr':
+                # this tests the filtering of selected paths
+                found_bzrdir = True
+                del dirblock[0]
+            result.append(dirblock)
+
+        self.assertTrue(found_bzrdir)
+        self.assertEqual(expected_dirblocks,
+            [[line[0:3] for line in block] for block in result])
+        # you can search a subdir only, with a supplied prefix.
+        result = []
+        for dirblock in osutils.walkdirs('1dir', '1dir'):
+            result.append(dirblock)
+        self.assertEqual(expected_dirblocks[1:],
+            [[line[0:3] for line in block] for block in result])
+

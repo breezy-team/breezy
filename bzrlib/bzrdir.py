@@ -370,16 +370,23 @@ class BzrDir(object):
             pass
         next_transport = self.root_transport.clone('..')
         while True:
+            # find the next containing bzrdir
             try:
                 found_bzrdir = BzrDir.open_containing_from_transport(
                     next_transport)[0]
             except errors.NotBranchError:
+                # none found
                 raise errors.NoRepositoryPresent(self)
+            # does it have a repository ?
             try:
                 repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
                 next_transport = found_bzrdir.root_transport.clone('..')
-                continue
+                if (found_bzrdir.root_transport.base == next_transport.base):
+                    # top of the file system
+                    break
+                else:
+                    continue
             if ((found_bzrdir.root_transport.base == 
                  self.root_transport.base) or repository.is_shared()):
                 return repository
@@ -392,7 +399,7 @@ class BzrDir(object):
 
         Note that bzr dirs that do not support format strings will raise
         IncompatibleFormat if the branch format they are given has
-        a format string, and vice verca.
+        a format string, and vice versa.
 
         If branch_format is None, the transport is returned with no 
         checking. if it is not None, then the returned transport is
@@ -405,7 +412,7 @@ class BzrDir(object):
 
         Note that bzr dirs that do not support format strings will raise
         IncompatibleFormat if the repository format they are given has
-        a format string, and vice verca.
+        a format string, and vice versa.
 
         If repository_format is None, the transport is returned with no 
         checking. if it is not None, then the returned transport is
@@ -418,7 +425,7 @@ class BzrDir(object):
 
         Note that bzr dirs that do not support format strings will raise
         IncompatibleFormat if the workingtree format they are given has
-        a format string, and vice verca.
+        a format string, and vice versa.
 
         If workingtree_format is None, the transport is returned with no 
         checking. if it is not None, then the returned transport is
@@ -453,7 +460,7 @@ class BzrDir(object):
         # this might be better on the BzrDirFormat class because it refers to 
         # all the possible bzrdir disk formats. 
         # This method is tested via the workingtree is_control_filename tests- 
-        # it was extractd from WorkingTree.is_control_filename. If the methods
+        # it was extracted from WorkingTree.is_control_filename. If the methods
         # contract is extended beyond the current trivial  implementation please
         # add new tests for it to the appropriate place.
         return filename == '.bzr' or filename.startswith('.bzr/')
@@ -626,7 +633,7 @@ class BzrDir(object):
             result.create_repository()
         elif source_repository is not None and result_repo is None:
             # have source, and want to make a new target repo
-            # we dont clone the repo because that preserves attributes
+            # we don't clone the repo because that preserves attributes
             # like is_shared(), and we have not yet implemented a 
             # repository sprout().
             result_repo = result.create_repository()
@@ -969,6 +976,12 @@ class BzrDirFormat(object):
     _formats = {}
     """The known formats."""
 
+    _control_formats = []
+    """The registered control formats - .bzr, ....
+    
+    This is a list of BzrDirFormat objects.
+    """
+
     _lock_file_name = 'branch-lock'
 
     # _lock_class must be set in subclasses to the lock type, typ.
@@ -976,7 +989,18 @@ class BzrDirFormat(object):
 
     @classmethod
     def find_format(klass, transport):
-        """Return the format registered for URL."""
+        """Return the format present at transport."""
+        for format in klass._control_formats:
+            try:
+                return format.probe_transport(transport)
+            except errors.NotBranchError:
+                # this format does not find a control dir here.
+                pass
+        raise errors.NotBranchError(path=transport.base)
+
+    @classmethod
+    def probe_transport(klass, transport):
+        """Return the .bzrdir style transport present at URL."""
         try:
             format_string = transport.get(".bzr/branch-format").read()
             return klass._formats[format_string]
@@ -1004,10 +1028,10 @@ class BzrDirFormat(object):
         This returns a bzrlib.bzrdir.Converter object.
 
         This should return the best upgrader to step this format towards the
-        current default format. In the case of plugins we can/shouold provide
+        current default format. In the case of plugins we can/should provide
         some means for them to extend the range of returnable converters.
 
-        :param format: Optional format to override the default foramt of the 
+        :param format: Optional format to override the default format of the 
                        library.
         """
         raise NotImplementedError(self.get_converter)
@@ -1022,11 +1046,11 @@ class BzrDirFormat(object):
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
-        # Since we don'transport have a .bzr directory, inherit the
+        # Since we don't have a .bzr directory, inherit the
         # mode from the root directory
         temp_control = LockableFiles(transport, '', TransportLock)
         temp_control._transport.mkdir('.bzr',
-                                      # FIXME: RBC 20060121 dont peek under
+                                      # FIXME: RBC 20060121 don't peek under
                                       # the covers
                                       mode=temp_control._dir_mode)
         file_mode = temp_control._file_mode
@@ -1059,6 +1083,25 @@ class BzrDirFormat(object):
         """
         return True
 
+    @classmethod
+    def known_formats(klass):
+        """Return all the known formats.
+        
+        Concrete formats should override _known_formats.
+        """
+        # There is double indirection here to make sure that control 
+        # formats used by more than one dir format will only be probed 
+        # once. This can otherwise be quite expensive for remote connections.
+        result = set()
+        for format in klass._control_formats:
+            result.update(format._known_formats())
+        return result
+    
+    @classmethod
+    def _known_formats(klass):
+        """Return the known format instances for this control format."""
+        return set(klass._formats.values())
+
     def open(self, transport, _found=False):
         """Return an instance of this format for the dir transport points at.
         
@@ -1082,6 +1125,17 @@ class BzrDirFormat(object):
         klass._formats[format.get_format_string()] = format
 
     @classmethod
+    def register_control_format(klass, format):
+        """Register a format that does not use '.bzrdir' for its control dir.
+
+        TODO: This should be pulled up into a 'ControlDirFormat' base class
+        which BzrDirFormat can inherit from, and renamed to register_format 
+        there. It has been done without that for now for simplicity of
+        implementation.
+        """
+        klass._control_formats.append(format)
+
+    @classmethod
     def set_default_format(klass, format):
         klass._default_format = format
 
@@ -1092,6 +1146,14 @@ class BzrDirFormat(object):
     def unregister_format(klass, format):
         assert klass._formats[format.get_format_string()] is format
         del klass._formats[format.get_format_string()]
+
+    @classmethod
+    def unregister_control_format(klass, format):
+        klass._control_formats.remove(format)
+
+
+# register BzrDirFormat as a control format
+BzrDirFormat.register_control_format(BzrDirFormat)
 
 
 class BzrDirFormat4(BzrDirFormat):

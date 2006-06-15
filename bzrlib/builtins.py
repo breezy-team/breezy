@@ -266,7 +266,7 @@ class cmd_add(Command):
 
     Adding a file whose parent directory is not versioned will
     implicitly add the parent, and so on up to the root. This means
-    you should never need to explictly add a directory, they'll just
+    you should never need to explicitly add a directory, they'll just
     get added when you add a file in the directory.
 
     --dry-run will show which files would be added, but not actually 
@@ -280,10 +280,10 @@ class cmd_add(Command):
         import bzrlib.add
 
         action = bzrlib.add.AddAction(to_file=self.outf,
-            should_add=(not dry_run), should_print=(not is_quiet()))
+            should_print=(not is_quiet()))
 
         added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
-                                              action=action)
+                                              action=action, save=not dry_run)
         if len(ignored) > 0:
             if verbose:
                 for glob in sorted(ignored.keys()):
@@ -2559,7 +2559,7 @@ class cmd_uncommit(bzrlib.commands.Command):
     """
 
     # TODO: jam 20060108 Add an option to allow uncommit to remove
-    # unreferenced information in 'branch-as-repostory' branches.
+    # unreferenced information in 'branch-as-repository' branches.
     # TODO: jam 20060108 Add the ability for uncommit to remove unreferenced
     # information in shared branches as well.
     takes_options = ['verbose', 'revision',
