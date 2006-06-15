@@ -23,8 +23,11 @@ import os
 
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
+from bzrlib.conflicts import ConflictList
+from bzrlib.delta import compare_trees
 from bzrlib.osutils import abspath
 from bzrlib.tests.blackbox import ExternalBase
+import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
 
 
@@ -141,7 +144,7 @@ class TestMerge(ExternalBase):
         os.chdir('branch_b')
         out = self.runbzr('merge', retcode=3)
         self.assertEquals(out,
-                ('','bzr: ERROR: No merge branch known or specified.\n'))
+                ('','bzr: ERROR: No location specified or remembered\n'))
         # test implicit --remember when no parent set, this merge conflicts
         self.build_tree(['d'])
         tree_b.add('d')
@@ -152,7 +155,9 @@ class TestMerge(ExternalBase):
         # test implicit --remember after resolving conflict
         tree_b.commit('commit d')
         out, err = self.runbzr('merge')
-        self.assertEquals(out, 'Using saved branch: ../branch_a\n')
+        
+        base = urlutils.local_path_from_url(branch_a.base)
+        self.assertEquals(out, 'Merging from remembered location %s\n' % (base,))
         self.assertEquals(err, 'All changes applied successfully.\n')
         self.assertEquals(abspath(branch_b.get_parent()), abspath(parent))
         # re-open tree as external runbzr modified it
@@ -197,3 +202,11 @@ class TestMerge(ExternalBase):
                                               tree_b.last_revision())
         self.assertEqualDiff(testament_a.as_text(),
                          testament_b.as_text())
+        tree_a.set_conflicts(ConflictList())
+        tree_a.commit('message')
+        # it is legal to attempt to merge an already-merged bundle
+        output = self.runbzr('merge ../bundle')[1]
+        # but it does nothing
+        self.assertFalse(compare_trees(tree_a.basis_tree(), 
+                                       tree_a).has_changed())
+        self.assertEqual('Nothing to do.\n', output)

@@ -99,6 +99,7 @@ from bzrlib.transform import build_tree
 from bzrlib.trace import mutter, note
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
+import bzrlib.urlutils as urlutils
 import bzrlib.ui
 import bzrlib.xml5
 
@@ -150,7 +151,7 @@ def gen_root_id():
 
 
 class TreeEntry(object):
-    """An entry that implements the minium interface used by commands.
+    """An entry that implements the minimum interface used by commands.
 
     This needs further inspection, it may be better to have 
     InventoryEntries without ids - though that seems wrong. For now,
@@ -281,7 +282,7 @@ class WorkingTree(bzrlib.tree.Tree):
         # if needed, or, when the cache sees a change, append it to the hash
         # cache file, and have the parser take the most recent entry for a
         # given path only.
-        cache_filename = self.bzrdir.get_workingtree_transport(None).abspath('stat-cache')
+        cache_filename = self.bzrdir.get_workingtree_transport(None).local_abspath('stat-cache')
         hc = self._hashcache = HashCache(basedir, cache_filename, self._control_files._file_mode)
         hc.read()
         # is this scan needed ? it makes things kinda slow.
@@ -351,10 +352,13 @@ class WorkingTree(bzrlib.tree.Tree):
         run into /.  If there isn't one, raises NotBranchError.
         TODO: give this a new exception.
         If there is one, it is returned, along with the unused portion of path.
+
+        :return: The WorkingTree that contains 'path', and the rest of path
         """
         if path is None:
             path = os.getcwdu()
         control, relpath = bzrdir.BzrDir.open_containing(path)
+
         return control.open_workingtree(), relpath
 
     @staticmethod
@@ -537,6 +541,11 @@ class WorkingTree(bzrlib.tree.Tree):
             path = self._inventory.id2path(file_id)
         return self._hashcache.get_sha1(path)
 
+    def get_file_mtime(self, file_id, path=None):
+        if not path:
+            path = self._inventory.id2path(file_id)
+        return os.lstat(self.abspath(path)).st_mtime
+
     if not supports_executable():
         def is_executable(self, file_id, path=None):
             return self._inventory[file_id].executable
@@ -545,7 +554,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if not path:
                 path = self._inventory.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
-            return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
+            return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     @needs_write_lock
     def add(self, files, ids=None):
@@ -1082,7 +1091,8 @@ class WorkingTree(bzrlib.tree.Tree):
         l = bzrlib.DEFAULT_IGNORE[:]
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
-            l.extend([line.rstrip("\n\r") for line in f.readlines()])
+            l.extend([line.rstrip("\n\r").decode('utf-8') 
+                      for line in f.readlines()])
         self._ignorelist = l
         self._ignore_regex = self._combine_ignore_rules(l)
         return l
@@ -1204,25 +1214,37 @@ class WorkingTree(bzrlib.tree.Tree):
 
     def _cache_basis_inventory(self, new_revision):
         """Cache new_revision as the basis inventory."""
+        # TODO: this should allow the ready-to-use inventory to be passed in,
+        # as commit already has that ready-to-use [while the format is the
+        # same, that is].
         try:
             # this double handles the inventory - unpack and repack - 
             # but is easier to understand. We can/should put a conditional
             # in here based on whether the inventory is in the latest format
             # - perhaps we should repack all inventories on a repository
             # upgrade ?
-            inv = self.branch.repository.get_inventory(new_revision)
-            inv.revision_id = new_revision
-            xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
-
+            # the fast path is to copy the raw xml from the repository. If the
+            # xml contains 'revision_id="', then we assume the right 
+            # revision_id is set. We must check for this full string, because a
+            # root node id can legitimately look like 'revision_id' but cannot
+            # contain a '"'.
+            xml = self.branch.repository.get_inventory_xml(new_revision)
+            if not 'revision_id="' in xml.split('\n', 1)[0]:
+                inv = self.branch.repository.deserialise_inventory(
+                    new_revision, xml)
+                inv.revision_id = new_revision
+                xml = bzrlib.xml5.serializer_v5.write_inventory_to_string(inv)
+            assert isinstance(xml, str), 'serialised xml must be bytestring.'
             path = self._basis_inventory_name()
-            self._control_files.put_utf8(path, xml)
+            sio = StringIO(xml)
+            self._control_files.put(path, sio)
         except WeaveRevisionNotPresent:
             pass
 
     def read_basis_inventory(self):
         """Read the cached basis inventory."""
         path = self._basis_inventory_name()
-        return self._control_files.get_utf8(path).read()
+        return self._control_files.get(path).read()
         
     @needs_read_lock
     def read_working_inventory(self):
@@ -1235,7 +1257,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return result
 
     @needs_write_lock
-    def remove(self, files, verbose=False):
+    def remove(self, files, verbose=False, to_file=None):
         """Remove nominated files from the working inventory..
 
         This does not remove their text.  This does not run on XXX on what? RBC
@@ -1270,7 +1292,7 @@ class WorkingTree(bzrlib.tree.Tree):
                     new_status = 'I'
                 else:
                     new_status = '?'
-                show_status(new_status, inv[fid].kind, quotefn(f))
+                show_status(new_status, inv[fid].kind, quotefn(f), to_file=to_file)
             del inv[fid]
 
         self._write_inventory(inv)
@@ -1343,8 +1365,8 @@ class WorkingTree(bzrlib.tree.Tree):
         # of a nasty hack; probably it's better to have a transaction object,
         # which can do some finalization when it's either successfully or
         # unsuccessfully completed.  (Denys's original patch did that.)
-        # RBC 20060206 hookinhg into transaction will couple lock and transaction
-        # wrongly. Hookinh into unllock on the control files object is fine though.
+        # RBC 20060206 hooking into transaction will couple lock and transaction
+        # wrongly. Hooking into unlock on the control files object is fine though.
         
         # TODO: split this per format so there is no ugly if block
         if self._hashcache.needs_write and (
@@ -1396,7 +1418,7 @@ class WorkingTree(bzrlib.tree.Tree):
                                       this_tree=self)
                 self.set_last_revision(self.branch.last_revision())
             if old_tip and old_tip != self.last_revision():
-                # our last revision was not the prior branch last reivison
+                # our last revision was not the prior branch last revision
                 # and we have converted that last revision to a pending merge.
                 # base is somewhere between the branch tip now
                 # and the now pending merge
@@ -1438,23 +1460,17 @@ class WorkingTree(bzrlib.tree.Tree):
             try:
                 if file_kind(self.abspath(conflicted)) != "file":
                     text = False
-            except OSError, e:
-                if e.errno == errno.ENOENT:
-                    text = False
-                else:
-                    raise
+            except errors.NoSuchFile:
+                text = False
             if text is True:
                 for suffix in ('.THIS', '.OTHER'):
                     try:
                         kind = file_kind(self.abspath(conflicted+suffix))
-                    except OSError, e:
-                        if e.errno == errno.ENOENT:
+                        if kind != "file":
                             text = False
-                            break
-                        else:
-                            raise
-                    if kind != "file":
+                    except errors.NoSuchFile:
                         text = False
+                    if text == False:
                         break
             ctype = {True: 'text conflict', False: 'contents conflict'}[text]
             conflicts.append(Conflict.factory(ctype, path=conflicted,
@@ -1653,7 +1669,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                 branch.unlock()
         revision = branch.last_revision()
         inv = Inventory() 
-        wt = WorkingTree(a_bzrdir.root_transport.base,
+        wt = WorkingTree(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
@@ -1681,7 +1697,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             raise NotImplementedError
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        return WorkingTree(a_bzrdir.root_transport.base,
+        return WorkingTree(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
                            _bzrdir=a_bzrdir)
@@ -1718,7 +1734,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
     def initialize(self, a_bzrdir, revision_id=None):
         """See WorkingTreeFormat.initialize().
         
-        revision_id allows creating a working tree at a differnet
+        revision_id allows creating a working tree at a different
         revision than the branch is at.
         """
         if not isinstance(a_bzrdir.transport, LocalTransport):
@@ -1732,7 +1748,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         if revision_id is None:
             revision_id = branch.last_revision()
         inv = Inventory() 
-        wt = WorkingTree3(a_bzrdir.root_transport.base,
+        wt = WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
                          _internal=True,
@@ -1767,7 +1783,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         if not isinstance(a_bzrdir.transport, LocalTransport):
             raise errors.NotLocalUrl(a_bzrdir.transport.base)
         control_files = self._open_control_files(a_bzrdir)
-        return WorkingTree3(a_bzrdir.root_transport.base,
+        return WorkingTree3(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
                            _bzrdir=a_bzrdir,

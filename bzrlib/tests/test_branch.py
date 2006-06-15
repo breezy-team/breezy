@@ -48,7 +48,7 @@ class TestDefaultFormat(TestCase):
         try:
             # the default branch format is used by the meta dir format
             # which is not the default bzrdir format at this point
-            dir = BzrDirMetaFormat1().initialize('memory:/')
+            dir = BzrDirMetaFormat1().initialize('memory:///')
             result = dir.create_branch()
             self.assertEqual(result, 'A branch')
         finally:

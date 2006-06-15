@@ -1,4 +1,4 @@
-# (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -269,6 +269,17 @@ class TestRepository(TestCaseWithRepository):
         # a unicode message with control characters should roundtrip too.
         self.assertMessageRoundtrips(
             "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)]))
+
+    def test_check_repository(self):
+        """Check a fairly simple repository's history"""
+        tree = self.make_branch_and_tree('.')
+        tree.commit('initial empty commit', rev_id='a-rev',
+                    allow_pointless=True)
+        result = tree.branch.repository.check(['a-rev'])
+        # writes to log; should accept both verbose or non-verbose
+        result.report_results(verbose=True)
+        result.report_results(verbose=False)
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 

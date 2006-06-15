@@ -75,7 +75,7 @@ class Serializer(object):
 
 # performance tuning for elementree's serialiser. THis should be
 # sent upstream - RBC 20060523.
-# the functions here are patched into elementree at runtime.
+# the functions here are patched into elementtree at runtime.
 import elementtree.ElementTree
 import re
 escape_re = re.compile("[&'\"<>]")

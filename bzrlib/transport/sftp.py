@@ -46,9 +46,9 @@ from bzrlib.transport import (
     Server,
     split_url,
     Transport,
-    urlescape,
     )
 import bzrlib.ui
+import bzrlib.urlutils as urlutils
 
 try:
     import paramiko
@@ -355,7 +355,7 @@ class SFTPTransport (Transport):
         """
         # FIXME: share the common code across transports
         assert isinstance(relpath, basestring)
-        relpath = urllib.unquote(relpath).split('/')
+        relpath = urlutils.unescape(relpath).split('/')
         basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
@@ -956,7 +956,7 @@ class SFTPServer(Server):
         global _ssh_vendor
         self._original_vendor = _ssh_vendor
         _ssh_vendor = self._vendor
-        self._homedir = os.getcwdu()
+        self._homedir = os.getcwd()
         if self._server_homedir is None:
             self._server_homedir = self._homedir
         self._root = '/'
@@ -977,7 +977,7 @@ class SFTPFullAbsoluteServer(SFTPServer):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlescape(self._homedir[1:]))
+        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
 
 
 class SFTPServerWithoutSSH(SFTPServer):
@@ -1011,7 +1011,7 @@ class SFTPAbsoluteServer(SFTPServerWithoutSSH):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlescape(self._homedir[1:]))
+        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
 
 
 class SFTPHomeDirServer(SFTPServerWithoutSSH):

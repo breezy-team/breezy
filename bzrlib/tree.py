@@ -167,6 +167,11 @@ class RevisionTree(Tree):
             return ie.text_sha1
         return None
 
+    def get_file_mtime(self, file_id, path=None):
+        ie = self._inventory[file_id]
+        revision = self._branch.get_revision(ie.revision)
+        return revision.timestamp
+
     def is_executable(self, file_id, path=None):
         ie = self._inventory[file_id]
         if ie.kind != "file":
