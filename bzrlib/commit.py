@@ -98,7 +98,7 @@ def commit(*args, **kwargs):
 
     New code should use the Commit class instead.
     """
-    ## XXX: Remove this in favor of Branch.commit?
+    ## XXX: Remove this in favor of WorkingTree.commit?
     Commit().commit(*args, **kwargs)
 
 
@@ -343,6 +343,7 @@ class Commit(object):
             self._emit_progress_update()
         finally:
             self._cleanup()
+        return self.rev_id
 
     def _check_bound_branch(self):
         """Check to see if the local branch is bound.

@@ -509,8 +509,10 @@ class WorkingTree(bzrlib.tree.Tree):
         # but with branch a kwarg now, passing in args as is results in the
         #message being used for the branch
         args = (DEPRECATED_PARAMETER, message, ) + args
-        Commit().commit(working_tree=self, revprops=revprops, *args, **kwargs)
+        committed_id = Commit().commit( working_tree=self, revprops=revprops,
+            *args, **kwargs)
         self._set_inventory(self.read_working_inventory())
+        return committed_id
 
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
