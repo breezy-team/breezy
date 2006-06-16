@@ -14,6 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import subprocess
+import sys
+from tempfile import NamedTemporaryFile
 import time
 
 from bzrlib.delta import compare_trees
@@ -81,17 +84,12 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
-    import sys
+    if not hasattr(to_file, 'fileno'):
+        raise NotImplementedError("sorry, can't send external diff other "
+                                  "than to a file descriptor", to_file)
     
-    if to_file != sys.stdout:
-        raise NotImplementedError("sorry, can't send external diff other than to stdout yet",
-                                  to_file)
-
     # make sure our own output is properly ordered before the diff
     to_file.flush()
-
-    from tempfile import NamedTemporaryFile
-    import os
 
     oldtmpf = NamedTemporaryFile()
     newtmpf = NamedTemporaryFile()
@@ -142,7 +140,11 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         if diff_opts:
             diffcmd.extend(diff_opts)
 
-        rc = os.spawnvp(os.P_WAIT, 'diff', diffcmd)
+        pipe = subprocess.Popen(diffcmd,
+                                stdin=subprocess.PIPE,
+                                stdout=to_file)
+        pipe.stdin.close()
+        rc = pipe.wait()
         
         if rc != 0 and rc != 1:
             # returns 1 if files differ; that's OK
@@ -174,7 +176,6 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
     supplies any two trees.
     """
     if output is None:
-        import sys
         output = sys.stdout
 
     if from_spec is None:
@@ -221,7 +222,6 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
-    import sys
     output = sys.stdout
     def spec_tree(spec):
         revision_id = spec.in_store(tree.branch).rev_id
