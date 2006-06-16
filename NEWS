@@ -55,6 +55,12 @@ IN DEVELOPMENT
    * 'bzr status' has had the --all option removed. The 'bzr ls' command
      should be used to retrieve all versioned files. (Robert Collins)
 
+   * 'bzr bundle OTHER/BRANCH' will create a bundle which can be sent
+     over email, and applied on the other end, while maintaining ancestry.
+     This bundle can be applied with either 'bzr merge' or 'bzr pull',
+     the same way you would apply another branch.
+     (John Arbash Meinel, Aaron Bentley)
+  
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 

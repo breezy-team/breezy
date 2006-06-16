@@ -1271,7 +1271,9 @@ def test_suite():
                    'bzrlib.tests.test_xml',
                    ]
     test_transport_implementations = [
-        'bzrlib.tests.test_transport_implementations']
+        'bzrlib.tests.test_transport_implementations',
+        'bzrlib.tests.test_read_bundle',
+        ]
 
     suite = TestSuite()
     loader = TestUtil.TestLoader()
