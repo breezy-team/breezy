@@ -254,6 +254,14 @@ class TestConfigPath(TestCase):
             self.assertEqual(config.branches_config_filename(),
                              '/home/bogus/.bazaar/branches.conf')
 
+    def test_locations_config_filename(self):
+        if sys.platform == 'win32':
+            self.assertEqual(config.locations_config_filename(), 
+                'C:/Documents and Settings/bogus/Application Data/bazaar/2.0/locations.conf')
+        else:
+            self.assertEqual(config.locations_config_filename(),
+                             '/home/bogus/.bazaar/locations.conf')
+
 class TestIniConfig(TestCase):
 
     def test_contructs(self):
@@ -422,15 +430,26 @@ class TestLocationConfig(TestCaseInTempDir):
         # replace the class that is constructured, to check its parameters
         oldparserclass = config.ConfigObj
         config.ConfigObj = InstrumentedConfigObj
-        my_config = config.LocationConfig('http://www.example.com')
         try:
+            my_config = config.LocationConfig('http://www.example.com')
             parser = my_config._get_parser()
         finally:
             config.ConfigObj = oldparserclass
         self.failUnless(isinstance(parser, InstrumentedConfigObj))
         self.assertEqual(parser._calls,
-                         [('__init__', config.branches_config_filename(),
+                         [('__init__', config.locations_config_filename(),
                            'utf-8')])
+        os.mkdir(config.config_dir())
+        f = file(config.branches_config_filename(), 'wb')
+        f.write('')
+        f.close()
+        oldparserclass = config.ConfigObj
+        config.ConfigObj = InstrumentedConfigObj
+        try:
+            my_config = config.LocationConfig('http://www.example.com')
+            parser = my_config._get_parser()
+        finally:
+            config.ConfigObj = oldparserclass
 
     def test_get_global_config(self):
         my_config = config.LocationConfig('http://example.com')

@@ -51,6 +51,9 @@ IN DEVELOPMENT
    * 'bzr log --line' shows the revision number, and uses only the
      first line of the log message (#5162, Alexander Belchenko;
      Matthieu Moy)
+
+   * 'branches.conf' has been changed to 'locations.conf', since it can apply
+     to more locations than just branch locations.
   
 
   BUG FIXES:

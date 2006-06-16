@@ -490,20 +490,20 @@ class TestBranchPushLocations(TestCaseWithBranch):
         self.assertEqual(None, self.get_branch().get_push_location())
 
     def test_get_push_location_exact(self):
-        from bzrlib.config import (branches_config_filename,
+        from bzrlib.config import (locations_config_filename,
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
-        fn = branches_config_filename()
+        fn = locations_config_filename()
         print >> open(fn, 'wt'), ("[%s]\n"
                                   "push_location=foo" %
                                   self.get_branch().base[:-1])
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
-        from bzrlib.config import (branches_config_filename,
+        from bzrlib.config import (locations_config_filename,
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
-        fn = branches_config_filename()
+        fn = locations_config_filename()
         self.get_branch().set_push_location('foo')
         self.assertFileEqual("[%s]\n"
                              "push_location = foo" % self.get_branch().base[:-1],
