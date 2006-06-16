@@ -853,7 +853,7 @@ def path_prefix_key(path):
 
     This can be used to sort paths in the same way that walkdirs does.
     """
-    return (path.count('/'), path)
+    return (dirname(path) , path)
 
 
 def compare_paths_prefix_order(path_a, path_b):

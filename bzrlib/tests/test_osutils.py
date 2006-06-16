@@ -285,6 +285,8 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertPathCompare("/b", "/z")
         # high dirs before lower.
         self.assertPathCompare("/z", "/a/a")
+        # except if the deeper dir should be output first
+        self.assertPathCompare("/a/b/c", "/d/g")
         # lexical betwen dirs of the same height
         self.assertPathCompare("/a/z", "/z/z")
         self.assertPathCompare("/a/c/z", "/a/d/e")
@@ -297,6 +299,8 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertPathCompare("b", "z")
         # high dirs before lower.
         self.assertPathCompare("z", "a/a")
+        # except if the deeper dir should be output first
+        self.assertPathCompare("a/b/c", "d/g")
         # lexical betwen dirs of the same height
         self.assertPathCompare("a/z", "z/z")
         self.assertPathCompare("a/c/z", "a/d/e")
