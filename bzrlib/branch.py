@@ -1188,10 +1188,14 @@ class BzrBranch(Branch):
         assert self.base[-1] == '/'
         for l in _locs:
             try:
-                return urlutils.join(self.base[:-1], 
-                            self.control_files.get(l).read().strip('\n'))
+                parent = self.control_files.get(l).read().strip('\n')
             except NoSuchFile:
-                pass
+                continue
+            # This is an old-format absolute path to a local branch
+            # turn it into a url
+            if parent.startswith('/'):
+                parent = urlutils.local_path_to_url(parent.decode('utf8'))
+            return urlutils.join(self.base[:-1], parent)
         return None
 
     def get_push_location(self):
