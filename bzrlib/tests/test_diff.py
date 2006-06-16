@@ -22,8 +22,8 @@ from tempfile import TemporaryFile
 from bzrlib.diff import internal_diff, external_diff, show_diff_trees
 from bzrlib.errors import BinaryFile
 import bzrlib.patiencediff
-from bzrlib.tests import (
-    TestCase, TestCaseWithTransport, TestCaseInTempDir, TestSkipped)
+from bzrlib.tests import (TestCase, TestCaseWithTransport,
+                          TestCaseInTempDir, TestSkipped)
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -31,6 +31,7 @@ def udiff_lines(old, new, allow_binary=False):
     internal_diff('old', old, 'new', new, output, allow_binary)
     output.seek(0, 0)
     return output.readlines()
+
 
 def external_udiff_lines(old, new):
     output = TemporaryFile()
