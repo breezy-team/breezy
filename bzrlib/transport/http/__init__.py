@@ -340,6 +340,52 @@ class HttpTransportBase(Transport):
         else:
             return self.__class__(self.abspath(offset))
 
+    def _offsets_to_ranges(self, offsets):
+        """Turn a list of offsets and sizes into a list of byte ranges.
+
+        :param offsets: A list of tuples of (start, size).
+        An empty list is not accepted.
+
+        :return: a list of byte ranges (start, end). Adjacent ranges will
+        be combined in the result.
+        """
+        # We need a copy of the offsets, as the caller might expect it to
+        # remain unsorted. This doesn't seem expensive for memory at least.
+        offsets = offsets[:]
+        offsets.sort(key=lambda i: i[0])
+
+        start, size = offsets[0]
+        prev_end = start + size - 1
+        combined = [[start, prev_end]]
+
+        for start, size in offsets[1:]:
+            end = start + size - 1
+            if start <= prev_end + 1:
+                combined[-1][1] = end
+            else:
+                combined.append([start, end])
+            prev_end = end
+
+        mutter("combined %d offsets into %d ranges", len(offsets),
+                    len(combined))
+
+        return combined
+
+    def _range_header(self, ranges):
+        """Turn a list of bytes ranges into a HTTP Range header value.
+
+        :param offsets: A list of byte ranges, (start, end). An empty list
+        is not accepted.
+
+        :return: HTTP range header string.
+        """
+        strings = []
+        for start, end in ranges:
+            strings.append('%d-%d' % (start, end))
+
+        return 'bytes=' + ', '.join(strings)
+
+
 #---------------- test server facilities ----------------
 # TODO: load these only when running tests
 
