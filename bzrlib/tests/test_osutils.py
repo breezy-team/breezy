@@ -305,3 +305,40 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertPathCompare("a/z", "z/z")
         self.assertPathCompare("a/c/z", "a/d/e")
 
+    def test_path_prefix_sorting(self):
+        """Doing a sort on path prefix should match our sample data."""
+        original_paths = [
+            'a',
+            'a/b',
+            'a/b/c',
+            'b',
+            'b/c',
+            'd',
+            'd/e',
+            'd/e/f',
+            'd/f',
+            'd/g',
+            'g',
+            ]
+
+        dir_sorted_paths = [
+            'a',
+            'b',
+            'd',
+            'g',
+            'a/b',
+            'a/b/c',
+            'b/c',
+            'd/e',
+            'd/f',
+            'd/g',
+            'd/e/f',
+            ]
+
+        self.assertEqual(
+            dir_sorted_paths,
+            sorted(original_paths, key=osutils.path_prefix_key))
+        # using the comparison routine shoudl work too:
+        self.assertEqual(
+            dir_sorted_paths,
+            sorted(original_paths, cmp=osutils.compare_paths_prefix_order))
