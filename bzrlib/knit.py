@@ -725,19 +725,18 @@ class KnitVersionedFile(VersionedFile):
 
     def get_texts(self, version_ids):
         """Return the texts of listed versions as a list of strings."""
-        texts = []
+        text_map = {}
+        if self.basis_knit is not None:
+            basis_versions = [v for v in version_ids if v in self.basis_knit]
+            basis_texts = self.basis_knit.get_texts(version_ids)
+            for key, value in zip(basis_versions, basis_texts):
+                text_map[key] = value
+
         for version_id in version_ids:
+            if version_id in text_map: 
+                continue
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
-
-            if self.basis_knit and version_id in self.basis_knit:
-                continue
-
-        for version_id in version_ids:
-            if self.basis_knit and version_id in self.basis_knit:
-                texts.append(''.join(self.basis_knit._get_content(version_id).text()))
-                continue
-
             content = None
             components = self._get_components(version_id)
             for component_id, method, (data, digest) in components:
@@ -757,8 +756,8 @@ class KnitVersionedFile(VersionedFile):
             if sha_strings(content.text()) != digest:
                 raise KnitCorrupt(self.filename, 'sha-1 does not match %s' % version_id)
 
-            texts.append(''.join(content.text()))
-        return texts
+            text_map[version_id] = (''.join(content.text()))
+        return [text_map[v] for v in version_ids]
             
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None):
