@@ -603,7 +603,6 @@ class KnitVersionedFile(VersionedFile):
 
         # digest here is the digest from the last applied component.
         if sha_strings(content.text()) != digest:
-            import pdb;pdb.set_trace()
             raise KnitCorrupt(self.filename, 'sha-1 does not match %s' % version_id)
 
         return content
@@ -756,7 +755,6 @@ class KnitVersionedFile(VersionedFile):
 
             # digest here is the digest from the last applied component.
             if sha_strings(content.text()) != digest:
-                import pdb;pdb.set_trace()
                 raise KnitCorrupt(self.filename, 'sha-1 does not match %s' % version_id)
 
             texts.append(''.join(content.text()))
