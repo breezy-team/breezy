@@ -17,7 +17,6 @@
 """Tests for repository commit builder."""
 
 from bzrlib.errors import UnsupportedOperation
-from bzrlib.inventory import ROOT_ID
 from bzrlib.repository import CommitBuilder
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 
