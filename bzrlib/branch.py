@@ -30,13 +30,13 @@ from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.delta import compare_trees
 import bzrlib.errors as errors
-from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
-                           NoSuchRevision, HistoryMissing, NotBranchError,
-                           DivergedBranches, LockError,
-                           UninitializableFormat,
-                           UnlistableStore,
-                           UnlistableBranch, NoSuchFile, NotVersionedError,
-                           NoWorkingTree)
+from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches, 
+                           HistoryMissing, InvalidRevisionId, 
+                           InvalidRevisionNumber, LockError, NoSuchFile, 
+                           NoSuchRevision, NoWorkingTree, NotVersionedError,
+                           NotBranchError, UninitializableFormat, 
+                           UnlistableStore, UnlistableBranch, 
+                           )
 import bzrlib.inventory as inventory
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
