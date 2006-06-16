@@ -696,12 +696,6 @@ class OldTests(ExternalBase):
         out = capture("status")
         self.assertEquals(out, 'unknown:\n  test.txt\n')
 
-        out = capture("status --all")
-        self.assertEquals(out, "unknown:\n  test.txt\n")
-
-        out = capture("status test.txt --all")
-        self.assertEquals(out, "unknown:\n  test.txt\n")
-
         f = file('test2.txt', 'wt')
         f.write('goodbye cruel world...\n')
         f.close()
@@ -715,7 +709,7 @@ class OldTests(ExternalBase):
         os.unlink('test2.txt')
 
         progress("command aliases")
-        out = capture("st --all")
+        out = capture("st")
         self.assertEquals(out, ("unknown:\n" "  test.txt\n"))
 
         out = capture("stat")
@@ -737,7 +731,6 @@ class OldTests(ExternalBase):
 
         runbzr("add test.txt")
         self.assertEquals(capture("unknowns"), '')
-        self.assertEquals(capture("status --all"), ("added:\n" "  test.txt\n"))
 
         progress("rename newly-added file")
         runbzr("rename test.txt hello.txt")
