@@ -49,7 +49,6 @@ check_signatures - this option controls whether bzr will require good gpg
 create_signatures - this option controls whether bzr will always create 
                     gpg signatures, never create them, or create them if the
                     branch is configured to require them.
-                    NB: This option is planned, but not implemented yet.
 log_format - This options set the default log format.  Options are long, 
              short, line, or a plugin can register new formats
 
@@ -64,21 +63,27 @@ up=pull
 
 
 import errno
-import os
-import sys
 from fnmatch import fnmatch
+import os
 import re
+import sys
+from StringIO import StringIO
 
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 import bzrlib.util.configobj.configobj as configobj
-from StringIO import StringIO
+
 
 CHECK_IF_POSSIBLE=0
 CHECK_ALWAYS=1
 CHECK_NEVER=2
+
+
+SIGN_WHEN_REQUIRED=0
+SIGN_ALWAYS=1
+SIGN_NEVER=2
 
 
 class ConfigObj(configobj.ConfigObj):
@@ -105,6 +110,9 @@ class Config(object):
 
     def _get_signature_checking(self):
         """Template method to override signature checking policy."""
+
+    def _get_signing_policy(self):
+        """Template method to override signature creation policy."""
 
     def _get_user_option(self, option_name):
         """Template method to provide a user option."""
@@ -192,10 +200,24 @@ class Config(object):
             return policy
         return CHECK_IF_POSSIBLE
 
+    def signing_policy(self):
+        """What is the current policy for signature checking?."""
+        policy = self._get_signing_policy()
+        if policy is not None:
+            return policy
+        return SIGN_WHEN_REQUIRED
+
     def signature_needed(self):
         """Is a signature needed when committing ?."""
-        policy = self._get_signature_checking()
-        if policy == CHECK_ALWAYS:
+        policy = self._get_signing_policy()
+        if policy is None:
+            policy = self._get_signature_checking()
+            if policy is not None:
+                warning("Please use create_signatures, not check_signatures "
+                        "to set signing policy.")
+            if policy == CHECK_ALWAYS:
+                return True
+        elif policy == SIGN_ALWAYS:
             return True
         return False
 
@@ -231,6 +253,12 @@ class IniBasedConfig(Config):
         policy = self._get_user_option('check_signatures')
         if policy:
             return self._string_to_signature_policy(policy)
+
+    def _get_signing_policy(self):
+        """See Config._get_signature_checking."""
+        policy = self._get_user_option('create_signatures')
+        if policy:
+            return self._string_to_signing_policy(policy)
 
     def _get_user_id(self):
         """Get the user id from the 'email' key in the current section."""
@@ -270,6 +298,17 @@ class IniBasedConfig(Config):
         if signature_string.lower() == 'require':
             return CHECK_ALWAYS
         raise errors.BzrError("Invalid signatures policy '%s'"
+                              % signature_string)
+
+    def _string_to_signing_policy(self, signature_string):
+        """Convert a string to a signing policy."""
+        if signature_string.lower() == 'when-required':
+            return SIGN_WHEN_REQUIRED
+        if signature_string.lower() == 'never':
+            return SIGN_NEVER
+        if signature_string.lower() == 'always':
+            return SIGN_ALWAYS
+        raise errors.BzrError("Invalid signing policy '%s'"
                               % signature_string)
 
     def _get_alias(self, value):
@@ -379,6 +418,13 @@ class LocationConfig(IniBasedConfig):
             return check
         return self._get_global_config()._get_signature_checking()
 
+    def _get_signing_policy(self):
+        """See Config._get_signing_policy."""
+        sign = super(LocationConfig, self)._get_signing_policy()
+        if sign is not None:
+            return sign
+        return self._get_global_config()._get_signing_policy()
+
     def _post_commit(self):
         """See Config.post_commit."""
         hook = self._get_user_option('post_commit')
@@ -431,6 +477,10 @@ class BranchConfig(Config):
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
         return self._get_location_config()._get_signature_checking()
+
+    def _get_signing_policy(self):
+        """See Config._get_signing_policy."""
+        return self._get_location_config()._get_signing_policy()
 
     def _get_user_option(self, option_name):
         """See Config._get_user_option."""

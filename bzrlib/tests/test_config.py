@@ -41,15 +41,18 @@ sample_config_text = ("[DEFAULT]\n"
 
 
 sample_always_signatures = ("[DEFAULT]\n"
-                            "check_signatures=require\n")
+                            "check_signatures=ignore\n"
+                            "create_signatures=always")
 
 
 sample_ignore_signatures = ("[DEFAULT]\n"
-                            "check_signatures=ignore\n")
+                            "check_signatures=require\n"
+                            "create_signatures=never")
 
 
 sample_maybe_signatures = ("[DEFAULT]\n"
-                            "check_signatures=check-available\n")
+                            "check_signatures=ignore\n"
+                            "create_signatures=when-required")
 
 
 sample_branches_text = ("[http://www.example.com]\n"
@@ -172,8 +175,11 @@ class TestConfig(TestCase):
 
     def test_signatures_default(self):
         my_config = config.Config()
+        self.assertFalse(my_config.signature_needed())
         self.assertEqual(config.CHECK_IF_POSSIBLE,
                          my_config.signature_checking())
+        self.assertEqual(config.SIGN_WHEN_REQUIRED,
+                         my_config.signing_policy())
 
     def test_signatures_template_method(self):
         my_config = InstrumentedConfig()
@@ -326,24 +332,30 @@ class TestGlobalConfigItems(TestCase):
         config_file = StringIO(sample_always_signatures)
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
-        self.assertEqual(config.CHECK_ALWAYS,
+        self.assertEqual(config.CHECK_NEVER,
                          my_config.signature_checking())
+        self.assertEqual(config.SIGN_ALWAYS,
+                         my_config.signing_policy())
         self.assertEqual(True, my_config.signature_needed())
 
     def test_signatures_if_possible(self):
         config_file = StringIO(sample_maybe_signatures)
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
-        self.assertEqual(config.CHECK_IF_POSSIBLE,
+        self.assertEqual(config.CHECK_NEVER,
                          my_config.signature_checking())
+        self.assertEqual(config.SIGN_WHEN_REQUIRED,
+                         my_config.signing_policy())
         self.assertEqual(False, my_config.signature_needed())
 
     def test_signatures_ignore(self):
         config_file = StringIO(sample_ignore_signatures)
         my_config = config.GlobalConfig()
         my_config._parser = my_config._get_parser(file=config_file)
-        self.assertEqual(config.CHECK_NEVER,
+        self.assertEqual(config.CHECK_ALWAYS,
                          my_config.signature_checking())
+        self.assertEqual(config.SIGN_NEVER,
+                         my_config.signing_policy())
         self.assertEqual(False, my_config.signature_needed())
 
     def _get_sample_config(self):
@@ -495,8 +507,10 @@ class TestLocationConfig(TestCaseInTempDir):
     def test_signatures_not_set(self):
         self.get_location_config('http://www.example.com',
                                  global_config=sample_ignore_signatures)
-        self.assertEqual(config.CHECK_NEVER,
+        self.assertEqual(config.CHECK_ALWAYS,
                          self.my_config.signature_checking())
+        self.assertEqual(config.SIGN_NEVER,
+                         self.my_config.signing_policy())
 
     def test_signatures_never(self):
         self.get_location_config('/a/c')
@@ -609,7 +623,9 @@ class TestBranchConfigItems(TestCase):
         config_file = StringIO(sample_always_signatures)
         (my_config._get_location_config().
             _get_global_config()._get_parser(config_file))
-        self.assertEqual(config.CHECK_ALWAYS, my_config.signature_checking())
+        self.assertEqual(config.CHECK_NEVER, my_config.signature_checking())
+        self.assertEqual(config.SIGN_ALWAYS, my_config.signing_policy())
+        self.assertTrue(my_config.signature_needed())
 
     def test_gpg_signing_command(self):
         branch = FakeBranch()

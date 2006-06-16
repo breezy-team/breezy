@@ -214,7 +214,6 @@ class TestUrlToPath(TestCase):
         test('file:///foo', 'file:///', 'foo')
         test('file:///bar/foo', 'file:///bar/', 'foo')
         test('http://host/foo', 'http://host/', 'foo')
-        test('http://host/foo', 'http://host', 'foo')
         test('http://host/', 'http://host', '')
         
         # Invalid joinings

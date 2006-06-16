@@ -133,10 +133,6 @@ class cmd_status(Command):
     modified
         Text has changed since the previous revision.
 
-    unchanged
-        Nothing about this file has changed since the previous revision.
-        Only shown with --all.
-
     unknown
         Not versioned and not matching an ignore pattern.
 
@@ -155,18 +151,18 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['all', 'show-ids', 'revision']
+    takes_options = ['show-ids', 'revision']
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
     
     @display_command
-    def run(self, all=False, show_ids=False, file_list=None, revision=None):
+    def run(self, show_ids=False, file_list=None, revision=None):
         from bzrlib.status import show_tree_status
 
         tree, file_list = tree_files(file_list)
             
-        show_tree_status(tree, show_unchanged=all, show_ids=show_ids,
+        show_tree_status(tree, show_ids=show_ids,
                          specific_files=file_list, revision=revision,
                          to_file=self.outf)
 
