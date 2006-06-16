@@ -173,7 +173,6 @@ def _show_log(branch,
     """Worker function for show_log - see show_log."""
     from bzrlib.osutils import format_date
     from bzrlib.errors import BzrCheckError
-    from bzrlib.textui import show_status
     
     from warnings import warn
 

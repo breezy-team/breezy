@@ -55,7 +55,6 @@ from bzrlib.revision import (
                              )
 from bzrlib.store import copy_all
 from bzrlib.symbol_versioning import *
-from bzrlib.textui import show_status
 from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
