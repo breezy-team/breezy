@@ -15,8 +15,6 @@ class OptionTests(TestCase):
         eq = self.assertEquals
         eq(parse_args(cmd_commit(), ['--help']),
            ([], {'help': True}))
-        eq(parse_args(cmd_status(), ['--all']),
-           ([], {'all': True}))
         eq(parse_args(cmd_commit(), ['--message=biter']),
            ([], {'message': 'biter'}))
         ## eq(parse_args(cmd_log(),  '-r 500'.split()),

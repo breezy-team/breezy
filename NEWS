@@ -51,7 +51,9 @@ IN DEVELOPMENT
    * 'bzr log --line' shows the revision number, and uses only the
      first line of the log message (#5162, Alexander Belchenko;
      Matthieu Moy)
-  
+
+   * 'bzr status' has had the --all option removed. The 'bzr ls' command
+     should be used to retrieve all versioned files. (Robert Collins)
 
   BUG FIXES:
 
