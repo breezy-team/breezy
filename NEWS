@@ -87,6 +87,10 @@ IN DEVELOPMENT
       that do not use '.bzr' to store their data - i.e. '.svn', '.hg' etc.
       (Robert Collins, Jelmer Vernooij).
 
+    * bzrlib.diff.external_diff can be redirected to any filelike object that
+      has a file descriptor. Use subprocess instead of spawnvp.
+      (#4047, #48914, James Henstridge, John Arbash Meinel)
+
 bzr 0.8.2  2006-05-17
   
   BUG FIXES:
