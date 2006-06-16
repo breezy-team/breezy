@@ -24,6 +24,7 @@ import bzrlib
 import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.commit import commit
+from bzrlib.delta import TreeDelta
 import bzrlib.errors as errors
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
@@ -166,6 +167,22 @@ class TestRepository(TestCaseWithRepository):
         repo.fetch(tree_a.branch.repository,
                    revision_id=None,
                    pb=bzrlib.progress.DummyProgress())
+
+    def test_get_revision_delta(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/foo'])
+        tree_a.add('foo', 'file1')
+        tree_a.commit('rev1', rev_id='rev1')
+        self.build_tree(['a/vla'])
+        tree_a.add('vla', 'file2')
+        tree_a.commit('rev2', rev_id='rev2')
+
+        delta = tree_a.branch.repository.get_revision_delta('rev1')
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([('foo', 'file1', 'file')], delta.added)
+        delta = tree_a.branch.repository.get_revision_delta('rev2')
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([('vla', 'file2', 'file')], delta.added)
 
     def test_clone_bzrdir_repository_revision(self):
         # make a repository with some revisions,
