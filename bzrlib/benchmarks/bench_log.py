@@ -67,3 +67,13 @@ class LogBenchmark(Benchmark):
             else:
                 raise Exception, "LinesDone not raised"
         self.time(log_screenful)
+
+    def test_cmd_log(self):
+        """Canonicalizing paths should be fast.""" 
+        tree = self.make_many_commit_tree()
+        self.time(self.run_bzr, 'log', '-r', '-4..')
+
+    def test_cmd_log_subprocess(self):
+        """Canonicalizing paths should be fast.""" 
+        tree = self.make_many_commit_tree()
+        self.time(self.run_bzr_subprocess, 'log', '-r', '-4..')
