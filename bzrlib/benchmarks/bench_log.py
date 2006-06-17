@@ -25,6 +25,20 @@ from StringIO import StringIO
 from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
+class LinesDone(Exception):
+    pass
+
+class LineConsumer(object):
+
+    def __init__(self, required_lines):
+        self.required_lines = required_lines
+
+    def write(self, text):
+        self.required_lines -= text.count('\n')
+        if self.required_lines < 0:
+            raise LinesDone()
+        
+
 class LogBenchmark(Benchmark):
 
     def test_log(self):
@@ -32,3 +46,15 @@ class LogBenchmark(Benchmark):
         tree = self.make_many_commit_tree()
         lf = log_formatter('long', to_file=StringIO())
         self.time(show_log, tree.branch, lf, direction='reverse')
+
+    def test_log_screenful(self):
+        tree = self.make_many_commit_tree()
+        def log_screenful():
+            lf = log_formatter('long', to_file=LineConsumer(25))
+            try:
+                show_log(tree.branch, lf, direction='reverse')
+            except LinesDone:
+                pass
+            else:
+                raise Exception, "LinesDone not raised"
+        self.time(log_screenful)
