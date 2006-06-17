@@ -20,7 +20,7 @@ import errno
 from tempfile import TemporaryFile
 
 from bzrlib.diff import internal_diff, external_diff, show_diff_trees
-from bzrlib.errors import BinaryFile
+from bzrlib.errors import BinaryFile, NoDiff
 import bzrlib.patiencediff
 from bzrlib.tests import (TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
@@ -37,10 +37,8 @@ def external_udiff_lines(old, new):
     output = TemporaryFile()
     try:
         external_diff('old', old, 'new', new, output, diff_opts=['-u'])
-    except OSError, e:
-        # if the diff program could not be found, skip the test
-        if e.errno == errno.ENOENT:
-            raise TestSkipped
+    except errors.NoDiff:
+        raise TestSkipped('external "diff" not present to test')
     output.seek(0, 0)
     lines = output.readlines()
     output.close()

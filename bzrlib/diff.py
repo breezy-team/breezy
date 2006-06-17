@@ -118,7 +118,9 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                    '--label', old_filename,
                    old_abspath,
                    '--label', new_filename,
-                   new_abspath]
+                   new_abspath,
+                   '--binary',
+                  ]
 
         # diff only allows one style to be specified; they don't override.
         # note that some of these take optargs, and the optargs can be
@@ -144,9 +146,14 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         if diff_opts:
             diffcmd.extend(diff_opts)
 
-        pipe = subprocess.Popen(diffcmd,
-                                stdin=subprocess.PIPE,
-                                stdout=to_file)
+        try:
+            pipe = subprocess.Popen(diffcmd,
+                                    stdin=subprocess.PIPE,
+                                    stdout=to_file)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise errors.NoDiff(str(e))
+            raise
         pipe.stdin.close()
         rc = pipe.wait()
         
