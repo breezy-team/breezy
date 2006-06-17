@@ -42,21 +42,25 @@ class LineConsumer(object):
 class LogBenchmark(Benchmark):
 
     def test_log(self):
-        """Canonicalizing paths should be fast.""" 
+        """Run log in a many-commit tree.""" 
         tree = self.make_many_commit_tree()
         lf = log_formatter('long', to_file=StringIO())
         self.time(show_log, tree.branch, lf, direction='reverse')
 
     def test_log_screenful(self):
+        """Simulate log --long|less"""
         self.screenful_tester('long')
 
     def test_log_screenful_line(self):
+        """Simulate log --line|less"""
         self.screenful_tester('line')
 
     def test_log_screenful_short(self):
+        """Simulate log --short|less"""
         self.screenful_tester('short')
 
     def screenful_tester(self, formatter):
+        """Run show_log, but stop after 25 lines are generated"""
         tree = self.make_many_commit_tree()
         def log_screenful():
             lf = log_formatter(formatter, to_file=LineConsumer(25))
@@ -69,11 +73,11 @@ class LogBenchmark(Benchmark):
         self.time(log_screenful)
 
     def test_cmd_log(self):
-        """Canonicalizing paths should be fast.""" 
+        """Test execution of the log command.""" 
         tree = self.make_many_commit_tree()
         self.time(self.run_bzr, 'log', '-r', '-4..')
 
     def test_cmd_log_subprocess(self):
-        """Canonicalizing paths should be fast.""" 
+        """Text startup and execution of the log command.""" 
         tree = self.make_many_commit_tree()
         self.time(self.run_bzr_subprocess, 'log', '-r', '-4..')
