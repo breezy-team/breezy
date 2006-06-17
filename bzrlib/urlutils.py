@@ -116,6 +116,11 @@ def join(base, *args):
     if m:
         scheme = m.group('scheme')
         path = m.group('path').split('/')
+        if path[-1:] == ['']:
+            # Strip off a trailing slash
+            # This helps both when we are at the root, and when
+            # 'base' has an extra slash at the end
+            path = path[:-1]
     else:
         path = base.split('/')
 

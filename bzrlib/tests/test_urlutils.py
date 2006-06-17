@@ -209,6 +209,12 @@ class TestUrlToPath(TestCase):
         test('http://bar', 'http://foo', 'http://bar')
         test('sftp://bzr/foo', 'http://foo', 'bar', 'sftp://bzr/foo')
         test('file:///bar', 'foo', 'file:///bar')
+
+        # From a base path
+        test('file:///foo', 'file:///', 'foo')
+        test('file:///bar/foo', 'file:///bar/', 'foo')
+        test('http://host/foo', 'http://host/', 'foo')
+        test('http://host/', 'http://host', '')
         
         # Invalid joinings
         # Cannot go above root

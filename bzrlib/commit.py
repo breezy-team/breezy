@@ -386,14 +386,6 @@ class Commit(object):
         self.bound_branch = self.branch
         self.master_branch.lock_write()
         self.master_locked = True
-####        
-####        # Check to see if we have any pending merges. If we do
-####        # those need to be pushed into the master branch
-####        pending_merges = self.work_tree.pending_merges()
-####        if pending_merges:
-####            for revision_id in pending_merges:
-####                self.master_branch.repository.fetch(self.bound_branch.repository,
-####                                                    revision_id=revision_id)
 
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
@@ -452,13 +444,8 @@ class Commit(object):
         """Record the parents of a merge for merge detection."""
         # TODO: Make sure that this list doesn't contain duplicate 
         # entries and the order is preserved when doing this.
-        pending_merges = self.work_tree.pending_merges()
-        self.parents = []
+        self.parents = self.work_tree.get_parent_ids()
         self.parent_invs = []
-        precursor_id = self.branch.last_revision()
-        if precursor_id:
-            self.parents.append(precursor_id)
-        self.parents += pending_merges
         for revision in self.parents:
             if self.branch.repository.has_revision(revision):
                 inventory = self.branch.repository.get_inventory(revision)

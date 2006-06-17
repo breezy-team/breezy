@@ -1,16 +1,30 @@
-#!/usr/bin/env python
-"""\
-Read in a bundle stream, and process it into a BundleReader object.
-"""
+# Copyright (C) 2006 by Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+"""Read in a bundle stream, and process it into a BundleReader object."""
 
 import base64
 from cStringIO import StringIO
 import os
 import pprint
 
+from bzrlib.bundle.common import get_header, header_str
+import bzrlib.errors
 from bzrlib.errors import (TestamentMismatch, BzrError, 
                            MalformedHeader, MalformedPatches, NotABundle)
-from bzrlib.bundle.common import get_header, header_str
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
                               InventoryLink)
@@ -18,7 +32,9 @@ from bzrlib.osutils import sha_file, sha_string
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.testament import StrictTestament
 from bzrlib.trace import mutter, warning
+import bzrlib.transport
 from bzrlib.tree import Tree
+import bzrlib.urlutils
 from bzrlib.xml5 import serializer_v5
 
 
