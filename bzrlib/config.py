@@ -18,7 +18,7 @@
 """Configuration that affects the behaviour of Bazaar.
 
 Currently this configuration resides in ~/.bazaar/bazaar.conf
-and ~/.bazaar/branches.conf, which is written to by bzr.
+and ~/.bazaar/locations.conf, which is written to by bzr.
 
 In bazaar.conf the following options may be set:
 [DEFAULT]
@@ -29,9 +29,9 @@ create_signatures=always|never|when-required(default)
 gpg_signing_command=name-of-program
 log_format=name-of-format
 
-in branches.conf, you specify the url of a branch and options for it.
+in locations.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
-set in both bazaar.conf and branches.conf are overridden by the branches.conf
+set in both bazaar.conf and locations.conf are overridden by the locations.conf
 setting.
 [/home/robertc/source]
 recurse=False|True(default)
@@ -333,7 +333,12 @@ class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""
 
     def __init__(self, location):
-        super(LocationConfig, self).__init__(branches_config_filename)
+        name_generator = locations_config_filename
+        if (not os.path.exists(name_generator()) and 
+                os.path.exists(branches_config_filename())):
+            warning('Please rename branches.conf to locations.conf')
+            name_generator = branches_config_filename
+        super(LocationConfig, self).__init__(name_generator)
         self._global_config = None
         self.location = location
 
@@ -435,7 +440,7 @@ class LocationConfig(IniBasedConfig):
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
         # FIXME: RBC 20051029 This should refresh the parser and also take a
-        # file lock on branches.conf.
+        # file lock on locations.conf.
         conf_dir = os.path.dirname(self._get_filename())
         ensure_config_dir_exists(conf_dir)
         location = self.location
@@ -553,6 +558,10 @@ def config_filename():
 def branches_config_filename():
     """Return per-user configuration ini file filename."""
     return pathjoin(config_dir(), 'branches.conf')
+
+def locations_config_filename():
+    """Return per-user configuration ini file filename."""
+    return pathjoin(config_dir(), 'locations.conf')
 
 
 def _auto_user_id():

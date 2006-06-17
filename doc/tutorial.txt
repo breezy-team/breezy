@@ -126,7 +126,7 @@ guess that Bazaar-NG makes, then three options exist:
  
  1. Override the previous setting on a
  branch by branch basis by creating a branch section in
- ``~/.bazaar/branches.conf`` by adding the following lines::
+ ``~/.bazaar/locations.conf`` by adding the following lines::
 
     [/the/directory/to/the/branch]
     email=Your Name <email@isp.com>

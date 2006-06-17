@@ -61,6 +61,10 @@ IN DEVELOPMENT
      the same way you would apply another branch.
      (John Arbash Meinel, Aaron Bentley)
   
+   * 'branches.conf' has been changed to 'locations.conf', since it can apply
+     to more locations than just branch locations.
+     (Aaron Bentley)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
