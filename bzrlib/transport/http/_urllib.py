@@ -15,15 +15,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import urllib, urllib2
+import errno
+from StringIO import StringIO
 
 import bzrlib  # for the version
-from bzrlib.errors import BzrError
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
-from bzrlib.errors import (TransportNotPossible, NoSuchFile,
+from bzrlib.transport.http._response import (HttpMultipartRangeResponse,
+                                             HttpRangeResponse)
+from bzrlib.errors import (TransportNotPossible, NoSuchFile, BzrError,
                            TransportError, ConnectionError)
-
 
 register_urlparse_netloc_protocol('http+urllib')
 
@@ -50,12 +52,56 @@ class HttpTransport_urllib(HttpTransportBase):
         """Set the base path where files will be stored."""
         super(HttpTransport_urllib, self).__init__(base)
 
+    def readv(self, relpath, offsets):
+        """Get parts of the file at the given relative path.
+
+        :param offsets: A list of (offset, size) tuples.
+        :param return: A list or generator of (offset, data) tuples
+        """
+        mutter('readv of %s [%s]', relpath, offsets)
+        ranges = self._offsets_to_ranges(offsets)
+        code, f = self._get(relpath, ranges)
+        for start, size in offsets:
+            f.seek(start, 0)
+            data = f.read(size)
+            assert len(data) == size
+            yield start, data
+
+    def _is_multipart(self, content_type):
+        return content_type.startswith('multipart/byteranges;')
+
+    def _handle_response(self, path, response):
+        """Interpret the code & headers and return a HTTP response.
+
+        This is a factory method which returns an appropriate HTTP response
+        based on the code & headers it's given.
+        """
+        content_type = response.headers['Content-Type']
+        mutter('handling response code %s ctype %s', response.code,
+            content_type)
+
+        if response.code == 206 and self._is_multipart(content_type):
+            # Full fledged multipart response
+            return HttpMultipartRangeResponse(path, content_type, response)
+        elif response.code == 206:
+            # A response to a range request, but not multipart
+            content_range = response.headers['Content-Range']
+            return HttpRangeResponse(path, content_range, response)
+        elif response.code == 200:
+            # A regular non-range response, unfortunately the result from
+            # urllib doesn't support seek, so we wrap it in a StringIO
+            return StringIO(response.read())
+        elif response.code == 404:
+            raise NoSuchFile(path)
+
+        raise BzrError("HTTP couldn't handle code %s", response.code)
+
     def _get(self, relpath, ranges):
         path = relpath
         try:
             path = self._real_abspath(relpath)
             response = self._get_url_impl(path, method='GET', ranges=ranges)
-            return response.code, response
+            return response.code, self._handle_response(path, response)
         except urllib2.HTTPError, e:
             mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
@@ -76,11 +122,6 @@ class HttpTransport_urllib(HttpTransportBase):
 
         :returns: urllib Response object
         """
-        if ranges:
-            range_string = ranges
-        else:
-            range_string = 'all'
-        mutter("get_url %s [%s]" % (url, range_string))
         manager = urllib2.HTTPPasswordMgrWithDefaultRealm()
         url = extract_auth(url, manager)
         auth_handler = urllib2.HTTPBasicAuthHandler(manager)
@@ -91,8 +132,8 @@ class HttpTransport_urllib(HttpTransportBase):
         request.add_header('Cache-control', 'max-age=0')
         request.add_header('User-Agent', 'bzr/%s (urllib)' % bzrlib.__version__)
         if ranges:
-            assert len(ranges) == 1
-            request.add_header('Range', 'bytes=%d-%d' % ranges[0])
+            request.add_header('Range', self._range_header(ranges))
+        mutter("GET %s [%s]" % (url, request.get_header('Range')))
         response = opener.open(request)
         return response
 
