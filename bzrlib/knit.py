@@ -68,6 +68,7 @@ from copy import copy
 from cStringIO import StringIO
 import difflib
 from itertools import izip, chain
+import operator
 import os
 import sys
 
@@ -567,7 +568,7 @@ class KnitVersionedFile(VersionedFile):
 
         components = {}
         if basis_versions:
-            assert True, "I am broken"
+            assert False, "I am broken"
             basis = self.basis_knit
             records = []
             for comp_id in basis_versions:
@@ -1449,7 +1450,7 @@ class _KnitData(_KnitComponentFile):
                 needed_records.append((version_id, pos, size))
 
         if len(needed_records):
-            needed_records.sort(key=lambda x:x[1])
+            needed_records.sort(key=operator.itemgetter(1))
             # We take it that the transport optimizes the fetching as good
             # as possible (ie, reads continuous ranges.)
             response = self._transport.readv(self._filename,
