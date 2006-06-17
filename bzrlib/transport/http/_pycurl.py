@@ -72,6 +72,7 @@ class PyCurlTransport(HttpTransportBase):
     def __init__(self, base):
         super(PyCurlTransport, self).__init__(base)
         mutter('using pycurl %s' % pycurl.version)
+        self._base_curl = pycurl.Curl()
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -98,7 +99,7 @@ class PyCurlTransport(HttpTransportBase):
             self._raise_curl_http_error(curl)
         
     def _get(self, relpath, ranges):
-        curl = pycurl.Curl()
+        curl = self._base_curl
         abspath = self._real_abspath(relpath)
         sio = StringIO()
         curl.setopt(pycurl.URL, abspath)
