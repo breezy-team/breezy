@@ -530,7 +530,7 @@ class cmd_push(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved location: %s" % display_url)
+                self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
         transport = get_transport(location)
