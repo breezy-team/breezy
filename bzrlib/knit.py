@@ -1449,6 +1449,7 @@ class _KnitData(_KnitComponentFile):
                 needed_records.append((version_id, pos, size))
 
         if len(needed_records):
+            needed_records.sort(key=lambda x:x[1])
             # We take it that the transport optimizes the fetching as good
             # as possible (ie, reads continuous ranges.)
             response = self._transport.readv(self._filename,
