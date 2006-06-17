@@ -23,6 +23,7 @@
 # whether we expect a particular file will be modified after it's committed.
 # It's probably safer to just always revalidate.  mbp 20060321
 
+import mimetools
 import os
 from StringIO import StringIO
 
@@ -112,10 +113,12 @@ class PyCurlTransport(HttpTransportBase):
 
         abspath = self._real_abspath(relpath)
         sio = StringIO()
+        header_sio = StringIO()
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
         curl.setopt(pycurl.WRITEFUNCTION, sio.write)
         curl.setopt(pycurl.NOBODY, 0)
+        curl.setopt(pycurl.HEADERFUNCTION, header_sio.write)
 
         if ranges is not None:
             assert len(ranges) == 1
@@ -123,19 +126,52 @@ class PyCurlTransport(HttpTransportBase):
             # response
             curl.setopt(pycurl.RANGE, '%d-%d' % ranges[0])
         self._curl_perform(curl)
-        code = curl.getinfo(pycurl.HTTP_CODE)
-        if code == 404:
+        info = self._get_header_info(header_sio, curl)
+        code = info['http-code']
+        if code == '404':
             raise NoSuchFile(abspath)
-        elif code == 200:
+        elif code == '200':
             sio.seek(0)
             return code, sio
-        elif code == 206 and (ranges is not None):
+        elif code == '206' and (ranges is not None):
             sio.seek(0)
             return code, sio
         elif code == 0:
             self._raise_curl_connection_error(curl)
         else:
             self._raise_curl_http_error(curl)
+
+    def _get_header_info(self, header, curl_handle):
+        """Parse the headers into RFC822 format"""
+
+        # TODO: jam 20060617 We probably don't need all of these
+        #       headers, but this is what the 'curl' wrapper around
+        #       pycurl does
+        header.seek(0, 0)
+        url = curl_handle.getinfo(pycurl.EFFECTIVE_URL)
+        if url[:5] in ('http:', 'https:'):
+            header.readline()
+            m = mimetools.Message(header)
+        else:
+            m = mimetools.Message(StringIO())
+        m['effective-url'] = url
+        m['http-code'] = str(curl_handle.getinfo(pycurl.HTTP_CODE))
+        m['total-time'] = str(curl_handle.getinfo(pycurl.TOTAL_TIME))
+        m['namelookup-time'] = str(curl_handle.getinfo(pycurl.NAMELOOKUP_TIME))
+        m['connect-time'] = str(curl_handle.getinfo(pycurl.CONNECT_TIME))
+        m['pretransfer-time'] = str(curl_handle.getinfo(pycurl.PRETRANSFER_TIME))
+        m['redirect-time'] = str(curl_handle.getinfo(pycurl.REDIRECT_TIME))
+        m['redirect-count'] = str(curl_handle.getinfo(pycurl.REDIRECT_COUNT))
+        m['size-upload'] = str(curl_handle.getinfo(pycurl.SIZE_UPLOAD))
+        m['size-download'] = str(curl_handle.getinfo(pycurl.SIZE_DOWNLOAD))
+        m['speed-upload'] = str(curl_handle.getinfo(pycurl.SPEED_UPLOAD))
+        m['header-size'] = str(curl_handle.getinfo(pycurl.HEADER_SIZE))
+        m['request-size'] = str(curl_handle.getinfo(pycurl.REQUEST_SIZE))
+        m['content-length-download'] = str(curl_handle.getinfo(pycurl.CONTENT_LENGTH_DOWNLOAD))
+        m['content-length-upload'] = str(curl_handle.getinfo(pycurl.CONTENT_LENGTH_UPLOAD))
+        m['content-type'] = (curl_handle.getinfo(pycurl.CONTENT_TYPE) or '').strip(';')
+        return m
+
 
     def _raise_curl_connection_error(self, curl):
         curl_errno = curl.getinfo(pycurl.OS_ERRNO)
