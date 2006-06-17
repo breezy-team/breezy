@@ -24,6 +24,7 @@ import time
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 import bzrlib.errors as errors
+import bzrlib.osutils
 from bzrlib.patiencediff import unified_diff
 import bzrlib.patiencediff
 from bzrlib.symbol_versioning import *
@@ -160,7 +161,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         pipe.stdin.close()
 
         if not have_fileno:
-            to_file.write(pipe.stdout.read())
+            bzrlib.osutils.pumpfile(pipe.stdout, to_file)
         rc = pipe.wait()
         
         if rc != 0 and rc != 1:

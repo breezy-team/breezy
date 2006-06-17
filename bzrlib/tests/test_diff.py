@@ -41,7 +41,7 @@ def external_udiff_lines(old, new, use_stringio=False):
         output = TemporaryFile()
     try:
         external_diff('old', old, 'new', new, output, diff_opts=['-u'])
-    except errors.NoDiff:
+    except NoDiff:
         raise TestSkipped('external "diff" not present to test')
     output.seek(0, 0)
     lines = output.readlines()
