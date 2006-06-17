@@ -416,7 +416,8 @@ class cmd_pull(Command):
 
     If there is no default location set, the first pull will set it.  After
     that, you can omit the location to use the default.  To change the
-    default, use --remember.
+    default, use --remember. The value will only be saved if the remote
+    location can be accessed.
     """
 
     takes_options = ['remember', 'overwrite', 'revision', 'verbose']
@@ -506,7 +507,8 @@ class cmd_push(Command):
 
     If there is no default push location set, the first push will set it.
     After that, you can omit the location to use the default.  To change the
-    default, use --remember.
+    default, use --remember. The value will only be saved if the remote
+    location can be accessed.
     """
 
     takes_options = ['remember', 'overwrite', 'verbose',
@@ -2034,7 +2036,8 @@ class cmd_merge(Command):
 
     If there is no default branch set, the first merge will set it. After
     that, you can omit the branch to use the default.  To change the
-    default, use --remember.
+    default, use --remember. The value will only be saved if the remote
+    location can be accessed.
 
     Examples:
 
