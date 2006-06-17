@@ -48,9 +48,15 @@ class LogBenchmark(Benchmark):
         self.time(show_log, tree.branch, lf, direction='reverse')
 
     def test_log_screenful(self):
+        self.screenful_tester('long')
+
+    def test_log_screenful_line(self):
+        self.screenful_tester('line')
+
+    def screenful_tester(self, formatter):
         tree = self.make_many_commit_tree()
         def log_screenful():
-            lf = log_formatter('long', to_file=LineConsumer(25))
+            lf = log_formatter(formatter, to_file=LineConsumer(25))
             try:
                 show_log(tree.branch, lf, direction='reverse')
             except LinesDone:
