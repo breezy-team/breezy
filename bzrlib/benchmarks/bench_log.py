@@ -21,7 +21,7 @@ import sys
 from bzrlib.benchmarks import Benchmark
 from bzrlib.log import log_formatter, show_log
 from bzrlib.osutils import pathjoin
-from StringIO import StringIO
+from cStringIO import StringIO
 from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
