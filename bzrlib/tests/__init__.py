@@ -1210,6 +1210,7 @@ def test_suite():
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
+                   'bzrlib.tests.test_emptytree',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
@@ -1241,6 +1242,7 @@ def test_suite():
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revprops',
+                   'bzrlib.tests.test_revisiontree',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
@@ -1270,7 +1272,9 @@ def test_suite():
                    'bzrlib.tests.test_xml',
                    ]
     test_transport_implementations = [
-        'bzrlib.tests.test_transport_implementations']
+        'bzrlib.tests.test_transport_implementations',
+        'bzrlib.tests.test_read_bundle',
+        ]
 
     suite = TestSuite()
     loader = TestUtil.TestLoader()

@@ -77,17 +77,30 @@ class KnitRevisionStore(RevisionStore):
         rev_file = self.get_revision_file(transaction)
         return rev_file.get_ancestry(rev_file.versions())
 
-    def get_revision(self, revision_id, transaction):
-        """See RevisionStore.get_revision()."""
-        xml = self._get_revision_xml(revision_id, transaction)
+    def get_revisions(self, revision_ids, transaction):
+        """See RevisionStore.get_revisions()."""
+        texts = self._get_serialized_revisions(revision_ids, transaction)
+        revisions = []
         try:
-            r = self._serializer.read_revision_from_string(xml)
+            for text, revision_id in zip(texts, revision_ids):
+                r = self._serializer.read_revision_from_string(text)
+                assert r.revision_id == revision_id
+                revisions.append(r)
         except SyntaxError, e:
             raise errors.BzrError('failed to unpack revision_xml',
                                    [revision_id,
                                    str(e)])
-        assert r.revision_id == revision_id
-        return r
+        return revisions 
+
+    def _get_serialized_revisions(self, revision_ids, transaction):
+        texts = []
+        vf = self.get_revision_file(transaction)
+        try:
+            for revision_id in revision_ids:
+                texts.append(vf.get_text(revision_id))
+        except (errors.RevisionNotPresent):
+            raise errors.NoSuchRevision(self, revision_id)
+        return texts
 
     def _get_revision_xml(self, revision_id, transaction):
         try:
