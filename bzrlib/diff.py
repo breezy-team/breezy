@@ -86,9 +86,12 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
-    if not hasattr(to_file, 'fileno'):
-        raise NotImplementedError("sorry, can't send external diff other "
-                                  "than to a file descriptor", to_file)
+    if hasattr(to_file, 'fileno'):
+        out_file = to_file
+        have_fileno = True
+    else:
+        out_file = subprocess.PIPE
+        have_fileno = False
     
     # make sure our own output is properly ordered before the diff
     to_file.flush()
@@ -149,12 +152,15 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         try:
             pipe = subprocess.Popen(diffcmd,
                                     stdin=subprocess.PIPE,
-                                    stdout=to_file)
+                                    stdout=out_file)
         except OSError, e:
             if e.errno == errno.ENOENT:
                 raise errors.NoDiff(str(e))
             raise
         pipe.stdin.close()
+
+        if not have_fileno:
+            to_file.write(pipe.stdout.read())
         rc = pipe.wait()
         
         if rc != 0 and rc != 1:

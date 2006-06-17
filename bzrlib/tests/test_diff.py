@@ -33,8 +33,12 @@ def udiff_lines(old, new, allow_binary=False):
     return output.readlines()
 
 
-def external_udiff_lines(old, new):
-    output = TemporaryFile()
+def external_udiff_lines(old, new, use_stringio=False):
+    if use_stringio:
+        # StringIO has no fileno, so it tests a different codepath
+        output = StringIO()
+    else:
+        output = TemporaryFile()
     try:
         external_diff('old', old, 'new', new, output, diff_opts=['-u'])
     except errors.NoDiff:
@@ -94,6 +98,14 @@ class TestDiff(TestCase):
 
     def test_external_diff(self):
         lines = external_udiff_lines(['boo\n'], ['goo\n'])
+        self.check_patch(lines)
+
+    def test_external_diff_no_fileno(self):
+        # Make sure that we can handle not having a fileno, even
+        # if the diff is large
+        lines = external_udiff_lines(['boo\n']*10000,
+                                     ['goo\n']*10000,
+                                     use_stringio=True)
         self.check_patch(lines)
         
     def test_internal_diff_default(self):
