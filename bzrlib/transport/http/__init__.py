@@ -28,14 +28,17 @@ import urlparse
 import urllib
 from warnings import warn
 
-from bzrlib.transport import Transport, register_transport, Server
+# TODO: load these only when running http tests
+import BaseHTTPServer, SimpleHTTPServer, socket, time
+import threading
+
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError, InvalidURL)
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
-# TODO: load these only when running http tests
-import BaseHTTPServer, SimpleHTTPServer, socket, time
-import threading
+from bzrlib.transport import Transport, register_transport, Server
+from bzrlib.transport.http._response import (HttpMultipartRangeResponse,
+                                             HttpRangeResponse)
 from bzrlib.ui import ui_factory
 
 

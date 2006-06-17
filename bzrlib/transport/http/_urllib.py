@@ -22,8 +22,6 @@ import bzrlib  # for the version
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
-from bzrlib.transport.http._response import (HttpMultipartRangeResponse,
-                                             HttpRangeResponse)
 from bzrlib.errors import (TransportNotPossible, NoSuchFile, BzrError,
                            TransportError, ConnectionError)
 
