@@ -535,8 +535,6 @@ class cmd_push(Command):
 
         transport = get_transport(location)
         location_url = transport.base
-        if br_from.get_push_location() is None or remember:
-            br_from.set_push_location(location_url)
 
         old_rh = []
         try:
@@ -572,7 +570,14 @@ class cmd_push(Command):
                 revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
             count = len(br_to.revision_history())
+            # We successfully created the target, remember it
+            if br_from.get_push_location() is None or remember:
+                br_from.set_push_location(br_to.base)
         else:
+            # We were able to connect to the remote location, so remember it
+            # we don't need to successfully push because of possible divergence.
+            if br_from.get_push_location() is None or remember:
+                br_from.set_push_location(br_to.base)
             old_rh = br_to.revision_history()
             try:
                 try:

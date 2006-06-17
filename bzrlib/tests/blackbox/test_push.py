@@ -53,11 +53,20 @@ class TestPush(ExternalBase):
         tree_b.commit('commit c')
         # initial push location must be empty
         self.assertEqual(None, branch_b.get_push_location())
+
         # test push for failure without push location set
         os.chdir('branch_a')
         out = self.runbzr('push', retcode=3)
         self.assertEquals(out,
                 ('','bzr: ERROR: No push location known or specified.\n'))
+
+        # test not remembered if cannot actually push
+        self.run_bzr('push', '../path/which/doesnt/exist', retcode=3)
+        out = self.run_bzr('push', retcode=3)
+        self.assertEquals(
+                ('', 'bzr: ERROR: No push location known or specified.\n'),
+                out)
+
         # test implicit --remember when no push location set, push fails
         out = self.run_bzr('push', '../branch_b', retcode=3)
         self.assertEquals(out,
@@ -65,6 +74,7 @@ class TestPush(ExternalBase):
                     'Try a merge then push with overwrite.\n'))
         self.assertEquals(abspath(branch_a.get_push_location()),
                           abspath(branch_b.bzrdir.root_transport.base))
+
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
         transport.delete('branch_b/c')
