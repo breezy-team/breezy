@@ -2,6 +2,7 @@
 # Written by Martin Pool.
 # Modified by Johan Rydberg <jrydberg@gnu.org>
 # Modified by Robert Collins <robert.collins@canonical.com>
+# Modified by Aaron Bentley <aaron.bentley@utoronto.ca>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -510,6 +511,34 @@ class KnitVersionedFile(VersionedFile):
             diff_hunks.append((op[1], op[2], op[4]-op[3], new_content._lines[op[3]:op[4]]))
         return diff_hunks
 
+    def _get_component_versions(self, version_id):
+        basis = self.basis_knit
+        needed_versions = []
+        basis_versions = []
+        cursor = version_id
+
+        while 1:
+            picked_knit = self
+            if basis and basis._index.has_version(cursor):
+                picked_knit = basis
+                basis_versions.append(cursor)
+            method = picked_knit._index.get_method(cursor)
+            needed_versions.append((method, cursor))
+            if method == 'fulltext':
+                break
+            cursor = picked_knit.get_parents(cursor)[0]
+        return needed_versions, basis_versions
+
+    def _get_component_positions(self, version_id):
+        needed_versions, basis_versions = \
+            self._get_component_versions(version_id)
+        assert len(basis_versions) == 0
+        positions = []
+        for method, comp_id in needed_versions:
+            data_pos, data_size = self._index.get_position(comp_id)
+            positions.append((method, comp_id, data_pos, data_size))
+        return positions
+
     def _get_components(self, version_id):
         """Return a list of (version_id, method, data) tuples that
         makes up version specified by version_id of the knit.
@@ -533,24 +562,13 @@ class KnitVersionedFile(VersionedFile):
         # basis_revisions is a list of versions that needs to be
         # fetched but exists in the basis knit.
 
-        basis = self.basis_knit
-        needed_versions = []
-        basis_versions = []
-        cursor = version_id
-
-        while 1:
-            picked_knit = self
-            if basis and basis._index.has_version(cursor):
-                picked_knit = basis
-                basis_versions.append(cursor)
-            method = picked_knit._index.get_method(cursor)
-            needed_versions.append((method, cursor))
-            if method == 'fulltext':
-                break
-            cursor = picked_knit.get_parents(cursor)[0]
+        needed_versions, basis_versions = \
+            self._get_component_versions(version_id)
 
         components = {}
         if basis_versions:
+            assert True, "I am broken"
+            basis = self.basis_knit
             records = []
             for comp_id in basis_versions:
                 data_pos, data_size = basis._index.get_data_position(comp_id)
@@ -723,6 +741,22 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.get_lines()."""
         return self._get_content(version_id).text()
 
+    def _get_version_components(self, position_map):
+        records = []
+        for version_id, positions in position_map.iteritems():
+            for method, comp_id, position, size in positions:
+                records.append((comp_id, position, size))
+        record_map = self._data.read_records(records)
+
+        component_map = {}
+        for version_id, positions in position_map.iteritems():
+            components = []
+            for method, comp_id, position, size in positions:
+                data, digest = record_map[comp_id]
+                components.append((comp_id, method, data, digest))
+            component_map[version_id] = components
+        return component_map
+
     def get_texts(self, version_ids):
         """Return the texts of listed versions as a list of strings."""
         text_map = {}
@@ -732,14 +766,20 @@ class KnitVersionedFile(VersionedFile):
             for key, value in zip(basis_versions, basis_texts):
                 text_map[key] = value
 
+        position_map = {}
         for version_id in version_ids:
             if version_id in text_map: 
                 continue
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
+            position_map[version_id] = \
+                self._get_component_positions(version_id)
+
+        version_components = self._get_version_components(position_map).items()
+
+        for version_id, components in version_components:
             content = None
-            components = self._get_components(version_id)
-            for component_id, method, (data, digest) in components:
+            for component_id, method, data, digest in components:
                 version_idx = self._index.lookup(component_id)
                 if method == 'fulltext':
                     assert content is None
