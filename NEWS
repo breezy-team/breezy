@@ -63,6 +63,7 @@ IN DEVELOPMENT
   
    * 'branches.conf' has been changed to 'locations.conf', since it can apply
      to more locations than just branch locations.
+     (Aaron Bentley)
 
   BUG FIXES:
 
