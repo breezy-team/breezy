@@ -757,6 +757,10 @@ class KnitVersionedFile(VersionedFile):
             component_map[version_id] = components
         return component_map
 
+    def get_text(self, version_id):
+        """See VersionedFile.get_text"""
+        return self.get_texts([version_id])[0]
+
     def get_texts(self, version_ids):
         """Return the texts of listed versions as a list of strings."""
         text_map = {}
@@ -779,7 +783,7 @@ class KnitVersionedFile(VersionedFile):
 
         for version_id, components in version_components:
             content = None
-            for component_id, method, data, digest in components:
+            for component_id, method, data, digest in reversed(components):
                 version_idx = self._index.lookup(component_id)
                 if method == 'fulltext':
                     assert content is None
