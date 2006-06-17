@@ -232,9 +232,12 @@ def _show_log(branch,
     for index, rev_id in cut_revs:
         rev_nos[rev_id] = index
 
+    revisions = branch.repository.get_revisions([r for s, r, m, e in
+                                                 merge_sorted_revisions])
+
     # now we just print all the revisions
-    for sequence, rev_id, merge_depth, end_of_merge in merge_sorted_revisions:
-        rev = branch.repository.get_revision(rev_id)
+    for ((sequence, rev_id, merge_depth, end_of_merge), rev) in \
+        zip(merge_sorted_revisions, revisions):
 
         if searchRE:
             if not searchRE.search(rev.message):
