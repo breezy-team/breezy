@@ -266,8 +266,8 @@ class KnitVersionedFile(VersionedFile):
     stored and retrieved.
     """
 
-    def __init__(self, relpath, transport, file_mode=None, access_mode=None, factory=None,
-                 basis_knit=None, delta=True, create=False):
+    def __init__(self, relpath, transport, file_mode=None, access_mode=None, 
+                 factory=None, basis_knit=None, delta=True, create=False):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
@@ -734,12 +734,13 @@ class KnitVersionedFile(VersionedFile):
 
     def _clone_text(self, new_version_id, old_version_id, parents):
         """See VersionedFile.clone_text()."""
-        # FIXME RBC 20060228 make fast by only inserting an index with null delta.
+        # FIXME RBC 20060228 make fast by only inserting an index with null 
+        # delta.
         self.add_lines(new_version_id, parents, self.get_lines(old_version_id))
 
     def get_lines(self, version_id):
         """See VersionedFile.get_lines()."""
-        return self._get_content(version_id).text()
+        return self.get_line_list([version_id])[0]
 
     def _get_version_components(self, position_map):
         records = []
@@ -762,18 +763,12 @@ class KnitVersionedFile(VersionedFile):
         return self.get_texts([version_id])[0]
 
     def get_texts(self, version_ids):
-        """Return the texts of listed versions as a list of strings."""
-        text_map = {}
-        if self.basis_knit is not None:
-            basis_versions = [v for v in version_ids if v in self.basis_knit]
-            basis_texts = self.basis_knit.get_texts(version_ids)
-            for key, value in zip(basis_versions, basis_texts):
-                text_map[key] = value
+        return [''.join(l) for l in self.get_line_list(version_ids)]
 
+    def get_line_list(self, version_ids):
+        """Return the texts of listed versions as a list of strings."""
         position_map = {}
         for version_id in version_ids:
-            if version_id in text_map: 
-                continue
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
             position_map[version_id] = \
@@ -781,6 +776,7 @@ class KnitVersionedFile(VersionedFile):
 
         version_components = self._get_version_components(position_map).items()
 
+        text_map = {}
         for version_id, components in version_components:
             content = None
             for component_id, method, data, digest in reversed(components):
@@ -798,11 +794,11 @@ class KnitVersionedFile(VersionedFile):
 
             # digest here is the digest from the last applied component.
             if sha_strings(content.text()) != digest:
-                raise KnitCorrupt(self.filename, 'sha-1 does not match %s' % version_id)
+                raise KnitCorrupt(self.filename, 
+                                  'sha-1 does not match %s' % version_id)
 
-            text_map[version_id] = (''.join(content.text()))
+            text_map[version_id] = content.text()
         return [text_map[v] for v in version_ids]
-            
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
@@ -1459,7 +1455,8 @@ class _KnitData(_KnitComponentFile):
             response = self._transport.readv(self._filename,
                 [(pos, size) for version_id, pos, size in needed_records])
 
-            for (record_id, pos, size), (pos, data) in izip(iter(needed_records), response):
+            for (record_id, pos, size), (pos, data) in \
+                izip(iter(needed_records), response):
                 content, digest = self._parse_record(record_id, data)
                 self._records[record_id] = (digest, content)
     
