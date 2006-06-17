@@ -53,6 +53,9 @@ class LogBenchmark(Benchmark):
     def test_log_screenful_line(self):
         self.screenful_tester('line')
 
+    def test_log_screenful_short(self):
+        self.screenful_tester('short')
+
     def screenful_tester(self, formatter):
         tree = self.make_many_commit_tree()
         def log_screenful():
