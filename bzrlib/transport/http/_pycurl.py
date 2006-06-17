@@ -73,6 +73,7 @@ class PyCurlTransport(HttpTransportBase):
         super(PyCurlTransport, self).__init__(base)
         mutter('using pycurl %s' % pycurl.version)
         self._base_curl = pycurl.Curl()
+        self._range_curl = pycurl.Curl()
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -99,13 +100,23 @@ class PyCurlTransport(HttpTransportBase):
             self._raise_curl_http_error(curl)
         
     def _get(self, relpath, ranges):
+        # Documentation says 'Pass in NULL to disable the use of ranges'
+        # None is the closest we have, but at least with pycurl 7.13.1
+        # It raises an 'invalid arguments' response
+        #curl.setopt(pycurl.RANGE, None)
+        # So instead we hack around this by using a separate object for
+        # range requests
         curl = self._base_curl
+        if ranges is not None:
+            curl = self._range_curl
+
         abspath = self._real_abspath(relpath)
         sio = StringIO()
         curl.setopt(pycurl.URL, abspath)
         self._set_curl_options(curl)
         curl.setopt(pycurl.WRITEFUNCTION, sio.write)
         curl.setopt(pycurl.NOBODY, 0)
+
         if ranges is not None:
             assert len(ranges) == 1
             # multiple ranges not supported yet because we can't decode the
