@@ -28,15 +28,14 @@ import bzrlib
 import bzrlib.bzrdir as bzrdir
 from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.delta import compare_trees
 import bzrlib.errors as errors
-from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
-                           NoSuchRevision, HistoryMissing, NotBranchError,
-                           DivergedBranches, LockError,
-                           UninitializableFormat,
-                           UnlistableStore,
-                           UnlistableBranch, NoSuchFile, NotVersionedError,
-                           NoWorkingTree)
+from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches, 
+                           HistoryMissing, InvalidRevisionId, 
+                           InvalidRevisionNumber, LockError, NoSuchFile, 
+                           NoSuchRevision, NoWorkingTree, NotVersionedError,
+                           NotBranchError, UninitializableFormat, 
+                           UnlistableStore, UnlistableBranch, 
+                           )
 import bzrlib.inventory as inventory
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
@@ -59,7 +58,6 @@ from bzrlib.textui import show_status
 from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
-from bzrlib.tree import EmptyTree, RevisionTree
 import bzrlib.ui
 import bzrlib.urlutils as urlutils
 import bzrlib.xml5
@@ -277,6 +275,18 @@ class Branch(object):
         """
         return None
 
+    def get_revision_delta(self, revno):
+        """Return the delta for one revision.
+
+        The delta is relative to its mainline predecessor, or the
+        empty tree for revision 1.
+        """
+        assert isinstance(revno, int)
+        rh = self.revision_history()
+        if not (1 <= revno <= len(rh)):
+            raise InvalidRevisionNumber(revno)
+        return self.repository.get_revision_delta(rh[revno-1])
+
     def get_root_id(self):
         """Return the id of this branches root"""
         raise NotImplementedError('get_root_id is abstract')
@@ -332,17 +342,21 @@ class Branch(object):
         >>> br1.missing_revisions(br2)
         []
         >>> wt2.commit("lala!", rev_id="REVISION-ID-1")
+        'REVISION-ID-1'
         >>> br1.missing_revisions(br2)
         [u'REVISION-ID-1']
         >>> br2.missing_revisions(br1)
         []
         >>> wt1.commit("lala!", rev_id="REVISION-ID-1")
+        'REVISION-ID-1'
         >>> br1.missing_revisions(br2)
         []
         >>> wt2.commit("lala!", rev_id="REVISION-ID-2A")
+        'REVISION-ID-2A'
         >>> br1.missing_revisions(br2)
         [u'REVISION-ID-2A']
         >>> wt1.commit("lala!", rev_id="REVISION-ID-2B")
+        'REVISION-ID-2B'
         >>> br1.missing_revisions(br2)
         Traceback (most recent call last):
         DivergedBranches: These branches have diverged.  Try merge.
@@ -1069,26 +1083,6 @@ class BzrBranch(Branch):
             # not really an object yet, and the transaction is for objects.
             # transaction.register_clean(history)
 
-    def get_revision_delta(self, revno):
-        """Return the delta for one revision.
-
-        The delta is relative to its mainline predecessor, or the
-        empty tree for revision 1.
-        """
-        assert isinstance(revno, int)
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
-
-        # revno is 1-based; list is 0-based
-
-        new_tree = self.repository.revision_tree(rh[revno-1])
-        if revno == 1:
-            old_tree = EmptyTree()
-        else:
-            old_tree = self.repository.revision_tree(rh[revno-2])
-        return compare_trees(old_tree, new_tree)
-
     @needs_read_lock
     def revision_history(self):
         """See Branch.revision_history."""
@@ -1184,10 +1178,14 @@ class BzrBranch(Branch):
         assert self.base[-1] == '/'
         for l in _locs:
             try:
-                return urlutils.join(self.base[:-1], 
-                            self.control_files.get(l).read().strip('\n'))
+                parent = self.control_files.get(l).read().strip('\n')
             except NoSuchFile:
-                pass
+                continue
+            # This is an old-format absolute path to a local branch
+            # turn it into a url
+            if parent.startswith('/'):
+                parent = urlutils.local_path_to_url(parent.decode('utf8'))
+            return urlutils.join(self.base[:-1], parent)
         return None
 
     def get_push_location(self):

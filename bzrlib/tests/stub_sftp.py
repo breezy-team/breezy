@@ -143,7 +143,7 @@ class StubSFTPServer (SFTPServerInterface):
             fstr = 'rb'
         try:
             f = os.fdopen(fd, fstr)
-        except OSError, e:
+        except (IOError, OSError), e:
             return SFTPServer.convert_errno(e.errno)
         fobj = StubSFTPHandle()
         fobj.filename = path
