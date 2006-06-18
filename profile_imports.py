@@ -68,14 +68,19 @@ def stack_finish(this, cost):
     _info[this].append(cost)
 
 
-def log_stack_info(out_file):
+def log_stack_info(out_file, sorted=True):
     # Find all of the roots with import = 0
     out_file.write('cum   inline name\t\t\tscope\t\t\tframe\n')
-    todo = [key for key,value in _info.iteritems() if value[0] == 0]
+    todo = [(value[-1], key) for key,value in _info.iteritems() if value[0] == 0]
+
+    if sorted:
+        todo.sort()
 
     while todo:
-        cur = todo.pop()
+        cum_time, cur = todo.pop()
         children = _total_stack[cur]
+
+        c_times = []
 
         info = _info[cur]
         # Compute the module time by removing the children times
@@ -83,19 +88,24 @@ def log_stack_info(out_file):
         for child in children:
             c_info = _info[child]
             mod_time -= c_info[-1]
+            c_times.append((c_info[-1], child))
 
         scope_name = info[3]
         if scope_name is None:
-            txt = '%-64s' % (cur[1],)
+            txt = '%-62s' % (cur[1][:64],)
         else:
-            txt = '%-28s\tfor %-24s' % (cur[1], scope_name)
+            txt = '%-27s\tfor %-24s' % (cur[1], scope_name)
         # indent, cum_time, mod_time, name,
         # scope_name, frame_name, frame_lineno
         out_file.write('%5.1f %5.1f %s %s\t@ %s:%d\n'
             % (info[-1]*1000., mod_time*1000., '+'*info[0], 
                txt, info[1], info[2]))
 
-        todo.extend(reversed(children))
+        if sorted:
+            c_times.sort()
+        else:
+            c_times.reverse()
+        todo.extend(c_times)
 
 
 _real_import = __import__
