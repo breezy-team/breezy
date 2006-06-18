@@ -20,6 +20,7 @@ Support for foreign branches (Subversion)
 import sys
 import os.path
 import transport
+import dumpfile
 import format
 import branch
 import submit
@@ -32,11 +33,12 @@ register_transport('svn:', transport.SvnRaTransport)
 register_transport('svn+', transport.SvnRaTransport)
 
 from bzrlib.bzrdir import BzrDirFormat
-#BzrDirFormat.register_format(format.SvnFormat())
 
 BzrDirFormat.register_control_format(format.SvnFormat)
 
 BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
+
+BzrDirFormat.register_control_format(dumpfile.SvnDumpFileFormat)
 
 def test_suite():
     from unittest import TestSuite, TestLoader
