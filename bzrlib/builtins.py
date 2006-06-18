@@ -2417,11 +2417,16 @@ class cmd_plugins(Command):
 
 class cmd_testament(Command):
     """Show testament (signing-form) of a revision."""
-    takes_options = ['revision', 'long']
+    takes_options = ['revision', 'long', 
+                     Option('strict', help='Produce a strict testament')]
     takes_args = ['branch?']
     @display_command
-    def run(self, branch=u'.', revision=None, long=False):
-        from bzrlib.testament import Testament
+    def run(self, branch=u'.', revision=None, long=False, strict=False):
+        from bzrlib.testament import Testament, StrictTestament
+        if strict is True:
+            testament_class = StrictTestament
+        else:
+            testament_class = Testament
         b = WorkingTree.open_containing(branch)[0].branch
         b.lock_read()
         try:
@@ -2429,7 +2434,7 @@ class cmd_testament(Command):
                 rev_id = b.last_revision()
             else:
                 rev_id = revision[0].in_history(b).rev_id
-            t = Testament.from_revision(b.repository, rev_id)
+            t = testament_class.from_revision(b.repository, rev_id)
             if long:
                 sys.stdout.writelines(t.as_text_lines())
             else:
