@@ -181,7 +181,7 @@ class RevisionTree(Tree):
     def has_filename(self, filename):
         return bool(self.inventory.path2id(filename))
 
-    def list_files(self, classifiers=()):
+    def list_files(self):
         # The only files returned by this are those from the version
         for path, entry in self.inventory.iter_entries():
             yield path, 'V', entry.kind, entry.file_id, entry
@@ -214,7 +214,7 @@ class EmptyTree(Tree):
         assert self._inventory[file_id].kind == "root_directory"
         return "root_directory"
 
-    def list_files(self, classifiers=()):
+    def list_files(self):
         return iter([])
     
     def __contains__(self, file_id):

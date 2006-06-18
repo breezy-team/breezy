@@ -1367,8 +1367,6 @@ class cmd_ls(Command):
                      Option('unknown', help='Print unknown files'),
                      Option('versioned', help='Print versioned files'),
                      Option('ignored', help='Print ignored files'),
-                     Option('debris', 
-                            help='Print leftover files produced by bzr'),
 
                      Option('null', help='Null separate the files'),
                     ]
@@ -1376,16 +1374,13 @@ class cmd_ls(Command):
     def run(self, revision=None, verbose=False, 
             non_recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
-            null=False, debris=False):
+            null=False):
 
         if verbose and null:
             raise BzrCommandError('Cannot set both --verbose and --null')
-        all = not (unknown or versioned or ignored or debris)
+        all = not (unknown or versioned or ignored)
 
-        selection = {'I':ignored, '?':unknown, 'V':versioned, 'D':debris}
-        classifiers = []
-        if debris:
-            classifiers.append(WorkingTree.debris_classifier)
+        selection = {'I':ignored, '?':unknown, 'V':versioned}
 
         tree, relpath = WorkingTree.open_containing(u'.')
         if from_root:
@@ -1395,13 +1390,12 @@ class cmd_ls(Command):
         if revision is not None:
             tree = tree.branch.repository.revision_tree(
                 revision[0].in_history(tree.branch).rev_id)
-        for fp, fc, kind, fid, entry in \
-            tree.list_files(classifiers):
+
+        for fp, fc, kind, fid, entry in tree.list_files():
             if fp.startswith(relpath):
                 fp = fp[len(relpath):]
                 if non_recursive and '/' in fp:
                     continue
-                    
                 if not all and not selection[fc]:
                     continue
                 if verbose:
