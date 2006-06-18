@@ -19,7 +19,7 @@ from cStringIO import StringIO
 import svn.ra
 import os
 from bzrlib.errors import NoSuchFile, NotBranchError
-from scheme import DefaultBranchingScheme
+from scheme import NoBranchingScheme
 
 def _create_auth_baton(pool):
     """ Create a Subversion authentication baton.
@@ -93,7 +93,7 @@ class SvnRaTransport(Transport):
         self.path = self.svn_url[len(self.svn_root_url)+1:]
 
         if not scheme:
-            scheme = DefaultBranchingScheme()
+            scheme = NoBranchingScheme()
 
         self._scheme = scheme
         self.is_branch_root = scheme.is_branch(self.path)

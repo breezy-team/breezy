@@ -153,10 +153,10 @@ class SvnLocalAccess(SvnRemoteAccess):
 
         remote_transport = SvnRaTransport(url)
 
-        super(SvnLocalAccess, self).__init__(remote_transport, SvnFormat())
+        super(SvnLocalAccess, self).__init__(remote_transport, format)
 
     def __del__(self):
-        pass #svn.wc.adm_close(self.wc)
+        svn.wc.adm_close(self.wc)
 
     def open_repository(self):
         repos = OptimizedRepository(self, self.transport.root_url)
@@ -199,4 +199,4 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
         return 'Subversion Local Checkout'
 
     def initialize(self,url):
-        raise NotImplementedError(SvnFormat.initialize)
+        raise NotImplementedError(self.initialize)

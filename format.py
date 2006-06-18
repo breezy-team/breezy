@@ -58,8 +58,8 @@ class SvnRemoteAccess(BzrDir):
     def open_workingtree(self):
         raise NotLocalUrl(self.url)
 
-    def create_workingtree(self):
-        raise NotImplementedError(SvnRemoteAccess.create_workingtree)
+    def create_workingtree(self, revision_id=None):
+        raise NotImplementedError(self.create_workingtree)
 
     def open_branch(self, unsupported=True):
         repos = self.open_repository()
@@ -101,4 +101,4 @@ class SvnFormat(BzrDirFormat):
         return 'Subversion Smart Server'
 
     def initialize(self, url):
-        raise NotImplementedError(SvnFormat.initialize)
+        raise NotImplementedError(self.initialize)

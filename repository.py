@@ -207,14 +207,14 @@ class SvnRepository(Repository):
 
         self._ancestry = [None]
 
+        # FIXME: use get_file_revs() ?
         def rcvr(paths, rev, author, date, message, pool):
             revid = self.generate_revision_id(rev, path)
             self._ancestry.append(revid)
 
-        mutter("svn log -r 0:%d %s" % (revnum-1, path))
         try:
-            svn.ra.get_log(self.ra, [path.encode('utf8')], 0, \
-                revnum - 1, 1, False, False, rcvr)
+            self._get_log([path.encode('utf8')], 0, 
+                          revnum - 1, 1, False, False, rcvr)
         except SubversionException, (_, num):
             if num != svn.core.SVN_ERR_FS_NOT_FOUND:
                 raise
@@ -234,14 +234,14 @@ class SvnRepository(Repository):
 
         parent_ids = []
 
+        # TODO: Use get_file_revs()
         def rcvr(paths, rev, *args):
             revid = self.generate_revision_id(rev, path)
             parent_ids.append(revid)
 
-        mutter("log -r%d:0 %s" % (revnum-1, path))
 
         try:
-            svn.ra.get_log(self.ra, [path.encode('utf8')], revnum - 1, \
+            self._get_log([path.encode('utf8')], revnum - 1, \
                 0, 1, False, False, rcvr)
         except SubversionException, (_, num):
             # If this is the first revision, there are no parents
@@ -329,11 +329,16 @@ class SvnRepository(Repository):
         for path in ranges:
             self._tmp = path
             (min, max) = ranges[path]
-            mutter("svn log -r%d:%d %s" % (min, max, path))
-            svn.ra.get_log(self.ra, [path.encode('utf8')], min, \
+            self._get_log([path.encode('utf8')], min, \
                 max, 0, True, False, rcvr)
 
         return result
+
+    def _get_log(self, paths, from_revno, to_revno, limit, discover_changed, \
+                 strict_node_history, rcvr):
+        mutter("svn log -r%d:%d %s" % (from_revno, to_revno, paths))
+        return svn.ra.get_log(self.ra, paths, from_revno, to_revno, limit, 
+                              discover_changed, strict_node_history, rcvr)
 
     def fileid_involved_by_set(self, changes):
         ids = []
@@ -442,9 +447,8 @@ class SvnRepository(Repository):
             self._ancestry[self._previous] = [revid]
             self._previous = revid
 
-        mutter("svn log -r%d:0 %s" % (revnum-1, path))
         try:
-            svn.ra.get_log(self.ra, [path.encode('utf8')], revnum - 1, \
+            self._get_log([path.encode('utf8')], revnum - 1, \
                 0, 0, False, False, rcvr)
         except SubversionException, (_, num):
             if num != svn.core.SVN_ERR_FS_NOT_FOUND:
@@ -482,12 +486,11 @@ class SvnRepository(Repository):
 
         changed = []
 
-        mutter("svn log -r0:%d %s" % (until_revnum, path))
         def rcvr(paths, revnum, author, date, message, pool):
             changed.append((paths, revnum))
             pb.update('receiving revision information', revnum, until_revnum)
 
-        svn.ra.get_log(self.ra, [path.encode('utf8')], 0, until_revnum, 0, 
+        self._get_log([path.encode('utf8')], 0, until_revnum, 0, 
                 True, False, rcvr)
 
         for (paths, revnum) in changed:
