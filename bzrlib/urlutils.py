@@ -116,6 +116,11 @@ def join(base, *args):
     if m:
         scheme = m.group('scheme')
         path = m.group('path').split('/')
+        if path[-1:] == ['']:
+            # Strip off a trailing slash
+            # This helps both when we are at the root, and when
+            # 'base' has an extra slash at the end
+            path = path[:-1]
     else:
         path = base.split('/')
 
@@ -201,12 +206,13 @@ def _win32_local_path_to_url(path):
 local_path_to_url = _posix_local_path_to_url
 local_path_from_url = _posix_local_path_from_url
 MIN_ABS_FILEURL_LENGTH = len('file:///')
+WIN32_MIN_ABS_FILEURL_LENGTH = len('file:///C:/')
 
 if sys.platform == 'win32':
     local_path_to_url = _win32_local_path_to_url
     local_path_from_url = _win32_local_path_from_url
 
-    MIN_ABS_FILEURL_LENGTH = len('file:///C:/')
+    MIN_ABS_FILEURL_LENGTH = WIN32_MIN_ABS_FILEURL_LENGTH
 
 
 _url_scheme_re = re.compile(r'^(?P<scheme>[^:/]{2,})://(?P<path>.*)$')
@@ -298,6 +304,18 @@ def relative_url(base, other):
     return "/".join(output_sections) or "."
 
 
+def _win32_extract_drive_letter(url_base, path):
+    """On win32 the drive letter needs to be added to the url base."""
+    # Strip off the drive letter
+    # path is currently /C:/foo
+    if len(path) < 3 or path[2] not in ':|' or path[3] != '/':
+        raise errors.InvalidURL(url_base + path, 
+            'win32 file:/// paths need a drive letter')
+    url_base += path[0:3] # file:// + /C:
+    path = path[3:] # /foo
+    return url_base, path
+
+
 def split(url, exclude_trailing_slash=True):
     """Split a URL into its parent directory and a child directory.
 
@@ -327,17 +345,23 @@ def split(url, exclude_trailing_slash=True):
 
     if sys.platform == 'win32' and url.startswith('file:///'):
         # Strip off the drive letter
+        # url_base is currently file://
         # path is currently /C:/foo
-        if path[2:3] not in ':|' or path[3:4] not in '\\/':
-            raise errors.InvalidURL(url, 
-                'win32 file:/// paths need a drive letter')
-        url_base += path[0:3] # file:// + /c:
-        path = path[3:] # /foo
+        url_base, path = _win32_extract_drive_letter(url_base, path)
+        # now it should be file:///C: and /foo
 
     if exclude_trailing_slash and len(path) > 1 and path.endswith('/'):
         path = path[:-1]
     head, tail = _posix_split(path)
     return url_base + head, tail
+
+
+def _win32_strip_local_trailing_slash(url):
+    """Strip slashes after the drive letter"""
+    if len(url) > WIN32_MIN_ABS_FILEURL_LENGTH:
+        return url[:-1]
+    else:
+        return url
 
 
 def strip_trailing_slash(url):
@@ -365,12 +389,7 @@ def strip_trailing_slash(url):
         # Nothing to do
         return url
     if sys.platform == 'win32' and url.startswith('file:///'):
-        # This gets handled specially, because the 'top-level'
-        # of a win32 path is actually the drive letter
-        if len(url) > MIN_ABS_FILEURL_LENGTH:
-            return url[:-1]
-        else:
-            return url
+        return _win32_strip_local_trailing_slash(url)
 
     scheme_loc, first_path_slash = _find_scheme_and_separator(url)
     if scheme_loc is None:

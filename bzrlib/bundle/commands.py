@@ -15,6 +15,7 @@ from bzrlib.option import Option
 from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.trace import note
 
 
 class cmd_send_changeset(Command):
@@ -86,16 +87,21 @@ class cmd_bundle_revisions(Command):
         from bzrlib import user_encoding
         from bzrlib.bundle.serializer import write_bundle
 
+        target_branch = Branch.open_containing(u'.')[0]
+
         if base is None:
-            base_branch = None
-        else:
-            base_branch = Branch.open(base)
+            base = target_branch.get_parent()
+            if base is None:
+                raise errors.BzrCommandError("No base branch known or"
+                                             " specified.")
+            else:
+                note('Using saved location: %s' % base)
+        base_branch = Branch.open(base)
 
         # We don't want to lock the same branch across
         # 2 different branches
-        target_branch = Branch.open_containing(u'.')[0]
-        if base_branch is not None and target_branch.base == base_branch.base:
-            base_branch = None
+        if target_branch.base == base_branch.base:
+            base_branch = target_branch 
 
         base_revision = None
         if revision is None:

@@ -23,6 +23,7 @@ import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.commit import commit
+from bzrlib.delta import TreeDelta
 import bzrlib.errors as errors
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
@@ -100,6 +101,22 @@ class TestBranch(TestCaseWithBranch):
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')
         self.assertEqual(tree.get_file_text('foo-id'), 'hello')
+
+    def test_get_revision_delta(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/foo'])
+        tree_a.add('foo', 'file1')
+        tree_a.commit('rev1', rev_id='rev1')
+        self.build_tree(['a/vla'])
+        tree_a.add('vla', 'file2')
+        tree_a.commit('rev2', rev_id='rev2')
+
+        delta = tree_a.branch.get_revision_delta(1)
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([('foo', 'file1', 'file')], delta.added)
+        delta = tree_a.branch.get_revision_delta(2)
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([('vla', 'file2', 'file')], delta.added)
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
@@ -316,6 +333,14 @@ class TestBranch(TestCaseWithBranch):
         text = tree.branch._format.get_format_description()
         self.failUnless(len(text))
 
+    def test_check_branch_report_results(self):
+        """Checking a branch produces results which can be printed"""
+        branch = self.make_branch('.')
+        result = branch.check()
+        # reports results through logging
+        result.report_results(verbose=True)
+        result.report_results(verbose=False)
+
     def test_get_commit_builder(self):
         self.assertIsInstance(self.make_branch(".").get_commit_builder([]), 
             bzrlib.repository.CommitBuilder)
@@ -482,20 +507,20 @@ class TestBranchPushLocations(TestCaseWithBranch):
         self.assertEqual(None, self.get_branch().get_push_location())
 
     def test_get_push_location_exact(self):
-        from bzrlib.config import (branches_config_filename,
+        from bzrlib.config import (locations_config_filename,
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
-        fn = branches_config_filename()
+        fn = locations_config_filename()
         print >> open(fn, 'wt'), ("[%s]\n"
                                   "push_location=foo" %
                                   self.get_branch().base[:-1])
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
-        from bzrlib.config import (branches_config_filename,
+        from bzrlib.config import (locations_config_filename,
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
-        fn = branches_config_filename()
+        fn = locations_config_filename()
         self.get_branch().set_push_location('foo')
         self.assertFileEqual("[%s]\n"
                              "push_location = foo" % self.get_branch().base[:-1],

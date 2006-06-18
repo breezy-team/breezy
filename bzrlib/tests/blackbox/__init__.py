@@ -46,6 +46,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_branch',
                      'bzrlib.tests.blackbox.test_break_lock',
                      'bzrlib.tests.blackbox.test_bound_branches',
+                     'bzrlib.tests.blackbox.test_bundle',
                      'bzrlib.tests.blackbox.test_cat',
                      'bzrlib.tests.blackbox.test_checkout',
                      'bzrlib.tests.blackbox.test_command_encoding',

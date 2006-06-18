@@ -264,6 +264,89 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertTrue(found_bzrdir)
         self.assertEqual(expected_dirblocks,
             [[line[0:3] for line in block] for block in result])
+        # you can search a subdir only, with a supplied prefix.
+        result = []
+        for dirblock in osutils.walkdirs('1dir', '1dir'):
+            result.append(dirblock)
+        self.assertEqual(expected_dirblocks[1:],
+            [[line[0:3] for line in block] for block in result])
+
+    def assertPathCompare(self, path_less, path_greater):
+        """check that path_less and path_greater compare correctly."""
+        self.assertEqual(0, osutils.compare_paths_prefix_order(
+            path_less, path_less))
+        self.assertEqual(0, osutils.compare_paths_prefix_order(
+            path_greater, path_greater))
+        self.assertEqual(-1, osutils.compare_paths_prefix_order(
+            path_less, path_greater))
+        self.assertEqual(1, osutils.compare_paths_prefix_order(
+            path_greater, path_less))
+
+    def test_compare_paths_prefix_order(self):
+        # root before all else
+        self.assertPathCompare("/", "/a")
+        # alpha within a dir
+        self.assertPathCompare("/a", "/b")
+        self.assertPathCompare("/b", "/z")
+        # high dirs before lower.
+        self.assertPathCompare("/z", "/a/a")
+        # except if the deeper dir should be output first
+        self.assertPathCompare("/a/b/c", "/d/g")
+        # lexical betwen dirs of the same height
+        self.assertPathCompare("/a/z", "/z/z")
+        self.assertPathCompare("/a/c/z", "/a/d/e")
+
+        # this should also be consistent for no leading / paths
+        # root before all else
+        self.assertPathCompare("", "a")
+        # alpha within a dir
+        self.assertPathCompare("a", "b")
+        self.assertPathCompare("b", "z")
+        # high dirs before lower.
+        self.assertPathCompare("z", "a/a")
+        # except if the deeper dir should be output first
+        self.assertPathCompare("a/b/c", "d/g")
+        # lexical betwen dirs of the same height
+        self.assertPathCompare("a/z", "z/z")
+        self.assertPathCompare("a/c/z", "a/d/e")
+
+    def test_path_prefix_sorting(self):
+        """Doing a sort on path prefix should match our sample data."""
+        original_paths = [
+            'a',
+            'a/b',
+            'a/b/c',
+            'b',
+            'b/c',
+            'd',
+            'd/e',
+            'd/e/f',
+            'd/f',
+            'd/g',
+            'g',
+            ]
+
+        dir_sorted_paths = [
+            'a',
+            'b',
+            'd',
+            'g',
+            'a/b',
+            'a/b/c',
+            'b/c',
+            'd/e',
+            'd/f',
+            'd/g',
+            'd/e/f',
+            ]
+
+        self.assertEqual(
+            dir_sorted_paths,
+            sorted(original_paths, key=osutils.path_prefix_key))
+        # using the comparison routine shoudl work too:
+        self.assertEqual(
+            dir_sorted_paths,
+            sorted(original_paths, cmp=osutils.compare_paths_prefix_order))
 
 
 class TestTerminalEncoding(TestCase):

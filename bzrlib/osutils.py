@@ -109,7 +109,12 @@ def file_kind_from_stat_mode(stat_mode, _formats=_formats, _unknown='unknown'):
 
 
 def file_kind(f, _lstat=os.lstat, _mapper=file_kind_from_stat_mode):
-    return _mapper(_lstat(f).st_mode)
+    try:
+        return _mapper(_lstat(f).st_mode)
+    except OSError, e:
+        if getattr(e, 'errno', None) == errno.ENOENT:
+            raise bzrlib.errors.NoSuchFile(f)
+        raise
 
 
 def kind_marker(kind):
@@ -832,7 +837,7 @@ def check_legal_path(path):
         raise IllegalPath(path)
 
 
-def walkdirs(top):
+def walkdirs(top, prefix=""):
     """Yield data about all the directories in a tree.
     
     This yields all the data about the contents of a directory at a time.
@@ -842,13 +847,16 @@ def walkdirs(top):
     The data yielded is of the form:
     [(relpath, basename, kind, lstat, path_from_top), ...]
 
+    :param prefix: Prefix the relpaths that are yielded with 'prefix'. This 
+        allows one to walk a subtree but get paths that are relative to a tree
+        rooted higher up.
     :return: an iterator over the dirs.
     """
     lstat = os.lstat
     pending = []
     _directory = _directory_kind
     _listdir = listdir
-    pending = [("", "", _directory, None, top)]
+    pending = [(prefix, "", _directory, None, top)]
     while pending:
         dirblock = []
         currentdir = pending.pop()
@@ -867,3 +875,18 @@ def walkdirs(top):
         for dir in reversed(dirblock):
             if dir[2] == _directory:
                 pending.append(dir)
+
+
+def path_prefix_key(path):
+    """Generate a prefix-order path key for path.
+
+    This can be used to sort paths in the same way that walkdirs does.
+    """
+    return (dirname(path) , path)
+
+
+def compare_paths_prefix_order(path_a, path_b):
+    """Compare path_a and path_b to generate the same order walkdirs uses."""
+    key_a = path_prefix_key(path_a)
+    key_b = path_prefix_key(path_b)
+    return cmp(key_a, key_b)

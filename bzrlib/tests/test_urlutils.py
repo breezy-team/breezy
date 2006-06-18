@@ -211,6 +211,12 @@ class TestUrlToPath(TestCase):
         test('http://bar', 'http://foo', 'http://bar')
         test('sftp://bzr/foo', 'http://foo', 'bar', 'sftp://bzr/foo')
         test('file:///bar', 'foo', 'file:///bar')
+
+        # From a base path
+        test('file:///foo', 'file:///', 'foo')
+        test('file:///bar/foo', 'file:///bar/', 'foo')
+        test('http://host/foo', 'http://host/', 'foo')
+        test('http://host/', 'http://host', '')
         
         # Invalid joinings
         # Cannot go above root
@@ -281,6 +287,12 @@ class TestUrlToPath(TestCase):
         # Not a valid _win32 url, no drive letter
         self.assertRaises(InvalidURL, from_url, 'file:///path/to/foo')
 
+    def test__win32_extract_drive_letter(self):
+        extract = urlutils._win32_extract_drive_letter
+        self.assertEqual(('file:///C:', '/foo'), extract('file://', '/C:/foo'))
+        self.assertEqual(('file:///d|', '/path'), extract('file://', '/d|/path'))
+        self.assertRaises(InvalidURL, extract, 'file://', '/path')
+
     def test_split(self):
         # Test bzrlib.urlutils.split()
         split = urlutils.split
@@ -315,6 +327,16 @@ class TestUrlToPath(TestCase):
             split('path/to/foo/', exclude_trailing_slash=False))
         self.assertEqual(('path/..', 'foo'), split('path/../foo'))
         self.assertEqual(('../path', 'foo'), split('../path/foo'))
+
+    def test__win32_strip_local_trailing_slash(self):
+        strip = urlutils._win32_strip_local_trailing_slash
+        self.assertEqual('file://', strip('file://'))
+        self.assertEqual('file:///', strip('file:///'))
+        self.assertEqual('file:///C', strip('file:///C'))
+        self.assertEqual('file:///C:', strip('file:///C:'))
+        self.assertEqual('file:///d|', strip('file:///d|'))
+        self.assertEqual('file:///C:/', strip('file:///C:/'))
+        self.assertEqual('file:///C:/a', strip('file:///C:/a/'))
 
     def test_strip_trailing_slash(self):
         sts = urlutils.strip_trailing_slash

@@ -700,8 +700,8 @@ class TestTransportImplementation(TestCaseInTempDir):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        t = bzrlib.transport.get_transport(url)
         try:
+            t = bzrlib.transport.get_transport(url)
             t.get('.bzr/branch')
         except (ConnectionError, NoSuchFile), e:
             pass

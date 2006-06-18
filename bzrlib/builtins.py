@@ -27,8 +27,9 @@ import bzrlib
 import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
+from bzrlib.bundle import read_bundle_from_url
 from bzrlib.bundle.read_bundle import BundleReader
-from bzrlib.bundle.apply_bundle import merge_bundle
+from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.commands import Command, display_command
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
@@ -132,10 +133,6 @@ class cmd_status(Command):
     modified
         Text has changed since the previous revision.
 
-    unchanged
-        Nothing about this file has changed since the previous revision.
-        Only shown with --all.
-
     unknown
         Not versioned and not matching an ignore pattern.
 
@@ -154,18 +151,18 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['all', 'show-ids', 'revision']
+    takes_options = ['show-ids', 'revision']
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
     
     @display_command
-    def run(self, all=False, show_ids=False, file_list=None, revision=None):
+    def run(self, show_ids=False, file_list=None, revision=None):
         from bzrlib.status import show_tree_status
 
         tree, file_list = tree_files(file_list)
             
-        show_tree_status(tree, show_unchanged=all, show_ids=show_ids,
+        show_tree_status(tree, show_ids=show_ids,
                          specific_files=file_list, revision=revision,
                          to_file=self.outf)
 
@@ -266,7 +263,7 @@ class cmd_add(Command):
 
     Adding a file whose parent directory is not versioned will
     implicitly add the parent, and so on up to the root. This means
-    you should never need to explictly add a directory, they'll just
+    you should never need to explicitly add a directory, they'll just
     get added when you add a file in the directory.
 
     --dry-run will show which files would be added, but not actually 
@@ -280,10 +277,10 @@ class cmd_add(Command):
         import bzrlib.add
 
         action = bzrlib.add.AddAction(to_file=self.outf,
-            should_add=(not dry_run), should_print=(not is_quiet()))
+            should_print=(not is_quiet()))
 
         added, ignored = bzrlib.add.smart_add(file_list, not no_recurse, 
-                                              action=action)
+                                              action=action, save=not dry_run)
         if len(ignored) > 0:
             if verbose:
                 for glob in sorted(ignored.keys()):
@@ -434,6 +431,14 @@ class cmd_pull(Command):
         except NoWorkingTree:
             tree_to = None
             branch_to = Branch.open_containing(u'.')[0]
+
+        reader = None
+        if location is not None:
+            try:
+                reader = read_bundle_from_url(location)
+            except NotABundle:
+                pass # Continue on considering this url a Branch
+
         stored_loc = branch_to.get_parent()
         if location is None:
             if stored_loc is None:
@@ -444,13 +449,20 @@ class cmd_pull(Command):
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
-        branch_from = Branch.open(location)
 
-        if branch_to.get_parent() is None or remember:
-            branch_to.set_parent(branch_from.base)
+        if reader is not None:
+            install_bundle(branch_to.repository, reader)
+            branch_from = branch_to
+        else:
+            branch_from = Branch.open(location)
 
+            if branch_to.get_parent() is None or remember:
+                branch_to.set_parent(branch_from.base)
+
+        rev_id = None
         if revision is None:
-            rev_id = None
+            if reader is not None:
+                rev_id = reader.info.target
         elif len(revision) == 1:
             rev_id = revision[0].in_history(branch_from).rev_id
         else:
@@ -2052,24 +2064,18 @@ class cmd_merge(Command):
 
         tree = WorkingTree.open_containing(u'.')[0]
 
-        try:
-            if branch is not None:
-                reader = BundleReader(file(branch, 'rb'))
+        if branch is not None:
+            try:
+                reader = read_bundle_from_url(branch)
+            except NotABundle:
+                pass # Continue on considering this url a Branch
             else:
-                reader = None
-        except IOError, e:
-            if e.errno not in (errno.ENOENT, errno.EISDIR):
-                raise
-            reader = None
-        except NotABundle:
-            reader = None
-        if reader is not None:
-            conflicts = merge_bundle(reader, tree, not force, merge_type,
-                                        reprocess, show_base)
-            if conflicts == 0:
-                return 0
-            else:
-                return 1
+                conflicts = merge_bundle(reader, tree, not force, merge_type,
+                                            reprocess, show_base)
+                if conflicts == 0:
+                    return 0
+                else:
+                    return 1
 
         branch = self._get_remembered_parent(tree, branch, 'Merging from')
 
@@ -2572,7 +2578,7 @@ class cmd_uncommit(bzrlib.commands.Command):
     """
 
     # TODO: jam 20060108 Add an option to allow uncommit to remove
-    # unreferenced information in 'branch-as-repostory' branches.
+    # unreferenced information in 'branch-as-repository' branches.
     # TODO: jam 20060108 Add the ability for uncommit to remove unreferenced
     # information in shared branches as well.
     takes_options = ['verbose', 'revision',
