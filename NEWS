@@ -51,6 +51,9 @@ IN DEVELOPMENT
       all of the history in the repository. This is especially important for
       shared repositories. (John Arbash Meinel)
 
+    * New command line option '--profile-imports', which will install a custom
+      importer to log time to import modules to sys.stderr (John Arbash Meinel)
+
 bzr 0.8.2  2006-05-17
   
   BUG FIXES:
