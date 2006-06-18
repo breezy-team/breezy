@@ -28,15 +28,14 @@ import bzrlib
 import bzrlib.bzrdir as bzrdir
 from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.delta import compare_trees
 import bzrlib.errors as errors
-from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
-                           NoSuchRevision, HistoryMissing, NotBranchError,
-                           DivergedBranches, LockError,
-                           UninitializableFormat,
-                           UnlistableStore,
-                           UnlistableBranch, NoSuchFile, NotVersionedError,
-                           NoWorkingTree)
+from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches, 
+                           HistoryMissing, InvalidRevisionId, 
+                           InvalidRevisionNumber, LockError, NoSuchFile, 
+                           NoSuchRevision, NoWorkingTree, NotVersionedError,
+                           NotBranchError, UninitializableFormat, 
+                           UnlistableStore, UnlistableBranch, 
+                           )
 import bzrlib.inventory as inventory
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
@@ -59,7 +58,6 @@ from bzrlib.textui import show_status
 from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
-from bzrlib.tree import EmptyTree, RevisionTree
 import bzrlib.ui
 import bzrlib.urlutils as urlutils
 import bzrlib.xml5
@@ -277,6 +275,18 @@ class Branch(object):
         """
         return None
 
+    def get_revision_delta(self, revno):
+        """Return the delta for one revision.
+
+        The delta is relative to its mainline predecessor, or the
+        empty tree for revision 1.
+        """
+        assert isinstance(revno, int)
+        rh = self.revision_history()
+        if not (1 <= revno <= len(rh)):
+            raise InvalidRevisionNumber(revno)
+        return self.repository.get_revision_delta(rh[revno-1])
+
     def get_root_id(self):
         """Return the id of this branches root"""
         raise NotImplementedError('get_root_id is abstract')
@@ -332,17 +342,21 @@ class Branch(object):
         >>> br1.missing_revisions(br2)
         []
         >>> wt2.commit("lala!", rev_id="REVISION-ID-1")
+        'REVISION-ID-1'
         >>> br1.missing_revisions(br2)
         [u'REVISION-ID-1']
         >>> br2.missing_revisions(br1)
         []
         >>> wt1.commit("lala!", rev_id="REVISION-ID-1")
+        'REVISION-ID-1'
         >>> br1.missing_revisions(br2)
         []
         >>> wt2.commit("lala!", rev_id="REVISION-ID-2A")
+        'REVISION-ID-2A'
         >>> br1.missing_revisions(br2)
         [u'REVISION-ID-2A']
         >>> wt1.commit("lala!", rev_id="REVISION-ID-2B")
+        'REVISION-ID-2B'
         >>> br1.missing_revisions(br2)
         Traceback (most recent call last):
         DivergedBranches: These branches have diverged.  Try merge.
@@ -477,7 +491,7 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        # for API compatability, until 0.8 releases we provide the old api:
+        # for API compatibility, until 0.8 releases we provide the old api:
         # def clone(self, to_location, revision=None, basis_branch=None, to_branch_format=None):
         # after 0.8 releases, the *args and **kwargs should be changed:
         # def clone(self, to_bzrdir, revision_id=None):
@@ -485,7 +499,7 @@ class Branch(object):
             kwargs.get('revision', None) or
             kwargs.get('basis_branch', None) or
             (len(args) and isinstance(args[0], basestring))):
-            # backwards compatability api:
+            # backwards compatibility api:
             warn("Branch.clone() has been deprecated for BzrDir.clone() from"
                  " bzrlib 0.8.", DeprecationWarning, stacklevel=3)
             # get basis_branch
@@ -637,7 +651,7 @@ class BranchFormat(object):
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
-        raise NotImplementedError(self.initialized)
+        raise NotImplementedError(self.initialize)
 
     def is_supported(self):
         """Is this format supported?
@@ -1069,26 +1083,6 @@ class BzrBranch(Branch):
             # not really an object yet, and the transaction is for objects.
             # transaction.register_clean(history)
 
-    def get_revision_delta(self, revno):
-        """Return the delta for one revision.
-
-        The delta is relative to its mainline predecessor, or the
-        empty tree for revision 1.
-        """
-        assert isinstance(revno, int)
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
-
-        # revno is 1-based; list is 0-based
-
-        new_tree = self.repository.revision_tree(rh[revno-1])
-        if revno == 1:
-            old_tree = EmptyTree()
-        else:
-            old_tree = self.repository.revision_tree(rh[revno-2])
-        return compare_trees(old_tree, new_tree)
-
     @needs_read_lock
     def revision_history(self):
         """See Branch.revision_history."""
@@ -1184,10 +1178,14 @@ class BzrBranch(Branch):
         assert self.base[-1] == '/'
         for l in _locs:
             try:
-                return urlutils.join(self.base[:-1], 
-                            self.control_files.get(l).read().strip('\n'))
+                parent = self.control_files.get(l).read().strip('\n')
             except NoSuchFile:
-                pass
+                continue
+            # This is an old-format absolute path to a local branch
+            # turn it into a url
+            if parent.startswith('/'):
+                parent = urlutils.local_path_to_url(parent.decode('utf8'))
+            return urlutils.join(self.base[:-1], parent)
         return None
 
     def get_push_location(self):
@@ -1269,7 +1267,7 @@ class BzrBranch5(BzrBranch):
 
         This could memoise the branch, but if thats done
         it must be revalidated on each new lock.
-        So for now we just dont memoise it.
+        So for now we just don't memoise it.
         # RBC 20060304 review this decision.
         """
         bound_loc = self.get_bound_location()
@@ -1321,7 +1319,7 @@ class BzrBranch5(BzrBranch):
         # There may be a different check you could do here
         # rather than actually trying to install revisions remotely.
         # TODO: capture an exception which indicates the remote branch
-        #       is not writeable. 
+        #       is not writable. 
         #       If it is up-to-date, this probably should not be a failure
         
         # lock other for write so the revision-history syncing cannot race

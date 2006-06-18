@@ -149,7 +149,7 @@ def gen_root_id():
 
 
 class TreeEntry(object):
-    """An entry that implements the minium interface used by commands.
+    """An entry that implements the minimum interface used by commands.
 
     This needs further inspection, it may be better to have 
     InventoryEntries without ids - though that seems wrong. For now,
@@ -455,6 +455,20 @@ class WorkingTree(bzrlib.tree.Tree):
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
+    def get_parent_ids(self):
+        """See Tree.get_parent_ids.
+        
+        This implementation reads the pending merges list and last_revision
+        value and uses that to decide what the parents list should be.
+        """
+        last_rev = self.last_revision()
+        if last_rev is None:
+            parents = []
+        else:
+            parents = [last_rev]
+        other_parents = self.pending_merges()
+        return parents + other_parents
+
     def get_root_id(self):
         """Return the id of this trees root"""
         inv = self.read_working_inventory()
@@ -509,8 +523,10 @@ class WorkingTree(bzrlib.tree.Tree):
         # but with branch a kwarg now, passing in args as is results in the
         #message being used for the branch
         args = (DEPRECATED_PARAMETER, message, ) + args
-        Commit().commit(working_tree=self, revprops=revprops, *args, **kwargs)
+        committed_id = Commit().commit( working_tree=self, revprops=revprops,
+            *args, **kwargs)
         self._set_inventory(self.read_working_inventory())
+        return committed_id
 
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
@@ -552,7 +568,7 @@ class WorkingTree(bzrlib.tree.Tree):
             if not path:
                 path = self._inventory.id2path(file_id)
             mode = os.lstat(self.abspath(path)).st_mode
-            return bool(stat.S_ISREG(mode) and stat.S_IEXEC&mode)
+            return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     @needs_write_lock
     def add(self, files, ids=None):
@@ -1349,8 +1365,8 @@ class WorkingTree(bzrlib.tree.Tree):
         # of a nasty hack; probably it's better to have a transaction object,
         # which can do some finalization when it's either successfully or
         # unsuccessfully completed.  (Denys's original patch did that.)
-        # RBC 20060206 hookinhg into transaction will couple lock and transaction
-        # wrongly. Hookinh into unllock on the control files object is fine though.
+        # RBC 20060206 hooking into transaction will couple lock and transaction
+        # wrongly. Hooking into unlock on the control files object is fine though.
         
         # TODO: split this per format so there is no ugly if block
         if self._hashcache.needs_write and (
@@ -1402,7 +1418,7 @@ class WorkingTree(bzrlib.tree.Tree):
                                       this_tree=self)
                 self.set_last_revision(self.branch.last_revision())
             if old_tip and old_tip != self.last_revision():
-                # our last revision was not the prior branch last reivison
+                # our last revision was not the prior branch last revision
                 # and we have converted that last revision to a pending merge.
                 # base is somewhere between the branch tip now
                 # and the now pending merge
@@ -1444,23 +1460,17 @@ class WorkingTree(bzrlib.tree.Tree):
             try:
                 if file_kind(self.abspath(conflicted)) != "file":
                     text = False
-            except OSError, e:
-                if e.errno == errno.ENOENT:
-                    text = False
-                else:
-                    raise
+            except errors.NoSuchFile:
+                text = False
             if text is True:
                 for suffix in ('.THIS', '.OTHER'):
                     try:
                         kind = file_kind(self.abspath(conflicted+suffix))
-                    except OSError, e:
-                        if e.errno == errno.ENOENT:
+                        if kind != "file":
                             text = False
-                            break
-                        else:
-                            raise
-                    if kind != "file":
+                    except errors.NoSuchFile:
                         text = False
+                    if text == False:
                         break
             ctype = {True: 'text conflict', False: 'contents conflict'}[text]
             conflicts.append(Conflict.factory(ctype, path=conflicted,
@@ -1724,7 +1734,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
     def initialize(self, a_bzrdir, revision_id=None):
         """See WorkingTreeFormat.initialize().
         
-        revision_id allows creating a working tree at a differnet
+        revision_id allows creating a working tree at a different
         revision than the branch is at.
         """
         if not isinstance(a_bzrdir.transport, LocalTransport):
