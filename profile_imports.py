@@ -17,6 +17,7 @@
 """A custom importer and regex compiler which logs time spent."""
 
 import os
+import pprint
 import sre
 import sys
 import time
@@ -25,10 +26,82 @@ import time
 import_logfile = sys.stderr
 compile_logfile = sys.stderr
 
+
+_parent_stack = []
+_total_stack = {}
+_info = {}
+_cur_id = 0
+
+
+def stack_add(name, frame_name, frame_lineno, scope_name=None):
+    """Start a new record on the stack"""
+    global _cur_id
+    _cur_id += 1
+    this_stack = (_cur_id, name)
+
+    if _parent_stack:
+        _total_stack[_parent_stack[-1]].append(this_stack)
+    _total_stack[this_stack] = []
+    _parent_stack.append(this_stack)
+    _info[this_stack] = [len(_parent_stack)-1, frame_name, frame_lineno, scope_name]
+
+    return this_stack
+
+
+def stack_finish(this, cost):
+    """Finish a given entry, and record its cost in time"""
+    global _parent_stack
+
+    if  _parent_stack[-1] != this:
+        # This should only happen if there is a bug
+        # (used to happen if an import failed)
+        if this not in _parent_stack:
+            import_logfile.write('could not find %s in callstat: %s\n'
+                                % (this, pprint.pformat(_parent_stack)))
+        else:
+            idx = _parent_stack.index(this)
+            import_logfile.write('stripping off extra children: %s\n'
+                                % (_parent_stack[idx:],))
+            _parent_stack = _parent_stack[:idx]
+    else:
+        _parent_stack.pop()
+    _info[this].append(cost)
+
+
+def log_stack_info(out_file):
+    # Find all of the roots with import = 0
+    out_file.write('cum_time\tmod_time\tname\tscope\tframe\n')
+    todo = [key for key,value in _info.iteritems() if value[0] == 0]
+
+    while todo:
+        cur = todo.pop()
+        children = _total_stack[cur]
+
+        info = _info[cur]
+        # Compute the module time by removing the children times
+        mod_time = info[-1]
+        for child in children:
+            c_info = _info[child]
+            mod_time -= c_info[-1]
+
+        scope_name = info[3]
+        if scope_name is None:
+            txt = '%-48s' % (cur[1],)
+        else:
+            txt = '%-24s\tfor %-24s' % (cur[1], scope_name)
+        # indent, cum_time, mod_time, name,
+        # scope_name, frame_name, frame_lineno
+        out_file.write('%s%5.1f %5.1f %s\t@ %s:%d\n'
+            % (info[0]*'+', info[-1]*1000., mod_time, txt, info[1], info[2]))
+
+        todo.extend(reversed(children))
+
+
 _real_import = __import__
 
 def timed_import(name, globals, locals, fromlist):
     """Wrap around standard importer to log import time"""
+
     if import_logfile is None:
         return _real_import(name, globals, locals, fromlist)
 
@@ -46,11 +119,6 @@ def timed_import(name, globals, locals, fromlist):
         loc = scope_name.find('python2.4')
         if loc != -1:
             scope_name = scope_name[loc:]
-                
-    # Do the import
-    tstart = time.time()
-    mod = _real_import(name, globals, locals, fromlist)
-    tload = time.time()-tstart
 
     # Figure out the frame that is doing the importing
     frame = sys._getframe(1)
@@ -65,26 +133,16 @@ def timed_import(name, globals, locals, fromlist):
         frame_name = frame.f_globals.get('__name__', '<unknown>')
     frame_lineno = frame.f_lineno
 
-    # Log the import
-    import_logfile.write('%3.0fms %-24s\tfor %-24s\t@ %s:%d%s\n' 
-        % ((time.time()-tstart)*1000, name, scope_name,
-            frame_name, frame_lineno, extra))
+    this = stack_add(name+extra, frame_name, frame_lineno, scope_name)
 
-    # If the import took a long time, log the stack that generated
-    # this import. Especially necessary for demandloaded code
-    if tload > 0.01:
-        stack = []
-        for fnum in range(cur_frame+1, cur_frame+10):
-            try:
-                f = sys._getframe(fnum)
-            except ValueError:
-                break
-            stack.append('%s:%i' 
-                    % (f.f_globals.get('__name__', '<unknown>'),
-                        f.f_lineno)
-                    )
-        if stack:
-            import_logfile.write('\t' + ' '.join(stack) + '\n')
+    tstart = time.time()
+    try:
+        # Do the import
+        mod = _real_import(name, globals, locals, fromlist)
+    finally:
+        tload = time.time()-tstart
+        stack_finish(this, tload)
+
     return mod
 
 
@@ -95,15 +153,19 @@ def timed_compile(*args, **kwargs):
     if compile_logfile is None:
         return _real_compile(*args, **kwargs)
 
-    # Measure the compile time
-    tstart = time.time()
-    comp = _real_compile(*args, **kwargs)
-    
     # And who is requesting this?
     frame = sys._getframe(2)
     frame_name = frame.f_globals.get('__name__', '<unknown>')
     frame_lineno = frame.f_lineno
-    compile_logfile.write('%3.0fms %-40r\t@ %s:%d\n'
-        % ((time.time()-tstart)*1000, args[0][:40], 
-            frame_name, frame_lineno))
+
+    this = stack_add(repr(args[0][:40]), frame_name, frame_lineno)
+
+    tstart = time.time()
+    try:
+        # Measure the compile time
+        comp = _real_compile(*args, **kwargs)
+    finally:
+        tcompile = time.time() - tstart
+        stack_finish(this, tcompile)
+
     return comp

@@ -50,13 +50,14 @@ if hasattr(os, "unsetenv"):
 
 
 
+profiling = False
 if '--profile-imports' in sys.argv:
     sys.argv.remove('--profile-imports')
     import sre
     import profile_imports
     __builtins__.__import__ = profile_imports.timed_import
     sre._compile = profile_imports.timed_compile
-
+    profiling = True
 
 
 try:
@@ -78,6 +79,10 @@ if bzrlib.version_info[:3] != (0, 9, 0):
 
 if __name__ == '__main__':
     bzrlib.trace.enable_default_logging()
-    sys.exit(bzrlib.commands.main(sys.argv))
+    exit_val = bzrlib.commands.main(sys.argv)
+
+    if profiling:
+        profile_imports.log_stack_info(sys.stderr)
+    sys.exit(exit_val)
 else:
     pass    # should this give an error? - it can't be used as a lib
