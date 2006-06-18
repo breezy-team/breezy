@@ -3,7 +3,6 @@
 # I made one modification to profile so that it returns a pair
 # instead of just the Stats object
 
-import logging
 import sys
 import thread
 import threading
