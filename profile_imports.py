@@ -14,22 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""A custom importer and regex compiler which logs time."""
+"""A custom importer and regex compiler which logs time spent."""
 
 import os
+import sre
 import sys
 import time
-import sre
 
 
-_import_logfile = sys.stderr
-_compile_logfile = sys.stderr
+import_logfile = sys.stderr
+compile_logfile = sys.stderr
 
 _real_import = __import__
 
-def _custom_import(name, globals, locals, fromlist):
+def timed_import(name, globals, locals, fromlist):
     """Wrap around standard importer to log import time"""
-    if _import_logfile is None:
+    if import_logfile is None:
         return _real_import(name, globals, locals, fromlist)
 
     scope_name = globals.get('__name__', None)
@@ -66,7 +66,7 @@ def _custom_import(name, globals, locals, fromlist):
     frame_lineno = frame.f_lineno
 
     # Log the import
-    _import_logfile.write('%3.0fms %-24s\tfor %-24s\t@ %s:%d%s\n' 
+    import_logfile.write('%3.0fms %-24s\tfor %-24s\t@ %s:%d%s\n' 
         % ((time.time()-tstart)*1000, name, scope_name,
             frame_name, frame_lineno, extra))
 
@@ -84,15 +84,15 @@ def _custom_import(name, globals, locals, fromlist):
                         f.f_lineno)
                     )
         if stack:
-            _import_logfile.write('\t' + ' '.join(stack) + '\n')
+            import_logfile.write('\t' + ' '.join(stack) + '\n')
     return mod
 
 
 _real_compile = sre._compile
 
-def _custom_compile(*args, **kwargs):
+def timed_compile(*args, **kwargs):
     """Log how long it takes to compile a regex"""
-    if _compile_logfile is None:
+    if compile_logfile is None:
         return _real_compile(*args, **kwargs)
 
     # Measure the compile time
@@ -103,10 +103,7 @@ def _custom_compile(*args, **kwargs):
     frame = sys._getframe(2)
     frame_name = frame.f_globals.get('__name__', '<unknown>')
     frame_lineno = frame.f_lineno
-    _compile_logfile.write('%3.0fms %-40r\t@ %s:%d\n'
+    compile_logfile.write('%3.0fms %-40r\t@ %s:%d\n'
         % ((time.time()-tstart)*1000, args[0][:40], 
             frame_name, frame_lineno))
     return comp
-
-__builtins__.__import__ = _custom_import
-sre._compile = _custom_compile
