@@ -28,7 +28,7 @@ import bzrlib
 
 import svn.core, svn.ra
 import os
-from libsvn._core import SubversionException
+from libsvn.core import SubversionException
 
 
 svn.ra.initialize()
@@ -174,8 +174,6 @@ class SvnBranch(Branch):
 
     def get_physical_lock_status(self):
         return False
-
-    get_revision_delta = BzrBranch.get_revision_delta
 
     def sprout(self, to_bzrdir, revision_id=None):
         result = BranchFormat.get_default_format().initialize(to_bzrdir)
