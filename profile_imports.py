@@ -70,7 +70,7 @@ def stack_finish(this, cost):
 
 def log_stack_info(out_file):
     # Find all of the roots with import = 0
-    out_file.write('cum_time\tmod_time\tname\tscope\tframe\n')
+    out_file.write('cum   inline name\t\t\tscope\t\t\tframe\n')
     todo = [key for key,value in _info.iteritems() if value[0] == 0]
 
     while todo:
@@ -86,13 +86,14 @@ def log_stack_info(out_file):
 
         scope_name = info[3]
         if scope_name is None:
-            txt = '%-48s' % (cur[1],)
+            txt = '%-64s' % (cur[1],)
         else:
-            txt = '%-24s\tfor %-24s' % (cur[1], scope_name)
+            txt = '%-28s\tfor %-24s' % (cur[1], scope_name)
         # indent, cum_time, mod_time, name,
         # scope_name, frame_name, frame_lineno
-        out_file.write('%s%5.1f %5.1f %s\t@ %s:%d\n'
-            % (info[0]*'+', info[-1]*1000., mod_time, txt, info[1], info[2]))
+        out_file.write('%5.1f %5.1f %s %s\t@ %s:%d\n'
+            % (info[-1]*1000., mod_time*1000., '+'*info[0], 
+               txt, info[1], info[2]))
 
         todo.extend(reversed(children))
 
@@ -158,7 +159,7 @@ def timed_compile(*args, **kwargs):
     frame_name = frame.f_globals.get('__name__', '<unknown>')
     frame_lineno = frame.f_lineno
 
-    this = stack_add(repr(args[0][:40]), frame_name, frame_lineno)
+    this = stack_add(repr(args[0]), frame_name, frame_lineno)
 
     tstart = time.time()
     try:
