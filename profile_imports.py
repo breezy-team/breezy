@@ -68,9 +68,9 @@ def stack_finish(this, cost):
     _info[this].append(cost)
 
 
-def log_stack_info(out_file, sorted=True):
+def log_stack_info(out_file, sorted=True, hide_fast=True):
     # Find all of the roots with import = 0
-    out_file.write('cum   inline name\t\t\tscope\t\t\tframe\n')
+    out_file.write(' cum  inline name\t\t\t\t\t\tframe\n')
     todo = [(value[-1], key) for key,value in _info.iteritems() if value[0] == 0]
 
     if sorted:
@@ -83,6 +83,9 @@ def log_stack_info(out_file, sorted=True):
         c_times = []
 
         info = _info[cur]
+        if hide_fast and info[-1] < 0.0001:
+            continue
+
         # Compute the module time by removing the children times
         mod_time = info[-1]
         for child in children:
