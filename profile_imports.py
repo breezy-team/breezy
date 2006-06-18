@@ -1,4 +1,5 @@
 # Copyright (C) 2006 by Canonical Ltd
+# Written by John Arbash Meinel <john@arbash-meinel.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,8 +17,6 @@
 
 """A custom importer and regex compiler which logs time spent."""
 
-import os
-import pprint
 import sre
 import sys
 import time
@@ -52,19 +51,9 @@ def stack_finish(this, cost):
     """Finish a given entry, and record its cost in time"""
     global _parent_stack
 
-    if  _parent_stack[-1] != this:
-        # This should only happen if there is a bug
-        # (used to happen if an import failed)
-        if this not in _parent_stack:
-            import_logfile.write('could not find %s in callstat: %s\n'
-                                % (this, pprint.pformat(_parent_stack)))
-        else:
-            idx = _parent_stack.index(this)
-            import_logfile.write('stripping off extra children: %s\n'
-                                % (_parent_stack[idx:],))
-            _parent_stack = _parent_stack[:idx]
-    else:
-        _parent_stack.pop()
+    assert _parent_stack[-1] == this, \
+        'import stack does not end with this %s: %s' % (this, _parent_stack)
+    _parent_stack.pop()
     _info[this].append(cost)
 
 
