@@ -90,16 +90,11 @@ def log_stack_info(out_file, sorted=True):
             mod_time -= c_info[-1]
             c_times.append((c_info[-1], child))
 
-        scope_name = info[3]
-        if scope_name is None:
-            txt = '%-62s' % (cur[1][:64],)
-        else:
-            txt = '%-27s\tfor %-24s' % (cur[1], scope_name)
         # indent, cum_time, mod_time, name,
         # scope_name, frame_name, frame_lineno
-        out_file.write('%5.1f %5.1f %s %s\t@ %s:%d\n'
+        out_file.write('%5.1f %5.1f %s %-35s\t@ %s:%d\n'
             % (info[-1]*1000., mod_time*1000., '+'*info[0], 
-               txt, info[1], info[2]))
+               cur[1][:40], info[1], info[2]))
 
         if sorted:
             c_times.sort()
