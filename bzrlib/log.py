@@ -51,6 +51,7 @@ all the changes since the previous revision that touched hello.c.
 
 
 # TODO: option to show delta summaries for merged-in revisions
+from itertools import izip
 import re
 
 from bzrlib.delta import compare_trees
@@ -232,12 +233,22 @@ def _show_log(branch,
     for index, rev_id in cut_revs:
         rev_nos[rev_id] = index
 
-    revisions = branch.repository.get_revisions([r for s, r, m, e in
-                                                 merge_sorted_revisions])
-
+    def iter_revisions():
+        revision_ids = [r for s, r, m, e in merge_sorted_revisions]
+        num = 9
+        while revision_ids:
+            revisions = branch.repository.get_revisions(revision_ids[:num])
+            for revision in revisions:
+                yield revision
+            revision_ids  = revision_ids[num:]
+            num = int(num * 1.5)
+            
+        revisions = branch.repository.get_revisions()
+        for revision in revisions:
+            yield revision
     # now we just print all the revisions
     for ((sequence, rev_id, merge_depth, end_of_merge), rev) in \
-        zip(merge_sorted_revisions, revisions):
+        izip(merge_sorted_revisions, iter_revisions()):
 
         if searchRE:
             if not searchRE.search(rev.message):
