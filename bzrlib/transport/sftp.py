@@ -913,7 +913,8 @@ class SocketListener(threading.Thread):
 
     def run(self):
         while True:
-            readable, writable_unused, exception_unused = select.select([self._socket], [], [], 0.1)
+            readable, writable_unused, exception_unused = \
+                select.select([self._socket], [], [], 0.1)
             if self._stop_event.isSet():
                 return
             if len(readable) == 0:
@@ -925,11 +926,14 @@ class SocketListener(threading.Thread):
                 threading.Thread(target=self._callback, args=(s,)).start()
             except socket.error, x:
                 sys.excepthook(*sys.exc_info())
-                warning('Socket error during accept() within unit test server thread: %r' % x)
+                warning('Socket error during accept() within unit test server'
+                        ' thread: %r' % x)
             except Exception, x:
-                # probably a failed test; unit test thread will log the failure/error
+                # probably a failed test; unit test thread will log the
+                # failure/error
                 sys.excepthook(*sys.exc_info())
-                warning('Exception from within unit test server thread: %r' % x)
+                warning('Exception from within unit test server thread: %r' % 
+                        x)
 
 
 class SFTPServer(Server):
