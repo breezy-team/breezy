@@ -50,3 +50,13 @@ class DefaultBranchingScheme:
         else:
             raise BzrError("Unable to unprefix path %s" % path)
 
+class NoBranchingScheme:
+    @staticmethod
+    def is_branch(name):
+        parts = name.split("/")
+        return len(parts) == 0
+
+    @staticmethod
+    def unprefix(path):
+        return ("", path)
+
