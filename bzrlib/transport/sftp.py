@@ -46,9 +46,9 @@ from bzrlib.transport import (
     Server,
     split_url,
     Transport,
-    urlescape,
     )
 import bzrlib.ui
+import bzrlib.urlutils as urlutils
 
 try:
     import paramiko
@@ -355,7 +355,7 @@ class SFTPTransport (Transport):
         """
         # FIXME: share the common code across transports
         assert isinstance(relpath, basestring)
-        relpath = urllib.unquote(relpath).split('/')
+        relpath = urlutils.unescape(relpath).split('/')
         basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
@@ -702,7 +702,11 @@ class SFTPTransport (Transport):
         vendor = _get_ssh_vendor()
         if vendor == 'loopback':
             sock = socket.socket()
-            sock.connect((self._host, self._port))
+            try:
+                sock.connect((self._host, self._port))
+            except socket.error, e:
+                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                      % (self._host, self._port, e))
             self._sftp = SFTPClient(LoopbackSFTP(sock))
         elif vendor != 'none':
             sock = SFTPSubprocess(self._host, vendor, self._port,
@@ -723,8 +727,8 @@ class SFTPTransport (Transport):
             t.set_log_channel('bzr.paramiko')
             t.start_client()
         except paramiko.SSHException, e:
-            raise ConnectionError('Unable to reach SSH host %s:%d' %
-                                  (self._host, self._port), e)
+            raise ConnectionError('Unable to reach SSH host %s:%s: %s' 
+                                  % (self._host, self._port, e))
             
         server_key = t.get_remote_server_key()
         server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
@@ -956,7 +960,7 @@ class SFTPServer(Server):
         global _ssh_vendor
         self._original_vendor = _ssh_vendor
         _ssh_vendor = self._vendor
-        self._homedir = os.getcwdu()
+        self._homedir = os.getcwd()
         if self._server_homedir is None:
             self._server_homedir = self._homedir
         self._root = '/'
@@ -971,13 +975,20 @@ class SFTPServer(Server):
         self._listener.stop()
         _ssh_vendor = self._original_vendor
 
+    def get_bogus_url(self):
+        """See bzrlib.transport.Server.get_bogus_url."""
+        # this is chosen to try to prevent trouble with proxies, wierd dns,
+        # etc
+        return 'sftp://127.0.0.1:1/'
+
+
 
 class SFTPFullAbsoluteServer(SFTPServer):
     """A test server for sftp transports, using absolute urls and ssh."""
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlescape(self._homedir[1:]))
+        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
 
 
 class SFTPServerWithoutSSH(SFTPServer):
@@ -1011,7 +1022,7 @@ class SFTPAbsoluteServer(SFTPServerWithoutSSH):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlescape(self._homedir[1:]))
+        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
 
 
 class SFTPHomeDirServer(SFTPServerWithoutSSH):

@@ -59,7 +59,7 @@ class TestSmartAdd(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         child_tree = self.make_branch_and_tree('original/child')
-        smart_add_tree(wt, (u".",))
+        smart_add_tree(wt, (".",))
         for path in paths:
             self.assertNotEqual((path, wt.path2id(path)),
                                 (path, None))
@@ -75,10 +75,29 @@ class TestSmartAdd(TestCaseWithTransport):
         paths = ("file1", "file2")
         self.build_tree(paths)
         wt = self.make_branch_and_tree('.')
-        branch = wt.branch
         smart_add_tree(wt, paths)
         for path in paths:
             self.assertNotEqual(wt.path2id(path), None)
+    
+    def test_add_ignored_nested_paths(self):
+        """Test smart-adding a list of paths which includes ignored ones."""
+        wt = self.make_branch_and_tree('.')
+        tree_shape = ("adir/", "adir/CVS/", "adir/CVS/afile", "adir/CVS/afile2")
+        add_paths = ("adir/CVS", "adir/CVS/afile", "adir")
+        expected_paths = ("adir", "adir/CVS", "adir/CVS/afile", "adir/CVS/afile2")
+        self.build_tree(tree_shape)
+        smart_add_tree(wt, add_paths)
+        for path in expected_paths:
+            self.assertNotEqual(wt.path2id(path), None, "No id added for %s" % path)
+
+    def test_save_false(self):
+        """Test smart-adding a path with save set to false."""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['file'])
+        smart_add_tree(wt, ['file'], save=False)
+        self.assertNotEqual(wt.path2id('file'), None, "No id added for 'file'")
+        wt.read_working_inventory()
+        self.assertEqual(wt.path2id('file'), None)
 
     def test_add_dry_run(self):
         """Test a dry run add, make sure nothing is added."""
@@ -186,32 +205,18 @@ class TestSmartAddBranch(TestCaseWithTransport):
 
 class TestAddActions(TestCase):
 
-    def test_null(self):
-        from bzrlib.add import add_action_null
-        self.run_action(add_action_null, "", False)
+    def test_quiet(self):
+        self.run_action("")
 
-    def test_add(self):
-        self.entry = InventoryFile("id", "name", None)
-        from bzrlib.add import add_action_add
-        self.run_action(add_action_add, "", True)
+    def test__print(self):
+        self.run_action("added path\n")
 
-    def test_add_and_print(self):
-        from bzrlib.add import add_action_add_and_print
-        self.run_action(add_action_add_and_print, "added path\n", True)
-
-    def test_print(self):
-        from bzrlib.add import add_action_print
-        self.run_action(add_action_print, "added path\n", False)
-
-    def run_action(self, action, output, should_add):
-        from StringIO import StringIO
+    def run_action(self, output):
+        from bzrlib.add import AddAction, FastPath
+        from cStringIO import StringIO
         inv = Inventory()
         stdout = StringIO()
+        action = AddAction(to_file=stdout, should_print=bool(output))
 
-        self.apply_redirected(None, stdout, None, action, inv, 'path', 'file')
+        self.apply_redirected(None, stdout, None, action, inv, None, FastPath('path'), 'file')
         self.assertEqual(stdout.getvalue(), output)
-
-        if should_add:
-            self.assertNotEqual(inv.path2id('path'), None)
-        else:
-            self.assertEqual(inv.path2id('path'), None)

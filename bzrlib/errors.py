@@ -55,6 +55,13 @@ fullstop.
 
 from warnings import warn
 
+from bzrlib.patches import (PatchSyntax, 
+                            PatchConflict, 
+                            MalformedPatchHeader,
+                            MalformedHunkHeader,
+                            MalformedLine,)
+
+
 # based on Scott James Remnant's hct error classes
 
 # TODO: is there any value in providing the .args field used by standard
@@ -159,7 +166,7 @@ class NotLocalUrl(BzrNewError):
 class BzrCommandError(BzrError):
     # Error from malformed user command
     # This is being misused as a generic exception
-    # pleae subclass. RBC 20051030
+    # please subclass. RBC 20051030
     #
     # I think it's a waste of effort to differentiate between errors that
     # are not intended to be caught anyway.  UI code need not subclass
@@ -211,6 +218,19 @@ class PermissionDenied(PathError):
     """Permission denied: %(path)r%(extra)s"""
 
 
+class InvalidURL(PathError):
+    """Invalid url supplied to transport: %(path)r%(extra)s"""
+
+
+class InvalidURLJoin(PathError):
+    """Invalid URL join request: %(args)s%(extra)s"""
+
+    def __init__(self, msg, base, args):
+        PathError.__init__(self, base, msg)
+        self.args = [base]
+        self.args.extend(args)
+
+
 class PathNotChild(BzrNewError):
     """Path %(path)r is not a child of path %(base)r%(extra)s"""
     def __init__(self, path, base, extra=None):
@@ -223,8 +243,15 @@ class PathNotChild(BzrNewError):
             self.extra = ''
 
 
+# TODO: This is given a URL; we try to unescape it but doing that from inside
+# the exception object is a bit undesirable.
+# TODO: Probably this behavior of should be a common superclass 
 class NotBranchError(PathError):
     """Not a branch: %(path)s"""
+
+    def __init__(self, path):
+       import bzrlib.urlutils as urlutils
+       self.path = urlutils.unescape_for_display(path, 'ascii')
 
 
 class AlreadyBranchError(PathError):
@@ -484,7 +511,7 @@ class AmbiguousBase(BzrError):
     def __init__(self, bases):
         warn("BzrError AmbiguousBase has been deprecated as of bzrlib 0.8.",
                 DeprecationWarning)
-        msg = "The correct base is unclear, becase %s are all equally close" %\
+        msg = "The correct base is unclear, because %s are all equally close" %\
             ", ".join(bases)
         BzrError.__init__(self, msg)
         self.bases = bases
@@ -740,6 +767,21 @@ class MustUseDecorated(Exception):
     """
 
 
+class NoBundleFound(BzrNewError):
+    """No bundle was found in %(filename)s"""
+    def __init__(self, filename):
+        BzrNewError.__init__(self)
+        self.filename = filename
+
+
+class BundleNotSupported(BzrNewError):
+    """Unable to handle bundle version %(version)s: %(msg)s"""
+    def __init__(self, version, msg):
+        BzrNewError.__init__(self)
+        self.version = version
+        self.msg = msg
+
+
 class MissingText(BzrNewError):
     """Branch %(base)s is missing revision %(text_revision)s of %(file_id)s"""
 
@@ -818,6 +860,13 @@ class UninitializableFormat(BzrNewError):
     def __init__(self, format):
         BzrNewError.__init__(self)
         self.format = format
+
+
+class NoDiff(BzrNewError):
+    """Diff is not installed on this machine: %(msg)s"""
+
+    def __init__(self, msg):
+        super(NoDiff, self).__init__(msg=msg)
 
 
 class NoDiff3(BzrNewError):
@@ -903,3 +952,33 @@ class IllegalPath(BzrNewError):
     def __init__(self, path):
         BzrNewError.__init__(self)
         self.path = path
+
+
+class TestamentMismatch(BzrNewError):
+    """Testament did not match expected value.  
+       For revision_id {%(revision_id)s}, expected {%(expected)s}, measured 
+       {%(measured)s}
+    """
+    def __init__(self, revision_id, expected, measured):
+        self.revision_id = revision_id
+        self.expected = expected
+        self.measured = measured
+
+
+class NotABundle(BzrNewError):
+    """Not a bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        self.text = text
+
+
+class BadBundle(Exception): pass
+
+
+class MalformedHeader(BadBundle): pass
+
+
+class MalformedPatches(BadBundle): pass
+
+
+class MalformedFooter(BadBundle): pass
