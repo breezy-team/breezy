@@ -23,7 +23,7 @@ from bzrlib.errors import NoSuchRevision, InvalidRevisionId, BzrError
 from bzrlib.progress import ProgressBar
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
             ROOT_ID
-from libsvn._core import SubversionException
+from libsvn.core import SubversionException
 import svn.core
 import bzrlib
 import branch

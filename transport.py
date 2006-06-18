@@ -18,7 +18,7 @@ from bzrlib.transport import Transport
 from cStringIO import StringIO
 import svn.ra
 import os
-from bzrlib.errors import NoSuchFile
+from bzrlib.errors import NoSuchFile, NotBranchError
 from scheme import DefaultBranchingScheme
 
 def _create_auth_baton(pool):
@@ -86,7 +86,9 @@ class SvnRaTransport(Transport):
         if not self.root_url.startswith("svn+"):
             self.root_url = "svn+%s" % self.root_url
 
-        assert self.svn_url.startswith(self.svn_root_url)
+        # Browsed above this directory
+        if not self.svn_url.startswith(self.svn_root_url):
+            raise NotBranchError(url)
 
         self.path = self.svn_url[len(self.svn_root_url)+1:]
 

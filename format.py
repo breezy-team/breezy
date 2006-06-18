@@ -17,7 +17,7 @@
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from repository import SvnRepository
 from branch import SvnBranch
-from libsvn._core import SubversionException
+from libsvn.core import SubversionException
 from bzrlib.errors import NotBranchError, NotLocalUrl
 from bzrlib.lockable_files import TransportLock
 import svn.core
