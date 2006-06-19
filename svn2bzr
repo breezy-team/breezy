@@ -439,7 +439,7 @@ class BranchCreator(object):
                         self.remove(node_path)
 
                     if node.copyfrom_path:
-                        copy_path = node.copyfrom_path
+                        copy_path = node.copyfrom_path.lstrip("/")
                         copy_revno = node.copyfrom_rev
 
                         if copy_path in deleted and copy_revno == revno-1:
@@ -574,9 +574,10 @@ class DynamicBranchCreator(BranchCreator):
             dest_abspath = os.path.join(self._root, unpref_dest_path)
             (orig_branch, revid) = self._revisions[orig_revno][unpref_orig_path]
             os.makedirs(dest_abspath)
-            branch = orig_branch.bzrdir.sprout(url=dest_abspath, revision_id=revid).open_branch()
+            bzrdir = orig_branch.bzrdir.sprout(url="file://%s" % dest_abspath, revision_id=revid)
+            branch = bzrdir.open_branch()
             self._branches[unpref_dest_path] = branch
-            self._new_branch(branch, branch.working_tree())
+            self._new_branch(branch, bzrdir.open_workingtree())
 
     def remove(self, path):
         unpref_path = self.unprefix(path)
@@ -698,6 +699,13 @@ def main():
         sys.exit("error: %s" % e)
     except KeyboardInterrupt:
         sys.exit("Interrupted")
+
+def debug(sig, foo):
+    import pdb
+    pdb.set_trace()
+
+import signal
+signal.signal(2, debug)
 
 if __name__ == "__main__":
     main()
