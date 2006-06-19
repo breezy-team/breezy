@@ -30,6 +30,7 @@ import bz2
 logger = logging.getLogger("bzr")
 logger.addHandler(logging.FileHandler("/dev/null"))
 
+from bzrlib.bzrdir import BzrDir
 from bzrlib.branch import Branch
 import bzrlib.trace
 from dumpfile import Dump
@@ -83,11 +84,11 @@ class BranchCreator(object):
         self._filter = []
         self._log = log or get_logger()
 
-    def _new_branch(self, branch):
+    def _new_branch(self, branch, wt):
         # Ugly, but let's wait until that API stabilizes. Right
         # now branch.working_tree() will open the branch again.
         self._log.debug("Creating new branch: %s" % branch.base)
-        branch.__wt = branch.working_tree()
+        branch.__wt = wt
 
     def _remove_branch(self, branch):
         raise NotImplementedError
@@ -133,7 +134,7 @@ class BranchCreator(object):
             self._log.debug("Adding file: %s" % abspath)
             open(abspath, "w").write(content)
             branch.__wt.add(path_branch)
-            self._changed[branch] = True
+            self._changed[branch.__wt] = True
 
     def change_file(self, path, content):
         branch, path_branch = self._get_branch_path(path)
@@ -141,7 +142,7 @@ class BranchCreator(object):
             abspath = branch.__wt.abspath(path_branch)
             self._log.debug("Changing file: %s" % abspath)
             open(abspath, "w").write(content)
-            self._changed[branch] = True
+            self._changed[branch.__wt] = True
 
     def copy_file(self, orig_path, orig_revno, dest_path):
         dest_branch, dest_path_branch = self._get_branch_path(dest_path)
@@ -153,7 +154,7 @@ class BranchCreator(object):
                             (orig_path, orig_revno, abspath))
             open(abspath, "w").write(orig_content)
             dest_branch.__wt.add(dest_path_branch)
-            self._changed[dest_branch] = True
+            self._changed[dest_branch.__wt] = True
 
     def add_dir(self, path):
         branch, path_branch = self._get_branch_path(path)
@@ -177,7 +178,7 @@ class BranchCreator(object):
                     if not os.path.isdir(dir):
                         os.mkdir(dir)
                         branch.__wt.add(branch.__wt.relpath(dir))
-            self._changed[branch] = True
+            self._changed[branch.__wt] = True
 
     def copy_dir(self, orig_path, orig_revno, dest_path):
         # Inside that method we cannot assume that dest_branch
@@ -260,7 +261,7 @@ class BranchCreator(object):
         if not branch.__wt.path2id('.bzrignore'):
             branch.__wt.add('.bzrignore')
 
-        self._changed[branch] = True
+        self._changed[branch.__wt] = True
 
     def set_executable(self, path, executable):
         branch, path_branch = self._get_branch_path(path)
@@ -275,7 +276,7 @@ class BranchCreator(object):
         else:
             mode = mode &~ 0111
         os.chmod(abspath, mode)
-        self._changed[branch] = True
+        self._changed[branch.__wt] = True
 
     def copy(self, orig_path, orig_revno, dest_path):
         orig_entry = self._dump.get_entry(orig_revno, orig_path)
@@ -301,7 +302,7 @@ class BranchCreator(object):
                             (orig_abspath,
                              dest_branch.__wt.abspath(dest_path_branch)))
             orig_branch.__wt.rename_one(orig_path_branch, dest_path_branch)
-            self._changed[orig_branch] = True
+            self._changed[orig_branch.__wt] = True
 
     def remove(self, path):
         branch, path_branch = self._get_branch_path(path)
@@ -331,12 +332,12 @@ class BranchCreator(object):
                     self._log.debug("Removing file: %s" % abspath)
                     os.unlink(abspath)
                 branch.__wt.remove(path_branch)
-                self._changed[branch] = True
+                self._changed[branch.__wt] = True
 
-    def check_uncommitted(self,branch):
+    def check_uncommitted(self, wt):
         from bzrlib.delta import compare_trees
 
-        delta = compare_trees(branch.__wt.basis_tree(), branch.__wt)
+        delta = compare_trees(wt.basis_tree(), wt)
 
         assert(delta.modified == [])
         assert(delta.added == [])
@@ -346,11 +347,11 @@ class BranchCreator(object):
     def commit(self, revno, message, committer, timestamp):
         if self._changed:
             self._log.info("Committing revision %d" % revno)
-            for branch in self._changed:
-                branch.__wt.commit(message, committer=committer,
+            for wt in self._changed:
+                wt.commit(message, committer=committer,
                                    timestamp=timestamp, verbose=False)
                 if self._check:
-                    self.check_uncommitted(branch)
+                    self.check_uncommitted(wt)
         else:
             self._log.info("Nothing changed in revision %d" % revno)
         self._revisions[revno] = revs = {}
@@ -469,8 +470,9 @@ class SingleBranchCreator(BranchCreator):
 
     def _get_branch(self, path):
         if not self._branch:
-            self._branch = Branch.initialize(self._root)
-            self._new_branch(self._branch)
+            wt = BzrDir.create_standalone_workingtree(self._root)
+            self._branch = wt.branch
+            self._new_branch(self._branch, wt)
         return self._branch
 
     def _get_all_branches(self):
@@ -528,9 +530,10 @@ class DynamicBranchCreator(BranchCreator):
             if self.is_good(unpref_path) and self._want_branch(unpref_path):
                 branch_path = os.path.join(self._root, unpref_path)
                 os.makedirs(branch_path)
-                branch = Branch.initialize(branch_path)
+                wt = BzrDir.create_standalone_workingtree(branch_path)
+                branch = wt.branch
                 self._branches[unpref_path] = branch
-                self._new_branch(branch)
+                self._new_branch(branch, wt)
         else:
             BranchCreator.add_dir(self, path)
  
@@ -556,7 +559,7 @@ class DynamicBranchCreator(BranchCreator):
             os.makedirs(dest_abspath)
             branch = orig_branch.bzrdir.sprout(url=dest_abspath, revision_id=revid).open_branch()
             self._branches[unpref_dest_path] = branch
-            self._new_branch(branch)
+            self._new_branch(branch, branch.working_tree())
 
     def remove(self, path):
         unpref_path = self.unprefix(path)
