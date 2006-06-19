@@ -14,6 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import errno
+import sys
+
 import bzrlib.errors as errors
 import bzrlib.urlutils
 import bzrlib.transport
@@ -41,4 +44,9 @@ def read_bundle_from_url(url):
         return bzrlib.bundle.read_bundle.BundleReader(f)
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
-
+    except (IOError, OSError), e:
+        # On win32 accessing a directory as a file gives EACCES
+        # not ENOENT or EISDIR
+        if sys.platform == 'win32' and e.errno in (errno.EACCES,):
+            raise errors.NotABundle(str(e))
+        raise
