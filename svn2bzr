@@ -24,9 +24,12 @@ import optparse
 import logging
 import sys, os
 import shutil
+import tempfile
 import time
 import re
 import svn.ra, svn.core, svn.repos
+from svn.core import SubversionException
+from cStringIO import StringIO
 
 logger = logging.getLogger("bzr")
 logger.addHandler(logging.FileHandler("/dev/null"))
@@ -34,6 +37,7 @@ logger.addHandler(logging.FileHandler("/dev/null"))
 from bzrlib.bzrdir import BzrDir
 from bzrlib.branch import Branch
 import bzrlib.osutils as osutils
+from bzrlib.progress import ProgressBar
 import bzrlib.trace
 
 VERSION = "0.8.2"
@@ -71,7 +75,6 @@ class BranchCreator(object):
 
     def __init__(self, ra, root=None, prefix=None, log=None, check=False):
         self._ra = ra
-        self._latest_revnum = svn.ra.get_latest_revnum(self._ra)
         self._check = check
         self._root = os.path.realpath(root)
         if prefix:
@@ -363,40 +366,48 @@ class BranchCreator(object):
 
     def run(self):
 
-        revision = None
         revno = None
 
         def commit():
+            revprops = svn.ra.rev_proplist(self._ra, revno)
+
             # Parse timestamps like 2005-09-23T17:52:33.719737Z
-            time_tokens = revision.prop["svn:date"].split(".")
+            time_tokens = revprops["svn:date"].split(".")
             parsed_time = time.strptime(time_tokens[0],
                                         "%Y-%m-%dT%H:%M:%S")
             timestamp = time.mktime(parsed_time)
             timestamp += float(time_tokens[1][:-1])
 
-            self.commit(revno, revision.prop.get("svn:log", ""),
-                        committer=revision.prop.get("svn:author"),
+            self.commit(revno, revprops.get("svn:log", ""),
+                        committer=revprops["svn:author"],
                         timestamp=timestamp)
 
         deleted = {}
 
         logs = {}
 
-        def rcvr(paths,revno,author,date,message,pool):
+        def rcvr(paths, revno, author, date, message, pool):
             if not paths:
                 return
             
             logs[revno] = paths
 
-        svn.ra.get_log(self._ra, ['/'], 0, self._latest_revnum, 0, True, False, rcvr)
+        latest_revnum = svn.ra.get_latest_revnum(self._ra)
+
+        svn.ra.get_log(self._ra, ['/'], 0, latest_revnum, 0, True, False, rcvr)
+
+        pb = ProgressBar()
 
         for revno in logs:
+            pb.update('processing revision', revno, latest_revnum)
             paths = logs[revno]
             for node_path in paths:
+                node = paths[node_path]
+                node_path = node_path.lstrip("/")
                 if self.unprefix(node_path) is None:
                     continue
 
-                node_action = paths[node_path].action
+                node_action = node.action
                 node_kind = svn.ra.check_path(self._ra, node_path.encode('utf8'), revno)
                 
                 assert node_kind in (svn.core.svn_node_file, svn.core.svn_node_dir)
@@ -408,6 +419,7 @@ class BranchCreator(object):
                     content = stream.read()
                 else:
                     (_, _, props) = svn.ra.get_dir2(self._ra, node_path.encode('utf8'), revno, 0)
+                    content = None
 
                 if node_action == 'D':
                     self.remove(node_path)
@@ -419,9 +431,9 @@ class BranchCreator(object):
                     if node_action == 'R':
                         self.remove(node_path)
 
-                    if paths[node_path].copyfrom_path:
-                        copy_path = paths[node_path].copyfrom_path
-                        copy_revno = paths[node_path].copyfrom_rev
+                    if node.copyfrom_path:
+                        copy_path = node.copyfrom_path
+                        copy_revno = node.copyfrom_rev
 
                         if copy_path in deleted and copy_revno == revno-1:
                             self.move(copy_path, copy_revno, node_path, content)
@@ -453,12 +465,14 @@ class BranchCreator(object):
                             props['svn:ignore'].splitlines())
 
             commit()
+        
+        pb.clear()
 
 
 class SingleBranchCreator(BranchCreator):
 
-    def __init__(self, dump, root, prefix=None, log=None, check=False):
-        BranchCreator.__init__(self, dump, root, prefix, log, check)
+    def __init__(self, ra, root, prefix=None, log=None, check=False):
+        BranchCreator.__init__(self, ra, root, prefix, log, check)
         self._branch = None
 
     def _remove_branch(self, branch):
@@ -482,8 +496,8 @@ class SingleBranchCreator(BranchCreator):
 class DynamicBranchCreator(BranchCreator):
     ATTICDIR = "attic"
 
-    def __init__(self, dump, root, prefix=None, log=None, check=False):
-        BranchCreator.__init__(self, dump, root, prefix, log, check)
+    def __init__(self, ra, root, prefix=None, log=None, check=False):
+        BranchCreator.__init__(self, ra, root, prefix, log, check)
 
     def _remove_branch(self, branch):
         # Retire a branch to the attic
@@ -585,17 +599,17 @@ def svn2bzr(url, output_dir, creator_class=None, prefix=None, filter=[], consist
     if creator_class is None:
         creator_class = SingleBranchCreator
 
-    self.tmp_repos = None
+    tmp_repos = None
 
     if os.path.isfile(url):
-        self.tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
-        repos = svn.repos.svn_repos_create(self.tmp_repos, '', '', None, None)
+        tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
+        repos = svn.repos.svn_repos_create(tmp_repos, '', '', None, None)
         try:
-            svn.repos.svn_repos_load_fs2(repos, dumpfile, StringIO(),
-            svn.repos.svn_repos_load_uuid_default, '', 0, 0, None)
-        except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):            raise NotBranchError(path=nested_transport.base)
+            svn.repos.load_fs2(repos, open(url), StringIO(), svn.repos.load_uuid_default, '', 0, 0, None)
+        except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):            
+            raise Error, "%s is not a dump file" % url
         
-        url = "file://%s" % self.tmp_repos
+        url = "file://%s" % tmp_repos
 
     elif os.path.isdir(url):
         url = "file://%s" % url
@@ -609,8 +623,8 @@ def svn2bzr(url, output_dir, creator_class=None, prefix=None, filter=[], consist
 
     creator.run()
 
-    if self.tmp_repos:
-        osutils.rmtree(self.tmp_repos)
+    if tmp_repos:
+        osutils.rmtree(tmp_repos)
 
 def append_filter(option, opt, value, parser):
     lst = getattr(parser.values, option.dest)
