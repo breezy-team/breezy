@@ -31,6 +31,9 @@ import svn.ra, svn.core, svn.repos
 from svn.core import SubversionException
 from cStringIO import StringIO
 
+from bzrlib.plugin import load_plugins
+load_plugins()
+
 logger = logging.getLogger("bzr")
 logger.addHandler(logging.FileHandler("/dev/null"))
 
@@ -211,10 +214,11 @@ class BranchCreator(object):
             path = "%s/%s" % (orig_path, name)
             tail = path[len(orig_path)+1:]
             copy_dest_path = os.path.join(dest_path, tail)
-            node_kind = svn.ra.check_path(self._ra, path)
+            node_kind = svn.ra.check_path(self._ra, path, orig_revno)
             if node_kind == svn.core.svn_node_file:
                 stream = StringIO()
-                svn.ra.get_file(self.repository.ra, node_path.encode('utf8'), revno, stream)
+                svn.ra.get_file(self._ra, path.encode('utf8'), orig_revno, 
+                                stream)
                 self.add_file(copy_dest_path, stream.read())
             elif node_kind == svn.core.svn_node_dir:
                 self.copy_dir(copy_dest_path)
@@ -284,7 +288,7 @@ class BranchCreator(object):
         self._changed[branch.__wt] = True
 
     def copy(self, orig_path, orig_revno, dest_path, content):
-        node_kind = svn.ra.check_path(self._ra, orig_path)
+        node_kind = svn.ra.check_path(self._ra, orig_path, orig_revno)
         if node_kind == svn.core.svn_node_dir:
             self.copy_dir(orig_path, orig_revno, dest_path)
         else:
@@ -351,19 +355,17 @@ class BranchCreator(object):
 
     def commit(self, revno, message, committer, revprops, timestamp):
         if self._changed:
-            self._log.info("Committing revision %d" % revno)
+            self._log.debug("Committing revision %d" % revno)
             for wt in self._changed:
-				# TODO: Set revision id
-                wt.commit(message, committer=committer,
-                                   timestamp=timestamp, 
-								   revprops=revprops,
-								   verbose=False)
+                # TODO: Set revision id
+                wt.commit(message, committer=committer, timestamp=timestamp, 
+                          revprops=revprops, verbose=False)
                 if self._check:
                     self.check_uncommitted(wt)
         else:
-            self._log.info("Nothing changed in revision %d" % revno)
+            self._log.debug("Nothing changed in revision %d" % revno)
         self._revisions[revno] = revs = {}
-        for (path,branch) in self._branches.items():
+        for (path, branch) in self._branches.items():
             revs[path] = (branch, branch.last_revision())
         self._changed.clear()
 
@@ -383,8 +385,7 @@ class BranchCreator(object):
 
             self.commit(revno, revprops.get("svn:log", ""),
                         committer=revprops["svn:author"],
-						revprops=revprops,
-                        timestamp=timestamp)
+                        revprops=revprops, timestamp=timestamp)
 
         deleted = {}
 
@@ -411,28 +412,28 @@ class BranchCreator(object):
                 if self.unprefix(node_path) is None:
                     continue
 
-                node_action = node.action
                 node_kind = svn.ra.check_path(self._ra, node_path.encode('utf8'), revno)
                 
-                assert node_kind in (svn.core.svn_node_file, svn.core.svn_node_dir)
-                assert node_action in ('A','M','D','R')
+                assert (node_kind in (svn.core.svn_node_file, svn.core.svn_node_dir) or (node.action == 'D' and node_kind == svn.core.svn_node_none))
+                assert node.action in ('A', 'M', 'D', 'R')
 
                 if node_kind == svn.core.svn_node_file:
                     stream = StringIO()
                     (_, props) = svn.ra.get_file(self._ra, node_path.encode('utf8'), revno, stream)
                     content = stream.read()
-                else:
+                elif node_kind == svn.core.svn_node_dir:
                     (_, _, props) = svn.ra.get_dir2(self._ra, node_path.encode('utf8'), revno, 0)
                     content = None
-
-                if node_action == 'D':
-                    self.remove(node_path)
+                elif node_kind == svn.core.svn_node_none:
                     content = None
+
+                if node.action == 'D':
+                    self.remove(node_path)
                     deleted[node_path] = True
 
-                elif node_action == 'A' or node_action == 'R':
+                elif node.action == 'A' or node.action == 'R':
 
-                    if node_action == 'R':
+                    if node.action == 'R':
                         self.remove(node_path)
 
                     if node.copyfrom_path:
@@ -443,13 +444,11 @@ class BranchCreator(object):
                             self.move(copy_path, copy_revno, node_path, content)
                         elif node_kind == svn.core.svn_node_file:
                             self.copy_file(copy_path, copy_revno, node_path, content)
-                            content = None
                         else:
                             self.copy_dir(copy_path, copy_revno, node_path)
 
                     elif node_kind == svn.core.svn_node_file:
                         self.add_file(node_path, content)
-                        content = None
 
                     elif node_kind == svn.core.svn_node_dir:
                         self.add_dir(node_path)
@@ -512,18 +511,18 @@ class DynamicBranchCreator(BranchCreator):
         if not os.path.isdir(branch_top):
             os.makedirs(branch_top)
         attic_path = os.path.join(branch_top, attic_branch)
-        shutil.move(branch.base, attic_path)
-        new_branch = Branch.open(attic_path)
-        self._new_branch(new_branch)
+        shutil.move(branch._transport.local_abspath('.'), attic_path)
+        bzrdir = BzrDir.open(attic_path)
+        self._new_branch(bzrdir.open_branch(), bzrdir.open_workingtree())
 
         # Set correct path for old revisions that used this branch
         for revno in self._revisions:
             if not self._revisions[revno].has_key(rel_path):
                 continue
 
-            (b,r) = self._revisions[revno][rel_path] 
+            (b, r) = self._revisions[revno][rel_path] 
             if b == branch:
-                self._revisions[revno][rel_path] = (new_branch,r)
+                self._revisions[revno][rel_path] = (new_branch, r)
         
         del self._branches[rel_path]
 
@@ -531,7 +530,7 @@ class DynamicBranchCreator(BranchCreator):
         raise NotImplemented
 
     def _get_branch(self, path):
-        for (bp,branch) in self._branches.items():
+        for (bp, branch) in self._branches.items():
             if path == bp or path.startswith(bp+"/"):
                 return branch
 
@@ -570,7 +569,7 @@ class DynamicBranchCreator(BranchCreator):
 
             # Create new branch
             dest_abspath = os.path.join(self._root, unpref_dest_path)
-            (orig_branch,revid) = self._revisions[orig_revno][unpref_orig_path]
+            (orig_branch, revid) = self._revisions[orig_revno][unpref_orig_path]
             os.makedirs(dest_abspath)
             branch = orig_branch.bzrdir.sprout(url=dest_abspath, revision_id=revid).open_branch()
             self._branches[unpref_dest_path] = branch
