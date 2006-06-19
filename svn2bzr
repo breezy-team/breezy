@@ -429,6 +429,7 @@ class BranchCreator(object):
                 if node_kind == svn.core.svn_node_file:
                     stream = StringIO()
                     (_, props) = svn.ra.get_file(self._ra, node_path.encode('utf8'), revno, stream)
+                    stream.seek(0)
                     content = stream.read()
                 elif node_kind == svn.core.svn_node_dir:
                     (_, _, props) = svn.ra.get_dir2(self._ra, node_path.encode('utf8'), revno, 0)
