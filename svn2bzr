@@ -1,6 +1,7 @@
 #!/usr/bin/env python2.4
 #
 # Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005-2006 by Jelmer Vernooij
 #
 # Written by Gustavo Niemeyer <gustavo@niemeyer.net>
 # Bugfixes and additional features by Jelmer Vernooij <jelmer@samba.org>
@@ -23,17 +24,24 @@ import optparse
 import logging
 import sys, os
 import shutil
+import tempfile
 import time
 import re
-import bz2
+import svn.ra, svn.core, svn.repos
+from svn.core import SubversionException
+from cStringIO import StringIO
+
+from bzrlib.plugin import load_plugins
+load_plugins()
 
 logger = logging.getLogger("bzr")
 logger.addHandler(logging.FileHandler("/dev/null"))
 
 from bzrlib.bzrdir import BzrDir
 from bzrlib.branch import Branch
+import bzrlib.osutils as osutils
+from bzrlib.progress import ProgressBar
 import bzrlib.trace
-from dumpfile import Dump
 
 VERSION = "0.8.2"
 
@@ -68,8 +76,8 @@ class Error(Exception): pass
 
 class BranchCreator(object):
 
-    def __init__(self, dump, root=None, prefix=None, log=None, check=False):
-        self._dump = dump
+    def __init__(self, ra, root=None, prefix=None, log=None, check=False):
+        self._ra = ra
         self._check = check
         self._root = os.path.realpath(root)
         if prefix:
@@ -89,6 +97,8 @@ class BranchCreator(object):
         # now branch.working_tree() will open the branch again.
         self._log.debug("Creating new branch: %s" % branch.base)
         branch.__wt = wt
+        config = bzrlib.config.LocationConfig(branch.base)
+        config.set_user_option('create_signatures', 'never')
 
     def _remove_branch(self, branch):
         raise NotImplementedError
@@ -144,15 +154,13 @@ class BranchCreator(object):
             open(abspath, "w").write(content)
             self._changed[branch.__wt] = True
 
-    def copy_file(self, orig_path, orig_revno, dest_path):
+    def copy_file(self, orig_path, orig_revno, dest_path, content):
         dest_branch, dest_path_branch = self._get_branch_path(dest_path)
         if dest_branch:
-            orig_entry = self._dump.get_entry(orig_revno, orig_path)
-            orig_content = self._dump.get_entry_content(orig_entry)
             abspath = dest_branch.__wt.abspath(dest_path_branch)
             self._log.debug("Copying file: %s at %d to %s" %
                             (orig_path, orig_revno, abspath))
-            open(abspath, "w").write(orig_content)
+            open(abspath, "w").write(content)
             dest_branch.__wt.add(dest_path_branch)
             self._changed[dest_branch.__wt] = True
 
@@ -172,7 +180,7 @@ class BranchCreator(object):
                 branch.__wt.add(path_branch)
             else:
                 path_parts = path_branch.split('/')
-                dir = branch.base
+                dir = branch._transport.local_abspath('.')
                 for part in path_parts:
                     dir = "%s/%s" % (dir, part)
                     if not os.path.isdir(dir):
@@ -202,18 +210,21 @@ class BranchCreator(object):
         # Got it? :-)
         #
         dest_branch, dest_path_branch = self._get_branch_path(dest_path)
-        entries = self._dump.get_dir_tree(orig_revno, orig_path).items()
-        entries.sort()
+        (dirents, _, _) = svn.ra.get_dir2(self._ra, orig_path.encode('utf8'), orig_revno, 0)
         changed = False
-        for path, entry in entries:
+        for name in dirents:
+            path = "%s/%s" % (orig_path, name)
             tail = path[len(orig_path)+1:]
             copy_dest_path = os.path.join(dest_path, tail)
-            node_kind = entry["node-kind"]
-            if node_kind == "file":
-                content = self._dump.get_entry_content(entry)
-                self.add_file(copy_dest_path, content)
-            elif node_kind == "dir":
-                self.add_dir(copy_dest_path)
+            node_kind = svn.ra.check_path(self._ra, path, orig_revno)
+            if node_kind == svn.core.svn_node_file:
+                stream = StringIO()
+                svn.ra.get_file(self._ra, path.encode('utf8'), orig_revno, 
+                                stream)
+                self.add_file(copy_dest_path, stream.read())
+            elif node_kind == svn.core.svn_node_dir:
+                self.copy_dir(copy_dest_path)
+
 
     def set_ignore_glob(self, path, globs):
         from bzrlib.atomicfile import AtomicFile
@@ -278,19 +289,19 @@ class BranchCreator(object):
         os.chmod(abspath, mode)
         self._changed[branch.__wt] = True
 
-    def copy(self, orig_path, orig_revno, dest_path):
-        orig_entry = self._dump.get_entry(orig_revno, orig_path)
-        if orig_entry["node-kind"] == "dir":
+    def copy(self, orig_path, orig_revno, dest_path, content):
+        node_kind = svn.ra.check_path(self._ra, orig_path, orig_revno)
+        if node_kind == svn.core.svn_node_dir:
             self.copy_dir(orig_path, orig_revno, dest_path)
         else:
-            self.copy_file(orig_path, orig_revno, dest_path)
+            self.copy_file(orig_path, orig_revno, dest_path, content)
 
-    def move(self, orig_path, orig_revno, dest_path):
+    def move(self, orig_path, orig_revno, dest_path, content):
         orig_branch, orig_path_branch = self._get_branch_path(orig_path)
         dest_branch, dest_path_branch = self._get_branch_path(dest_path)
         if not dest_branch or orig_branch != dest_branch:
             self.remove(orig_path)
-            self.copy(orig_path, orig_revno, dest_path)
+            self.copy(orig_path, orig_revno, dest_path, content)
         else:
             orig_abspath = orig_branch.__wt.abspath(orig_path_branch)
             if not os.path.exists(orig_abspath):
@@ -320,8 +331,8 @@ class BranchCreator(object):
                     # If the directory parent is filtered, no one is
                     # taking care of it, so remove it as well.
                     abspath = os.path.dirname(abspath)
-                    while abspath != branch.base:
-                        relpath = abspath[len(branch.base)+1:]
+                    while abspath != branch._transport.local_abspath('.'):
+                        relpath = abspath[len(branch._transport.local_abspath('.'))+1:]
                         if self.is_good(relpath):
                             break
                         try:
@@ -344,124 +355,137 @@ class BranchCreator(object):
         assert(delta.removed == [])
         assert(delta.renamed == [])
 
-    def commit(self, revno, message, committer, timestamp):
+    def commit(self, revno, message, committer, revprops, timestamp):
         if self._changed:
-            self._log.info("Committing revision %d" % revno)
+            self._log.debug("Committing revision %d" % revno)
             for wt in self._changed:
-                wt.commit(message, committer=committer,
-                                   timestamp=timestamp, verbose=False)
+                # TODO: Set revision id
+                wt.commit(message, committer=committer, timestamp=timestamp, 
+                          revprops=revprops, verbose=False)
                 if self._check:
                     self.check_uncommitted(wt)
         else:
-            self._log.info("Nothing changed in revision %d" % revno)
+            self._log.debug("Nothing changed in revision %d" % revno)
         self._revisions[revno] = revs = {}
-        for (path,branch) in self._branches.items():
+        for (path, branch) in self._branches.items():
             revs[path] = (branch, branch.last_revision())
         self._changed.clear()
 
     def run(self):
 
-        revision = None
         revno = None
 
         def commit():
+            revprops = svn.ra.rev_proplist(self._ra, revno)
+
             # Parse timestamps like 2005-09-23T17:52:33.719737Z
-            time_tokens = revision.prop["svn:date"].split(".")
+            time_tokens = revprops["svn:date"].split(".")
             parsed_time = time.strptime(time_tokens[0],
                                         "%Y-%m-%dT%H:%M:%S")
             timestamp = time.mktime(parsed_time)
             timestamp += float(time_tokens[1][:-1])
 
-            self.commit(revno, revision.prop.get("svn:log", ""),
-                        committer=revision.prop.get("svn:author"),
-                        timestamp=timestamp)
+            self.commit(revno, revprops.get("svn:log", ""),
+                        committer=revprops["svn:author"],
+                        revprops=revprops, timestamp=timestamp)
 
         deleted = {}
 
-        for entry in self._dump:
+        logs = {}
+
+        def rcvr(paths, revno, author, date, message, pool):
+            if not paths:
+                return
+
+            pb.update("fetching revision info", revno, latest_revnum)
             
-            if "revision-number" in entry:
+            logs[revno] = paths
 
-                if revision is not None:
-                    commit()
+        latest_revnum = svn.ra.get_latest_revnum(self._ra)
 
-                revision = entry
-                revno = revision["revision-number"]
+        pb = ProgressBar()
 
-                deleted.clear()
+        svn.ra.get_log(self._ra, ['/'], 0, latest_revnum, 0, True, False, rcvr)
 
-            elif "node-path" in entry:
+        pb.clear()
 
-                node_path = entry["node-path"]
+        pb = ProgressBar()
 
+        for revno in logs:
+            pb.update('processing revision', revno, latest_revnum)
+            paths = logs[revno].keys()
+            paths.sort()
+            for node_path in paths:
+                node = logs[revno][node_path]
+                node_path = node_path.lstrip("/")
                 if self.unprefix(node_path) is None:
                     continue
 
-                node_action = entry["node-action"]
-                node_kind = entry.get("node-kind")
+                node_kind = svn.ra.check_path(self._ra, node_path.encode('utf8'), revno)
                 
-                assert node_kind in (None, "file", "dir")
-                assert node_action in ("add", "delete", "change", "replace")
+                assert (node_kind in (svn.core.svn_node_file, svn.core.svn_node_dir) or (node.action == 'D' and node_kind == svn.core.svn_node_none))
+                assert node.action in ('A', 'M', 'D', 'R')
 
-                content = None
+                if node_kind == svn.core.svn_node_file:
+                    stream = StringIO()
+                    (_, props) = svn.ra.get_file(self._ra, node_path.encode('utf8'), revno, stream)
+                    stream.seek(0)
+                    content = stream.read()
+                elif node_kind == svn.core.svn_node_dir:
+                    (_, _, props) = svn.ra.get_dir2(self._ra, node_path.encode('utf8'), revno, 0)
+                    content = None
+                elif node_kind == svn.core.svn_node_none:
+                    content = None
 
-                if node_action == "delete":
+                if node.action == 'D':
                     self.remove(node_path)
                     deleted[node_path] = True
 
-                elif node_action == "add" or node_action == "replace":
+                elif node.action == 'A' or node.action == 'R':
 
-                    if node_action == "replace":
+                    if node.action == 'R':
                         self.remove(node_path)
 
-                    if "node-copyfrom-path" in entry:
-                        copy_path = entry["node-copyfrom-path"]
-                        copy_revno = entry["node-copyfrom-rev"]
+                    if node.copyfrom_path:
+                        copy_path = node.copyfrom_path.lstrip("/")
+                        copy_revno = node.copyfrom_rev
 
                         if copy_path in deleted and copy_revno == revno-1:
-                            self.move(copy_path, copy_revno, node_path)
-                            content = self._dump.get_entry_content(entry)
-                        elif node_kind == "file":
-                            self.copy_file(copy_path, copy_revno, node_path)
-                            content = self._dump.get_entry_content(entry)
+                            self.move(copy_path, copy_revno, node_path, content)
+                        elif node_kind == svn.core.svn_node_file:
+                            self.copy_file(copy_path, copy_revno, node_path, content)
                         else:
                             self.copy_dir(copy_path, copy_revno, node_path)
 
-                    elif node_kind == "file":
-                        content = self._dump.get_entry_content(entry)
+                    elif node_kind == svn.core.svn_node_file:
                         self.add_file(node_path, content)
 
-                    elif node_kind == "dir":
+                    elif node_kind == svn.core.svn_node_dir:
                         self.add_dir(node_path)
-
-                elif node_action == "change":
-
-                    if (node_kind == "file" and
-                        entry.content_pos != entry.change_from.content_pos):
-                        content = self._dump.get_entry_content(entry)
 
                 if content:
                     self.change_file(node_path, content)
 
                 if os.path.isfile(os.path.join(self._root, node_path)):
-                    if entry.prop.has_key('svn:executable') and \
-                        entry.prop['svn:executable'].strip() == '*':
+                    if props.has_key('svn:executable') and \
+                        props['svn:executable'].strip() == '*':
                         self.set_executable(node_path, True)
                     else:
                         self.set_executable(node_path, False)
 
-                if entry.prop.has_key('svn:ignore'):
+                if props.has_key('svn:ignore'):
                     self.set_ignore_glob(node_path, \
-                            entry.prop['svn:ignore'].splitlines())
+                            props['svn:ignore'].splitlines())
 
-        if revision is not None:
             commit()
+        
+        pb.clear()
 
 
 class SingleBranchCreator(BranchCreator):
 
-    def __init__(self, dump, root, prefix=None, log=None, check=False):
-        BranchCreator.__init__(self, dump, root, prefix, log, check)
+    def __init__(self, ra, root, prefix=None, log=None, check=False):
+        BranchCreator.__init__(self, ra, root, prefix, log, check)
         self._branch = None
 
     def _remove_branch(self, branch):
@@ -485,30 +509,31 @@ class SingleBranchCreator(BranchCreator):
 class DynamicBranchCreator(BranchCreator):
     ATTICDIR = "attic"
 
-    def __init__(self, dump, root, prefix=None, log=None, check=False):
-        BranchCreator.__init__(self, dump, root, prefix, log, check)
+    def __init__(self, ra, root, prefix=None, log=None, check=False):
+        BranchCreator.__init__(self, ra, root, prefix, log, check)
 
     def _remove_branch(self, branch):
         # Retire a branch to the attic
-        rel_path = branch.base[len(self._root)+1:].rstrip("/")
+        rel_path = branch._transport.local_abspath('.')[len(self._root)+1:].rstrip("/")
         attic_branch = "%s-r%d" % (os.path.basename(rel_path), self._revisions.keys()[-1])
         branch_top = os.path.join(self._root, DynamicBranchCreator.ATTICDIR, os.path.dirname(rel_path))
         self._log.debug("Retiring %s to %s" % (rel_path, attic_branch))
         if not os.path.isdir(branch_top):
             os.makedirs(branch_top)
         attic_path = os.path.join(branch_top, attic_branch)
-        shutil.move(branch.base, attic_path)
-        new_branch = Branch.open(attic_path)
-        self._new_branch(new_branch)
+        shutil.move(branch._transport.local_abspath('.'), attic_path)
+        bzrdir = BzrDir.open(attic_path)
+        new_branch = bzrdir.open_branch()
+        self._new_branch(new_branch, bzrdir.open_workingtree())
 
         # Set correct path for old revisions that used this branch
         for revno in self._revisions:
             if not self._revisions[revno].has_key(rel_path):
                 continue
 
-            (b,r) = self._revisions[revno][rel_path] 
+            (b, r) = self._revisions[revno][rel_path] 
             if b == branch:
-                self._revisions[revno][rel_path] = (new_branch,r)
+                self._revisions[revno][rel_path] = (new_branch, r)
         
         del self._branches[rel_path]
 
@@ -516,7 +541,7 @@ class DynamicBranchCreator(BranchCreator):
         raise NotImplemented
 
     def _get_branch(self, path):
-        for (bp,branch) in self._branches.items():
+        for (bp, branch) in self._branches.items():
             if path == bp or path.startswith(bp+"/"):
                 return branch
 
@@ -555,11 +580,12 @@ class DynamicBranchCreator(BranchCreator):
 
             # Create new branch
             dest_abspath = os.path.join(self._root, unpref_dest_path)
-            (orig_branch,revid) = self._revisions[orig_revno][unpref_orig_path]
+            (orig_branch, revid) = self._revisions[orig_revno][unpref_orig_path]
             os.makedirs(dest_abspath)
-            branch = orig_branch.bzrdir.sprout(url=dest_abspath, revision_id=revid).open_branch()
+            bzrdir = orig_branch.bzrdir.sprout(url="file://%s" % dest_abspath, revision_id=revid)
+            branch = bzrdir.open_branch()
             self._branches[unpref_dest_path] = branch
-            self._new_branch(branch, branch.working_tree())
+            self._new_branch(branch, bzrdir.open_workingtree())
 
     def remove(self, path):
         unpref_path = self.unprefix(path)
@@ -580,7 +606,7 @@ class TrunkBranchCreator(DynamicBranchCreator):
         return path not in ("", "tags", "branches")
 
 
-def svn2bzr(dump_file, output_dir, creator_class=None, prefix=None, filter=[], consistency_check=False):
+def svn2bzr(url, output_dir, creator_class=None, prefix=None, filter=[], consistency_check=False):
 
     if os.path.exists(output_dir):
         raise Error, "%s already exists" % output_dir
@@ -588,15 +614,36 @@ def svn2bzr(dump_file, output_dir, creator_class=None, prefix=None, filter=[], c
     if creator_class is None:
         creator_class = SingleBranchCreator
 
-    dump = Dump(dump_file,log=get_logger(),cache_interval=10)
+    tmp_repos = None
 
-    creator = creator_class(dump, output_dir, prefix, check=consistency_check)
+    if os.path.isfile(url):
+        tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
+        repos = svn.repos.svn_repos_create(tmp_repos, '', '', None, None)
+        try:
+            svn.repos.load_fs2(repos, open(url), StringIO(), svn.repos.load_uuid_default, '', 0, 0, None)
+        except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):            
+            raise Error, "%s is not a dump file" % url
+        
+        url = "file://%s" % tmp_repos
+
+    elif os.path.isdir(url):
+        url = "file://%s" % url
+
+    ra = svn.ra.open2(url.encode('utf8'), svn.ra.callbacks2_t(), None, None)
+
+    root = svn.ra.get_repos_root(ra)
+    if root != url:
+       svn.ra.reparent(ra, root)
+     
+    creator = creator_class(ra, output_dir, prefix, check=consistency_check)
 
     for include, regexp in filter:
         creator.add_filter(include, regexp)
 
     creator.run()
 
+    if tmp_repos:
+        osutils.rmtree(tmp_repos)
 
 def append_filter(option, opt, value, parser):
     lst = getattr(parser.values, option.dest)
@@ -608,7 +655,7 @@ def append_filter(option, opt, value, parser):
 
 def parse_options():
     parser = optparse.OptionParser("svn2bzr [options] "
-                                   "<dump file> <output dir>",
+                                   "<dump file|svn-url> <output dir>",
                                    version="%prog "+VERSION)
     parser.defaults["filter"] = []
     parser.add_option("--include", dest="filter", metavar="REGEXP",
@@ -653,17 +700,8 @@ def main():
     log = get_logger()
     log.setLevel(logging.getLevelName(opts.log.upper()))
 
-    dump_filename = opts.args[0]
-    if dump_filename.endswith(".gz"):
-        import gzip
-        dump_file = gzip.GzipFile(dump_filename)
-    elif dump_filename.endswith(".bz2"):
-        dump_file = bz2.BZ2File(dump_filename)
-    else:
-        dump_file = open(dump_filename)
-
     try:
-        svn2bzr(dump_file, opts.args[1], creator_class,
+        svn2bzr(opts.args[0], opts.args[1], creator_class,
                 opts.prefix, opts.filter, opts.check)
     except Error, e:
         sys.exit("error: %s" % e)

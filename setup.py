@@ -5,7 +5,7 @@ from distutils.command.install_scripts import install_scripts
 from distutils.command.build import build
 
 setup(name='svn2bzr',
-      version='0.6',
+      version='0.8.2',
       author='Gustavo Niemeyer',
       author_email='gustavo@niemeyer.net',
       url='http://www.bazaar-vcs.org/svn2bzr',
