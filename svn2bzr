@@ -349,12 +349,15 @@ class BranchCreator(object):
         assert(delta.removed == [])
         assert(delta.renamed == [])
 
-    def commit(self, revno, message, committer, timestamp):
+    def commit(self, revno, message, committer, revprops, timestamp):
         if self._changed:
             self._log.info("Committing revision %d" % revno)
             for wt in self._changed:
+				# TODO: Set revision id
                 wt.commit(message, committer=committer,
-                                   timestamp=timestamp, verbose=False)
+                                   timestamp=timestamp, 
+								   revprops=revprops,
+								   verbose=False)
                 if self._check:
                     self.check_uncommitted(wt)
         else:
@@ -380,6 +383,7 @@ class BranchCreator(object):
 
             self.commit(revno, revprops.get("svn:log", ""),
                         committer=revprops["svn:author"],
+						revprops=revprops,
                         timestamp=timestamp)
 
         deleted = {}
