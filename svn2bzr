@@ -620,6 +620,10 @@ def svn2bzr(url, output_dir, creator_class=None, prefix=None, filter=[], consist
         url = "file://%s" % url
 
     ra = svn.ra.open2(url.encode('utf8'), svn.ra.callbacks2_t(), None, None)
+
+    root = svn.ra.get_repos_root(ra)
+    if root != url:
+       svn.ra.reparent(ra, root)
      
     creator = creator_class(ra, output_dir, prefix, check=consistency_check)
 
