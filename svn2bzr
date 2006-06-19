@@ -180,7 +180,7 @@ class BranchCreator(object):
                 branch.__wt.add(path_branch)
             else:
                 path_parts = path_branch.split('/')
-                dir = branch.base
+                dir = branch._transport.local_abspath('.')
                 for part in path_parts:
                     dir = "%s/%s" % (dir, part)
                     if not os.path.isdir(dir):
@@ -331,8 +331,8 @@ class BranchCreator(object):
                     # If the directory parent is filtered, no one is
                     # taking care of it, so remove it as well.
                     abspath = os.path.dirname(abspath)
-                    while abspath != branch.base:
-                        relpath = abspath[len(branch.base)+1:]
+                    while abspath != branch._transport.local_abspath('.'):
+                        relpath = abspath[len(branch._transport.local_abspath('.'))+1:]
                         if self.is_good(relpath):
                             break
                         try:
@@ -506,7 +506,7 @@ class DynamicBranchCreator(BranchCreator):
 
     def _remove_branch(self, branch):
         # Retire a branch to the attic
-        rel_path = branch.base[len(self._root)+1:].rstrip("/")
+        rel_path = branch._transport.local_abspath('.')[len(self._root)+1:].rstrip("/")
         attic_branch = "%s-r%d" % (os.path.basename(rel_path), self._revisions.keys()[-1])
         branch_top = os.path.join(self._root, DynamicBranchCreator.ATTICDIR, os.path.dirname(rel_path))
         self._log.debug("Retiring %s to %s" % (rel_path, attic_branch))
@@ -515,7 +515,8 @@ class DynamicBranchCreator(BranchCreator):
         attic_path = os.path.join(branch_top, attic_branch)
         shutil.move(branch._transport.local_abspath('.'), attic_path)
         bzrdir = BzrDir.open(attic_path)
-        self._new_branch(bzrdir.open_branch(), bzrdir.open_workingtree())
+        new_branch = bzrdir.open_branch()
+        self._new_branch(new_branch, bzrdir.open_workingtree())
 
         # Set correct path for old revisions that used this branch
         for revno in self._revisions:
