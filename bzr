@@ -53,10 +53,8 @@ if hasattr(os, "unsetenv"):
 profiling = False
 if '--profile-imports' in sys.argv:
     sys.argv.remove('--profile-imports')
-    import sre
     import profile_imports
-    __builtins__.__import__ = profile_imports.timed_import
-    sre._compile = profile_imports.timed_compile
+    profile_imports.install()
     profiling = True
 
 

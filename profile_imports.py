@@ -22,10 +22,6 @@ import sys
 import time
 
 
-import_logfile = sys.stderr
-compile_logfile = sys.stderr
-
-
 _parent_stack = []
 _total_stack = {}
 _info = {}
@@ -100,9 +96,6 @@ _real_import = __import__
 def timed_import(name, globals, locals, fromlist):
     """Wrap around standard importer to log import time"""
 
-    if import_logfile is None:
-        return _real_import(name, globals, locals, fromlist)
-
     scope_name = globals.get('__name__', None)
     if scope_name is None:
         scope_name = globals.get('__file__', None)
@@ -148,8 +141,6 @@ _real_compile = sre._compile
 
 def timed_compile(*args, **kwargs):
     """Log how long it takes to compile a regex"""
-    if compile_logfile is None:
-        return _real_compile(*args, **kwargs)
 
     # And who is requesting this?
     frame = sys._getframe(2)
@@ -167,3 +158,16 @@ def timed_compile(*args, **kwargs):
         stack_finish(this, tcompile)
 
     return comp
+
+
+def install():
+    """Install the hooks for measuring import and regex compile time."""
+    __builtins__['__import__'] = timed_import
+    sre._compile = timed_compile
+
+
+def uninstall():
+    """Remove the import and regex compile timing hooks."""
+    __builtins__['__import__'] = _real_import
+    sre._compile = _real_compile
+
