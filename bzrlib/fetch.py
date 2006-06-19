@@ -124,8 +124,9 @@ class RepoFetcher(object):
         self.from_control = self.from_repository.control_weaves
         self.count_total = 0
         self.file_ids_names = {}
-        pp = ProgressPhase('fetch phase', 4, self.pb)
+        pp = ProgressPhase('Fetch phase', 4, self.pb)
         try:
+            pp.next_phase()
             revs = self._revids_to_fetch()
             # something to do ?
             if revs:
