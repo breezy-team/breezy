@@ -33,7 +33,7 @@ import branch
 from cStringIO import StringIO
 from bzrlib.graph import Graph
 
-cache_dir = os.path.join(config_dir(), 'svn')
+cache_dir = os.path.join(config_dir(), 'svn-cache')
 
 class SvnLogCache:
     def __init__(self, ra, uuid, to_revnum):
@@ -98,6 +98,11 @@ class SvnLogCache:
                      rev['message'], None)
                 if limit and num == limit:
                     return 
+
+    def get_branch_log(self, branch_path, from_revno, to_revno, limit, \
+            strict_node_history, rcvr):
+        self.get_log([branch_path], from_revno, to_revno, limit, 
+                     strict_node_history, rcvr)
 
 class SvnInventoryFile(InventoryFile):
     """Inventory entry that can either be a plain file or a 
@@ -284,7 +289,7 @@ class SvnRepository(Repository):
             self._ancestry.append(revid)
 
         try:
-            self._get_log([path.encode('utf8')], 0, revnum - 1, 1, False, 
+            self._get_branch_log(path.encode('utf8'), 0, revnum - 1, 1, 
                           False, rcvr)
         except SubversionException, (_, num):
             if num != svn.core.SVN_ERR_FS_NOT_FOUND:
@@ -312,8 +317,7 @@ class SvnRepository(Repository):
 
 
         try:
-            self._get_log([path.encode('utf8')], revnum - 1, 
-                          0, 1, False, False, rcvr)
+            self._get_branch_log(path.encode('utf8'), revnum - 1, 0, 1, False, rcvr)
         except SubversionException, (_, num):
             # If this is the first revision, there are no parents
             if num != svn.core.SVN_ERR_FS_NOT_FOUND:
@@ -400,14 +404,20 @@ class SvnRepository(Repository):
         for path in ranges:
             self._tmp = path
             (min, max) = ranges[path]
-            self._get_log([path.encode('utf8')], min, max, 0, True, False, rcvr)
+            self._get_branch_log(path.encode('utf8'), min, max, 0, False, rcvr)
 
         return result
 
-    def _get_log(self, paths, from_revno, to_revno, limit, discover_changed, \
-                 strict_node_history, rcvr):
+    def _get_log(self, paths, from_revno, to_revno, limit, strict_node_history,
+                 rcvr):
         self.logcache.get_log(paths, from_revno, to_revno, limit, 
                 strict_node_history, rcvr)
+
+    def _get_branch_log(self, branch_path, from_revno, to_revno, limit, \
+            strict_node_history, rcvr):
+        self.logcache.get_branch_log(branch_path, from_revno, to_revno, limit, 
+                strict_node_history, rcvr)
+
 
     def fileid_involved_by_set(self, changes):
         ids = []
@@ -419,11 +429,16 @@ class SvnRepository(Repository):
 
     def generate_revision_id(self, rev, path):
         """ Generate a unambiguous revision id. Does not use svn.ra """
-        return "%d@%s-%s" % (rev, self.uuid, path)
+        return "svn:%d@%s-%s" % (rev, self.uuid, path)
 
     def parse_revision_id(self, revid):
         assert revid
         assert isinstance(revid, basestring)
+
+        if not revid.startswith("svn:"):
+            raise NoSuchRevision()
+
+        revid = revid[len("svn:"):]
 
         at = revid.index("@")
         fash = revid.rindex("-")
@@ -517,8 +532,7 @@ class SvnRepository(Repository):
             self._previous = revid
 
         try:
-            self._get_log([path.encode('utf8')], revnum - 1, 
-                          0, 0, False, False, rcvr)
+            self._get_branch_log(path.encode('utf8'), revnum - 1, 0, 0, False, rcvr)
         except SubversionException, (_, num):
             if num != svn.core.SVN_ERR_FS_NOT_FOUND:
                 raise
@@ -559,8 +573,7 @@ class SvnRepository(Repository):
             changed.append((paths, revnum))
             pb.update('receiving revision information', revnum, until_revnum)
 
-        self._get_log([path.encode('utf8')], 0, until_revnum, 0, 
-                True, False, rcvr)
+        self._get_log([path.encode('utf8')], 0, until_revnum, 0, False, rcvr)
 
         for (paths, revnum) in changed:
             pb.update('copying revision', revnum, until_revnum)

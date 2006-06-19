@@ -71,8 +71,8 @@ class SvnBranch(Branch):
             revid = self.repository.generate_revision_id(rev, self.branch_path)
             self._revision_history.append(revid)
 
-        self.repository._get_log([self.branch_path.encode('utf8')], 
-                       0, self.base_revnum, 0, False, False, rcvr)
+        self.repository._get_branch_log(self.branch_path.encode('utf8'), 0, 
+                                 self.base_revnum, 0, False, rcvr)
 
     def set_root_id(self, file_id):
         raise NotImplementedError(self.set_root_id)
