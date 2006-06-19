@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.branch import BranchCheckResult
+from bzrlib.config import config_dir
 from bzrlib.repository import Repository
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.trace import mutter
@@ -25,10 +26,78 @@ from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
             ROOT_ID
 from libsvn.core import SubversionException
 import svn.core
+import os
+import pickle
 import bzrlib
 import branch
 from cStringIO import StringIO
 from bzrlib.graph import Graph
+
+cache_dir = os.path.join(config_dir(), 'svn')
+
+class SvnLogCache:
+    def __init__(self, ra, uuid, to_revnum):
+        cache_file = os.path.join(cache_dir, uuid)
+
+        # Try to load cache from file
+        try:
+            self.revisions = pickle.load(open(cache_file))
+            from_revnum = len(self.revisions)-1
+        except:
+            self.revisions = {}
+            from_revnum = 0
+
+        def rcvr(orig_paths, rev, author, date, message, pool):
+            self.pb.update('fetching svn revision info', rev, to_revnum)
+            paths = {}
+            if orig_paths is None:
+                orig_paths = {}
+            for p in orig_paths:
+                paths[p] = (orig_paths[p].action,
+                            orig_paths[p].copyfrom_path,
+                            orig_paths[p].copyfrom_rev)
+
+            self.revisions[rev] = {
+                    'paths': paths,
+                    'author': author,
+                    'date': date,
+                    'message': message
+                    }
+        if from_revnum != to_revnum:
+            mutter('log -r %r:%r /' % (from_revnum, to_revnum))
+            self.pb = ProgressBar()
+
+            svn.ra.get_log(ra, ["/"], from_revnum, to_revnum, 0, True, True, rcvr)
+            self.pb.clear()
+            try:
+                os.mkdir(cache_dir)
+            except OSError:
+                pass
+            pickle.dump(self.revisions, open(cache_file, 'w'))
+
+    def get_log(self, paths, from_revno, to_revno, limit, 
+                strict_node_history, rcvr):
+        num = 0
+        for i in range(0,abs(from_revno-to_revno)+1):
+            if to_revno < from_revno:
+                i = from_revno - i
+            else:
+                i = from_revno + i
+            if i == 0:
+                continue
+            rev = self.revisions[i]
+            changed_paths = {}
+            for p in rev['paths']:
+                for q in paths:
+                    if p.startswith(q) or p[1:].startswith(q):
+                        changed_paths[p] = rev['paths'][p]
+
+            if len(changed_paths) > 0:
+                num = num + 1
+                rcvr(changed_paths, i, rev['author'], rev['date'], 
+                     rev['message'], None)
+                if limit and num == limit:
+                    return 
 
 class SvnInventoryFile(InventoryFile):
     """Inventory entry that can either be a plain file or a 
@@ -117,6 +186,8 @@ class SvnRepository(Repository):
         mutter("Connected to repository at %s, UUID %s" % (
             bzrdir.transport.svn_root_url, self.uuid))
 
+        self.logcache = SvnLogCache(self.ra, self.uuid, 
+                svn.ra.get_latest_revnum(self.ra))
 
     def __del__(self):
         svn.core.svn_pool_destroy(self.pool)
@@ -213,8 +284,8 @@ class SvnRepository(Repository):
             self._ancestry.append(revid)
 
         try:
-            self._get_log([path.encode('utf8')], 0, 
-                          revnum - 1, 1, False, False, rcvr)
+            self._get_log([path.encode('utf8')], 0, revnum - 1, 1, False, 
+                          False, rcvr)
         except SubversionException, (_, num):
             if num != svn.core.SVN_ERR_FS_NOT_FOUND:
                 raise
@@ -241,8 +312,8 @@ class SvnRepository(Repository):
 
 
         try:
-            self._get_log([path.encode('utf8')], revnum - 1, \
-                0, 1, False, False, rcvr)
+            self._get_log([path.encode('utf8')], revnum - 1, 
+                          0, 1, False, False, rcvr)
         except SubversionException, (_, num):
             # If this is the first revision, there are no parents
             if num != svn.core.SVN_ERR_FS_NOT_FOUND:
@@ -329,16 +400,14 @@ class SvnRepository(Repository):
         for path in ranges:
             self._tmp = path
             (min, max) = ranges[path]
-            self._get_log([path.encode('utf8')], min, \
-                max, 0, True, False, rcvr)
+            self._get_log([path.encode('utf8')], min, max, 0, True, False, rcvr)
 
         return result
 
     def _get_log(self, paths, from_revno, to_revno, limit, discover_changed, \
                  strict_node_history, rcvr):
-        mutter("svn log -r%d:%d %s" % (from_revno, to_revno, paths))
-        return svn.ra.get_log(self.ra, paths, from_revno, to_revno, limit, 
-                              discover_changed, strict_node_history, rcvr)
+        self.logcache.get_log(paths, from_revno, to_revno, limit, 
+                strict_node_history, rcvr)
 
     def fileid_involved_by_set(self, changes):
         ids = []
@@ -448,8 +517,8 @@ class SvnRepository(Repository):
             self._previous = revid
 
         try:
-            self._get_log([path.encode('utf8')], revnum - 1, \
-                0, 0, False, False, rcvr)
+            self._get_log([path.encode('utf8')], revnum - 1, 
+                          0, 0, False, False, rcvr)
         except SubversionException, (_, num):
             if num != svn.core.SVN_ERR_FS_NOT_FOUND:
                 raise
