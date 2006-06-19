@@ -26,12 +26,13 @@ import sys, os
 import shutil
 import time
 import re
-import svn.ra, svn.core
+import svn.ra, svn.core, svn.repos
 
 logger = logging.getLogger("bzr")
 logger.addHandler(logging.FileHandler("/dev/null"))
 
 from bzrlib.branch import Branch
+import bzrlib.osutils as osutils
 import bzrlib.trace
 
 VERSION = "0.7"
@@ -144,13 +145,13 @@ class BranchCreator(object):
             open(abspath, "w").write(content)
             self._changed[branch] = True
 
-    def copy_file(self, orig_path, orig_revno, dest_path):
+    def copy_file(self, orig_path, orig_revno, dest_path, content):
         dest_branch, dest_path_branch = self._get_branch_path(dest_path)
         if dest_branch:
             abspath = dest_branch.__wt.abspath(dest_path_branch)
             self._log.debug("Copying file: %s at %d to %s" %
                             (orig_path, orig_revno, abspath))
-            open(abspath, "w").write('')
+            open(abspath, "w").write(content)
             dest_branch.__wt.add(dest_path_branch)
             self._changed[dest_branch] = True
 
@@ -278,19 +279,19 @@ class BranchCreator(object):
         os.chmod(abspath, mode)
         self._changed[branch] = True
 
-    def copy(self, orig_path, orig_revno, dest_path):
+    def copy(self, orig_path, orig_revno, dest_path, content):
         node_kind = svn.ra.check_path(self._ra, orig_path)
         if node_kind == svn.core.svn_node_dir:
             self.copy_dir(orig_path, orig_revno, dest_path)
         else:
-            self.copy_file(orig_path, orig_revno, dest_path)
+            self.copy_file(orig_path, orig_revno, dest_path, content)
 
-    def move(self, orig_path, orig_revno, dest_path):
+    def move(self, orig_path, orig_revno, dest_path, content):
         orig_branch, orig_path_branch = self._get_branch_path(orig_path)
         dest_branch, dest_path_branch = self._get_branch_path(dest_path)
         if not dest_branch or orig_branch != dest_branch:
             self.remove(orig_path)
-            self.copy(orig_path, orig_revno, dest_path)
+            self.copy(orig_path, orig_revno, dest_path, content)
         else:
             orig_abspath = orig_branch.__wt.abspath(orig_path_branch)
             if not os.path.exists(orig_abspath):
@@ -422,14 +423,16 @@ class BranchCreator(object):
                         copy_revno = paths[node_path].copyfrom_rev
 
                         if copy_path in deleted and copy_revno == revno-1:
-                            self.move(copy_path, copy_revno, node_path)
+                            self.move(copy_path, copy_revno, node_path, content)
                         elif node_kind == svn.core.svn_node_file:
-                            self.copy_file(copy_path, copy_revno, node_path)
+                            self.copy_file(copy_path, copy_revno, node_path, content)
+                            content = None
                         else:
                             self.copy_dir(copy_path, copy_revno, node_path)
 
                     elif node_kind == svn.core.svn_node_file:
                         self.add_file(node_path, content)
+                        content = None
 
                     elif node_kind == svn.core.svn_node_dir:
                         self.add_dir(node_path)
@@ -579,11 +582,18 @@ def svn2bzr(url, output_dir, creator_class=None, prefix=None, filter=[], consist
     if creator_class is None:
         creator_class = SingleBranchCreator
 
+    self.tmp_repos = None
+
     if os.path.isfile(url):
-        # FIXME: Create temporary repository
-        # and put dumpfile into there
-        # and set url to that repository
-        pass
+        self.tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
+        repos = svn.repos.svn_repos_create(self.tmp_repos, '', '', None, None)
+        try:
+            svn.repos.svn_repos_load_fs2(repos, dumpfile, StringIO(),
+            svn.repos.svn_repos_load_uuid_default, '', 0, 0, None)
+        except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):            raise NotBranchError(path=nested_transport.base)
+        
+        url = "file://%s" % self.tmp_repos
+
     elif os.path.isdir(url):
         url = "file://%s" % url
 
@@ -596,6 +606,8 @@ def svn2bzr(url, output_dir, creator_class=None, prefix=None, filter=[], consist
 
     creator.run()
 
+    if self.tmp_repos:
+        osutils.rmtree(self.tmp_repos)
 
 def append_filter(option, opt, value, parser):
     lst = getattr(parser.values, option.dest)
