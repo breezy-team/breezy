@@ -97,6 +97,8 @@ class BranchCreator(object):
         # now branch.working_tree() will open the branch again.
         self._log.debug("Creating new branch: %s" % branch.base)
         branch.__wt = wt
+        config = bzrlib.config.LocationConfig(branch.base)
+        config.set_user_option('create_signatures', 'never')
 
     def _remove_branch(self, branch):
         raise NotImplementedError
