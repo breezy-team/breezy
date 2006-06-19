@@ -1,4 +1,3 @@
-- support for repositories
 - support for tags (once it is in bzrs core)
 - support nested branches (svn:externals)
 - use commitbuilder so there's no need for workingtrees?

@@ -41,6 +41,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.branch import Branch
 import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar
+from bzrlib.workingtree import WorkingTree
 import bzrlib.trace
 
 VERSION = "0.8.2"
@@ -511,6 +512,7 @@ class DynamicBranchCreator(BranchCreator):
 
     def __init__(self, ra, root, prefix=None, log=None, check=False):
         BranchCreator.__init__(self, ra, root, prefix, log, check)
+        BzrDir.create_repository(self._root, shared=True)
 
     def _remove_branch(self, branch):
         # Retire a branch to the attic
@@ -555,10 +557,9 @@ class DynamicBranchCreator(BranchCreator):
             if self.is_good(unpref_path) and self._want_branch(unpref_path):
                 branch_path = os.path.join(self._root, unpref_path)
                 os.makedirs(branch_path)
-                wt = BzrDir.create_standalone_workingtree(branch_path)
-                branch = wt.branch
+                branch = BzrDir.create_branch_convenience(branch_path)
                 self._branches[unpref_path] = branch
-                self._new_branch(branch, wt)
+                self._new_branch(branch, WorkingTree.open(branch_path))
         else:
             BranchCreator.add_dir(self, path)
  
