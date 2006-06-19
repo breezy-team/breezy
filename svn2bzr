@@ -396,20 +396,27 @@ class BranchCreator(object):
         def rcvr(paths, revno, author, date, message, pool):
             if not paths:
                 return
+
+            pb.update("fetching revision info", revno, latest_revnum)
             
             logs[revno] = paths
 
         latest_revnum = svn.ra.get_latest_revnum(self._ra)
 
+        pb = ProgressBar()
+
         svn.ra.get_log(self._ra, ['/'], 0, latest_revnum, 0, True, False, rcvr)
+
+        pb.clear()
 
         pb = ProgressBar()
 
         for revno in logs:
             pb.update('processing revision', revno, latest_revnum)
-            paths = logs[revno]
+            paths = logs[revno].keys()
+            paths.sort()
             for node_path in paths:
-                node = paths[node_path]
+                node = logs[revno][node_path]
                 node_path = node_path.lstrip("/")
                 if self.unprefix(node_path) is None:
                     continue
@@ -699,13 +706,6 @@ def main():
         sys.exit("error: %s" % e)
     except KeyboardInterrupt:
         sys.exit("Interrupted")
-
-def debug(sig, foo):
-    import pdb
-    pdb.set_trace()
-
-import signal
-signal.signal(2, debug)
 
 if __name__ == "__main__":
     main()
