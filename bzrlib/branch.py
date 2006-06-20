@@ -157,13 +157,10 @@ class Branch(object):
         self.cache_root = cache_root
 
     def _get_nick(self):
-        cfg = self.tree_config()
-        return cfg.get_option(u"nickname", default=self.base.split('/')[-2])
+        return bzrlib.config.BranchConfig(self).get_nickname()
 
     def _set_nick(self, nick):
-        cfg = self.tree_config()
-        cfg.set_option(nick, "nickname")
-        assert cfg.get_option("nickname") == nick
+        bzrlib.config.BranchConfig(self).set_user_option('nickname', nick)
 
     nick = property(_get_nick, _set_nick)
 

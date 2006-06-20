@@ -227,6 +227,12 @@ class Config(object):
     def _get_alias(self, value):
         pass
 
+    def get_nickname(self):
+        return self._get_nickname()
+
+    def _get_nickname(self):
+        return None
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -317,6 +323,9 @@ class IniBasedConfig(Config):
                                                 value)
         except KeyError:
             pass
+
+    def _get_nickname(self):
+        return self.get_user_option('nickname')
 
 
 class GlobalConfig(IniBasedConfig):
@@ -501,6 +510,12 @@ class BranchConfig(Config):
     def _post_commit(self):
         """See Config.post_commit."""
         return self._get_safe_value('_post_commit')
+
+    def _get_nickname(self):
+        value = self._get_best_value('_get_nickname')
+        if value is not None:
+            return value
+        return self.branch.base.split('/')[-2]
 
     def _log_format(self):
         """See Config.log_format."""
