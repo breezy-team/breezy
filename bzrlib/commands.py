@@ -599,6 +599,7 @@ def run_bzr(argv):
         elif a == '--lsprof':
             opt_lsprof = True
         elif a == '--lsprof-file':
+            opt_lsprof = True
             opt_lsprof_file = argv[i + 1]
             i += 1
         elif a == '--no-plugins':
