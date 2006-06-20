@@ -166,12 +166,10 @@ class Testament(object):
 
     def as_short_text(self):
         """Return short digest-based testament."""
-        s = sha()
-        map(s.update, self.as_text_lines())
         return (self.short_header + 
                 'revision-id: %s\n'
                 'sha1: %s\n'
-                % (self.revision_id, s.hexdigest()))
+                % (self.revision_id, self.as_sha1()))
 
     def _revprops_to_lines(self):
         """Pack up revision properties."""
@@ -189,7 +187,9 @@ class Testament(object):
         return r
 
     def as_sha1(self):
-        return sha(self.as_short_text()).hexdigest()
+        s = sha()
+        map(s.update, self.as_text_lines())
+        return s.hexdigest()
 
 
 class StrictTestament(Testament):
