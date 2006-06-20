@@ -69,7 +69,11 @@ import bzrlib.transport
 from bzrlib.transport.local import LocalRelpathServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
-from bzrlib.tests.TestUtil import TestLoader, TestSuite
+from bzrlib.tests import TestUtil
+from bzrlib.tests.TestUtil import (
+                          TestSuite,
+                          TestLoader,
+                          )
 from bzrlib.tests.treeshape import build_tree_contents
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
@@ -1136,7 +1140,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
 
 def filter_suite_by_re(suite, pattern):
-    result = TestSuite()
+    result = TestUtil.TestSuite()
     filter_re = re.compile(pattern)
     for test in iter_suite_tests(suite):
         if filter_re.search(test.id()):
@@ -1281,8 +1285,7 @@ def test_suite():
         'bzrlib.tests.test_transport_implementations',
         'bzrlib.tests.test_read_bundle',
         ]
-
-    suite = TestSuite()
+    suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
     from bzrlib.transport import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()

@@ -67,7 +67,7 @@ import os
 import re
 import sys
 import time
-import pdb
+import warnings
 
 from cStringIO import StringIO
 
@@ -85,7 +85,10 @@ from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_passed,
+        deprecated_function,
+        zero_seven,
+        DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
 
 
@@ -220,7 +223,7 @@ class Commit(object):
         mutter('preparing to commit')
 
         if deprecated_passed(branch):
-            warn("Commit.commit (branch, ...): The branch parameter is "
+            warnings.warn("Commit.commit (branch, ...): The branch parameter is "
                  "deprecated as of bzr 0.8. Please use working_tree= instead.",
                  DeprecationWarning, stacklevel=2)
             self.branch = branch

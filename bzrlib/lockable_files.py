@@ -19,11 +19,13 @@ import codecs
 #import traceback
 
 import bzrlib
-from bzrlib.decorators import *
+from bzrlib.decorators import (needs_read_lock,
+        needs_write_lock)
 import bzrlib.errors as errors
 from bzrlib.errors import BzrError
 from bzrlib.osutils import file_iterator, safe_unicode
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_method, 
+        zero_eight)
 from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 import bzrlib.urlutils as urlutils

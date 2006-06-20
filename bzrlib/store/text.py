@@ -120,7 +120,3 @@ class TextStore(bzrlib.store.TransportStore):
             from cStringIO import StringIO
             sio = StringIO(f.read())
             return gzip.GzipFile(mode='rb', fileobj=sio)
-
-
-def ScratchTextStore():
-    return TextStore(ScratchTransport())

@@ -43,8 +43,8 @@ from bzrlib.errors import (BzrError,
 from bzrlib.option import Option
 import bzrlib.osutils
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib.symbol_versioning import *
-import bzrlib.trace
+from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
+from bzrlib import trace
 from bzrlib.trace import mutter, note, log_error, warning, be_quiet
 
 plugin_cmds = {}
@@ -679,9 +679,7 @@ def display_command(func):
 def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
-    ## bzrlib.trace.enable_default_logging()
     bzrlib.ui.ui_factory = TextUIFactory()
-
     argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
     ret = run_bzr_catch_errors(argv)
     mutter("return code %d", ret)

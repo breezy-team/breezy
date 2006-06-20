@@ -17,15 +17,14 @@
 
 from copy import deepcopy
 from cStringIO import StringIO
-import errno
-import os
-import shutil
-import sys
 from unittest import TestSuite
 from warnings import warn
 
 import bzrlib
-import bzrlib.bzrdir as bzrdir
+from bzrlib import bzrdir, errors, lockdir, osutils, revision, \
+        tree, \
+        ui, \
+        urlutils
 from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
@@ -36,31 +35,14 @@ from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches,
                            NotBranchError, UninitializableFormat, 
                            UnlistableStore, UnlistableBranch, 
                            )
-import bzrlib.inventory as inventory
-from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
-from bzrlib.lockdir import LockDir
-from bzrlib.osutils import (isdir, quotefn,
-                            rename, splitpath, sha_file,
-                            file_kind, abspath, normpath, pathjoin,
-                            safe_unicode,
-                            rmtree,
-                            )
-from bzrlib.repository import Repository
-from bzrlib.revision import (
-                             is_ancestor,
-                             NULL_REVISION,
-                             Revision,
-                             )
-from bzrlib.store import copy_all
-from bzrlib.symbol_versioning import *
-from bzrlib.textui import show_status
+from bzrlib.symbol_versioning import (deprecated_function,
+                                      deprecated_method,
+                                      DEPRECATED_PARAMETER,
+                                      deprecated_passed,
+                                      zero_eight,
+                                      )
 from bzrlib.trace import mutter, note
-import bzrlib.transactions as transactions
-from bzrlib.transport import Transport, get_transport
-import bzrlib.ui
-import bzrlib.urlutils as urlutils
-import bzrlib.xml5
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -217,7 +199,7 @@ class Branch(object):
         if self.base == from_branch.base:
             return (0, [])
         if pb is None:
-            nested_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            nested_pb = ui.ui_factory.nested_progress_bar()
             pb = nested_pb
         else:
             nested_pb = None
@@ -231,7 +213,7 @@ class Branch(object):
                     last_revision = from_history[-1]
                 else:
                     # no history in the source branch
-                    last_revision = NULL_REVISION
+                    last_revision = revision.NULL_REVISION
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
                                          pb=nested_pb)
@@ -345,7 +327,7 @@ class Branch(object):
         else:
             assert isinstance(stop_revision, int)
             if stop_revision > other_len:
-                raise bzrlib.errors.NoSuchRevision(self, stop_revision)
+                raise errors.NoSuchRevision(self, stop_revision)
         return other_history[self_len:stop_revision]
 
     def update_revisions(self, other, stop_revision=None):
@@ -548,6 +530,8 @@ class Branch(object):
         In particular this checks that revisions given in the revision-history
         do actually match up in the revision graph, and that they're all 
         present in the repository.
+        
+        Callers will typically also want to check the repository.
 
         :return: A BranchCheckResult.
         """
@@ -556,14 +540,14 @@ class Branch(object):
             try:
                 revision = self.repository.get_revision(revision_id)
             except errors.NoSuchRevision, e:
-                raise BzrCheckError("mainline revision {%s} not in repository"
-                        % revision_id)
+                raise errors.BzrCheckError("mainline revision {%s} not in repository"
+                            % revision_id)
             # In general the first entry on the revision history has no parents.
             # But it's not illegal for it to have parents listed; this can happen
             # in imports from Arch when the parents weren't reachable.
             if mainline_parent_id is not None:
                 if mainline_parent_id not in revision.parent_ids:
-                    raise BzrCheckError("previous revision {%s} not listed among "
+                    raise errors.BzrCheckError("previous revision {%s} not listed among "
                                         "parents of {%s}"
                                         % (mainline_parent_id, revision_id))
             mainline_parent_id = revision_id
@@ -737,7 +721,7 @@ class BzrBranchFormat5(BranchFormat):
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        control_files = LockableFiles(branch_transport, 'lock', LockDir)
+        control_files = LockableFiles(branch_transport, 'lock', lockdir.LockDir)
         control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
@@ -762,7 +746,7 @@ class BzrBranchFormat5(BranchFormat):
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
         transport = a_bzrdir.get_branch_transport(None)
-        control_files = LockableFiles(transport, 'lock', LockDir)
+        control_files = LockableFiles(transport, 'lock', lockdir.LockDir)
         return BzrBranch5(_format=self,
                           _control_files=control_files,
                           a_bzrdir=a_bzrdir,
@@ -883,7 +867,7 @@ class BzrBranch(Branch):
         self._base = self._transport.base
         self._format = _format
         if _control_files is None:
-            raise BzrBadParameterMissing('_control_files')
+            raise ValueError('BzrBranch _control_files is None')
         self.control_files = _control_files
         if deprecated_passed(init):
             warn("BzrBranch.__init__(..., init=XXX): The init parameter is "
@@ -928,7 +912,7 @@ class BzrBranch(Branch):
         # XXX: cache_root seems to be unused, 2006-01-13 mbp
         if hasattr(self, 'cache_root') and self.cache_root is not None:
             try:
-                rmtree(self.cache_root)
+                osutils.rmtree(self.cache_root)
             except:
                 pass
             self.cache_root = None
@@ -977,7 +961,7 @@ class BzrBranch(Branch):
         FIXME: DELETE THIS METHOD when pre 0.8 support is removed.
         """
         if format is None:
-            format = BzrBranchFormat.find_format(self.bzrdir)
+            format = BranchFormat.find_format(self.bzrdir)
         self._format = format
         mutter("got branch format %s", self._format)
 
@@ -1093,7 +1077,7 @@ class BzrBranch(Branch):
             # make a new revision history from the graph
             current_rev_id = stop_revision
             new_history = []
-            while current_rev_id not in (None, NULL_REVISION):
+            while current_rev_id not in (None, revision.NULL_REVISION):
                 new_history.append(current_rev_id)
                 current_rev_id_parents = stop_graph[current_rev_id]
                 try:
@@ -1112,7 +1096,7 @@ class BzrBranch(Branch):
     @deprecated_method(zero_eight)
     def working_tree(self):
         """Create a Working tree object for this branch."""
-        from bzrlib.workingtree import WorkingTree
+
         from bzrlib.transport.local import LocalTransport
         if (self.base.find('://') != -1 or 
             not isinstance(self._transport, LocalTransport)):
@@ -1139,7 +1123,7 @@ class BzrBranch(Branch):
 
     def get_parent(self):
         """See Branch.get_parent."""
-        import errno
+
         _locs = ['parent', 'pull', 'x-pull']
         assert self.base[-1] == '/'
         for l in _locs:
@@ -1379,13 +1363,6 @@ class BranchCheckResult(object):
 
 ######################################################################
 # predicates
-
-
-@deprecated_function(zero_eight)
-def ScratchBranch(*args, **kwargs):
-    """See bzrlib.bzrdir.ScratchDir."""
-    d = ScratchDir(*args, **kwargs)
-    return d.open_branch()
 
 
 @deprecated_function(zero_eight)

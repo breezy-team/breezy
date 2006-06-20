@@ -33,13 +33,15 @@ the inventories.
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.errors import (InstallFailed, NoSuchRevision,
-                           MissingText)
+from bzrlib.errors import (InstallFailed,
+                           )
 from bzrlib.trace import mutter
-from bzrlib.progress import ProgressBar, ProgressPhase
-from bzrlib.reconcile import RepoReconciler
+from bzrlib.progress import ProgressPhase
 from bzrlib.revision import NULL_REVISION
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function,
+        deprecated_method,
+        zero_eight,
+        )
 
 
 # TODO: Avoid repeatedly opening weaves so many times.
