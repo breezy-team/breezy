@@ -17,7 +17,7 @@
 import bzrlib.errors as errors
 import bzrlib.urlutils
 import bzrlib.transport
-import bzrlib.bundle.read_bundle
+from bzrlib.bundle.serializer import read_bundle as read_bundle1
 
 
 def read_bundle_from_url(url):
@@ -38,7 +38,7 @@ def read_bundle_from_url(url):
     try:
         t = bzrlib.transport.get_transport(url)
         f = t.get(filename)
-        return bzrlib.bundle.read_bundle.BundleReader(f)
+        return read_bundle1(f)
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
 

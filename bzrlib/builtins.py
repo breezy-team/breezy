@@ -28,7 +28,6 @@ import bzrlib.branch
 from bzrlib.branch import Branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.bundle import read_bundle_from_url
-from bzrlib.bundle.read_bundle import BundleReader
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.commands import Command, display_command
 import bzrlib.errors as errors
@@ -462,7 +461,7 @@ class cmd_pull(Command):
         rev_id = None
         if revision is None:
             if reader is not None:
-                rev_id = reader.info.target
+                rev_id = reader.target
         elif len(revision) == 1:
             rev_id = revision[0].in_history(branch_from).rev_id
         else:

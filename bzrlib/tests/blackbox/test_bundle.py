@@ -19,7 +19,7 @@
 import os
 from StringIO import StringIO
 
-from bzrlib.bundle.read_bundle import BundleReader
+from bzrlib.bundle.serializer import read_bundle
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseInTempDir
 
@@ -38,7 +38,7 @@ class TestBundle(TestCaseInTempDir):
         branch_tree.commit('next commit', rev_id='revision2')
         branch_tree.commit('last commit', rev_id='revision3')
         os.chdir('../branch')
-        br = BundleReader(StringIO(self.run_bzr('bundle')[0]))
-        self.assertEqual(br.info.revisions[0].revision_id, 'revision3')
-        self.assertEqual(len(br.info.revisions), 2)
-        self.assertEqual(br.info.revisions[1].revision_id, 'revision2')
+        br = read_bundle(StringIO(self.run_bzr('bundle')[0]))
+        self.assertEqual(br.revisions[0].revision_id, 'revision3')
+        self.assertEqual(len(br.revisions), 2)
+        self.assertEqual(br.revisions[1].revision_id, 'revision2')
