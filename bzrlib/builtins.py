@@ -416,7 +416,8 @@ class cmd_pull(Command):
 
     If there is no default location set, the first pull will set it.  After
     that, you can omit the location to use the default.  To change the
-    default, use --remember.
+    default, use --remember. The value will only be saved if the remote
+    location can be accessed.
     """
 
     takes_options = ['remember', 'overwrite', 'revision', 'verbose']
@@ -506,7 +507,8 @@ class cmd_push(Command):
 
     If there is no default push location set, the first push will set it.
     After that, you can omit the location to use the default.  To change the
-    default, use --remember.
+    default, use --remember. The value will only be saved if the remote
+    location can be accessed.
     """
 
     takes_options = ['remember', 'overwrite', 'verbose',
@@ -530,13 +532,11 @@ class cmd_push(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved location: %s" % display_url)
+                self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
         transport = get_transport(location)
         location_url = transport.base
-        if br_from.get_push_location() is None or remember:
-            br_from.set_push_location(location_url)
 
         old_rh = []
         try:
@@ -572,7 +572,14 @@ class cmd_push(Command):
                 revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
             count = len(br_to.revision_history())
+            # We successfully created the target, remember it
+            if br_from.get_push_location() is None or remember:
+                br_from.set_push_location(br_to.base)
         else:
+            # We were able to connect to the remote location, so remember it
+            # we don't need to successfully push because of possible divergence.
+            if br_from.get_push_location() is None or remember:
+                br_from.set_push_location(br_to.base)
             old_rh = br_to.revision_history()
             try:
                 try:
@@ -2039,7 +2046,8 @@ class cmd_merge(Command):
 
     If there is no default branch set, the first merge will set it. After
     that, you can omit the branch to use the default.  To change the
-    default, use --remember.
+    default, use --remember. The value will only be saved if the remote
+    location can be accessed.
 
     Examples:
 

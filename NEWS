@@ -74,6 +74,9 @@ IN DEVELOPMENT
     * Fix unnecessary requirement of sign-my-commits that it be run from
       a working directory.  (Martin Pool, Robert Collins)
 
+    * 'bzr push location' will only remember the push location if it succeeds
+      in connecting to the remote location. (#49742, John Arbash Meinel)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
