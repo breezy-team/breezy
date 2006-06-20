@@ -59,7 +59,6 @@ import bzrlib.errors as errors
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
                            ConflictFormatError,
-                           DivergedBranches,
                            WeaveRevisionNotPresent,
                            NotBranchError,
                            NoSuchFile,
@@ -458,6 +457,20 @@ class WorkingTree(bzrlib.tree.Tree):
     def get_file_byname(self, filename):
         return file(self.abspath(filename), 'rb')
 
+    def get_parent_ids(self):
+        """See Tree.get_parent_ids.
+        
+        This implementation reads the pending merges list and last_revision
+        value and uses that to decide what the parents list should be.
+        """
+        last_rev = self.last_revision()
+        if last_rev is None:
+            parents = []
+        else:
+            parents = [last_rev]
+        other_parents = self.pending_merges()
+        return parents + other_parents
+
     def get_root_id(self):
         """Return the id of this trees root"""
         inv = self.read_working_inventory()
@@ -512,8 +525,10 @@ class WorkingTree(bzrlib.tree.Tree):
         # but with branch a kwarg now, passing in args as is results in the
         #message being used for the branch
         args = (DEPRECATED_PARAMETER, message, ) + args
-        Commit().commit(working_tree=self, revprops=revprops, *args, **kwargs)
+        committed_id = Commit().commit( working_tree=self, revprops=revprops,
+            *args, **kwargs)
         self._set_inventory(self.read_working_inventory())
+        return committed_id
 
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
@@ -1566,7 +1581,7 @@ class WorkingTreeFormat(object):
         except NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)
         except KeyError:
-            raise errors.UnknownFormatError(format_string)
+            raise errors.UnknownFormatError(format=format_string)
 
     @classmethod
     def get_default_format(klass):

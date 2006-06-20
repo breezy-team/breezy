@@ -18,8 +18,14 @@
 
 from cStringIO import StringIO
 import errno
+from ntpath import (abspath as _nt_abspath,
+                    join as _nt_join,
+                    normpath as _nt_normpath,
+                    realpath as _nt_realpath,
+                    )
 import os
 from os import listdir
+import posixpath
 import re
 import sha
 import shutil
@@ -33,11 +39,6 @@ import time
 import types
 import tempfile
 import unicodedata
-from ntpath import (abspath as _nt_abspath,
-                    join as _nt_join,
-                    normpath as _nt_normpath,
-                    realpath as _nt_realpath,
-                    )
 
 import bzrlib
 from bzrlib.errors import (BzrError,
@@ -203,24 +204,25 @@ def fancy_rename(old, new, rename_func, unlink_func):
 # string.
 _fs_enc = sys.getfilesystemencoding()
 def _posix_abspath(path):
-    return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
-    # jam 20060426 This is another possibility which mimics 
-    # os.path.abspath, only uses unicode characters instead
-    # if not os.path.isabs(path):
-    #     return os.path.join(os.getcwdu(), path)
-    # return path
+    # jam 20060426 rather than encoding to fsencoding
+    # copy posixpath.abspath, but use os.getcwdu instead
+    if not posixpath.isabs(path):
+        path = posixpath.join(getcwd(), path)
+    return posixpath.normpath(path)
 
 
 def _posix_realpath(path):
-    return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
+    return posixpath.realpath(path.encode(_fs_enc)).decode(_fs_enc)
 
 
 def _win32_abspath(path):
-    return _nt_abspath(path.encode(_fs_enc)).decode(_fs_enc).replace('\\', '/')
+    # Real _nt_abspath doesn't have a problem with a unicode cwd
+    return _nt_abspath(unicode(path)).replace('\\', '/')
 
 
 def _win32_realpath(path):
-    return _nt_realpath(path.encode(_fs_enc)).decode(_fs_enc).replace('\\', '/')
+    # Real _nt_realpath doesn't have a problem with a unicode cwd
+    return _nt_realpath(unicode(path)).replace('\\', '/')
 
 
 def _win32_pathjoin(*args):
@@ -228,7 +230,7 @@ def _win32_pathjoin(*args):
 
 
 def _win32_normpath(path):
-    return _nt_normpath(path).replace('\\', '/')
+    return _nt_normpath(unicode(path)).replace('\\', '/')
 
 
 def _win32_getcwd():
@@ -286,6 +288,33 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
+
+
+def get_terminal_encoding():
+    """Find the best encoding for printing to the screen.
+
+    This attempts to check both sys.stdout and sys.stdin to see
+    what encoding they are in, and if that fails it falls back to
+    bzrlib.user_encoding.
+    The problem is that on Windows, locale.getpreferredencoding()
+    is not the same encoding as that used by the console:
+    http://mail.python.org/pipermail/python-list/2003-May/162357.html
+
+    On my standard US Windows XP, the preferred encoding is
+    cp1252, but the console is cp437
+    """
+    output_encoding = getattr(sys.stdout, 'encoding', None)
+    if not output_encoding:
+        input_encoding = getattr(sys.stdin, 'encoding', None)
+        if not input_encoding:
+            output_encoding = bzrlib.user_encoding
+            mutter('encoding stdout as bzrlib.user_encoding %r', output_encoding)
+        else:
+            output_encoding = input_encoding
+            mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
+    else:
+        mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+    return output_encoding
 
 
 def normalizepath(f):
@@ -846,3 +875,18 @@ def walkdirs(top, prefix=""):
         for dir in reversed(dirblock):
             if dir[2] == _directory:
                 pending.append(dir)
+
+
+def path_prefix_key(path):
+    """Generate a prefix-order path key for path.
+
+    This can be used to sort paths in the same way that walkdirs does.
+    """
+    return (dirname(path) , path)
+
+
+def compare_paths_prefix_order(path_a, path_b):
+    """Compare path_a and path_b to generate the same order walkdirs uses."""
+    key_a = path_prefix_key(path_a)
+    key_b = path_prefix_key(path_b)
+    return cmp(key_a, key_b)

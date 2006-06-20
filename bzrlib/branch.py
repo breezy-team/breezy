@@ -27,12 +27,14 @@ from bzrlib import bzrdir, errors, lockdir, osutils, revision, \
         urlutils
 from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.delta import compare_trees
-from bzrlib.errors import (InvalidRevisionNumber,
-                           NotBranchError,
-                           DivergedBranches,
-                           NoSuchFile,
-                           NoWorkingTree)
+import bzrlib.errors as errors
+from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches, 
+                           HistoryMissing, InvalidRevisionId, 
+                           InvalidRevisionNumber, LockError, NoSuchFile, 
+                           NoSuchRevision, NoWorkingTree, NotVersionedError,
+                           NotBranchError, UninitializableFormat, 
+                           UnlistableStore, UnlistableBranch, 
+                           )
 from bzrlib.lockable_files import LockableFiles, TransportLock
 from bzrlib.symbol_versioning import (deprecated_function,
                                       deprecated_method,
@@ -255,6 +257,18 @@ class Branch(object):
         """
         return None
 
+    def get_revision_delta(self, revno):
+        """Return the delta for one revision.
+
+        The delta is relative to its mainline predecessor, or the
+        empty tree for revision 1.
+        """
+        assert isinstance(revno, int)
+        rh = self.revision_history()
+        if not (1 <= revno <= len(rh)):
+            raise InvalidRevisionNumber(revno)
+        return self.repository.get_revision_delta(rh[revno-1])
+
     def get_root_id(self):
         """Return the id of this branches root"""
         raise NotImplementedError('get_root_id is abstract')
@@ -298,32 +312,6 @@ class Branch(object):
         
         If self and other have not diverged, return a list of the revisions
         present in other, but missing from self.
-
-        >>> from bzrlib.workingtree import WorkingTree
-        >>> bzrlib.trace.silent = True
-        >>> d1 = bzrdir.ScratchDir()
-        >>> br1 = d1.open_branch()
-        >>> wt1 = d1.open_workingtree()
-        >>> d2 = bzrdir.ScratchDir()
-        >>> br2 = d2.open_branch()
-        >>> wt2 = d2.open_workingtree()
-        >>> br1.missing_revisions(br2)
-        []
-        >>> wt2.commit("lala!", rev_id="REVISION-ID-1")
-        >>> br1.missing_revisions(br2)
-        [u'REVISION-ID-1']
-        >>> br2.missing_revisions(br1)
-        []
-        >>> wt1.commit("lala!", rev_id="REVISION-ID-1")
-        >>> br1.missing_revisions(br2)
-        []
-        >>> wt2.commit("lala!", rev_id="REVISION-ID-2A")
-        >>> br1.missing_revisions(br2)
-        [u'REVISION-ID-2A']
-        >>> wt1.commit("lala!", rev_id="REVISION-ID-2B")
-        >>> br1.missing_revisions(br2)
-        Traceback (most recent call last):
-        DivergedBranches: These branches have diverged.  Try merge.
         """
         self_history = self.revision_history()
         self_len = len(self_history)
@@ -600,7 +588,7 @@ class BranchFormat(object):
         except NoSuchFile:
             raise NotBranchError(path=transport.base)
         except KeyError:
-            raise errors.UnknownFormatError(format_string)
+            raise errors.UnknownFormatError(format=format_string)
 
     @classmethod
     def get_default_format(klass):
@@ -900,11 +888,7 @@ class BzrBranch(Branch):
                  stacklevel=2)
             if (not relax_version_check
                 and not self._format.is_supported()):
-                raise errors.UnsupportedFormatError(
-                        'sorry, branch format %r not supported' % self._format,
-                        ['use a different bzr version',
-                         'or remove the .bzr directory'
-                         ' and "bzr init" again'])
+                raise errors.UnsupportedFormatError(format=fmt)
         if deprecated_passed(transport):
             warn("BzrBranch.__init__(transport=XXX...): The transport "
                  "parameter is deprecated as of bzr 0.8. "
@@ -1049,26 +1033,6 @@ class BzrBranch(Branch):
             # not really an object yet, and the transaction is for objects.
             # transaction.register_clean(history)
 
-    def get_revision_delta(self, revno):
-        """Return the delta for one revision.
-
-        The delta is relative to its mainline predecessor, or the
-        empty tree for revision 1.
-        """
-        assert isinstance(revno, int)
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
-
-        # revno is 1-based; list is 0-based
-
-        new_tree = self.repository.revision_tree(rh[revno-1])
-        if revno == 1:
-            old_tree = tree.EmptyTree()
-        else:
-            old_tree = self.repository.revision_tree(rh[revno-2])
-        return compare_trees(old_tree, new_tree)
-
     @needs_read_lock
     def revision_history(self):
         """See Branch.revision_history."""
@@ -1132,6 +1096,7 @@ class BzrBranch(Branch):
     @deprecated_method(zero_eight)
     def working_tree(self):
         """Create a Working tree object for this branch."""
+
         from bzrlib.transport.local import LocalTransport
         if (self.base.find('://') != -1 or 
             not isinstance(self._transport, LocalTransport)):
@@ -1158,14 +1123,19 @@ class BzrBranch(Branch):
 
     def get_parent(self):
         """See Branch.get_parent."""
+
         _locs = ['parent', 'pull', 'x-pull']
         assert self.base[-1] == '/'
         for l in _locs:
             try:
-                return urlutils.join(self.base[:-1],
-                            self.control_files.get(l).read().strip('\n'))
+                parent = self.control_files.get(l).read().strip('\n')
             except NoSuchFile:
-                pass
+                continue
+            # This is an old-format absolute path to a local branch
+            # turn it into a url
+            if parent.startswith('/'):
+                parent = urlutils.local_path_to_url(parent.decode('utf8'))
+            return urlutils.join(self.base[:-1], parent)
         return None
 
     def get_push_location(self):

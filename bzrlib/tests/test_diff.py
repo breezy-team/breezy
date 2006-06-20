@@ -16,11 +16,14 @@
 
 import os
 from cStringIO import StringIO
+import errno
+from tempfile import TemporaryFile
 
-from bzrlib.diff import internal_diff, show_diff_trees
-from bzrlib.errors import BinaryFile
+from bzrlib.diff import internal_diff, external_diff, show_diff_trees
+from bzrlib.errors import BinaryFile, NoDiff
 import bzrlib.patiencediff
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestCaseInTempDir
+from bzrlib.tests import (TestCase, TestCaseWithTransport,
+                          TestCaseInTempDir, TestSkipped)
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -28,6 +31,22 @@ def udiff_lines(old, new, allow_binary=False):
     internal_diff('old', old, 'new', new, output, allow_binary)
     output.seek(0, 0)
     return output.readlines()
+
+
+def external_udiff_lines(old, new, use_stringio=False):
+    if use_stringio:
+        # StringIO has no fileno, so it tests a different codepath
+        output = StringIO()
+    else:
+        output = TemporaryFile()
+    try:
+        external_diff('old', old, 'new', new, output, diff_opts=['-u'])
+    except NoDiff:
+        raise TestSkipped('external "diff" not present to test')
+    output.seek(0, 0)
+    lines = output.readlines()
+    output.close()
+    return lines
 
 
 class TestDiff(TestCase):
@@ -77,6 +96,18 @@ class TestDiff(TestCase):
         udiff_lines([1023 * 'a' + '\x00'], [], allow_binary=True)
         udiff_lines([], [1023 * 'a' + '\x00'], allow_binary=True)
 
+    def test_external_diff(self):
+        lines = external_udiff_lines(['boo\n'], ['goo\n'])
+        self.check_patch(lines)
+
+    def test_external_diff_no_fileno(self):
+        # Make sure that we can handle not having a fileno, even
+        # if the diff is large
+        lines = external_udiff_lines(['boo\n']*10000,
+                                     ['goo\n']*10000,
+                                     use_stringio=True)
+        self.check_patch(lines)
+        
     def test_internal_diff_default(self):
         # Default internal diff encoding is utf8
         output = StringIO()

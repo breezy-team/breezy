@@ -24,10 +24,10 @@ import sys
 
 import bzrlib
 from bzrlib.branch import Branch, BranchReferenceFormat
-from bzrlib import (branch, bzrdir, errors, osutils, ui, config,
+from bzrlib import (bundle, branch, bzrdir, errors, osutils, ui, config,
     repository, log)
 from bzrlib.bundle.read_bundle import BundleReader
-from bzrlib.bundle.apply_bundle import merge_bundle
+from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.commands import Command, display_command
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
@@ -126,10 +126,6 @@ class cmd_status(Command):
     modified
         Text has changed since the previous revision.
 
-    unchanged
-        Nothing about this file has changed since the previous revision.
-        Only shown with --all.
-
     unknown
         Not versioned and not matching an ignore pattern.
 
@@ -148,18 +144,18 @@ class cmd_status(Command):
     # TODO: --no-recurse, --recurse options
     
     takes_args = ['file*']
-    takes_options = ['all', 'show-ids', 'revision']
+    takes_options = ['show-ids', 'revision']
     aliases = ['st', 'stat']
 
     encoding_type = 'replace'
     
     @display_command
-    def run(self, all=False, show_ids=False, file_list=None, revision=None):
+    def run(self, show_ids=False, file_list=None, revision=None):
         from bzrlib.status import show_tree_status
 
         tree, file_list = tree_files(file_list)
             
-        show_tree_status(tree, show_unchanged=all, show_ids=show_ids,
+        show_tree_status(tree, show_ids=show_ids,
                          specific_files=file_list, revision=revision,
                          to_file=self.outf)
 
@@ -413,7 +409,8 @@ class cmd_pull(Command):
 
     If there is no default location set, the first pull will set it.  After
     that, you can omit the location to use the default.  To change the
-    default, use --remember.
+    default, use --remember. The value will only be saved if the remote
+    location can be accessed.
     """
 
     takes_options = ['remember', 'overwrite', 'revision', 'verbose']
@@ -428,6 +425,14 @@ class cmd_pull(Command):
         except NoWorkingTree:
             tree_to = None
             branch_to = Branch.open_containing(u'.')[0]
+
+        reader = None
+        if location is not None:
+            try:
+                reader = bundle.read_bundle_from_url(location)
+            except NotABundle:
+                pass # Continue on considering this url a Branch
+
         stored_loc = branch_to.get_parent()
         if location is None:
             if stored_loc is None:
@@ -438,13 +443,20 @@ class cmd_pull(Command):
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
-        branch_from = Branch.open(location)
 
-        if branch_to.get_parent() is None or remember:
-            branch_to.set_parent(branch_from.base)
+        if reader is not None:
+            install_bundle(branch_to.repository, reader)
+            branch_from = branch_to
+        else:
+            branch_from = Branch.open(location)
 
+            if branch_to.get_parent() is None or remember:
+                branch_to.set_parent(branch_from.base)
+
+        rev_id = None
         if revision is None:
-            rev_id = None
+            if reader is not None:
+                rev_id = reader.info.target
         elif len(revision) == 1:
             rev_id = revision[0].in_history(branch_from).rev_id
         else:
@@ -488,7 +500,8 @@ class cmd_push(Command):
 
     If there is no default push location set, the first push will set it.
     After that, you can omit the location to use the default.  To change the
-    default, use --remember.
+    default, use --remember. The value will only be saved if the remote
+    location can be accessed.
     """
 
     takes_options = ['remember', 'overwrite', 'verbose',
@@ -512,13 +525,11 @@ class cmd_push(Command):
             else:
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
-                self.outf.write("Using saved location: %s" % display_url)
+                self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
         transport = get_transport(location)
         location_url = transport.base
-        if br_from.get_push_location() is None or remember:
-            br_from.set_push_location(location_url)
 
         old_rh = []
         try:
@@ -554,7 +565,14 @@ class cmd_push(Command):
                 revision_id=br_from.last_revision())
             br_to = dir_to.open_branch()
             count = len(br_to.revision_history())
+            # We successfully created the target, remember it
+            if br_from.get_push_location() is None or remember:
+                br_from.set_push_location(br_to.base)
         else:
+            # We were able to connect to the remote location, so remember it
+            # we don't need to successfully push because of possible divergence.
+            if br_from.get_push_location() is None or remember:
+                br_from.set_push_location(br_to.base)
             old_rh = br_to.revision_history()
             try:
                 try:
@@ -922,27 +940,37 @@ class cmd_reconcile(Command):
 
 
 class cmd_revision_history(Command):
-    """Display list of revision ids on this branch."""
+    """Display the list of revision ids on a branch."""
+    takes_args = ['location?']
+
     hidden = True
 
     @display_command
-    def run(self):
-        branch = WorkingTree.open_containing(u'.')[0].branch
-        for patchid in branch.revision_history():
-            self.outf.write(patchid)
+    def run(self, location="."):
+        branch = Branch.open_containing(location)[0]
+        for revid in branch.revision_history():
+            self.outf.write(revid)
             self.outf.write('\n')
 
 
 class cmd_ancestry(Command):
     """List all revisions merged into this branch."""
+    takes_args = ['location?']
+
     hidden = True
 
     @display_command
-    def run(self):
-        tree = WorkingTree.open_containing(u'.')[0]
-        b = tree.branch
-        # FIXME. should be tree.last_revision
-        revision_ids = b.repository.get_ancestry(b.last_revision())
+    def run(self, location="."):
+        try:
+            wt = WorkingTree.open_containing(location)[0]
+        except errors.NoWorkingTree:
+            b = Branch.open(location)
+            last_revision = b.last_revision()
+        else:
+            b = wt.branch
+            last_revision = wt.last_revision()
+
+        revision_ids = b.repository.get_ancestry(last_revision)
         assert revision_ids[0] == None
         revision_ids.pop(0)
         for revision_id in revision_ids:
@@ -1993,7 +2021,8 @@ class cmd_merge(Command):
 
     If there is no default branch set, the first merge will set it. After
     that, you can omit the branch to use the default.  To change the
-    default, use --remember.
+    default, use --remember. The value will only be saved if the remote
+    location can be accessed.
 
     Examples:
 
@@ -2028,24 +2057,18 @@ class cmd_merge(Command):
 
         tree = WorkingTree.open_containing(u'.')[0]
 
-        try:
-            if branch is not None:
-                reader = BundleReader(file(branch, 'rb'))
+        if branch is not None:
+            try:
+                reader = bundle.read_bundle_from_url(branch)
+            except NotABundle:
+                pass # Continue on considering this url a Branch
             else:
-                reader = None
-        except IOError, e:
-            if e.errno not in (errno.ENOENT, errno.EISDIR):
-                raise
-            reader = None
-        except NotABundle:
-            reader = None
-        if reader is not None:
-            conflicts = merge_bundle(reader, tree, not force, merge_type,
-                                        reprocess, show_base)
-            if conflicts == 0:
-                return 0
-            else:
-                return 1
+                conflicts = merge_bundle(reader, tree, not force, merge_type,
+                                            reprocess, show_base)
+                if conflicts == 0:
+                    return 0
+                else:
+                    return 1
 
         branch = self._get_remembered_parent(tree, branch, 'Merging from')
 
@@ -2392,11 +2415,16 @@ class cmd_plugins(Command):
 
 class cmd_testament(Command):
     """Show testament (signing-form) of a revision."""
-    takes_options = ['revision', 'long']
+    takes_options = ['revision', 'long', 
+                     Option('strict', help='Produce a strict testament')]
     takes_args = ['branch?']
     @display_command
-    def run(self, branch=u'.', revision=None, long=False):
-        from bzrlib.testament import Testament
+    def run(self, branch=u'.', revision=None, long=False, strict=False):
+        from bzrlib.testament import Testament, StrictTestament
+        if strict is True:
+            testament_class = StrictTestament
+        else:
+            testament_class = Testament
         b = WorkingTree.open_containing(branch)[0].branch
         b.lock_read()
         try:
@@ -2404,7 +2432,7 @@ class cmd_testament(Command):
                 rev_id = b.last_revision()
             else:
                 rev_id = revision[0].in_history(b).rev_id
-            t = Testament.from_revision(b.repository, rev_id)
+            t = testament_class.from_revision(b.repository, rev_id)
             if long:
                 sys.stdout.writelines(t.as_text_lines())
             else:

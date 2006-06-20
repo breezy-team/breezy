@@ -26,7 +26,7 @@ import sys
 import bzrlib
 import bzrlib.config as config
 from bzrlib.errors import BzrError
-from bzrlib.trace import warning
+from bzrlib.trace import warning, mutter
 
 
 def _get_editor():
@@ -57,6 +57,7 @@ def _run_editor(filename):
     for e in _get_editor():
         edargs = e.split(' ')
         try:
+            ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
         except OSError, e:
            # We're searching for an editor, so catch safe errors and continue

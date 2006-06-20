@@ -21,7 +21,7 @@ import re
 import time
 from unittest import TestSuite
 
-from bzrlib import bzrdir, check, gpg, errors, xml5, ui, transactions, osutils
+from bzrlib import bzrdir, check, delta, gpg, errors, xml5, ui, transactions, osutils
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.graph import Graph
@@ -39,7 +39,7 @@ from bzrlib.symbol_versioning import (deprecated_method,
         zero_nine, 
         )
 from bzrlib.trace import mutter, note
-from bzrlib.tree import RevisionTree
+from bzrlib.tree import RevisionTree, EmptyTree
 from bzrlib.tsort import topo_sort
 from bzrlib.testament import Testament
 from bzrlib.tree import EmptyTree
@@ -300,8 +300,12 @@ class Repository(object):
         """
         if not revision_id or not isinstance(revision_id, basestring):
             raise InvalidRevisionId(revision_id=revision_id, branch=self)
-        return self._revision_store.get_revision(revision_id,
-                                                 self.get_transaction())
+        return self._revision_store.get_revisions([revision_id],
+                                                  self.get_transaction())[0]
+    @needs_read_lock
+    def get_revisions(self, revision_ids):
+        return self._revision_store.get_revisions(revision_ids,
+                                                  self.get_transaction())
 
     @needs_read_lock
     def get_revision_xml(self, revision_id):
@@ -326,6 +330,20 @@ class Repository(object):
         inv = self.get_inventory_weave()
         self._check_revision_parents(r, inv)
         return r
+
+    def get_revision_delta(self, revision_id):
+        """Return the delta for one revision.
+
+        The delta is relative to the left-hand predecessor of the
+        revision.
+        """
+        revision = self.get_revision(revision_id)
+        new_tree = self.revision_tree(revision_id)
+        if not revision.parent_ids:
+            old_tree = EmptyTree()
+        else:
+            old_tree = self.revision_tree(revision.parent_ids[0])
+        return delta.compare_trees(old_tree, new_tree)
 
     def _check_revision_parents(self, revision, inventory):
         """Private to Repository and Fetch.
@@ -942,7 +960,7 @@ class RepositoryFormat(object):
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
         except KeyError:
-            raise errors.UnknownFormatError(format_string)
+            raise errors.UnknownFormatError(format=format_string)
 
     def _get_control_store(self, repo_transport, control_files):
         """Return the control store for this repository."""

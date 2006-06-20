@@ -62,15 +62,15 @@ def _show_location_info(repository, branch=None, working=None):
         branch_path = branch.bzrdir.root_transport.base
         if working_path != branch_path:
             # lightweight checkout
-            print '  light checkout root: %s' % working_path
+            print ' light checkout root: %s' % working_path
             if repository.is_shared():
                 # lightweight checkout of branch in shared repository
-                print '    shared repository: %s' % repository_path
-                print '    repository branch: %s' % (
+                print '   shared repository: %s' % repository_path
+                print '   repository branch: %s' % (
                     _repo_relpath(repository_path, branch_path))
             else:
                 # lightweight checkout of standalone branch
-                print '   checkout of branch: %s' % branch_path
+                print '  checkout of branch: %s' % branch_path
         elif repository.is_shared():
             # branch with tree inside shared repository
             print '    shared repository: %s' % repository_path

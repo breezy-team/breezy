@@ -51,6 +51,7 @@ class LocalTransport(Transport):
             base = base + '/'
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
+        ## mutter("_local_base: %r => %r", base, self._local_base)
 
     def should_cache(self):
         return False

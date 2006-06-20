@@ -51,7 +51,19 @@ IN DEVELOPMENT
    * 'bzr log --line' shows the revision number, and uses only the
      first line of the log message (#5162, Alexander Belchenko;
      Matthieu Moy)
+
+   * 'bzr status' has had the --all option removed. The 'bzr ls' command
+     should be used to retrieve all versioned files. (Robert Collins)
+
+   * 'bzr bundle OTHER/BRANCH' will create a bundle which can be sent
+     over email, and applied on the other end, while maintaining ancestry.
+     This bundle can be applied with either 'bzr merge' or 'bzr pull',
+     the same way you would apply another branch.
+     (John Arbash Meinel, Aaron Bentley)
   
+   * 'branches.conf' has been changed to 'locations.conf', since it can apply
+     to more locations than just branch locations.
+     (Aaron Bentley)
 
   BUG FIXES:
 
@@ -61,6 +73,9 @@ IN DEVELOPMENT
 
     * Fix unnecessary requirement of sign-my-commits that it be run from
       a working directory.  (Martin Pool, Robert Collins)
+
+    * 'bzr push location' will only remember the push location if it succeeds
+      in connecting to the remote location. (#49742, John Arbash Meinel)
 
   INTERNALS:
 
@@ -86,6 +101,14 @@ IN DEVELOPMENT
     * Add a BzrDirFormat control_formats list which allows for control formats
       that do not use '.bzr' to store their data - i.e. '.svn', '.hg' etc.
       (Robert Collins, Jelmer Vernooij).
+
+    * bzrlib.diff.external_diff can be redirected to any file-like object.
+      Uses subprocess instead of spawnvp.
+      (#4047, #48914, James Henstridge, John Arbash Meinel)
+
+    * New command line option '--profile-imports', which will install a custom
+      importer to log time to import modules and regex compilation time to 
+      sys.stderr (John Arbash Meinel)
 
 bzr 0.8.2  2006-05-17
   

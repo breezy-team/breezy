@@ -75,7 +75,6 @@ from bzrlib.atomicfile import AtomicFile
 import bzrlib.config
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
-                           HistoryMissing,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
@@ -87,8 +86,22 @@ from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
 from bzrlib.symbol_versioning import (deprecated_passed,
+        deprecated_function,
+        zero_seven,
         DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
+
+
+@deprecated_function(zero_seven)
+def commit(*args, **kwargs):
+    """Commit a new revision to a branch.
+
+    Function-style interface for convenience of old callers.
+
+    New code should use the Commit class instead.
+    """
+    ## XXX: Remove this in favor of WorkingTree.commit?
+    Commit().commit(*args, **kwargs)
 
 
 class NullCommitReporter(object):
@@ -332,6 +345,7 @@ class Commit(object):
             self._emit_progress_update()
         finally:
             self._cleanup()
+        return self.rev_id
 
     def _check_bound_branch(self):
         """Check to see if the local branch is bound.
@@ -374,14 +388,6 @@ class Commit(object):
         self.bound_branch = self.branch
         self.master_branch.lock_write()
         self.master_locked = True
-####        
-####        # Check to see if we have any pending merges. If we do
-####        # those need to be pushed into the master branch
-####        pending_merges = self.work_tree.pending_merges()
-####        if pending_merges:
-####            for revision_id in pending_merges:
-####                self.master_branch.repository.fetch(self.bound_branch.repository,
-####                                                    revision_id=revision_id)
 
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
@@ -440,13 +446,8 @@ class Commit(object):
         """Record the parents of a merge for merge detection."""
         # TODO: Make sure that this list doesn't contain duplicate 
         # entries and the order is preserved when doing this.
-        pending_merges = self.work_tree.pending_merges()
-        self.parents = []
+        self.parents = self.work_tree.get_parent_ids()
         self.parent_invs = []
-        precursor_id = self.branch.last_revision()
-        if precursor_id:
-            self.parents.append(precursor_id)
-        self.parents += pending_merges
         for revision in self.parents:
             if self.branch.repository.has_revision(revision):
                 inventory = self.branch.repository.get_inventory(revision)
@@ -458,9 +459,8 @@ class Commit(object):
             if not self.branch.repository.has_revision(parent_id):
                 if parent_id == self.branch.last_revision():
                     warning("parent is missing %r", parent_id)
-                    raise HistoryMissing(self.branch, 'revision', parent_id)
-                else:
-                    mutter("commit will ghost revision %r", parent_id)
+                    raise BzrCheckError("branch %s is missing revision {%s}"
+                            % (self.branch, parent_id))
             
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.

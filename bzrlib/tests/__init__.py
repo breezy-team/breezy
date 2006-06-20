@@ -338,8 +338,16 @@ class TextTestRunner(object):
                 # If LANG=C we probably have created some bogus paths
                 # which rmtree(unicode) will fail to delete
                 # so make sure we are using rmtree(str) to delete everything
-                osutils.rmtree(test_root.encode(
-                    sys.getfilesystemencoding()))
+                # except on win32, where rmtree(str) will fail
+                # since it doesn't have the property of byte-stream paths
+                # (they are either ascii or mbcs)
+                if sys.platform == 'win32':
+                    # make sure we are using the unicode win32 api
+                    test_root = unicode(test_root)
+                else:
+                    test_root = test_root.encode(
+                        sys.getfilesystemencoding())
+                osutils.rmtree(test_root)
         else:
             if self.pb is not None:
                 self.pb.note("Failed tests working directories are in '%s'\n",
@@ -680,7 +688,6 @@ class TestCase(unittest.TestCase):
         self.log('run bzr: %r', argv)
         # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
-        handler.setFormatter(bzrlib.trace.QuietFormatter())
         handler.setLevel(logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
@@ -1213,6 +1220,7 @@ def test_suite():
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
+                   'bzrlib.tests.test_emptytree',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
@@ -1244,6 +1252,7 @@ def test_suite():
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revprops',
+                   'bzrlib.tests.test_revisiontree',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
@@ -1273,8 +1282,9 @@ def test_suite():
                    'bzrlib.tests.test_xml',
                    ]
     test_transport_implementations = [
-        'bzrlib.tests.test_transport_implementations']
-
+        'bzrlib.tests.test_transport_implementations',
+        'bzrlib.tests.test_read_bundle',
+        ]
     suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
     from bzrlib.transport import TransportTestProviderAdapter

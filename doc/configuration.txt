@@ -2,8 +2,8 @@ Location of configuration file
 ==============================
 Each user gets a pair of configurations files in $HOME/.bazaar. The first
 one, named bazaar.conf, includes default configuration options. The other
-file, branches.conf, contains configuration information for specific
-branches.
+file, locations.conf, contains configuration information for specific
+branch locations.
 
 General Format
 ==============
@@ -27,7 +27,7 @@ The only valid section header for bazaar.conf is [DEFAULT], which is case
 senstive. The default section provides for setting variables which can be
 overridden with the branch config file.
 
-For branches.conf, the variables from the section with the longest matching
+For locations.conf, the variables from the section with the longest matching
 section header are used to the exclusion of other potentially valid section
 headers. A section header uses the path for the branch as the section
 header. Some examples include::
@@ -54,7 +54,7 @@ The main configuration file, bazaar.conf
 The main configuration file, $HOME/.bazaar/bazaar.conf, only allows one
 section called '''[DEFAULT]'''. This default section contains the default
 configuration options for all branches. The default section can be
-overriden by providing a branch specific section in branches.conf.
+overriden by providing a branch specific section in locations.conf.
 
 A typical bazaar.conf section often looks like the following::
 
@@ -64,7 +64,7 @@ A typical bazaar.conf section often looks like the following::
     check_signatures  = check-available
     create_signatures = when-required
 
-$HOME/.bazaar/branches.conf allows one to specify overriding settings for a
+$HOME/.bazaar/locations.conf allows one to specify overriding settings for a
 specific branch. The format is almost identical to the default section in
 bazaar.conf with one significant change: The section header, instead of
 saying default, will be the path to a branch that you wish to override a
@@ -128,7 +128,7 @@ never
 
 recurse
 -------
-Only useful in branches.conf. Defines whether or not the configuration for
+Only useful in locations.conf. Defines whether or not the configuration for
 this section applies to subdirectories:
 
 true

@@ -1,30 +1,36 @@
 # Copyright (C) 2004, 2005, 2006 Canonical Ltd.
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import errno
+import os
+import subprocess
+import sys
+import tempfile
 import time
 
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 import bzrlib.errors as errors
+import bzrlib.osutils
 from bzrlib.patiencediff import unified_diff
 import bzrlib.patiencediff
 from bzrlib.symbol_versioning import (deprecated_function,
         zero_eight)
 from bzrlib.textfile import check_text_lines
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 
 
 # TODO: Rather than building a changeset object, we should probably
@@ -82,20 +88,20 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
-    import sys
+    if hasattr(to_file, 'fileno'):
+        out_file = to_file
+        have_fileno = True
+    else:
+        out_file = subprocess.PIPE
+        have_fileno = False
     
-    if to_file != sys.stdout:
-        raise NotImplementedError("sorry, can't send external diff other than to stdout yet",
-                                  to_file)
-
     # make sure our own output is properly ordered before the diff
     to_file.flush()
 
-    from tempfile import NamedTemporaryFile
-    import os
-
-    oldtmpf = NamedTemporaryFile()
-    newtmpf = NamedTemporaryFile()
+    oldtmp_fd, old_abspath = tempfile.mkstemp(prefix='bzr-diff-old-')
+    newtmp_fd, new_abspath = tempfile.mkstemp(prefix='bzr-diff-new-')
+    oldtmpf = os.fdopen(oldtmp_fd, 'wb')
+    newtmpf = os.fdopen(newtmp_fd, 'wb')
 
     try:
         # TODO: perhaps a special case for comparing to or from the empty
@@ -108,16 +114,18 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         oldtmpf.writelines(oldlines)
         newtmpf.writelines(newlines)
 
-        oldtmpf.flush()
-        newtmpf.flush()
+        oldtmpf.close()
+        newtmpf.close()
 
         if not diff_opts:
             diff_opts = []
         diffcmd = ['diff',
                    '--label', old_filename,
-                   oldtmpf.name,
+                   old_abspath,
                    '--label', new_filename,
-                   newtmpf.name]
+                   new_abspath,
+                   '--binary',
+                  ]
 
         # diff only allows one style to be specified; they don't override.
         # note that some of these take optargs, and the optargs can be
@@ -143,7 +151,19 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         if diff_opts:
             diffcmd.extend(diff_opts)
 
-        rc = os.spawnvp(os.P_WAIT, 'diff', diffcmd)
+        try:
+            pipe = subprocess.Popen(diffcmd,
+                                    stdin=subprocess.PIPE,
+                                    stdout=out_file)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise errors.NoDiff(str(e))
+            raise
+        pipe.stdin.close()
+
+        if not have_fileno:
+            bzrlib.osutils.pumpfile(pipe.stdout, to_file)
+        rc = pipe.wait()
         
         if rc != 0 and rc != 1:
             # returns 1 if files differ; that's OK
@@ -156,6 +176,21 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
     finally:
         oldtmpf.close()                 # and delete
         newtmpf.close()
+        # Clean up. Warn in case the files couldn't be deleted
+        # (in case windows still holds the file open, but not
+        # if the files have already been deleted)
+        try:
+            os.remove(old_abspath)
+        except OSError, e:
+            if e.errno not in (errno.ENOENT,):
+                warning('Failed to delete temporary file: %s %s',
+                        old_abspath, e)
+        try:
+            os.remove(new_abspath)
+        except OSError:
+            if e.errno not in (errno.ENOENT,):
+                warning('Failed to delete temporary file: %s %s',
+                        new_abspath, e)
 
 
 @deprecated_function(zero_eight)
@@ -175,7 +210,6 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
     supplies any two trees.
     """
     if output is None:
-        import sys
         output = sys.stdout
 
     if from_spec is None:
@@ -222,7 +256,6 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
-    import sys
     output = sys.stdout
     def spec_tree(spec):
         revision_id = spec.in_store(tree.branch).rev_id

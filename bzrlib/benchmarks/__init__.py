@@ -19,6 +19,7 @@
 
 import bzrlib
 from bzrlib.tests.TestUtil import TestLoader
+from bzrlib.bzrdir import BzrDir
 from bzrlib.tests.blackbox import ExternalBase
 
 class Benchmark(ExternalBase):
@@ -51,6 +52,28 @@ class Benchmark(ExternalBase):
                     files.extend([prefix + str(foo) for foo in range(20)])
         self.build_tree(files)
 
+    def make_many_commit_tree(self, directory_name='.'):
+        """Create a tree with an egregious number of commits.
+        
+        No files change are included.
+        """
+        tree = BzrDir.create_standalone_workingtree(directory_name)
+        tree.lock_write()
+        tree.branch.lock_write()
+        tree.branch.repository.lock_write()
+        try:
+            for i in xrange(1000):
+                tree.commit('no-changes commit %d' % i)
+        finally:
+            try:
+                try:
+                    tree.branch.repository.unlock()
+                finally:
+                    tree.branch.unlock()
+            finally:
+                tree.unlock()
+        return tree
+
 
 def test_suite():
     """Build and return a TestSuite which contains benchmark tests only."""
@@ -60,6 +83,7 @@ def test_suite():
                    'bzrlib.benchmarks.bench_checkout',
                    'bzrlib.benchmarks.bench_commit',
                    'bzrlib.benchmarks.bench_inventory',
+                   'bzrlib.benchmarks.bench_log',
                    'bzrlib.benchmarks.bench_osutils',
                    'bzrlib.benchmarks.bench_rocks',
                    'bzrlib.benchmarks.bench_status',
