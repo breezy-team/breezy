@@ -14,10 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.bundle.serializer import read_bundle
 import bzrlib.errors as errors
 import bzrlib.urlutils
 import bzrlib.transport
-from bzrlib.bundle.serializer import read_bundle as read_bundle1
 
 
 def read_bundle_from_url(url):
@@ -38,7 +38,7 @@ def read_bundle_from_url(url):
     try:
         t = bzrlib.transport.get_transport(url)
         f = t.get(filename)
-        return read_bundle1(f)
+        return read_bundle(f)
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
 

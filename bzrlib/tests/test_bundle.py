@@ -19,7 +19,7 @@ from StringIO import StringIO
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
-from bzrlib.bundle.read_bundle import BundleTree
+from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
 from bzrlib.diff import internal_diff
 from bzrlib.errors import BzrError, TestamentMismatch, NotABundle

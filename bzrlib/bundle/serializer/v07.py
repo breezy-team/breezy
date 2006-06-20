@@ -26,7 +26,7 @@ from bzrlib.bundle.serializer import (BundleSerializer,
                                       unpack_highres_date,
                                      )
 from bzrlib.bundle.serializer import binary_diff
-from bzrlib.bundle.read_bundle import (RevisionInfo, BundleInfo, BundleTree)
+from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
 from bzrlib.delta import compare_trees
 from bzrlib.diff import internal_diff
 import bzrlib.errors as errors
