@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,8 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import sys
+import errno
+import os
 from os.path import dirname
+import sys
 
 import bzrlib.errors as errors
 from bzrlib.inventory import InventoryEntry
@@ -132,8 +134,6 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
     further dry-run tasks to take place. To restore the original inventory
     call tree.read_working_inventory().
     """
-    import os, errno
-    from bzrlib.errors import BadFileKindError, ForbiddenFileError
     assert isinstance(recurse, bool)
     if action is None:
         action = AddAction()
@@ -154,7 +154,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
         # validate user parameters. Our recursive code avoids adding new files
         # that need such validation 
         if tree.is_control_filename(rf.raw_path):
-            raise ForbiddenFileError('cannot add control file %s' % filepath)
+            raise errors.ForbiddenFileError(filename=rf)
         
         abspath = tree.abspath(rf.raw_path)
         kind = bzrlib.osutils.file_kind(abspath)
@@ -163,7 +163,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
             user_dirs.add(rf.raw_path)
         else:
             if not InventoryEntry.versionable_kind(kind):
-                raise BadFileKindError("cannot add %s of type %s" % (abspath, kind))
+                raise errors.BadFileKindError(filename=abspath, kind=kind)
         # ensure the named path is added, so that ignore rules in the later directory
         # walk dont skip it.
         # we dont have a parent ie known yet.: use the relatively slower inventory 

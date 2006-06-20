@@ -333,14 +333,12 @@ class PathsDoNotExist(BzrNewError):
         self.paths_as_string = ' '.join([quotefn(p) for p in paths])
 
 
-class BadFileKindError(BzrError):
-    """Specified file is of a kind that cannot be added.
-
-    (For example a symlink or device file.)"""
+class BadFileKindError(BzrNewError):
+    """Cannot operate on %(filename)s of unsupported kind %(kind)s"""
 
 
-class ForbiddenFileError(BzrError):
-    """Cannot operate on a file because it is a control file."""
+class ForbiddenFileError(BzrNewError):
+    """Cannot operate on %(filename)s because it is a control file"""
 
 
 class LockError(BzrNewError):

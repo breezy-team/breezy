@@ -32,11 +32,9 @@
 # raising them.  If there's more than one exception it'd be good to see them
 # all.
 
-from bzrlib.errors import BzrCheckError, NoSuchRevision
-from bzrlib.symbol_versioning import *
-from bzrlib.trace import mutter, note, warning
+from bzrlib.errors import BzrCheckError
 import bzrlib.ui
-
+from bzrlib.trace import note
 
 class Check(object):
     """Check a repository"""
@@ -79,7 +77,7 @@ class Check(object):
 
     def plan_revisions(self):
         repository = self.repository
-        self.planned_revisions = set(repository.all_revision_ids())
+        self.planned_revisions = set(repository._all_revision_ids())
         self.progress.clear()
         inventoried = set(self.inventory_weave.versions())
         awol = self.planned_revisions - inventoried
@@ -148,9 +146,6 @@ class Check(object):
             if inv_sha1 != rev.inventory_sha1:
                 raise BzrCheckError('Inventory sha1 hash doesn\'t match'
                     ' value in revision {%s}' % rev_id)
-        else:
-            self.missing_inventory_sha_cnt += 1
-            mutter("no inventory_sha1 on revision {%s}", rev_id)
         self._check_revision_tree(rev_id)
         self.checked_rev_cnt += 1
 

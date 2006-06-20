@@ -21,8 +21,9 @@ directories.
 """
 
 from copy import deepcopy
-import os
 from cStringIO import StringIO
+import os
+from stat import S_ISDIR
 from unittest import TestSuite
 
 import bzrlib
@@ -39,7 +40,6 @@ from bzrlib.osutils import (
 from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
-from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import get_transport

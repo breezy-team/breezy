@@ -20,7 +20,6 @@ import warnings
 
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
-from bzrlib.commit import commit
 from bzrlib.graph import Graph
 from bzrlib.revision import (find_present_ancestors, combined_graph,
                              common_ancestor,
@@ -147,7 +146,6 @@ class TestIsAncestor(TestCaseWithTransport):
 class TestIntermediateRevisions(TestCaseWithTransport):
 
     def setUp(self):
-        from bzrlib.commit import commit
         TestCaseWithTransport.setUp(self)
         self.br1, self.br2 = make_branches(self)
         wt1 = self.br1.bzrdir.open_workingtree()

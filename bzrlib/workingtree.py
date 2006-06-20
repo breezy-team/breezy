@@ -49,10 +49,9 @@ import os
 import re
 import stat
 from time import time
+import warnings
 
 from bzrlib.atomicfile import AtomicFile
-from bzrlib.branch import (Branch,
-                           quotefn)
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
 import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -92,7 +91,13 @@ from bzrlib.osutils import (
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import NULL_REVISION
 from bzrlib.rio import RioReader, rio_file, Stanza
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_passed,
+        deprecated_method,
+        deprecated_function,
+        DEPRECATED_PARAMETER,
+        zero_eight,
+        )
+
 from bzrlib.textui import show_status
 import bzrlib.tree
 from bzrlib.transform import build_tree
@@ -231,7 +236,7 @@ class WorkingTree(bzrlib.tree.Tree):
         self.bzrdir = _bzrdir
         if not _internal:
             # not created via open etc.
-            warn("WorkingTree() is deprecated as of bzr version 0.8. "
+            warnings.warn("WorkingTree() is deprecated as of bzr version 0.8. "
                  "Please use bzrdir.open_workingtree or WorkingTree.open().",
                  DeprecationWarning,
                  stacklevel=2)
@@ -251,7 +256,7 @@ class WorkingTree(bzrlib.tree.Tree):
         mutter("opening working tree %r", basedir)
         if deprecated_passed(branch):
             if not _internal:
-                warn("WorkingTree(..., branch=XXX) is deprecated as of bzr 0.8."
+                warnings.warn("WorkingTree(..., branch=XXX) is deprecated as of bzr 0.8."
                      " Please use bzrdir.open_workingtree() or"
                      " WorkingTree.open().",
                      DeprecationWarning,
@@ -260,8 +265,6 @@ class WorkingTree(bzrlib.tree.Tree):
             self._branch = branch
         else:
             self._branch = self.bzrdir.open_branch()
-        assert isinstance(self.branch, Branch), \
-            "branch %r is not a Branch" % self.branch
         self.basedir = realpath(basedir)
         # if branch is at our basedir and is a format 6 or less
         if isinstance(self._format, WorkingTreeFormat2):
@@ -417,7 +420,7 @@ class WorkingTree(bzrlib.tree.Tree):
         XXX: When BzrDir is present, these should be created through that 
         interface instead.
         """
-        warn('delete WorkingTree.create', stacklevel=3)
+        warnings.warn('delete WorkingTree.create', stacklevel=3)
         transport = get_transport(directory)
         if branch.bzrdir.root_transport.base == transport.base:
             # same dir 
@@ -593,7 +596,7 @@ class WorkingTree(bzrlib.tree.Tree):
         inv = self.read_working_inventory()
         for f,file_id in zip(files, ids):
             if self.is_control_filename(f):
-                raise BzrError("cannot add control file %s" % quotefn(f))
+                raise errors.ForbiddenFileError(filename=f)
 
             fp = splitpath(f)
 
@@ -601,19 +604,13 @@ class WorkingTree(bzrlib.tree.Tree):
                 raise BzrError("cannot add top-level %r" % f)
 
             fullpath = normpath(self.abspath(f))
-
             try:
                 kind = file_kind(fullpath)
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     raise NoSuchFile(fullpath)
-                # maybe something better?
-                raise BzrError('cannot add: not a regular file, symlink or directory: %s' % quotefn(f))
-
             if not InventoryEntry.versionable_kind(kind):
-                raise BzrError('cannot add: not a versionable file ('
-                               'i.e. regular file, symlink or directory): %s' % quotefn(f))
-
+                raise errors.BadFileKindError(filename=f, kind=kind)
             if file_id is None:
                 inv.add_path(f, kind=kind)
             else:
@@ -1269,14 +1266,13 @@ class WorkingTree(bzrlib.tree.Tree):
                 # TODO: Perhaps make this just a warning, and continue?
                 # This tends to happen when 
                 raise NotVersionedError(path=f)
-            mutter("remove inventory entry %s {%s}", quotefn(f), fid)
             if verbose:
                 # having remove it, it must be either ignored or unknown
                 if self.is_ignored(f):
                     new_status = 'I'
                 else:
                     new_status = '?'
-                show_status(new_status, inv[fid].kind, quotefn(f), to_file=to_file)
+                show_status(new_status, inv[fid].kind, f, to_file=to_file)
             del inv[fid]
 
         self._write_inventory(inv)

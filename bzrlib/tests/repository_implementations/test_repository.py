@@ -23,7 +23,6 @@ import sys
 import bzrlib
 import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.commit import commit
 import bzrlib.errors as errors
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,

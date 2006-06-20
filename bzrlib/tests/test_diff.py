@@ -21,7 +21,6 @@ from bzrlib.diff import internal_diff, show_diff_trees
 from bzrlib.errors import BinaryFile
 import bzrlib.patiencediff
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestCaseInTempDir
-from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
 def udiff_lines(old, new, allow_binary=False):

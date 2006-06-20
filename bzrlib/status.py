@@ -18,10 +18,12 @@ import sys
 
 from bzrlib.delta import compare_trees
 from bzrlib.diff import _raise_if_nonexistent
-from bzrlib.errors import NoSuchRevision
+import bzrlib.errors as errors
 from bzrlib.log import line_log
 from bzrlib.osutils import is_inside_any
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function,
+        zero_eight,
+        )
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
@@ -122,15 +124,15 @@ def show_tree_status(wt, show_unchanged=False,
             try:
                 rev_id = revision[0].in_history(wt.branch).rev_id
                 old = wt.branch.repository.revision_tree(rev_id)
-            except NoSuchRevision, e:
-                raise BzrCommandError(str(e))
+            except errors.NoSuchRevision, e:
+                raise errors.BzrCommandError(str(e))
             if (len(revision) > 1) and (revision[1].spec is not None):
                 try:
                     rev_id = revision[1].in_history(wt.branch).rev_id
                     new = wt.branch.repository.revision_tree(rev_id)
                     new_is_working_tree = False
-                except NoSuchRevision, e:
-                    raise BzrCommandError(str(e))
+                except errors.NoSuchRevision, e:
+                    raise errors.BzrCommandError(str(e))
             else:
                 new = wt
         _raise_if_nonexistent(specific_files, old, new)
@@ -180,8 +182,8 @@ def show_pending_merges(new, to_file):
                 mm_revision = branch.repository.get_revision(mmerge)
                 print >> to_file, '   ', line_log(mm_revision, 75)
                 ignore.add(mmerge)
-        except NoSuchRevision:
-            print >> to_file, ' ', merge 
+        except errors.NoSuchRevision:
+            print >> to_file, ' ', merge
         
 def list_paths(header, paths, specific_files, to_file):
     done_header = False

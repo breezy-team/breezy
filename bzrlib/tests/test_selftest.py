@@ -35,6 +35,7 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
+from bzrlib.trace import note
 
 
 class SelftestTests(TestCase):

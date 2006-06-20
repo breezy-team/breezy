@@ -46,9 +46,9 @@ from bzrlib.errors import (BzrError,
                            PathNotChild,
                            IllegalPath,
                            )
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function, 
+        zero_nine)
 from bzrlib.trace import mutter
-import bzrlib.win32console
 
 
 def make_readonly(filename):

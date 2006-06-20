@@ -135,7 +135,7 @@ def open_tracefile(tracefilename='~/.bzr.log'):
     # information if something goes wrong.  In a future version this
     # file will be removed on successful completion.
     global _file_handler, _bzr_log_file
-    import stat, codecs
+    import codecs
 
     trace_fname = os.path.join(os.path.expanduser(tracefilename))
     _rollover_trace_maybe(trace_fname)

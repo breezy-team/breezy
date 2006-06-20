@@ -42,8 +42,8 @@ from bzrlib.errors import (BzrError,
                            NotBranchError)
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib.symbol_versioning import *
-import bzrlib.trace
+from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
+from bzrlib import trace
 from bzrlib.trace import mutter, note, log_error, warning, be_quiet
 
 plugin_cmds = {}
@@ -683,7 +683,7 @@ def main(argv):
     import bzrlib.ui
     from bzrlib.ui.text import TextUIFactory
     ## bzrlib.trace.enable_default_logging()
-    bzrlib.trace.log_startup(argv)
+    trace.log_startup(argv)
     bzrlib.ui.ui_factory = TextUIFactory()
 
     argv = [a.decode(bzrlib.user_encoding) for a in argv[1:]]
@@ -706,10 +706,10 @@ def run_bzr_catch_errors(argv):
         if (isinstance(e, IOError) 
             and hasattr(e, 'errno')
             and e.errno == errno.EPIPE):
-            bzrlib.trace.note('broken pipe')
+            note('broken pipe')
             return 3
         else:
-            bzrlib.trace.log_exception()
+            trace.log_exception()
             if os.environ.get('BZR_PDB'):
                 print '**** entering debugger'
                 import pdb

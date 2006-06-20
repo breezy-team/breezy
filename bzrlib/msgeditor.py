@@ -26,6 +26,7 @@ import sys
 import bzrlib
 import bzrlib.config as config
 from bzrlib.errors import BzrError
+from bzrlib.trace import warning
 
 
 def _get_editor():
@@ -142,7 +143,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
             try:
                 os.unlink(msgfilename)
             except IOError, e:
-                mutter("failed to unlink %s: %s; ignored", msgfilename, e)
+                warning("failed to unlink %s: %s; ignored", msgfilename, e)
 
 
 def make_commit_message_template(working_tree, specific_files):
