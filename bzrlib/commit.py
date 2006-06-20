@@ -75,7 +75,6 @@ from bzrlib.atomicfile import AtomicFile
 import bzrlib.config
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
-                           HistoryMissing,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
@@ -457,9 +456,8 @@ class Commit(object):
             if not self.branch.repository.has_revision(parent_id):
                 if parent_id == self.branch.last_revision():
                     warning("parent is missing %r", parent_id)
-                    raise HistoryMissing(self.branch, 'revision', parent_id)
-                else:
-                    mutter("commit will ghost revision %r", parent_id)
+                    raise BzrCheckError("branch %s is missing revision {%s}"
+                            % (self.branch, parent_id))
             
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.
