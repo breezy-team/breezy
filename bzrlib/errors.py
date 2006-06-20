@@ -186,10 +186,11 @@ class NotLocalUrl(BzrNewError):
 
 class BzrCommandError(BzrNewError):
     """Error from user command"""
+
     is_user_error = True
-    # Error from malformed user command
-    # This is being misused as a generic exception
-    # pleae subclass. RBC 20051030
+
+    # Error from malformed user command; please avoid raising this as a
+    # generic exception not caused by user input.
     #
     # I think it's a waste of effort to differentiate between errors that
     # are not intended to be caught anyway.  UI code need not subclass
@@ -202,8 +203,12 @@ class BzrCommandError(BzrNewError):
         return self.msg
 
 
+class BzrOptionError(BzrCommandError):
+    """Error in command line options"""
+
+    
 class StrictCommitFailed(BzrNewError):
-    """Commit refused because there are unknowns in the tree."""
+    """Commit refused because there are unknown files in the tree"""
 
 
 # XXX: Should be unified with TransportError; they seem to represent the
@@ -221,27 +226,40 @@ class PathError(BzrNewError):
 
 
 class NoSuchFile(PathError):
-    """No such file: %(path)s%(extra)s"""
+    """No such file: %(path)r%(extra)s"""
 
 
 class FileExists(PathError):
-    """File exists: %(path)s%(extra)s"""
+    """File exists: %(path)r%(extra)s"""
 
 
 class DirectoryNotEmpty(PathError):
-    """Directory not empty: %(path)s%(extra)s"""
+    """Directory not empty: %(path)r%(extra)s"""
 
 
 class ResourceBusy(PathError):
-    """Device or resource busy: %(path)s%(extra)s"""
+    """Device or resource busy: %(path)r%(extra)s"""
 
 
 class PermissionDenied(PathError):
-    """Permission denied: %(path)s%(extra)s"""
+    """Permission denied: %(path)r%(extra)s"""
+
+
+class InvalidURL(PathError):
+    """Invalid url supplied to transport: %(path)r%(extra)s"""
+
+
+class InvalidURLJoin(PathError):
+    """Invalid URL join request: %(args)s%(extra)s"""
+
+    def __init__(self, msg, base, args):
+        PathError.__init__(self, base, msg)
+        self.args = [base]
+        self.args.extend(args)
 
 
 class PathNotChild(BzrNewError):
-    """Path %(path)s is not a child of path %(base)s%(extra)s"""
+    """Path %(path)r is not a child of path %(base)r%(extra)s"""
 
     is_user_error = False
 
@@ -255,6 +273,9 @@ class PathNotChild(BzrNewError):
             self.extra = ''
 
 
+# TODO: This is given a URL; we try to unescape it but doing that from inside
+# the exception object is a bit undesirable.
+# TODO: Probably this behavior of should be a common superclass 
 class NotBranchError(PathError):
     """Not a branch: %(path)s"""
 
@@ -269,7 +290,7 @@ class BranchExistsWithoutWorkingTree(PathError):
 
 
 class NoRepositoryPresent(BzrNewError):
-    """No repository present: %(path)s"""
+    """No repository present: %(path)r"""
     def __init__(self, bzrdir):
         BzrNewError.__init__(self)
         self.path = bzrdir.transport.clone('..').base
@@ -290,7 +311,7 @@ class UnsupportedFormatError(BzrNewError):
 
 
 class UnknownFormatError(BzrNewError):
-    """Unknown branch format: %(format)s"""
+    """Unknown branch format: %(format)r"""
 
 
 class IncompatibleFormat(BzrNewError):
@@ -378,8 +399,10 @@ class OutSideTransaction(BzrNewError):
 
 
 class ObjectNotLocked(LockError):
-    """%(obj)s is not locked"""
+    """%(obj)r is not locked"""
+
     is_user_error = False
+
     # this can indicate that any particular object is not locked; see also
     # LockNotHeld which means that a particular *lock* object is not held by
     # the caller -- perhaps they should be unified.
@@ -388,7 +411,7 @@ class ObjectNotLocked(LockError):
 
 
 class ReadOnlyObjectDirtiedError(ReadOnlyError):
-    """Cannot change object %(obj)s in read only transaction"""
+    """Cannot change object %(obj)r in read only transaction"""
     def __init__(self, obj):
         self.obj = obj
 
@@ -413,7 +436,7 @@ class LockBroken(LockError):
 
 
 class LockBreakMismatch(LockError):
-    """Lock was released and re-acquired before being broken: %(lock)s: held by %(holder)s, wanted to break %(target)r"""
+    """Lock was released and re-acquired before being broken: %(lock)s: held by %(holder)r, wanted to break %(target)r"""
     def __init__(self, lock, holder, target):
         self.lock = lock
         self.holder = holder
@@ -509,7 +532,7 @@ class AmbiguousBase(BzrError):
     def __init__(self, bases):
         warn("BzrError AmbiguousBase has been deprecated as of bzrlib 0.8.",
                 DeprecationWarning)
-        msg = "The correct base is unclear, becase %s are all equally close" %\
+        msg = "The correct base is unclear, because %s are all equally close" %\
             ", ".join(bases)
         BzrError.__init__(self, msg)
         self.bases = bases
@@ -860,6 +883,13 @@ class UninitializableFormat(BzrNewError):
         self.format = format
 
 
+class NoDiff(BzrNewError):
+    """Diff is not installed on this machine: %(msg)s"""
+
+    def __init__(self, msg):
+        super(NoDiff, self).__init__(msg=msg)
+
+
 class NoDiff3(BzrNewError):
     """Diff3 is not installed on this machine."""
 
@@ -954,6 +984,13 @@ class TestamentMismatch(BzrNewError):
         self.revision_id = revision_id
         self.expected = expected
         self.measured = measured
+
+
+class NotABundle(BzrNewError):
+    """Not a bzr revision-bundle: %(text)r"""
+
+    def __init__(self, text):
+        self.text = text
 
 
 class BadBundle(Exception): pass

@@ -58,7 +58,9 @@ import logging
 
 import bzrlib
 from bzrlib.errors import BzrError, BzrNewError
-
+from bzrlib.symbol_versioning import (deprecated_function,
+        zero_nine,
+        )
 
 _file_handler = None
 _stderr_handler = None
@@ -139,6 +141,21 @@ def open_tracefile(tracefilename='~/.bzr.log'):
         logging.getLogger('').addHandler(_file_handler)
     except IOError, e:
         warning("failed to open trace file: %s" % (e))
+
+
+@deprecated_function(zero_nine)
+def log_exception(msg=None):
+    """Log the last exception to stderr and the trace file.
+
+    The exception string representation is used as the error
+    summary, unless msg is given.
+    """
+    if msg:
+        error(msg)
+    else:
+        exc_str = format_exception_short(sys.exc_info())
+        error(exc_str)
+    log_exception_quietly()
 
 
 def log_exception_quietly():

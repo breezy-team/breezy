@@ -232,7 +232,7 @@ class Command(object):
         allowed_names = self.options().keys()
         for oname in opts:
             if oname not in allowed_names:
-                raise BzrCommandError("option '--%s' is not allowed for"
+                raise BzrOptionError("option '--%s' is not allowed for"
                                 " command %r" % (oname, self.name()))
         # mix arguments and options into one dictionary
         cmdargs = _match_argform(self.name(), self.takes_args, args)
