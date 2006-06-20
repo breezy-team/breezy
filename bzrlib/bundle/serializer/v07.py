@@ -344,15 +344,6 @@ class BundleReader(object):
         # and generate the real_revisions list.
         self.info.complete_info()
 
-    def get_bundle(self, repository):
-        """Return the meta information, and a Bundle tree which can
-        be used to populate the local stores and working tree, respectively.
-        """
-        return self.info, self.revision_tree(repository, self.info.target)
-
-    def revision_tree(self, repository, revision_id, base=None):
-        return self.info.revision_tree(repository, revision_id, base)
-
     def _next(self):
         """yield the next line, but secretly
         keep 1 extra line for peeking.
