@@ -279,6 +279,10 @@ class PathNotChild(BzrNewError):
 class NotBranchError(PathError):
     """Not a branch: %(path)s"""
 
+    def __init__(self, path):
+       import bzrlib.urlutils as urlutils
+       self.path = urlutils.unescape_for_display(path, 'ascii')
+
 
 class AlreadyBranchError(PathError):
     """Already a branch: %(path)s."""
@@ -478,6 +482,14 @@ class NoSuchRevision(BzrNewError):
     def __init__(self, branch, revision):
         self.branch = branch
         self.revision = revision
+
+
+class HistoryMissing(BzrError):
+    def __init__(self, branch, object_type, object_id):
+        self.branch = branch
+        BzrError.__init__(self,
+                          '%s is missing %s {%s}'
+                          % (branch, object_type, object_id))
 
 
 class DivergedBranches(BzrNewError):

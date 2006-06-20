@@ -33,7 +33,9 @@ import errno
 import logging
 import os
 import re
+import shlex
 import stat
+from subprocess import Popen, PIPE
 import sys
 import tempfile
 import unittest
@@ -62,13 +64,14 @@ import bzrlib.progress as progress
 from bzrlib.revision import common_ancestor
 import bzrlib.store
 import bzrlib.trace
-from bzrlib.transport import urlescape, get_transport
+from bzrlib.transport import get_transport
 import bzrlib.transport
 from bzrlib.transport.local import LocalRelpathServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
 from bzrlib.tests.TestUtil import TestLoader, TestSuite
 from bzrlib.tests.treeshape import build_tree_contents
+import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
 default_transport = LocalRelpathServer
@@ -328,7 +331,11 @@ class TextTestRunner(object):
         test_root = TestCaseInTempDir.TEST_ROOT
         if result.wasSuccessful() or not self.keep_output:
             if test_root is not None:
-                    osutils.rmtree(test_root)
+                # If LANG=C we probably have created some bogus paths
+                # which rmtree(unicode) will fail to delete
+                # so make sure we are using rmtree(str) to delete everything
+                osutils.rmtree(test_root.encode(
+                    sys.getfilesystemencoding()))
         else:
             if self.pb is not None:
                 self.pb.note("Failed tests working directories are in '%s'\n",
@@ -363,6 +370,33 @@ class TestSkipped(Exception):
 
 class CommandFailed(Exception):
     pass
+
+
+class StringIOWrapper(object):
+    """A wrapper around cStringIO which just adds an encoding attribute.
+    
+    Internally we can check sys.stdout to see what the output encoding
+    should be. However, cStringIO has no encoding attribute that we can
+    set. So we wrap it instead.
+    """
+    encoding='ascii'
+    _cstring = None
+
+    def __init__(self, s=None):
+        if s is not None:
+            self.__dict__['_cstring'] = StringIO(s)
+        else:
+            self.__dict__['_cstring'] = StringIO()
+
+    def __getattr__(self, name, getattr=getattr):
+        return getattr(self.__dict__['_cstring'], name)
+
+    def __setattr__(self, name, val):
+        if name == 'encoding':
+            self.__dict__['encoding'] = val
+        else:
+            return setattr(self._cstring, name, val)
+
 
 class TestCase(unittest.TestCase):
     """Base class for bzr unit tests.
@@ -448,6 +482,12 @@ class TestCase(unittest.TestCase):
         """Assert that a contains something matching a regular expression."""
         if not re.search(needle_re, haystack):
             raise AssertionError('pattern "%s" not found in "%s"'
+                    % (needle_re, haystack))
+
+    def assertNotContainsRe(self, haystack, needle_re):
+        """Assert that a does not match a regular expression"""
+        if re.search(needle_re, haystack):
+            raise AssertionError('pattern "%s" found in "%s"'
                     % (needle_re, haystack))
 
     def assertSubset(self, sublist, superlist):
@@ -602,7 +642,7 @@ class TestCase(unittest.TestCase):
         """Shortcut that splits cmd into words, runs, and returns stdout"""
         return self.run_bzr_captured(cmd.split(), retcode=retcode)[0]
 
-    def run_bzr_captured(self, argv, retcode=0, stdin=None):
+    def run_bzr_captured(self, argv, retcode=0, encoding=None, stdin=None):
         """Invoke bzr and return (stdout, stderr).
 
         Useful for code that wants to check the contents of the
@@ -619,15 +659,21 @@ class TestCase(unittest.TestCase):
         errors, and with logging set to something approximating the
         default, so that error reporting can be checked.
 
-        argv -- arguments to invoke bzr
-        retcode -- expected return code, or None for don't-care.
+        :param argv: arguments to invoke bzr
+        :param retcode: expected return code, or None for don't-care.
+        :param encoding: encoding for sys.stdout and sys.stderr
         :param stdin: A string to be used as stdin for the command.
         """
+        if encoding is None:
+            encoding = bzrlib.user_encoding
         if stdin is not None:
             stdin = StringIO(stdin)
-        stdout = StringIO()
-        stderr = StringIO()
-        self.log('run bzr: %s', ' '.join(argv))
+        stdout = StringIOWrapper()
+        stderr = StringIOWrapper()
+        stdout.encoding = encoding
+        stderr.encoding = encoding
+
+        self.log('run bzr: %r', argv)
         # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
         handler.setLevel(logging.INFO)
@@ -645,14 +691,15 @@ class TestCase(unittest.TestCase):
         finally:
             logger.removeHandler(handler)
             bzrlib.ui.ui_factory = old_ui_factory
+
         out = stdout.getvalue()
         err = stderr.getvalue()
         if out:
-            self.log('output:\n%s', out)
+            self.log('output:\n%r', out)
         if err:
-            self.log('errors:\n%s', err)
+            self.log('errors:\n%r', err)
         if retcode is not None:
-            self.assertEquals(result, retcode)
+            self.assertEquals(retcode, result)
         return out, err
 
     def run_bzr(self, *args, **kwargs):
@@ -668,8 +715,40 @@ class TestCase(unittest.TestCase):
         :param stdin: A string to be used as stdin for the command.
         """
         retcode = kwargs.pop('retcode', 0)
+        encoding = kwargs.pop('encoding', None)
         stdin = kwargs.pop('stdin', None)
-        return self.run_bzr_captured(args, retcode, stdin)
+        return self.run_bzr_captured(args, retcode=retcode, encoding=encoding, stdin=stdin)
+
+    def run_bzr_decode(self, *args, **kwargs):
+        if kwargs.has_key('encoding'):
+            encoding = kwargs['encoding']
+        else:
+            encoding = bzrlib.user_encoding
+        return self.run_bzr(*args, **kwargs)[0].decode(encoding)
+
+    def run_bzr_subprocess(self, *args, **kwargs):
+        """Run bzr in a subprocess for testing.
+
+        This starts a new Python interpreter and runs bzr in there. 
+        This should only be used for tests that have a justifiable need for
+        this isolation: e.g. they are testing startup time, or signal
+        handling, or early startup code, etc.  Subprocess code can't be 
+        profiled or debugged so easily.
+
+        :param retcode: The status code that is expected.  Defaults to 0.  If
+        None is supplied, the status code is not checked.
+        """
+        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        args = list(args)
+        process = Popen([sys.executable, bzr_path]+args, stdout=PIPE, 
+                         stderr=PIPE)
+        out = process.stdout.read()
+        err = process.stderr.read()
+        retcode = process.wait()
+        supplied_retcode = kwargs.get('retcode', 0)
+        if supplied_retcode is not None:
+            assert supplied_retcode == retcode
+        return [out, err]
 
     def check_inventory_shape(self, inv, shape):
         """Compare an inventory to a list of expected names.
@@ -840,7 +919,7 @@ class TestCaseInTempDir(TestCase):
         for name in shape:
             self.assert_(isinstance(name, basestring))
             if name[-1] == '/':
-                transport.mkdir(urlescape(name[:-1]))
+                transport.mkdir(urlutils.escape(name[:-1]))
             else:
                 if line_endings == 'binary':
                     end = '\n'
@@ -848,8 +927,8 @@ class TestCaseInTempDir(TestCase):
                     end = os.linesep
                 else:
                     raise errors.BzrError('Invalid line ending request %r' % (line_endings,))
-                content = "contents of %s%s" % (name, end)
-                transport.put(urlescape(name), StringIO(content))
+                content = "contents of %s%s" % (name.encode('utf-8'), end)
+                transport.put(urlutils.escape(name), StringIO(content))
 
     def build_tree_contents(self, shape):
         build_tree_contents(shape)
@@ -865,6 +944,7 @@ class TestCaseInTempDir(TestCase):
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.failUnless(osutils.lexists(path))
+        # TODO: jam 20060427 Shouldn't this be 'rb'?
         self.assertEqualDiff(content, open(path, 'r').read())
 
 
@@ -946,7 +1026,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         if relpath is not None and relpath != '.':
             if not base.endswith('/'):
                 base = base + '/'
-            base = base + relpath
+            base = base + urlutils.escape(relpath)
         return base
 
     def get_transport(self):
@@ -973,9 +1053,10 @@ class TestCaseWithTransport(TestCaseInTempDir):
     def make_bzrdir(self, relpath, format=None):
         try:
             url = self.get_url(relpath)
-            segments = relpath.split('/')
+            mutter('relpath %r => url %r', relpath, url)
+            segments = url.split('/')
             if segments and segments[-1] not in ('', '.'):
-                parent = self.get_url('/'.join(segments[:-1]))
+                parent = '/'.join(segments[:-1])
                 t = get_transport(parent)
                 try:
                     t.mkdir(segments[-1])
@@ -1127,6 +1208,7 @@ def test_suite():
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_diff',
                    'bzrlib.tests.test_doc_generate',
+                   'bzrlib.tests.test_emptytree',
                    'bzrlib.tests.test_errors',
                    'bzrlib.tests.test_escaped_store',
                    'bzrlib.tests.test_fetch',
@@ -1158,6 +1240,7 @@ def test_suite():
                    'bzrlib.tests.test_revision',
                    'bzrlib.tests.test_revisionnamespaces',
                    'bzrlib.tests.test_revprops',
+                   'bzrlib.tests.test_revisiontree',
                    'bzrlib.tests.test_rio',
                    'bzrlib.tests.test_sampler',
                    'bzrlib.tests.test_selftest',
@@ -1179,6 +1262,7 @@ def test_suite():
                    'bzrlib.tests.test_tuned_gzip',
                    'bzrlib.tests.test_ui',
                    'bzrlib.tests.test_upgrade',
+                   'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
@@ -1186,7 +1270,9 @@ def test_suite():
                    'bzrlib.tests.test_xml',
                    ]
     test_transport_implementations = [
-        'bzrlib.tests.test_transport_implementations']
+        'bzrlib.tests.test_transport_implementations',
+        'bzrlib.tests.test_read_bundle',
+        ]
 
     suite = TestSuite()
     loader = TestUtil.TestLoader()

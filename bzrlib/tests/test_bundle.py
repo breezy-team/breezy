@@ -22,7 +22,7 @@ from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.read_bundle import BundleTree, BundleReader
 from bzrlib.bundle.serializer import write_bundle
 from bzrlib.diff import internal_diff
-from bzrlib.errors import BzrError, TestamentMismatch
+from bzrlib.errors import BzrError, TestamentMismatch, NotABundle
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
@@ -364,6 +364,9 @@ class CSetTester(TestCaseInTempDir):
         self.valid_apply_bundle(base_rev_id, bundle)
         return bundle 
 
+    def test_non_bundle(self):
+        self.assertRaises(NotABundle, BundleReader, StringIO('#!/bin/sh\n'))
+
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.
         """
@@ -659,3 +662,24 @@ class CSetTester(TestCaseInTempDir):
                           verbose=False)
         self.tree1.commit(u'Merge', rev_id='a@lmod-0-4')
         bundle = self.get_valid_bundle('a@lmod-0-2a', 'a@lmod-0-4')
+
+    def test_hide_history(self):
+        import os, sys
+        pjoin = os.path.join
+
+        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.b1 = self.tree1.branch
+
+        open(pjoin('b1/one'), 'wb').write('one\n')
+        self.tree1.add('one')
+        self.tree1.commit('add file', rev_id='a@cset-0-1')
+        open(pjoin('b1/one'), 'wb').write('two\n')
+        self.tree1.commit('modify', rev_id='a@cset-0-2')
+        open(pjoin('b1/one'), 'wb').write('three\n')
+        self.tree1.commit('modify', rev_id='a@cset-0-3')
+        bundle_file = StringIO()
+        rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
+                               'a@cset-0-1', bundle_file)
+        self.assertNotContainsRe(bundle_file.getvalue(), 'two')
+        self.assertContainsRe(bundle_file.getvalue(), 'one')
+        self.assertContainsRe(bundle_file.getvalue(), 'three')

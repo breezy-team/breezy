@@ -15,6 +15,7 @@ from bzrlib.option import Option
 from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.trace import note
 
 
 class cmd_send_changeset(Command):
@@ -64,36 +65,43 @@ class cmd_bundle_revisions(Command):
 
     You can apply it to another tree using 'bzr merge'.
 
-    bzr bundle
+    bzr bundle-revisions
         - Bundle for the last commit
-    bzr bundle BASE
+    bzr bundle-revisions BASE
         - Bundle to apply the current tree into BASE
-    bzr bundle --revision A
+    bzr bundle-revisions --revision A
         - Bundle for revision A
-    bzr bundle --revision A..B
+    bzr bundle-revisions --revision A..B
         - Bundle to transform A into B
-    bzr bundle --revision A..B BASE
+    bzr bundle-revisions --revision A..B BASE
         - Bundle to transform revision A of BASE into revision B
           of the local tree
     """
-    takes_options = ['verbose', 'revision']
+    takes_options = ['verbose', 'revision',
+                     Option("output", help="write bundle to specified file",
+                            type=unicode)]
     takes_args = ['base?']
     aliases = ['bundle']
 
-    def run(self, base=None, revision=None):
+    def run(self, base=None, revision=None, output=None):
         from bzrlib import user_encoding
         from bzrlib.bundle.serializer import write_bundle
 
+        target_branch = Branch.open_containing(u'.')[0]
+
         if base is None:
-            base_branch = None
-        else:
-            base_branch = Branch.open(base)
+            base = target_branch.get_parent()
+            if base is None:
+                raise errors.BzrCommandError("No base branch known or"
+                                             " specified.")
+            else:
+                note('Using saved location: %s' % base)
+        base_branch = Branch.open(base)
 
         # We don't want to lock the same branch across
         # 2 different branches
-        target_branch = Branch.open_containing(u'.')[0]
-        if base_branch is not None and target_branch.base == base_branch.base:
-            base_branch = None
+        if target_branch.base == base_branch.base:
+            base_branch = target_branch 
 
         base_revision = None
         if revision is None:
@@ -132,8 +140,13 @@ class cmd_bundle_revisions(Command):
             target_branch.repository.fetch(base_branch.repository, 
                                            revision_id=base_revision)
             del base_branch
+
+        if output is not None:
+            fileobj = file(output, 'wb')
+        else:
+            fileobj = sys.stdout
         write_bundle(target_branch.repository, target_revision, base_revision,
-                     sys.stdout)
+                     fileobj)
 
 
 class cmd_verify_changeset(Command):

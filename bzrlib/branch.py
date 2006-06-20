@@ -28,15 +28,14 @@ import bzrlib
 import bzrlib.bzrdir as bzrdir
 from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.delta import compare_trees
 import bzrlib.errors as errors
-from bzrlib.errors import (BzrError, InvalidRevisionNumber, InvalidRevisionId,
-                           NoSuchRevision, NotBranchError,
-                           DivergedBranches, LockError,
-                           UninitializableFormat,
-                           UnlistableStore,
-                           UnlistableBranch, NoSuchFile, NotVersionedError,
-                           NoWorkingTree)
+from bzrlib.errors import (BzrError, BzrCheckError, DivergedBranches, 
+                           HistoryMissing, InvalidRevisionId, 
+                           InvalidRevisionNumber, LockError, NoSuchFile, 
+                           NoSuchRevision, NoWorkingTree, NotVersionedError,
+                           NotBranchError, UninitializableFormat, 
+                           UnlistableStore, UnlistableBranch, 
+                           )
 import bzrlib.inventory as inventory
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import LockableFiles, TransportLock
@@ -47,9 +46,6 @@ from bzrlib.osutils import (isdir, quotefn,
                             safe_unicode,
                             rmtree,
                             )
-from bzrlib.textui import show_status
-from bzrlib.trace import mutter, note
-from bzrlib.tree import EmptyTree, RevisionTree
 from bzrlib.repository import Repository
 from bzrlib.revision import (
                              is_ancestor,
@@ -58,10 +54,12 @@ from bzrlib.revision import (
                              )
 from bzrlib.store import copy_all
 from bzrlib.symbol_versioning import *
+from bzrlib.textui import show_status
+from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
 from bzrlib.transport import Transport, get_transport
-from bzrlib.tree import EmptyTree, RevisionTree
 import bzrlib.ui
+import bzrlib.urlutils as urlutils
 import bzrlib.xml5
 
 
@@ -249,6 +247,26 @@ class Branch(object):
         branch.
         """
         return None
+    
+    def get_commit_builder(self, parents, config=None, timestamp=None, 
+                           timezone=None, committer=None, revprops=None, 
+                           revision_id=None):
+        """Obtain a CommitBuilder for this branch.
+        
+        :param parents: Revision ids of the parents of the new revision.
+        :param config: Optional configuration to use.
+        :param timestamp: Optional timestamp recorded for commit.
+        :param timezone: Optional timezone for timestamp.
+        :param committer: Optional committer to set for commit.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.
+        """
+
+        if config is None:
+            config = bzrlib.config.BranchConfig(self)
+        
+        return self.repository.get_commit_builder(self, parents, config, 
+            timestamp, timezone, committer, revprops, revision_id)
 
     def get_master_branch(self):
         """Return the branch we are bound to.
@@ -256,6 +274,18 @@ class Branch(object):
         :return: Either a Branch, or None
         """
         return None
+
+    def get_revision_delta(self, revno):
+        """Return the delta for one revision.
+
+        The delta is relative to its mainline predecessor, or the
+        empty tree for revision 1.
+        """
+        assert isinstance(revno, int)
+        rh = self.revision_history()
+        if not (1 <= revno <= len(rh)):
+            raise InvalidRevisionNumber(revno)
+        return self.repository.get_revision_delta(rh[revno-1])
 
     def get_root_id(self):
         """Return the id of this branches root"""
@@ -431,7 +461,7 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        # for API compatability, until 0.8 releases we provide the old api:
+        # for API compatibility, until 0.8 releases we provide the old api:
         # def clone(self, to_location, revision=None, basis_branch=None, to_branch_format=None):
         # after 0.8 releases, the *args and **kwargs should be changed:
         # def clone(self, to_bzrdir, revision_id=None):
@@ -439,7 +469,7 @@ class Branch(object):
             kwargs.get('revision', None) or
             kwargs.get('basis_branch', None) or
             (len(args) and isinstance(args[0], basestring))):
-            # backwards compatability api:
+            # backwards compatibility api:
             warn("Branch.clone() has been deprecated for BzrDir.clone() from"
                  " bzrlib 0.8.", DeprecationWarning, stacklevel=3)
             # get basis_branch
@@ -511,6 +541,34 @@ class Branch(object):
         if parent:
             destination.set_parent(parent)
 
+    @needs_read_lock
+    def check(self):
+        """Check consistency of the branch.
+
+        In particular this checks that revisions given in the revision-history
+        do actually match up in the revision graph, and that they're all 
+        present in the repository.
+
+        :return: A BranchCheckResult.
+        """
+        mainline_parent_id = None
+        for revision_id in self.revision_history():
+            try:
+                revision = self.repository.get_revision(revision_id)
+            except errors.NoSuchRevision, e:
+                raise BzrCheckError("mainline revision {%s} not in repository"
+                        % revision_id)
+            # In general the first entry on the revision history has no parents.
+            # But it's not illegal for it to have parents listed; this can happen
+            # in imports from Arch when the parents weren't reachable.
+            if mainline_parent_id is not None:
+                if mainline_parent_id not in revision.parent_ids:
+                    raise BzrCheckError("previous revision {%s} not listed among "
+                                        "parents of {%s}"
+                                        % (mainline_parent_id, revision_id))
+            mainline_parent_id = revision_id
+        return BranchCheckResult(self)
+
 
 class BranchFormat(object):
     """An encapsulation of the initialization and open routines for a format.
@@ -563,7 +621,7 @@ class BranchFormat(object):
 
     def initialize(self, a_bzrdir):
         """Create a branch of this format in a_bzrdir."""
-        raise NotImplementedError(self.initialized)
+        raise NotImplementedError(self.initialize)
 
     def is_supported(self):
         """Is this format supported?
@@ -991,26 +1049,6 @@ class BzrBranch(Branch):
             # not really an object yet, and the transaction is for objects.
             # transaction.register_clean(history)
 
-    def get_revision_delta(self, revno):
-        """Return the delta for one revision.
-
-        The delta is relative to its mainline predecessor, or the
-        empty tree for revision 1.
-        """
-        assert isinstance(revno, int)
-        rh = self.revision_history()
-        if not (1 <= revno <= len(rh)):
-            raise InvalidRevisionNumber(revno)
-
-        # revno is 1-based; list is 0-based
-
-        new_tree = self.repository.revision_tree(rh[revno-1])
-        if revno == 1:
-            old_tree = EmptyTree()
-        else:
-            old_tree = self.repository.revision_tree(rh[revno-2])
-        return compare_trees(old_tree, new_tree)
-
     @needs_read_lock
     def revision_history(self):
         """See Branch.revision_history."""
@@ -1103,11 +1141,17 @@ class BzrBranch(Branch):
         """See Branch.get_parent."""
         import errno
         _locs = ['parent', 'pull', 'x-pull']
+        assert self.base[-1] == '/'
         for l in _locs:
             try:
-                return self.control_files.get_utf8(l).read().strip('\n')
+                parent = self.control_files.get(l).read().strip('\n')
             except NoSuchFile:
-                pass
+                continue
+            # This is an old-format absolute path to a local branch
+            # turn it into a url
+            if parent.startswith('/'):
+                parent = urlutils.local_path_to_url(parent.decode('utf8'))
+            return urlutils.join(self.base[:-1], parent)
         return None
 
     def get_push_location(self):
@@ -1132,7 +1176,16 @@ class BzrBranch(Branch):
         if url is None:
             self.control_files._transport.delete('parent')
         else:
-            self.control_files.put_utf8('parent', url + '\n')
+            if isinstance(url, unicode):
+                try: 
+                    url = url.encode('ascii')
+                except UnicodeEncodeError:
+                    raise bzrlib.errors.InvalidURL(url,
+                        "Urls must be 7-bit ascii, "
+                        "use bzrlib.urlutils.escape")
+                    
+            url = urlutils.relative_url(self.base, url)
+            self.control_files.put('parent', url + '\n')
 
     def tree_config(self):
         return TreeConfig(self)
@@ -1180,7 +1233,7 @@ class BzrBranch5(BzrBranch):
 
         This could memoise the branch, but if thats done
         it must be revalidated on each new lock.
-        So for now we just dont memoise it.
+        So for now we just don't memoise it.
         # RBC 20060304 review this decision.
         """
         bound_loc = self.get_bound_location()
@@ -1232,7 +1285,7 @@ class BzrBranch5(BzrBranch):
         # There may be a different check you could do here
         # rather than actually trying to install revisions remotely.
         # TODO: capture an exception which indicates the remote branch
-        #       is not writeable. 
+        #       is not writable. 
         #       If it is up-to-date, this probably should not be a failure
         
         # lock other for write so the revision-history syncing cannot race
@@ -1302,6 +1355,26 @@ class BranchTestProviderAdapter(object):
             new_test.id = make_new_test_id()
             result.addTest(new_test)
         return result
+
+
+class BranchCheckResult(object):
+    """Results of checking branch consistency.
+
+    :see: Branch.check
+    """
+
+    def __init__(self, branch):
+        self.branch = branch
+
+    def report_results(self, verbose):
+        """Report the check results via trace.note.
+        
+        :param verbose: Requests more detailed display of what was checked,
+            if any.
+        """
+        note('checked branch %s format %s',
+             self.branch.base,
+             self.branch._format)
 
 
 ######################################################################
