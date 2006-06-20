@@ -25,7 +25,7 @@ from unittest import TestCase
 import zlib
 
 
-from bzrlib.tuned_gzip import *
+from bzrlib import tuned_gzip
 
 
 class FakeDecompress(object):
@@ -74,7 +74,7 @@ class TestGzip(TestCase):
         # read more bytes if there is less than 8 bytes (the 
         # gzip trailer) unread.
         stream = StringIO('\0\0\0\0\0\0\0\0')
-        myfile = GzipFile(fileobj=stream)
+        myfile = tuned_gzip.GzipFile(fileobj=stream)
         # disable the _new_member check, we are microtesting.
         myfile._new_member = False
         myfile.crc = zlib.crc32('')

@@ -27,7 +27,7 @@
 # property.
 
 # TODO: Nothing here so far assumes the lines are really \n newlines,
-# rather than being split up in some other way.  We could accomodate
+# rather than being split up in some other way.  We could accommodate
 # binaries, perhaps by naively splitting on \n or perhaps using
 # something like a rolling checksum.
 
@@ -73,6 +73,7 @@ from cStringIO import StringIO
 import os
 import sha
 import time
+import warnings
 
 from bzrlib.trace import mutter
 from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
@@ -84,7 +85,10 @@ from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
 import bzrlib.errors as errors
 from bzrlib.osutils import sha_strings
 import bzrlib.patiencediff
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_method,
+        deprecated_function,
+        zero_eight,
+        )
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
 from bzrlib.weavefile import _read_weave_v5, write_weave_v5
@@ -231,7 +235,7 @@ class Weave(VersionedFile):
 
     @deprecated_method(zero_eight)
     def lookup(self, name):
-        """Backwards compatability thunk:
+        """Backwards compatibility thunk:
 
         Return name, as name is valid in the api now, and spew deprecation
         warnings everywhere.
@@ -522,7 +526,7 @@ class Weave(VersionedFile):
         if lines == basis_lines:
             return new_version            
 
-        # add a sentinal, because we can also match against the final line
+        # add a sentinel, because we can also match against the final line
         basis_lineno.append(len(self._weave))
 
         # XXX: which line of the weave should we really consider
@@ -635,7 +639,7 @@ class Weave(VersionedFile):
 
     def annotate(self, version_id):
         if isinstance(version_id, int):
-            warn('Weave.annotate(int) is deprecated. Please use version names'
+            warnings.warn('Weave.annotate(int) is deprecated. Please use version names'
                  ' in all circumstances as of 0.8',
                  DeprecationWarning,
                  stacklevel=2
@@ -1069,7 +1073,7 @@ class Weave(VersionedFile):
 
     @deprecated_method(zero_eight)
     def reweave(self, other, pb=None, msg=None):
-        """reweave has been superceded by plain use of join."""
+        """reweave has been superseded by plain use of join."""
         return self.join(other, pb, msg)
 
     def _reweave(self, other, pb, msg):
@@ -1239,7 +1243,7 @@ def weave_stats(weave_file, pb):
     from bzrlib.weavefile import read_weave
 
     wf = file(weave_file, 'rb')
-    w = read_weave(wf, WeaveVersionedFile)
+    w = read_weave(wf)
     # FIXME: doesn't work on pipes
     weave_size = wf.tell()
 
@@ -1419,47 +1423,9 @@ def main(argv):
         raise ValueError('unknown command %r' % cmd)
     
 
-
-def profile_main(argv):
-    import tempfile, hotshot, hotshot.stats
-
-    prof_f = tempfile.NamedTemporaryFile()
-
-    prof = hotshot.Profile(prof_f.name)
-
-    ret = prof.runcall(main, argv)
-    prof.close()
-
-    stats = hotshot.stats.load(prof_f.name)
-    #stats.strip_dirs()
-    stats.sort_stats('cumulative')
-    ## XXX: Might like to write to stderr or the trace file instead but
-    ## print_stats seems hardcoded to stdout
-    stats.print_stats(20)
-            
-    return ret
-
-
-def lsprofile_main(argv): 
-    from bzrlib.lsprof import profile
-    ret,stats = profile(main, argv)
-    stats.sort()
-    stats.pprint()
-    return ret
-
-
 if __name__ == '__main__':
     import sys
-    if '--profile' in sys.argv:
-        args = sys.argv[:]
-        args.remove('--profile')
-        sys.exit(profile_main(args))
-    elif '--lsprof' in sys.argv:
-        args = sys.argv[:]
-        args.remove('--lsprof')
-        sys.exit(lsprofile_main(args))
-    else:
-        sys.exit(main(sys.argv))
+    sys.exit(main(sys.argv))
 
 
 class InterWeave(InterVersionedFile):

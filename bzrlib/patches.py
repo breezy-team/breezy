@@ -319,6 +319,8 @@ def iter_file_patch(iter_lines):
     for line in iter_lines:
         if line.startswith('=== ') or line.startswith('*** '):
             continue
+        if line.startswith('#'):
+            continue
         elif line.startswith('--- '):
             if len(saved_lines) > 0:
                 yield saved_lines
@@ -354,7 +356,7 @@ def parse_patches(iter_lines):
 
 
 def difference_index(atext, btext):
-    """Find the indext of the first character that differs betweeen two texts
+    """Find the indext of the first character that differs between two texts
 
     :param atext: The first text
     :type atext: str

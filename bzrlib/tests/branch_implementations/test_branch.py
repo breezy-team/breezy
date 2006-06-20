@@ -19,23 +19,19 @@
 import os
 import sys
 
-import bzrlib.branch
-import bzrlib.bzrdir as bzrdir
+from bzrlib import branch, bzrdir, errors, gpg, transactions, repository
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.commit import commit
-import bzrlib.errors as errors
+from bzrlib.delta import TreeDelta
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
                            UninitializableFormat,
                            NotBranchError,
                            )
-import bzrlib.gpg
 from bzrlib.osutils import getcwd
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.trace import mutter
-import bzrlib.transactions as transactions
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
@@ -100,6 +96,22 @@ class TestBranch(TestCaseWithBranch):
         rev = b2.repository.get_revision('revision-1')
         tree = b2.repository.revision_tree('revision-1')
         self.assertEqual(tree.get_file_text('foo-id'), 'hello')
+
+    def test_get_revision_delta(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/foo'])
+        tree_a.add('foo', 'file1')
+        tree_a.commit('rev1', rev_id='rev1')
+        self.build_tree(['a/vla'])
+        tree_a.add('vla', 'file2')
+        tree_a.commit('rev2', rev_id='rev2')
+
+        delta = tree_a.branch.get_revision_delta(1)
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([('foo', 'file1', 'file')], delta.added)
+        delta = tree_a.branch.get_revision_delta(2)
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([('vla', 'file2', 'file')], delta.added)
 
     def get_unbalanced_tree_pair(self):
         """Return two branches, a and b, with one file in a."""
@@ -227,7 +239,7 @@ class TestBranch(TestCaseWithBranch):
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
-        strategy = bzrlib.gpg.LoopbackGPGStrategy(None)
+        strategy = gpg.LoopbackGPGStrategy(None)
         branch.repository.sign_revision('A', strategy)
         self.assertEqual(Testament.from_revision(branch.repository, 
                          'A').as_short_text(),
@@ -237,7 +249,7 @@ class TestBranch(TestCaseWithBranch):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         branch.repository.store_revision_signature(
-            bzrlib.gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+            gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,
                           'A')
@@ -249,7 +261,7 @@ class TestBranch(TestCaseWithBranch):
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
         wt.branch.repository.sign_revision('A',
-            bzrlib.gpg.LoopbackGPGStrategy(None))
+            gpg.LoopbackGPGStrategy(None))
         #FIXME: clone should work to urls,
         # wt.clone should work to disks.
         self.build_tree(['target/'])
@@ -307,7 +319,7 @@ class TestBranch(TestCaseWithBranch):
             return
         self.assertEqual(repo.bzrdir.root_transport.base,
                          child_branch.repository.bzrdir.root_transport.base)
-        child_branch = bzrlib.branch.Branch.open(self.get_url('child'))
+        child_branch = branch.Branch.open(self.get_url('child'))
         self.assertEqual(repo.bzrdir.root_transport.base,
                          child_branch.repository.bzrdir.root_transport.base)
 
@@ -315,6 +327,18 @@ class TestBranch(TestCaseWithBranch):
         tree = self.make_branch_and_tree('tree')
         text = tree.branch._format.get_format_description()
         self.failUnless(len(text))
+
+    def test_check_branch_report_results(self):
+        """Checking a branch produces results which can be printed"""
+        branch = self.make_branch('.')
+        result = branch.check()
+        # reports results through logging
+        result.report_results(verbose=True)
+        result.report_results(verbose=False)
+
+    def test_get_commit_builder(self):
+        self.assertIsInstance(self.make_branch(".").get_commit_builder([]), 
+            repository.CommitBuilder)
 
 
 class ChrootedTests(TestCaseWithBranch):
@@ -460,20 +484,20 @@ class TestBranchPushLocations(TestCaseWithBranch):
         self.assertEqual(None, self.get_branch().get_push_location())
 
     def test_get_push_location_exact(self):
-        from bzrlib.config import (branches_config_filename,
+        from bzrlib.config import (locations_config_filename,
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
-        fn = branches_config_filename()
+        fn = locations_config_filename()
         print >> open(fn, 'wt'), ("[%s]\n"
                                   "push_location=foo" %
                                   self.get_branch().base[:-1])
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
-        from bzrlib.config import (branches_config_filename,
+        from bzrlib.config import (locations_config_filename,
                                    ensure_config_dir_exists)
         ensure_config_dir_exists()
-        fn = branches_config_filename()
+        fn = locations_config_filename()
         self.get_branch().set_push_location('foo')
         self.assertFileEqual("[%s]\n"
                              "push_location = foo" % self.get_branch().base[:-1],
@@ -497,7 +521,7 @@ class TestFormat(TestCaseWithBranch):
         t = get_transport(self.get_url())
         readonly_t = get_transport(self.get_readonly_url())
         made_branch = self.make_branch('.')
-        self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
+        self.failUnless(isinstance(made_branch, branch.Branch))
 
         # find it via bzrdir opening:
         opened_control = bzrdir.BzrDir.open(readonly_t.base)
@@ -508,7 +532,7 @@ class TestFormat(TestCaseWithBranch):
                         self.branch_format.__class__))
 
         # find it via Branch.open
-        opened_branch = bzrlib.branch.Branch.open(readonly_t.base)
+        opened_branch = branch.Branch.open(readonly_t.base)
         self.failUnless(isinstance(opened_branch, made_branch.__class__))
         self.assertEqual(made_branch._format.__class__,
                          opened_branch._format.__class__)
@@ -518,4 +542,4 @@ class TestFormat(TestCaseWithBranch):
         except NotImplementedError:
             return
         self.assertEqual(self.branch_format,
-                         bzrlib.branch.BranchFormat.find_format(opened_control))
+                         branch.BranchFormat.find_format(opened_control))

@@ -26,10 +26,13 @@ rather starts again from the run_bzr function.
 import sys
 
 from bzrlib.tests import (
+                          adapt_modules,
                           TestCaseWithTransport,
                           TestSuite,
                           TestLoader,
+                          iter_suite_tests,
                           )
+from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
 import bzrlib.ui as ui
 
 
@@ -43,11 +46,14 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_branch',
                      'bzrlib.tests.blackbox.test_break_lock',
                      'bzrlib.tests.blackbox.test_bound_branches',
+                     'bzrlib.tests.blackbox.test_bundle',
                      'bzrlib.tests.blackbox.test_cat',
                      'bzrlib.tests.blackbox.test_checkout',
+                     'bzrlib.tests.blackbox.test_command_encoding',
                      'bzrlib.tests.blackbox.test_commit',
                      'bzrlib.tests.blackbox.test_conflicts',
                      'bzrlib.tests.blackbox.test_diff',
+                     'bzrlib.tests.blackbox.test_exceptions',
                      'bzrlib.tests.blackbox.test_export',
                      'bzrlib.tests.blackbox.test_find_merge_base',
                      'bzrlib.tests.blackbox.test_help',
@@ -66,6 +72,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_re_sign',
                      'bzrlib.tests.blackbox.test_revert',
                      'bzrlib.tests.blackbox.test_revno',
+                     'bzrlib.tests.blackbox.test_revision_history',
                      'bzrlib.tests.blackbox.test_revision_info',
                      'bzrlib.tests.blackbox.test_selftest',
                      'bzrlib.tests.blackbox.test_shared_repository',
@@ -77,9 +84,17 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_upgrade',
                      'bzrlib.tests.blackbox.test_versioning',
                      ]
+    test_encodings = [
+        'bzrlib.tests.blackbox.test_non_ascii',
+    ]
 
     loader = TestLoader()
-    return loader.loadTestsFromModuleNames(testmod_names)
+    suite = loader.loadTestsFromModuleNames(testmod_names) 
+
+    adapter = EncodingTestAdapter()
+    adapt_modules(test_encodings, adapter, loader, suite)
+
+    return suite
 
 
 class ExternalBase(TestCaseWithTransport):

@@ -38,12 +38,13 @@ def test_suite():
     test_bzrdir_implementations = [
         'bzrlib.tests.bzrdir_implementations.test_bzrdir',
         ]
+    formats = BzrDirFormat.known_formats()
     adapter = BzrDirTestProviderAdapter(
         default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        BzrDirFormat._formats.values())
+        formats)
     loader = TestLoader()
     adapt_modules(test_bzrdir_implementations, adapter, loader, result)
     return result

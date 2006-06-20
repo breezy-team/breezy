@@ -18,7 +18,7 @@
 """Configuration that affects the behaviour of Bazaar.
 
 Currently this configuration resides in ~/.bazaar/bazaar.conf
-and ~/.bazaar/branches.conf, which is written to by bzr.
+and ~/.bazaar/locations.conf, which is written to by bzr.
 
 In bazaar.conf the following options may be set:
 [DEFAULT]
@@ -29,14 +29,14 @@ create_signatures=always|never|when-required(default)
 gpg_signing_command=name-of-program
 log_format=name-of-format
 
-in branches.conf, you specify the url of a branch and options for it.
+in locations.conf, you specify the url of a branch and options for it.
 Wildcards may be used - * and ? as normal in shell completion. Options
-set in both bazaar.conf and branches.conf are overriden by the branches.conf
+set in both bazaar.conf and locations.conf are overridden by the locations.conf
 setting.
 [/home/robertc/source]
 recurse=False|True(default)
 email= as above
-check_signatures= as abive 
+check_signatures= as above 
 create_signatures= as above.
 
 explanation of options
@@ -49,7 +49,6 @@ check_signatures - this option controls whether bzr will require good gpg
 create_signatures - this option controls whether bzr will always create 
                     gpg signatures, never create them, or create them if the
                     branch is configured to require them.
-                    NB: This option is planned, but not implemented yet.
 log_format - This options set the default log format.  Options are long, 
              short, line, or a plugin can register new formats
 
@@ -64,21 +63,27 @@ up=pull
 
 
 import errno
-import os
-import sys
 from fnmatch import fnmatch
+import os
 import re
+import sys
+from StringIO import StringIO
 
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
 import bzrlib.util.configobj.configobj as configobj
-from StringIO import StringIO
+
 
 CHECK_IF_POSSIBLE=0
 CHECK_ALWAYS=1
 CHECK_NEVER=2
+
+
+SIGN_WHEN_REQUIRED=0
+SIGN_ALWAYS=1
+SIGN_NEVER=2
 
 
 class ConfigObj(configobj.ConfigObj):
@@ -105,6 +110,9 @@ class Config(object):
 
     def _get_signature_checking(self):
         """Template method to override signature checking policy."""
+
+    def _get_signing_policy(self):
+        """Template method to override signature creation policy."""
 
     def _get_user_option(self, option_name):
         """Template method to provide a user option."""
@@ -192,10 +200,24 @@ class Config(object):
             return policy
         return CHECK_IF_POSSIBLE
 
+    def signing_policy(self):
+        """What is the current policy for signature checking?."""
+        policy = self._get_signing_policy()
+        if policy is not None:
+            return policy
+        return SIGN_WHEN_REQUIRED
+
     def signature_needed(self):
         """Is a signature needed when committing ?."""
-        policy = self._get_signature_checking()
-        if policy == CHECK_ALWAYS:
+        policy = self._get_signing_policy()
+        if policy is None:
+            policy = self._get_signature_checking()
+            if policy is not None:
+                warning("Please use create_signatures, not check_signatures "
+                        "to set signing policy.")
+            if policy == CHECK_ALWAYS:
+                return True
+        elif policy == SIGN_ALWAYS:
             return True
         return False
 
@@ -231,6 +253,12 @@ class IniBasedConfig(Config):
         policy = self._get_user_option('check_signatures')
         if policy:
             return self._string_to_signature_policy(policy)
+
+    def _get_signing_policy(self):
+        """See Config._get_signing_policy"""
+        policy = self._get_user_option('create_signatures')
+        if policy:
+            return self._string_to_signing_policy(policy)
 
     def _get_user_id(self):
         """Get the user id from the 'email' key in the current section."""
@@ -272,6 +300,17 @@ class IniBasedConfig(Config):
         raise errors.BzrError("Invalid signatures policy '%s'"
                               % signature_string)
 
+    def _string_to_signing_policy(self, signature_string):
+        """Convert a string to a signing policy."""
+        if signature_string.lower() == 'when-required':
+            return SIGN_WHEN_REQUIRED
+        if signature_string.lower() == 'never':
+            return SIGN_NEVER
+        if signature_string.lower() == 'always':
+            return SIGN_ALWAYS
+        raise errors.BzrError("Invalid signing policy '%s'"
+                              % signature_string)
+
     def _get_alias(self, value):
         try:
             return self._get_parser().get_value("ALIASES", 
@@ -294,7 +333,12 @@ class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""
 
     def __init__(self, location):
-        super(LocationConfig, self).__init__(branches_config_filename)
+        name_generator = locations_config_filename
+        if (not os.path.exists(name_generator()) and 
+                os.path.exists(branches_config_filename())):
+            warning('Please rename branches.conf to locations.conf')
+            name_generator = branches_config_filename
+        super(LocationConfig, self).__init__(name_generator)
         self._global_config = None
         self.location = location
 
@@ -379,6 +423,13 @@ class LocationConfig(IniBasedConfig):
             return check
         return self._get_global_config()._get_signature_checking()
 
+    def _get_signing_policy(self):
+        """See Config._get_signing_policy."""
+        sign = super(LocationConfig, self)._get_signing_policy()
+        if sign is not None:
+            return sign
+        return self._get_global_config()._get_signing_policy()
+
     def _post_commit(self):
         """See Config.post_commit."""
         hook = self._get_user_option('post_commit')
@@ -389,7 +440,7 @@ class LocationConfig(IniBasedConfig):
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
         # FIXME: RBC 20051029 This should refresh the parser and also take a
-        # file lock on branches.conf.
+        # file lock on locations.conf.
         conf_dir = os.path.dirname(self._get_filename())
         ensure_config_dir_exists(conf_dir)
         location = self.location
@@ -431,6 +482,10 @@ class BranchConfig(Config):
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
         return self._get_location_config()._get_signature_checking()
+
+    def _get_signing_policy(self):
+        """See Config._get_signing_policy."""
+        return self._get_location_config()._get_signing_policy()
 
     def _get_user_option(self, option_name):
         """See Config._get_user_option."""
@@ -486,7 +541,7 @@ def config_dir():
         if base is None:
             base = os.environ.get('HOME', None)
         if base is None:
-            raise BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
+            raise errors.BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
         return pathjoin(base, 'bazaar', '2.0')
     else:
         # cygwin, linux, and darwin all have a $HOME directory
@@ -503,6 +558,10 @@ def config_filename():
 def branches_config_filename():
     """Return per-user configuration ini file filename."""
     return pathjoin(config_dir(), 'branches.conf')
+
+def locations_config_filename():
+    """Return per-user configuration ini file filename."""
+    return pathjoin(config_dir(), 'locations.conf')
 
 
 def _auto_user_id():
@@ -567,6 +626,7 @@ def extract_email_address(e):
         raise errors.BzrError("%r doesn't seem to contain "
                               "a reasonable email address" % e)
     return m.group(0)
+
 
 class TreeConfig(object):
     """Branch configuration data associated with its contents, not location"""

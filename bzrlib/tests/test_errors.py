@@ -27,8 +27,8 @@ class TestErrors(TestCaseWithTransport):
     def test_no_repo(self):
         dir = bzrdir.BzrDir.create(self.get_url())
         error = errors.NoRepositoryPresent(dir)
-        self.assertNotEqual(-1, str(error).find(repr(dir.transport.clone('..').base)))
-        self.assertEqual(-1, str(error).find(repr(dir.transport.base)))
+        self.assertNotEqual(-1, str(error).find((dir.transport.clone('..').base)))
+        self.assertEqual(-1, str(error).find((dir.transport.base)))
 
     def test_up_to_date(self):
         error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())

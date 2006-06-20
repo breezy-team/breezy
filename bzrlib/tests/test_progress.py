@@ -16,7 +16,12 @@
 
 from StringIO import StringIO
 
-from bzrlib.progress import *
+from bzrlib.progress import (
+        DummyProgress, ChildProgress,
+        TTYProgressBar,
+        DotsProgressBar,
+        ProgressBarStack,
+        )
 from bzrlib.tests import TestCase
 
 class FakeStack:

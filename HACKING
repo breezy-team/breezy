@@ -194,6 +194,21 @@ what can be done inside them.
     may not catch every case but it's still useful sometimes.
 
 
+Factories
+---------
+
+In some places we have variables which point to callables that construct
+new instances.  That is to say, they can be used a lot like class objects,
+but they shouldn't be *named* like classes:
+
+> I think that things named FooBar should create instances of FooBar when
+> called. Its plain confusing for them to do otherwise. When we have
+> something that is going to be used as a class - that is, checked for via
+> isinstance or other such idioms, them I would call it foo_class, so that
+> it is clear that a callable is not sufficient. If it is only used as a
+> factory, then yes, foo_factory is what I would use.
+
+
 Writing output
 ==============
 
@@ -287,6 +302,10 @@ You can provide a pattern argument to run a subset. For example,
 to run just the blackbox tests, run::
 
   ./bzr selftest -v blackbox
+
+To skip a particular test (or set of tests), you need to use a negative
+match, like so::
+  ./bzr selftest '^(?!.*blackbox)'  
 
 
 Errors and exceptions

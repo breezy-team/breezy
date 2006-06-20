@@ -1,17 +1,15 @@
-# Copyright (C) 2004, 2005 by Martin Pool
-# Copyright (C) 2005 by Canonical Ltd
-
-
+# Copyright (C) 2005, 2006 by Canonical Ltd
+# 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+# 
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+# 
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -26,7 +24,8 @@ from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
 import bzrlib.osutils as osutils
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function, 
+        zero_eight)
 
 
 def plural(n, base='', pl=None):
@@ -63,15 +62,15 @@ def _show_location_info(repository, branch=None, working=None):
         branch_path = branch.bzrdir.root_transport.base
         if working_path != branch_path:
             # lightweight checkout
-            print '  light checkout root: %s' % working_path
+            print ' light checkout root: %s' % working_path
             if repository.is_shared():
                 # lightweight checkout of branch in shared repository
-                print '    shared repository: %s' % repository_path
-                print '    repository branch: %s' % (
+                print '   shared repository: %s' % repository_path
+                print '   repository branch: %s' % (
                     _repo_relpath(repository_path, branch_path))
             else:
                 # lightweight checkout of standalone branch
-                print '   checkout of branch: %s' % branch_path
+                print '  checkout of branch: %s' % branch_path
         elif repository.is_shared():
             # branch with tree inside shared repository
             print '    shared repository: %s' % repository_path
