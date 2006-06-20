@@ -87,6 +87,9 @@ class Testament(object):
       - compared to a revision
     """
 
+    long_header = 'bazaar-ng testament version 1\n'
+    short_header = 'bazaar-ng testament short form 1\n'
+
     @classmethod
     def from_revision(cls, repository, revision_id):
         """Produce a new testament from a historical revision"""
@@ -115,7 +118,7 @@ class Testament(object):
         """
         r = []
         a = r.append
-        a('bazaar-ng testament version 1\n')
+        a(self.long_header)
         a('revision-id: %s\n' % self.revision_id)
         a('committer: %s\n' % self.committer)
         a('timestamp: %d\n' % self.timestamp)
@@ -165,7 +168,7 @@ class Testament(object):
         """Return short digest-based testament."""
         s = sha()
         map(s.update, self.as_text_lines())
-        return ('bazaar-ng testament short form 1\n'
+        return (self.short_header + 
                 'revision-id: %s\n'
                 'sha1: %s\n'
                 % (self.revision_id, s.hexdigest()))
@@ -192,13 +195,10 @@ class Testament(object):
 class StrictTestament(Testament):
     """This testament format is for use as a checksum in changesets"""
 
+    long_header = 'bazaar-ng testament version 2.1\n'
+    short_header = 'bazaar-ng testament short form 2.1\n'
     def _entry_to_line(self, path, ie):
-        l = ie.revision.decode('utf-8') + ' '
-        l += {True: 'yes', False: 'no'}[ie.executable] + ' '
-        l += Testament._entry_to_line(self, path, ie)
+        l = Testament._entry_to_line(self, path, ie)[:-1]
+        l += ' ' + ie.revision.decode('utf-8')
+        l += {True: ' yes\n', False: ' no\n'}[ie.executable]
         return l
-
-    def as_text_lines(self):
-        lines = ['bazaar-ng testament version 2']
-        lines.extend(Testament.as_text_lines(self)[1:])
-        return lines
