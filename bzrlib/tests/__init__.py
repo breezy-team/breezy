@@ -29,6 +29,7 @@
 import codecs
 from cStringIO import StringIO
 import difflib
+import doctest
 import errno
 import logging
 import os
@@ -1201,11 +1202,7 @@ def test_suite():
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
     """
-    from doctest import DocTestSuite
-
-    global MODULES_TO_DOCTEST
-
-    testmod_names = [ \
+    testmod_names = [
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
@@ -1295,8 +1292,8 @@ def test_suite():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
         suite.addTest(loader.loadTestsFromModule(m))
-    for m in (MODULES_TO_DOCTEST):
-        suite.addTest(DocTestSuite(m))
+    for m in MODULES_TO_DOCTEST:
+        suite.addTest(doctest.DocTestSuite(m))
     for name, plugin in bzrlib.plugin.all_plugins().items():
         if getattr(plugin, 'test_suite', None) is not None:
             suite.addTest(plugin.test_suite())

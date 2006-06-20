@@ -90,6 +90,10 @@ IN DEVELOPMENT
     * bzrlib.delta.compare_trees now iterates in alphabetically sorted order,
       rather than randomly walking the inventories. (John Arbash Meinel)
 
+    * Doctests are now run in temporary directories which are cleaned up when
+      they finish, rather than using special ScratchDir/ScratchBranch objects.
+      (Martin Pool)
+
     * Split ``check`` into separate methods on the branch and on the repository,
       so that it can be specialized in ways that are useful or efficient for
       different formats.  (Martin Pool, Robert Collins)
