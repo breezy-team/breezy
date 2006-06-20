@@ -312,6 +312,17 @@ class Command(object):
     def name(self):
         return _unsquish_command_name(self.__class__.__name__)
 
+    def plugin_name(self):
+        """Get the name of the plugin that provides this command.
+
+        :return: The name of the plugin or None if the command is builtin.
+        """
+        mod_parts = self.__module__.split('.')
+        if len(mod_parts) >= 3 and mod_parts[1] == 'plugins':
+            return mod_parts[2]
+        else:
+            return None
+
 
 def parse_spec(spec):
     """
