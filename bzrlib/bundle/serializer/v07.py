@@ -19,7 +19,6 @@
 
 import os
 
-from bzrlib.bundle.common import get_header, header_str
 from bzrlib.bundle.serializer import (BundleSerializer, 
                                       BUNDLE_HEADER, 
                                       format_highres_date,
@@ -358,34 +357,6 @@ class BundleReader(object):
         self._next_line = None
         #mutter('yielding line: %r' % last)
         yield last
-
-    def _read_header(self):
-        """Read the bzr header"""
-        header = get_header()
-        found = False
-        for line in self._next():
-            if found:
-                # not all mailers will keep trailing whitespace
-                if line == '#\n':
-                    line = '# \n'
-                if (not line.startswith('# ') or not line.endswith('\n')
-                        or line[2:-1].decode('utf-8') != header[0]):
-                    raise MalformedHeader('Found a header, but it'
-                        ' was improperly formatted')
-                header.pop(0) # We read this line.
-                if not header:
-                    break # We found everything.
-            elif (line.startswith('#') and line.endswith('\n')):
-                line = line[1:-1].strip().decode('utf-8')
-                if line[:len(header_str)] == header_str:
-                    if line == header[0]:
-                        found = True
-                    else:
-                        raise MalformedHeader('Found what looks like'
-                                ' a header, but did not match')
-                    header.pop(0)
-        else:
-            raise NotABundle('Did not find an opening header')
 
     def _read_revision_header(self):
         self.info.revisions.append(RevisionInfo(None))
