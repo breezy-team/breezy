@@ -41,6 +41,7 @@ from bzrlib.errors import (BzrError,
                            BzrOptionError,
                            NotBranchError)
 from bzrlib.option import Option
+import bzrlib.osutils
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.symbol_versioning import *
 import bzrlib.trace
@@ -235,17 +236,7 @@ class Command(object):
             self.outf = sys.stdout
             return
 
-        output_encoding = getattr(sys.stdout, 'encoding', None)
-        if not output_encoding:
-            input_encoding = getattr(sys.stdin, 'encoding', None)
-            if not input_encoding:
-                output_encoding = bzrlib.user_encoding
-                mutter('encoding stdout as bzrlib.user_encoding %r', output_encoding)
-            else:
-                output_encoding = input_encoding
-                mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
-        else:
-            mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+        output_encoding = bzrlib.osutils.get_terminal_encoding()
 
         # use 'replace' so that we don't abort if trying to write out
         # in e.g. the default C locale.

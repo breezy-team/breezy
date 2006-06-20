@@ -334,8 +334,16 @@ class TextTestRunner(object):
                 # If LANG=C we probably have created some bogus paths
                 # which rmtree(unicode) will fail to delete
                 # so make sure we are using rmtree(str) to delete everything
-                osutils.rmtree(test_root.encode(
-                    sys.getfilesystemencoding()))
+                # except on win32, where rmtree(str) will fail
+                # since it doesn't have the property of byte-stream paths
+                # (they are either ascii or mbcs)
+                if sys.platform == 'win32':
+                    # make sure we are using the unicode win32 api
+                    test_root = unicode(test_root)
+                else:
+                    test_root = test_root.encode(
+                        sys.getfilesystemencoding())
+                osutils.rmtree(test_root)
         else:
             if self.pb is not None:
                 self.pb.note("Failed tests working directories are in '%s'\n",

@@ -28,7 +28,7 @@ from bzrlib.errors import (TestamentMismatch, BzrError,
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
                               InventoryLink)
-from bzrlib.osutils import sha_file, sha_string
+from bzrlib.osutils import sha_file, sha_string, pathjoin
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.testament import StrictTestament
 from bzrlib.trace import mutter, warning
@@ -718,7 +718,7 @@ class BundleTree(Tree):
             if old_dir is None:
                 old_path = None
             else:
-                old_path = os.path.join(old_dir, basename)
+                old_path = pathjoin(old_dir, basename)
         else:
             old_path = new_path
         #If the new path wasn't in renamed, the old one shouldn't be in
@@ -743,7 +743,7 @@ class BundleTree(Tree):
             if new_dir is None:
                 new_path = None
             else:
-                new_path = os.path.join(new_dir, basename)
+                new_path = pathjoin(new_dir, basename)
         else:
             new_path = old_path
         #If the old path wasn't in renamed, the new one shouldn't be in
