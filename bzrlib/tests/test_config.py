@@ -102,15 +102,25 @@ class InstrumentedConfigObj(object):
 
 class FakeBranch(object):
 
-    def __init__(self):
-        self.base = "http://example.com/branches/demo"
-        self.control_files = FakeControlFiles()
+    def __init__(self, base=None, user_id=None):
+        if base is None:
+            self.base = "http://example.com/branches/demo"
+        else:
+            self.base = base
+        self.control_files = FakeControlFiles(user_id=user_id)
+
+    def lock_write(self):
+        pass
+
+    def unlock(self):
+        pass
 
 
 class FakeControlFiles(object):
 
-    def __init__(self):
-        self.email = 'Robert Collins <robertc@example.net>\n'
+    def __init__(self, user_id=None):
+        self.email = user_id
+        self.files = {}
 
     def get_utf8(self, filename):
         if filename != 'email':
@@ -118,6 +128,12 @@ class FakeControlFiles(object):
         if self.email is not None:
             return StringIO(self.email)
         raise errors.NoSuchFile(filename)
+
+    def get(self, filename):
+        raise errors.NoSuchFile(filename)
+
+    def put(self, filename, fileobj):
+        self.files[filename] = fileobj
 
 
 class InstrumentedConfig(config.Config):
@@ -452,79 +468,79 @@ class TestLocationConfig(TestCaseInTempDir):
             config.ConfigObj = oldparserclass
 
     def test_get_global_config(self):
-        my_config = config.LocationConfig('http://example.com')
+        my_config = config.BranchConfig(FakeBranch('http://example.com'))
         global_config = my_config._get_global_config()
         self.failUnless(isinstance(global_config, config.GlobalConfig))
         self.failUnless(global_config is my_config._get_global_config())
 
     def test__get_section_no_match(self):
-        self.get_location_config('/')
-        self.assertEqual(None, self.my_config._get_section())
+        self.get_branch_config('/')
+        self.assertEqual(None, self.my_location_config._get_section())
         
     def test__get_section_exact(self):
-        self.get_location_config('http://www.example.com')
+        self.get_branch_config('http://www.example.com')
         self.assertEqual('http://www.example.com',
-                         self.my_config._get_section())
+                         self.my_location_config._get_section())
    
     def test__get_section_suffix_does_not(self):
-        self.get_location_config('http://www.example.com-com')
-        self.assertEqual(None, self.my_config._get_section())
+        self.get_branch_config('http://www.example.com-com')
+        self.assertEqual(None, self.my_location_config._get_section())
 
     def test__get_section_subdir_recursive(self):
-        self.get_location_config('http://www.example.com/com')
+        self.get_branch_config('http://www.example.com/com')
         self.assertEqual('http://www.example.com',
-                         self.my_config._get_section())
+                         self.my_location_config._get_section())
 
     def test__get_section_subdir_matches(self):
-        self.get_location_config('http://www.example.com/useglobal')
+        self.get_branch_config('http://www.example.com/useglobal')
         self.assertEqual('http://www.example.com/useglobal',
-                         self.my_config._get_section())
+                         self.my_location_config._get_section())
 
     def test__get_section_subdir_nonrecursive(self):
-        self.get_location_config(
+        self.get_branch_config(
             'http://www.example.com/useglobal/childbranch')
         self.assertEqual('http://www.example.com',
-                         self.my_config._get_section())
+                         self.my_location_config._get_section())
 
     def test__get_section_subdir_trailing_slash(self):
-        self.get_location_config('/b')
-        self.assertEqual('/b/', self.my_config._get_section())
+        self.get_branch_config('/b')
+        self.assertEqual('/b/', self.my_location_config._get_section())
 
     def test__get_section_subdir_child(self):
-        self.get_location_config('/a/foo')
-        self.assertEqual('/a/*', self.my_config._get_section())
+        self.get_branch_config('/a/foo')
+        self.assertEqual('/a/*', self.my_location_config._get_section())
 
     def test__get_section_subdir_child_child(self):
-        self.get_location_config('/a/foo/bar')
-        self.assertEqual('/a/', self.my_config._get_section())
+        self.get_branch_config('/a/foo/bar')
+        self.assertEqual('/a/', self.my_location_config._get_section())
 
     def test__get_section_trailing_slash_with_children(self):
-        self.get_location_config('/a/')
-        self.assertEqual('/a/', self.my_config._get_section())
+        self.get_branch_config('/a/')
+        self.assertEqual('/a/', self.my_location_config._get_section())
 
     def test__get_section_explicit_over_glob(self):
-        self.get_location_config('/a/c')
-        self.assertEqual('/a/c', self.my_config._get_section())
+        self.get_branch_config('/a/c')
+        self.assertEqual('/a/c', self.my_location_config._get_section())
 
 
     def test_location_without_username(self):
-        self.get_location_config('http://www.example.com/useglobal')
+        self.get_branch_config('http://www.example.com/useglobal')
         self.assertEqual(u'Erik B\u00e5gfors <erik@bagfors.nu>',
                          self.my_config.username())
 
     def test_location_not_listed(self):
         """Test that the global username is used when no location matches"""
-        self.get_location_config('/home/robertc/sources')
+        self.get_branch_config('/home/robertc/sources')
         self.assertEqual(u'Erik B\u00e5gfors <erik@bagfors.nu>',
                          self.my_config.username())
 
     def test_overriding_location(self):
-        self.get_location_config('http://www.example.com/foo')
+        self.get_branch_config('http://www.example.com/foo')
         self.assertEqual('Robert Collins <robertc@example.org>',
                          self.my_config.username())
 
     def test_signatures_not_set(self):
-        self.get_location_config('http://www.example.com',
+        self.get_branch_config('http://www.example.com',
                                  global_config=sample_ignore_signatures)
         self.assertEqual(config.CHECK_ALWAYS,
                          self.my_config.signature_checking())
@@ -532,57 +548,60 @@ class TestLocationConfig(TestCaseInTempDir):
                          self.my_config.signing_policy())
 
     def test_signatures_never(self):
-        self.get_location_config('/a/c')
+        self.get_branch_config('/a/c')
         self.assertEqual(config.CHECK_NEVER,
                          self.my_config.signature_checking())
         
     def test_signatures_when_available(self):
-        self.get_location_config('/a/', global_config=sample_ignore_signatures)
+        self.get_branch_config('/a/', global_config=sample_ignore_signatures)
         self.assertEqual(config.CHECK_IF_POSSIBLE,
                          self.my_config.signature_checking())
         
     def test_signatures_always(self):
-        self.get_location_config('/b')
+        self.get_branch_config('/b')
         self.assertEqual(config.CHECK_ALWAYS,
                          self.my_config.signature_checking())
         
     def test_gpg_signing_command(self):
-        self.get_location_config('/b')
+        self.get_branch_config('/b')
         self.assertEqual("gnome-gpg", self.my_config.gpg_signing_command())
 
     def test_gpg_signing_command_missing(self):
-        self.get_location_config('/a')
+        self.get_branch_config('/a')
         self.assertEqual("false", self.my_config.gpg_signing_command())
 
     def test_get_user_option_global(self):
-        self.get_location_config('/a')
+        self.get_branch_config('/a')
         self.assertEqual('something',
                          self.my_config.get_user_option('user_global_option'))
 
     def test_get_user_option_local(self):
-        self.get_location_config('/a')
+        self.get_branch_config('/a')
         self.assertEqual('local',
                          self.my_config.get_user_option('user_local_option'))
         
     def test_post_commit_default(self):
-        self.get_location_config('/a/c')
+        self.get_branch_config('/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          self.my_config.post_commit())
 
-    def get_location_config(self, location, global_config=None):
+    def get_branch_config(self, location, global_config=None):
         if global_config is None:
             global_file = StringIO(sample_config_text.encode('utf-8'))
         else:
             global_file = StringIO(global_config.encode('utf-8'))
         branches_file = StringIO(sample_branches_text.encode('utf-8'))
-        self.my_config = config.LocationConfig(location)
-        self.my_config._get_parser(branches_file)
+        self.my_config = config.BranchConfig(FakeBranch(location))
+        # Force location config to use specified file
+        self.my_location_config = self.my_config._get_location_config()
+        self.my_location_config._get_parser(branches_file)
+        # Force global config to use specified file
         self.my_config._get_global_config()._get_parser(global_file)
 
     def test_set_user_setting_sets_and_saves(self):
-        self.get_location_config('/a/c')
+        self.get_branch_config('/a/c')
         record = InstrumentedConfigObj("foo")
-        self.my_config._parser = record
+        self.my_location_config._parser = record
 
         real_mkdir = os.mkdir
         self.created = False
@@ -593,7 +612,7 @@ class TestLocationConfig(TestCaseInTempDir):
 
         os.mkdir = checked_mkdir
         try:
-            self.my_config.set_user_option('foo', 'bar')
+            self.my_config.set_user_option('foo', 'bar', local=True)
         finally:
             os.mkdir = real_mkdir
 
@@ -609,8 +628,21 @@ class TestLocationConfig(TestCaseInTempDir):
 
 class TestBranchConfigItems(TestCase):
 
+    def get_branch_config(self, global_config=None, location=None, 
+                          location_config=None):
+        my_config = config.BranchConfig(FakeBranch(location))
+        if global_config is not None:
+            global_file = StringIO(global_config.encode('utf-8'))
+            my_config._get_global_config()._get_parser(global_file)
+        self.my_location_config = my_config._get_location_config()
+        if location_config is not None:
+            location_file = StringIO(location_config.encode('utf-8'))
+            self.my_location_config._get_parser(location_file)
+            
+        return my_config
+
     def test_user_id(self):
-        branch = FakeBranch()
+        branch = FakeBranch(user_id='Robert Collins <robertc@example.net>')
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.net>",
                          my_config._get_user_id())
@@ -618,15 +650,11 @@ class TestBranchConfigItems(TestCase):
         self.assertEqual("John", my_config._get_user_id())
 
     def test_not_set_in_branch(self):
-        branch = FakeBranch()
-        my_config = config.BranchConfig(branch)
-        branch.control_files.email = None
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        (my_config._get_location_config().
-            _get_global_config()._get_parser(config_file))
+        my_config = self.get_branch_config(sample_config_text)
+        my_config.branch.control_files.email = None
         self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
-        branch.control_files.email = "John"
+        my_config.branch.control_files.email = "John"
         self.assertEqual("John", my_config._get_user_id())
 
     def test_BZREMAIL_OVERRIDES(self):
@@ -637,11 +665,8 @@ class TestBranchConfigItems(TestCase):
                          my_config.username())
     
     def test_signatures_forced(self):
-        branch = FakeBranch()
-        my_config = config.BranchConfig(branch)
-        config_file = StringIO(sample_always_signatures)
-        (my_config._get_location_config().
-            _get_global_config()._get_parser(config_file))
+        my_config = self.get_branch_config(
+            global_config=sample_always_signatures)
         self.assertEqual(config.CHECK_NEVER, my_config.signature_checking())
         self.assertEqual(config.SIGN_ALWAYS, my_config.signing_policy())
         self.assertTrue(my_config.signature_needed())
@@ -650,28 +675,22 @@ class TestBranchConfigItems(TestCase):
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
         config_file = StringIO(sample_config_text.encode('utf-8'))
-        (my_config._get_location_config().
-            _get_global_config()._get_parser(config_file))
+        my_config._get_global_config()._get_parser(config_file)
         self.assertEqual('gnome-gpg', my_config.gpg_signing_command())
 
     def test_get_user_option_global(self):
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
         config_file = StringIO(sample_config_text.encode('utf-8'))
-        (my_config._get_location_config().
-            _get_global_config()._get_parser(config_file))
+        (my_config._get_global_config()._get_parser(config_file))
         self.assertEqual('something',
                          my_config.get_user_option('user_global_option'))
 
     def test_post_commit_default(self):
         branch = FakeBranch()
-        branch.base='/a/c'
-        my_config = config.BranchConfig(branch)
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        (my_config._get_location_config().
-            _get_global_config()._get_parser(config_file))
-        branch_file = StringIO(sample_branches_text)
-        my_config._get_location_config()._get_parser(branch_file)
+        my_config = self.get_branch_config(sample_config_text, '/a/c',
+                                           sample_branches_text)
+        self.assertEqual(my_config.branch.base, '/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          my_config.post_commit())
 
