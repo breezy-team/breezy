@@ -481,7 +481,7 @@ class BranchConfig(Config):
         if local is True:
             self._get_location_config().set_user_option(name, value)
         else:
-            self._get_branch_data_config().set_option(name, value)
+            self._get_branch_data_config().set_option(value, name)
 
 
     def _gpg_signing_command(self):

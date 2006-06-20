@@ -130,10 +130,13 @@ class FakeControlFiles(object):
         raise errors.NoSuchFile(filename)
 
     def get(self, filename):
-        raise errors.NoSuchFile(filename)
+        try:
+            return StringIO(self.files[filename])
+        except KeyError:
+            raise errors.NoSuchFile(filename)
 
     def put(self, filename, fileobj):
-        self.files[filename] = fileobj
+        self.files[filename] = fileobj.read()
 
 
 class InstrumentedConfig(config.Config):
@@ -625,11 +628,24 @@ class TestLocationConfig(TestCaseInTempDir):
                           ('write',)],
                          record._calls[1:])
 
+    def test_set_user_setting_sets_and_saves2(self):
+        self.get_branch_config('/a/c')
+        self.assertIs(self.my_config.get_user_option('foo'), None)
+        self.my_config.set_user_option('foo', 'bar')
+        self.assertEqual(
+            self.my_config.branch.control_files.files['branch.conf'], 
+            'foo = bar')
+        self.assertEqual(self.my_config.get_user_option('foo'), 'bar')
+        self.my_config.set_user_option('foo', 'baz', local=True)
+        self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
+        self.my_config.set_user_option('foo', 'qux')
+        self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
+        
 
-class TestBranchConfigItems(TestCase):
+class TestBranchConfigItems(TestCaseInTempDir):
 
     def get_branch_config(self, global_config=None, location=None, 
-                          location_config=None):
+                          location_config=None, branch_data_config=None):
         my_config = config.BranchConfig(FakeBranch(location))
         if global_config is not None:
             global_file = StringIO(global_config.encode('utf-8'))
@@ -638,16 +654,23 @@ class TestBranchConfigItems(TestCase):
         if location_config is not None:
             location_file = StringIO(location_config.encode('utf-8'))
             self.my_location_config._get_parser(location_file)
-            
+        if branch_data_config is not None:
+            my_config.branch.control_files.files['branch.conf'] = \
+                branch_data_config
         return my_config
 
     def test_user_id(self):
         branch = FakeBranch(user_id='Robert Collins <robertc@example.net>')
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.net>",
-                         my_config._get_user_id())
+                         my_config.username())
         branch.control_files.email = "John"
-        self.assertEqual("John", my_config._get_user_id())
+        my_config.set_user_option('email', 
+                                  "Robert Collins <robertc@example.org>")
+        self.assertEqual("John", my_config.username())
+        branch.control_files.email = None
+        self.assertEqual("Robert Collins <robertc@example.org>",
+                         my_config.username())
 
     def test_not_set_in_branch(self):
         my_config = self.get_branch_config(sample_config_text)
@@ -667,6 +690,14 @@ class TestBranchConfigItems(TestCase):
     def test_signatures_forced(self):
         my_config = self.get_branch_config(
             global_config=sample_always_signatures)
+        self.assertEqual(config.CHECK_NEVER, my_config.signature_checking())
+        self.assertEqual(config.SIGN_ALWAYS, my_config.signing_policy())
+        self.assertTrue(my_config.signature_needed())
+
+    def test_signatures_forced_branch(self):
+        my_config = self.get_branch_config(
+            global_config=sample_ignore_signatures,
+            branch_data_config=sample_always_signatures)
         self.assertEqual(config.CHECK_NEVER, my_config.signature_checking())
         self.assertEqual(config.SIGN_ALWAYS, my_config.signing_policy())
         self.assertTrue(my_config.signature_needed())
@@ -693,6 +724,12 @@ class TestBranchConfigItems(TestCase):
         self.assertEqual(my_config.branch.base, '/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          my_config.post_commit())
+        my_config.set_user_option('post_commit', 'rmtree_root')
+        # post-commit is ignored when bresent in branch data
+        self.assertEqual('bzrlib.tests.test_config.post_commit',
+                         my_config.post_commit())
+        my_config.set_user_option('post_commit', 'rmtree_root', local=True)
+        self.assertEqual('rmtree_root', my_config.post_commit())
 
 
 class TestMailAddressExtraction(TestCase):
