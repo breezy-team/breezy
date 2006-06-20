@@ -337,7 +337,7 @@ class BadFileKindError(BzrNewError):
     """Cannot operate on %(filename)s of unsupported kind %(kind)s"""
 
 
-class ForbiddenFileError(BzrNewError):
+class ForbiddenControlFileError(BzrNewError):
     """Cannot operate on %(filename)s because it is a control file"""
 
 

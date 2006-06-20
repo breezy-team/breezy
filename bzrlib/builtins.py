@@ -22,8 +22,9 @@ import errno
 import os
 import sys
 
+import bzrlib
 from bzrlib.branch import Branch, BranchReferenceFormat
-from bzrlib import (branch, bzrdir, errors, osutils, ui, config, user_encoding,
+from bzrlib import (branch, bzrdir, errors, osutils, ui, config,
     repository, log)
 from bzrlib.bundle.read_bundle import BundleReader
 from bzrlib.bundle.apply_bundle import merge_bundle
@@ -1403,9 +1404,8 @@ class cmd_unknowns(Command):
     """List unknown files."""
     @display_command
     def run(self):
-        from osutils import quotefn
         for f in WorkingTree.open_containing(u'.')[0].unknowns():
-            self.outf.write(quotefn(f) + '\n')
+            self.outf.write(osutils.quotefn(f) + '\n')
 
 
 class cmd_ignore(Command):
@@ -1656,7 +1656,7 @@ class cmd_commit(Command):
             raise BzrCommandError("please specify either --message or --file")
         
         if file:
-            message = codecs.open(file, 'rt', user_encoding).read()
+            message = codecs.open(file, 'rt', bzrlib.user_encoding).read()
 
         if message == "":
             raise BzrCommandError("empty commit message specified")

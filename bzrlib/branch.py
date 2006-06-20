@@ -21,24 +21,19 @@ from unittest import TestSuite
 from warnings import warn
 
 import bzrlib
-import bzrlib.bzrdir as bzrdir
+from bzrlib import bzrdir, errors, lockdir, osutils, revision, \
+        tree, \
+        ui, \
+        urlutils
 from bzrlib.config import TreeConfig
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.delta import compare_trees
-import bzrlib.errors as errors
 from bzrlib.errors import (InvalidRevisionNumber,
                            NotBranchError,
                            DivergedBranches,
                            NoSuchFile,
                            NoWorkingTree)
 from bzrlib.lockable_files import LockableFiles, TransportLock
-from bzrlib.lockdir import LockDir
-from bzrlib.osutils import (
-                            rmtree,
-                            )
-from bzrlib.revision import (
-                             NULL_REVISION,
-                             )
 from bzrlib.symbol_versioning import (deprecated_function,
                                       deprecated_method,
                                       DEPRECATED_PARAMETER,
@@ -46,9 +41,6 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       zero_eight,
                                       )
 from bzrlib.trace import mutter, note
-from bzrlib.tree import EmptyTree
-import bzrlib.ui as ui
-import bzrlib.urlutils as urlutils
 
 
 BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
@@ -219,7 +211,7 @@ class Branch(object):
                     last_revision = from_history[-1]
                 else:
                     # no history in the source branch
-                    last_revision = NULL_REVISION
+                    last_revision = revision.NULL_REVISION
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
                                          pb=nested_pb)
@@ -741,7 +733,7 @@ class BzrBranchFormat5(BranchFormat):
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        control_files = LockableFiles(branch_transport, 'lock', LockDir)
+        control_files = LockableFiles(branch_transport, 'lock', lockdir.LockDir)
         control_files.create_lock()
         control_files.lock_write()
         control_files.put_utf8('format', self.get_format_string())
@@ -766,7 +758,7 @@ class BzrBranchFormat5(BranchFormat):
             format = BranchFormat.find_format(a_bzrdir)
             assert format.__class__ == self.__class__
         transport = a_bzrdir.get_branch_transport(None)
-        control_files = LockableFiles(transport, 'lock', LockDir)
+        control_files = LockableFiles(transport, 'lock', lockdir.LockDir)
         return BzrBranch5(_format=self,
                           _control_files=control_files,
                           a_bzrdir=a_bzrdir,
@@ -936,7 +928,7 @@ class BzrBranch(Branch):
         # XXX: cache_root seems to be unused, 2006-01-13 mbp
         if hasattr(self, 'cache_root') and self.cache_root is not None:
             try:
-                rmtree(self.cache_root)
+                osutils.rmtree(self.cache_root)
             except:
                 pass
             self.cache_root = None
@@ -1072,7 +1064,7 @@ class BzrBranch(Branch):
 
         new_tree = self.repository.revision_tree(rh[revno-1])
         if revno == 1:
-            old_tree = EmptyTree()
+            old_tree = tree.EmptyTree()
         else:
             old_tree = self.repository.revision_tree(rh[revno-2])
         return compare_trees(old_tree, new_tree)
@@ -1121,7 +1113,7 @@ class BzrBranch(Branch):
             # make a new revision history from the graph
             current_rev_id = stop_revision
             new_history = []
-            while current_rev_id not in (None, NULL_REVISION):
+            while current_rev_id not in (None, revision.NULL_REVISION):
                 new_history.append(current_rev_id)
                 current_rev_id_parents = stop_graph[current_rev_id]
                 try:

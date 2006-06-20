@@ -596,7 +596,7 @@ class WorkingTree(bzrlib.tree.Tree):
         inv = self.read_working_inventory()
         for f,file_id in zip(files, ids):
             if self.is_control_filename(f):
-                raise errors.ForbiddenFileError(filename=f)
+                raise errors.ForbiddenControlFileError(filename=f)
 
             fp = splitpath(f)
 

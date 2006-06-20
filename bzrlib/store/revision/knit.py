@@ -121,5 +121,5 @@ class KnitRevisionStore(RevisionStore):
 
     def total_size(self, transaction):
         """ See RevisionStore.total_size()."""
-        return (len(self.all_revision_ids(transaction)), 
+        return (len(self.all_revision_ids(transaction)),
             self.versioned_file_store.total_size()[1])

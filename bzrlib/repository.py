@@ -117,7 +117,6 @@ class Repository(object):
         """Return all the possible revisions that we could find."""
         return self.get_inventory_weave().versions()
 
-    @deprecated_method(zero_nine)
     def all_revision_ids(self):
         """Returns a list of all the revision ids in the repository. 
 
@@ -463,7 +462,7 @@ class Repository(object):
         """
         result = Graph()
         if not revision_ids:
-            pending = set(self._all_revision_ids())
+            pending = set(self.all_revision_ids())
             required = set([])
         else:
             pending = set(revision_ids)
@@ -859,7 +858,7 @@ class KnitRepository(MetaDirRepository):
         vf = self._get_revision_vf()
         versions = set(vf.versions())
         if not revision_ids:
-            pending = set(self._all_revision_ids())
+            pending = set(self.all_revision_ids())
             required = set([])
         else:
             pending = set(revision_ids)
