@@ -50,29 +50,6 @@ class SelftestTests(TestCase):
                           'bzrlib.no-name-yet')
 
 
-class TestAssertions(TestCase):
-    
-    def test_assert_not_raises(self):
-        class OtherException(Exception):
-            pass
-
-        class ThisException(Exception):
-            pass
-
-        def raiser(arg):
-            if arg == "nothing":
-                return
-            if arg == "other":
-                raise OtherException()
-            if arg == "this":
-                raise ThisException()
-            
-        self.assertNotRaises(ThisException, raiser, 'nothing')
-        self.assertNotRaises(ThisException, raiser, 'other')
-        self.assertRaises(AssertionError, 
-            self.assertNotRaises, ThisException, raiser, 'this')
-
-
 class MetaTestLog(TestCase):
 
     def test_logging(self):

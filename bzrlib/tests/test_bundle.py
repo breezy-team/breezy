@@ -372,8 +372,13 @@ class CSetTester(TestCaseInTempDir):
                           StringIO('# Bazaar revision bundle v'))
 
     def test_crlf_bundle(self):
-        self.assertNotRaises(NotABundle, read_bundle, 
-                             StringIO('# Bazaar revision bundle v0.7\r\n'))
+        try:
+            read_bundle(StringIO('# Bazaar revision bundle v0.7\r\n'))
+        except BadBundle:
+            # It is currently permitted for bundles with crlf line endings to
+            # make read_bundle raise a BadBundle, but this should be fixed.
+            pass
+
 
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.
