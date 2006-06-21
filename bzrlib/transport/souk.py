@@ -115,6 +115,11 @@ limited to a directory?
 #
 # TODO: Rather than working at the Transport layer we want a Branch,
 # Repository or BzrDir objects that talk to a server.
+#
+# TODO: Probably want some way for server commands to gradually produce body
+# data rather than passing it as a string; they could perhaps pass an
+# iterator-like callback that will gradually yield data; it probably needs a
+# close() method that will always be closed to do any necessary cleanup.
 
 
 from cStringIO import StringIO
@@ -122,15 +127,17 @@ import errno
 import os
 import socket
 import sys
+import tempfile
 import threading
 import urllib
 import urlparse
 
-from bzrlib import errors, transport, trace
+from bzrlib import bzrdir, errors, revision, transport, trace
 from bzrlib.transport import sftp, local
+from bzrlib.bundle.serializer import write_bundle
 
 
-# must do this otherwise we can't parse the urls properly
+# must do this otherwise urllib can't parse the urls properly :(
 for scheme in ['ssh', 'bzr', 'bzr+loopback']:
     transport.register_urlparse_netloc_protocol(scheme)
 del scheme
@@ -194,69 +201,7 @@ class SoukStreamServer(object):
         """
         self._in = in_file
         self._out = out_file
-        self._backing_transport = backing_transport
-
-    def _do_query_version(self):
-        """Answer a version request with my version."""
-        self._send_tuple(('bzr server', '1'))
-
-    def _do_has(self, relpath):
-        r = self._backing_transport.has(relpath) and 'yes' or 'no'
-        self._send_tuple((r,))
-
-    def _do_get(self, relpath):
-        backing_file = self._backing_transport.get(relpath)
-        self._send_tuple(('ok', ))
-        self._send_bulk_data(backing_file.read())
-
-    def serve(self):
-        """Serve requests until the client disconnects."""
-        try:
-            while self._serve_one_request() != False:
-                pass
-        except Exception, e:
-            self._report_error("%s terminating on exception %s" % (self, e))
-            raise
-
-    def _report_error(self, msg):
-        sys.stderr.write(msg + '\n')
-        
-    def _serve_one_request(self):
-        """Read one request from input, process, send back a response.
-        
-        :return: False if the server should terminate, otherwise None.
-        """
-        req_args = self._recv_tuple()
-        if req_args == None:
-            # client closed connection
-            return False  # shutdown server
-        try:
-            self._dispatch_command(req_args[0], req_args[1:])
-        except errors.NoSuchFile, e:
-            self._send_tuple(('enoent', e.path))
-        except KeyboardInterrupt:
-            raise
-        except Exception, e:
-            # everything else: pass to client, flush, and quit
-            self._send_error_and_disconnect(e)
-            return False
-
-    def _send_error_and_disconnect(self, exception):
-        self._send_tuple(('error', str(exception)))
-        self._out.flush()
-        self._out.close()
-        self._in.close()
-
-    def _dispatch_command(self, cmd, args):
-        # TODO: could do getattr(self, foo+cmd), etc.
-        if cmd == 'hello':
-            self._do_query_version()
-        elif cmd == 'has':
-            self._do_has(*args)
-        elif cmd == 'get':
-            self._do_get(*args)
-        else:
-            raise BzrProtocolError("bad request %r" % (cmd,))
+        self.souk_server = SoukServer(backing_transport)
 
     def _recv_tuple(self):
         """Read a request from the client and return as a tuple.
@@ -276,6 +221,92 @@ class SoukStreamServer(object):
         self._out.write(body)
         self._out.write('done\n')
         self._out.flush()
+
+    def _send_error_and_disconnect(self, exception):
+        self._send_tuple(('error', str(exception)))
+        self._out.flush()
+        self._out.close()
+        self._in.close()
+
+    def _serve_one_request(self):
+        """Read one request from input, process, send back a response.
+        
+        :return: False if the server should terminate, otherwise None.
+        """
+        req_args = self._recv_tuple()
+        if req_args == None:
+            # client closed connection
+            return False  # shutdown server
+        try:
+            response = self.souk_server.dispatch_command(req_args[0], req_args[1:])
+            self._send_tuple(response.args)
+            if response.body is not None:
+                self._send_bulk_data(response.body)
+        except errors.NoSuchFile, e:
+            self._send_tuple(('enoent', e.path))
+        except KeyboardInterrupt:
+            raise
+        except Exception, e:
+            # everything else: pass to client, flush, and quit
+            self._send_error_and_disconnect(e)
+            return False
+
+    def serve(self):
+        """Serve requests until the client disconnects."""
+        try:
+            while self._serve_one_request() != False:
+                pass
+        except Exception, e:
+            sys.stderr.write("%s terminating on exception %s\n" % (self, e))
+            raise
+
+
+class SoukServerResponse(object):
+    """Response generated by SoukServer."""
+
+    def __init__(self, args, body=None):
+        self.args = args
+        self.body = body
+
+
+class SoukServer(object):
+    """Protocol logic for souk.
+    
+    This doesn't handle serialization at all, it just processes requests and
+    creates responses.
+    """
+
+    def __init__(self, backing_transport):
+        self._backing_transport = backing_transport
+        
+    def do_hello(self):
+        """Answer a version request with my version."""
+        return SoukServerResponse(('bzr server', '1'))
+
+    def do_has(self, relpath):
+        r = self._backing_transport.has(relpath) and 'yes' or 'no'
+        return SoukServerResponse((r,))
+
+    def do_get(self, relpath):
+        backing_file = self._backing_transport.get(relpath)
+        return SoukServerResponse(('ok',), backing_file.read())
+
+    def do_get_bundle(self, path, revision_id):
+        # open transport relative to our base
+        t = self._backing_transport.clone(path)
+        control, extra_path = bzrdir.BzrDir.open_containing_from_transport(t)
+        repo = control.open_repository()
+        tmpf = tempfile.TemporaryFile()
+        base_revision = revision.NULL_REVISION
+        write_bundle(repo, revision_id, base_revision, tmpf)
+        tmpf.seek(0)
+        return SoukServerResponse((), tmpf.read())
+
+    def dispatch_command(self, cmd, args):
+        func = getattr(self, 'do_' + cmd, None)
+        if func is None:
+            raise BzrProtocolError("bad request %r" % (cmd,))
+        return func(*args)
 
 
 class SoukTCPServer(object):
@@ -412,7 +443,7 @@ class SoukTransport(sftp.SFTPUrlHandling):
     def query_version(self):
         """Return protocol version number of the server."""
         # XXX: should make sure it's empty
-        self._send_tuple(('hello', '1'))
+        self._send_tuple(('hello',))
         resp = self._recv_tuple()
         if resp == ('bzr server', '1'):
             return 1

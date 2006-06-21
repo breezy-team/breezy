@@ -16,11 +16,6 @@
 
 """Tests for souk transport"""
 
-# TODO: Try sending multiple requests; they should all get answers.
-
-# TODO: If the server raises an error within its processing that should be
-# caught and propagated back to the client.
-
 # all of this deals with byte strings so this is safe
 from cStringIO import StringIO
 import subprocess
@@ -34,7 +29,7 @@ class BasicSoukTests(tests.TestCase):
     
     def test_souk_query_version(self):
         """Feed a canned query version to a server"""
-        to_server = StringIO('hello\0011\n')
+        to_server = StringIO('hello\n')
         from_server = StringIO()
         server = souk.SoukStreamServer(to_server, from_server, local.LocalTransport('file:///'))
         server._serve_one_request()
@@ -43,8 +38,8 @@ class BasicSoukTests(tests.TestCase):
 
     def test_canned_get_response(self):
         transport = memory.MemoryTransport('memory:///')
-        transport.put('hello', StringIO('contents\nof\nfile\n'))
-        to_server = StringIO('get\001./hello\n')
+        transport.put('testfile', StringIO('contents\nof\nfile\n'))
+        to_server = StringIO('get\001./testfile\n')
         from_server = StringIO()
         server = souk.SoukStreamServer(to_server, from_server, transport)
         server._serve_one_request()
@@ -180,3 +175,26 @@ class SoukTCPTests(tests.TestCase):
         t = self.backing_transport
         bzrdir.BzrDirFormat.get_default_format().initialize_on_transport(t)
         result_dir = bzrdir.BzrDir.open_containing_from_transport(conn)
+
+
+class SoukServerTests(tests.TestCaseWithTransport):
+    """Test that call directly into the server logic, bypassing the network."""
+
+    def test_hello(self):
+        server = souk.SoukServer(None)
+        response = server.dispatch_command('hello', ())
+        self.assertEqual(('bzr server', '1'), response.args)
+        self.assertEqual(None, response.body)
+        
+    def test_get_bundle(self):
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        file('hello', 'w').write('hello world')
+        wt.add('hello')
+        wt.commit(message='add hello', rev_id='rev-1')
+        
+        server = souk.SoukServer(self.get_transport())
+        response = server.dispatch_command('get_bundle', ('.', 'rev-1'))
+        self.assert_(response.body.startswith('# Bazaar revision bundle '),
+                repr(response.body))
+
