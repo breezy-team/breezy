@@ -1,0 +1,93 @@
+SVN-fs-dump-format-version: 2
+
+UUID: 51ea2288-8507-0410-b35d-9da856f40842
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2005-12-09T23:13:22.877283Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 120
+Content-length: 120
+
+K 7
+svn:log
+V 19
+Add example branch
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2005-12-09T23:13:59.681947Z
+PROPS-END
+
+Node-path: branches
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Node-path: branches/mybranch
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Node-path: branches/mybranch/foo
+Node-kind: file
+Node-action: add
+Prop-content-length: 10
+Text-content-length: 6
+Text-content-md5: f02e326f800ee26f04df7961adbf7c0a
+Content-length: 16
+
+PROPS-END
+dummy
+
+
+Revision-number: 2
+Prop-content-length: 113
+Content-length: 113
+
+K 7
+svn:log
+V 12
+Move branch
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2005-12-09T23:14:08.449464Z
+PROPS-END
+
+Node-path: branches/mybranch
+Node-action: delete
+
+
+Node-path: trunk
+Node-kind: dir
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: branches/mybranch
+
+

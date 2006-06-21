@@ -1,0 +1,54 @@
+.TH svn2bzr 1 "2006\-05\-02" "0.8.2" "svn2bzr"
+.SH "NAME"
+svn2bzr \- Conversion tool for converting SVN repositories to bzr branches
+.SH "SYNOPSIS"
+.B "svn2bzr"
+.I [OPTIONS]
+.I <dump-file|svn-url>
+.I output-dir
+.SH "DESCRIPTION"
+.B "svn2bzr"
+is a simple tool written by Gustavo Niemeyer and Jelmer Vernooij which converts SVN repositories 
+to bzr branches. 
+.SH "OPTIONS"
+.TP
+\fB\-\-version\fR
+show program's version number and exit
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+show this help message and exit
+.TP
+\fB\-\-include\fR=\fIREGEXP\fR
+paths matching the regular expression are considered if no
+prior exclude matched
+.TP
+\fB\-\-exclude\fR=\fIREGEXP\fR
+paths matching the regular expression are discarded if no
+prior include matched
+.TP
+\fB\-\-prefix\fR=\fIPATH\fR
+Subversion repository will be considered as if it started
+at the given path
+.TP
+\fB\-\-scheme\fR=\fISCHEME\fR
+Subversion repository scheme (single or trunk, default is
+single)
+.TP
+\fB\-\-check\fR
+Enable extra consistency checks (slower)
+.TP
+\fB\-\-log\fR=\fILEVEL\fR
+set logging level to LEVEL (debug, info, warning, error)
+.SH BUGS
+.TP
+Please report any other bugs you find in launchpad.
+
+.SH AUTHORS
+.PP
+Gustavo Niemeyer <gustavo@niemeyer.net> is the original author. 
+Jelmer Vernooij <jelmer@samba.org> is the current maintainer.
+.SH "SEE ALSO"
+.UR http://www.bazaar\-vcs.org/svn2bzr
+.BR http://www.bazaar\-vcs.org/svn2bzr, 
+.BR bzr(1), 
+.BR svn(1)

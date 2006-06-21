@@ -18,4 +18,7 @@ setup(name='bzr-svn',
       package_dir={'bzrlib.plugins.svn':'.', 
                    'bzrlib.plugins.svn.tests':'tests'},
       packages=['bzrlib.plugins.svn', 
-                'bzrlib.plugins.svn.tests'])
+                'bzrlib.plugins.svn.tests'],
+      scripts=['svn2bzr'],
+      data_files=[('man/man1', ['svn2bzr.1'])],
+      )

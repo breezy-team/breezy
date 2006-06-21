@@ -1,0 +1,114 @@
+SVN-fs-dump-format-version: 2
+
+UUID: 51189d65-e80f-0410-b331-be1107983f38
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2006-03-26T16:31:58.466401Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 116
+Content-length: 116
+
+K 7
+svn:log
+V 15
+Initial commit
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-03-26T16:32:21.397359Z
+PROPS-END
+
+Node-path: aap
+Node-kind: file
+Node-action: add
+Prop-content-length: 10
+Text-content-length: 4
+Text-content-md5: 3cd7a0db76ff9dca48979e24c39b408c
+Content-length: 14
+
+PROPS-END
+bla
+
+
+Node-path: dir
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 2
+Prop-content-length: 111
+Content-length: 111
+
+K 7
+svn:log
+V 10
+Move file
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-03-26T16:32:39.435155Z
+PROPS-END
+
+Node-path: aap
+Node-action: delete
+
+
+Node-path: dir/aap
+Node-kind: file
+Node-action: add
+Node-copyfrom-rev: 1
+Node-copyfrom-path: aap
+
+
+Revision-number: 3
+Prop-content-length: 111
+Content-length: 111
+
+K 7
+svn:log
+V 10
+Move back
+
+K 10
+svn:author
+V 6
+jelmer
+K 8
+svn:date
+V 27
+2006-03-26T16:32:50.803371Z
+PROPS-END
+
+Node-path: aap
+Node-kind: file
+Node-action: add
+Node-copyfrom-rev: 2
+Node-copyfrom-path: dir/aap
+
+
+Node-path: dir/aap
+Node-action: delete
+
+
