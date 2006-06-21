@@ -345,6 +345,15 @@ class TestBranch(TestCaseWithBranch):
         self.assertIsInstance(self.make_branch(".").get_commit_builder([]), 
             bzrlib.repository.CommitBuilder)
 
+    def test_generate_revision_history(self):
+        """Create a fake revision history easily."""
+        tree = self.make_branch_and_tree('.')
+        rev1 = tree.commit('foo')
+        orig_history = tree.branch.revision_history()
+        rev2 = tree.commit('bar', allow_pointless=True)
+        tree.branch.generate_revision_history(rev1)
+        self.assertEqual(orig_history, tree.branch.revision_history())
+
 
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.

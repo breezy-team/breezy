@@ -1100,6 +1100,35 @@ class BzrBranch(Branch):
         return list(history)
 
     @needs_write_lock
+    def generate_revision_history(self, revision_id, last_rev=None, 
+        other_branch=None):
+        """Create a new revision history that will finish with revision_id.
+        
+        :param revision_id: the new tip to use.
+        :param last_rev: The previous last_revision. If not None, then this
+            must be a ancestory of revision_id, or DivergedBranches is raised.
+        :param other_branch: The other branch that DivergedBranches should
+            raise with respect to.
+        """
+        # stop_revision must be a descendant of last_revision
+        stop_graph = self.repository.get_revision_graph(revision_id)
+        if last_rev is not None and last_rev not in stop_graph:
+            # our previous tip is not merged into stop_revision
+            raise errors.DivergedBranches(self, other_branch)
+        # make a new revision history from the graph
+        current_rev_id = revision_id
+        new_history = []
+        while current_rev_id not in (None, NULL_REVISION):
+            new_history.append(current_rev_id)
+            current_rev_id_parents = stop_graph[current_rev_id]
+            try:
+                current_rev_id = current_rev_id_parents[0]
+            except IndexError:
+                current_rev_id = None
+        new_history.reverse()
+        self.set_revision_history(new_history)
+
+    @needs_write_lock
     def update_revisions(self, other, stop_revision=None):
         """See Branch.update_revisions."""
         other.lock_read()
@@ -1119,23 +1148,7 @@ class BzrBranch(Branch):
             if stop_revision in my_ancestry:
                 # last_revision is a descendant of stop_revision
                 return
-            # stop_revision must be a descendant of last_revision
-            stop_graph = self.repository.get_revision_graph(stop_revision)
-            if last_rev is not None and last_rev not in stop_graph:
-                # our previous tip is not merged into stop_revision
-                raise errors.DivergedBranches(self, other)
-            # make a new revision history from the graph
-            current_rev_id = stop_revision
-            new_history = []
-            while current_rev_id not in (None, NULL_REVISION):
-                new_history.append(current_rev_id)
-                current_rev_id_parents = stop_graph[current_rev_id]
-                try:
-                    current_rev_id = current_rev_id_parents[0]
-                except IndexError:
-                    current_rev_id = None
-            new_history.reverse()
-            self.set_revision_history(new_history)
+            self.generate_revision_history(stop_revision, last_rev=last_rev)
         finally:
             other.unlock()
 
