@@ -17,9 +17,13 @@
 
 import os
 
+from bzrlib import bzrdir
 from bzrlib.tests import TestCaseWithTransport, TestCase
 from bzrlib.branch import Branch
-from bzrlib.conflicts import *
+from bzrlib.conflicts import (MissingParent, ContentsConflict, TextConflict,
+        PathConflict, DuplicateID, DuplicateEntry, ParentLoop, UnversionedParent,
+        ConflictList, 
+        restore)
 from bzrlib.errors import NotConflicted
 
 
@@ -46,7 +50,7 @@ class TestConflicts(TestCaseWithTransport):
     def test_conflicts(self):
         """Conflicts are detected properly"""
         tree = self.make_branch_and_tree('.',
-            format=bzrlib.bzrdir.BzrDirFormat6())
+            format=bzrdir.BzrDirFormat6())
         b = tree.branch
         file('hello', 'w').write('hello world4')
         file('hello.THIS', 'w').write('hello world2')

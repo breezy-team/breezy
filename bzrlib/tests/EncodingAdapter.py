@@ -25,6 +25,15 @@ from bzrlib.tests import TestSuite
 # prefix for micro (1/1000000)
 _mu = u'\xb5'
 
+# greek letter omega, not to be confused with
+# the Ohm sign, u'\u2126'. Though they are probably identical
+# cp437 can handle the first, but not the second
+_omega = u'\u03a9'
+
+# smallest error possible, epsilon
+# cp437 handles u03b5, but not u2208 the 'element of' operator
+_epsilon = u'\u03b5'
+
 # Swedish?
 _erik = u'Erik B\xe5gfors'
 
@@ -39,8 +48,8 @@ _juju_alt = u'j\xfbj\xfa'
 
 # Russian, 'Alexander' in russian
 _alexander = u'\u0410\u043b\u0435\u043a\u0441\u0430\u043d\u0434\u0440'
-# No idea if this means anything, but we need another string
-_alex = u'\u0410\u043b\u0435\u043a'
+# The word 'test' in Russian
+_russian_test = u'\u0422\u0435\u0441\u0442'
 
 # Kanji
 # It is a kanji sequence for nihonjin, or Japanese in English.
@@ -100,8 +109,15 @@ class EncodingTestAdapter(object):
                   , 'directory':_something}),
         ('cp1251', 0, {'committer':_alexander
                   , 'message':u'Testing ' + _mu
-                  , 'filename':_alex
-                  , 'directory':_alex + 'dir'}),
+                  , 'filename':_russian_test
+                  , 'directory':_russian_test + 'dir'}),
+# The iso-8859-1 tests run on a default windows cp437 installation
+# and it takes a long time to run an extra permutation of the tests
+# But just in case we want to add this back in:
+#        ('cp437', 0, {'committer':_erik
+#                  , 'message':u'Testing ' + _mu
+#                  , 'filename':'file_' + _omega
+#                  , 'directory':_epsilon + '_dir'}),
     ]
 
     def adapt(self, test):

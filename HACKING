@@ -282,6 +282,19 @@ When writing blackbox tests please honour the following conventions:
     command changes it name or signature. Ideally only the tests for a
     given command are affected when a given command is changed.
 
+Doctests
+--------
+
+We make selective use of doctests__.  In general they should provide 
+*examples* within the API documentation which can incidentally be tested.  We 
+don't try to test every important case using doctests -- regular Python
+tests are generally a better solution.
+
+Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
+
+  __ http://docs.python.org/lib/module-doctest.html
+
+
 Running tests
 =============
 Currently, bzr selftest is used to invoke tests.
@@ -406,4 +419,4 @@ into their integration branch, which I'll merge regularly.  (If you do
 so, please reply and say so.)
 
 
-:: vim:tw=74:ai
+:: vim: ft=rst tw=74 ai

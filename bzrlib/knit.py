@@ -77,7 +77,7 @@ import bzrlib.errors as errors
 from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
         InvalidRevisionId, KnitCorrupt, KnitHeaderError, \
         RevisionNotPresent, RevisionAlreadyPresent
-from bzrlib.tuned_gzip import *
+from bzrlib.tuned_gzip import GzipFile
 from bzrlib.trace import mutter
 from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
      sha_strings
@@ -573,7 +573,7 @@ class KnitVersionedFile(VersionedFile):
             records = []
             for comp_id in basis_versions:
                 data_pos, data_size = basis._index.get_data_position(comp_id)
-                records.append((piece_id, data_pos, data_size))
+                records.append((comp_id, data_pos, data_size))
             components.update(basis._data.read_records(records))
 
         records = []
@@ -1069,7 +1069,7 @@ class _KnitIndex(_KnitComponentFile):
         # position in _history is the 'official' index for a revision
         # but the values may have come from a newer entry.
         # so - wc -l of a knit index is != the number of unique names
-        # in the weave.
+        # in the knit.
         self._history = []
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:

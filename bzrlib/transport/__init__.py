@@ -30,18 +30,21 @@ import errno
 from collections import deque
 from copy import deepcopy
 import re
-from stat import *
+from stat import S_ISDIR
 import sys
 from unittest import TestSuite
 import urllib
 import urlparse
+import warnings
 
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import DependencyNotPresent
 import bzrlib.osutils as osutils
 from bzrlib.osutils import pumpfile
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_passed, deprecated_method, deprecated_function, 
+        DEPRECATED_PARAMETER,
+        zero_eight)
 from bzrlib.trace import mutter, warning
 import bzrlib.urlutils as urlutils
 
@@ -63,7 +66,7 @@ def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
     # working, etc.
     global _protocol_handlers
     if deprecated_passed(override):
-        warn("register_transport(override) is deprecated")
+        warnings.warn("register_transport(override) is deprecated")
     _protocol_handlers.setdefault(prefix, []).insert(0, klass)
 
 
@@ -703,7 +706,7 @@ def get_transport(base):
             raise errors.InvalidURL(base, error_str % m.group('proto'))
         # This doesn't look like a protocol, consider it a local path
         new_base = urlutils.local_path_to_url(base)
-        mutter('converting os path %r => url %s' , base, new_base)
+        mutter('converting os path %r => url %s', base, new_base)
         return new_base
 
     # Catch any URLs which are passing Unicode rather than ASCII

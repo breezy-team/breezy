@@ -67,7 +67,7 @@ import os
 import re
 import sys
 import time
-import pdb
+import warnings
 
 from cStringIO import StringIO
 
@@ -75,7 +75,6 @@ from bzrlib.atomicfile import AtomicFile
 import bzrlib.config
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
-                           HistoryMissing,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
@@ -86,7 +85,10 @@ from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_passed,
+        deprecated_function,
+        zero_seven,
+        DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
 
 
@@ -221,7 +223,7 @@ class Commit(object):
         mutter('preparing to commit')
 
         if deprecated_passed(branch):
-            warn("Commit.commit (branch, ...): The branch parameter is "
+            warnings.warn("Commit.commit (branch, ...): The branch parameter is "
                  "deprecated as of bzr 0.8. Please use working_tree= instead.",
                  DeprecationWarning, stacklevel=2)
             self.branch = branch
@@ -457,9 +459,8 @@ class Commit(object):
             if not self.branch.repository.has_revision(parent_id):
                 if parent_id == self.branch.last_revision():
                     warning("parent is missing %r", parent_id)
-                    raise HistoryMissing(self.branch, 'revision', parent_id)
-                else:
-                    mutter("commit will ghost revision %r", parent_id)
+                    raise BzrCheckError("branch %s is missing revision {%s}"
+                            % (self.branch, parent_id))
             
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.
