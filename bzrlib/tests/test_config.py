@@ -729,8 +729,9 @@ class TestBranchConfigItems(TestCaseInTempDir):
         self.assertTrue(my_config.signature_needed())
 
     def test_gpg_signing_command(self):
-        branch = FakeBranch()
-        my_config = config.BranchConfig(branch)
+        my_config = self.get_branch_config(
+            # branch data cannot set gpg_signing_command
+            branch_data_config="gpg_signing_command=pgp")
         config_file = StringIO(sample_config_text.encode('utf-8'))
         my_config._get_global_config()._get_parser(config_file)
         self.assertEqual('gnome-gpg', my_config.gpg_signing_command())
