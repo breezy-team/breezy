@@ -642,6 +642,17 @@ class TestLocationConfig(TestCaseInTempDir):
         self.assertEqual(self.my_config.get_user_option('foo'), 'baz')
         
 
+precedence_global = 'option = global'
+precedence_branch = 'option = branch'
+precedence_location = """
+[http://]
+recurse = true
+option = recurse
+[http://example.com/specific]
+option = exact
+"""
+
+
 class TestBranchConfigItems(TestCaseInTempDir):
 
     def get_branch_config(self, global_config=None, location=None, 
@@ -730,6 +741,22 @@ class TestBranchConfigItems(TestCaseInTempDir):
                          my_config.post_commit())
         my_config.set_user_option('post_commit', 'rmtree_root', local=True)
         self.assertEqual('rmtree_root', my_config.post_commit())
+
+    def test_config_precedence(self):
+        my_config = self.get_branch_config(global_config=precedence_global)
+        self.assertEqual(my_config.get_user_option('option'), 'global')
+        my_config = self.get_branch_config(global_config=precedence_global, 
+                                      branch_data_config=precedence_branch)
+        self.assertEqual(my_config.get_user_option('option'), 'branch')
+        my_config = self.get_branch_config(global_config=precedence_global, 
+                                      branch_data_config=precedence_branch,
+                                      location_config=precedence_location)
+        self.assertEqual(my_config.get_user_option('option'), 'recurse')
+        my_config = self.get_branch_config(global_config=precedence_global, 
+                                      branch_data_config=precedence_branch,
+                                      location_config=precedence_location,
+                                      location='http://example.com/specific')
+        self.assertEqual(my_config.get_user_option('option'), 'exact')
 
 
 class TestMailAddressExtraction(TestCase):
