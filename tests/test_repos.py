@@ -16,17 +16,14 @@
 
 import svn
 import format
-from tests import TestCaseWithSubversionRepository
+from svntest import TestCaseWithSubversionRepository
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 
-class TestRepositoryWorks(TestCaseWithSubversionRepository):
-    def setUp(self):
-        TestCaseWithSubversionRepository.setUp(self)
-
+class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_format(self):
         """ Test repository format is correct """
-        bzrdir = self.open_bzrdir()
+        bzrdir = self.make_bzrdir('a')
         self.assertEqual(bzrdir._format.get_format_string(), \
                 "Subversion Smart Server")
         
@@ -35,14 +32,14 @@ class TestRepositoryWorks(TestCaseWithSubversionRepository):
 
     def test_url(self):
         """ Test repository URL is kept """
-        bzrdir = self.open_bzrdir()
+        bzrdir = self.make_bzrdir('b')
         self.assertTrue(isinstance(bzrdir, BzrDir))
         repository = bzrdir.open_repository()
         self.assertEqual(repository.url, self.repos_url)
 
     def test_uuid(self):
         """ Test UUID is retrieved correctly """
-        bzrdir = self.open_bzrdir()
+        bzrdir = self.make_bzrdir('c')
         self.assertTrue(isinstance(bzrdir, BzrDir))
         repository = bzrdir.open_repository()
         self.assertEqual(svn.fs.get_uuid(self.fs), repository.uuid)

@@ -42,13 +42,11 @@ BzrDirFormat.register_control_format(dumpfile.SvnDumpFileFormat)
 
 def test_suite():
     from unittest import TestSuite, TestLoader
-    import tests.test_repos, tests.test_branch, tests.test_bound
+    import tests
 
     suite = TestSuite()
 
-    suite.addTest(TestLoader().loadTestsFromModule(tests.test_repos))
-    suite.addTest(TestLoader().loadTestsFromModule(tests.test_branch))
-    suite.addTest(TestLoader().loadTestsFromModule(tests.test_bound))
+    suite.addTest(tests.test_suite())
 
     return suite
 

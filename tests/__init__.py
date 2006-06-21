@@ -20,18 +20,13 @@ from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseInTempDir
 
-class TestCaseWithSubversionRepository(TestCaseInTempDir):
-    def setUp(self):
-        TestCaseInTempDir.setUp(self)
+def test_suite():
+    from unittest import TestSuite, TestLoader
+    import tests.test_repos, tests.test_branch
 
-        self.repos_path = os.path.join(self.test_dir, "svn_repos")
-        self.repos = svn.repos.create(self.repos_path, '', '', None, None)
-        self.repos_url = "file://%s" % self.repos_path
+    suite = TestSuite()
 
-        self.fs = svn.repos.fs(self.repos)
+    suite.addTest(TestLoader().loadTestsFromModule(tests.test_repos))
+    suite.addTest(TestLoader().loadTestsFromModule(tests.test_branch))
 
-    def open_bzrdir(self):
-        return BzrDir.open("svn+"+self.repos_url)
-
-    def open_branch(self):
-        return self.open_bzrdir().open_branch()
+    return suite

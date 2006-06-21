@@ -16,14 +16,10 @@
 
 import svn
 import format
-from tests import TestCaseWithSubversionRepository
-from bzrlib.bzrdir import BzrDir
-from bzrlib.bzrdir import BzrDirTestProviderAdapter, BzrDirFormat
+from svntest import TestCaseWithSubversionRepository
+from bzrlib.bzrdir import BzrDir, BzrDirTestProviderAdapter, BzrDirFormat
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
-    def setUp(self):
-        TestCaseWithSubversionRepository.setUp(self)
-
     def test_num_revnums(self):
-        branch = self.open_branch()
-        assertEqual(None,branch.last_revision())
+        bzrdir = self.make_bzrdir().open_branch()
+        assertEqual(None, branch.last_revision())
