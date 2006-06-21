@@ -19,8 +19,8 @@ from StringIO import StringIO
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
-from bzrlib.bundle.read_bundle import BundleTree, BundleReader
-from bzrlib.bundle.serializer import write_bundle
+from bzrlib.bundle.bundle_data import BundleTree
+from bzrlib.bundle.serializer import write_bundle, read_bundle
 from bzrlib.diff import internal_diff
 from bzrlib.errors import BzrError, TestamentMismatch, NotABundle
 from bzrlib.merge import Merge3Merger
@@ -321,9 +321,9 @@ class CSetTester(TestCaseInTempDir):
         open(',,bundle', 'wb').write(bundle_txt.getvalue())
         bundle_txt.seek(0)
         # This should also validate the generated bundle 
-        bundle = BundleReader(bundle_txt)
+        bundle = read_bundle(bundle_txt)
         repository = self.b1.repository
-        for bundle_rev in bundle.info.real_revisions:
+        for bundle_rev in bundle.real_revisions:
             # These really should have already been checked when we read the
             # bundle, since it computes the sha1 hash for the revision, which
             # only will match if everything is okay, but lets be explicit about
@@ -337,7 +337,7 @@ class CSetTester(TestCaseInTempDir):
             self.assertEqual(len(branch_rev.parent_ids), 
                              len(bundle_rev.parent_ids))
         self.assertEqual(rev_ids, 
-                         [r.revision_id for r in bundle.info.real_revisions])
+                         [r.revision_id for r in bundle.real_revisions])
         self.valid_apply_bundle(base_rev_id, bundle,
                                    checkout_dir=checkout_dir)
 
@@ -360,12 +360,12 @@ class CSetTester(TestCaseInTempDir):
         new_text = bundle_txt.getvalue().replace('executable:no', 
                                                'executable:yes')
         bundle_txt = StringIO(new_text)
-        bundle = BundleReader(bundle_txt)
+        bundle = read_bundle(bundle_txt)
         self.valid_apply_bundle(base_rev_id, bundle)
         return bundle 
 
     def test_non_bundle(self):
-        self.assertRaises(NotABundle, BundleReader, StringIO('#!/bin/sh\n'))
+        self.assertRaises(NotABundle, read_bundle, StringIO('#!/bin/sh\n'))
 
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.
@@ -385,7 +385,7 @@ class CSetTester(TestCaseInTempDir):
         s.seek(0)
         assert isinstance(s.getvalue(), str), (
             "Bundle isn't a bytestring:\n %s..." % repr(s.getvalue())[:40])
-        install_bundle(tree.branch.repository, BundleReader(s))
+        install_bundle(tree.branch.repository, read_bundle(s))
         for ancestor in ancestors:
             old = self.b1.repository.revision_tree(ancestor)
             new = tree.branch.repository.revision_tree(ancestor)
@@ -404,19 +404,18 @@ class CSetTester(TestCaseInTempDir):
             tree.update()
         return tree
 
-    def valid_apply_bundle(self, base_rev_id, reader, checkout_dir=None):
+    def valid_apply_bundle(self, base_rev_id, info, checkout_dir=None):
         """Get the base revision, apply the changes, and make
         sure everything matches the builtin branch.
         """
         to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
         repository = to_tree.branch.repository
         self.assertIs(repository.has_revision(base_rev_id), True)
-        info = reader.info
         for rev in info.real_revisions:
             self.assert_(not repository.has_revision(rev.revision_id),
                 'Revision {%s} present before applying bundle' 
                 % rev.revision_id)
-        merge_bundle(reader, to_tree, True, Merge3Merger, False, False)
+        merge_bundle(info, to_tree, True, Merge3Merger, False, False)
 
         for rev in info.real_revisions:
             self.assert_(repository.has_revision(rev.revision_id),

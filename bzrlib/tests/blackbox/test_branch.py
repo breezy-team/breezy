@@ -1,4 +1,4 @@
-# Copyright (C) 2005,2006 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,8 +19,7 @@
 
 import os
 
-import bzrlib.branch
-import bzrlib.bzrdir
+from bzrlib import branch, bzrdir
 from bzrlib.repository import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
@@ -44,7 +43,7 @@ class TestBranch(ExternalBase):
         self.example_branch()
         os.chdir('..')
         self.runbzr('branch a b')
-        b = bzrlib.branch.Branch.open('b')
+        b = branch.Branch.open('b')
         self.assertEqual('b\n', b.control_files.get_utf8('branch-name').read())
         self.runbzr('branch a c -r 1')
         os.chdir('b')
@@ -66,14 +65,14 @@ class TestBranch(ExternalBase):
         self.assertFalse(source.branch.repository.has_revision('2'))
         dir = source.bzrdir
         self.runbzr('branch source target --basis commit_tree')
-        target = bzrlib.bzrdir.BzrDir.open('target')
+        target = bzrdir.BzrDir.open('target')
         self.assertEqual('2', target.open_branch().last_revision())
         self.assertEqual('2', target.open_workingtree().last_revision())
         self.assertTrue(target.open_branch().repository.has_revision('2'))
 
     def test_branch_only_copies_history(self):
         # Knit branches should only push the history for the current revision.
-        format = bzrlib.bzrdir.BzrDirMetaFormat1()
+        format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = RepositoryFormatKnit1()
         shared_repo = self.make_repository('repo', format=format, shared=True)
         shared_repo.set_make_working_trees(True)

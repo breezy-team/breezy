@@ -26,6 +26,7 @@ import sys
 import bzrlib
 import bzrlib.config as config
 from bzrlib.errors import BzrError
+from bzrlib.trace import warning, mutter
 
 
 def _get_editor():
@@ -56,6 +57,7 @@ def _run_editor(filename):
     for e in _get_editor():
         edargs = e.split(' ')
         try:
+            ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
         except OSError, e:
            # We're searching for an editor, so catch safe errors and continue
@@ -142,7 +144,7 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE):
             try:
                 os.unlink(msgfilename)
             except IOError, e:
-                mutter("failed to unlink %s: %s; ignored", msgfilename, e)
+                warning("failed to unlink %s: %s; ignored", msgfilename, e)
 
 
 def make_commit_message_template(working_tree, specific_files):

@@ -18,8 +18,8 @@
 """Benchmark test suite for bzr."""
 
 import bzrlib
+from bzrlib.tests.TestUtil import TestLoader
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestLoader
 from bzrlib.tests.blackbox import ExternalBase
 
 class Benchmark(ExternalBase):

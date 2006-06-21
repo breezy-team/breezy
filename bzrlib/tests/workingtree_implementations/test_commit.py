@@ -1,4 +1,4 @@
-# (C) 2005,2006 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,20 +18,13 @@
 from cStringIO import StringIO
 import os
 
-import bzrlib
-import bzrlib.branch
-from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
-from bzrlib.bzrdir import BzrDir
-import bzrlib.errors as errors
+from bzrlib import branch, bzrdir, errors, ui, workingtree
 from bzrlib.errors import (NotBranchError, NotVersionedError, 
                            UnsupportedOperation)
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped, TestCase
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
-import bzrlib.ui as ui
-import bzrlib.workingtree as workingtree
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
 

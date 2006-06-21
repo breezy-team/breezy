@@ -22,7 +22,7 @@ target path is a directory.
 To get a fake nfs transport use get_transport('fakenfs+' + real_url)
 """
 
-from stat import *
+from stat import S_ISDIR
 
 import bzrlib.errors as errors
 from bzrlib.transport.decorator import TransportDecorator, DecoratorServer

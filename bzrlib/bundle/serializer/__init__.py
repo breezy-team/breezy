@@ -40,7 +40,7 @@ def _get_filename(f):
     return '<unknown>'
 
 
-def read(f):
+def read_bundle(f):
     """Read in a bundle from a filelike object.
 
     :param f: A file-like object
@@ -58,7 +58,7 @@ def read(f):
             raise errors.BundleNotSupported(version, 'old format bundles not supported')
 
     if version is None:
-        raise errors.NoBundleFound(_get_filename(f))
+        raise errors.NotABundle('Did not find an opening header')
 
     # Now we have a version, to figure out how to read the bundle 
     if not _serializers.has_key(version):
