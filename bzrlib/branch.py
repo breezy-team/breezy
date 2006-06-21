@@ -1220,7 +1220,10 @@ class BzrBranch(Branch):
             url = urlutils.relative_url(self.base, url)
             self.control_files.put('parent', url + '\n')
 
+    @deprecated_function(zero_nine)
     def tree_config(self):
+        """DEPRECATED; call get_config instead.  
+        TreeConfig has become part of BranchConfig."""
         return TreeConfig(self)
 
 
