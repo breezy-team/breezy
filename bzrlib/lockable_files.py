@@ -19,13 +19,17 @@ import codecs
 #import traceback
 
 import bzrlib
-from bzrlib.decorators import *
+from bzrlib.decorators import (needs_read_lock,
+        needs_write_lock)
 import bzrlib.errors as errors
-from bzrlib.errors import LockError, ReadOnlyError
+from bzrlib.errors import BzrError
 from bzrlib.osutils import file_iterator, safe_unicode
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_method, 
+        zero_eight)
 from bzrlib.trace import mutter, note
 import bzrlib.transactions as transactions
+import bzrlib.urlutils as urlutils
+
 
 # XXX: The tracking here of lock counts and whether the lock is held is
 # somewhat redundant with what's done in LockDir; the main difference is that
@@ -73,13 +77,12 @@ class LockableFiles(object):
         :param lock_class: Class of lock strategy to use: typically
             either LockDir or TransportLock.
         """
-        object.__init__(self)
         self._transport = transport
         self.lock_name = lock_name
         self._transaction = None
-        self._find_modes()
         self._lock_mode = None
         self._lock_count = 0
+        self._find_modes()
         esc_name = self._escape(lock_name)
         self._lock = lock_class(transport, esc_name,
                                 file_modebits=self._file_mode,
@@ -107,12 +110,19 @@ class LockableFiles(object):
             warn("file group %r was not explicitly unlocked" % self)
             self._lock.unlock()
 
+    def break_lock(self):
+        """Break the lock of this lockable files group if it is held.
+
+        The current ui factory will be used to prompt for user conformation.
+        """
+        self._lock.break_lock()
+
     def _escape(self, file_or_path):
         if not isinstance(file_or_path, basestring):
             file_or_path = '/'.join(file_or_path)
         if file_or_path == '':
             return u''
-        return bzrlib.transport.urlescape(safe_unicode(file_or_path))
+        return urlutils.escape(safe_unicode(file_or_path))
 
     def _find_modes(self):
         """Determine the appropriate modes for files and directories."""
@@ -208,7 +218,7 @@ class LockableFiles(object):
         # and potentially a remote locking protocol
         if self._lock_mode:
             if self._lock_mode != 'w' or not self.get_transaction().writeable():
-                raise ReadOnlyError(self)
+                raise errors.ReadOnlyError(self)
             self._lock_count += 1
         else:
             self._lock.lock_write()
@@ -244,12 +254,26 @@ class LockableFiles(object):
             #note('unlocking %s', self)
             #traceback.print_stack()
             self._finish_transaction()
-            self._lock.unlock()
-            self._lock_mode = self._lock_count = None
+            try:
+                self._lock.unlock()
+            finally:
+                self._lock_mode = self._lock_count = None
 
     def is_locked(self):
         """Return true if this LockableFiles group is locked"""
         return self._lock_count >= 1
+
+    def get_physical_lock_status(self):
+        """Return physical lock status.
+        
+        Returns true if a lock is held on the transport. If no lock is held, or
+        the underlying locking mechanism does not support querying lock
+        status, false is returned.
+        """
+        try:
+            return self._lock.peek() is not None
+        except NotImplementedError:
+            return False
 
     def get_transaction(self):
         """Return the current active transaction.
@@ -296,6 +320,9 @@ class TransportLock(object):
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
 
+    def break_lock(self):
+        raise NotImplementedError(self.break_lock)
+
     def lock_write(self):
         self._lock = self._transport.lock_write(self._escaped_name)
 
@@ -305,6 +332,9 @@ class TransportLock(object):
     def unlock(self):
         self._lock.unlock()
         self._lock = None
+
+    def peek(self):
+        raise NotImplementedError()
 
     def create(self, mode=None):
         """Create lock mechanism"""

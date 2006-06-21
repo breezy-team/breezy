@@ -1,5 +1,4 @@
 import os
-import shutil
 import stat
 import sys
 
@@ -12,7 +11,9 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.merge import Merge3Merger, Diff3Merger, WeaveMerger
-from bzrlib.osutils import file_kind, rename, sha_file, pathjoin, mkdtemp
+from bzrlib.osutils import (file_kind, mkdtemp, pathjoin, rename, rmtree,
+                            sha_file, 
+                            )
 from bzrlib.transform import TreeTransform
 from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
 from bzrlib.workingtree import WorkingTree
@@ -123,12 +124,6 @@ class MergeBuilder(object):
     def change_perms_tree(self, id, tree, mode):
         os.chmod(tree.full_path(id), mode)
 
-    def merge_changeset(self, merge_factory):
-        conflict_handler = changeset.ExceptionConflictHandler()
-        return make_merge_changeset(self.cset, self.this, self.base,
-                                    self.other, conflict_handler,
-                                    merge_factory)
-
     def apply_inv_change(self, inventory_change, orig_inventory):
         orig_inventory_by_path = {}
         for file_id, path in orig_inventory.iteritems():
@@ -167,16 +162,8 @@ class MergeBuilder(object):
             new_inventory[file_id] = path
         return new_inventory
 
-    def apply_changeset(self, cset, conflict_handler=None):
-        inventory_change = changeset.apply_changeset(cset,
-                                                     self.this.inventory_dict,
-                                                     self.this.dir,
-                                                     conflict_handler)
-        self.this.inventory_dict =  self.apply_inv_change(inventory_change, 
-                                                     self.this.inventory_dict)
-
     def cleanup(self):
-        shutil.rmtree(self.dir)
+        rmtree(self.dir)
 
 
 class MergeTest(TestCase):

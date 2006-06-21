@@ -27,6 +27,7 @@ from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, warning
 import bzrlib.ui 
+import bzrlib.urlutils as urlutils
 
 
 ROOT_PARENT = "root-parent"
@@ -79,7 +80,8 @@ class TreeTransform(object):
         self._tree.lock_write()
         try:
             control_files = self._tree._control_files
-            self._limbodir = control_files.controlfilename('limbo')
+            self._limbodir = urlutils.local_path_from_url(
+                control_files.controlfilename('limbo'))
             try:
                 os.mkdir(self._limbodir)
             except OSError, e:
@@ -101,6 +103,10 @@ class TreeTransform(object):
         self._removed_id = set()
         self._tree_path_ids = {}
         self._tree_id_paths = {}
+        self._realpaths = {}
+        # Cache of realpath results, to speed up canonical_path
+        self._relpaths = {}
+        # Cache of relpath results, to speed up canonical_path
         self._new_root = self.trans_id_tree_file_id(tree.get_root_id())
         self.__done = False
         self._pb = pb
@@ -211,9 +217,21 @@ class TreeTransform(object):
     def canonical_path(self, path):
         """Get the canonical tree-relative path"""
         # don't follow final symlinks
-        dirname, basename = os.path.split(self._tree.abspath(path))
-        dirname = os.path.realpath(dirname)
-        return self._tree.relpath(pathjoin(dirname, basename))
+        abs = self._tree.abspath(path)
+        if abs in self._relpaths:
+            return self._relpaths[abs]
+        dirname, basename = os.path.split(abs)
+        if dirname not in self._realpaths:
+            self._realpaths[dirname] = os.path.realpath(dirname)
+        dirname = self._realpaths[dirname]
+        abs = pathjoin(dirname, basename)
+        if dirname in self._relpaths:
+            relpath = pathjoin(self._relpaths[dirname], basename)
+            relpath = relpath.rstrip('/\\')
+        else:
+            relpath = self._tree.relpath(abs)
+        self._relpaths[abs] = relpath
+        return relpath
 
     def trans_id_tree_path(self, path):
         """Determine (and maybe set) the transaction ID for a tree path."""
@@ -521,9 +539,9 @@ class TreeTransform(object):
         if child_id is None:
             return lexists(self._tree.abspath(childpath))
         else:
-            if tt.final_parent(child_id) != parent_id:
+            if self.final_parent(child_id) != parent_id:
                 return False
-            if child_id in tt._removed_contents:
+            if child_id in self._removed_contents:
                 # XXX What about dangling file-ids?
                 return False
             else:
@@ -829,9 +847,12 @@ class TreeTransform(object):
         parent_id is the transaction id of the parent directory of the file.
         contents is an iterator of bytestrings, which will be used to produce
         the file.
-        file_id is the inventory ID of the file, if it is to be versioned.
+        :param file_id: The inventory ID of the file, if it is to be versioned.
+        :param executable: Only valid when a file_id has been supplied.
         """
         trans_id = self._new_entry(name, parent_id, file_id)
+        # TODO: rather than scheduling a set_executable call,
+        # have create_file create the file with the right mode.
         self.create_file(contents, trans_id)
         if executable is not None:
             self.set_executability(executable, trans_id)
@@ -1045,9 +1066,7 @@ def _entry_changes(file_id, entry, working_tree):
     try:
         working_kind = working_tree.kind(file_id)
         has_contents = True
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise
+    except NoSuchFile:
         has_contents = False
         contents_mod = True
         meta_mod = False

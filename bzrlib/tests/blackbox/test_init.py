@@ -30,7 +30,7 @@ class TestInit(ExternalBase):
     def test_init_with_format(self):
         # Verify bzr init --format constructs something plausible
         t = self.get_transport()
-        self.runbzr('init --format metadir')
+        self.runbzr('init --format default')
         self.assertIsDirectory('.bzr', t)
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)
@@ -70,9 +70,9 @@ class TestInit(ExternalBase):
         
         out, err = self.run_bzr('init', 'subdir2/nothere', retcode=3)
         self.assertEqual('', out)
-        self.failUnless(err.startswith(
-            'bzr: ERROR: exceptions.OSError: '
-            '[Errno 2] No such file or directory: '))
+        self.assertContainsRe(err,
+            r'^bzr: ERROR: .*'
+            '\[Errno 2\] No such file or directory: ')
         
         os.mkdir('subdir2')
         out, err = self.run_bzr('init', 'subdir2')

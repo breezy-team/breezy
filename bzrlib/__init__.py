@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Development Ltd
+# Copyright (C) 2005, 2006 Canonical Development Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -72,6 +72,9 @@ DEFAULT_IGNORE = [
                   'stamp-h.in',
                   'stamp-h1',
                   '{arch}',
+                  # Our setup tests dump .python-eggs in the bzr source tree
+                  # root
+                  './.python-eggs',
                   ]
 
 IGNORE_FILENAME = ".bzrignore"
@@ -85,14 +88,27 @@ if sys.platform == 'darwin':
     sys.platform = 'darwin'
 else:
     import locale
+# XXX: This probably belongs in osutils instead
 user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 
-__copyright__ = "Copyright 2005,06 Canonical Development Ltd."
-__version__ = version_string = '0.8rc1'
-# same format as sys.version_info
-version_info = (0, 8, 0, 'rc', 1)
+__copyright__ = "Copyright 2005, 2006 Canonical Development Ltd."
+__version__ = version_string = '0.9'
 
+# same format as sys.version_info: "A tuple containing the five components of
+# the version number: major, minor, micro, releaselevel, and serial. All
+# values except releaselevel are integers; the release level is 'alpha',
+# 'beta', 'candidate', or 'final'. The version_info value corresponding to the
+# Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
+# releaselevel of 'dev' for unreleased under-development code.
+
+version_info = (0, 9, 0, 'dev', 0)
+
+if version_info[3] == 'final':
+    version_string = '%d.%d.%d' % version_info[:3]
+else:
+    version_string = '%d.%d.%d%s%d' % version_info
+__version__ = version_string 
 
 from bzrlib.symbol_versioning import deprecated_function, zero_seven
 

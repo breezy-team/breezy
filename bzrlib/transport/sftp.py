@@ -22,6 +22,7 @@ import getpass
 import os
 import random
 import re
+import select
 import stat
 import subprocess
 import sys
@@ -44,10 +45,11 @@ from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     Server,
+    split_url,
     Transport,
-    urlescape,
     )
 import bzrlib.ui
+import bzrlib.urlutils as urlutils
 
 try:
     import paramiko
@@ -301,6 +303,7 @@ class SFTPLock(object):
             # What specific errors should we catch here?
             pass
 
+
 class SFTPTransport (Transport):
     """
     Transport implementation for SFTP access.
@@ -354,7 +357,7 @@ class SFTPTransport (Transport):
         """
         # FIXME: share the common code across transports
         assert isinstance(relpath, basestring)
-        relpath = urllib.unquote(relpath).split('/')
+        relpath = urlutils.unescape(relpath).split('/')
         basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
@@ -662,31 +665,8 @@ class SFTPTransport (Transport):
         return urlparse.urlunparse(('sftp', netloc, path, '', '', ''))
 
     def _split_url(self, url):
-        if isinstance(url, unicode):
-            url = url.encode('utf-8')
-        (scheme, netloc, path, params,
-         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+        (scheme, username, password, host, port, path) = split_url(url)
         assert scheme == 'sftp'
-        username = password = host = port = None
-        if '@' in netloc:
-            username, host = netloc.split('@', 1)
-            if ':' in username:
-                username, password = username.split(':', 1)
-                password = urllib.unquote(password)
-            username = urllib.unquote(username)
-        else:
-            host = netloc
-
-        if ':' in host:
-            host, port = host.rsplit(':', 1)
-            try:
-                port = int(port)
-            except ValueError:
-                # TODO: Should this be ConnectionError?
-                raise TransportError('%s: invalid port number' % port)
-        host = urllib.unquote(host)
-
-        path = urllib.unquote(path)
 
         # the initial slash should be removed from the path, and treated
         # as a homedir relative path (the path begins with a double slash
@@ -724,7 +704,11 @@ class SFTPTransport (Transport):
         vendor = _get_ssh_vendor()
         if vendor == 'loopback':
             sock = socket.socket()
-            sock.connect((self._host, self._port))
+            try:
+                sock.connect((self._host, self._port))
+            except socket.error, e:
+                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                      % (self._host, self._port, e))
             self._sftp = SFTPClient(LoopbackSFTP(sock))
         elif vendor != 'none':
             sock = SFTPSubprocess(self._host, vendor, self._port,
@@ -745,8 +729,8 @@ class SFTPTransport (Transport):
             t.set_log_channel('bzr.paramiko')
             t.start_client()
         except paramiko.SSHException, e:
-            raise ConnectionError('Unable to reach SSH host %s:%d' %
-                                  (self._host, self._port), e)
+            raise ConnectionError('Unable to reach SSH host %s:%s: %s' 
+                                  % (self._host, self._port, e))
             
         server_key = t.get_remote_server_key()
         server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
@@ -905,9 +889,9 @@ HhathJt636Eg7oIjAkA8ht3MQ+XSl9yIJIS8gVpbPxSw5OMfw0PjVE7tBdQruiSc
 nvuQES5C9BMHjF39LZiGH1iLQy7FgdHyoP+eodI7
 -----END RSA PRIVATE KEY-----
 """
-    
 
-class SingleListener(threading.Thread):
+
+class SocketListener(threading.Thread):
 
     def __init__(self, callback):
         threading.Thread.__init__(self)
@@ -917,25 +901,39 @@ class SingleListener(threading.Thread):
         self._socket.bind(('localhost', 0))
         self._socket.listen(1)
         self.port = self._socket.getsockname()[1]
-        self.stop_event = threading.Event()
-
-    def run(self):
-        s, _ = self._socket.accept()
-        # now close the listen socket
-        self._socket.close()
-        try:
-            self._callback(s, self.stop_event)
-        except socket.error:
-            pass #Ignore socket errors
-        except Exception, x:
-            # probably a failed test
-            warning('Exception from within unit test server thread: %r' % x)
+        self._stop_event = threading.Event()
 
     def stop(self):
-        self.stop_event.set()
+        # called from outside this thread
+        self._stop_event.set()
         # use a timeout here, because if the test fails, the server thread may
         # never notice the stop_event.
         self.join(5.0)
+        self._socket.close()
+
+    def run(self):
+        while True:
+            readable, writable_unused, exception_unused = \
+                select.select([self._socket], [], [], 0.1)
+            if self._stop_event.isSet():
+                return
+            if len(readable) == 0:
+                continue
+            try:
+                s, addr_unused = self._socket.accept()
+                # because the loopback socket is inline, and transports are
+                # never explicitly closed, best to launch a new thread.
+                threading.Thread(target=self._callback, args=(s,)).start()
+            except socket.error, x:
+                sys.excepthook(*sys.exc_info())
+                warning('Socket error during accept() within unit test server'
+                        ' thread: %r' % x)
+            except Exception, x:
+                # probably a failed test; unit test thread will log the
+                # failure/error
+                sys.excepthook(*sys.exc_info())
+                warning('Exception from within unit test server thread: %r' % 
+                        x)
 
 
 class SFTPServer(Server):
@@ -959,10 +957,12 @@ class SFTPServer(Server):
         """StubServer uses this to log when a new server is created."""
         self.logs.append(message)
 
-    def _run_server(self, s, stop_event):
+    def _run_server(self, s):
         ssh_server = paramiko.Transport(s)
         key_file = os.path.join(self._homedir, 'test_rsa.key')
-        file(key_file, 'w').write(STUB_SERVER_KEY)
+        f = open(key_file, 'w')
+        f.write(STUB_SERVER_KEY)
+        f.close()
         host_key = paramiko.RSAKey.from_private_key_file(key_file)
         ssh_server.add_server_key(host_key)
         server = StubServer(self)
@@ -972,18 +972,17 @@ class SFTPServer(Server):
         event = threading.Event()
         ssh_server.start_server(event, server)
         event.wait(5.0)
-        stop_event.wait(30.0)
     
     def setUp(self):
         global _ssh_vendor
         self._original_vendor = _ssh_vendor
         _ssh_vendor = self._vendor
-        self._homedir = os.getcwdu()
+        self._homedir = os.getcwd()
         if self._server_homedir is None:
             self._server_homedir = self._homedir
         self._root = '/'
         # FIXME WINDOWS: _root should be _server_homedir[0]:/
-        self._listener = SingleListener(self._run_server)
+        self._listener = SocketListener(self._run_server)
         self._listener.setDaemon(True)
         self._listener.start()
 
@@ -993,13 +992,20 @@ class SFTPServer(Server):
         self._listener.stop()
         _ssh_vendor = self._original_vendor
 
+    def get_bogus_url(self):
+        """See bzrlib.transport.Server.get_bogus_url."""
+        # this is chosen to try to prevent trouble with proxies, wierd dns,
+        # etc
+        return 'sftp://127.0.0.1:1/'
+
+
 
 class SFTPFullAbsoluteServer(SFTPServer):
     """A test server for sftp transports, using absolute urls and ssh."""
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlescape(self._homedir[1:]))
+        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
 
 
 class SFTPServerWithoutSSH(SFTPServer):
@@ -1009,7 +1015,7 @@ class SFTPServerWithoutSSH(SFTPServer):
         super(SFTPServerWithoutSSH, self).__init__()
         self._vendor = 'loopback'
 
-    def _run_server(self, sock, stop_event):
+    def _run_server(self, sock):
         class FakeChannel(object):
             def get_transport(self):
                 return self
@@ -1019,6 +1025,8 @@ class SFTPServerWithoutSSH(SFTPServer):
                 return '1'
             def get_hexdump(self):
                 return False
+            def close(self):
+                pass
 
         server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
                                      root=self._root, home=self._server_homedir)
@@ -1031,7 +1039,7 @@ class SFTPAbsoluteServer(SFTPServerWithoutSSH):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlescape(self._homedir[1:]))
+        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
 
 
 class SFTPHomeDirServer(SFTPServerWithoutSSH):

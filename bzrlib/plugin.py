@@ -46,7 +46,7 @@ import types
 
 import bzrlib
 from bzrlib.config import config_dir
-from bzrlib.trace import log_error, mutter, log_exception, warning, \
+from bzrlib.trace import log_error, mutter, warning, \
         log_exception_quietly
 from bzrlib.errors import BzrError
 from bzrlib import plugins

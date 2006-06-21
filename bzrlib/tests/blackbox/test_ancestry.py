@@ -19,12 +19,12 @@ import os
 from bzrlib.builtins import merge
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
+from bzrlib.branch import Branch
 
 
 class TestAncestry(TestCaseWithTransport):
 
-    def test_ancestry(self):
-        """Tests 'ancestry' command"""
+    def _build_branches(self):
         a_wt = self.make_branch_and_tree('A')
         open('A/foo', 'wb').write('1111\n')
         a_wt.add('foo')
@@ -37,4 +37,65 @@ class TestAncestry(TestCaseWithTransport):
         a_wt.commit('modified A/foo',rev_id='A2')
         merge(['B',-1],['B',1],this_dir='A')
         a_wt.commit('merged B into A',rev_id='A3')
-        self.run_bzr('ancestry')
+
+    def _check_ancestry(self, location='', result=None):
+        out = self.capture('ancestry ' + location)
+        if result is None:
+            result = "A1\nB1\nA2\nA3\n"
+        self.assertEqualDiff(out, result)
+
+    def test_ancestry(self):
+        """Tests 'ancestry' command"""
+        self._build_branches()
+        os.chdir('A')
+        self._check_ancestry()
+
+    def test_ancestry_with_location(self):
+        """Tests 'ancestry' command with a specified location."""
+        self._build_branches()
+        self._check_ancestry('A')
+
+    def test_ancestry_with_repo_branch(self):
+        """Tests 'ancestry' command with a location that is a
+        repository branch."""
+        self._build_branches()
+        self.run_bzr('init-repo', 'repo')
+        self.run_bzr('branch', 'A', 'repo/A')
+        self._check_ancestry('repo/A')
+
+    def test_ancestry_with_checkout(self):
+        """Tests 'ancestry' command with a location that is a
+        checkout of a repository branch."""
+        self._build_branches()
+        self.run_bzr('init-repo', 'repo')
+        self.run_bzr('branch', 'A', 'repo/A')
+        self.run_bzr('checkout', 'repo/A', 'A-checkout')
+        self._check_ancestry('A-checkout')
+
+    def test_ancestry_with_lightweight_checkout(self):
+        """Tests 'ancestry' command with a location that is a
+        lightweight checkout of a repository branch."""
+        self._build_branches()
+        self.run_bzr('init-repo', 'repo')
+        self.run_bzr('branch', 'A', 'repo/A')
+        self.run_bzr('checkout', '--lightweight', 'repo/A', 'A-checkout')
+        self._check_ancestry('A-checkout')
+
+    def test_ancestry_with_truncated_checkout(self):
+        """Tests 'ancestry' command with a location that is a
+        checkout of a repository branch with a shortened revision history."""
+        self._build_branches()
+        self.run_bzr('init-repo', 'repo')
+        self.run_bzr('branch', 'A', 'repo/A')
+        self.run_bzr('checkout', '-r', '2', 'repo/A', 'A-checkout')
+        self._check_ancestry('A-checkout', "A1\nA2\n")
+
+    def test_ancestry_with_truncated_lightweight_checkout(self):
+        """Tests 'ancestry' command with a location that is a lightweight
+        checkout of a repository branch with a shortened revision history."""
+        self._build_branches()
+        self.run_bzr('init-repo', 'repo')
+        self.run_bzr('branch', 'A', 'repo/A')
+        self.run_bzr('checkout', '-r', '2', '--lightweight',
+                'repo/A', 'A-checkout')
+        self._check_ancestry('A-checkout', "A1\nA2\n")

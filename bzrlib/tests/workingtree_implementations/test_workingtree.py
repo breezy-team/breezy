@@ -1,4 +1,4 @@
-# (C) 2005,2006 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -19,28 +19,22 @@ from cStringIO import StringIO
 import os
 
 import bzrlib
-import bzrlib.branch
-from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
-from bzrlib.bzrdir import BzrDir
-import bzrlib.errors as errors
+from bzrlib import branch, bzrdir, errors, urlutils, workingtree
 from bzrlib.errors import (NotBranchError, NotVersionedError, 
                            UnsupportedOperation)
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
-import bzrlib.workingtree as workingtree
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
-
+from bzrlib.conflicts import ConflictList
 
 class TestWorkingTree(TestCaseWithWorkingTree):
 
-    def test_listfiles(self):
+    def test_list_files(self):
         tree = self.make_branch_and_tree('.')
-        os.mkdir('dir')
-        print >> open('file', 'w'), "content"
+        self.build_tree(['dir/', 'file'])
         if has_symlinks():
             os.symlink('target', 'symlink')
         files = list(tree.list_files())
@@ -49,20 +43,46 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         if has_symlinks():
             self.assertEqual(files[2], ('symlink', '?', 'symlink', None, TreeLink()))
 
+    def test_list_files_sorted(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'file', 'dir/file', 'dir/b', 'dir/subdir/', 'a', 'dir/subfile',
+                'zz_dir/', 'zz_dir/subfile'])
+        files = [(path, kind) for (path, versioned, kind, file_id, entry) in tree.list_files()]
+        self.assertEqual([
+            ('a', 'file'),
+            ('dir', 'directory'),
+            ('file', 'file'),
+            ('zz_dir', 'directory'),
+            ], files)
+
+        tree.add(['dir', 'zz_dir'])
+        files = [(path, kind) for (path, versioned, kind, file_id, entry) in tree.list_files()]
+        self.assertEqual([
+            ('a', 'file'),
+            ('dir', 'directory'),
+            ('dir/b', 'file'),
+            ('dir/file', 'file'),
+            ('dir/subdir', 'directory'),
+            ('dir/subfile', 'file'),
+            ('file', 'file'),
+            ('zz_dir', 'directory'),
+            ('zz_dir/subfile', 'file'),
+            ], files)
+
     def test_open_containing(self):
         branch = self.make_branch_and_tree('.').branch
         wt, relpath = WorkingTree.open_containing()
         self.assertEqual('', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
         wt, relpath = WorkingTree.open_containing(u'.')
         self.assertEqual('', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
         wt, relpath = WorkingTree.open_containing('./foo')
         self.assertEqual('foo', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
         wt, relpath = WorkingTree.open_containing('file://' + getcwd() + '/foo')
         self.assertEqual('foo', relpath)
-        self.assertEqual(wt.basedir + '/', branch.base)
+        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
 
     def test_basic_relpath(self):
         # for comprehensive relpath tests, see whitebox.py.
@@ -125,10 +145,22 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.revert(['hello.txt'])
         self.failUnlessExists('hello.txt')
 
-    def test_unknowns(self):
+    def test_unknowns_by_default_patterns(self):
+        """Backup files are ignored by default"""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt',
                          'hello.txt.~1~'])
+        self.assertEquals(list(tree.unknowns()),
+                          ['hello.txt'])
+
+    def test_versioned_files_not_unknown(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['hello.txt',
+                         'hello.txt.~1~'])
+        tree.add('hello.txt')
+        self.assertEquals(list(tree.unknowns()),
+                          [])
+        tree.remove('hello.txt')
         self.assertEquals(list(tree.unknowns()),
                           ['hello.txt'])
 
@@ -149,7 +181,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_initialize(self):
         # initialize should create a working tree and branch in an existing dir
         t = self.make_branch_and_tree('.')
-        b = Branch.open('.')
+        b = branch.Branch.open('.')
         self.assertEqual(t.branch.base, b.base)
         t2 = WorkingTree.open('.')
         self.assertEqual(t.basedir, t2.basedir)
@@ -341,55 +373,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         made_tree = self.workingtree_format.initialize(made_control, revision_id='a')
         self.assertEqual('a', made_tree.last_revision())
 
-    def test_commit_sets_last_revision(self):
-        tree = self.make_branch_and_tree('tree')
-        tree.commit('foo', rev_id='foo', allow_pointless=True)
-        self.assertEqual('foo', tree.last_revision())
-
-    def test_commit_local_unbound(self):
-        # using the library api to do a local commit on unbound branches is 
-        # also an error
-        tree = self.make_branch_and_tree('tree')
-        self.assertRaises(errors.LocalRequiresBoundBranch,
-                          tree.commit,
-                          'foo',
-                          local=True)
- 
-    def test_local_commit_ignores_master(self):
-        # a --local commit does not require access to the master branch
-        # at all, or even for it to exist.
-        # we test this by setting up a bound branch and then corrupting
-        # the master.
-        master = self.make_branch('master')
-        tree = self.make_branch_and_tree('tree')
-        try:
-            tree.branch.bind(master)
-        except errors.UpgradeRequired:
-            # older format.
-            return
-        master.bzrdir.transport.put('branch-format', StringIO('garbage'))
-        del master
-        # check its corrupted.
-        self.assertRaises(errors.UnknownFormatError,
-                          bzrdir.BzrDir.open,
-                          'master')
-        tree.commit('foo', rev_id='foo', local=True)
- 
-    def test_local_commit_does_not_push_to_master(self):
-        # a --local commit does not require access to the master branch
-        # at all, or even for it to exist.
-        # we test that even when its available it does not push to it.
-        master = self.make_branch('master')
-        tree = self.make_branch_and_tree('tree')
-        try:
-            tree.branch.bind(master)
-        except errors.UpgradeRequired:
-            # older format.
-            return
-        tree.commit('foo', rev_id='foo', local=True)
-        self.failIf(master.repository.has_revision('foo'))
-        self.assertEqual(None, master.last_revision())
-        
     def test_update_sets_last_revision(self):
         # working tree formats from the meta-dir format and newer support
         # setting the last revision on a tree independently of that on the 
@@ -411,7 +394,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        bzrlib.branch.BranchReferenceFormat().initialize(checkout, main_branch)
+        branch.BranchReferenceFormat().initialize(checkout, main_branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
@@ -442,7 +425,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        bzrlib.branch.BranchReferenceFormat().initialize(checkout, main_branch)
+        branch.BranchReferenceFormat().initialize(checkout, main_branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
@@ -549,7 +532,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add('blo')
         tree.commit("blah", allow_pointless=False)
         base = tree.basis_tree()
-        BzrDir.open("mine").sprout("other")
+        bzrdir.BzrDir.open("mine").sprout("other")
         file('other/bloo', 'wb').write('two')
         othertree = WorkingTree.open('other')
         othertree.commit('blah', allow_pointless=False)
@@ -563,7 +546,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(len(tree.conflicts()), 1)
 
     def test_clear_merge_conflicts(self):
-        from bzrlib.conflicts import ConflictList
         tree = self.make_merge_conflicts()
         self.assertEqual(len(tree.conflicts()), 1)
         try:
@@ -599,3 +581,14 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             tree.branch = tree.branch
         self.assertRaises(AttributeError, set_branch)
 
+    def test_list_files_versioned_before_ignored(self):
+        """A versioned file matching an ignore rule should not be ignored."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo.pyc'])
+        # ensure that foo.pyc is ignored
+        self.build_tree_contents([('.bzrignore', 'foo.pyc')])
+        tree.add('foo.pyc', 'anid')
+        files = sorted(list(tree.list_files()))
+        self.assertEqual((u'.bzrignore', '?', 'file', None), files[0][:-1])
+        self.assertEqual((u'foo.pyc', 'V', 'file', 'anid'), files[1][:-1])
+        self.assertEqual(2, len(files))

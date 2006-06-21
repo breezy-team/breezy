@@ -26,12 +26,14 @@ import stat
 import sys
 
 from bzrlib.errors import (DirectoryNotEmpty, NoSuchFile, FileExists,
-                           LockError,
-                           PathError,
-                           TransportNotPossible, ConnectionError)
+                           LockError, PathError,
+                           TransportNotPossible, ConnectionError,
+                           InvalidURL)
+from bzrlib.osutils import getcwd
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
-from bzrlib.transport import memory, urlescape
+from bzrlib.transport import memory
 import bzrlib.transport
+import bzrlib.urlutils as urlutils
 
 
 def _append(fn, txt):
@@ -113,11 +115,11 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.build_tree(files, transport=t)
         self.assertEqual(True, t.has('a'))
         self.assertEqual(False, t.has('c'))
-        self.assertEqual(True, t.has(urlescape('%')))
+        self.assertEqual(True, t.has(urlutils.escape('%')))
         self.assertEqual(list(t.has_multi(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])),
                 [True, True, False, False, True, False, True, False])
         self.assertEqual(True, t.has_any(['a', 'b', 'c']))
-        self.assertEqual(False, t.has_any(['c', 'd', 'f', urlescape('%%')]))
+        self.assertEqual(False, t.has_any(['c', 'd', 'f', urlutils.escape('%%')]))
         self.assertEqual(list(t.has_multi(iter(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']))),
                 [True, True, False, False, True, False, True, False])
         self.assertEqual(False, t.has_any(['c', 'c', 'c']))
@@ -279,7 +281,7 @@ class TestTransportImplementation(TestCaseInTempDir):
                                               transport_from, f)
 
         t = self.get_transport()
-        temp_transport = MemoryTransport('memory:/')
+        temp_transport = MemoryTransport('memory:///')
         simple_copy_files(t, temp_transport)
         if not t.is_readonly():
             t.mkdir('copy_to_simple')
@@ -299,7 +301,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         t.copy_to(['e/f'], temp_transport)
 
         del temp_transport
-        temp_transport = MemoryTransport('memory:/')
+        temp_transport = MemoryTransport('memory:///')
 
         files = ['a', 'b', 'c', 'd']
         t.copy_to(iter(files), temp_transport)
@@ -309,7 +311,7 @@ class TestTransportImplementation(TestCaseInTempDir):
         del temp_transport
 
         for mode in (0666, 0644, 0600, 0400):
-            temp_transport = MemoryTransport("memory:/")
+            temp_transport = MemoryTransport("memory:///")
             t.copy_to(files, temp_transport, mode=mode)
             for f in files:
                 self.assertTransportMode(temp_transport, f, mode)
@@ -698,15 +700,16 @@ class TestTransportImplementation(TestCaseInTempDir):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        t = bzrlib.transport.get_transport(url)
         try:
+            t = bzrlib.transport.get_transport(url)
             t.get('.bzr/branch')
         except (ConnectionError, NoSuchFile), e:
             pass
         except (Exception), e:
-            self.failIf(True, 'Wrong exception thrown: %s' % e)
+            self.fail('Wrong exception thrown (%s): %s' 
+                        % (e.__class__.__name__, e))
         else:
-            self.failIf(True, 'Did not get the expected exception.')
+            self.fail('Did not get the expected ConnectionError or NoSuchFile.')
 
     def test_stat(self):
         # TODO: Test stat, just try once, and if it throws, stop testing
@@ -858,6 +861,15 @@ class TestTransportImplementation(TestCaseInTempDir):
         self.assertEqual(transport.base + 'relpath',
                          transport.abspath('relpath'))
 
+    def test_local_abspath(self):
+        transport = self.get_transport()
+        try:
+            p = transport.local_abspath('.')
+        except TransportNotPossible:
+            pass # This is not a local transport
+        else:
+            self.assertEqual(getcwd(), p)
+
     def test_abspath_at_root(self):
         t = self.get_transport()
         # clone all the way to the top
@@ -896,6 +908,32 @@ class TestTransportImplementation(TestCaseInTempDir):
         sub_transport = transport.clone('isolated')
         paths = set(sub_transport.iter_files_recursive())
         self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
+
+    def test_unicode_paths(self):
+        """Test that we can read/write files with Unicode names."""
+        t = self.get_transport()
+
+        files = [u'\xe5', # a w/ circle iso-8859-1
+                 u'\xe4', # a w/ dots iso-8859-1
+                 u'\u017d', # Z with umlat iso-8859-2
+                 u'\u062c', # Arabic j
+                 u'\u0410', # Russian A
+                 u'\u65e5', # Kanji person
+                ]
+
+        try:
+            self.build_tree(files, transport=t, line_endings='binary')
+        except UnicodeError:
+            raise TestSkipped("cannot handle unicode paths in current encoding")
+
+        # A plain unicode string is not a valid url
+        for fname in files:
+            self.assertRaises(InvalidURL, t.get, fname)
+
+        for fname in files:
+            fname_utf8 = fname.encode('utf-8')
+            contents = 'contents of %s\n' % (fname_utf8,)
+            self.check_transport_contents(contents, t, urlutils.escape(fname))
 
     def test_connect_twice_is_same_content(self):
         # check that our server (whatever it is) is accessable reliably

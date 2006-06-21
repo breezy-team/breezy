@@ -28,8 +28,7 @@ from bzrlib.knit import (
     WeaveToKnit)
 from bzrlib.osutils import split_lines
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.transport import TransportLogger
-from bzrlib.transport.local import LocalTransport
+from bzrlib.transport import TransportLogger, get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.weave import Weave
 
@@ -42,7 +41,7 @@ class KnitTests(TestCaseWithTransport):
             factory = KnitPlainFactory()
         else:
             factory = None
-        return KnitVersionedFile('test', LocalTransport('.'), access_mode='w', factory=factory, create=True)
+        return KnitVersionedFile('test', get_transport('.'), access_mode='w', factory=factory, create=True)
 
 
 class BasicKnitTests(KnitTests):
@@ -67,7 +66,7 @@ class BasicKnitTests(KnitTests):
         k = self.make_test_knit()
         k.add_lines('text-1', [], split_lines(TEXT_1))
         del k
-        k2 = KnitVersionedFile('test', LocalTransport('.'), access_mode='r', factory=KnitPlainFactory(), create=True)
+        k2 = KnitVersionedFile('test', get_transport('.'), access_mode='r', factory=KnitPlainFactory(), create=True)
         self.assertTrue(k2.has_version('text-1'))
         self.assertEqualDiff(''.join(k2.get_lines('text-1')), TEXT_1)
 
@@ -95,11 +94,11 @@ class BasicKnitTests(KnitTests):
     def test_incomplete(self):
         """Test if texts without a ending line-end can be inserted and
         extracted."""
-        k = KnitVersionedFile('test', LocalTransport('.'), delta=False, create=True)
+        k = KnitVersionedFile('test', get_transport('.'), delta=False, create=True)
         k.add_lines('text-1', [], ['a\n',    'b'  ])
         k.add_lines('text-2', ['text-1'], ['a\rb\n', 'b\n'])
         # reopening ensures maximum room for confusion
-        k = KnitVersionedFile('test', LocalTransport('.'), delta=False, create=True)
+        k = KnitVersionedFile('test', get_transport('.'), delta=False, create=True)
         self.assertEquals(k.get_lines('text-1'), ['a\n',    'b'  ])
         self.assertEquals(k.get_lines('text-2'), ['a\rb\n', 'b\n'])
 
@@ -127,7 +126,7 @@ class BasicKnitTests(KnitTests):
 
     def test_add_delta(self):
         """Store in knit with parents"""
-        k = KnitVersionedFile('test', LocalTransport('.'), factory=KnitPlainFactory(),
+        k = KnitVersionedFile('test', get_transport('.'), factory=KnitPlainFactory(),
             delta=True, create=True)
         self.add_stock_one_and_one_a(k)
         k.clear_cache()
@@ -135,7 +134,7 @@ class BasicKnitTests(KnitTests):
 
     def test_annotate(self):
         """Annotations"""
-        k = KnitVersionedFile('knit', LocalTransport('.'), factory=KnitAnnotateFactory(),
+        k = KnitVersionedFile('knit', get_transport('.'), factory=KnitAnnotateFactory(),
             delta=True, create=True)
         self.insert_and_test_small_annotate(k)
 
@@ -150,7 +149,7 @@ class BasicKnitTests(KnitTests):
 
     def test_annotate_fulltext(self):
         """Annotations"""
-        k = KnitVersionedFile('knit', LocalTransport('.'), factory=KnitAnnotateFactory(),
+        k = KnitVersionedFile('knit', get_transport('.'), factory=KnitAnnotateFactory(),
             delta=False, create=True)
         self.insert_and_test_small_annotate(k)
 
@@ -229,7 +228,7 @@ class BasicKnitTests(KnitTests):
 
     def test_knit_join(self):
         """Store in knit with parents"""
-        k1 = KnitVersionedFile('test1', LocalTransport('.'), factory=KnitPlainFactory(), create=True)
+        k1 = KnitVersionedFile('test1', get_transport('.'), factory=KnitPlainFactory(), create=True)
         k1.add_lines('text-a', [], split_lines(TEXT_1))
         k1.add_lines('text-b', ['text-a'], split_lines(TEXT_1))
 
@@ -238,21 +237,21 @@ class BasicKnitTests(KnitTests):
 
         k1.add_lines('text-m', ['text-b', 'text-d'], split_lines(TEXT_1))
 
-        k2 = KnitVersionedFile('test2', LocalTransport('.'), factory=KnitPlainFactory(), create=True)
+        k2 = KnitVersionedFile('test2', get_transport('.'), factory=KnitPlainFactory(), create=True)
         count = k2.join(k1, version_ids=['text-m'])
         self.assertEquals(count, 5)
         self.assertTrue(k2.has_version('text-a'))
         self.assertTrue(k2.has_version('text-c'))
 
     def test_reannotate(self):
-        k1 = KnitVersionedFile('knit1', LocalTransport('.'),
+        k1 = KnitVersionedFile('knit1', get_transport('.'),
                                factory=KnitAnnotateFactory(), create=True)
         # 0
         k1.add_lines('text-a', [], ['a\n', 'b\n'])
         # 1
         k1.add_lines('text-b', ['text-a'], ['a\n', 'c\n'])
 
-        k2 = KnitVersionedFile('test2', LocalTransport('.'),
+        k2 = KnitVersionedFile('test2', get_transport('.'),
                                factory=KnitAnnotateFactory(), create=True)
         k2.join(k1, version_ids=['text-b'])
 
@@ -363,19 +362,19 @@ class BasicKnitTests(KnitTests):
             "\nrevid2 line-delta 84 82 0 :",
             'test.kndx')
         # we should be able to load this file again
-        knit = KnitVersionedFile('test', LocalTransport('.'), access_mode='r')
+        knit = KnitVersionedFile('test', get_transport('.'), access_mode='r')
         self.assertEqual(['revid', 'revid2'], knit.versions())
         # write a short write to the file and ensure that its ignored
         indexfile = file('test.kndx', 'at')
         indexfile.write('\nrevid3 line-delta 166 82 1 2 3 4 5 .phwoar:demo ')
         indexfile.close()
         # we should be able to load this file again
-        knit = KnitVersionedFile('test', LocalTransport('.'), access_mode='w')
+        knit = KnitVersionedFile('test', get_transport('.'), access_mode='w')
         self.assertEqual(['revid', 'revid2'], knit.versions())
         # and add a revision with the same id the failed write had
         knit.add_lines('revid3', ['revid2'], ['a\n'])
         # and when reading it revid3 should now appear.
-        knit = KnitVersionedFile('test', LocalTransport('.'), access_mode='r')
+        knit = KnitVersionedFile('test', get_transport('.'), access_mode='r')
         self.assertEqual(['revid', 'revid2', 'revid3'], knit.versions())
         self.assertEqual(['revid2'], knit.get_parents('revid3'))
 

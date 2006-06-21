@@ -25,6 +25,7 @@ from bzrlib.errors import (NoSuchFile, FileExists,
                            TransportNotPossible,
                            ConnectionError,
                            DependencyNotPresent,
+                           InvalidURL,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import (_get_protocol_handlers,
@@ -32,7 +33,6 @@ from bzrlib.transport import (_get_protocol_handlers,
                               get_transport,
                               register_lazy_transport,
                               _set_protocol_handlers,
-                              urlescape,
                               Transport,
                               )
 from bzrlib.transport.memory import MemoryTransport
@@ -41,9 +41,6 @@ from bzrlib.transport.local import LocalTransport
 
 class TestTransport(TestCase):
     """Test the non transport-concrete class functionality."""
-
-    def test_urlescape(self):
-        self.assertEqual('%25', urlescape('%'))
 
     def test__get_set_protocol_handlers(self):
         handlers = _get_protocol_handlers()
@@ -74,9 +71,11 @@ class TestTransport(TestCase):
         try:
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
                     'BadTransportHandler')
-            t = get_transport('foo://fooserver/foo')
-            # because we failed to load the transport
-            self.assertTrue(isinstance(t, LocalTransport))
+            # TODO: jam 20060427 Now we get InvalidURL because it looks like 
+            #       a URL but we have no support for it.
+            #       Is it better to always fall back to LocalTransport?
+            #       I think this is a better error than a future NoSuchFile
+            self.assertRaises(InvalidURL, get_transport, 'foo://fooserver/foo')
         finally:
             # restore original values
             _set_protocol_handlers(saved_handlers)
@@ -107,7 +106,7 @@ class TestMemoryTransport(TestCase):
 
     def test_abspath(self):
         transport = MemoryTransport()
-        self.assertEqual("memory:/relpath", transport.abspath('relpath'))
+        self.assertEqual("memory:///relpath", transport.abspath('relpath'))
 
     def test_relpath(self):
         transport = MemoryTransport()

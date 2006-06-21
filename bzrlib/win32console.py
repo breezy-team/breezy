@@ -7,10 +7,17 @@ License: Public domain
 
 import struct
 
+# We can cope without it; use a separate variable to help pyflakes
 try:
    import ctypes
+   has_ctypes = True
 except ImportError:
-   ctypes = None
+    has_ctypes = False
+
+
+WIN32_STDIN_HANDLE = -10
+WIN32_STDOUT_HANDLE = -11
+WIN32_STDERR_HANDLE = -12
 
 
 def get_console_size(defaultx=80, defaulty=25):
@@ -22,11 +29,13 @@ def get_console_size(defaultx=80, defaulty=25):
 
    Dependencies: ctypes should be installed.
    """
-   if ctypes is None:
+   if not has_ctypes:
        # no ctypes is found
        return (defaultx, defaulty)
 
-   h = ctypes.windll.kernel32.GetStdHandle(-11)
+   # To avoid problem with redirecting output via pipe
+   # need to use stderr instead of stdout
+   h = ctypes.windll.kernel32.GetStdHandle(WIN32_STDERR_HANDLE)
    csbi = ctypes.create_string_buffer(22)
    res = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(h, csbi)
 

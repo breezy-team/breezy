@@ -137,7 +137,7 @@ class _BaseProgressBar(object):
                  to_file=None,
                  show_pct=False,
                  show_spinner=False,
-                 show_eta=True,
+                 show_eta=False,
                  show_bar=True,
                  show_count=True,
                  to_messages_file=None,
@@ -262,20 +262,22 @@ class TTYProgressBar(_BaseProgressBar):
         _BaseProgressBar.__init__(self, **kwargs)
         self.spin_pos = 0
         self.width = terminal_width()
-        self.start_time = None
         self.last_updates = deque()
         self.child_fraction = 0
     
 
-    def throttle(self):
+    def throttle(self, old_msg):
         """Return True if the bar was updated too recently"""
         # time.time consistently takes 40/4000 ms = 0.01 ms.
         # but every single update to the pb invokes it.
         # so we use time.clock which takes 20/4000 ms = 0.005ms
         # on the downside, time.clock() appears to have approximately
         # 10ms granularity, so we treat a zero-time change as 'throttled.'
-        
         now = time.clock()
+        if self.start_time is not None and (now - self.start_time) < 1:
+            return True
+        if old_msg != self.last_msg:
+            return False
         interval = now - self.last_update
         # if interval > 0
         if interval < self.MIN_PAUSE:
@@ -285,7 +287,6 @@ class TTYProgressBar(_BaseProgressBar):
         self.last_update = now
         return False
         
-
     def tick(self):
         self.update(self.last_msg, self.last_cnt, self.last_total, 
                     self.child_fraction)
@@ -303,10 +304,14 @@ class TTYProgressBar(_BaseProgressBar):
             self.last_msg = ''
         self.tick()
 
-
     def update(self, msg, current_cnt=None, total_cnt=None, 
                child_fraction=0):
         """Update and redraw progress bar."""
+        if msg is None:
+            msg = self.last_msg
+
+        if total_cnt is None:
+            total_cnt = self.last_total
 
         if current_cnt < 0:
             current_cnt = 0
@@ -338,7 +343,7 @@ class TTYProgressBar(_BaseProgressBar):
         # but multiple that by 4000 calls -> starts to cost.
         # so anything to make this function call faster
         # will improve base 'diff' time by up to 0.1 seconds.
-        if old_msg == self.last_msg and self.throttle():
+        if self.throttle(old_msg):
             return
 
         if self.show_eta and self.start_time and self.last_total:

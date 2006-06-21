@@ -28,9 +28,10 @@ Set the ui_factory member to define the behaviour.  The default
 displays no output.
 """
 
+import sys
 
 import bzrlib.progress
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_method, zero_eight)
 
 
 class UIFactory(object):
@@ -76,8 +77,39 @@ class UIFactory(object):
         cursor at the leftmost position."""
         raise NotImplementedError(self.clear_term)
 
+    def get_boolean(self, prompt):
+        """Get a boolean question answered from the user. 
 
-class SilentUIFactory(UIFactory):
+        :param prompt: a message to prompt the user with. Should be a single
+        line without terminating \n.
+        :return: True or False for y/yes or n/no.
+        """
+        raise NotImplementedError(self.get_boolean)
+
+
+class CLIUIFactory(UIFactory):
+    """Common behaviour for command line UI factories."""
+
+    def __init__(self):
+        super(CLIUIFactory, self).__init__()
+        self.stdin = sys.stdin
+
+    def get_boolean(self, prompt):
+        self.clear_term()
+        # FIXME: make a regexp and handle case variations as well.
+        while True:
+            self.prompt(prompt)
+            line = self.stdin.readline()
+            if line in ('y\n', 'yes\n'):
+                return True
+            if line in ('n\n', 'no\n'):
+                return False
+
+    def prompt(self, prompt):
+        """Emit prompt on the CLI."""
+
+
+class SilentUIFactory(CLIUIFactory):
     """A UI Factory which never prints anything.
 
     This is the default UI, if another one is never registered.

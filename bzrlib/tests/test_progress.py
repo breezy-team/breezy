@@ -16,7 +16,12 @@
 
 from StringIO import StringIO
 
-from bzrlib.progress import *
+from bzrlib.progress import (
+        DummyProgress, ChildProgress,
+        TTYProgressBar,
+        DotsProgressBar,
+        ProgressBarStack,
+        )
 from bzrlib.tests import TestCase
 
 class FakeStack:
@@ -25,6 +30,19 @@ class FakeStack:
 
     def top(self):
         return self.__top
+
+class InstrumentedProgress(TTYProgressBar):
+    """TTYProgress variant that tracks outcomes"""
+
+    def __init__(self, *args, **kwargs):
+        self.always_throttled = True
+        TTYProgressBar.__init__(self, *args, **kwargs)
+
+    def throttle(self, old_message):
+        result = TTYProgressBar.throttle(self, old_message)
+        if result is False:
+            self.always_throttled = False
+        
 
 class TestProgress(TestCase):
     def setUp(self):
@@ -90,3 +108,15 @@ class TestProgress(TestCase):
                 child.finished()
         finally:
             parent.finished()
+
+    def test_throttling(self):
+        pb = InstrumentedProgress(to_file=StringIO())
+        # instantaneous updates should be squelched
+        pb.update('me', 1, 1)
+        self.assertTrue(pb.always_throttled)
+        pb = InstrumentedProgress(to_file=StringIO())
+        # It's like an instant sleep(1)!
+        pb.start_time -= 1
+        # Updates after a second should not be squelched
+        pb.update('me', 1, 1)
+        self.assertFalse(pb.always_throttled)

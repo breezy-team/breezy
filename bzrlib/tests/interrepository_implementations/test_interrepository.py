@@ -28,7 +28,7 @@ from bzrlib.errors import (FileExists,
                            NotBranchError,
                            )
 import bzrlib.repository as repository
-from bzrlib.revision import NULL_REVISION
+from bzrlib.revision import NULL_REVISION, Revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport import get_transport
@@ -118,6 +118,34 @@ class TestInterRepository(TestCaseWithInterRepository):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
         repo_a.fetch(repo_b)
+
+    def test_fetch_missing_text_other_location_fails(self):
+        source_tree = self.make_branch_and_tree('source')
+        source = source_tree.branch.repository
+        target = self.make_to_repository('target')
+    
+        # start by adding a file so the data for hte file exists.
+        self.build_tree(['source/id'])
+        source_tree.add(['id'], ['id'])
+        source_tree.commit('a', rev_id='a')
+        # now we manually insert a revision with an inventory referencing
+        # 'id' at revision 'b', but we do not insert revision b.
+        # this should ensure that the new versions of files are being checked
+        # for during pull operations
+        inv = source.get_inventory('a')
+        inv['id'].revision = 'b'
+        inv.revision_id = 'b'
+        sha1 = source.add_inventory('b', inv, ['a'])
+        rev = Revision(timestamp=0,
+                       timezone=None,
+                       committer="Foo Bar <foo@example.com>",
+                       message="Message",
+                       inventory_sha1=sha1,
+                       revision_id='b')
+        rev.parent_ids = ['a']
+        source.add_revision('b', rev)
+        self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
+        self.assertFalse(target.has_revision('b'))
 
 
 class TestCaseWithComplexRepository(TestCaseWithInterRepository):

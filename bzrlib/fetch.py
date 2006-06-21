@@ -33,13 +33,15 @@ the inventories.
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.errors import (InstallFailed, NoSuchRevision,
-                           MissingText)
+from bzrlib.errors import (InstallFailed,
+                           )
 from bzrlib.trace import mutter
-from bzrlib.progress import ProgressBar, ProgressPhase
-from bzrlib.reconcile import RepoReconciler
+from bzrlib.progress import ProgressPhase
 from bzrlib.revision import NULL_REVISION
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function,
+        deprecated_method,
+        zero_eight,
+        )
 
 
 # TODO: Avoid repeatedly opening weaves so many times.
@@ -124,8 +126,9 @@ class RepoFetcher(object):
         self.from_control = self.from_repository.control_weaves
         self.count_total = 0
         self.file_ids_names = {}
-        pp = ProgressPhase('fetch phase', 4, self.pb)
+        pp = ProgressPhase('Fetch phase', 4, self.pb)
         try:
+            pp.next_phase()
             revs = self._revids_to_fetch()
             # something to do ?
             if revs:
@@ -157,10 +160,10 @@ class RepoFetcher(object):
     def _fetch_weave_texts(self, revs):
         texts_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
-            file_ids = self.from_repository.fileid_involved_by_set(revs)
+            file_ids = self.from_repository.fileids_altered_by_revision_ids(revs)
             count = 0
             num_file_ids = len(file_ids)
-            for file_id in file_ids:
+            for file_id, required_versions in file_ids.items():
                 texts_pb.update("fetch texts", count, num_file_ids)
                 count +=1
                 to_weave = self.to_weaves.get_weave_or_empty(file_id,
@@ -169,7 +172,16 @@ class RepoFetcher(object):
                     self.from_repository.get_transaction())
                 # we fetch all the texts, because texts do
                 # not reference anything, and its cheap enough
-                to_weave.join(from_weave)
+                to_weave.join(from_weave, version_ids=required_versions) 
+                # we don't need *all* of this data anymore, but we dont know
+                # what we do. This cache clearing will result in a new read 
+                # of the knit data when we do the checkout, but probably we
+                # want to emit the needed data on the fly rather than at the
+                # end anyhow.
+                # the from weave should know not to cache data being joined,
+                # but its ok to ask it to clear.
+                from_weave.clear_cache()
+                to_weave.clear_cache()
         finally:
             texts_pb.finished()
 
@@ -182,7 +194,7 @@ class RepoFetcher(object):
     
             child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
             try:
-                # just merge, this is optimisable and its means we dont
+                # just merge, this is optimisable and its means we don't
                 # copy unreferenced data such as not-needed inventories.
                 pb.update("fetch inventory", 1, 3)
                 from_weave = self.from_repository.get_inventory_weave()
@@ -264,7 +276,7 @@ class KnitRepoFetcher(RepoFetcher):
 
 
 class Fetcher(object):
-    """Backwards compatability glue for branch.fetch()."""
+    """Backwards compatibility glue for branch.fetch()."""
 
     @deprecated_method(zero_eight)
     def __init__(self, to_branch, from_branch, last_revision=None, pb=None):

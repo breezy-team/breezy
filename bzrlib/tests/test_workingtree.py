@@ -20,17 +20,14 @@ import os
 
 import bzrlib
 from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
+from bzrlib import bzrdir, conflicts, errors, workingtree
 from bzrlib.bzrdir import BzrDir
-from bzrlib.conflicts import *
-import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
-import bzrlib.workingtree as workingtree
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
 
@@ -219,18 +216,98 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         self.assertRaises(errors.UnsupportedOperation, tree.set_conflicts,
                           None)
         file('lala.BASE', 'wb').write('labase')
-        expected = ContentsConflict('lala')
+        expected = conflicts.ContentsConflict('lala')
         self.assertEqual(list(tree.conflicts()), [expected])
         file('lala', 'wb').write('la')
         tree.add('lala', 'lala-id')
-        expected = ContentsConflict('lala', file_id='lala-id')
+        expected = conflicts.ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
         file('lala.THIS', 'wb').write('lathis')
         file('lala.OTHER', 'wb').write('laother')
         # When "text conflict"s happen, stem, THIS and OTHER are text
-        expected = TextConflict('lala', file_id='lala-id')
+        expected = conflicts.TextConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
         os.unlink('lala.OTHER')
         os.mkdir('lala.OTHER')
-        expected = ContentsConflict('lala', file_id='lala-id')
+        expected = conflicts.ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
+
+
+class TestNonFormatSpecificCode(TestCaseWithTransport):
+    """This class contains tests of workingtree that are not format specific."""
+
+    
+    def test_gen_file_id(self):
+        self.assertStartsWith(bzrlib.workingtree.gen_file_id('bar'), 'bar-')
+        self.assertStartsWith(bzrlib.workingtree.gen_file_id('Mwoo oof\t m'), 'Mwoooofm-')
+        self.assertStartsWith(bzrlib.workingtree.gen_file_id('..gam.py'), 'gam.py-')
+        self.assertStartsWith(bzrlib.workingtree.gen_file_id('..Mwoo oof\t m'), 'Mwoooofm-')
+
+    def test_next_id_suffix(self):
+        bzrlib.workingtree._gen_id_suffix = None
+        bzrlib.workingtree._next_id_suffix()
+        self.assertNotEqual(None, bzrlib.workingtree._gen_id_suffix)
+        bzrlib.workingtree._gen_id_suffix = "foo-"
+        bzrlib.workingtree._gen_id_serial = 1
+        self.assertEqual("foo-2", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-3", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-4", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-5", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-6", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-7", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-8", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-9", bzrlib.workingtree._next_id_suffix())
+        self.assertEqual("foo-10", bzrlib.workingtree._next_id_suffix())
+
+    def test__translate_ignore_rule(self):
+        tree = self.make_branch_and_tree('.')
+        # translation should return the regex, the number of groups in it,
+        # and the original rule in a tuple.
+        # there are three sorts of ignore rules:
+        # root only - regex is the rule itself without the leading ./
+        self.assertEqual(
+            "(rootdirrule$)", 
+            tree._translate_ignore_rule("./rootdirrule"))
+        # full path - regex is the rule itself
+        self.assertEqual(
+            "(path\\/to\\/file$)",
+            tree._translate_ignore_rule("path/to/file"))
+        # basename only rule - regex is a rule that ignores everything up
+        # to the last / in the filename
+        self.assertEqual(
+            "((?:.*/)?(?!.*/)basenamerule$)",
+            tree._translate_ignore_rule("basenamerule"))
+
+    def test__combine_ignore_rules(self):
+        tree = self.make_branch_and_tree('.')
+        # the combined ignore regexs need the outer group indices
+        # placed in a dictionary with the rules that were combined.
+        # an empty set of rules
+        # this is returned as a list of combined regex,rule sets, because
+        # python has a limit of 100 combined regexes.
+        compiled_rules = tree._combine_ignore_rules([])
+        self.assertEqual([], compiled_rules)
+        # one of each type of rule.
+        compiled_rules = tree._combine_ignore_rules(
+            ["rule1", "rule/two", "./three"])[0]
+        # what type *is* the compiled regex to do an isinstance of ?
+        self.assertEqual(3, compiled_rules[0].groups)
+        self.assertEqual(
+            {0:"rule1",1:"rule/two",2:"./three"},
+            compiled_rules[1])
+
+    def test__combine_ignore_rules_grouping(self):
+        tree = self.make_branch_and_tree('.')
+        # when there are too many rules, the output is split into groups of 100
+        rules = []
+        for index in range(198):
+            rules.append('foo')
+        self.assertEqual(2, len(tree._combine_ignore_rules(rules)))
+
+    def test__get_ignore_rules_as_regex(self):
+        tree = self.make_branch_and_tree('.')
+        # test against the default rules.
+        reference_output = tree._combine_ignore_rules(bzrlib.DEFAULT_IGNORE)[0]
+        regex_rules = tree._get_ignore_rules_as_regex()[0]
+        self.assertEqual(len(reference_output[1]), regex_rules[0].groups)
+        self.assertEqual(reference_output[1], regex_rules[1])

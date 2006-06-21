@@ -49,8 +49,9 @@ listing other things that were changed in the same revision, but not
 all the changes since the previous revision that touched hello.c.
 """
 
-
 # TODO: option to show delta summaries for merged-in revisions
+
+from itertools import izip
 import re
 
 from bzrlib.delta import compare_trees
@@ -232,9 +233,22 @@ def _show_log(branch,
     for index, rev_id in cut_revs:
         rev_nos[rev_id] = index
 
+    def iter_revisions():
+        revision_ids = [r for s, r, m, e in merge_sorted_revisions]
+        num = 9
+        while revision_ids:
+            revisions = branch.repository.get_revisions(revision_ids[:num])
+            for revision in revisions:
+                yield revision
+            revision_ids  = revision_ids[num:]
+            num = int(num * 1.5)
+            
+        revisions = branch.repository.get_revisions()
+        for revision in revisions:
+            yield revision
     # now we just print all the revisions
-    for sequence, rev_id, merge_depth, end_of_merge in merge_sorted_revisions:
-        rev = branch.repository.get_revision(rev_id)
+    for ((sequence, rev_id, merge_depth, end_of_merge), rev) in \
+        izip(merge_sorted_revisions, iter_revisions()):
 
         if searchRE:
             if not searchRE.search(rev.message):
@@ -258,95 +272,13 @@ def _show_log(branch,
             lf.show_merge(rev, merge_depth)
 
 
-def deltas_for_log_dummy(branch, which_revs):
-    """Return all the revisions without intermediate deltas.
-
-    Useful for log commands that won't need the delta information.
-    """
-    
-    for revno, revision_id in which_revs:
-        yield revno, branch.get_revision(revision_id), None
-
-
-def deltas_for_log_reverse(branch, which_revs):
-    """Compute deltas for display in latest-to-earliest order.
-
-    branch
-        Branch to traverse
-
-    which_revs
-        Sequence of (revno, revision_id) for the subset of history to examine
-
-    returns 
-        Sequence of (revno, rev, delta)
-
-    The delta is from the given revision to the next one in the
-    sequence, which makes sense if the log is being displayed from
-    newest to oldest.
-    """
-    last_revno = last_revision_id = last_tree = None
-    for revno, revision_id in which_revs:
-        this_tree = branch.revision_tree(revision_id)
-        this_revision = branch.get_revision(revision_id)
-        
-        if last_revno:
-            yield last_revno, last_revision, compare_trees(this_tree, last_tree, False)
-
-        this_tree = EmptyTree(branch.get_root_id())
-
-        last_revno = revno
-        last_revision = this_revision
-        last_tree = this_tree
-
-    if last_revno:
-        if last_revno == 1:
-            this_tree = EmptyTree(branch.get_root_id())
-        else:
-            this_revno = last_revno - 1
-            this_revision_id = branch.revision_history()[this_revno]
-            this_tree = branch.revision_tree(this_revision_id)
-        yield last_revno, last_revision, compare_trees(this_tree, last_tree, False)
-
-
-def deltas_for_log_forward(branch, which_revs):
-    """Compute deltas for display in forward log.
-
-    Given a sequence of (revno, revision_id) pairs, return
-    (revno, rev, delta).
-
-    The delta is from the given revision to the next one in the
-    sequence, which makes sense if the log is being displayed from
-    newest to oldest.
-    """
-    last_revno = last_revision_id = last_tree = None
-    prev_tree = EmptyTree(branch.get_root_id())
-
-    for revno, revision_id in which_revs:
-        this_tree = branch.revision_tree(revision_id)
-        this_revision = branch.get_revision(revision_id)
-
-        if not last_revno:
-            if revno == 1:
-                last_tree = EmptyTree(branch.get_root_id())
-            else:
-                last_revno = revno - 1
-                last_revision_id = branch.revision_history()[last_revno]
-                last_tree = branch.revision_tree(last_revision_id)
-
-        yield revno, this_revision, compare_trees(last_tree, this_tree, False)
-
-        last_revno = revno
-        last_revision = this_revision
-        last_tree = this_tree
-
-
 class LogFormatter(object):
     """Abstract class to display log messages."""
+
     def __init__(self, to_file, show_ids=False, show_timezone='original'):
         self.to_file = to_file
         self.show_ids = show_ids
         self.show_timezone = show_timezone
-
 
     def show(self, revno, rev, delta):
         raise NotImplementedError('not implemented in abstract base')
@@ -424,6 +356,7 @@ class ShortLogFormatter(LogFormatter):
             delta.show(to_file, self.show_ids)
         print >>to_file, ''
 
+
 class LineLogFormatter(LogFormatter):
     def truncate(self, str, max_len):
         if len(str) <= max_len:
@@ -443,17 +376,30 @@ class LineLogFormatter(LogFormatter):
             return rev.message
 
     def show(self, revno, rev, delta):
-        print >> self.to_file, self.log_string(rev, 79) 
+        from bzrlib.osutils import terminal_width
+        print >> self.to_file, self.log_string(revno, rev, terminal_width()-1)
 
-    def log_string(self, rev, max_chars):
-        out = [self.truncate(self.short_committer(rev), 20)]
+    def log_string(self, revno, rev, max_chars):
+        """Format log info into one string. Truncate tail of string
+        :param  revno:      revision number (int) or None.
+                            Revision numbers counts from 1.
+        :param  rev:        revision info object
+        :param  max_chars:  maximum length of resulting string
+        :return:            formatted truncated string
+        """
+        out = []
+        if revno:
+            # show revno only when is not None
+            out.append("%d:" % revno)
+        out.append(self.truncate(self.short_committer(rev), 20))
         out.append(self.date_string(rev))
-        out.append(self.message(rev).replace('\n', ' '))
+        out.append(rev.get_summary())
         return self.truncate(" ".join(out).rstrip('\n'), max_chars)
+
 
 def line_log(rev, max_chars):
     lf = LineLogFormatter(None)
-    return lf.log_string(rev, max_chars)
+    return lf.log_string(None, rev, max_chars)
 
 FORMATTERS = {
               'long': LongLogFormatter,
@@ -477,7 +423,7 @@ def log_formatter(name, *args, **kwargs):
         raise BzrCommandError("unknown log formatter: %r" % name)
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
-    # deprecated; for compatability
+    # deprecated; for compatibility
     lf = LongLogFormatter(to_file=to_file, show_timezone=show_timezone)
     lf.show(revno, rev, delta)
 
