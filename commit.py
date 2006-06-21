@@ -14,16 +14,27 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import svn.ra
 import svn.delta
+import svn.ra
 
-from bzrlib.repository import CommitBuilder
 from bzrlib.errors import UnsupportedOperation, BzrError
+from bzrlib.repository import CommitBuilder
 
 class SvnCommitBuilder(CommitBuilder):
+    """Commit Builder implementation wrapped around svn_delta_editor. """
     def __init__(self, repository, branch, parents, config, revprops):
+        """Instantiate a new SvnCommitBuilder.
+
+        :param repository: SvnRepository to commit to.
+        :param branch: SvnBranch to commit to.
+        :param parents: List of parent revision ids.
+        :param config: Branch configuration to use.
+        :param revprops: Revision properties to set.
+        """
         super(SvnCommitBuilder, self).__init__(repository, parents, 
             config, None, None, None, revprops, None)
+        assert isinstance(repository, SvnRepository)
+        assert isinstance(branch, SvnBranch)
         self.branch = branch
 
         # TODO: Allow revision id to be specified, but only if it 

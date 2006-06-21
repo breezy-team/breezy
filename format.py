@@ -15,20 +15,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
-from repository import SvnRepository
-from branch import SvnBranch
-from libsvn.core import SubversionException
 from bzrlib.errors import NotBranchError, NotLocalUrl
 from bzrlib.lockable_files import TransportLock
-import svn.core
+
+from branch import SvnBranch
+from repository import SvnRepository
 from transport import SvnRaTransport
+
+from svn.core import SubversionException
+import svn.core
 
 class SvnRemoteAccess(BzrDir):
     def __init__(self, _transport, _format):
+        assert isinstance(_transport, SvnRaTransport)
+
         self.root_transport = self.transport = _transport
         self._format = _format
-
-        assert isinstance(_transport, SvnRaTransport)
 
         self.url = _transport.base
         self.branch_path = _transport.path
@@ -54,11 +56,12 @@ class SvnRemoteAccess(BzrDir):
     # Subversion has all-in-one, so a repository is always present
     find_repository = open_repository
 
-    # Working trees never exist on Subversion repositories
+    # Working trees never exist on remote Subversion repositories
     def open_workingtree(self):
         raise NotLocalUrl(self.url)
 
     def create_workingtree(self, revision_id=None):
+        # TODO
         raise NotImplementedError(self.create_workingtree)
 
     def open_branch(self, unsupported=True):

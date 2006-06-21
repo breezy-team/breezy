@@ -14,29 +14,29 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.transport import Transport
-from cStringIO import StringIO
-import svn.ra
-import os
 from bzrlib.errors import NoSuchFile, NotBranchError
+from bzrlib.transport import Transport
+
+from cStringIO import StringIO
+import os
+
+import svn.ra
+
 from scheme import NoBranchingScheme
 
-def _create_auth_baton(pool):
-    """ Create a Subversion authentication baton.
-    
-    :param pool: An APR memory pool
-    """
+def _create_auth_baton():
+    """ Create a Subversion authentication baton.  """
     import svn.client
     # Give the client context baton a suite of authentication
     # providers.h
     providers = [
-        svn.client.svn_client_get_simple_provider(pool),
-        svn.client.svn_client_get_ssl_client_cert_file_provider(pool),
-        svn.client.svn_client_get_ssl_client_cert_pw_file_provider(pool),
-        svn.client.svn_client_get_ssl_server_trust_file_provider(pool),
-        svn.client.svn_client_get_username_provider(pool),
+        svn.client.svn_client_get_simple_provider(),
+        svn.client.svn_client_get_ssl_client_cert_file_provider(),
+        svn.client.svn_client_get_ssl_client_cert_pw_file_provider(),
+        svn.client.svn_client_get_ssl_server_trust_file_provider(),
+        svn.client.svn_client_get_username_provider(),
         ]
-    return svn.core.svn_auth_open(providers, pool)
+    return svn.core.svn_auth_open(providers)
 
 
 # Don't run any tests on SvnTransport as it is not intended to be 
@@ -44,11 +44,11 @@ def _create_auth_baton(pool):
 def get_test_permutations():
     return []
 
+
 class SvnRaCallbacks(svn.ra.callbacks2_t):
     def __init__(self):
         svn.ra.callbacks2_t.__init__(self)
-        from branch import _global_pool
-        self.auth_baton = _create_auth_baton(_global_pool)
+        self.auth_baton = _create_auth_baton()
 
     def open_tmp_file(self):
         print "foo"
@@ -126,4 +126,4 @@ class SvnRaTransport(Transport):
         elif path != '.':
             parts.append(path)
 
-        return SvnRaTransport("/".join(parts),ra=self.ra,root_url=self.svn_root_url)
+        return SvnRaTransport("/".join(parts), ra=self.ra, root_url=self.svn_root_url)

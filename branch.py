@@ -15,25 +15,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, BzrBranch
-from bzrlib.errors import NotBranchError, NoWorkingTree, NoSuchRevision, \
-        NoSuchFile
-from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
-            ROOT_ID
+from bzrlib.delta import compare_trees
+from bzrlib.errors import (NotBranchError, NoWorkingTree, NoSuchRevision, 
+                           NoSuchFile)
+from bzrlib.inventory import (Inventory, InventoryFile, InventoryDirectory, 
+                              ROOT_ID)
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.tree import Tree, EmptyTree
 from bzrlib.trace import mutter, note
 from bzrlib.workingtree import WorkingTree
-from bzrlib.delta import compare_trees
-import bzrlib
+
+import os
 
 import svn.core, svn.ra
-import os
-from libsvn.core import SubversionException
-
+from svn.core import SubversionException
 
 svn.ra.initialize()
-
-_global_pool = svn.core.svn_pool_create(None)
 
 class FakeControlFiles(object):
     def get_utf8(self, name):
@@ -43,36 +40,33 @@ class FakeControlFiles(object):
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """
     def __init__(self, repos, branch_path):
+        """Instantiate a new SvnBranch.
+
+        :param repos: SvnRepository this branch is part of.
+        :param branch_path: Relative path inside the repository this
+            branch is located at.
+        """
         self.repository = repos
         self.branch_path = branch_path
-        self.base_revnum = svn.ra.get_latest_revnum(self.repository.ra)
         self.control_files = FakeControlFiles()
-        self._generate_revnum_map()
+        self._generate_revision_history()
         self.base = "%s/%s" % (repos.url, branch_path)
         self._format = SvnBranchFormat()
         mutter("Connected to branch at %s" % branch_path)
 
     def check(self):
+        """See Branch.Check.
+
+        Doesn't do anything for Subversion repositories at the moment (yet).
+        """
         return BranchCheckResult(self)
         
-    def path_from_file_id(self, revision_id, file_id):
-        """Generate a full Subversion path from a bzr file id.
-        
-        :param revision_id: 
-        :param file_id: 
-        :return: Subversion 
-        """
-        return self.base+"/"+self.filename_from_file_id(revision_id, file_id)
-
-    def _generate_revnum_map(self):
-        self._revision_history = []
-
-        def rcvr(paths, rev, author, date, message, pool):
-            revid = self.repository.generate_revision_id(rev, self.branch_path)
-            self._revision_history.append(revid)
-
-        self.repository._get_branch_log(self.branch_path.encode('utf8'), 0, 
-                                 self.base_revnum, 0, False, rcvr)
+    def _generate_revision_history(self):
+        def rcvr(paths, rev, *args):
+            return self.repository.generate_revision_id(rev, self.branch_path)
+        self._revision_history = map(rcvr, 
+                self.repository._get_branch_log(self.branch_path.encode('utf8'), 0, 
+                                 self.repository.latest_revnum, 0, False))
 
     def set_root_id(self, file_id):
         raise NotImplementedError(self.set_root_id)
@@ -113,30 +107,6 @@ class SvnBranch(Branch):
 
     def revision_history(self):
         return self._revision_history
-
-    def has_revision(self, revision_id):
-        return self.revision_history().has_key(revision_id)
-
-    def get_parents(self, revision_id):
-        revnum = self.get_revnum(revision_id)
-        parents = []
-        if not revision_id is None:
-            parent_id = self.revnum_map[revnum.value.number-1]
-            if not parent_id is None:
-                parents.append(parent_id)
-        # FIXME: Figure out if there are any merges here and where they come 
-        # from
-        return parents
-
-    def get_ancestry(self, revision_id):
-        try:
-            i = self.revision_history().index(revision_id)
-        except ValueError:
-            raise NoSuchRevision(revision_id, self)
-
-        # FIXME: Figure out if there are any merges here and where they come 
-        # from
-        return self.revision_history()[0:i+1]
 
     def pull(self, source, overwrite=False):
         raise NotImplementedError(self.pull)
@@ -192,19 +162,6 @@ class SvnBranch(Branch):
         parent = self.get_parent()
         if parent:
             destination.set_parent(parent)
-
-    def submit(self, from_branch, stop_revision):
-        if stop_revision is None:
-            stop_revision = from_branch.last_revision()
-
-        revisions = self.missing_revisions(from_branch, \
-                from_branch.revision_id_to_revno(stop_revision))
-
-        for revid in revisions:
-            rev = from_branch.repository.get_revision(revid)
-            self.commit(rev.message)
-
-        print revisions
 
 
 class SvnBranchFormat(BranchFormat):

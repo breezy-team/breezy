@@ -31,10 +31,22 @@ import tempfile
 from cStringIO import StringIO
 
 import svn.repos, svn.core
-from libsvn.core import SubversionException
+from svn.core import SubversionException
 
 class SvnDumpFile(SvnRemoteAccess):
+    """Allow directly accessing Repositories in Subversion Dump Files.
+
+    This will build the repository from the dumpfile in a temporary
+    directory.
+    """
     def __init__(self, nested_transport, format):
+        """Instantiate a new instance of SvnDumpFile.
+
+        :param nested_transport: Transport to use for reading the file.
+        :param format: BzrDirFormat
+        """
+        assert isinstance(nested_transport, Transport)
+        assert isinstance(format, BzrDirFormat)
         self.tmp_repos = None
 
         transport = nested_transport
@@ -70,6 +82,7 @@ class SvnDumpFile(SvnRemoteAccess):
             osutils.rmtree(self.tmp_repos)
             self.tmp_repos = None
 
+
 class SvnDumpFileFormat(BzrDirFormat):
     _lock_class = TransportLock
 
@@ -87,9 +100,11 @@ class SvnDumpFileFormat(BzrDirFormat):
         return SvnDumpFile(transport, self)
 
     def get_format_string(self):
+        """See BzrDirFormat.get_format_string()."""
         return 'Subversion Dump File'
 
     def get_format_description(self):
+        """See BzrDirFormat.get_format_description()."""
         return 'Subversion Dump File'
 
     def initialize(self,url):

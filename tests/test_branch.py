@@ -24,3 +24,6 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         bzrdir = self.make_local_bzrdir('a', 'ac')
         branch = bzrdir.open_branch()
         self.assertEqual(None, branch.last_revision())
+
+    def test_local(self):
+        dir = self.make_local_bzrdir('a', 'ac')

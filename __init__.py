@@ -17,13 +17,13 @@
 """
 Support for foreign branches (Subversion)
 """
+import os
 import sys
-import os.path
-import transport
+
+import branch
 import dumpfile
 import format
-import branch
-import submit
+import transport
 import workingtree
 
 sys.path.append(os.path.dirname(__file__))

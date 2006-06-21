@@ -21,17 +21,26 @@ class BranchingScheme:
     is no proper way to do this, there are several subclasses of this class
     each of which handles a particular convention that may be in use.
     """
-    @staticmethod
-    def is_branch(name):
+    def is_branch(self, path):
+        """Check whether a location refers to a branch.
+        
+        :param path: Path to check.
+        """
         raise NotImplementedError
 
-    def unprefix(name):
+    def unprefix(self, path):
+        """Split up a Subversion path into a branch-path and inside-branch path.
+
+        :param path: Path to split up.
+        :return: Tuple with branch-path and inside-branch path.
+        """
         raise NotImplementedError
+
 
 class DefaultBranchingScheme:
-    @staticmethod
-    def is_branch(name):
-        parts = name.split("/")
+    def is_branch(self, path):
+        """See BranchingScheme.is_branch()."""
+        parts = path.split("/")
         if len(parts) == 1 and parts[0] == "trunk":
             return True
 
@@ -40,8 +49,8 @@ class DefaultBranchingScheme:
 
         return False
 
-    @staticmethod
-    def unprefix(path):
+    def unprefix(self, path):
+        """See BranchingScheme.unprefix()."""
         parts = path.lstrip("/").split("/")
         if parts[0] == "trunk" or parts[0] == "hooks":
             return (parts[0], "/".join(parts[1:]))
@@ -50,13 +59,30 @@ class DefaultBranchingScheme:
         else:
             raise BzrError("Unable to unprefix path %s" % path)
 
+
 class NoBranchingScheme:
-    @staticmethod
-    def is_branch(name):
-        parts = name.split("/")
+    def is_branch(self, path):
+        """See BranchingScheme.is_branch()."""
+        parts = path.split("/")
         return len(parts) == 0
 
-    @staticmethod
-    def unprefix(path):
+    def unprefix(self, path):
+        """See BranchingScheme.unprefix()."""
         return ("", path)
 
+
+class ListBranchingScheme:
+    def __init__(self, branch_list):
+        self.branch_list = branch_list
+
+    def is_branch(self, path):
+        """See BranchingScheme.is_branch()."""
+        return path in self.branch_list
+
+    def unprefix(self, path):
+        """See BranchingScheme.unprefix()."""
+        for i in self.branch_list:
+            if path.startswith(i):
+                return (i, path[len(i):])
+
+        raise NoSuchFile(path=path)

@@ -15,5 +15,7 @@ setup(name='bzr-svn',
       This plugin adds support for branching off Subversion 
       repositories.
       """,
-      package_dir={'bzrlib.plugins.svn':'.'},
-      packages=['bzrlib.plugins.svn'])
+      package_dir={'bzrlib.plugins.svn':'.', 
+                   'bzrlib.plugins.svn.tests':'tests'},
+      packages=['bzrlib.plugins.svn', 
+                'bzrlib.plugins.svn.tests'])

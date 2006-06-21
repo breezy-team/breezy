@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import bzrlib
 from bzrlib.bzrdir import BzrDirFormat
 from bzrlib.errors import NotBranchError
 from bzrlib.inventory import Inventory
@@ -22,7 +21,6 @@ from bzrlib.lockable_files import TransportLock
 from bzrlib.progress import DummyProgress
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
-from branch import _global_pool
 from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
 from transport import SvnRaTransport
@@ -30,7 +28,7 @@ from transport import SvnRaTransport
 import os
 
 import svn.core, svn.wc
-from libsvn.core import SubversionException
+from svn.core import SubversionException
 
 class SvnWorkingTree(WorkingTree):
     """Implementation of WorkingTree that uses a Subversion 
@@ -131,11 +129,14 @@ class SvnWorkingTreeFormat(WorkingTreeFormat):
         # FIXME
         raise NotImplementedError(self.initialize)
 
+
 class OptimizedRepository(SvnRepository):
+    """Wrapper around SvnRepository that uses some files from local disk."""
     def revision_tree(self, revision_id):
         # TODO: if revision id matches base revno, 
         # return working_tree.basis_tree() 
         return super(OptimizedRepository, self).revision_tree(revision_id)
+
 
 class SvnLocalAccess(SvnRemoteAccess):
     def __init__(self, transport, format):
