@@ -15,7 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.branch import BranchCheckResult
-from bzrlib.config import config_dir
 from bzrlib.errors import NoSuchRevision, InvalidRevisionId, BzrError
 from bzrlib.graph import Graph
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
@@ -30,83 +29,10 @@ from svn.core import SubversionException
 import svn.core
 
 import os
-import pickle
 from cStringIO import StringIO
 
 import branch
-
-cache_dir = os.path.join(config_dir(), 'svn-cache')
-
-class SvnLogCache:
-    def __init__(self, ra, uuid, to_revnum):
-        cache_file = os.path.join(cache_dir, uuid)
-
-        # Try to load cache from file
-        try:
-            self.revisions = pickle.load(open(cache_file))
-            from_revnum = len(self.revisions)-1
-        except:
-            self.revisions = {}
-            from_revnum = 0
-
-        def rcvr(orig_paths, rev, author, date, message, pool):
-            self.pb.update('fetching svn revision info', rev, to_revnum)
-            paths = {}
-            if orig_paths is None:
-                orig_paths = {}
-            for p in orig_paths:
-                paths[p] = (orig_paths[p].action,
-                            orig_paths[p].copyfrom_path,
-                            orig_paths[p].copyfrom_rev)
-
-            self.revisions[rev] = {
-                    'paths': paths,
-                    'author': author,
-                    'date': date,
-                    'message': message
-                    }
-        if from_revnum != to_revnum:
-            mutter('log -r %r:%r /' % (from_revnum, to_revnum))
-            self.pb = ProgressBar()
-
-            svn.ra.get_log(ra, ["/"], from_revnum, to_revnum, 0, True, True, rcvr)
-            self.pb.clear()
-            try:
-                os.mkdir(cache_dir)
-            except OSError:
-                pass
-            pickle.dump(self.revisions, open(cache_file, 'w'))
-
-    def get_log(self, paths, from_revno, to_revno, limit, 
-                strict_node_history):
-        num = 0
-        for i in range(0, abs(from_revno-to_revno)+1):
-            if to_revno < from_revno:
-                i = from_revno - i
-            else:
-                i = from_revno + i
-            if i == 0:
-                continue
-            rev = self.revisions[i]
-            changed_paths = {}
-            for p in rev['paths']:
-                for q in paths:
-                    if p.startswith(q) or p[1:].startswith(q):
-                        changed_paths[p] = rev['paths'][p]
-
-            if len(changed_paths) > 0:
-                num = num + 1
-                yield (changed_paths, i, rev['author'], rev['date'], 
-                     rev['message'])
-                if limit and num == limit:
-                    raise StopIteration
-        
-        raise StopIteration
-
-    def get_branch_log(self, branch_path, from_revno, to_revno, limit, \
-            strict_node_history):
-        self.get_log([branch_path], from_revno, to_revno, limit, 
-                     strict_node_history)
+import logwalker
 
 class SvnInventoryFile(InventoryFile):
     """Inventory entry that can either be a plain file or a 
@@ -197,7 +123,7 @@ class SvnRepository(Repository):
 
         self.latest_revnum = svn.ra.get_latest_revnum(self.ra)
 
-        self.logcache = SvnLogCache(self.ra, self.uuid, 
+        self._log = logwalker.LogWalker(self.ra, self.uuid, 
                 self.latest_revnum)
 
     def __del__(self):
@@ -258,23 +184,36 @@ class SvnRepository(Repository):
         :param file_id: 
         :return: Subversion file name relative to the current repository.
         """
+        # TODO: Do real parsing here
         return self.fileid_map[revision_id][file_id]
 
     def path_to_file_id(self, revnum, path):
-        """Generate a bzr file id from a Subversion file name. 
-        Does not use svn.ra """
+        """Generate a bzr file id from a Subversion file name. """
+
+        if self.path_map.has_key(revnum) and self.path_map[revnum].has_key(path):
+            return self.path_map[revnum][path]
 
         (path_branch, filename) = self._scheme.unprefix(path)
+
+#        for (paths, rev) in self._log.follow_history(path_branch, revnum):
+#            if copied_from:
+#                if exists(copied_from, revnum):
+#                    break
+#                filename = copied_from
 
         revision_id = self.generate_revision_id(revnum, path_branch)
 
         if not self.fileid_map.has_key(revision_id):
             self.fileid_map[revision_id] = {}
 
+        if not self.path_map.has_key(revnum):
+            self.path_map[revnum] = {}
+
         file_id = filename.replace("/", "@")
         if file_id == "":
             file_id = ROOT_ID
 
+        self.path_map[revnum][path] = (file_id, revision_id)
         self.fileid_map[revision_id][file_id] = (path, revnum)
         return (file_id, revision_id)
 
@@ -298,7 +237,7 @@ class SvnRepository(Repository):
             return self.generate_revision_id(rev, path)
         
         self._ancestry.append(
-            map(rcvr, self._get_branch_log(path.encode('utf8'), 0, revnum - 1, 1, False)))
+            map(rcvr, self._log.get_branch_log(path, 0, revnum - 1, 1, False)))
 
         return self._ancestry
 
@@ -318,7 +257,7 @@ class SvnRepository(Repository):
         def rcvr(paths, rev, *args):
             return self.generate_revision_id(rev, path)
 
-        parent_ids = map(rcvr, self._get_branch_log(path.encode('utf8'), revnum - 1, 0, 1, False))
+        parent_ids = map(rcvr, self._log.get_branch_log(path, revnum - 1, 0, 1, False))
 
         return parent_ids
 
@@ -367,6 +306,8 @@ class SvnRepository(Repository):
         raise NotImplementedError()
 
     def fileids_altered_by_revision_ids(self, revision_ids):
+        # FIXME: Now that the log cache is local, simplify this 
+        # function.
         ranges = {}
         interested = {}
 
@@ -394,7 +335,7 @@ class SvnRepository(Repository):
         for path in ranges:
             self._tmp = path
             (min, max) = ranges[path]
-            for (paths, revnum, _, _, _) in self._get_branch_log(path.encode('utf8'), min, max, 0, False, rcvr):
+            for (paths, revnum, _, _, _) in self._log.get_branch_log(path, min, max, 0, False, rcvr):
                 if not revnum in interested[self._tmp]:
                     return
                 for path in paths:
@@ -404,15 +345,6 @@ class SvnRepository(Repository):
                     result[file_id].append(revid)
 
         return result
-
-    def _get_log(self, paths, from_revno, to_revno, limit, strict_node_history):
-        self.logcache.get_log(paths, from_revno, to_revno, limit, 
-                strict_node_history)
-
-    def _get_branch_log(self, branch_path, from_revno, to_revno, limit, \
-            strict_node_history):
-        self.logcache.get_branch_log(branch_path, from_revno, to_revno, limit, 
-                strict_node_history)
 
     def fileid_involved_by_set(self, changes):
         ids = []
@@ -523,6 +455,10 @@ class SvnRepository(Repository):
         return None
 
     def _get_file(self, path, revnum):
+        if path == ".bzrignore":
+            # TODO: Generate ignore file for specified revision
+            return StringIO()
+
         (_, stream) = self._cache_get_file(path, revnum)
         stream.seek(0)
         return stream
@@ -536,7 +472,7 @@ class SvnRepository(Repository):
         self._previous = revision_id
         self._ancestry = {}
         
-        for (paths, rev, author, date, message) in self._get_branch_log(path.encode('utf8'), revnum - 1, 0, 0, False):
+        for (_, rev) in self._log.follow_history(path, revnum - 1):
             revid = self.generate_revision_id(rev, path)
             self._ancestry[self._previous] = [revid]
             self._previous = revid
@@ -560,8 +496,8 @@ class SvnRepository(Repository):
         # or destination.add_inventory() each time
 
         if revision_id is None:
-            path = ""
-            until_revnum = svn.ra.get_latest_revnum(self.ra)
+            path = None
+            until_revnum = self.latest_revnum
         else:
             (path, until_revnum) = self.parse_revision_id(revision_id)
         
@@ -569,7 +505,7 @@ class SvnRepository(Repository):
 
         transact = destination.get_transaction()
 
-        for (paths, revnum, _, _, _) in self._get_log([path.encode('utf8')], 0, until_revnum, 0, False):
+        for (paths, revnum, _, _, _) in self._log.get_branch_log(path, 0, until_revnum, 0, False):
             pb.update('copying revision', revnum, until_revnum)
             revid = self.generate_revision_id(revnum, path)
             inv = self.get_inventory(revid)

@@ -62,11 +62,10 @@ class SvnBranch(Branch):
         return BranchCheckResult(self)
         
     def _generate_revision_history(self):
-        def rcvr(paths, rev, *args):
+        def rcvr(paths, rev):
             return self.repository.generate_revision_id(rev, self.branch_path)
         self._revision_history = map(rcvr, 
-                self.repository._get_branch_log(self.branch_path.encode('utf8'), 0, 
-                                 self.repository.latest_revnum, 0, False))
+                self.repository._log.follow_history(self.branch_path, self.repository.latest_revnum))
 
     def set_root_id(self, file_id):
         raise NotImplementedError(self.set_root_id)
