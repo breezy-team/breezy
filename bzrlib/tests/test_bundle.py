@@ -377,8 +377,8 @@ class CSetTester(TestCaseInTempDir):
         except BadBundle:
             # It is currently permitted for bundles with crlf line endings to
             # make read_bundle raise a BadBundle, but this should be fixed.
+            # Anything else, especially NotABundle, is an error.
             pass
-
 
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.
