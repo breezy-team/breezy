@@ -24,6 +24,8 @@ import sys
 
 #import bzrlib specific imports here
 import bzrlib.config as config
+from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
 from bzrlib.tests import TestCase, TestCaseInTempDir
 
@@ -332,6 +334,19 @@ class TestBranchConfig(TestCaseInTempDir):
         location_config = my_config._get_location_config()
         self.assertEqual(branch.base, location_config.location)
         self.failUnless(location_config is my_config._get_location_config())
+
+    def test_get_config(self):
+        """The Branch.get_config method works properly"""
+        b = BzrDir.create_standalone_workingtree('.').branch
+        my_config = b.get_config()
+        self.assertIs(my_config.get_user_option('wacky'), None)
+        my_config.set_user_option('wacky', 'unlikely')
+        self.assertEqual(my_config.get_user_option('wacky'), 'unlikely')
+
+        # Ensure we get the same thing if we start again
+        b2 = Branch.open('.')
+        my_config2 = b2.get_config()
+        self.assertEqual(my_config2.get_user_option('wacky'), 'unlikely')
 
 
 class TestGlobalConfigItems(TestCase):

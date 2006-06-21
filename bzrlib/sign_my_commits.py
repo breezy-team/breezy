@@ -50,7 +50,7 @@ class cmd_sign_my_commits(Command):
             bzrdir = bzrlib.bzrdir.BzrDir.open(location)
         branch = bzrdir.open_branch()
         repo = branch.repository
-        config = bzrlib.config.BranchConfig(branch)
+        config = branch.get_config()
 
         if committer is None:
             committer = config.username()
