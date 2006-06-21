@@ -22,7 +22,7 @@ from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
 from bzrlib.diff import internal_diff
-from bzrlib.errors import BzrError, TestamentMismatch, NotABundle
+from bzrlib.errors import BzrError, TestamentMismatch, NotABundle, BadBundle
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
@@ -366,6 +366,14 @@ class CSetTester(TestCaseInTempDir):
 
     def test_non_bundle(self):
         self.assertRaises(NotABundle, read_bundle, StringIO('#!/bin/sh\n'))
+
+    def test_malformed(self):
+        self.assertRaises(BadBundle, read_bundle, 
+                          StringIO('# Bazaar revision bundle v'))
+
+    def test_crlf_bundle(self):
+        self.assertNotRaises(NotABundle, read_bundle, 
+                             StringIO('# Bazaar revision bundle v0.7\r\n'))
 
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.

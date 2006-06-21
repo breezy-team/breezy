@@ -535,6 +535,15 @@ class TestCase(unittest.TestCase):
             self.fail("%r is an instance of %s rather than %s" % (
                 obj, obj.__class__, kls))
 
+    def assertNotRaises(self, exception, callable, *args):
+        try:
+            callable(*args)
+        except exception:
+            self.fail("%s was raised." % exception.__name__)
+        except:
+            pass
+
+
     def _startLogFile(self):
         """Send bzr and test log messages to a temporary file.
 
