@@ -23,23 +23,23 @@ from bzrlib.tests.repository_implementations.test_repository import TestCaseWith
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_format(self):
         """ Test repository format is correct """
-        bzrdir = self.make_bzrdir('a')
+        bzrdir = self.make_local_bzrdir('a', 'ac')
         self.assertEqual(bzrdir._format.get_format_string(), \
-                "Subversion Smart Server")
+                "Subversion Local Checkout")
         
         self.assertEqual(bzrdir._format.get_format_description(), \
-                "Subversion Smart Server")
+                "Subversion Local Checkout")
 
     def test_url(self):
         """ Test repository URL is kept """
-        bzrdir = self.make_bzrdir('b')
+
+        bzrdir = self.make_local_bzrdir('b', 'bc')
         self.assertTrue(isinstance(bzrdir, BzrDir))
-        repository = bzrdir.open_repository()
-        self.assertEqual(repository.url, self.repos_url)
 
     def test_uuid(self):
         """ Test UUID is retrieved correctly """
-        bzrdir = self.make_bzrdir('c')
+        bzrdir = self.make_local_bzrdir('c', 'cc')
         self.assertTrue(isinstance(bzrdir, BzrDir))
         repository = bzrdir.open_repository()
-        self.assertEqual(svn.fs.get_uuid(self.fs), repository.uuid)
+        fs = self.open_fs('c')
+        self.assertEqual(svn.fs.get_uuid(fs), repository.uuid)

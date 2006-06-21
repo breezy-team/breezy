@@ -21,5 +21,6 @@ from bzrlib.bzrdir import BzrDir, BzrDirTestProviderAdapter, BzrDirFormat
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_num_revnums(self):
-        bzrdir = self.make_bzrdir().open_branch()
-        assertEqual(None, branch.last_revision())
+        bzrdir = self.make_local_bzrdir('a', 'ac')
+        branch = bzrdir.open_branch()
+        self.assertEqual(None, branch.last_revision())
