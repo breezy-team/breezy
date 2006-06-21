@@ -22,13 +22,15 @@ import errno
 import os
 from cStringIO import StringIO
 import urllib
+from warnings import warn
 
+from bzrlib import errors
 from bzrlib.weavefile import read_weave, write_weave_v5
 from bzrlib.weave import WeaveFile, Weave
 from bzrlib.store import TransportStore
 from bzrlib.atomicfile import AtomicFile
-from bzrlib.errors import NoSuchFile, FileExists
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_method,
+        zero_eight)
 from bzrlib.trace import mutter
 import bzrlib.ui
 
@@ -112,7 +114,7 @@ class VersionedFileStore(TransportStore):
         fn = self.filename(file_id)
         try:
             return self._transport.put(fn, f, mode=self._file_mode)
-        except NoSuchFile:
+        except errors.NoSuchFile:
             if not self._prefixed:
                 raise
             self._transport.mkdir(os.path.dirname(fn), mode=self._dir_mode)
@@ -173,7 +175,7 @@ class VersionedFileStore(TransportStore):
             # for the common case.
             weave = self._versionedfile_class(_filename, self._transport, self._file_mode, create=True,
                                               **self._versionedfile_kwargs)
-        except NoSuchFile:
+        except errors.NoSuchFile:
             if not self._prefixed:
                 # unexpected error - NoSuchFile is expected to be raised on a
                 # missing dir only and that only occurs when we are prefixed.
@@ -194,7 +196,7 @@ class VersionedFileStore(TransportStore):
         _filename = self.filename(file_id)
         try:
             return self.get_weave(file_id, transaction, _filename=_filename)
-        except NoSuchFile:
+        except errors.NoSuchFile:
             weave = self._make_new_versionedfile(file_id, transaction,
                 known_missing=True, _filename=_filename)
             transaction.map.add_weave(file_id, weave)
@@ -255,7 +257,7 @@ class VersionedFileStore(TransportStore):
             warn("Please pass to_transaction into "
                  "versioned_store.copy_all_ids.", stacklevel=2)
         if not store_from.listable():
-            raise UnlistableStore(store_from)
+            raise errors.UnlistableStore(store_from)
         ids = []
         for count, file_id in enumerate(store_from):
             if pb:

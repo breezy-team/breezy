@@ -17,10 +17,9 @@
 """Command which looks for unsigned commits by the current user, and signs them.
 """
 
+from bzrlib import config, gpg
 from bzrlib.commands import Command
-import bzrlib.config
-import bzrlib.errors as errors
-import bzrlib.gpg
+from bzrlib.bzrdir import BzrDir
 from bzrlib.option import Option
 
 
@@ -44,18 +43,17 @@ class cmd_sign_my_commits(Command):
 
     def run(self, location=None, committer=None, dry_run=False):
         if location is None:
-            bzrdir = bzrlib.bzrdir.BzrDir.open_containing('.')[0]
+            bzrdir = BzrDir.open_containing('.')[0]
         else:
             # Passed in locations should be exact
-            bzrdir = bzrlib.bzrdir.BzrDir.open(location)
+            bzrdir = BzrDir.open(location)
         branch = bzrdir.open_branch()
         repo = branch.repository
-        config = branch.get_config()
+        branch_config = branch.get_config()
 
         if committer is None:
-            committer = config.username()
-
-        gpg_strategy = bzrlib.gpg.GPGStrategy(config)
+            committer = branch_config.username()
+        gpg_strategy = gpg.GPGStrategy(branch_config)
 
         count = 0
         repo.lock_write()

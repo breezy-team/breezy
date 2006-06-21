@@ -2,6 +2,7 @@
 # Written by Martin Pool.
 # Modified by Johan Rydberg <jrydberg@gnu.org>
 # Modified by Robert Collins <robert.collins@canonical.com>
+# Modified by Aaron Bentley <aaron.bentley@utoronto.ca>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -67,6 +68,7 @@ from copy import copy
 from cStringIO import StringIO
 import difflib
 from itertools import izip, chain
+import operator
 import os
 import sys
 
@@ -75,7 +77,7 @@ import bzrlib.errors as errors
 from bzrlib.errors import FileExists, NoSuchFile, KnitError, \
         InvalidRevisionId, KnitCorrupt, KnitHeaderError, \
         RevisionNotPresent, RevisionAlreadyPresent
-from bzrlib.tuned_gzip import *
+from bzrlib.tuned_gzip import GzipFile
 from bzrlib.trace import mutter
 from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
      sha_strings
@@ -265,8 +267,8 @@ class KnitVersionedFile(VersionedFile):
     stored and retrieved.
     """
 
-    def __init__(self, relpath, transport, file_mode=None, access_mode=None, factory=None,
-                 basis_knit=None, delta=True, create=False):
+    def __init__(self, relpath, transport, file_mode=None, access_mode=None, 
+                 factory=None, basis_knit=None, delta=True, create=False):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
@@ -510,6 +512,34 @@ class KnitVersionedFile(VersionedFile):
             diff_hunks.append((op[1], op[2], op[4]-op[3], new_content._lines[op[3]:op[4]]))
         return diff_hunks
 
+    def _get_component_versions(self, version_id):
+        basis = self.basis_knit
+        needed_versions = []
+        basis_versions = []
+        cursor = version_id
+
+        while 1:
+            picked_knit = self
+            if basis and basis._index.has_version(cursor):
+                picked_knit = basis
+                basis_versions.append(cursor)
+            method = picked_knit._index.get_method(cursor)
+            needed_versions.append((method, cursor))
+            if method == 'fulltext':
+                break
+            cursor = picked_knit.get_parents(cursor)[0]
+        return needed_versions, basis_versions
+
+    def _get_component_positions(self, version_id):
+        needed_versions, basis_versions = \
+            self._get_component_versions(version_id)
+        assert len(basis_versions) == 0
+        positions = []
+        for method, comp_id in needed_versions:
+            data_pos, data_size = self._index.get_position(comp_id)
+            positions.append((method, comp_id, data_pos, data_size))
+        return positions
+
     def _get_components(self, version_id):
         """Return a list of (version_id, method, data) tuples that
         makes up version specified by version_id of the knit.
@@ -533,28 +563,17 @@ class KnitVersionedFile(VersionedFile):
         # basis_revisions is a list of versions that needs to be
         # fetched but exists in the basis knit.
 
-        basis = self.basis_knit
-        needed_versions = []
-        basis_versions = []
-        cursor = version_id
-
-        while 1:
-            picked_knit = self
-            if basis and basis._index.has_version(cursor):
-                picked_knit = basis
-                basis_versions.append(cursor)
-            method = picked_knit._index.get_method(cursor)
-            needed_versions.append((method, cursor))
-            if method == 'fulltext':
-                break
-            cursor = picked_knit.get_parents(cursor)[0]
+        needed_versions, basis_versions = \
+            self._get_component_versions(version_id)
 
         components = {}
         if basis_versions:
+            assert False, "I am broken"
+            basis = self.basis_knit
             records = []
             for comp_id in basis_versions:
                 data_pos, data_size = basis._index.get_data_position(comp_id)
-                records.append((piece_id, data_pos, data_size))
+                records.append((comp_id, data_pos, data_size))
             components.update(basis._data.read_records(records))
 
         records = []
@@ -603,7 +622,6 @@ class KnitVersionedFile(VersionedFile):
 
         # digest here is the digest from the last applied component.
         if sha_strings(content.text()) != digest:
-            import pdb;pdb.set_trace()
             raise KnitCorrupt(self.filename, 'sha-1 does not match %s' % version_id)
 
         return content
@@ -717,12 +735,71 @@ class KnitVersionedFile(VersionedFile):
 
     def _clone_text(self, new_version_id, old_version_id, parents):
         """See VersionedFile.clone_text()."""
-        # FIXME RBC 20060228 make fast by only inserting an index with null delta.
+        # FIXME RBC 20060228 make fast by only inserting an index with null 
+        # delta.
         self.add_lines(new_version_id, parents, self.get_lines(old_version_id))
 
     def get_lines(self, version_id):
         """See VersionedFile.get_lines()."""
-        return self._get_content(version_id).text()
+        return self.get_line_list([version_id])[0]
+
+    def _get_version_components(self, position_map):
+        records = []
+        for version_id, positions in position_map.iteritems():
+            for method, comp_id, position, size in positions:
+                records.append((comp_id, position, size))
+        record_map = self._data.read_records(records)
+
+        component_map = {}
+        for version_id, positions in position_map.iteritems():
+            components = []
+            for method, comp_id, position, size in positions:
+                data, digest = record_map[comp_id]
+                components.append((comp_id, method, data, digest))
+            component_map[version_id] = components
+        return component_map
+
+    def get_text(self, version_id):
+        """See VersionedFile.get_text"""
+        return self.get_texts([version_id])[0]
+
+    def get_texts(self, version_ids):
+        return [''.join(l) for l in self.get_line_list(version_ids)]
+
+    def get_line_list(self, version_ids):
+        """Return the texts of listed versions as a list of strings."""
+        position_map = {}
+        for version_id in version_ids:
+            if not self.has_version(version_id):
+                raise RevisionNotPresent(version_id, self.filename)
+            position_map[version_id] = \
+                self._get_component_positions(version_id)
+
+        version_components = self._get_version_components(position_map).items()
+
+        text_map = {}
+        for version_id, components in version_components:
+            content = None
+            for component_id, method, data, digest in reversed(components):
+                version_idx = self._index.lookup(component_id)
+                if method == 'fulltext':
+                    assert content is None
+                    content = self.factory.parse_fulltext(data, version_idx)
+                elif method == 'line-delta':
+                    delta = self.factory.parse_line_delta(data, version_idx)
+                    content._lines = self._apply_delta(content._lines, delta)
+
+            if 'no-eol' in self._index.get_options(version_id):
+                line = content._lines[-1][1].rstrip('\n')
+                content._lines[-1] = (content._lines[-1][0], line)
+
+            # digest here is the digest from the last applied component.
+            if sha_strings(content.text()) != digest:
+                raise KnitCorrupt(self.filename, 
+                                  'sha-1 does not match %s' % version_id)
+
+            text_map[version_id] = content.text()
+        return [text_map[v] for v in version_ids]
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
@@ -992,7 +1069,7 @@ class _KnitIndex(_KnitComponentFile):
         # position in _history is the 'official' index for a revision
         # but the values may have come from a newer entry.
         # so - wc -l of a knit index is != the number of unique names
-        # in the weave.
+        # in the knit.
         self._history = []
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
@@ -1373,12 +1450,14 @@ class _KnitData(_KnitComponentFile):
                 needed_records.append((version_id, pos, size))
 
         if len(needed_records):
+            needed_records.sort(key=operator.itemgetter(1))
             # We take it that the transport optimizes the fetching as good
             # as possible (ie, reads continuous ranges.)
             response = self._transport.readv(self._filename,
                 [(pos, size) for version_id, pos, size in needed_records])
 
-            for (record_id, pos, size), (pos, data) in izip(iter(needed_records), response):
+            for (record_id, pos, size), (pos, data) in \
+                izip(iter(needed_records), response):
                 content, digest = self._parse_record(record_id, data)
                 self._records[record_id] = (digest, content)
     
