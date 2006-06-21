@@ -35,6 +35,7 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
+from bzrlib.trace import note
 
 
 class SelftestTests(TestCase):
@@ -679,3 +680,17 @@ class TestSelftest(TestCase):
         self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
+
+    def test_run_bzr_subprocess(self):
+        """The run_bzr_helper_external comand behaves nicely."""
+        result = self.run_bzr_subprocess('--version')
+        result = self.run_bzr_subprocess('--version', retcode=None)
+        self.assertContainsRe(result[0], 'is free software')
+        self.assertRaises(AssertionError, self.run_bzr_subprocess, 
+                          '--versionn')
+        result = self.run_bzr_subprocess('--versionn', retcode=3)
+        result = self.run_bzr_subprocess('--versionn', retcode=None)
+        self.assertContainsRe(result[1], 'unknown command')
+        err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
+                                      retcode=3)[1]
+        self.assertContainsRe(err, 'No known merge type magic merge')

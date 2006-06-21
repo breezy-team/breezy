@@ -7,10 +7,12 @@ License: Public domain
 
 import struct
 
+# We can cope without it; use a separate variable to help pyflakes
 try:
    import ctypes
+   has_ctypes = True
 except ImportError:
-   ctypes = None
+    has_ctypes = False
 
 
 WIN32_STDIN_HANDLE = -10
@@ -27,7 +29,7 @@ def get_console_size(defaultx=80, defaulty=25):
 
    Dependencies: ctypes should be installed.
    """
-   if ctypes is None:
+   if not has_ctypes:
        # no ctypes is found
        return (defaultx, defaulty)
 

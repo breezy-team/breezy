@@ -290,6 +290,10 @@ to run just the blackbox tests, run::
 
   ./bzr selftest -v blackbox
 
+To skip a particular test (or set of tests), you need to use a negative
+match, like so::
+  ./bzr selftest '^(?!.*blackbox)'  
+
 
 Errors and exceptions
 =====================

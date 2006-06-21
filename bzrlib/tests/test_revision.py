@@ -16,10 +16,10 @@
 
 
 import os
+import warnings
 
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
-from bzrlib.commit import commit
 from bzrlib.graph import Graph
 from bzrlib.revision import (find_present_ancestors, combined_graph,
                              common_ancestor,
@@ -27,6 +27,12 @@ from bzrlib.revision import (find_present_ancestors, combined_graph,
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
+
+# We're allowed to test deprecated interfaces
+warnings.filterwarnings('ignore',
+        '.*get_intervening_revisions was deprecated',
+        DeprecationWarning,
+        r'bzrlib\.tests\.test_revision')
 
 # XXX: Make this a method of a merge base case
 def make_branches(self):
@@ -140,7 +146,6 @@ class TestIsAncestor(TestCaseWithTransport):
 class TestIntermediateRevisions(TestCaseWithTransport):
 
     def setUp(self):
-        from bzrlib.commit import commit
         TestCaseWithTransport.setUp(self)
         self.br1, self.br2 = make_branches(self)
         wt1 = self.br1.bzrdir.open_workingtree()

@@ -38,7 +38,7 @@ import errno
 import os
 import sys
 
-from bzrlib.trace import mutter, note, warning
+from bzrlib.trace import mutter
 from bzrlib.errors import LockError
 
 class _base_Lock(object):

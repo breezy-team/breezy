@@ -1,0 +1,44 @@
+# Copyright (C) 2006 by Canonical Ltd
+# Authors: Aaron Bentley
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
+import os
+from StringIO import StringIO
+
+from bzrlib.bundle.read_bundle import BundleReader
+from bzrlib.bzrdir import BzrDir
+from bzrlib.tests import TestCaseInTempDir
+
+
+class TestBundle(TestCaseInTempDir):
+
+    def test_uses_parent(self):
+        """Parent location is used as a basis by default"""
+        
+        parent_tree = BzrDir.create_standalone_workingtree('parent')
+        parent_tree.commit('initial commit', rev_id='revision1')
+        os.chdir('parent')
+        errmsg = self.run_bzr('bundle', retcode=3)[1]
+        self.assertContainsRe(errmsg, 'No base branch known or specified')
+        branch_tree = parent_tree.bzrdir.sprout('../branch').open_workingtree()
+        branch_tree.commit('next commit', rev_id='revision2')
+        branch_tree.commit('last commit', rev_id='revision3')
+        os.chdir('../branch')
+        br = BundleReader(StringIO(self.run_bzr('bundle')[0]))
+        self.assertEqual(br.info.revisions[0].revision_id, 'revision3')
+        self.assertEqual(len(br.info.revisions), 2)
+        self.assertEqual(br.info.revisions[1].revision_id, 'revision2')

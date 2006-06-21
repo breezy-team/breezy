@@ -177,15 +177,15 @@ class BundleSerializerV07(BundleSerializer):
                 base_tree = last_rev_tree
             else:
                 base_tree = self.source.revision_tree(base_id)
-
+            force_binary = (i != 0)
             self._write_revision(rev, rev_tree, base_id, base_tree, 
-                                 explicit_base)
+                                 explicit_base, force_binary)
 
             last_rev_id = base_id
             last_rev_tree = base_tree
 
     def _write_revision(self, rev, rev_tree, base_rev, base_tree, 
-                        explicit_base):
+                        explicit_base, force_binary):
         """Write out the information for a revision."""
         def w(key, value):
             self._write(key, value, indent=1)
@@ -195,7 +195,7 @@ class BundleSerializerV07(BundleSerializer):
         w('date', format_highres_date(rev.timestamp, rev.timezone))
         self.to_file.write('\n')
 
-        self._write_delta(rev_tree, base_tree, rev.revision_id)
+        self._write_delta(rev_tree, base_tree, rev.revision_id, force_binary)
 
         w('revision id', rev.revision_id)
         w('sha1', StrictTestament.from_revision(self.source, 
@@ -222,13 +222,14 @@ class BundleSerializerV07(BundleSerializer):
         self.to_file.write(' // '.join(p_texts).encode('utf-8'))
         self.to_file.write('\n')
 
-    def _write_delta(self, new_tree, old_tree, default_revision_id):
+    def _write_delta(self, new_tree, old_tree, default_revision_id, 
+                     force_binary):
         """Write out the changes between the trees."""
         DEVNULL = '/dev/null'
         old_label = ''
         new_label = ''
 
-        def do_diff(file_id, old_path, new_path, action):
+        def do_diff(file_id, old_path, new_path, action, force_binary):
             def tree_lines(tree, require_text=False):
                 if file_id in tree:
                     tree_file = tree.get_file(file_id)
@@ -239,6 +240,8 @@ class BundleSerializerV07(BundleSerializer):
                     return []
 
             try:
+                if force_binary:
+                    raise errors.BinaryFile()
                 old_lines = tree_lines(old_tree, require_text=True)
                 new_lines = tree_lines(new_tree, require_text=True)
                 action.write(self.to_file)
@@ -262,7 +265,7 @@ class BundleSerializerV07(BundleSerializer):
             if text_modified and kind == "symlink":
                 action.add_property('target', entry.symlink_target)
             if text_modified and kind == "file":
-                do_diff(file_id, old_path, new_path, action)
+                do_diff(file_id, old_path, new_path, action, force_binary)
             else:
                 action.write(self.to_file)
 

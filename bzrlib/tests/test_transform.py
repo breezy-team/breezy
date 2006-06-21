@@ -28,6 +28,7 @@ from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name)
+import bzrlib.urlutils as urlutils
 
 class TestTreeTransform(TestCaseInTempDir):
 
@@ -42,7 +43,8 @@ class TestTreeTransform(TestCaseInTempDir):
         return transform, transform.trans_id_tree_file_id(self.wt.get_root_id())
 
     def test_existing_limbo(self):
-        limbo_name = self.wt._control_files.controlfilename('limbo')
+        limbo_name = urlutils.local_path_from_url(
+            self.wt._control_files.controlfilename('limbo'))
         transform, root = self.get_transform()
         os.mkdir(pathjoin(limbo_name, 'hehe'))
         self.assertRaises(ImmortalLimbo, transform.apply)

@@ -27,6 +27,7 @@ from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, warning
 import bzrlib.ui 
+import bzrlib.urlutils as urlutils
 
 
 ROOT_PARENT = "root-parent"
@@ -79,7 +80,8 @@ class TreeTransform(object):
         self._tree.lock_write()
         try:
             control_files = self._tree._control_files
-            self._limbodir = control_files.controlfilename('limbo')
+            self._limbodir = urlutils.local_path_from_url(
+                control_files.controlfilename('limbo'))
             try:
                 os.mkdir(self._limbodir)
             except OSError, e:
@@ -537,9 +539,9 @@ class TreeTransform(object):
         if child_id is None:
             return lexists(self._tree.abspath(childpath))
         else:
-            if tt.final_parent(child_id) != parent_id:
+            if self.final_parent(child_id) != parent_id:
                 return False
-            if child_id in tt._removed_contents:
+            if child_id in self._removed_contents:
                 # XXX What about dangling file-ids?
                 return False
             else:
@@ -1064,9 +1066,7 @@ def _entry_changes(file_id, entry, working_tree):
     try:
         working_kind = working_tree.kind(file_id)
         has_contents = True
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise
+    except NoSuchFile:
         has_contents = False
         contents_mod = True
         meta_mod = False

@@ -67,30 +67,28 @@ import os
 import re
 import sys
 import time
-import pdb
+import warnings
 
-from binascii import hexlify
 from cStringIO import StringIO
 
 from bzrlib.atomicfile import AtomicFile
-from bzrlib.osutils import (local_time_offset,
-                            rand_bytes, compact_date,
-                            kind_marker, is_inside_any, quotefn,
-                            sha_file, isdir, isfile,
-                            split_lines)
 import bzrlib.config
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
-                           HistoryMissing,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
-from bzrlib.revision import Revision
+from bzrlib.osutils import (kind_marker, isdir,isfile, is_inside_any, 
+                            is_inside_or_parent_of_any,
+                            quotefn, sha_file, split_lines)
 from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_passed,
+        deprecated_function,
+        zero_seven,
+        DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
 
 
@@ -102,7 +100,7 @@ def commit(*args, **kwargs):
 
     New code should use the Commit class instead.
     """
-    ## XXX: Remove this in favor of Branch.commit?
+    ## XXX: Remove this in favor of WorkingTree.commit?
     Commit().commit(*args, **kwargs)
 
 
@@ -225,7 +223,7 @@ class Commit(object):
         mutter('preparing to commit')
 
         if deprecated_passed(branch):
-            warn("Commit.commit (branch, ...): The branch parameter is "
+            warnings.warn("Commit.commit (branch, ...): The branch parameter is "
                  "deprecated as of bzr 0.8. Please use working_tree= instead.",
                  DeprecationWarning, stacklevel=2)
             self.branch = branch
@@ -238,17 +236,13 @@ class Commit(object):
         if message is None:
             raise BzrError("The message keyword parameter is required for commit().")
 
-        self.weave_store = self.branch.repository.weave_store
         self.bound_branch = None
         self.local = local
         self.master_branch = None
         self.master_locked = False
-        self.rev_id = rev_id
+        self.rev_id = None
         self.specific_files = specific_files
         self.allow_pointless = allow_pointless
-        self.revprops = {}
-        if revprops is not None:
-            self.revprops.update(revprops)
 
         if reporter is None and self.reporter is None:
             self.reporter = NullCommitReporter()
@@ -275,31 +269,10 @@ class Commit(object):
                 # raise an exception as soon as we find a single unknown.
                 for unknown in self.work_tree.unknowns():
                     raise StrictCommitFailed()
-    
-            if timestamp is None:
-                self.timestamp = time.time()
-            else:
-                self.timestamp = long(timestamp)
-                
+                   
             if self.config is None:
                 self.config = bzrlib.config.BranchConfig(self.branch)
-    
-            if rev_id is None:
-                self.rev_id = _gen_revision_id(self.config, self.timestamp)
-            else:
-                self.rev_id = rev_id
-    
-            if committer is None:
-                self.committer = self.config.username()
-            else:
-                assert isinstance(committer, basestring), type(committer)
-                self.committer = committer
-    
-            if timezone is None:
-                self.timezone = local_time_offset()
-            else:
-                self.timezone = int(timezone)
-    
+      
             if isinstance(message, str):
                 message = message.decode(bzrlib.user_encoding)
             assert isinstance(message, unicode), type(message)
@@ -314,7 +287,7 @@ class Commit(object):
             # note that this estimate is too long when we do a partial tree
             # commit which excludes some new files from being considered.
             # The estimate is corrected when we populate the new inv.
-            self.pb_total = len(self.basis_inv) + len(self.work_inv) + 3 - 1
+            self.pb_total = len(self.work_inv) + 5
             self.pb_count = 0
 
             self._gather_parents()
@@ -322,29 +295,29 @@ class Commit(object):
                 raise NotImplementedError('selected-file commit of merges is not supported yet: files %r',
                         self.specific_files)
             self._check_parents_present()
+            self.builder = self.branch.get_commit_builder(self.parents, 
+                self.config, timestamp, timezone, committer, revprops, rev_id)
             
             self._remove_deleted()
             self._populate_new_inv()
-            self._store_snapshot()
             self._report_deletes()
 
             if not (self.allow_pointless
                     or len(self.parents) > 1
-                    or self.new_inv != self.basis_inv):
+                    or self.builder.new_inventory != self.basis_inv):
                 raise PointlessCommit()
 
             self._emit_progress_update()
-            self.inv_sha1 = self.branch.repository.add_inventory(
-                self.rev_id,
-                self.new_inv,
-                self.present_parents
-                )
+            # TODO: Now the new inventory is known, check for conflicts and prompt the 
+            # user for a commit message.
+            self.builder.finish_inventory()
             self._emit_progress_update()
-            self._make_revision()
+            self.rev_id = self.builder.commit(self.message)
+            self._emit_progress_update()
             # revision data is in the local branch now.
             
             # upload revision data to the master.
-            # this will propogate merged revisions too if needed.
+            # this will propagate merged revisions too if needed.
             if self.bound_branch:
                 self.master_branch.repository.fetch(self.branch.repository,
                                                     revision_id=self.rev_id)
@@ -372,6 +345,7 @@ class Commit(object):
             self._emit_progress_update()
         finally:
             self._cleanup()
+        return self.rev_id
 
     def _check_bound_branch(self):
         """Check to see if the local branch is bound.
@@ -414,14 +388,6 @@ class Commit(object):
         self.bound_branch = self.branch
         self.master_branch.lock_write()
         self.master_locked = True
-####        
-####        # Check to see if we have any pending merges. If we do
-####        # those need to be pushed into the master branch
-####        pending_merges = self.work_tree.pending_merges()
-####        if pending_merges:
-####            for revision_id in pending_merges:
-####                self.master_branch.repository.fetch(self.bound_branch.repository,
-####                                                    revision_id=revision_id)
 
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
@@ -439,7 +405,7 @@ class Commit(object):
             except Exception, e:
                 found_exception = e
         if found_exception is not None: 
-            # dont do a plan raise, because the last exception may have been
+            # don't do a plan raise, because the last exception may have been
             # trashed, e is our sure-to-work exception even though it loses the
             # full traceback. XXX: RBC 20060421 perhaps we could check the
             # exc_info and if its the same one do a plain raise otherwise 
@@ -478,19 +444,14 @@ class Commit(object):
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""
-        pending_merges = self.work_tree.pending_merges()
-        self.parents = []
+        # TODO: Make sure that this list doesn't contain duplicate 
+        # entries and the order is preserved when doing this.
+        self.parents = self.work_tree.get_parent_ids()
         self.parent_invs = []
-        self.present_parents = []
-        precursor_id = self.branch.last_revision()
-        if precursor_id:
-            self.parents.append(precursor_id)
-        self.parents += pending_merges
         for revision in self.parents:
             if self.branch.repository.has_revision(revision):
                 inventory = self.branch.repository.get_inventory(revision)
                 self.parent_invs.append(inventory)
-                self.present_parents.append(revision)
 
     def _check_parents_present(self):
         for parent_id in self.parents:
@@ -498,22 +459,9 @@ class Commit(object):
             if not self.branch.repository.has_revision(parent_id):
                 if parent_id == self.branch.last_revision():
                     warning("parent is missing %r", parent_id)
-                    raise HistoryMissing(self.branch, 'revision', parent_id)
-                else:
-                    mutter("commit will ghost revision %r", parent_id)
+                    raise BzrCheckError("branch %s is missing revision {%s}"
+                            % (self.branch, parent_id))
             
-    def _make_revision(self):
-        """Record a new revision object for this commit."""
-        rev = Revision(timestamp=self.timestamp,
-                       timezone=self.timezone,
-                       committer=self.committer,
-                       message=self.message,
-                       inventory_sha1=self.inv_sha1,
-                       revision_id=self.rev_id,
-                       properties=self.revprops)
-        rev.parent_ids = self.parents
-        self.branch.repository.add_revision(self.rev_id, rev, self.new_inv, self.config)
-
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.
 
@@ -539,33 +487,40 @@ class Commit(object):
                 del self.work_inv[file_id]
             self.work_tree._write_inventory(self.work_inv)
 
-    def _store_snapshot(self):
-        """Pass over inventory and record a snapshot.
+    def _populate_new_inv(self):
+        """Build revision inventory.
 
-        Entries get a new revision when they are modified in 
-        any way, which includes a merge with a new set of
-        parents that have the same entry. 
+        This creates a new empty inventory. Depending on
+        which files are selected for commit, and what is present in the
+        current tree, the new inventory is populated. inventory entries 
+        which are candidates for modification have their revision set to
+        None; inventory entries that are carried over untouched have their
+        revision set to their prior value.
         """
-        # XXX: Need to think more here about when the user has
-        # made a specific decision on a particular value -- c.f.
-        # mark-merge.  
-
+        mutter("Selecting files for commit with filter %s", self.specific_files)
         # iter_entries does not visit the ROOT_ID node so we need to call
         # self._emit_progress_update once by hand.
         self._emit_progress_update()
-        for path, ie in self.new_inv.iter_entries():
+        for path, new_ie in self.work_inv.iter_entries():
             self._emit_progress_update()
-            previous_entries = ie.find_previous_heads(
-                self.parent_invs,
-                self.weave_store,
-                self.branch.repository.get_transaction())
-            if ie.revision is None:
-                # we are creating a new revision for ie in the history store
-                # and inventory.
-                ie.snapshot(self.rev_id, path, previous_entries,
-                    self.work_tree, self.weave_store,
-                    self.branch.repository.get_transaction())
-            # describe the nature of the change that has occured relative to
+            file_id = new_ie.file_id
+            mutter('check %s {%s}', path, file_id)
+            if (not self.specific_files or 
+                is_inside_or_parent_of_any(self.specific_files, path)):
+                    mutter('%s selected for commit', path)
+                    ie = new_ie.copy()
+                    ie.revision = None
+            else:
+                mutter('%s not selected for commit', path)
+                if self.basis_inv.has_id(file_id):
+                    ie = self.basis_inv[file_id].copy()
+                else:
+                    # this entry is new and not being committed
+                    continue
+
+            self.builder.record_entry_contents(ie, self.parent_invs, 
+                path, self.work_tree)
+            # describe the nature of the change that has occurred relative to
             # the basis inventory.
             if (self.basis_inv.has_id(ie.file_id)):
                 basis_ie = self.basis_inv[ie.file_id]
@@ -579,75 +534,14 @@ class Commit(object):
             else:
                 self.reporter.snapshot_change(change, path)
 
-    def _populate_new_inv(self):
-        """Build revision inventory.
-
-        This creates a new empty inventory. Depending on
-        which files are selected for commit, and what is present in the
-        current tree, the new inventory is populated. inventory entries 
-        which are candidates for modification have their revision set to
-        None; inventory entries that are carried over untouched have their
-        revision set to their prior value.
-        """
-        mutter("Selecting files for commit with filter %s", self.specific_files)
-        self.new_inv = Inventory(revision_id=self.rev_id)
-        # iter_entries does not visit the ROOT_ID node so we need to call
-        # self._emit_progress_update once by hand.
-        self._emit_progress_update()
-        for path, new_ie in self.work_inv.iter_entries():
-            self._emit_progress_update()
-            file_id = new_ie.file_id
-            mutter('check %s {%s}', path, new_ie.file_id)
-            if self.specific_files:
-                if not is_inside_any(self.specific_files, path):
-                    mutter('%s not selected for commit', path)
-                    self._carry_entry(file_id)
-                    continue
-                else:
-                    # this is selected, ensure its parents are too.
-                    parent_id = new_ie.parent_id
-                    while parent_id != ROOT_ID:
-                        if not self.new_inv.has_id(parent_id):
-                            ie = self._select_entry(self.work_inv[parent_id])
-                            mutter('%s selected for commit because of %s',
-                                   self.new_inv.id2path(parent_id), path)
-
-                        ie = self.new_inv[parent_id]
-                        if ie.revision is not None:
-                            ie.revision = None
-                            mutter('%s selected for commit because of %s',
-                                   self.new_inv.id2path(parent_id), path)
-                        parent_id = ie.parent_id
-            mutter('%s selected for commit', path)
-            self._select_entry(new_ie)
-
     def _emit_progress_update(self):
         """Emit an update to the progress bar."""
         self.pb.update("Committing", self.pb_count, self.pb_total)
         self.pb_count += 1
 
-    def _select_entry(self, new_ie):
-        """Make new_ie be considered for committing."""
-        ie = new_ie.copy()
-        ie.revision = None
-        self.new_inv.add(ie)
-        return ie
-
-    def _carry_entry(self, file_id):
-        """Carry the file unchanged from the basis revision."""
-        if self.basis_inv.has_id(file_id):
-            self.new_inv.add(self.basis_inv[file_id].copy())
-        else:
-            # this entry is new and not being committed
-            self.pb_total -= 1
-
     def _report_deletes(self):
         for path, ie in self.basis_inv.iter_entries():
-            if ie.file_id not in self.new_inv:
+            if ie.file_id not in self.builder.new_inventory:
                 self.reporter.deleted(path)
 
-def _gen_revision_id(config, when):
-    """Return new revision-id."""
-    s = '%s-%s-' % (config.user_email(), compact_date(when))
-    s += hexlify(rand_bytes(8))
-    return s
+
