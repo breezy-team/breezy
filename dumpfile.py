@@ -53,10 +53,10 @@ class SvnDumpFile(SvnRemoteAccess):
         repos_path = parent_transport.relpath(nested_transport.base)
 
         self.tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
-        repos = svn.repos.svn_repos_create(self.tmp_repos, '', '', None, None)
+        repos = svn.repos.create(self.tmp_repos, '', '', None, None)
         try:
-            svn.repos.svn_repos_load_fs2(repos, dumpfile, StringIO(), 
-                svn.repos.svn_repos_load_uuid_default, '', 0, 0, None)
+            svn.repos.load_fs2(repos, dumpfile, StringIO(), 
+                svn.repos.load_uuid_default, '', 0, 0, None)
         except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):
             raise NotBranchError(path=nested_transport.base)
 

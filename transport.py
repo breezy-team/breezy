@@ -77,7 +77,8 @@ class SvnRaTransport(Transport):
         if not ra:
             self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, None, None)
             self.svn_root_url = svn.ra.get_repos_root(self.ra)
-            svn.ra.reparent(self.ra, self.svn_root_url.encode('utf8'))
+            if self.svn_root_url != self.svn_url:
+                svn.ra.reparent(self.ra, self.svn_root_url.encode('utf8'))
         else:
             self.ra = ra
             self.svn_root_url = root_url
