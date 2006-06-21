@@ -315,7 +315,7 @@ class SFTPUrlHandling(Transport):
 
     def __init__(self, base):
         self._parse_url(base)
-        base = self._unparse_url()
+        base = self._unparse_url(self._path)
         if base[-1] != '/':
             base += '/'
         super(SFTPUrlHandling, self).__init__(base)
@@ -324,11 +324,10 @@ class SFTPUrlHandling(Transport):
         (self._scheme,
          self._username, self._password,
          self._host, self._port, self._path) = self._split_url(url)
-        base = self._unparse_url()
 
-    def _unparse_url(self, path=None):
-        if path is None:
-            path = self._path
+    def _unparse_url(self, path):
+        """Return a URL for a path relative to this transport.
+        """
         path = urllib.quote(path)
         # handle homedir paths
         if not path.startswith('/'):

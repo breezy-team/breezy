@@ -419,11 +419,13 @@ class SoukTransport(sftp.SFTPUrlHandling):
         else:
             raise BzrProtocolError("bad response %r" % (resp,))
 
-    def _unparse_url(self, path=None):
-        if path is None:
-            # XXX: don't have this special case; instead pass self._path if
-            # that's what you want
-            path = self._path
+    def _unparse_url(self, path):
+        """Return URL for a path.
+
+        :see: SFTPUrlHandling._unparse_url
+        """
+        # TODO: Eventually it should be possible to unify this with
+        # SFTPUrlHandling._unparse_url?
         if path == '':
             path = '/'
         path = urllib.quote(path)
