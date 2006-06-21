@@ -16,7 +16,7 @@
 
 import svn
 import format
-from svntest import TestCaseWithSubversionRepository
+from tests import TestCaseWithSubversionRepository
 from bzrlib.bzrdir import BzrDir, BzrDirTestProviderAdapter, BzrDirFormat
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):

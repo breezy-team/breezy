@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import NoSuchFile
+from bzrlib.errors import NotBranchError
 
 class BranchingScheme:
     """ Divides SVN repository data up into branches. Since there
@@ -37,10 +37,10 @@ class BranchingScheme:
         raise NotImplementedError
 
 
-class DefaultBranchingScheme:
+class TrunkBranchingScheme:
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
-        parts = path.split("/")
+        parts = path.strip("/").split("/")
         if len(parts) == 1 and parts[0] == "trunk":
             return True
 
@@ -51,38 +51,44 @@ class DefaultBranchingScheme:
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
-        parts = path.lstrip("/").split("/")
+        parts = path.strip("/").split("/")
         if parts[0] == "trunk" or parts[0] == "hooks":
             return (parts[0], "/".join(parts[1:]))
         elif parts[0] == "tags" or parts[0] == "branches":
-            return ("/".join(parts[0:2]), "/".join(parts[2:]))
+            return ("%s/%s" % (parts[0], parts[1]), "/".join(parts[2:]).strip("/"))
         else:
-            raise BzrError("Unable to unprefix path %s" % path)
+            raise NotBranchError(path=path)
 
 
 class NoBranchingScheme:
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
-        parts = path.split("/")
-        return len(parts) == 0
+        return path.strip("/") == ""
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
-        return ("", path)
+        return ("", path.strip("/"))
 
 
 class ListBranchingScheme:
     def __init__(self, branch_list):
-        self.branch_list = branch_list
+        """Create new ListBranchingScheme instance.
+
+        :param branch_list: List of know branch locations.
+        """
+        self.branch_list = []
+        for p in branch_list:
+            self.branch_list.append(p.strip("/"))
 
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
-        return path in self.branch_list
+        return path.strip("/") in self.branch_list
 
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
+        path = path.strip("/")
         for i in self.branch_list:
-            if path.startswith(i):
-                return (i, path[len(i):])
+            if (path+"/").startswith(i+"/"):
+                return (i, path[len(i):].strip("/"))
 
-        raise NoSuchFile(path=path)
+        raise NotBranchError(path=path)

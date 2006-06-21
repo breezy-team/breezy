@@ -142,11 +142,12 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
 def test_suite():
     from unittest import TestSuite, TestLoader
-    import tests.test_repos, tests.test_branch
+    import tests.test_repos, tests.test_branch, tests.test_scheme
 
     suite = TestSuite()
 
     suite.addTest(TestLoader().loadTestsFromModule(tests.test_repos))
     suite.addTest(TestLoader().loadTestsFromModule(tests.test_branch))
+    suite.addTest(TestLoader().loadTestsFromModule(tests.test_scheme))
 
     return suite
