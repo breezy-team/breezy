@@ -15,8 +15,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.tests import TestCaseInTempDir
+from bzrlib.bzrdir import BzrDir
 
 import svn.ra, svn.repos, svn.wc
+
+import os
 
 class TestCaseWithSubversionRepository(TestCaseInTempDir):
     """A test case that provides the ability to build Subversion 
@@ -41,10 +44,8 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
         return BzrDir.open(repos_url)
 
-    def make_local_bzrdir(self, relpath):
-        """Create a repository and checkout."""
-
-        repos_url = self.make_repository(relpath)
+    def open_local_bzrdir(self, repos_url, relpath):
+        """Open a local BzrDir."""
 
         ctx = svn.client.create_context()
         
@@ -55,6 +56,13 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                 rev, rev, True, False, ctx)
 
         return BzrDir.open(relpath)
+
+    def make_local_bzrdir(self, repos_path, relpath):
+        """Create a repository and checkout."""
+
+        repos_url = self.make_repository(repos_path)
+
+        return self.open_local_bzrdir(repos_url, relpath)
         
     def wc_commit(self, relpaths):
         """Commit current changes in specified working copy.
@@ -121,3 +129,11 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         """
         raise NotImplementedError(self.dumpfile)
 
+    def open_fs(self, relpath):
+        """Open a fs.
+
+        :return: FS.
+        """
+        repos = svn.repos.open(relpath)
+
+        return svn.repos.fs(repos)
