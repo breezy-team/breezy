@@ -26,6 +26,7 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.branch import Branch
 from bzrlib.testament import Testament, StrictTestament
 from bzrlib.trace import mutter
+from bzrlib.transform import TreeTransform
 from bzrlib.osutils import has_symlinks
 
 
@@ -46,6 +47,10 @@ class TestamentTests(TestCaseWithTransport):
                              ('src/foo.c', 'int main()\n{\n}\n')])
         self.wt.add(['hello', 'src', 'src/foo.c'],
                              ['hello-id', 'src-id', 'foo.c-id'])
+        tt = TreeTransform(self.wt)
+        trans_id = tt.trans_id_tree_path('hello')
+        tt.set_executability(True, trans_id)
+        tt.apply()
         self.wt.commit(message='add files and directories',
                  timestamp=1129025483,
                  timezone=36000,
@@ -236,7 +241,7 @@ parents:
 message:
   add files and directories
 inventory:
-  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 no
+  file hello hello-id 34dd0ac19a24bf80c4d33b5c8960196e8d8d1f73 test@user-2 yes
   directory src src-id test@user-2 no
   file src/foo.c foo.c-id a2a049c20f908ae31b231d98779eb63c66448f24 test@user-2 no
 properties:
