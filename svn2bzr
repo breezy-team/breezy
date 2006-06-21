@@ -628,7 +628,7 @@ def svn2bzr(url, output_dir, creator_class=None, prefix=None, filter=[], consist
         url = "file://%s" % tmp_repos
 
     elif os.path.isdir(url):
-        url = "file://%s" % url
+        url = "file://%s" % os.path.abspath(url)
 
     ra = svn.ra.open2(url.encode('utf8'), svn.ra.callbacks2_t(), None, None)
 
