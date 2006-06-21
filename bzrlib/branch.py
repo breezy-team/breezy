@@ -1118,7 +1118,7 @@ class BzrBranch(Branch):
         try:
             old_count = len(self.revision_history())
             try:
-                self.update_revisions(source,stop_revision)
+                self.update_revisions(source, stop_revision)
             except DivergedBranches:
                 if not overwrite:
                     raise

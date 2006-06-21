@@ -502,7 +502,6 @@ class BzrDir(object):
                 BzrDir._check_supported(format, False)
                 return format.open(a_transport), urlutils.unescape(a_transport.relpath(url))
             except errors.NotBranchError, e:
-                ## mutter('not a branch in: %r %s', a_transport.base, e)
                 pass
             new_t = a_transport.clone('..')
             if new_t.base == a_transport.base:

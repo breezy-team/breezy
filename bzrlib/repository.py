@@ -1462,7 +1462,7 @@ class InterRepository(InterObject):
     def fetch(self, revision_id=None, pb=None):
         """Fetch the content required to construct revision_id.
 
-        The content is copied from source to target.
+        The content is copied from self.source to self.target.
 
         :param revision_id: if None all content is copied, if NULL_REVISION no
                             content is copied.

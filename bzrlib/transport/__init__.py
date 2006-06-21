@@ -349,6 +349,8 @@ class Transport(object):
         Note that some transports MAY allow querying on directories, but this
         is not part of the protocol.  In other words, the results of 
         t.has("a_directory_name") are undefined."
+
+        :rtype: bool
         """
         raise NotImplementedError(self.has)
 

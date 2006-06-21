@@ -115,7 +115,10 @@ class cmd_bundle_revisions(Command):
 
         if revision is None or len(revision) == 1:
             if base_branch is not None:
-                target_branch.repository.fetch(base_branch.repository, 
+                # XXX: This writes into the target branch, but you should be
+                # able to do this without needing write access; can't
+                # common_ancestor work with graphs in two repositories?
+                target_branch.repository.fetch(base_branch.repository,
                                                base_branch.last_revision())
                 base_revision = common_ancestor(base_branch.last_revision(),
                                                 target_revision,

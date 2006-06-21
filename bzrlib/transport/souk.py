@@ -104,6 +104,17 @@ limited to a directory?
 # TODO: Server should rebase absolute paths coming across the network to put
 # them under the virtual root, if one is in use.  LocalTransport currently
 # doesn't do that; if you give it an absolute path it just uses it.
+# 
+# XXX: Arguments can't contain newlines or ascii; possibly we should e.g.
+# urlescape them instead.  Indeed possibly this should just literally be
+# http-over-ssh.
+#
+# FIXME: This transport, with several others, has imperfect handling of paths
+# within urls.  It'd probably be better for ".." from a root to raise an error
+# rather than return the same directory as we do at present.
+#
+# TODO: Rather than working at the Transport layer we want a Branch,
+# Repository or BzrDir objects that talk to a server.
 
 
 from cStringIO import StringIO
@@ -113,6 +124,7 @@ import socket
 import sys
 import threading
 import urllib
+import urlparse
 
 from bzrlib import errors, transport, trace
 from bzrlib.transport import sftp, local
@@ -130,6 +142,10 @@ class BzrProtocolError(errors.TransportError):
 
 def _recv_tuple(from_file):
     req_line = from_file.readline()
+    return _decode_tuple(req_line)
+
+
+def _decode_tuple(req_line):
     if req_line == None or req_line == '':
         return None
     if req_line[-1] != '\n':
@@ -142,6 +158,8 @@ def _send_tuple(to_file, args):
     to_file.flush()
 
 
+# TODO: this only actually accomodates a single block; possibly should support
+# multiple chunks?
 def _recv_bulk(from_file):
     chunk_len = from_file.readline()
     try:
@@ -230,6 +248,7 @@ class SoukStreamServer(object):
         self._in.close()
 
     def _dispatch_command(self, cmd, args):
+        # TODO: could do getattr(self, foo+cmd), etc.
         if cmd == 'hello':
             self._do_query_version()
         elif cmd == 'has':
@@ -383,7 +402,7 @@ class SoukTransport(sftp.SFTPUrlHandling):
             netloc = '%s@%s' % (urllib.quote(self._username), netloc)
         if self._port is not None:
             netloc = '%s:%d' % (netloc, self._port)
-        new_url = self._scheme + '://' + netloc + '/' + new_path
+        new_url = self._scheme + '://' + netloc + new_path
         return SoukTransport(new_url, clone_from=self)
 
     def is_readonly(self):
@@ -400,15 +419,29 @@ class SoukTransport(sftp.SFTPUrlHandling):
         else:
             raise BzrProtocolError("bad response %r" % (resp,))
 
+    def _unparse_url(self, path=None):
+        if path is None:
+            # XXX: don't have this special case; instead pass self._path if
+            # that's what you want
+            path = self._path
+        if path == '':
+            path = '/'
+        path = urllib.quote(path)
+        netloc = urllib.quote(self._host)
+        if self._username is not None:
+            netloc = '%s@%s' % (urllib.quote(self._username), netloc)
+        if self._port is not None:
+            netloc = '%s:%d' % (netloc, self._port)
+        return urlparse.urlunparse((self._scheme, netloc, path, '', '', ''))
+
     def _remote_path(self, relpath):
         return self._combine_paths(self._path, relpath)
 
-    def abspath(self, relpath):
-        r = sftp.SFTPUrlHandling.abspath(self, relpath)
-        ## print 'abspath %s => %s' % (relpath, r)
-        return r
-        
     def has(self, relpath):
+        """Indicate whether a remote file of the given name exists or not.
+
+        :see: Transport.has()
+        """
         resp = self._call('has', self._remote_path(relpath))
         if resp == ('yes', ):
             return True
@@ -418,8 +451,10 @@ class SoukTransport(sftp.SFTPUrlHandling):
             self._translate_error(resp)
 
     def get(self, relpath):
-        """Return file-like object reading the contents of a remote file."""
-        ## print 'get %s' % self._remote_path(relpath)
+        """Return file-like object reading the contents of a remote file.
+        
+        :see: Transport.get()
+        """
         resp = self._call('get', self._remote_path(relpath))
         if resp != ('ok', ):
             self._translate_error(resp)
@@ -533,6 +568,7 @@ class SoukTCPClient(SoukTransport):
     def disconnect(self):
         super(SoukTCPClient, self).disconnect()
         self._socket.close()
+
 
 
 def get_test_permutations():

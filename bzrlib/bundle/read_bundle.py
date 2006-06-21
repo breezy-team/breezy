@@ -246,7 +246,7 @@ class BundleReader(object):
         missing = {}
         for revision_id, sha1 in rev_to_sha.iteritems():
             if repository.has_revision(revision_id):
-                testament = StrictTestament.from_revision(repository, 
+                testament = StrictTestament.from_revision(repository,
                                                           revision_id)
                 local_sha1 = testament.as_sha1()
                 if sha1 != local_sha1:
@@ -267,7 +267,7 @@ class BundleReader(object):
                 local_sha1 = repository.get_inventory_sha1(inv_id)
                 if sha1 != local_sha1:
                     raise BzrError('sha1 mismatch. For inventory id {%s}' 
-                                   'local: %s, bundle: %s' % 
+                                   'local: %s, bundle: %s' %
                                    (inv_id, local_sha1, sha1))
                 else:
                     count += 1
@@ -309,7 +309,7 @@ class BundleReader(object):
         self._validate_references_from_repository(repository)
         revision_info = self.info.get_revision_info(revision_id)
         inventory_revision_id = revision_id
-        bundle_tree = BundleTree(repository.revision_tree(base), 
+        bundle_tree = BundleTree(repository.revision_tree(base),
                                   inventory_revision_id)
         self._update_tree(bundle_tree, revision_id)
 

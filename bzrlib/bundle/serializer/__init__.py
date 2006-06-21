@@ -86,7 +86,14 @@ def write(source, revision_ids, f, version=None, forced_bases={}):
 
 
 def write_bundle(repository, revision_id, base_revision_id, out):
-    """"""
+    """Write a bundle of revisions.
+
+    :param repository: Repository containing revisions to serialize.
+    :param revision_id: Head revision_id of the bundle.
+    :param base_revision_id: Revision assumed to be present in repositories
+         applying the bundle.
+    :param out: Output file.
+    """
     if base_revision_id is NULL_REVISION:
         base_revision_id = None
     base_ancestry = set(repository.get_ancestry(base_revision_id))

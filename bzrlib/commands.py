@@ -522,6 +522,7 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     ret, stats = profile(the_callable, *args, **kwargs)
     stats.sort()
     if filename is None:
+        ## stats.pprint(top=50)
         stats.pprint()
     else:
         stats.freeze()
