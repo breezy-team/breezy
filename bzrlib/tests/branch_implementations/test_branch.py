@@ -1,4 +1,4 @@
-# (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,24 +19,19 @@
 import os
 import sys
 
-import bzrlib.branch
-import bzrlib.bzrdir as bzrdir
+from bzrlib import branch, bzrdir, errors, gpg, transactions, repository
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.commit import commit
 from bzrlib.delta import TreeDelta
-import bzrlib.errors as errors
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
                            UninitializableFormat,
                            NotBranchError,
                            )
-import bzrlib.gpg
 from bzrlib.osutils import getcwd
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.trace import mutter
-import bzrlib.transactions as transactions
 from bzrlib.transport import get_transport
 from bzrlib.transport.http import HttpServer
 from bzrlib.transport.memory import MemoryServer
@@ -244,7 +239,7 @@ class TestBranch(TestCaseWithBranch):
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
         from bzrlib.testament import Testament
-        strategy = bzrlib.gpg.LoopbackGPGStrategy(None)
+        strategy = gpg.LoopbackGPGStrategy(None)
         branch.repository.sign_revision('A', strategy)
         self.assertEqual(Testament.from_revision(branch.repository, 
                          'A').as_short_text(),
@@ -254,7 +249,7 @@ class TestBranch(TestCaseWithBranch):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         branch.repository.store_revision_signature(
-            bzrlib.gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
+            gpg.LoopbackGPGStrategy(None), 'FOO', 'A')
         self.assertRaises(errors.NoSuchRevision,
                           branch.repository.has_signature_for_revision_id,
                           'A')
@@ -266,7 +261,7 @@ class TestBranch(TestCaseWithBranch):
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
         wt.branch.repository.sign_revision('A',
-            bzrlib.gpg.LoopbackGPGStrategy(None))
+            gpg.LoopbackGPGStrategy(None))
         #FIXME: clone should work to urls,
         # wt.clone should work to disks.
         self.build_tree(['target/'])
@@ -324,7 +319,7 @@ class TestBranch(TestCaseWithBranch):
             return
         self.assertEqual(repo.bzrdir.root_transport.base,
                          child_branch.repository.bzrdir.root_transport.base)
-        child_branch = bzrlib.branch.Branch.open(self.get_url('child'))
+        child_branch = branch.Branch.open(self.get_url('child'))
         self.assertEqual(repo.bzrdir.root_transport.base,
                          child_branch.repository.bzrdir.root_transport.base)
 
@@ -343,7 +338,16 @@ class TestBranch(TestCaseWithBranch):
 
     def test_get_commit_builder(self):
         self.assertIsInstance(self.make_branch(".").get_commit_builder([]), 
-            bzrlib.repository.CommitBuilder)
+            repository.CommitBuilder)
+
+    def test_generate_revision_history(self):
+        """Create a fake revision history easily."""
+        tree = self.make_branch_and_tree('.')
+        rev1 = tree.commit('foo')
+        orig_history = tree.branch.revision_history()
+        rev2 = tree.commit('bar', allow_pointless=True)
+        tree.branch.generate_revision_history(rev1)
+        self.assertEqual(orig_history, tree.branch.revision_history())
 
 
 class ChrootedTests(TestCaseWithBranch):
@@ -370,24 +374,6 @@ class ChrootedTests(TestCaseWithBranch):
         branch, relpath = Branch.open_containing(self.get_readonly_url('g/p/q'))
         self.assertEqual('g/p/q', relpath)
         
-# TODO: rewrite this as a regular unittest, without relying on the displayed output        
-#         >>> from bzrlib.commit import commit
-#         >>> bzrlib.trace.silent = True
-#         >>> br1 = ScratchBranch(files=['foo', 'bar'])
-#         >>> br1.working_tree().add('foo')
-#         >>> br1.working_tree().add('bar')
-#         >>> commit(br1, "lala!", rev_id="REVISION-ID-1", verbose=False)
-#         >>> br2 = ScratchBranch()
-#         >>> br2.update_revisions(br1)
-#         Added 2 texts.
-#         Added 1 inventories.
-#         Added 1 revisions.
-#         >>> br2.revision_history()
-#         [u'REVISION-ID-1']
-#         >>> br2.update_revisions(br1)
-#         Added 0 revisions.
-#         >>> br1.text_store.total_size() == br2.text_store.total_size()
-#         True
 
 class InstrumentedTransaction(object):
 
@@ -544,7 +530,7 @@ class TestFormat(TestCaseWithBranch):
         t = get_transport(self.get_url())
         readonly_t = get_transport(self.get_readonly_url())
         made_branch = self.make_branch('.')
-        self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
+        self.failUnless(isinstance(made_branch, branch.Branch))
 
         # find it via bzrdir opening:
         opened_control = bzrdir.BzrDir.open(readonly_t.base)
@@ -555,7 +541,7 @@ class TestFormat(TestCaseWithBranch):
                         self.branch_format.__class__))
 
         # find it via Branch.open
-        opened_branch = bzrlib.branch.Branch.open(readonly_t.base)
+        opened_branch = branch.Branch.open(readonly_t.base)
         self.failUnless(isinstance(opened_branch, made_branch.__class__))
         self.assertEqual(made_branch._format.__class__,
                          opened_branch._format.__class__)
@@ -565,4 +551,4 @@ class TestFormat(TestCaseWithBranch):
         except NotImplementedError:
             return
         self.assertEqual(self.branch_format,
-                         bzrlib.branch.BranchFormat.find_format(opened_control))
+                         branch.BranchFormat.find_format(opened_control))

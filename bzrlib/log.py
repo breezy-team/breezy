@@ -49,8 +49,8 @@ listing other things that were changed in the same revision, but not
 all the changes since the previous revision that touched hello.c.
 """
 
-
 # TODO: option to show delta summaries for merged-in revisions
+
 from itertools import izip
 import re
 
@@ -270,88 +270,6 @@ def _show_log(branch,
             lf.show(rev_nos[rev_id], rev, delta)
         elif hasattr(lf, 'show_merge'):
             lf.show_merge(rev, merge_depth)
-
-
-def deltas_for_log_dummy(branch, which_revs):
-    """Return all the revisions without intermediate deltas.
-
-    Useful for log commands that won't need the delta information.
-    """
-    
-    for revno, revision_id in which_revs:
-        yield revno, branch.get_revision(revision_id), None
-
-
-def deltas_for_log_reverse(branch, which_revs):
-    """Compute deltas for display in latest-to-earliest order.
-
-    branch
-        Branch to traverse
-
-    which_revs
-        Sequence of (revno, revision_id) for the subset of history to examine
-
-    returns 
-        Sequence of (revno, rev, delta)
-
-    The delta is from the given revision to the next one in the
-    sequence, which makes sense if the log is being displayed from
-    newest to oldest.
-    """
-    last_revno = last_revision_id = last_tree = None
-    for revno, revision_id in which_revs:
-        this_tree = branch.revision_tree(revision_id)
-        this_revision = branch.get_revision(revision_id)
-        
-        if last_revno:
-            yield last_revno, last_revision, compare_trees(this_tree, last_tree, False)
-
-        this_tree = EmptyTree(branch.get_root_id())
-
-        last_revno = revno
-        last_revision = this_revision
-        last_tree = this_tree
-
-    if last_revno:
-        if last_revno == 1:
-            this_tree = EmptyTree(branch.get_root_id())
-        else:
-            this_revno = last_revno - 1
-            this_revision_id = branch.revision_history()[this_revno]
-            this_tree = branch.revision_tree(this_revision_id)
-        yield last_revno, last_revision, compare_trees(this_tree, last_tree, False)
-
-
-def deltas_for_log_forward(branch, which_revs):
-    """Compute deltas for display in forward log.
-
-    Given a sequence of (revno, revision_id) pairs, return
-    (revno, rev, delta).
-
-    The delta is from the given revision to the next one in the
-    sequence, which makes sense if the log is being displayed from
-    newest to oldest.
-    """
-    last_revno = last_revision_id = last_tree = None
-    prev_tree = EmptyTree(branch.get_root_id())
-
-    for revno, revision_id in which_revs:
-        this_tree = branch.revision_tree(revision_id)
-        this_revision = branch.get_revision(revision_id)
-
-        if not last_revno:
-            if revno == 1:
-                last_tree = EmptyTree(branch.get_root_id())
-            else:
-                last_revno = revno - 1
-                last_revision_id = branch.revision_history()[last_revno]
-                last_tree = branch.revision_tree(last_revision_id)
-
-        yield revno, this_revision, compare_trees(last_tree, this_tree, False)
-
-        last_revno = revno
-        last_revision = this_revision
-        last_tree = this_tree
 
 
 class LogFormatter(object):

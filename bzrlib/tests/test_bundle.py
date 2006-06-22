@@ -19,8 +19,8 @@ from cStringIO import StringIO
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
-from bzrlib.bundle.read_bundle import BundleTree, BundleReader
-from bzrlib.bundle.serializer import write_bundle
+from bzrlib.bundle.bundle_data import BundleTree
+from bzrlib.bundle.serializer import write_bundle, read_bundle
 from bzrlib.diff import internal_diff
 from bzrlib.errors import BzrError, TestamentMismatch, NotABundle
 from bzrlib.merge import Merge3Merger
@@ -324,9 +324,9 @@ class BundleTester(TestCaseInTempDir):
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
 
         # This should also validate the generated bundle 
-        bundle = BundleReader(bundle_txt)
+        bundle = read_bundle(bundle_txt)
         repository = self.b1.repository
-        for bundle_rev in bundle.info.real_revisions:
+        for bundle_rev in bundle.real_revisions:
             # These really should have already been checked when we read the
             # bundle, since it computes the sha1 hash for the revision, which
             # only will match if everything is okay, but lets be explicit about
@@ -340,7 +340,7 @@ class BundleTester(TestCaseInTempDir):
             self.assertEqual(len(branch_rev.parent_ids), 
                              len(bundle_rev.parent_ids))
         self.assertEqual(rev_ids, 
-                         [r.revision_id for r in bundle.info.real_revisions])
+                         [r.revision_id for r in bundle.real_revisions])
         self.valid_apply_bundle(base_rev_id, bundle,
                                    checkout_dir=checkout_dir)
 
@@ -356,12 +356,12 @@ class BundleTester(TestCaseInTempDir):
         new_text = bundle_txt.getvalue().replace('executable:no', 
                                                'executable:yes')
         bundle_txt = StringIO(new_text)
-        bundle = BundleReader(bundle_txt)
+        bundle = read_bundle(bundle_txt)
         self.valid_apply_bundle(base_rev_id, bundle)
         return bundle 
 
     def test_non_bundle(self):
-        self.assertRaises(NotABundle, BundleReader, StringIO('#!/bin/sh\n'))
+        self.assertRaises(NotABundle, read_bundle, StringIO('#!/bin/sh\n'))
 
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.
@@ -381,7 +381,7 @@ class BundleTester(TestCaseInTempDir):
         s.seek(0)
         assert isinstance(s.getvalue(), str), (
             "Bundle isn't a bytestring:\n %s..." % repr(s.getvalue())[:40])
-        install_bundle(tree.branch.repository, BundleReader(s))
+        install_bundle(tree.branch.repository, read_bundle(s))
         for ancestor in ancestors:
             old = self.b1.repository.revision_tree(ancestor)
             new = tree.branch.repository.revision_tree(ancestor)
@@ -400,19 +400,18 @@ class BundleTester(TestCaseInTempDir):
             tree.update()
         return tree
 
-    def valid_apply_bundle(self, base_rev_id, reader, checkout_dir=None):
+    def valid_apply_bundle(self, base_rev_id, info, checkout_dir=None):
         """Get the base revision, apply the changes, and make
         sure everything matches the builtin branch.
         """
         to_tree = self.get_checkout(base_rev_id, checkout_dir=checkout_dir)
         repository = to_tree.branch.repository
         self.assertIs(repository.has_revision(base_rev_id), True)
-        info = reader.info
         for rev in info.real_revisions:
             self.assert_(not repository.has_revision(rev.revision_id),
                 'Revision {%s} present before applying bundle' 
                 % rev.revision_id)
-        merge_bundle(reader, to_tree, True, Merge3Merger, False, False)
+        merge_bundle(info, to_tree, True, Merge3Merger, False, False)
 
         for rev in info.real_revisions:
             self.assert_(repository.has_revision(rev.revision_id),
@@ -700,7 +699,7 @@ class MungedBundleTester(TestCaseWithTransport):
     def check_valid(self, bundle):
         """Check that after whatever munging, the final object is valid."""
         self.assertEqual(['a@cset-0-2'], 
-            [r.revision_id for r in bundle.info.real_revisions])
+            [r.revision_id for r in bundle.real_revisions])
 
     def test_extra_whitespace(self):
         bundle_txt = self.build_test_bundle()
@@ -712,7 +711,7 @@ class MungedBundleTester(TestCaseWithTransport):
         bundle_txt.write('\n')
         bundle_txt.seek(0)
 
-        bundle = BundleReader(bundle_txt)
+        bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)
 
     def test_extra_whitespace_2(self):
@@ -725,7 +724,7 @@ class MungedBundleTester(TestCaseWithTransport):
         bundle_txt.write('\n\n')
         bundle_txt.seek(0)
 
-        bundle = BundleReader(bundle_txt)
+        bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)
 
     def test_missing_trailing_whitespace(self):
@@ -740,5 +739,5 @@ class MungedBundleTester(TestCaseWithTransport):
         self.assertEqual('\n\n', raw[-2:])
         bundle_text = StringIO(raw[:-1])
 
-        bundle = BundleReader(bundle_txt)
+        bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)

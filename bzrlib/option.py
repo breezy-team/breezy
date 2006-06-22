@@ -19,8 +19,7 @@
 
 import re
 
-import bzrlib.commands
-from bzrlib.trace import warning, mutter
+from bzrlib.trace import warning
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.errors import BzrCommandError
 

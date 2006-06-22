@@ -21,18 +21,15 @@ import re
 import sys
 
 import bzrlib
-import bzrlib.bzrdir as bzrdir
+from bzrlib import bzrdir, errors, repository
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.commit import commit
 from bzrlib.delta import TreeDelta
-import bzrlib.errors as errors
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
                            UninitializableFormat,
                            NotBranchError,
                            )
-import bzrlib.repository as repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
