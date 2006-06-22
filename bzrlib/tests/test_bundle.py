@@ -296,14 +296,7 @@ class BTreeTester(TestCase):
 
 class CSetTester(TestCaseInTempDir):
 
-    def get_valid_bundle(self, base_rev_id, rev_id, checkout_dir=None,
-                         message=None):
-        """Create a bundle from base_rev_id -> rev_id in built-in branch.
-        Make sure that the text generated is valid, and that it
-        can be applied against the base, and generate the same information.
-        
-        :return: The in-memory bundle 
-        """
+    def create_bundle_text(self, base_rev_id, rev_id):
         from cStringIO import StringIO
 
         bundle_txt = StringIO()
@@ -320,6 +313,17 @@ class CSetTester(TestCaseInTempDir):
 
         open(',,bundle', 'wb').write(bundle_txt.getvalue())
         bundle_txt.seek(0)
+        return bundle_txt, rev_ids
+
+    def get_valid_bundle(self, base_rev_id, rev_id, checkout_dir=None):
+        """Create a bundle from base_rev_id -> rev_id in built-in branch.
+        Make sure that the text generated is valid, and that it
+        can be applied against the base, and generate the same information.
+        
+        :return: The in-memory bundle 
+        """
+        bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
+
         # This should also validate the generated bundle 
         bundle = BundleReader(bundle_txt)
         repository = self.b1.repository
@@ -349,14 +353,7 @@ class CSetTester(TestCaseInTempDir):
         
         :return: The in-memory bundle
         """
-        from cStringIO import StringIO
-
-        bundle_txt = StringIO()
-        rev_ids = write_bundle(self.b1.repository, rev_id, base_rev_id, 
-                               bundle_txt)
-        bundle_txt.seek(0)
-        open(',,bundle', 'wb').write(bundle_txt.getvalue())
-        bundle_txt.seek(0)
+        bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = bundle_txt.getvalue().replace('executable:no', 
                                                'executable:yes')
         bundle_txt = StringIO(new_text)
@@ -454,20 +451,20 @@ class CSetTester(TestCaseInTempDir):
             #         to_tree.get_file(fileid).read())
 
     def test_bundle(self):
-
-        import os, sys
-        pjoin = os.path.join
-
         self.tree1 = BzrDir.create_standalone_workingtree('b1')
         self.b1 = self.tree1.branch
 
-        open(pjoin('b1/one'), 'wb').write('one\n')
+        open('b1/one', 'wb').write('one\n')
         self.tree1.add('one')
         self.tree1.commit('add one', rev_id='a@cset-0-1')
 
         bundle = self.get_valid_bundle(None, 'a@cset-0-1')
-        bundle = self.get_valid_bundle(None, 'a@cset-0-1',
-                message='With a specialized message')
+        # FIXME: The current write_bundle api no longer supports
+        #        setting a custom summary message
+        #        We should re-introduce the ability, and update
+        #        the tests to make sure it works.
+        # bundle = self.get_valid_bundle(None, 'a@cset-0-1',
+        #         message='With a specialized message')
 
         # Make sure we can handle files with spaces, tabs, other
         # bogus characters
@@ -664,18 +661,15 @@ class CSetTester(TestCaseInTempDir):
         bundle = self.get_valid_bundle('a@lmod-0-2a', 'a@lmod-0-4')
 
     def test_hide_history(self):
-        import os, sys
-        pjoin = os.path.join
-
         self.tree1 = BzrDir.create_standalone_workingtree('b1')
         self.b1 = self.tree1.branch
 
-        open(pjoin('b1/one'), 'wb').write('one\n')
+        open('b1/one', 'wb').write('one\n')
         self.tree1.add('one')
         self.tree1.commit('add file', rev_id='a@cset-0-1')
-        open(pjoin('b1/one'), 'wb').write('two\n')
+        open('b1/one', 'wb').write('two\n')
         self.tree1.commit('modify', rev_id='a@cset-0-2')
-        open(pjoin('b1/one'), 'wb').write('three\n')
+        open('b1/one', 'wb').write('three\n')
         self.tree1.commit('modify', rev_id='a@cset-0-3')
         bundle_file = StringIO()
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
