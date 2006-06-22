@@ -25,6 +25,7 @@ from bzrlib.branch import Branch
 from bzrlib.commands import Command, register_command
 from bzrlib.errors import BzrCommandError
 from bzrlib.option import Option
+from bzrlib.workingtree import WorkingTree
 
 from generate_version_info import version_formats
 
@@ -55,6 +56,8 @@ class cmd_version_info(Command):
                      ]
     takes_args = ['location?']
 
+    encoding_type = 'exact'
+
     def run(self, location=None, format=None,
             all=False, check_clean=False, include_history=False,
             include_file_revisions=False):
@@ -65,19 +68,24 @@ class cmd_version_info(Command):
         if format is None:
             format = version_formats[None]
 
-        b = Branch.open_containing(location)[0]
-
-        outf = codecs.getwriter('utf-8')(sys.stdout)
+        wt = None
+        try:
+            wt = WorkingTree.open_containing(location)[0]
+        except NoWorkingTree:
+            b = Branch.open(location)
+        else:
+            b = wt.branch
 
         if all:
             include_history = True
             check_clean = True
             include_file_revisions=True
 
-        format(b, to_file=outf,
+        builder = format(b, working_tree=wt,
                 check_for_clean=check_clean,
                 include_revision_history=include_history,
                 include_file_revisions=include_file_revisions)
+        builder.generate(self.outf)
 
 
 register_command(cmd_version_info)

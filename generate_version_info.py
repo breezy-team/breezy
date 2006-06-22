@@ -21,66 +21,12 @@ Routines for extracting all version information from a bzr branch.
 import time
 import pprint
 
-from StringIO import StringIO
+from cStringIO import StringIO
 
-from bzrlib.errors import NoWorkingTree
-from bzrlib.rio import RioReader, RioWriter, Stanza
+import bzrlib.delta
 from bzrlib.osutils import local_time_offset, format_date
-
-
-def get_file_revisions(branch, check=False):
-    """Get the last changed revision for all files.
-
-    :param branch: The branch we are checking.
-    :param check: See if there are uncommitted changes.
-    :return: ({file_path => last changed revision}, Tree_is_clean)
-    """
-    clean = True
-    file_revisions = {}
-    basis_tree = branch.basis_tree()
-    for path, ie in basis_tree.inventory.iter_entries():
-        file_revisions[path] = ie.revision
-
-    if not check:
-        # Without checking, the tree looks clean
-        return file_revisions, clean
-    try:
-        new_tree = branch.working_tree()
-    except NoWorkingTree:
-        # Without a working tree, everything is clean
-        return file_revisions, clean
-
-    from bzrlib.diff import compare_trees
-    delta = compare_trees(basis_tree, new_tree, want_unchanged=False)
-
-    # Using a 2-pass algorithm for renames. This is because you might have
-    # renamed something out of the way, and then created a new file
-    # in which case we would rather see the new marker
-    # Or you might have removed the target, and then renamed
-    # in which case we would rather see the renamed marker
-    for old_path, new_path, file_id, kind, text_mod, meta_mod in delta.renamed:
-        clean = False
-        file_revisions[old_path] = u'renamed to %s' % (new_path,)
-    for path, file_id, kind in delta.removed:
-        clean = False
-        file_revisions[path] = 'removed'
-    for path, file_id, kind in delta.added:
-        clean = False
-        file_revisions[path] = 'new'
-    for old_path, new_path, file_id, kind, text_mod, meta_mod in delta.renamed:
-        clean = False
-        file_revisions[new_path] = u'renamed from %s' % (old_path,)
-    for path, file_id, kind, text_mod, meta_mod in delta.modified:
-        clean = False
-        file_revisions[path] = 'modified'
-
-    for info in new_tree.list_files():
-        path, status = info[0:2]
-        if status == '?':
-            file_revisions[path] = 'unversioned'
-            clean = False
-
-    return file_revisions, clean
+import bzrlib.revision
+from bzrlib.rio import RioReader, RioWriter, Stanza
 
 
 # This contains a map of format id => formatter
@@ -103,85 +49,190 @@ def create_date_str(timestamp=None, offset=None):
                        timezone='original', show_offset=True)
 
 
-def generate_rio_version(branch, to_file,
-        check_for_clean=False,
-        include_revision_history=False,
-        include_file_revisions=False):
-    """Create the version file for this project.
+class VersionInfoBuilder(object):
+    """A class which lets you build up information about a revision.""" 
 
-    :param branch: The branch to write information about
-    :param to_file: The file to write the information
-    :param check_for_clean: If true, check if the branch is clean.
-        This can be expensive for large trees. This is also only
-        valid for branches with working trees.
-    :param include_revision_history: Write out the list of revisions, and
-        the commit message associated with each
-    :param include_file_revisions: Write out the set of last changed revision
-        for each file.
-    """
-    info = Stanza()
-    info.add('build-date', create_date_str())
-    info.add('revno', str(branch.revno()))
+    def __init__(self, branch, working_tree=None,
+                check_for_clean=False,
+                include_revision_history=False,
+                include_file_revisions=False,
+                ):
+        """Build up information about the given branch.
+        If working_tree is given, it can be checked for changes.
 
-    # XXX: Compatibility pre/post storage
-    repo = getattr(branch, 'repository', branch)
+        :param branch: The branch to work on
+        :param working_tree: If supplied, preferentially check
+            the working tree for changes.
+        :param check_for_clean: If False, we will skip the expense
+            of looking for changes.
+        :param include_revision_history: If True, the output
+            will include the full mainline revision history, including
+            date and message
+        :param include_file_revisions: The output should
+            include the explicit last-changed revision for each file.
+        """
+        self._branch = branch
+        self._working_tree = working_tree
+        self._check = check_for_clean
+        self._include_history = include_revision_history
+        self._include_file_revs = include_file_revisions
 
-    last_rev_id = branch.last_revision()
-    if last_rev_id is not None:
-        info.add('revision-id', last_rev_id)
-        rev = repo.get_revision(last_rev_id)
-        info.add('date', create_date_str(rev.timestamp, rev.timezone))
+        self._clean = None
+        self._file_revisions = {}
+        self._revision_history_info= []
 
-    if branch.nick is not None:
-        info.add('branch-nick', branch.nick)
+    def _extract_file_revisions(self):
+        """Extract the working revisions for all files"""
 
-    file_revisions = {}
-    clean = True
-    if check_for_clean or include_file_revisions:
-        file_revisions, clean = get_file_revisions(branch, check=check_for_clean)
+        # Things seem clean if we never look :)
+        self._clean = True
 
-    if check_for_clean:
-        if clean:
-            info.add('clean', 'True')
+        if self._working_tree is not None:
+            basis_tree = self._working_tree.basis_tree()
         else:
-            info.add('clean', 'False')
+            basis_tree = self._branch.basis_tree()
 
-    if include_revision_history:
-        revs = branch.revision_history()
-        log = Stanza()
-        for rev_id in revs:
-            rev = repo.get_revision(rev_id)
-            log.add('id', rev_id)
-            log.add('message', rev.message)
-            log.add('date', create_date_str(rev.timestamp, rev.timezone))
-        sio = StringIO()
-        log_writer = RioWriter(to_file=sio)
-        log_writer.write_stanza(log)
-        info.add('revisions', sio.getvalue())
+        # Build up the list from the basis inventory
+        for info in basis_tree.list_files():
+            self._file_revisions[info[0]] = info[-1].revision
 
-    if include_file_revisions:
-        files = Stanza()
-        for path in sorted(file_revisions.keys()):
-            files.add('path', path)
-            files.add('revision', file_revisions[path])
-        sio = StringIO()
-        file_writer = RioWriter(to_file=sio)
-        file_writer.write_stanza(files)
-        info.add('file-revisions', sio.getvalue())
+        if not self._check or self._working_tree is None:
+            return
 
-    writer = RioWriter(to_file=to_file)
-    writer.write_stanza(info)
+        # We have both a working tree, and we are checking
+        delta = bzrlib.delta.compare_trees(basis_tree, self._working_tree,
+                                          want_unchanged=False)
+
+        # Using a 2-pass algorithm for renames. This is because you might have
+        # renamed something out of the way, and then created a new file
+        # in which case we would rather see the new marker
+        # Or you might have removed the target, and then renamed
+        # in which case we would rather see the renamed marker
+        for (old_path, new_path, file_id,
+             kind, text_mod, meta_mod) in delta.renamed:
+            self._clean = False
+            self._file_revisions[old_path] = u'renamed to %s' % (new_path,)
+        for path, file_id, kind in delta.removed:
+            self._clean = False
+            self._file_revisions[path] = 'removed'
+        for path, file_id, kind in delta.added:
+            self._clean = False
+            self._file_revisions[path] = 'new'
+        for (old_path, new_path, file_id,
+             kind, text_mod, meta_mod) in delta.renamed:
+            self._clean = False
+            self._file_revisions[new_path] = u'renamed from %s' % (old_path,)
+        for path, file_id, kind, text_mod, meta_mod in delta.modified:
+            self._clean = False
+            self._file_revisions[path] = 'modified'
+
+        for path in self._working_tree.unknowns():
+            self._clean = False
+            self._file_revisions[path] = 'unversioned'
+
+    def _extract_revision_history(self):
+        """Find the messages for all revisions in history."""
+
+        # Unfortunately, there is no WorkingTree.revision_history
+        rev_hist = self._branch.revision_history()
+        if self._working_tree is not None:
+            last_rev = self._working_tree.last_revision()
+            assert last_rev in rev_hist, \
+                "Working Tree's last revision not in branch.revision_history"
+            rev_hist = rev_hist[:rev_hist.index(last_rev)+1]
+
+        repository =  self._branch.repository
+        repository.lock_read()
+        try:
+            for revision_id in rev_hist:
+                rev = repository.get_revision(revision_id)
+                self._revision_history_info.append(
+                    (rev.revision_id, rev.message,
+                     rev.timestamp, rev.timezone))
+        finally:
+            repository.unlock()
+
+    def _get_revision_id(self):
+        """Get the revision id we are working on."""
+        if self._working_tree is not None:
+            return self._working_tree.last_revision()
+        return self._branch.last_revision()
+
+    def generate(self, to_file):
+        """Output the version information to the supplied file.
+
+        :param to_file: The file to write the stream to. The output
+                will already be encoded, so to_file should not try
+                to change encodings.
+        :return: None
+        """
+        raise NotImplementedError(VersionInfoBuilder.generate)
+            
+
+class RioVersionInfoBuilder(VersionInfoBuilder):
+    """This writes a rio stream out."""
+
+    def generate(self, to_file):
+        info = Stanza()
+        revision_id = self._get_revision_id()
+        if revision_id is not None:
+            info.add('revision-id', revision_id)
+            rev = self._branch.repository.get_revision(revision_id)
+            info.add('date', create_date_str(rev.timestamp, rev.timezone))
+            revno = str(self._branch.revision_id_to_revno(revision_id))
+        else:
+            revno = '0'
+
+        info.add('build-date', create_date_str())
+        info.add('revno', revno)
+
+        if self._branch.nick is not None:
+            info.add('branch-nick', self._branch.nick)
+
+        if self._check or self._include_file_revs:
+            self._extract_file_revisions()
+
+        if self._check:
+            if self._clean:
+                info.add('clean', 'True')
+            else:
+                info.add('clean', 'False')
+
+        if self._include_history:
+            self._extract_revision_history()
+            log = Stanza()
+            for (revision_id, message,
+                 timestamp, timezone) in self._revision_history_info:
+                log.add('id', revision_id)
+                log.add('message', message)
+                log.add('date', create_date_str(timestamp, timezone))
+            sio = StringIO()
+            log_writer = RioWriter(to_file=sio)
+            log_writer.write_stanza(log)
+            info.add('revisions', sio.getvalue())
+
+        if self._include_file_revs:
+            files = Stanza()
+            for path in sorted(self._file_revisions.keys()):
+                files.add('path', path)
+                files.add('revision', self._file_revisions[path])
+            sio = StringIO()
+            file_writer = RioWriter(to_file=sio)
+            file_writer.write_stanza(files)
+            info.add('file-revisions', sio.getvalue())
+
+        writer = RioWriter(to_file=to_file)
+        writer.write_stanza(info)
 
 
-version_formats['rio'] = generate_rio_version
+version_formats['rio'] = RioVersionInfoBuilder
 # Default format is rio
-version_formats[None] = generate_rio_version
+version_formats[None] = RioVersionInfoBuilder
 
 
 # Header and footer for the python format
 _py_version_header = '''#!/usr/bin/env python
-"""\\
-This file is automatically generated by generate_version_info
+"""This file is automatically generated by generate_version_info
 It uses the current working tree to determine the revision.
 So don't edit it. :)
 """
@@ -198,81 +249,62 @@ if __name__ == '__main__':
 '''
 
 
-def generate_python_version(branch, to_file,
-        check_for_clean=False,
-        include_revision_history=False,
-        include_file_revisions=False):
-    """Create a python version file for this project.
+class PythonVersionInfoBuilder(VersionInfoBuilder):
+    """Create a version file which is a python source module."""
 
-    :param branch: The branch to write information about
-    :param to_file: The file to write the information
-    :param check_for_clean: If true, check if the branch is clean.
-        This can be expensive for large trees. This is also only
-        valid for branches with working trees.
-    :param include_revision_history: Write out the list of revisions, and
-        the commit message associated with each
-    :param include_file_revisions: Write out the set of last changed revision
-        for each file.
-    """
-    # TODO: jam 20051228 The python output doesn't actually need to be
-    #       encoded, because it should only generate ascii safe output.
-    info = {'build_date':create_date_str()
-              , 'revno':branch.revno()
-              , 'revision_id':None
-              , 'branch_nick':branch.nick
-              , 'clean':None
-              , 'date':None
-    }
-    revisions = []
+    def generate(self, to_file):
+        info = {'build_date':create_date_str()
+                  , 'revno':None
+                  , 'revision_id':None
+                  , 'branch_nick':self._branch.nick
+                  , 'clean':None
+                  , 'date':None
+        }
+        revisions = []
 
-    # XXX: Compatibility pre/post storage
-    repo = getattr(branch, 'repository', branch)
-
-    last_rev_id = branch.last_revision()
-    if last_rev_id:
-        rev = repo.get_revision(last_rev_id)
-        info['revision_id'] = last_rev_id
-        info['date'] = create_date_str(rev.timestamp, rev.timezone)
-
-    file_revisions = {}
-    clean = True
-    if check_for_clean or include_file_revisions:
-        file_revisions, clean = get_file_revisions(branch, check=check_for_clean)
-
-    if check_for_clean:
-        if clean:
-            info['clean'] = True
+        revision_id = self._get_revision_id()
+        if revision_id is None:
+            info['revno'] = 0
         else:
-            info['clean'] = False
+            info['revno'] = self._branch.revision_id_to_revno(revision_id)
+            info['revision_id'] = revision_id
+            rev = self._branch.repository.get_revision(revision_id)
+            info['date'] = create_date_str(rev.timestamp, rev.timezone)
 
-    info_str = pprint.pformat(info)
-    to_file.write(_py_version_header)
-    to_file.write('version_info = ')
-    to_file.write(info_str)
-    to_file.write('\n\n')
+        if self._check or self._include_file_revs:
+            self._extract_file_revisions()
 
-    if include_revision_history:
-        revs = branch.revision_history()
-        for rev_id in revs:
-            rev = repo.get_revision(rev_id)
-            revisions.append((rev_id, rev.message, rev.timestamp, rev.timezone))
-        revision_str = pprint.pformat(revisions)
-        to_file.write('revisions = ')
-        to_file.write(revision_str)
+        if self._check:
+            if self._clean:
+                info['clean'] = True
+            else:
+                info['clean'] = False
+
+        info_str = pprint.pformat(info)
+        to_file.write(_py_version_header)
+        to_file.write('version_info = ')
+        to_file.write(info_str)
         to_file.write('\n\n')
-    else:
-        to_file.write('revisions = {}\n\n')
 
-    if include_file_revisions:
-        file_rev_str = pprint.pformat(file_revisions)
-        to_file.write('file_revisions = ')
-        to_file.write(file_rev_str)
-        to_file.write('\n\n')
-    else:
-        to_file.write('file_revisions = {}\n\n')
+        if self._include_history:
+            self._extract_revision_history()
+            revision_str = pprint.pformat(self._revision_history_info)
+            to_file.write('revisions = ')
+            to_file.write(revision_str)
+            to_file.write('\n\n')
+        else:
+            to_file.write('revisions = {}\n\n')
 
-    to_file.write(_py_version_footer)
+        if self._include_file_revs:
+            file_rev_str = pprint.pformat(self._file_revisions)
+            to_file.write('file_revisions = ')
+            to_file.write(file_rev_str)
+            to_file.write('\n\n')
+        else:
+            to_file.write('file_revisions = {}\n\n')
+
+        to_file.write(_py_version_footer)
 
 
-version_formats['python'] = generate_python_version
+version_formats['python'] = PythonVersionInfoBuilder
 

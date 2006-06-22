@@ -18,22 +18,22 @@
 Tests for version_info
 """
 
+import imp
 import os
 import sys
 
 from StringIO import StringIO
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.branch import Branch
 from bzrlib.rio import read_stanzas
 
 # TODO: jam 20051228 When part of bzrlib, this should become
 #       from bzrlib.generate_version_info import foo
 
-from generate_version_info import (
-        generate_rio_version, generate_python_version)
+from generate_version_info import (RioVersionInfoBuilder,
+    PythonVersionInfoBuilder)
 
 
-# TODO: Change this to testing get_file_revisions
 class TestIsClean(object):
 
     # TODO: jam 20051228 Test that a branch without a working tree
@@ -97,32 +97,32 @@ class TestIsClean(object):
         check_clean(b)
 
 
-class TestVersionInfo(TestCaseInTempDir):
+class TestVersionInfo(TestCaseWithTransport):
 
     def create_branch(self):
-        os.mkdir('branch')
-        b = Branch.initialize(u'branch')
-        wt = b.working_tree()
+        wt = self.make_branch_and_tree('branch')
         
-        open('branch/a', 'wb').write('a file\n')
+        self.build_tree(['branch/a'])
         wt.add('a')
         wt.commit('a', rev_id='r1')
 
-        open('branch/b', 'wb').write('b file\n')
+        self.build_tree(['branch/b'])
         wt.add('b')
         wt.commit('b', rev_id='r2')
 
         open('branch/a', 'wb').write('new contents\n')
         wt.commit('a2', rev_id='r3')
 
-        return b, wt
+        return wt
 
     def test_rio_version_text(self):
-        b, wt = self.create_branch()
+        wt = self.create_branch()
 
         def regen(**kwargs):
             sio = StringIO()
-            generate_rio_version(b, to_file=sio, **kwargs)
+            builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, 
+                                            **kwargs)
+            builder.generate(sio)
             val = sio.getvalue()
             return val
 
@@ -135,7 +135,7 @@ class TestVersionInfo(TestCaseInTempDir):
         val = regen(check_for_clean=True)
         self.assertContainsRe(val, 'clean: True')
 
-        open('branch/c', 'wb').write('now unclean\n')
+        self.build_tree(['branch/c'])
         val = regen(check_for_clean=True)
         self.assertContainsRe(val, 'clean: False')
         os.remove('branch/c')
@@ -149,11 +149,13 @@ class TestVersionInfo(TestCaseInTempDir):
         self.assertContainsRe(val, 'message: a2')
 
     def test_rio_version(self):
-        b, wt = self.create_branch()
+        wt = self.create_branch()
 
         def regen(**kwargs):
             sio = StringIO()
-            generate_rio_version(b, to_file=sio, **kwargs)
+            builder = RioVersionInfoBuilder(wt.branch, working_tree=wt, 
+                                            **kwargs)
+            builder.generate(sio)
             sio.seek(0)
             stanzas = list(read_stanzas(sio))
             self.assertEqual(1, len(stanzas))
@@ -173,7 +175,7 @@ class TestVersionInfo(TestCaseInTempDir):
         stanza = regen(check_for_clean=True)
         self.assertEqual(['True'], stanza.get_all('clean'))
 
-        open('branch/c', 'wb').write('now unclean\n')
+        self.build_tree(['branch/c'])
         stanza = regen(check_for_clean=True, include_file_revisions=True)
         self.assertEqual(['False'], stanza.get_all('clean'))
 
@@ -189,8 +191,8 @@ class TestVersionInfo(TestCaseInTempDir):
         self.assertEqual(['a', 'b', 'a2'], revision_stanza.get_all('message'))
         self.assertEqual(3, len(revision_stanza.get_all('date')))
 
-        open('branch/a', 'ab').write('adding some more stuff\n')
-        open('branch/c', 'wb').write('new file c\n')
+        # a was modified, so it should show up modified again
+        self.build_tree(['branch/a', 'branch/c'])
         wt.add('c')
         wt.rename_one('b', 'd')
         stanza = regen(check_for_clean=True, include_file_revisions=True)
@@ -209,18 +211,17 @@ class TestVersionInfo(TestCaseInTempDir):
                          file_rev_stanza.get_all('revision'))
 
     def test_python_version(self):
-        b, wt = self.create_branch()
+        wt = self.create_branch()
 
         def regen(**kwargs):
             outf = open('test_version_information.py', 'wb')
-            generate_python_version(b, to_file=outf, **kwargs)
+            builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt, 
+                                               **kwargs)
+            builder.generate(outf)
             outf.close()
-            try:
-                sys.path.append(os.getcwdu())
-                import test_version_information as tvi
-                reload(tvi)
-            finally:
-                sys.path.pop()
+            module_info = imp.find_module('test_version_information',
+                                          [os.getcwdu()])
+            tvi = imp.load_module('tvi', *module_info)
             # Make sure the module isn't cached
             sys.modules.pop('tvi', None)
             sys.modules.pop('test_version_information', None)
@@ -243,7 +244,7 @@ class TestVersionInfo(TestCaseInTempDir):
         tvi = regen(check_for_clean=True)
         self.assertEqual(True, tvi.version_info['clean'])
 
-        open('branch/c', 'wb').write('now unclean\n')
+        self.build_tree(['branch/c'])
         tvi = regen(check_for_clean=True, include_file_revisions=True)
         self.assertEqual(False, tvi.version_info['clean'])
         self.assertEqual(['a', 'b', 'c'], sorted(tvi.file_revisions.keys()))
@@ -258,8 +259,8 @@ class TestVersionInfo(TestCaseInTempDir):
                                    in tvi.revisions] 
         self.assertEqual([('r1', 'a'), ('r2', 'b'), ('r3', 'a2')], rev_info)
 
-        open('branch/a', 'ab').write('adding some more stuff\n')
-        open('branch/c', 'wb').write('new file c\n')
+        # a was modified, so it should show up modified again
+        self.build_tree(['branch/a', 'branch/c'])
         wt.add('c')
         wt.rename_one('b', 'd')
         tvi = regen(check_for_clean=True, include_file_revisions=True)
