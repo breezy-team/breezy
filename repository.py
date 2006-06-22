@@ -226,7 +226,7 @@ class SvnRepository(Repository):
 
     def get_ancestry(self, revision_id):
         if revision_id is None: # FIXME: Is this correct?
-            return []
+            return [None]
 
         #FIXME: Find not just direct predecessors 
         # but also branches from which this branch was copied
@@ -234,7 +234,7 @@ class SvnRepository(Repository):
 
         self._ancestry = [None]
 
-        for (paths, rev, _, _, _) in self._log.get_branch_log(path, 0, revnum - 1, 1, False):
+        for (paths, rev, _, _, _) in self._log.get_branch_log(path, 0, revnum - 1, 0, False):
             self._ancestry.append(self.generate_revision_id(rev, path))
 
         return self._ancestry

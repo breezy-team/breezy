@@ -85,3 +85,25 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertEqual(rev.revision_id,"svn:2@%s-" % repository.uuid)
         self.assertEqual(author, rev.committer)
 
+    def test_get_ancestry(self):
+        repos_url = self.make_client('d', 'dc')
+        bzrdir = BzrDir.open("svn+%s" % repos_url)
+        repository = bzrdir.open_repository()
+        self.assertRaises(NoSuchRevision, repository.get_revision, "nonexisting")
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/foo': "data2"})
+        self.client_commit("dc", "Second Message")
+        self.build_tree({'dc/foo': "data3"})
+        self.client_commit("dc", "Third Message")
+        bzrdir = BzrDir.open("svn+%s" % repos_url)
+        repository = bzrdir.open_repository()
+        self.assertEqual([None, "svn:1@%s-" % repository.uuid, "svn:2@%s-" % repository.uuid],
+                repository.get_ancestry("svn:3@%s-" % repository.uuid))
+        self.assertEqual([None, "svn:1@%s-" % repository.uuid], 
+                repository.get_ancestry("svn:2@%s-" % repository.uuid))
+        self.assertEqual([None],
+                repository.get_ancestry("svn:1@%s-" % repository.uuid))
+        self.assertEqual([None], repository.get_ancestry(None))
+
