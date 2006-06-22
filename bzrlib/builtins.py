@@ -2417,7 +2417,8 @@ class cmd_plugins(Command):
 class cmd_testament(Command):
     """Show testament (signing-form) of a revision."""
     takes_options = ['revision', 'long', 
-                     Option('strict', help='Produce a strict testament')]
+                     Option('strict', help='Produce a strict-format'
+                            ' testament')]
     takes_args = ['branch?']
     @display_command
     def run(self, branch=u'.', revision=None, long=False, strict=False):

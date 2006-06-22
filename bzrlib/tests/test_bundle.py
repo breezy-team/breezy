@@ -311,7 +311,7 @@ class CSetTester(TestCaseInTempDir):
                                bundle_txt)
         bundle_txt.seek(0)
         self.assertEqual(bundle_txt.readline(), 
-                         '# Bazaar revision bundle v0.7\n')
+                         '# Bazaar revision bundle v0.8\n')
         self.assertEqual(bundle_txt.readline(), '#\n')
 
         rev = self.b1.repository.get_revision(rev_id)

@@ -259,6 +259,6 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
     base64.encode(temp, to_file)
     to_file.write('\n')
 
-register_lazy('0.7', 'bzrlib.bundle.serializer.v07', 'BundleSerializerV07')
-register_lazy(None, 'bzrlib.bundle.serializer.v07', 'BundleSerializerV07')
+register_lazy('0.8', 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
+register_lazy(None, 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
 
