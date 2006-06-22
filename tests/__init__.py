@@ -78,8 +78,9 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         """
         olddir = os.path.abspath('.')
         os.chdir(dir)
-        svn.client.commit3(["."], recursive, False, self.client_ctx)
+        info = svn.client.commit3(["."], recursive, False, self.client_ctx)
         os.chdir(olddir)
+        return (info.revision, info.date, info.author)
 
     def client_add(self, relpath, recursive=True):
         """Add specified files to working copy.

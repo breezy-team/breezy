@@ -14,11 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.bzrdir import BzrDir
+from bzrlib.errors import NoSuchRevision
+from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+
 import svn
 import format
 from tests import TestCaseWithSubversionRepository
-from bzrlib.bzrdir import BzrDir
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_format(self):
@@ -60,5 +62,26 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
         bzrdir = BzrDir.open("svn+%s" % repos_url)
         repository = bzrdir.open_repository()
+        self.assertEqual([],
+                repository.revision_parents("svn:1@%s-" % repository.uuid))
         self.assertEqual(["svn:1@%s-" % repository.uuid], 
                 repository.revision_parents("svn:2@%s-" % repository.uuid))
+    
+    def test_get_revision(self):
+        repos_url = self.make_client('d', 'dc')
+        bzrdir = BzrDir.open("svn+%s" % repos_url)
+        repository = bzrdir.open_repository()
+        self.assertRaises(NoSuchRevision, repository.get_revision, "nonexisting")
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/foo': "data2"})
+        (num, date, author) = self.client_commit("dc", "Second Message")
+        bzrdir = BzrDir.open("svn+%s" % repos_url)
+        repository = bzrdir.open_repository()
+        rev = repository.get_revision("svn:2@%s-" % repository.uuid)
+        self.assertEqual(["svn:1@%s-" % repository.uuid],
+                rev.parent_ids)
+        self.assertEqual(rev.revision_id,"svn:2@%s-" % repository.uuid)
+        self.assertEqual(author, rev.committer)
+

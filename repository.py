@@ -14,12 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import bzrlib
 from bzrlib.branch import BranchCheckResult
 from bzrlib.errors import NoSuchRevision, InvalidRevisionId, BzrError
 from bzrlib.graph import Graph
 from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
             ROOT_ID
 from bzrlib.lockable_files import LockableFiles, TransportLock
+import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar
 from bzrlib.repository import Repository
 from bzrlib.revision import Revision
@@ -47,7 +49,7 @@ class SvnInventoryFile(InventoryFile):
 
     def _get_sha1(self):
         text = self.repository._get_file(self.path, self.revnum).read()
-        return bzrlib.osutils.sha_string(text)
+        return osutils.sha_string(text)
 
     def _get_executable(self):
         if not self.has_props:
@@ -112,6 +114,7 @@ class SvnRepository(Repository):
         self.uuid = svn.ra.get_uuid(self.ra)
         self.base = self.url = url
         self.fileid_map = {}
+        self.path_map = {}
         self.text_cache = {}
         self.dir_cache = {}
 
@@ -371,7 +374,7 @@ class SvnRepository(Repository):
         assert isinstance(revid, basestring)
 
         if not revid.startswith("svn:"):
-            raise NoSuchRevision()
+            raise NoSuchRevision(self, revid)
 
         revid = revid[len("svn:"):]
 
@@ -380,7 +383,7 @@ class SvnRepository(Repository):
         uuid = revid[at+1:fash]
 
         if uuid != self.uuid:
-            raise NoSuchRevision()
+            raise NoSuchRevision(self, revid)
 
         return (revid[fash+1:], int(revid[0:at]))
 
@@ -389,14 +392,14 @@ class SvnRepository(Repository):
             self.get_inventory(revision_id))
 
     def get_inventory_sha1(self, revision_id):
-        return bzrlib.osutils.sha_string(self.get_inventory_xml(revision_id))
+        return osutils.sha_string(self.get_inventory_xml(revision_id))
 
     def get_revision_xml(self, revision_id):
         return bzrlib.xml5.serializer_v5.write_revision_to_string(
             self.get_revision(revision_id))
 
     def get_revision_sha1(self, revision_id):
-        return bzrlib.osutils.sha_string(self.get_revision_xml(revision_id))
+        return osutils.sha_string(self.get_revision_xml(revision_id))
 
     def has_signature_for_revision_id(self, revision_id):
         # TODO: Retrieve from 'bzr:gpg-signature'
