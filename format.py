@@ -17,9 +17,11 @@
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import NotBranchError, NotLocalUrl
 from bzrlib.lockable_files import TransportLock
+import bzrlib.urlutils as urlutils
 
 from branch import SvnBranch
 from repository import SvnRepository
+from scheme import NoBranchingScheme
 from transport import SvnRaTransport
 
 from svn.core import SubversionException
@@ -29,11 +31,12 @@ class SvnRemoteAccess(BzrDir):
     def __init__(self, _transport, _format):
         assert isinstance(_transport, SvnRaTransport)
 
-        self.root_transport = self.transport = _transport
         self._format = _format
-
+        self.root_transport = _transport.get_root()
+        # TODO: Allow different branching schemes
+        self.scheme = NoBranchingScheme()
+        self.transport = _transport
         self.url = _transport.base
-        self.branch_path = _transport.path
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         raise NotImplementedError(SvnRemoteAccess.clone)
@@ -49,7 +52,7 @@ class SvnRemoteAccess(BzrDir):
         return result
 
     def open_repository(self):
-        repos = SvnRepository(self, self.transport.root_url)
+        repos = SvnRepository(self, self.root_transport)
         repos._format = self._format
         return repos
 
@@ -65,17 +68,18 @@ class SvnRemoteAccess(BzrDir):
         raise NotImplementedError(self.create_workingtree)
 
     def open_branch(self, unsupported=True):
+        assert self.transport.base.startswith(self.root_transport.base)
+        rel = self.transport.base[len(self.root_transport.base):]
+
+        if not self.scheme.is_branch(rel):
+            raise NotBranchError(path=self.transport.base)
+
         repos = self.open_repository()
 
         try:
-            branch = SvnBranch(repos, self.branch_path)
+            branch = SvnBranch(repos, rel)
         except SubversionException, (msg, num):
-            if num == svn.core.SVN_ERR_RA_ILLEGAL_URL or \
-               num == svn.core.SVN_ERR_WC_NOT_DIRECTORY or \
-               num == svn.core.SVN_ERR_RA_NO_REPOS_UUID or \
-               num == svn.core.SVN_ERR_RA_SVN_REPOS_NOT_FOUND or \
-               num == svn.core.SVN_ERR_FS_NOT_FOUND or \
-               num == svn.core.SVN_ERR_RA_DAV_REQUEST_FAILED:
+            if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
                raise NotBranchError(path=self.url)
             raise
  

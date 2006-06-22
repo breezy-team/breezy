@@ -160,7 +160,7 @@ class SvnLocalAccess(SvnRemoteAccess):
         svn.wc.adm_close(self.wc)
 
     def open_repository(self):
-        repos = OptimizedRepository(self, self.transport.root_url)
+        repos = OptimizedRepository(self, self.root_transport)
         repos._format = self._format
         return repos
 

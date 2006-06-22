@@ -17,12 +17,14 @@
 import svn.core, svn.client
 import format
 from tests import TestCaseWithSubversionRepository
+from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirTestProviderAdapter, BzrDirFormat
+from bzrlib.repository import Repository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_num_revnums(self):
         repos_url = self.make_client('a', 'dc')
-        bzrdir = BzrDir.open(repos_url)
+        bzrdir = BzrDir.open("svn+"+repos_url)
         branch = bzrdir.open_branch()
         self.assertEqual(None, branch.last_revision())
 
@@ -30,7 +32,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
         
-        bzrdir = BzrDir.open(repos_url)
+        bzrdir = BzrDir.open("svn+"+repos_url)
         branch = bzrdir.open_branch()
         repos = bzrdir.open_repository()
 
@@ -39,40 +41,45 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "My Message")
 
-        bzrdir = BzrDir.open(repos_url)
-        branch = bzrdir.open_branch()
-        repos = bzrdir.open_repository()
+        branch = Branch.open("svn+"+repos_url)
+        repos = Repository.open("svn+"+repos_url)
 
         self.assertEqual("svn:2@%s-" % repos.uuid, branch.last_revision())
 
     def test_revision_history(self):
         repos_url = self.make_client('a', 'dc')
 
-        bzrdir = BzrDir.open(repos_url)
-        branch = bzrdir.open_branch()
+        branch = Branch.open("svn+"+repos_url)
         self.assertEqual([], branch.revision_history())
 
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
         
-        bzrdir = BzrDir.open(repos_url)
-        branch = bzrdir.open_branch()
-        repos = bzrdir.open_repository()
+        branch = Branch.open("svn+"+repos_url)
+        repos = Repository.open("svn+"+repos_url)
 
         self.assertEqual(["svn:1@%s-" % repos.uuid], branch.revision_history())
 
         self.build_tree({'dc/foo': "data34"})
         self.client_commit("dc", "My Message")
 
-        bzrdir = BzrDir.open(repos_url)
-        branch = bzrdir.open_branch()
-        repos = bzrdir.open_repository()
+        branch = Branch.open("svn+"+repos_url)
+        repos = Repository.open("svn+"+repos_url)
 
         self.assertEqual([
-            "svn:2@%s-" % repos.uuid,
-            "svn:1@%s-" % repos.uuid], 
+            "svn:1@%s-" % repos.uuid, 
+            "svn:2@%s-" % repos.uuid],
             branch.revision_history())
 
-    def test_local(self):
-        dir = self.make_local_bzrdir('a', 'ac')
+    def test_get_nick(self):
+        repos_url = self.make_client('a', 'dc')
+
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+
+        branch = Branch.open("svn+"+repos_url)
+
+        self.assertIs(None, branch.nick)
+ 

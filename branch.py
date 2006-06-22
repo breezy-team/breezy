@@ -62,11 +62,12 @@ class SvnBranch(Branch):
         return BranchCheckResult(self)
         
     def _generate_revision_history(self):
-        def rcvr(paths, rev):
+        def rcvr((paths, rev)):
             return self.repository.generate_revision_id(rev, self.branch_path)
         self._revision_history = map(rcvr, 
                 self.repository._log.follow_history(self.branch_path, 
                     svn.ra.get_latest_revnum(self.repository.ra)))
+        self._revision_history.reverse()
 
     def set_root_id(self, file_id):
         raise NotImplementedError(self.set_root_id)
@@ -76,7 +77,10 @@ class SvnBranch(Branch):
         return inv.root.file_id
 
     def _get_nick(self):
-        return self.branch_path
+        try:
+            return "/".split(self.branch_path)[-1]
+        except ValueError:
+            return None
 
     nick = property(_get_nick)
 
@@ -85,15 +89,6 @@ class SvnBranch(Branch):
 
     def push_stores(self, branch_to):
         raise NotImplementedError(self.push_stores)
-
-    def get_revision_inventory(self, revision_id):
-        raise NotImplementedError(self.get_revision_inventory)
-
-    def sign_revision(self, revision_id, gpg_strategy):
-        raise NotImplementedError(self.sign_revision)
-
-    def store_revision_signature(self, gpg_strategy, plaintext, revision_id):
-        raise NotImplementedError(self.store_revision_signature)
 
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)

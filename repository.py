@@ -25,6 +25,7 @@ import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar
 from bzrlib.repository import Repository
 from bzrlib.revision import Revision
+from bzrlib.transport import Transport
 from bzrlib.trace import mutter
 
 from svn.core import SubversionException
@@ -99,36 +100,32 @@ class SvnRepository(Repository):
     Provides a simplified interface to a Subversion repository 
     by using the RA (remote access) API from subversion
     """
-    def __init__(self, bzrdir, url):
+    def __init__(self, bzrdir, transport):
         _revision_store = None
 
-        control_files = LockableFiles(bzrdir.transport, '', TransportLock)
+        assert isinstance(transport, Transport)
+
+        control_files = LockableFiles(transport, '', TransportLock)
         Repository.__init__(self, 'Subversion Smart Server', bzrdir, 
             control_files, None, None, None)
 
-        self.pool = svn.core.svn_pool_create(None)
-
-        self._scheme = bzrdir.transport._scheme
-        self.ra = bzrdir.transport.ra
+        self.ra = transport.ra
 
         self.uuid = svn.ra.get_uuid(self.ra)
-        self.base = self.url = url
+        self.base = self.url = transport.base
         self.fileid_map = {}
         self.path_map = {}
         self.text_cache = {}
         self.dir_cache = {}
+        self.scheme = bzrdir.scheme
 
         assert self.url
         assert self.uuid
 
-        mutter("Connected to repository at %s, UUID %s" % (
-            bzrdir.transport.svn_root_url, self.uuid))
+        mutter("Connected to repository , UUID %s" % self.uuid)
 
         self._log = logwalker.LogWalker(self.ra, self.uuid, 
                 svn.ra.get_latest_revnum(self.ra))
-
-    def __del__(self):
-        svn.core.svn_pool_destroy(self.pool)
 
     def _check(self, revision_ids):
         return BranchCheckResult(self)
@@ -194,7 +191,7 @@ class SvnRepository(Repository):
         if self.path_map.has_key(revnum) and self.path_map[revnum].has_key(path):
             return self.path_map[revnum][path]
 
-        (path_branch, filename) = self._scheme.unprefix(path)
+        (path_branch, filename) = self.scheme.unprefix(path)
 
 #        for (paths, rev) in self._log.follow_history(path_branch, revnum):
 #            if copied_from:
@@ -286,7 +283,7 @@ class SvnRepository(Repository):
             bzr_props[name] = svn_props[name].decode('utf8')
 
         rev.timestamp = 1.0 * svn.core.secs_from_timestr(
-            bzr_props[svn.core.SVN_PROP_REVISION_DATE], self.pool)
+            bzr_props[svn.core.SVN_PROP_REVISION_DATE], None)
         rev.timezone = None
 
         rev.committer = bzr_props[svn.core.SVN_PROP_REVISION_AUTHOR]
@@ -428,7 +425,7 @@ class SvnRepository(Repository):
                 self.ra, path.encode('utf8'), 
                 revnum, svn.core.SVN_DIRENT_KIND
                 + svn.core.SVN_DIRENT_CREATED_REV
-                + svn.core.SVN_DIRENT_HAS_PROPS, self.pool)
+                + svn.core.SVN_DIRENT_HAS_PROPS)
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(self, revnum)
@@ -449,7 +446,7 @@ class SvnRepository(Repository):
         stream = StringIO()
         mutter('svn getfile -r %r %s' % (revnum, path))
         (realrevnum, props) = svn.ra.get_file(self.ra, path.encode('utf8'), 
-            revnum, stream, self.pool)
+            revnum, stream)
         if not self.text_cache.has_key(path):
             self.text_cache[path] = {}
 

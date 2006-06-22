@@ -14,15 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from tests import TestCaseWithSubversionRepository
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NoSuchRevision
+from bzrlib.inventory import Inventory
 
-class RemoteAccessTest(TestCaseWithSubversionRepository):
-    def test_create(self):
-        from transport import SvnRaTransport
-        self.assertRaises(NotBranchError, SvnRaTransport, "svn+nonexisting://foo/bar")
+import svn
+import format
+import workingtree
+from tests import TestCaseWithSubversionRepository
 
-        repos_url = self.make_client('a', 'ac')
-        t = SvnRaTransport("svn+%s" % repos_url)
-        self.assertIsInstance(t, SvnRaTransport)
+class TestWorkingTree(TestCaseWithSubversionRepository):
+    pass

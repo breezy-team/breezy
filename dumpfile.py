@@ -19,7 +19,7 @@ from format import SvnRemoteAccess
 
 import bzrlib
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
-from bzrlib.errors import NotBranchError
+from bzrlib.errors import NotBranchError, NoSuchFile
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import TransportLock
 from bzrlib.progress import DummyProgress
@@ -58,10 +58,14 @@ class SvnDumpFile(SvnRemoteAccess):
             last_name = urlutils.basename(transport.base)
             parent_transport = transport
             transport = transport.clone('..')
-            try:
+            from stat import S_ISDIR
+            if not S_ISDIR(transport.stat(last_name).st_mode):
                 dumpfile = transport.get(last_name)
-            except:
-                pass
+
+        if dumpfile.readline() != "SVN-fs-dump-format-version: 2":
+            raise NotBranchError(path=nested_transport.base)
+        
+        dumpfile.seek(0)
 
         repos_path = parent_transport.relpath(nested_transport.base)
 
@@ -92,8 +96,8 @@ class SvnDumpFileFormat(BzrDirFormat):
         format = klass()
 
         # FIXME: This is way inefficient over remote transports..
-        if SvnDumpFile(transport, format):
-            return format
+        #if SvnDumpFile(transport, format):
+        #    return format
 
         raise NotBranchError(path=transport.base)
 

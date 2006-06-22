@@ -43,7 +43,7 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
 
         for (paths, rev) in walker.follow_history("", 1):
-           self.assertTrue(paths.has_key("foo"))
+           self.assertTrue(paths.has_key("/foo"))
            self.assertEqual(rev, 1)
 
     def test_later_update(self):
@@ -56,7 +56,8 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
 
         for (paths, rev) in walker.follow_history("", 1):
-           self.assertTrue(paths.has_key("foo"))
+           self.assertTrue(paths.has_key("/foo"))
            self.assertEqual(rev, 1)
 
-        self.assertRaises(NoSuchRevision, self.follow_history, "", 2)
+        iter = walker.follow_history("", 2)
+        self.assertRaises(NoSuchRevision, list, iter)

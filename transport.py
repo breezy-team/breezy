@@ -16,13 +16,13 @@
 
 from bzrlib.errors import NoSuchFile, NotBranchError
 from bzrlib.transport import Transport
+import bzrlib.urlutils as urlutils
 
 from cStringIO import StringIO
 import os
 
+from svn.core import SubversionException
 import svn.ra
-
-from scheme import NoBranchingScheme
 
 def _create_auth_baton():
     """ Create a Subversion authentication baton.  """
@@ -60,44 +60,30 @@ class SvnRaCallbacks(svn.ra.callbacks2_t):
 class SvnRaTransport(Transport):
     """Fake transport for Subversion-related namespaces. This implements 
     just as much of Transport as is necessary to fool Bazaar-NG. """
-    def __init__(self, url="", ra=None, root_url=None, scheme=None):
+    def __init__(self, url="", ra=None):
+        if not url.startswith("svn+"):
+            url = "svn+%s" % url
         Transport.__init__(self, url)
 
-        if url.startswith("svn://") or \
-           url.startswith("svn+ssh://"):
-            self.svn_url = url
-        else:
+        if url.startswith("svn+") and not url.startswith("svn+ssh://"):
             self.svn_url = url[4:] # Skip svn+
+        else:
+            self.svn_url = url
 
         # The SVN libraries don't like trailing slashes...
         self.svn_url = self.svn_url.rstrip('/')
 
-        callbacks = SvnRaCallbacks()
+        if ra is None:
+            callbacks = SvnRaCallbacks()
+            try:
+                self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, None, None)
+            except SubversionException, (_, num):
+                if num == svn.core.SVN_ERR_RA_ILLEGAL_URL:
+                    raise NotBranchError(path=url)
 
-        if not ra:
-            self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, None, None)
-            self.svn_root_url = svn.ra.get_repos_root(self.ra)
-            if self.svn_root_url != self.svn_url:
-                svn.ra.reparent(self.ra, self.svn_root_url.encode('utf8'))
         else:
             self.ra = ra
-            self.svn_root_url = root_url
-
-        self.root_url = self.svn_root_url
-        if not self.root_url.startswith("svn+"):
-            self.root_url = "svn+%s" % self.root_url
-
-        # Browsed above this directory
-        if not self.svn_url.startswith(self.svn_root_url):
-            raise NotBranchError(url)
-
-        self.path = self.svn_url[len(self.svn_root_url)+1:]
-
-        if not scheme:
-            scheme = NoBranchingScheme()
-
-        self._scheme = scheme
-        self.is_branch_root = scheme.is_branch(self.path)
+            svn.ra.reparent(self.ra, self.svn_url.encode('utf8'))
 
     def has(self, relpath):
         return False
@@ -108,6 +94,9 @@ class SvnRaTransport(Transport):
     def stat(self, relpath):
         return os.stat('.') #FIXME
 
+    def get_root(self):
+        return SvnRaTransport(svn.ra.get_repos_root(self.ra), ra=self.ra)
+
     def listable(self):
         return False
 
@@ -117,13 +106,8 @@ class SvnRaTransport(Transport):
                 pass
         return PhonyLock()
 
-    def clone(self, path):
-        parts = self.svn_url.split("/")
-        
-        # FIXME: Handle more complicated paths
-        if path == '..':
-            parts.pop()
-        elif path != '.':
-            parts.append(path)
+    def clone(self, offset=None):
+        if offset is None:
+            return self.__class__(self.base)
 
-        return SvnRaTransport("/".join(parts), ra=self.ra, root_url=self.svn_root_url)
+        return SvnRaTransport(urlutils.join(self.svn_url, offset), ra=self.ra)

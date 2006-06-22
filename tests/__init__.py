@@ -175,7 +175,14 @@ def test_suite():
 
     suite = TestSuite()
 
-    testmod_names = ['test_repos', 'test_branch', 'test_scheme', 'test_transport', 'test_fileids', 'test_logwalker']
+    testmod_names = [
+            'test_repos', 
+            'test_branch', 
+            'test_fileids', 
+            'test_logwalker',
+            'test_scheme', 
+            'test_transport',
+            'test_workingtree']
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i) for i in testmod_names]))
 
     return suite

@@ -19,6 +19,7 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.progress import ProgressBar
 from bzrlib.trace import mutter
 
+from svn.core import SubversionException
 import svn.ra
 
 import os
@@ -94,8 +95,7 @@ class LogWalker(object):
         pickle.dump(self.revisions, open(self.cache_file, 'w'))
 
     def follow_history(self, branch_path, revnum):
-        l = list(self.get_branch_log(branch_path, revnum, 0, 0, False))
-        for (paths, rev, _, _, _) in l:
+        for (paths, rev, _, _, _) in self.get_branch_log(branch_path, revnum, 0, 0, False):
             yield (paths, rev)
 
     def get_branch_log(self, branch_path, from_revnum, to_revnum, limit, 
@@ -105,7 +105,9 @@ class LogWalker(object):
                 self.fetch_revisions(self.last_revnum, max(from_revnum, to_revnum))
             except SubversionException, (msg, num):
                 if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
-                    raise NoSuchRevision()
+                    raise NoSuchRevision(branch=self, 
+                        revision="Between %d and %d" % (from_revnum, to_revnum))
+                raise
 
         if branch_path is None:
             branch_path = ""
