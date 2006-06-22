@@ -243,7 +243,12 @@ class SvnRepository(Repository):
         (path, revnum) = self.parse_revision_id(revision_id)
 
         mutter("svn check_path -r%d %s" % (revnum, path))
-        kind = svn.ra.check_path(self.ra, path.encode('utf8'), revnum)
+        try:
+            kind = svn.ra.check_path(self.ra, path.encode('utf8'), revnum)
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                return False
+            raise
 
         return (kind != svn.core.svn_node_none)
 
@@ -508,6 +513,8 @@ class SvnRepository(Repository):
 
         transact = destination.get_transaction()
 
+        current = {}
+
         for (paths, revnum, _, _, _) in self._log.get_branch_log(path, 0, until_revnum, 0, False):
             pb.update('copying revision', revnum, until_revnum)
             revid = self.generate_revision_id(revnum, path)
@@ -517,24 +524,26 @@ class SvnRepository(Repository):
 
             #FIXME: use svn.ra.do_update
             for item in paths:
-                (fileid, revid) = self.path_to_file_id(revnum, item)
-                branch_path = self.parse_revision_id(revid)[0]
+                (fileid, orig_revid) = self.path_to_file_id(revnum, item)
+                branch_path = self.parse_revision_id(orig_revid)[0]
                 if branch_path != path:
                     continue
-
-                if paths[item].action == 'A':
-                    weave = weave_store.get_weave_or_empty(fileid, transact)
-                elif paths[item].action == 'M' or paths[item].action == 'R':
-                    weave = weave_store.get_weave(fileid, transact)
-                elif paths[item].action == 'D':
-                    continue
-                else:
-                    raise BzrError("Unknown SVN action '%s'" % 
-                        paths[item].action)
 
                 parents = []
                 if current.has_key(fileid):
                     parents = [current[fileid]]
+
+                current[fileid] = revid
+
+                if paths[item][0] == 'A':
+                    weave = weave_store.get_weave_or_empty(fileid, transact)
+                elif paths[item][0] == 'M' or paths[item][0] == 'R':
+                    weave = weave_store.get_weave(fileid, transact)
+                elif paths[item][0] == 'D':
+                    continue
+                else:
+                    raise BzrError("Unknown SVN action '%s'" % 
+                        paths[item][0])
                 
                 try:
                     stream = self._get_file(item, revnum)
@@ -546,7 +555,7 @@ class SvnRepository(Repository):
                 if stream:
                     stream.seek(0)
                     weave.add_lines(revid, parents, stream.readlines())
-        
+            
         pb.clear()
 
     def fetch(self, source, revision_id=None, pb=None):

@@ -209,3 +209,34 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertTrue(dirents.has_key("foo"))
         self.assertFalse(dirents.has_key("foox"))
 
+    def test_copy_contents_into(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/foo/blo': "data2", "dc/bar/foo": "data3", 'dc/foo/bla': "data"})
+        self.client_add("dc/foo/blo")
+        self.client_add("dc/bar")
+        self.client_commit("dc", "Second Message")
+        bzrdir = BzrDir.open("svn+%s" % repos_url)
+        repository = bzrdir.open_repository()
+
+        to_repos = BzrDir.create_repository("e")
+
+        repository.copy_content_into(to_repos, 
+                "svn:2@%s-" % repository.uuid)
+
+        self.assertTrue(repository.has_revision("svn:2@%s-" % repository.uuid))
+        self.assertTrue(repository.has_revision("svn:1@%s-" % repository.uuid))
+        self.assertTrue(repository.has_revision("svn:0@%s-" % repository.uuid))
+        self.assertFalse(repository.has_revision("svn:4@%s-" % repository.uuid))
+
+    def test_is_shared(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        bzrdir = BzrDir.open("svn+%s" % repos_url)
+        repository = bzrdir.open_repository()
+        self.assertTrue(repository.is_shared())
+

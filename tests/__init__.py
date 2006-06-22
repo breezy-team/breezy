@@ -89,12 +89,12 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         """
         svn.client.add3(relpath, recursive, False, False, self.client_ctx)
 
-    def client_remove(self, relpaths):
+    def client_delete(self, relpaths):
         """Remove specified files from working copy.
 
         :param relpath: Path to the files to remove.
         """
-        raise NotImplementedError(self.client_remove)
+        svn.client.delete2([relpaths], True, self.client_ctx)
 
     def client_copy(self, oldpath, newpath):
         """Copy file in working copy.
@@ -102,7 +102,9 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         :param oldpath: Relative path to original file.
         :param newpath: Relative path to new file.
         """
-        raise NotImplementedError(self.client_copy)
+        rev = svn.core.svn_opt_revision_t()
+        rev.kind = svn.core.svn_opt_revision_head
+        svn.client.copy3(oldpath, rev, newpath, self.client_ctx)
 
     def build_tree(self, files):
         """Create a directory tree.
@@ -173,7 +175,7 @@ def test_suite():
 
     suite = TestSuite()
 
-    testmod_names = ['test_repos', 'test_branch', 'test_scheme', 'test_transport']
+    testmod_names = ['test_repos', 'test_branch', 'test_scheme', 'test_transport', 'test_fileids']
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i) for i in testmod_names]))
 
     return suite
