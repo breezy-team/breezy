@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.config import config_dir
+from bzrlib.errors import NoSuchRevision
 from bzrlib.progress import ProgressBar
 from bzrlib.trace import mutter
 
@@ -86,7 +87,12 @@ class LogWalker(object):
 
     def get_branch_log(self, branch_path, from_revnum, to_revnum, limit, 
                 strict_node_history):
-        self.update_revisions(self.last_revnum, to_revnum)
+        try:
+            self.update_revisions(self.last_revnum, to_revnum)
+        except SubversionException, (msg, num):
+            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                raise NoSuchRevision()
+
         if branch_path is None:
             branch_path = ""
         num = 0

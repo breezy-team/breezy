@@ -418,11 +418,16 @@ class SvnRepository(Repository):
 
         mutter("svn ls -r %d '%r'" % (revnum, path))
 
-        (dirents, _, props) = svn.ra.get_dir2(
+        try:
+            (dirents, _, props) = svn.ra.get_dir2(
                 self.ra, path.encode('utf8'), 
                 revnum, svn.core.SVN_DIRENT_KIND
                 + svn.core.SVN_DIRENT_CREATED_REV
                 + svn.core.SVN_DIRENT_HAS_PROPS, self.pool)
+        except SubversionException, (msg, num):
+            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                raise NoSuchRevision(self, revnum)
+            raise
 
         if not self.dir_cache.has_key(path):
             self.dir_cache[path] = {}
