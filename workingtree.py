@@ -56,7 +56,7 @@ class SvnWorkingTree(WorkingTree):
         pass
 
     def is_control_filename(self, path):
-        return path == '.svn'
+        return svn.wc.is_adm_dir(path)
 
     def get_file_by_path(self, path):
         raise NotImplementedError(self.get_file_by_path)
@@ -75,14 +75,18 @@ class SvnWorkingTree(WorkingTree):
             super(SvnWorkingTree, self).revert(files, old_tree, backups, pb)
             return
         
-        svn.wc.revert([os.path.join(self.basedir, f) for f in files],
+        for f in files:
+            svn.wc.revert(os.path.join(self.basedir, f),
                       self.wc, False, False, None, None)
 
     def move(self, from_paths, to_name):
         revt = svn.core.svn_opt_revision_t()
         revt.kind = svn.core.svn_opt_revision_unspecified
         for entry in from_paths:
-            svn.wc.move(entry, revt, to_name, False, self.wc)
+            svn.wc.copy(os.path.join(self.basedir, entry), 
+                    os.path.join(self.basedir, to_name),
+                    None, None)
+            self.remove([entry])
 
     def rename_one(self, from_rel, to_rel):
         # There is no difference between rename and move in SVN
@@ -93,11 +97,15 @@ class SvnWorkingTree(WorkingTree):
 
     def add(self, files, ids=None):
         for f in files:
-            svn.wc.add2(f, False, self.wc)
+            try:
+                svn.wc.add2(os.path.join(self.basedir, f), self.wc, None, 0, None, None, None)
+            except SubversionException, (_, num):
+                if num != svn.core.SVN_ERR_ENTRY_EXISTS:
+                    raise
             if ids:
                 id = ids.pop()
                 if id:
-                    svn.wc.prop_set2('bzr:id', id, f, False)
+                    svn.wc.prop_set2('bzr:fileid', id, f, False)
 
     def pending_merges(self):
         return []
