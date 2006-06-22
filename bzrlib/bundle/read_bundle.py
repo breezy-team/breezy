@@ -193,7 +193,8 @@ class BundleReader(object):
     def _read(self):
         self._read_header()
         while self._next_line is not None:
-            self._read_revision_header()
+            if not self._read_revision_header():
+                break
             if self._next_line is None:
                 break
             self._read_patches()
@@ -339,6 +340,11 @@ class BundleReader(object):
         """yield the next line, but secretly
         keep 1 extra line for peeking.
         """
+        # FIXME:
+        # The current implementation of this is technically borked
+        # 'self._next()' returns a generator, but there are multiple
+        # calls to it. So if it wasn't for the fact that 'from_file'
+        # keeps track of a current position, this would break
         for line in self.from_file:
             last = self._next_line
             self._next_line = line
@@ -380,12 +386,18 @@ class BundleReader(object):
 
     def _read_revision_header(self):
         self.info.revisions.append(RevisionInfo(None))
+        found_something = False
         for line in self._next():
             # The bzr header is terminated with a blank line
             # which does not start with '#'
             if line is None or line == '\n':
                 break
+            found_something = True
             self._handle_next(line)
+        if not found_something:
+            # Remove the entry we just added, there isn't anything here
+            self.info.revisions.pop()
+        return found_something
 
     def _read_next_entry(self, line, indent=1):
         """Read in a key-value pair
@@ -419,7 +431,7 @@ class BundleReader(object):
         if line is None:
             return
         key, value = self._read_next_entry(line, indent=1)
-        mutter('_handle_next %r => %r' % (key, value))
+        #mutter('_handle_next %r => %r' % (key, value))
         if key is None:
             return
 
@@ -499,11 +511,7 @@ class BundleReader(object):
         self.info.revisions[-1].tree_actions = revision_actions
 
     def _read_footer(self):
-        """Read the rest of the meta information.
-
-        :param first_line:  The previous step iterates past what it
-                            can handle. That extra line is given here.
-        """
+        """Read the rest of the meta information."""
         for line in self._next():
             self._handle_next(line)
             if not self._next_line.startswith('#'):
