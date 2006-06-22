@@ -28,7 +28,20 @@ from cStringIO import StringIO
 cache_dir = os.path.join(config_dir(), 'svn-cache')
 
 class LogWalker(object):
-    def __init__(self, ra, uuid, last_revnum):
+    def __init__(self, ra=None, uuid=None, last_revnum=None, repos_url=None):
+        if not ra:
+            callbacks = svn.ra.callbacks2_t()
+            ra = svn.ra.open2(repos_url.encode('utf8'), callbacks, None, None)
+            root = svn.ra.get_repos_root(ra)
+            if root != repos_url:
+                svn.ra.reparent(ra, root.encode('utf8'))
+
+        if not uuid:
+            uuid = svn.ra.get_uuid(ra)
+
+        if last_revnum is None:
+            last_revnum = svn.ra.get_latest_revnum(ra)
+
         self.cache_file = os.path.join(cache_dir, uuid)
         self.ra = ra
 
@@ -40,10 +53,12 @@ class LogWalker(object):
             self.revisions = {}
             self.saved_revnum = 0
 
-        from_revnum = self.saved_revnum
-        self.update_revisions(from_revnum, last_revnum)
+        if self.saved_revnum < last_revnum:
+            self.fetch_revisions(self.saved_revnum, last_revnum)
+        else:
+            self.last_revnum = self.saved_revnum
 
-    def update_revisions(self, from_revnum, to_revnum):
+    def fetch_revisions(self, from_revnum, to_revnum):
         def rcvr(orig_paths, rev, author, date, message, pool):
             self.pb.update('fetching svn revision info', rev, to_revnum)
             paths = {}
@@ -61,10 +76,8 @@ class LogWalker(object):
                     'message': message
                     }
 
-        self.last_revnum = to_revnum
-        if self.saved_revnum == to_revnum:
-            return
         mutter('log -r %r:%r /' % (self.saved_revnum, to_revnum))
+        self.last_revnum = to_revnum
         self.pb = ProgressBar()
         svn.ra.get_log(self.ra, ["/"], self.saved_revnum, to_revnum, 0, True, True, rcvr)
         self.pb.clear()
@@ -87,11 +100,12 @@ class LogWalker(object):
 
     def get_branch_log(self, branch_path, from_revnum, to_revnum, limit, 
                 strict_node_history):
-        try:
-            self.update_revisions(self.last_revnum, to_revnum)
-        except SubversionException, (msg, num):
-            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
-                raise NoSuchRevision()
+        if max(from_revnum, to_revnum) > self.last_revnum:
+            try:
+                self.fetch_revisions(self.last_revnum, max(from_revnum, to_revnum))
+            except SubversionException, (msg, num):
+                if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                    raise NoSuchRevision()
 
         if branch_path is None:
             branch_path = ""
