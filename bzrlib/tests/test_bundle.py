@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from StringIO import StringIO
+from cStringIO import StringIO
 
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
@@ -25,7 +25,8 @@ from bzrlib.diff import internal_diff
 from bzrlib.errors import BzrError, TestamentMismatch, NotABundle
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
-from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
+from bzrlib.tests import (TestCaseInTempDir, TestCaseWithTransport,
+                          TestCase, TestSkipped)
 from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
@@ -294,11 +295,9 @@ class BTreeTester(TestCase):
         self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'd', 'e'])
 
 
-class CSetTester(TestCaseInTempDir):
+class BundleTester(TestCaseInTempDir):
 
     def create_bundle_text(self, base_rev_id, rev_id):
-        from cStringIO import StringIO
-
         bundle_txt = StringIO()
         rev_ids = write_bundle(self.b1.repository, rev_id, base_rev_id, 
                                bundle_txt)
@@ -677,3 +676,69 @@ class CSetTester(TestCaseInTempDir):
         self.assertNotContainsRe(bundle_file.getvalue(), 'two')
         self.assertContainsRe(bundle_file.getvalue(), 'one')
         self.assertContainsRe(bundle_file.getvalue(), 'three')
+
+
+class MungedBundleTester(TestCaseWithTransport):
+
+    def build_test_bundle(self):
+        wt = self.make_branch_and_tree('b1')
+
+        self.build_tree(['b1/one'])
+        wt.add('one')
+        wt.commit('add one', rev_id='a@cset-0-1')
+        self.build_tree(['b1/two'])
+        wt.add('two')
+        wt.commit('add two', rev_id='a@cset-0-2')
+
+        bundle_txt = StringIO()
+        rev_ids = write_bundle(wt.branch.repository, 'a@cset-0-2',
+                               'a@cset-0-1', bundle_txt)
+        self.assertEqual(['a@cset-0-2'], rev_ids)
+        bundle_txt.seek(0, 0)
+        return bundle_txt
+
+    def check_valid(self, bundle):
+        """Check that after whatever munging, the final object is valid."""
+        self.assertEqual(['a@cset-0-2'], 
+            [r.revision_id for r in bundle.info.real_revisions])
+
+    def test_extra_whitespace(self):
+        bundle_txt = self.build_test_bundle()
+
+        # Seek to the end of the file
+        # Adding one extra newline used to give us
+        # TypeError: float() argument must be a string or a number
+        bundle_txt.seek(0, 2)
+        bundle_txt.write('\n')
+        bundle_txt.seek(0)
+
+        bundle = BundleReader(bundle_txt)
+        self.check_valid(bundle)
+
+    def test_extra_whitespace_2(self):
+        bundle_txt = self.build_test_bundle()
+
+        # Seek to the end of the file
+        # Adding two extra newlines used to give us
+        # MalformedPatches: The first line of all patches should be ...
+        bundle_txt.seek(0, 2)
+        bundle_txt.write('\n\n')
+        bundle_txt.seek(0)
+
+        bundle = BundleReader(bundle_txt)
+        self.check_valid(bundle)
+
+    def test_missing_trailing_whitespace(self):
+        bundle_txt = self.build_test_bundle()
+
+        # Remove a trailing newline, it shouldn't kill the parser
+        raw = bundle_txt.getvalue()
+        # The contents of the bundle don't have to be this, but this
+        # test is concerned with the exact case where the serializer
+        # creates a blank line at the end, and fails if that
+        # line is stripped
+        self.assertEqual('\n\n', raw[-2:])
+        bundle_text = StringIO(raw[:-1])
+
+        bundle = BundleReader(bundle_txt)
+        self.check_valid(bundle)
