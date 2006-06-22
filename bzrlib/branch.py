@@ -401,6 +401,24 @@ class Branch(object):
         """
         raise NotImplementedError('get_parent is abstract')
 
+    def get_submit_branch(self):
+        """Return the submit location of the branch.
+
+        This is the default location for bundle.  The usual
+        pattern is that the user can override it by specifying a
+        location.
+        """
+        return self.get_config().get_user_option('submit_branch')
+
+    def set_submit_branch(self, location):
+        """Return the submit location of the branch.
+
+        This is the default location for bundle.  The usual
+        pattern is that the user can override it by specifying a
+        location.
+        """
+        self.get_config().set_user_option('submit_branch', location)
+
     def get_push_location(self):
         """Return the None or the location to push this branch to."""
         raise NotImplementedError('get_push_location is abstract')

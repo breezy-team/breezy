@@ -188,6 +188,15 @@ class TestBranch(TestCaseWithBranch):
         source = self.make_branch('source')
         target = source.bzrdir.sprout(self.get_url('target')).open_branch()
         self.assertEqual(source.bzrdir.root_transport.base, target.get_parent())
+
+    def test_submit_branch(self):
+        """Submit location can be queried and set"""
+        branch = self.make_branch('branch')
+        self.assertEqual(branch.get_submit_branch(), None)
+        branch.set_submit_branch('sftp://example.com')
+        self.assertEqual(branch.get_submit_branch(), 'sftp://example.com')
+        branch.set_submit_branch('sftp://example.net')
+        self.assertEqual(branch.get_submit_branch(), 'sftp://example.net')
         
     def test_record_initial_ghost_merge(self):
         """A pending merge with no revision present is still a merge."""
