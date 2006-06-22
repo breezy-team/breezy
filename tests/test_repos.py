@@ -32,7 +32,6 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
 
     def test_url(self):
         """ Test repository URL is kept """
-
         bzrdir = self.make_local_bzrdir('b', 'bc')
         self.assertTrue(isinstance(bzrdir, BzrDir))
 
@@ -43,3 +42,23 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         repository = bzrdir.open_repository()
         fs = self.open_fs('c')
         self.assertEqual(svn.fs.get_uuid(fs), repository.uuid)
+
+    def test_has_revision(self):
+        bzrdir = self.make_client_and_bzrdir('d', 'dc')
+        repository = bzrdir.open_repository()
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.assertTrue(repository.has_revision("svn:1@%s-" % repository.uuid))
+
+    def test_revision_parents(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/foo': "data2"})
+        self.client_commit("dc", "Second Message")
+        bzrdir = BzrDir.open("svn+%s" % repos_url)
+        repository = bzrdir.open_repository()
+        self.assertEqual(["svn:1@%s-" % repository.uuid], 
+                repository.revision_parents("svn:2@%s-" % repository.uuid))

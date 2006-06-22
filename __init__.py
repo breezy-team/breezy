@@ -19,14 +19,13 @@ Support for foreign branches (Subversion)
 """
 import os
 import sys
+import unittest
 
 import branch
 import dumpfile
 import format
 import transport
 import workingtree
-
-sys.path.append(os.path.dirname(__file__))
 
 from bzrlib.transport import register_transport
 register_transport('svn:', transport.SvnRaTransport)
@@ -49,4 +48,11 @@ def test_suite():
     suite.addTest(tests.test_suite())
 
     return suite
+
+if __name__ == '__main__':
+    from unittest import TextTestRunner
+    runner = TextTestRunner()
+    runner.run(test_suite())
+else:
+    sys.path.append(os.path.dirname(__file__))
 

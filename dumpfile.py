@@ -23,6 +23,7 @@ from bzrlib.errors import NotBranchError
 from bzrlib.inventory import Inventory
 from bzrlib.lockable_files import TransportLock
 from bzrlib.progress import DummyProgress
+from bzrlib.transport import Transport
 import bzrlib.urlutils as urlutils
 import bzrlib.osutils as osutils
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat

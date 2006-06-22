@@ -14,16 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import svn.core, svn.client
-import format
+import transport
 from tests import TestCaseWithSubversionRepository
-from bzrlib.bzrdir import BzrDir, BzrDirTestProviderAdapter, BzrDirFormat
+from bzrlib.bzrdir import BzrDir
 
-class WorkingSubversionBranch(TestCaseWithSubversionRepository):
-    def test_num_revnums(self):
-        bzrdir = self.make_local_bzrdir('a', 'ac')
-        branch = bzrdir.open_branch()
-        self.assertEqual(None, branch.last_revision())
-
-    def test_local(self):
-        dir = self.make_local_bzrdir('a', 'ac')
+class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
+    pass

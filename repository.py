@@ -121,10 +121,8 @@ class SvnRepository(Repository):
         mutter("Connected to repository at %s, UUID %s" % (
             bzrdir.transport.svn_root_url, self.uuid))
 
-        self.latest_revnum = svn.ra.get_latest_revnum(self.ra)
-
         self._log = logwalker.LogWalker(self.ra, self.uuid, 
-                self.latest_revnum)
+                svn.ra.get_latest_revnum(self.ra))
 
     def __del__(self):
         svn.core.svn_pool_destroy(self.pool)
@@ -226,18 +224,15 @@ class SvnRepository(Repository):
     def get_ancestry(self, revision_id):
         if revision_id is None: # FIXME: Is this correct?
             return []
+
         #FIXME: Find not just direct predecessors 
         # but also branches from which this branch was copied
         (path, revnum) = self.parse_revision_id(revision_id)
 
         self._ancestry = [None]
 
-        # FIXME: use get_file_revs() ?
-        def rcvr(paths, rev, *keys):
-            return self.generate_revision_id(rev, path)
-        
-        self._ancestry.append(
-            map(rcvr, self._log.get_branch_log(path, 0, revnum - 1, 1, False)))
+        for (paths, rev, _, _, _) in self._log.get_branch_log(path, 0, revnum - 1, 1, False):
+            self._ancestry.append(self.generate_revision_id(rev, path))
 
         return self._ancestry
 
@@ -254,7 +249,7 @@ class SvnRepository(Repository):
 
         # TODO: Use get_file_revs()
         # TODO: Read 'bzr:parents' from the revprops
-        def rcvr(paths, rev, *args):
+        def rcvr((paths, rev, a, b, c)):
             return self.generate_revision_id(rev, path)
 
         parent_ids = map(rcvr, self._log.get_branch_log(path, revnum - 1, 0, 1, False))
@@ -497,7 +492,7 @@ class SvnRepository(Repository):
 
         if revision_id is None:
             path = None
-            until_revnum = self.latest_revnum
+            until_revnum = svn.ra.get_latest_revnum(self.ra)
         else:
             (path, until_revnum) = self.parse_revision_id(revision_id)
         
