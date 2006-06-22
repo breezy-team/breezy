@@ -271,7 +271,7 @@ class Commit(object):
                     raise StrictCommitFailed()
                    
             if self.config is None:
-                self.config = bzrlib.config.BranchConfig(self.branch)
+                self.config = self.branch.get_config()
       
             if isinstance(message, str):
                 message = message.decode(bzrlib.user_encoding)
