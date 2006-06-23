@@ -96,7 +96,6 @@ Example usage:
 
 import os
 import time
-from warnings import warn
 from StringIO import StringIO
 
 import bzrlib.config
@@ -106,7 +105,6 @@ from bzrlib.errors import (
         LockBreakMismatch,
         LockBroken,
         LockContention,
-        LockError,
         LockNotHeld,
         NoSuchFile,
         PathError,
