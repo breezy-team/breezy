@@ -21,11 +21,9 @@ import re
 import sys
 
 import bzrlib
-import bzrlib.bzrdir as bzrdir
+from bzrlib import bzrdir, errors, repository
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.commit import commit
 from bzrlib.delta import TreeDelta
-import bzrlib.errors as errors
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,

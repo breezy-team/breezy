@@ -541,9 +541,9 @@ class TreeTransform(object):
         if child_id is None:
             return lexists(self._tree.abspath(childpath))
         else:
-            if tt.final_parent(child_id) != parent_id:
+            if self.final_parent(child_id) != parent_id:
                 return False
-            if child_id in tt._removed_contents:
+            if child_id in self._removed_contents:
                 # XXX What about dangling file-ids?
                 return False
             else:

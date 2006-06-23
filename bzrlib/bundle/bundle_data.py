@@ -21,14 +21,13 @@ from cStringIO import StringIO
 import os
 import pprint
 
-from bzrlib.bundle.common import get_header, header_str
 import bzrlib.errors
 from bzrlib.errors import (TestamentMismatch, BzrError, 
                            MalformedHeader, MalformedPatches, NotABundle)
 from bzrlib.inventory import (Inventory, InventoryEntry,
                               InventoryDirectory, InventoryFile,
                               InventoryLink, ROOT_ID)
-from bzrlib.osutils import sha_file, sha_string
+from bzrlib.osutils import sha_file, sha_string, pathjoin
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.testament import StrictTestament
 from bzrlib.trace import mutter, warning
@@ -168,62 +167,22 @@ class BundleInfo(object):
                 return r
         raise KeyError(revision_id)
 
+    def revision_tree(self, repository, revision_id, base=None):
+        revision = self.get_revision(revision_id)
+        base = self.get_base(revision)
+        assert base != revision_id
+        self._validate_references_from_repository(repository)
+        revision_info = self.get_revision_info(revision_id)
+        inventory_revision_id = revision_id
+        bundle_tree = BundleTree(repository.revision_tree(base), 
+                                  inventory_revision_id)
+        self._update_tree(bundle_tree, revision_id)
 
-class BundleReader(object):
-    """This class reads in a bundle from a file, and returns
-    a Bundle object, which can then be applied against a tree.
-    """
-    def __init__(self, from_file):
-        """Read in the bundle from the file.
+        inv = bundle_tree.inventory
+        self._validate_inventory(inv, revision_id)
+        self._validate_revision(inv, revision_id)
 
-        :param from_file: A file-like object (must have iterator support).
-        """
-        object.__init__(self)
-        self.from_file = iter(from_file)
-        self._next_line = None
-        
-        self.info = BundleInfo()
-        # We put the actual inventory ids in the footer, so that the patch
-        # is easier to read for humans.
-        # Unfortunately, that means we need to read everything before we
-        # can create a proper bundle.
-        self._read()
-        self._validate()
-
-    def _read(self):
-        self._read_header()
-        while self._next_line is not None:
-            self._read_revision_header()
-            if self._next_line is None:
-                break
-            self._read_patches()
-            self._read_footer()
-
-    def _validate(self):
-        """Make sure that the information read in makes sense
-        and passes appropriate checksums.
-        """
-        # Fill in all the missing blanks for the revisions
-        # and generate the real_revisions list.
-        self.info.complete_info()
-
-    def _validate_revision(self, inventory, revision_id):
-        """Make sure all revision entries match their checksum."""
-
-        # This is a mapping from each revision id to it's sha hash
-        rev_to_sha1 = {}
-        
-        rev = self.info.get_revision(revision_id)
-        rev_info = self.info.get_revision_info(revision_id)
-        assert rev.revision_id == rev_info.revision_id
-        assert rev.revision_id == revision_id
-        sha1 = StrictTestament(rev, inventory).as_sha1()
-        if sha1 != rev_info.sha1:
-            raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
-        if rev_to_sha1.has_key(rev.revision_id):
-            raise BzrError('Revision {%s} given twice in the list'
-                    % (rev.revision_id))
-        rev_to_sha1[rev.revision_id] = sha1
+        return bundle_tree
 
     def _validate_references_from_repository(self, repository):
         """Now that we have a repository which should have some of the
@@ -251,11 +210,11 @@ class BundleReader(object):
         # All of the contained revisions were checked
         # in _validate_revisions
         checked = {}
-        for rev_info in self.info.revisions:
+        for rev_info in self.revisions:
             checked[rev_info.revision_id] = True
             add_sha(rev_to_sha, rev_info.revision_id, rev_info.sha1)
                 
-        for (rev, rev_info) in zip(self.info.real_revisions, self.info.revisions):
+        for (rev, rev_info) in zip(self.real_revisions, self.revisions):
             add_sha(inv_to_sha, rev_info.revision_id, rev_info.inventory_sha1)
 
         count = 0
@@ -305,212 +264,30 @@ class BundleReader(object):
         s = serializer_v5.write_inventory_to_string(inv)
         sha1 = sha_string(s)
         # Target revision is the last entry in the real_revisions list
-        rev = self.info.get_revision(revision_id)
+        rev = self.get_revision(revision_id)
         assert rev.revision_id == revision_id
         if sha1 != rev.inventory_sha1:
             open(',,bogus-inv', 'wb').write(s)
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
-    def get_bundle(self, repository):
-        """Return the meta information, and a Bundle tree which can
-        be used to populate the local stores and working tree, respectively.
-        """
-        return self.info, self.revision_tree(repository, self.info.target)
+    def _validate_revision(self, inventory, revision_id):
+        """Make sure all revision entries match their checksum."""
 
-    def revision_tree(self, repository, revision_id, base=None):
-        revision = self.info.get_revision(revision_id)
-        base = self.info.get_base(revision)
-        assert base != revision_id
-        self._validate_references_from_repository(repository)
-        revision_info = self.info.get_revision_info(revision_id)
-        inventory_revision_id = revision_id
-        bundle_tree = BundleTree(repository.revision_tree(base), 
-                                  inventory_revision_id)
-        self._update_tree(bundle_tree, revision_id)
-
-        inv = bundle_tree.inventory
-        self._validate_inventory(inv, revision_id)
-        self._validate_revision(inv, revision_id)
-
-        return bundle_tree
-
-    def _next(self):
-        """yield the next line, but secretly
-        keep 1 extra line for peeking.
-        """
-        for line in self.from_file:
-            last = self._next_line
-            self._next_line = line
-            if last is not None:
-                #mutter('yielding line: %r' % last)
-                yield last
-        last = self._next_line
-        self._next_line = None
-        #mutter('yielding line: %r' % last)
-        yield last
-
-    def _read_header(self):
-        """Read the bzr header"""
-        header = get_header()
-        found = False
-        for line in self._next():
-            if found:
-                # not all mailers will keep trailing whitespace
-                if line == '#\n':
-                    line = '# \n'
-                if (not line.startswith('# ') or not line.endswith('\n')
-                        or line[2:-1].decode('utf-8') != header[0]):
-                    raise MalformedHeader('Found a header, but it'
-                        ' was improperly formatted')
-                header.pop(0) # We read this line.
-                if not header:
-                    break # We found everything.
-            elif (line.startswith('#') and line.endswith('\n')):
-                line = line[1:-1].strip().decode('utf-8')
-                if line[:len(header_str)] == header_str:
-                    if line == header[0]:
-                        found = True
-                    else:
-                        raise MalformedHeader('Found what looks like'
-                                ' a header, but did not match')
-                    header.pop(0)
-        else:
-            raise NotABundle('Did not find an opening header')
-
-    def _read_revision_header(self):
-        self.info.revisions.append(RevisionInfo(None))
-        for line in self._next():
-            # The bzr header is terminated with a blank line
-            # which does not start with '#'
-            if line is None or line == '\n':
-                break
-            self._handle_next(line)
-
-    def _read_next_entry(self, line, indent=1):
-        """Read in a key-value pair
-        """
-        if not line.startswith('#'):
-            raise MalformedHeader('Bzr header did not start with #')
-        line = line[1:-1].decode('utf-8') # Remove the '#' and '\n'
-        if line[:indent] == ' '*indent:
-            line = line[indent:]
-        if not line:
-            return None, None# Ignore blank lines
-
-        loc = line.find(': ')
-        if loc != -1:
-            key = line[:loc]
-            value = line[loc+2:]
-            if not value:
-                value = self._read_many(indent=indent+2)
-        elif line[-1:] == ':':
-            key = line[:-1]
-            value = self._read_many(indent=indent+2)
-        else:
-            raise MalformedHeader('While looking for key: value pairs,'
-                    ' did not find the colon %r' % (line))
-
-        key = key.replace(' ', '_')
-        #mutter('found %s: %s' % (key, value))
-        return key, value
-
-    def _handle_next(self, line):
-        if line is None:
-            return
-        key, value = self._read_next_entry(line, indent=1)
-        mutter('_handle_next %r => %r' % (key, value))
-        if key is None:
-            return
-
-        revision_info = self.info.revisions[-1]
-        if hasattr(revision_info, key):
-            if getattr(revision_info, key) is None:
-                setattr(revision_info, key, value)
-            else:
-                raise MalformedHeader('Duplicated Key: %s' % key)
-        else:
-            # What do we do with a key we don't recognize
-            raise MalformedHeader('Unknown Key: "%s"' % key)
-    
-    def _read_many(self, indent):
-        """If a line ends with no entry, that means that it should be
-        followed with multiple lines of values.
-
-        This detects the end of the list, because it will be a line that
-        does not start properly indented.
-        """
-        values = []
-        start = '#' + (' '*indent)
-
-        if self._next_line is None or self._next_line[:len(start)] != start:
-            return values
-
-        for line in self._next():
-            values.append(line[len(start):-1].decode('utf-8'))
-            if self._next_line is None or self._next_line[:len(start)] != start:
-                break
-        return values
-
-    def _read_one_patch(self):
-        """Read in one patch, return the complete patch, along with
-        the next line.
-
-        :return: action, lines, do_continue
-        """
-        #mutter('_read_one_patch: %r' % self._next_line)
-        # Peek and see if there are no patches
-        if self._next_line is None or self._next_line.startswith('#'):
-            return None, [], False
-
-        first = True
-        lines = []
-        for line in self._next():
-            if first:
-                if not line.startswith('==='):
-                    raise MalformedPatches('The first line of all patches'
-                        ' should be a bzr meta line "==="'
-                        ': %r' % line)
-                action = line[4:-1].decode('utf-8')
-            elif line.startswith('... '):
-                action += line[len('... '):-1].decode('utf-8')
-
-            if (self._next_line is not None and 
-                self._next_line.startswith('===')):
-                return action, lines, True
-            elif self._next_line is None or self._next_line.startswith('#'):
-                return action, lines, False
-
-            if first:
-                first = False
-            elif not line.startswith('... '):
-                lines.append(line)
-
-        return action, lines, False
-            
-    def _read_patches(self):
-        do_continue = True
-        revision_actions = []
-        while do_continue:
-            action, lines, do_continue = self._read_one_patch()
-            if action is not None:
-                revision_actions.append((action, lines))
-        assert self.info.revisions[-1].tree_actions is None
-        self.info.revisions[-1].tree_actions = revision_actions
-
-    def _read_footer(self):
-        """Read the rest of the meta information.
-
-        :param first_line:  The previous step iterates past what it
-                            can handle. That extra line is given here.
-        """
-        for line in self._next():
-            self._handle_next(line)
-            if not self._next_line.startswith('#'):
-                self._next().next()
-                break
-            if self._next_line is None:
-                break
+        # This is a mapping from each revision id to it's sha hash
+        rev_to_sha1 = {}
+        
+        rev = self.get_revision(revision_id)
+        rev_info = self.get_revision_info(revision_id)
+        assert rev.revision_id == rev_info.revision_id
+        assert rev.revision_id == revision_id
+        sha1 = StrictTestament(rev, inventory).as_sha1()
+        if sha1 != rev_info.sha1:
+            raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
+        if rev_to_sha1.has_key(rev.revision_id):
+            raise BzrError('Revision {%s} given twice in the list'
+                    % (rev.revision_id))
+        rev_to_sha1[rev.revision_id] = sha1
 
     def _update_tree(self, bundle_tree, revision_id):
         """This fills out a BundleTree based on the information
@@ -624,7 +401,7 @@ class BundleReader(object):
             'modified':modified
         }
         for action_line, lines in \
-            self.info.get_revision_info(revision_id).tree_actions:
+            self.get_revision_info(revision_id).tree_actions:
             first = action_line.find(' ')
             if first == -1:
                 raise BzrError('Bogus action line'
@@ -729,7 +506,7 @@ class BundleTree(Tree):
             if old_dir is None:
                 old_path = None
             else:
-                old_path = os.path.join(old_dir, basename)
+                old_path = pathjoin(old_dir, basename)
         else:
             old_path = new_path
         #If the new path wasn't in renamed, the old one shouldn't be in
@@ -755,7 +532,7 @@ class BundleTree(Tree):
             if new_dir is None:
                 new_path = None
             else:
-                new_path = os.path.join(new_dir, basename)
+                new_path = pathjoin(new_dir, basename)
         else:
             new_path = old_path
         #If the old path wasn't in renamed, the new one shouldn't be in

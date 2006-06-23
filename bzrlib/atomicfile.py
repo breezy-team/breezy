@@ -14,11 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-
+import errno
+import os
 
 from warnings import warn
 from bzrlib.osutils import rename
-import errno
 
 class AtomicFile(object):
     """A file that does an atomic-rename to move into place.
@@ -35,7 +35,7 @@ class AtomicFile(object):
         if mode != 'wb' and mode != 'wt':
             raise ValueError("invalid AtomicFile mode %r" % mode)
 
-        import os, socket
+        import socket
         self.tmpfilename = '%s.%d.%s.tmp' % (filename, os.getpid(),
                                              socket.gethostname())
         self.realfilename = filename
@@ -58,8 +58,7 @@ class AtomicFile(object):
 
     def commit(self):
         """Close the file and move to final name."""
-        import sys, os
-        
+
         if self.closed:
             raise Exception('%r is already closed' % self)
 
@@ -81,7 +80,6 @@ class AtomicFile(object):
 
     def abort(self):
         """Discard temporary file without committing changes."""
-        import os
 
         if self.closed:
             raise Exception('%r is already closed' % self)

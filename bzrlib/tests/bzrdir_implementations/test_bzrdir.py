@@ -1,4 +1,4 @@
-# (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,14 +19,13 @@
 from cStringIO import StringIO
 import errno
 import os
-from stat import *
+from stat import S_ISDIR
 import sys
 
 import bzrlib.branch
 import bzrlib.bzrdir as bzrdir
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 from bzrlib.check import check
-from bzrlib.commit import commit
 import bzrlib.errors as errors
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,

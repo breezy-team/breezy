@@ -20,9 +20,12 @@ At format 7 this was split out into Branch, Repository and Checkout control
 directories.
 """
 
+# TODO: remove unittest dependency; put that stuff inside the test suite
+
 from copy import deepcopy
-import os
 from cStringIO import StringIO
+import os
+from stat import S_ISDIR
 from unittest import TestSuite
 
 import bzrlib
@@ -39,7 +42,6 @@ from bzrlib.osutils import (
 from bzrlib.store.revision.text import TextRevisionStore
 from bzrlib.store.text import TextStore
 from bzrlib.store.versioned import WeaveStore
-from bzrlib.symbol_versioning import *
 from bzrlib.trace import mutter
 from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import get_transport
@@ -92,11 +94,7 @@ class BzrDir(object):
         """
         if not allow_unsupported and not format.is_supported():
             # see open_downlevel to open legacy branches.
-            raise errors.UnsupportedFormatError(
-                    'sorry, format %s not supported' % format,
-                    ['use a different bzr version',
-                     'or remove the .bzr directory'
-                     ' and "bzr init" again'])
+            raise errors.UnsupportedFormatError(format=format)
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         """Clone this bzrdir and its contents to url verbatim.
@@ -1009,7 +1007,7 @@ class BzrDirFormat(object):
         try:
             return klass._formats[format_string]
         except KeyError:
-            raise errors.UnknownFormatError(format_string)
+            raise errors.UnknownFormatError(format=format_string)
 
     @classmethod
     def get_default_format(klass):
@@ -1407,72 +1405,6 @@ class BzrDirTestProviderAdapter(object):
             new_test.id = make_new_test_id()
             result.addTest(new_test)
         return result
-
-
-class ScratchDir(BzrDir6):
-    """Special test class: a bzrdir that cleans up itself..
-
-    >>> d = ScratchDir()
-    >>> base = d.transport.base
-    >>> isdir(base)
-    True
-    >>> b.transport.__del__()
-    >>> isdir(base)
-    False
-    """
-
-    def __init__(self, files=[], dirs=[], transport=None):
-        """Make a test branch.
-
-        This creates a temporary directory and runs init-tree in it.
-
-        If any files are listed, they are created in the working copy.
-        """
-        if transport is None:
-            transport = bzrlib.transport.local.ScratchTransport()
-            # local import for scope restriction
-            BzrDirFormat6().initialize(transport.base)
-            super(ScratchDir, self).__init__(transport, BzrDirFormat6())
-            self.create_repository()
-            self.create_branch()
-            self.create_workingtree()
-        else:
-            super(ScratchDir, self).__init__(transport, BzrDirFormat6())
-
-        # BzrBranch creates a clone to .bzr and then forgets about the
-        # original transport. A ScratchTransport() deletes itself and
-        # everything underneath it when it goes away, so we need to
-        # grab a local copy to prevent that from happening
-        self._transport = transport
-
-        for d in dirs:
-            self._transport.mkdir(d)
-            
-        for f in files:
-            self._transport.put(f, 'content of %s' % f)
-
-    def clone(self):
-        """
-        >>> orig = ScratchDir(files=["file1", "file2"])
-        >>> os.listdir(orig.base)
-        [u'.bzr', u'file1', u'file2']
-        >>> clone = orig.clone()
-        >>> if os.name != 'nt':
-        ...   os.path.samefile(orig.base, clone.base)
-        ... else:
-        ...   orig.base == clone.base
-        ...
-        False
-        >>> os.listdir(clone.base)
-        [u'.bzr', u'file1', u'file2']
-        """
-        from shutil import copytree
-        from bzrlib.osutils import mkdtemp
-        base = mkdtemp()
-        os.rmdir(base)
-        copytree(self.base, base, symlinks=True)
-        return ScratchDir(
-            transport=bzrlib.transport.local.ScratchTransport(base))
 
 
 class Converter(object):

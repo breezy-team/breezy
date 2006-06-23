@@ -91,7 +91,9 @@ class TestUrlToPath(TestCase):
         norm_file('uni/%25C2%25B5', u'uni/%C2%B5')
         norm_file('uni/%20b', u'uni/ b')
         # All the crazy characters get escaped in local paths => file:/// urls
-        norm_file('%27%3B/%3F%3A%40%26%3D%2B%24%2C%23%20', "';/?:@&=+$,# ")
+        # The ' ' character must not be at the end, because on win32
+        # it gets stripped off by ntpath.abspath
+        norm_file('%27%20%3B/%3F%3A%40%26%3D%2B%24%2C%23', "' ;/?:@&=+$,#")
 
     def test_normalize_url_hybrid(self):
         # Anything with a scheme:// should be treated as a hybrid url
@@ -254,23 +256,31 @@ class TestUrlToPath(TestCase):
 
     def test_win32_local_path_to_url(self):
         to_url = urlutils._win32_local_path_to_url
-        self.assertEqual('file:///C:/path/to/foo',
+        self.assertEqual('file:///c:/path/to/foo',
             to_url('C:/path/to/foo'))
+        # BOGUS: on win32, ntpath.abspath will strip trailing
+        #       whitespace, so this will always fail
+        #       Though under linux, it fakes abspath support
+        #       and thus will succeed
+        # self.assertEqual('file:///C:/path/to/foo%20',
+        #     to_url('C:/path/to/foo '))
+        self.assertEqual('file:///c:/path/to/f%20oo',
+            to_url('C:/path/to/f oo'))
 
         try:
             result = to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s')
         except UnicodeError:
             raise TestSkipped("local encoding cannot handle unicode")
 
-        self.assertEqual('file:///D:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
+        self.assertEqual('file:///d:/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s', result)
 
     def test_win32_local_path_from_url(self):
         from_url = urlutils._win32_local_path_from_url
-        self.assertEqual('C:/path/to/foo',
+        self.assertEqual('c:/path/to/foo',
             from_url('file:///C|/path/to/foo'))
-        self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
+        self.assertEqual(u'd:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d|/path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
-        self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
+        self.assertEqual(u'd:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d:/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
 
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
@@ -370,8 +380,8 @@ class TestUrlToPath(TestCase):
 
         test('http://foo', 'http://foo')
         if sys.platform == 'win32':
-            test('C:/foo/path', 'file:///C|/foo/path')
-            test('C:/foo/path', 'file:///C:/foo/path')
+            test('c:/foo/path', 'file:///C|/foo/path')
+            test('c:/foo/path', 'file:///C:/foo/path')
         else:
             test('/foo/path', 'file:///foo/path')
 
