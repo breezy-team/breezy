@@ -282,7 +282,7 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
 
     if direction == 'forward':
         # forward means oldest first.
-        merge_sorted_revisions.reverse()
+        merge_sorted_revisions = reverse_zero_depth(merge_sorted_revisions)
     elif direction != 'reverse':
         raise ValueError('invalid direction %r' % direction)
 
@@ -290,6 +290,26 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
 
     for sequence, rev_id, merge_depth, end_of_merge in merge_sorted_revisions:
         yield rev_id, rev_nos.get(rev_id), merge_depth
+
+
+def reverse_zero_depth(merge_sorted_revisions):
+    """Reverse zero-depth revisions.
+
+    Revisions with a depth > 0 are sorted as a group with the previous i
+    zero-depth revision.  There may be no topological justification for this,
+    but it looks much nicer.
+    """
+    zd_revisions = []
+    for val in merge_sorted_revisions:
+        if val[2] == 0:
+            zd_revisions.append([val])
+        else:
+            zd_revisions[-1].append(val)
+    zd_revisions.reverse()
+    result = []
+    for chunk in zd_revisions:
+        result.extend(chunk)
+    return result
 
 
 class LogFormatter(object):
