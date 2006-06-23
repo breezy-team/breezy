@@ -36,6 +36,9 @@ class FakeControlFiles(object):
     def get_utf8(self, name):
         raise NoSuchFile(name)
 
+    def get(self, name):
+        raise NoSuchFile(name)
+
 
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """

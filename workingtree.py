@@ -14,10 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from binascii import hexlify
 from bzrlib.bzrdir import BzrDirFormat
 from bzrlib.errors import NotBranchError, NoSuchFile
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, InventoryDirectory, InventoryFile
 from bzrlib.lockable_files import TransportLock
+from bzrlib.osutils import rand_bytes
 from bzrlib.progress import DummyProgress
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
@@ -94,31 +96,45 @@ class SvnWorkingTree(WorkingTree):
         self.remove([from_rel])
 
     def read_working_inventory(self):
+        basis_inv = self.basis_tree().inventory
         inv = Inventory()
 
-        def handler(data, pool):
-            print data
+        def add_dir_to_inv(relpath, wc):
+            id = inv.path2id(relpath)
+            entries = svn.wc.entries_read(wc, True)
+            for entry in entries:
+                if entry == "":
+                    continue
 
-        class MyReporter:
-            def abort_report(self, pool):
-                pass
+                schedule = entries[entry].schedule
 
-            def finish_report(self, pool):
-                pass
+                if schedule == svn.wc.schedule_normal:
+                    # Keep old id
+                    subid = basis_inv.path2id(os.path.join(relpath, entry))
+                    assert subid
+                elif schedule == svn.wc.schedule_delete:
+                    continue
+                elif schedule == svn.wc.schedule_add or \
+                     schedule == svn.wc.schedule_replace:
+                    # TODO: See if the file this file was copied from disappeared
+                    # and has no other copies -> in that case, take id of other file
+                    subid = hexlify(rand_bytes(8))
 
-            def set_path(self, path, revision, start_empty, lock_token, pool):
-                pass
+                abspath = os.path.join(self.basedir, relpath, entry).rstrip("/")
+                if entries[entry].kind == svn.core.svn_node_dir:
+                    inv.add(InventoryDirectory(subid, entry, id))
+                    subwc = svn.wc.adm_open3(wc, abspath, False, 0, None)
+                    add_dir_to_inv(os.path.join(relpath, entry), subwc)
+                    svn.wc.adm_close(subwc)
+                else:
+                    from bzrlib.osutils import fingerprint_file
+                    data = fingerprint_file(open(abspath))
+                    file = InventoryFile(subid, entry, id)
+                    file.text_sha1 = data['sha1']
+                    file.text_size = data['size']
+                    inv.add(file)
 
-            def link_path(self, path, url, revision, start_empty, lock_token, pool):
-                pass
-
-            def delete_path(self, path, pool):
-                pass
-
-        info = svn.wc.init_traversal_info()
-        svn.wc.crawl_revisions2(self.basedir,
-                self.wc, MyReporter(),
-                False, True, False, handler, info)
+        add_dir_to_inv("", self.wc)
 
         return inv
 
@@ -178,24 +194,29 @@ class OptimizedRepository(SvnRepository):
 
 class SvnLocalAccess(SvnRemoteAccess):
     def __init__(self, transport, format):
+        self.wc = None
         self.local_path = transport.base.rstrip("/")
         if self.local_path.startswith("file://"):
             self.local_path = self.local_path[len("file://"):]
         
-        self.wc = svn.wc.adm_open3(None, self.local_path, True, 100, None)
+        self.wc = svn.wc.adm_open3(None, self.local_path, True, 0, None)
         self.transport = transport
 
         # Open related remote repository + branch
-        url, self.base_revno = svn.wc.get_ancestry(self.local_path, self.wc)
+        url, revno = svn.wc.get_ancestry(self.local_path, self.wc)
         if not url.startswith("svn"):
             url = "svn+" + url
+
+        self.base_revno = svn.wc.status2(self.local_path, self.wc).ood_last_cmt_rev
 
         remote_transport = SvnRaTransport(url)
 
         super(SvnLocalAccess, self).__init__(remote_transport, format)
 
     def __del__(self):
-        svn.wc.adm_close(self.wc)
+        if self.wc is not None:
+            svn.wc.adm_close(self.wc)
+            self.wc = None
 
     def open_repository(self):
         repos = OptimizedRepository(self, self.root_transport)
@@ -210,8 +231,9 @@ class SvnLocalAccess(SvnRemoteAccess):
 
     # Working trees never exist on Subversion repositories
     def open_workingtree(self, _unsupported=False):
-        repos = self.open_repository()
-        return SvnWorkingTree(self, self.wc, self.open_branch(), repos.generate_revision_id(self.base_revno, self.branch_path))
+        return SvnWorkingTree(self, self.wc, self.open_branch(), 
+                self.open_repository().generate_revision_id(
+                    self.base_revno, self.branch_path))
 
     def create_workingtree(self):
         raise NotImplementedError(SvnRemoteAccess.create_workingtree)

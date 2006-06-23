@@ -146,6 +146,13 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.make_client_and_bzrdir('a', 'dc')
         self.build_tree({"dc/bl": "data", "dc/foo/bar": "bla", "dc/foo/bla": "aa"})
         self.client_add("dc/bl")
-
-
+        self.client_add("dc/foo")
+        self.client_commit("dc", "bla")
+        self.build_tree({"dc/test": "data"})
+        self.client_add("dc/test")
+        tree = WorkingTree.open("dc")
+        inv = tree.read_working_inventory()
+        self.assertTrue(inv.has_filename("bl"))
+        self.assertTrue(inv.has_filename("foo/bar"))
+        self.assertTrue(inv.has_filename("test"))
     

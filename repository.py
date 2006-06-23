@@ -295,6 +295,10 @@ class SvnRepository(Repository):
 
         return rev
 
+    def get_revisions(self, revision_ids):
+        # TODO: More efficient implementation?
+        return map(self.get_revision, revision_ids)
+
     def add_revision(self, rev_id, rev, inv=None, config=None):
         raise NotImplementedError()
 

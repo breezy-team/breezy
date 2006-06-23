@@ -21,7 +21,7 @@ import bzrlib.urlutils as urlutils
 
 from branch import SvnBranch
 from repository import SvnRepository
-from scheme import NoBranchingScheme
+from scheme import NoBranchingScheme, TrunkBranchingScheme
 from transport import SvnRaTransport
 
 from svn.core import SubversionException
@@ -33,13 +33,16 @@ class SvnRemoteAccess(BzrDir):
 
         self._format = _format
         self.root_transport = _transport.get_root()
-        # TODO: Allow different branching schemes
+        # TODO: Allow different branching schemes, guess?
         self.scheme = NoBranchingScheme()
         self.transport = _transport
         self.url = _transport.base
 
         assert self.transport.base.startswith(self.root_transport.base)
         self.branch_path = self.transport.base[len(self.root_transport.base):]
+
+        if not self.scheme.is_branch(self.branch_path):
+            raise NotBranchError(path=self.transport.base)
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         raise NotImplementedError(SvnRemoteAccess.clone)
@@ -71,9 +74,6 @@ class SvnRemoteAccess(BzrDir):
         raise NotImplementedError(self.create_workingtree)
 
     def open_branch(self, unsupported=True):
-        if not self.scheme.is_branch(self.branch_path):
-            raise NotBranchError(path=self.transport.base)
-
         repos = self.open_repository()
 
         try:
