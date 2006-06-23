@@ -15,7 +15,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import NoSuchRevision
+from bzrlib.delta import compare_trees
+from bzrlib.errors import NoSuchRevision, NoSuchFile
 from bzrlib.inventory import Inventory
 from bzrlib.workingtree import WorkingTree
 
@@ -32,6 +33,11 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_add("dc/bl")
         tree = WorkingTree.open("dc")
         tree.add(["bl"])
+
+    def test_add_unexisting(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        tree = WorkingTree.open("dc")
+        self.assertRaises(NoSuchFile, tree.add, ["bl"])
 
     def test_add(self):
         self.make_client_and_bzrdir('a', 'dc')
@@ -98,7 +104,9 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_move(self):
         self.make_client_and_bzrdir('a', 'dc')
         self.build_tree({"dc/bl": "data", "dc/a": "data2", "dc/dir": None})
-        self.client_add("dc/bl", "dc/a", "dc/dir")
+        self.client_add("dc/bl")
+        self.client_add("dc/a")
+        self.client_add("dc/dir")
         self.client_commit("dc", "Bla")
         tree = WorkingTree.open("dc")
         tree.move(["bl", "a"], "dir")
@@ -116,3 +124,28 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertIs(None, inv.has_filename("bl"))
         self.assertIs(None, basis_inv.has_filename("dir/bl"))
 
+    def test_pending_merges(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": "data"})
+        tree = WorkingTree.open("dc")
+        self.assertEqual([], tree.pending_merges())
+ 
+    def test_delta(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": "data"})
+        self.client_add("dc/bl")
+        self.build_tree({"dc/bl": "data"})
+        self.client_commit("dc", "Bla")
+        self.build_tree({"dc/bl": "data2"})
+        tree = WorkingTree.open("dc")
+        basis = tree.basis_tree()
+        delta = compare_trees(tree.basis_tree(), tree)
+        self.assertEqual("bl", delta.modified[0][0])
+ 
+    def test_working_inventory(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": "data", "dc/foo/bar": "bla", "dc/foo/bla": "aa"})
+        self.client_add("dc/bl")
+
+
+    

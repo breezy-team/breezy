@@ -38,6 +38,9 @@ class SvnRemoteAccess(BzrDir):
         self.transport = _transport
         self.url = _transport.base
 
+        assert self.transport.base.startswith(self.root_transport.base)
+        self.branch_path = self.transport.base[len(self.root_transport.base):]
+
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
         raise NotImplementedError(SvnRemoteAccess.clone)
 
@@ -68,16 +71,13 @@ class SvnRemoteAccess(BzrDir):
         raise NotImplementedError(self.create_workingtree)
 
     def open_branch(self, unsupported=True):
-        assert self.transport.base.startswith(self.root_transport.base)
-        rel = self.transport.base[len(self.root_transport.base):]
-
-        if not self.scheme.is_branch(rel):
+        if not self.scheme.is_branch(self.branch_path):
             raise NotBranchError(path=self.transport.base)
 
         repos = self.open_repository()
 
         try:
-            branch = SvnBranch(repos, rel)
+            branch = SvnBranch(repos, self.branch_path)
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
                raise NotBranchError(path=self.url)
