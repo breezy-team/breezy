@@ -54,10 +54,8 @@ all the changes since the previous revision that touched hello.c.
 from itertools import izip
 import re
 
-from bzrlib.delta import compare_trees
 import bzrlib.errors as errors
 from bzrlib.trace import mutter
-from bzrlib.tree import EmptyTree
 from bzrlib.tsort import merge_sort
 
 
@@ -113,17 +111,6 @@ def _enumerate_history(branch):
         rh.append((revno, rev_id))
         revno += 1
     return rh
-
-
-def _get_revision_delta(branch, revno):
-    """Return the delta for a mainline revision.
-    
-    This is used to show summaries in verbose logs, and also for finding 
-    revisions which touch a given file."""
-    # XXX: What are we supposed to do when showing a summary for something 
-    # other than a mainline revision.  The delta to it's first parent, or
-    # (more useful) the delta to a nominated other revision.
-    return branch.get_revision_delta(revno)
 
 
 def show_log(branch,
@@ -225,11 +212,17 @@ def _show_log(branch,
 
     def iter_revisions():
         revision_ids = [r for r, n, d in view_revisions]
+        zeros = set(r for r, n, d in view_revisions if d == 0)
         num = 9
         while revision_ids:
             revisions = branch.repository.get_revisions(revision_ids[:num])
             for revision in revisions:
-                yield revision
+                revision_id = revision.revision_id
+                if (verbose or specific_fileid) and revision_id in zeros:
+                    delta = branch.repository.get_revision_delta(revision_id)
+                else:
+                    delta = None
+                yield revision, delta
             revision_ids  = revision_ids[num:]
             num = int(num * 1.5)
             
@@ -237,7 +230,7 @@ def _show_log(branch,
         for revision in revisions:
             yield revision
     # now we just print all the revisions
-    for ((rev_id, revno, merge_depth), rev) in \
+    for ((rev_id, revno, merge_depth), (rev, delta)) in \
          izip(view_revisions, iter_revisions()):
 
         if searchRE:
@@ -246,8 +239,6 @@ def _show_log(branch,
 
         if merge_depth == 0:
             # a mainline revision.
-            if verbose or specific_fileid:
-                delta = _get_revision_delta(branch, rev_nos[rev_id])
                 
             if specific_fileid:
                 if not delta.touches_file_id(specific_fileid):
