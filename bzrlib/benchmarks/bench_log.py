@@ -47,6 +47,12 @@ class LogBenchmark(Benchmark):
         lf = log_formatter('long', to_file=StringIO())
         self.time(show_log, tree.branch, lf, direction='reverse')
 
+    def test_merge_log(self):
+        """Run log in a tree with many merges"""
+        tree = self.make_heavily_merged_tree()
+        lf = log_formatter('short', to_file=StringIO())
+        self.time(show_log, tree.branch, lf, direction='reverse')
+
     def test_log_screenful(self):
         """Simulate log --long|less"""
         self.screenful_tester('long')
