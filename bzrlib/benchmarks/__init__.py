@@ -53,7 +53,7 @@ class Benchmark(ExternalBase):
         self.build_tree(files)
 
     def make_many_commit_tree(self, directory_name='.'):
-        """Create a tree with an egregious number of commits.
+        """Create a tree with many commits.
         
         No files change are included.
         """
@@ -75,34 +75,31 @@ class Benchmark(ExternalBase):
         return tree
 
     def make_heavily_merged_tree(self, directory_name='.'):
-        """Create a tree with an egregious number of commits.
-        
-        No files change are included.
+        """Create a tree in which almost every commit is a merge.
+       
+        No files change are included.  This produces two trees, 
+        one of which is returned.  Except for the first commit, every
+        commit in its revision-history is a merge another commit in the other
+        tree.
         """
         tree = BzrDir.create_standalone_workingtree(directory_name)
         tree.lock_write()
-        tree.branch.lock_write()
-        tree.branch.repository.lock_write()
-        tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
-        tree2.lock_write()
         try:
-            for i in xrange(250):
-                revision_id = tree.commit('no-changes commit %d-a' % i)
-                tree2.branch.fetch(tree.branch, revision_id)
-                tree2.set_pending_merges([revision_id])
-                revision_id = tree2.commit('no-changes commit %d-b' % i)
-                tree.branch.fetch(tree2.branch, revision_id)
-                tree.set_pending_merges([revision_id])
-        finally:
+            tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+            tree2.lock_write()
             try:
-                try:
-                    tree.branch.repository.unlock()
-                finally:
-                    tree.branch.unlock()
+                for i in xrange(250):
+                    revision_id = tree.commit('no-changes commit %d-a' % i)
+                    tree2.branch.fetch(tree.branch, revision_id)
+                    tree2.set_pending_merges([revision_id])
+                    revision_id = tree2.commit('no-changes commit %d-b' % i)
+                    tree.branch.fetch(tree2.branch, revision_id)
+                    tree.set_pending_merges([revision_id])
+                tree.set_pending_merges([])
             finally:
                 tree.unlock()
-                tree2.unlock()
-        tree.set_pending_merges([])
+        finally:
+            tree2.unlock()
         return tree
 
 
