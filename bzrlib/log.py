@@ -208,7 +208,7 @@ def _show_log(branch,
         return
 
     # convert the revision history to a dictionary:
-    rev_nos = dict([(k, v) for v, k in cut_revs])
+    rev_nos = dict((k, v) for v, k in cut_revs)
 
     # override the mainline to look like the revision history.
     mainline_revs = [revision_id for index, revision_id in cut_revs]
