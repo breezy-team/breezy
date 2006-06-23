@@ -400,8 +400,8 @@ added:
         mainline_revs, rev_nos, wt = self.make_tree_with_many_merges()
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                             'forward'))
-        expected = [('1', 1, 0), ('2', 2, 0), ('3c', 3, 0), ('3b', None, 1),
-                    ('3a', None, 1), ('4b', 4, 0), ('4a', None, 1)]
+        expected = [('1', 1, 0), ('2', 2, 0), ('3c', 3, 0), ('3a', None, 1),
+                    ('3b', None, 1), ('4b', 4, 0), ('4a', None, 1)]
         self.assertEqual(revisions, expected)
         revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
                                              'forward', include_merges=False))

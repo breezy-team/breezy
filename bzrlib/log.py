@@ -282,7 +282,7 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
 
     if direction == 'forward':
         # forward means oldest first.
-        merge_sorted_revisions = reverse_zero_depth(merge_sorted_revisions)
+        merge_sorted_revisions = reverse_by_depth(merge_sorted_revisions)
     elif direction != 'reverse':
         raise ValueError('invalid direction %r' % direction)
 
@@ -292,19 +292,23 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
         yield rev_id, rev_nos.get(rev_id), merge_depth
 
 
-def reverse_zero_depth(merge_sorted_revisions):
-    """Reverse zero-depth revisions.
+def reverse_by_depth(merge_sorted_revisions, _depth=0):
+    """Reverse revisions by depth.
 
-    Revisions with a depth > 0 are sorted as a group with the previous i
-    zero-depth revision.  There may be no topological justification for this,
+    Revisions with a different depth are sorted as a group with the previous
+    revision of that depth.  There may be no topological justification for this,
     but it looks much nicer.
     """
     zd_revisions = []
     for val in merge_sorted_revisions:
-        if val[2] == 0:
+        if val[2] == _depth:
             zd_revisions.append([val])
         else:
+            assert val[2] > _depth
             zd_revisions[-1].append(val)
+    for revisions in zd_revisions:
+        if len(revisions) > 1:
+            revisions[1:] = reverse_by_depth(revisions[1:], _depth + 1)
     zd_revisions.reverse()
     result = []
     for chunk in zd_revisions:
