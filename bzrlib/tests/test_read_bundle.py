@@ -97,9 +97,9 @@ class TestReadBundleFromURL(TestCaseInTempDir):
         if wt is None:
             return
 
-        reader = bzrlib.bundle.read_bundle_from_url(
+        info = bzrlib.bundle.read_bundle_from_url(
                     self.get_url('test_bundle'))
-        info, bundle_tree = reader.get_bundle(wt.branch.repository)
+        bundle_tree = info.revision_tree(wt.branch.repository, info.target)
         self.assertEqual('commit-1', bundle_tree.revision_id)
 
     def test_read_fail(self):

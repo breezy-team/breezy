@@ -922,7 +922,7 @@ class TestTransportImplementation(TestCaseInTempDir):
                 ]
 
         try:
-            self.build_tree(files, transport=t)
+            self.build_tree(files, transport=t, line_endings='binary')
         except UnicodeError:
             raise TestSkipped("cannot handle unicode paths in current encoding")
 

@@ -1,4 +1,4 @@
-all: 
+all:
 
 check:
 	./bzr selftest -v $(tests)
@@ -8,7 +8,16 @@ check:
 check-msgeditor:
 	./bzr --no-plugins selftest -v msgeditor
 
-clean: 
+# Run Python style checker (apt-get install pyflakes)
+pyflakes:
+	pyflakes bzrlib
+
+pyflakes-nounused:
+	# There are many of these warnings at the moment and they're not a
+	# high priority to fix
+	pyflakes bzrlib | grep -v ' imported but unused'
+
+clean:
 	./setup.py clean
 	-find . -name "*.pyc" -o -name "*.pyo" | xargs rm -f
 	rm -rf test????.tmp

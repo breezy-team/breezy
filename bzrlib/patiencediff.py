@@ -17,7 +17,6 @@
 
 
 from bisect import bisect
-from copy import copy
 import difflib
 import os
 import sys

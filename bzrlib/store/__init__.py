@@ -32,7 +32,7 @@ from zlib import adler32
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function, zero_eight)
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 from bzrlib.transport.local import LocalTransport

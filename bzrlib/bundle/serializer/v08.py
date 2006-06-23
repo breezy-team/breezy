@@ -1,15 +1,15 @@
 # (C) 2005 Canonical Development Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -25,6 +25,7 @@ from bzrlib.bundle.serializer import (BundleSerializer,
                                       unpack_highres_date,
                                      )
 from bzrlib.bundle.serializer import binary_diff
+from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
 from bzrlib.delta import compare_trees
 from bzrlib.diff import internal_diff
 import bzrlib.errors as errors
@@ -35,6 +36,7 @@ from bzrlib.rio import RioWriter, read_stanzas
 import bzrlib.ui
 from bzrlib.testament import StrictTestament
 from bzrlib.textfile import text_file
+from bzrlib.trace import mutter
 
 bool_text = {True: 'yes', False: 'no'}
 
@@ -84,16 +86,14 @@ class Action(object):
         to_file.write(text_line+'\n')
 
 
-class BundleSerializerV07(BundleSerializer):
+class BundleSerializerV08(BundleSerializer):
     def read(self, f):
         """Read the rest of the bundles from the supplied file.
 
         :param f: The file to read from
         :return: A list of bundles
         """
-        assert self.version == '0.7'
-        # The first line of the header should have been read
-        raise NotImplementedError
+        return BundleReader(f).info
 
     def write(self, source, revision_ids, forced_bases, f):
         """Write the bundless to the supplied files.
@@ -123,7 +123,7 @@ class BundleSerializerV07(BundleSerializer):
         """Write the header for the changes"""
         f = self.to_file
         f.write(BUNDLE_HEADER)
-        f.write('0.7\n')
+        f.write('0.8\n')
         f.write('#\n')
 
     def _write(self, key, value, indent=1):
@@ -303,3 +303,198 @@ class BundleSerializerV07(BundleSerializer):
                                              new_tree.id2path(ie.file_id)])
                 action.add_property('last-changed', ie.revision)
                 action.write(self.to_file)
+
+
+class BundleReader(object):
+    """This class reads in a bundle from a file, and returns
+    a Bundle object, which can then be applied against a tree.
+    """
+    def __init__(self, from_file):
+        """Read in the bundle from the file.
+
+        :param from_file: A file-like object (must have iterator support).
+        """
+        object.__init__(self)
+        self.from_file = iter(from_file)
+        self._next_line = None
+        
+        self.info = BundleInfo()
+        # We put the actual inventory ids in the footer, so that the patch
+        # is easier to read for humans.
+        # Unfortunately, that means we need to read everything before we
+        # can create a proper bundle.
+        self._read()
+        self._validate()
+
+    def _read(self):
+        self._next().next()
+        while self._next_line is not None:
+            if not self._read_revision_header():
+                break
+            if self._next_line is None:
+                break
+            self._read_patches()
+            self._read_footer()
+
+    def _validate(self):
+        """Make sure that the information read in makes sense
+        and passes appropriate checksums.
+        """
+        # Fill in all the missing blanks for the revisions
+        # and generate the real_revisions list.
+        self.info.complete_info()
+
+    def _next(self):
+        """yield the next line, but secretly
+        keep 1 extra line for peeking.
+        """
+        for line in self.from_file:
+            last = self._next_line
+            self._next_line = line
+            if last is not None:
+                #mutter('yielding line: %r' % last)
+                yield last
+        last = self._next_line
+        self._next_line = None
+        #mutter('yielding line: %r' % last)
+        yield last
+
+    def _read_revision_header(self):
+        found_something = False
+        self.info.revisions.append(RevisionInfo(None))
+        for line in self._next():
+            # The bzr header is terminated with a blank line
+            # which does not start with '#'
+            if line is None or line == '\n':
+                break
+            found_something = True
+            self._handle_next(line)
+        if not found_something:
+            # Nothing was there, so remove the added revision
+            self.info.revisions.pop()
+        return found_something
+
+    def _read_next_entry(self, line, indent=1):
+        """Read in a key-value pair
+        """
+        if not line.startswith('#'):
+            raise MalformedHeader('Bzr header did not start with #')
+        line = line[1:-1].decode('utf-8') # Remove the '#' and '\n'
+        if line[:indent] == ' '*indent:
+            line = line[indent:]
+        if not line:
+            return None, None# Ignore blank lines
+
+        loc = line.find(': ')
+        if loc != -1:
+            key = line[:loc]
+            value = line[loc+2:]
+            if not value:
+                value = self._read_many(indent=indent+2)
+        elif line[-1:] == ':':
+            key = line[:-1]
+            value = self._read_many(indent=indent+2)
+        else:
+            raise MalformedHeader('While looking for key: value pairs,'
+                    ' did not find the colon %r' % (line))
+
+        key = key.replace(' ', '_')
+        #mutter('found %s: %s' % (key, value))
+        return key, value
+
+    def _handle_next(self, line):
+        if line is None:
+            return
+        key, value = self._read_next_entry(line, indent=1)
+        mutter('_handle_next %r => %r' % (key, value))
+        if key is None:
+            return
+
+        revision_info = self.info.revisions[-1]
+        if hasattr(revision_info, key):
+            if getattr(revision_info, key) is None:
+                setattr(revision_info, key, value)
+            else:
+                raise MalformedHeader('Duplicated Key: %s' % key)
+        else:
+            # What do we do with a key we don't recognize
+            raise MalformedHeader('Unknown Key: "%s"' % key)
+    
+    def _read_many(self, indent):
+        """If a line ends with no entry, that means that it should be
+        followed with multiple lines of values.
+
+        This detects the end of the list, because it will be a line that
+        does not start properly indented.
+        """
+        values = []
+        start = '#' + (' '*indent)
+
+        if self._next_line is None or self._next_line[:len(start)] != start:
+            return values
+
+        for line in self._next():
+            values.append(line[len(start):-1].decode('utf-8'))
+            if self._next_line is None or self._next_line[:len(start)] != start:
+                break
+        return values
+
+    def _read_one_patch(self):
+        """Read in one patch, return the complete patch, along with
+        the next line.
+
+        :return: action, lines, do_continue
+        """
+        #mutter('_read_one_patch: %r' % self._next_line)
+        # Peek and see if there are no patches
+        if self._next_line is None or self._next_line.startswith('#'):
+            return None, [], False
+
+        first = True
+        lines = []
+        for line in self._next():
+            if first:
+                if not line.startswith('==='):
+                    raise MalformedPatches('The first line of all patches'
+                        ' should be a bzr meta line "==="'
+                        ': %r' % line)
+                action = line[4:-1].decode('utf-8')
+            elif line.startswith('... '):
+                action += line[len('... '):-1].decode('utf-8')
+
+            if (self._next_line is not None and 
+                self._next_line.startswith('===')):
+                return action, lines, True
+            elif self._next_line is None or self._next_line.startswith('#'):
+                return action, lines, False
+
+            if first:
+                first = False
+            elif not line.startswith('... '):
+                lines.append(line)
+
+        return action, lines, False
+            
+    def _read_patches(self):
+        do_continue = True
+        revision_actions = []
+        while do_continue:
+            action, lines, do_continue = self._read_one_patch()
+            if action is not None:
+                revision_actions.append((action, lines))
+        assert self.info.revisions[-1].tree_actions is None
+        self.info.revisions[-1].tree_actions = revision_actions
+
+    def _read_footer(self):
+        """Read the rest of the meta information.
+
+        :param first_line:  The previous step iterates past what it
+                            can handle. That extra line is given here.
+        """
+        for line in self._next():
+            self._handle_next(line)
+            if not self._next_line.startswith('#'):
+                self._next().next()
+                break
+            if self._next_line is None:
+                break

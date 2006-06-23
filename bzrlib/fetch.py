@@ -33,13 +33,15 @@ the inventories.
 
 import bzrlib
 import bzrlib.errors as errors
-from bzrlib.errors import (InstallFailed, NoSuchRevision,
-                           MissingText)
+from bzrlib.errors import (InstallFailed,
+                           )
 from bzrlib.trace import mutter
-from bzrlib.progress import ProgressBar, ProgressPhase
-from bzrlib.reconcile import RepoReconciler
+from bzrlib.progress import ProgressPhase
 from bzrlib.revision import NULL_REVISION
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function,
+        deprecated_method,
+        zero_eight,
+        )
 
 
 # TODO: Avoid repeatedly opening weaves so many times.
@@ -124,8 +126,9 @@ class RepoFetcher(object):
         self.from_control = self.from_repository.control_weaves
         self.count_total = 0
         self.file_ids_names = {}
-        pp = ProgressPhase('fetch phase', 4, self.pb)
+        pp = ProgressPhase('Fetch phase', 4, self.pb)
         try:
+            pp.next_phase()
             revs = self._revids_to_fetch()
             # something to do ?
             if revs:
