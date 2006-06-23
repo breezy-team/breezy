@@ -33,9 +33,12 @@ class TestCommit(ExternalBase):
     def test_05_empty_commit(self):
         """Commit of tree with no versioned files should fail"""
         # If forced, it should succeed, but this is not tested here.
-        self.runbzr("init")
+        self.run_bzr("init")
         self.build_tree(['hello.txt'])
-        self.runbzr("commit -m empty", retcode=3)
+        result = self.run_bzr("commit", "-m", "empty", retcode=3)
+        self.assertEqual(('', 'bzr: ERROR: no changes to commit.'
+                              ' use --unchanged to commit anyhow\n'),
+                         result)
 
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
