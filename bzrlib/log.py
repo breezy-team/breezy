@@ -206,35 +206,21 @@ def _show_log(branch,
     cut_revs = which_revs[(start_revision-1):(end_revision)]
     if not cut_revs:
         return
+
+    # convert the revision history to a dictionary:
+    rev_nos = dict([(k, v) for v, k in cut_revs])
+
     # override the mainline to look like the revision history.
     mainline_revs = [revision_id for index, revision_id in cut_revs]
     if cut_revs[0][0] == 1:
         mainline_revs.insert(0, None)
     else:
         mainline_revs.insert(0, which_revs[start_revision-2][1])
-
-    merge_sorted_revisions = merge_sort(
-        branch.repository.get_revision_graph(mainline_revs[-1]),
-        mainline_revs[-1],
-        mainline_revs)
-
-    if direction == 'reverse':
-        cut_revs.reverse()
-    elif direction == 'forward':
-        # forward means oldest first.
-        merge_sorted_revisions.reverse()
-    else:
-        raise ValueError('invalid direction %r' % direction)
-
-    revision_history = branch.revision_history()
-
-    # convert the revision history to a dictionary:
-    rev_nos = {}
-    for index, rev_id in cut_revs:
-        rev_nos[rev_id] = index
+    view_revisions = list(get_view_revisions(mainline_revs, rev_nos, branch,
+                          direction))
 
     def iter_revisions():
-        revision_ids = [r for s, r, m, e in merge_sorted_revisions]
+        revision_ids = [r for r, n, e in view_revisions]
         num = 9
         while revision_ids:
             revisions = branch.repository.get_revisions(revision_ids[:num])
@@ -247,8 +233,8 @@ def _show_log(branch,
         for revision in revisions:
             yield revision
     # now we just print all the revisions
-    for ((sequence, rev_id, merge_depth, end_of_merge), rev) in \
-        izip(merge_sorted_revisions, iter_revisions()):
+    for ((rev_id, revno, merge_depth), rev) in \
+         izip(view_revisions, iter_revisions()):
 
         if searchRE:
             if not searchRE.search(rev.message):
@@ -267,9 +253,32 @@ def _show_log(branch,
                 # although we calculated it, throw it away without display
                 delta = None
 
-            lf.show(rev_nos[rev_id], rev, delta)
+            lf.show(revno, rev, delta)
         elif hasattr(lf, 'show_merge'):
             lf.show_merge(rev, merge_depth)
+
+
+def get_view_revisions(mainline_revs, rev_nos, branch, direction):
+    """Produce an iterator of revisions to show
+    :return: an iterator of (revision_id, revno, merge_depth)
+    (if there is no revno for a revision, None is supplied)
+    """
+
+    merge_sorted_revisions = merge_sort(
+        branch.repository.get_revision_graph(mainline_revs[-1]),
+        mainline_revs[-1],
+        mainline_revs)
+
+    if direction == 'forward':
+        # forward means oldest first.
+        merge_sorted_revisions.reverse()
+    elif direction != 'reverse':
+        raise ValueError('invalid direction %r' % direction)
+
+    revision_history = branch.revision_history()
+
+    for sequence, rev_id, merge_depth, end_of_merge in merge_sorted_revisions:
+        yield rev_id, rev_nos.get(rev_id), merge_depth
 
 
 def deltas_for_log_dummy(branch, which_revs):
