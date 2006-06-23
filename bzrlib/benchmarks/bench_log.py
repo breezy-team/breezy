@@ -87,3 +87,9 @@ class LogBenchmark(Benchmark):
         """Text startup and execution of the log command.""" 
         tree = self.make_many_commit_tree()
         self.time(self.run_bzr_subprocess, 'log', '-r', '-4..')
+
+    def test_log_verbose(self):
+        """'verbose' log -- shows file changes"""
+        tree = self.make_many_commit_tree()
+        lf = log_formatter('long', to_file=StringIO())
+        self.time(show_log, tree.branch, lf, direction='reverse', verbose=True)
