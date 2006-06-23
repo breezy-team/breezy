@@ -216,11 +216,15 @@ def _show_log(branch,
         mainline_revs.insert(0, None)
     else:
         mainline_revs.insert(0, which_revs[start_revision-2][1])
+    if getattr(lf, 'show_merge', False) is False:
+        no_merges = True 
+    else:
+        no_merges = False
     view_revisions = list(get_view_revisions(mainline_revs, rev_nos, branch,
-                          direction))
+                          direction, no_merges=no_merges))
 
     def iter_revisions():
-        revision_ids = [r for r, n, e in view_revisions]
+        revision_ids = [r for r, n, d in view_revisions]
         num = 9
         while revision_ids:
             revisions = branch.repository.get_revisions(revision_ids[:num])
@@ -254,16 +258,23 @@ def _show_log(branch,
                 delta = None
 
             lf.show(revno, rev, delta)
-        elif hasattr(lf, 'show_merge'):
+        else:
             lf.show_merge(rev, merge_depth)
 
 
-def get_view_revisions(mainline_revs, rev_nos, branch, direction):
+def get_view_revisions(mainline_revs, rev_nos, branch, direction,
+                       no_merges=False):
     """Produce an iterator of revisions to show
     :return: an iterator of (revision_id, revno, merge_depth)
     (if there is no revno for a revision, None is supplied)
     """
-
+    if no_merges is True:
+        revision_ids = mainline_revs[1:]
+        if direction == 'reverse':
+            revision_ids.reverse()
+        for revision_id in revision_ids:
+            yield revision_id, rev_nos[revision_id], 0
+        return
     merge_sorted_revisions = merge_sort(
         branch.repository.get_revision_graph(mainline_revs[-1]),
         mainline_revs[-1],
