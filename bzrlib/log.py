@@ -216,12 +216,12 @@ def _show_log(branch,
         mainline_revs.insert(0, None)
     else:
         mainline_revs.insert(0, which_revs[start_revision-2][1])
-    if getattr(lf, 'show_merge', False) is False:
-        no_merges = True 
+    if getattr(lf, 'show_merge', None) is not None:
+        include_merges = True 
     else:
-        no_merges = False
+        include_merges = False 
     view_revisions = list(get_view_revisions(mainline_revs, rev_nos, branch,
-                          direction, no_merges=no_merges))
+                          direction, include_merges=include_merges))
 
     def iter_revisions():
         revision_ids = [r for r, n, d in view_revisions]
@@ -263,12 +263,12 @@ def _show_log(branch,
 
 
 def get_view_revisions(mainline_revs, rev_nos, branch, direction,
-                       no_merges=False):
+                       include_merges=True):
     """Produce an iterator of revisions to show
     :return: an iterator of (revision_id, revno, merge_depth)
     (if there is no revno for a revision, None is supplied)
     """
-    if no_merges is True:
+    if include_merges is False:
         revision_ids = mainline_revs[1:]
         if direction == 'reverse':
             revision_ids.reverse()
