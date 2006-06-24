@@ -516,7 +516,8 @@ class KnitVersionedFile(VersionedFile):
         return diff_hunks
 
     def _get_component_versions(self, version_id):
-        return list(self._get_components_versions([version_id]))[0]
+        component_data = self._get_components_versions([version_id])
+        return list(self._iter_needed(version_id, component_data)), []
 
     def _get_components_versions(self, version_ids):
         component_data = {}
@@ -526,44 +527,37 @@ class KnitVersionedFile(VersionedFile):
             basis_versions = []
             cursor = version_id
 
-            while 1:
+            while cursor is not None and cursor not in component_data:
                 picked_knit = self
-                if basis and basis._index.has_version(cursor):
-                    picked_knit = basis
-                    basis_versions.append(cursor)
-                try:
-                    method, next = component_data[cursor]
-                    needed_versions.append((method, cursor))
-                    if method == 'fulltext':
-                        break
-                    cursor = next
-                except KeyError:
-                    method = picked_knit._index.get_method(cursor)
-                    needed_versions.append((method, cursor))
-                    if method == 'fulltext':
-                        break
+                method = picked_knit._index.get_method(cursor)
+                if method == 'fulltext':
+                    next = None
+                else:
                     next = picked_knit.get_parents(cursor)[0]
-                    component_data[cursor] = (method, next)
-                    cursor = next
-            yield needed_versions, basis_versions
-
-    def _get_component_positions(self, version_id):
-        return list(self._get_components_positions([version_id]))[0]
-
+                component_data[cursor] = (method, next)
+                cursor = next
+            cursor = version_id
+            needed_versions2 = []
+            while cursor is not None:
+                method, next = component_data[cursor]
+                needed_versions2.append((method, cursor))
+                cursor = next
+        return component_data
+    
+    def _iter_needed(self, version_id, component_data):
+        cursor = version_id
+        while cursor is not None:
+            method, next = component_data[cursor]
+            yield method, cursor
+            cursor = next
+        
     def _get_components_positions(self, version_ids):
-        position_cache = {}
-        for needed_versions, basis_versions in\
-                self._get_components_versions(version_ids):
-            assert len(basis_versions) == 0
-            positions = []
-            for method, comp_id in needed_versions:
-                try:
-                    data_pos, data_size = position_cache[comp_id] 
-                except KeyError:
-                    data_pos, data_size = self._index.get_position(comp_id)
-                    position_cache[comp_id] = data_pos, data_size
-                positions.append((method, comp_id, data_pos, data_size))
-            yield positions
+        data_map = {}
+        component_data = self._get_components_versions(version_ids)
+        for comp_id, (method, next) in component_data.iteritems():
+            data_pos, data_size = self._index.get_position(comp_id)
+            data_map[comp_id] = (method, data_pos, data_size, next)
+        return data_map
 
     def _get_components(self, version_id):
         """Return a list of (version_id, method, data) tuples that
@@ -768,21 +762,11 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.get_lines()."""
         return self.get_line_list([version_id])[0]
 
-    def _get_version_components(self, position_map):
-        records = set() 
-        for (version_id, positions) in position_map:
-            for method, comp_id, position, size in positions:
-                records.add((comp_id, position, size))
+    def _get_record_map(self, position_map, version_ids):
+        records = [(c, p, s) for c, (m, p, s, n) in position_map.iteritems()]
         record_map = dict((r,( c, d)) for r, c, d in 
                           self._data.read_records_iter(records))
-
-        component_map = {}
-        for (version_id, positions) in position_map:
-            components = []
-            for method, comp_id, position, size in positions:
-                data, digest = record_map[comp_id]
-                components.append((comp_id, method, data, digest))
-            yield version_id, components
+        return record_map
 
     def get_text(self, version_id):
         """See VersionedFile.get_text"""
@@ -793,18 +777,25 @@ class KnitVersionedFile(VersionedFile):
 
     def get_line_list(self, version_ids):
         """Return the texts of listed versions as a list of strings."""
-        position_map = []
-        for version_id, pos in izip(version_ids,
-            self._get_components_positions(version_ids)):
+        for version_id in version_ids:
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
-            position_map.append((version_id, pos))
-
-        version_components = self._get_version_components(position_map)
+        position_map = self._get_components_positions(version_ids)
+        record_map = self._get_record_map(position_map, version_ids)
 
         text_map = {}
         content_map = {}
-        for version_id, components in version_components:
+        for version_id in version_ids:
+            components = []
+            cursor = version_id
+            while cursor is not None:
+                method, data_pos, data_size, next = position_map[cursor]
+                data, digest = record_map[cursor]
+                components.append((cursor, method, data, digest))
+                if cursor in content_map:
+                    break
+                cursor = next
+
             content = None
             for component_id, method, data, digest in reversed(components):
                 if component_id in content_map:
