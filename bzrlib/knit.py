@@ -782,6 +782,10 @@ class KnitVersionedFile(VersionedFile):
 
     def get_line_list(self, version_ids):
         """Return the texts of listed versions as a list of strings."""
+        text_map, content_map = self._get_content_maps(version_ids)
+        return [text_map[v] for v in version_ids]
+
+    def _get_content_maps(self, version_ids):
         for version_id in version_ids:
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
@@ -827,7 +831,7 @@ class KnitVersionedFile(VersionedFile):
                                   'sha-1 does not match %s' % version_id)
 
             text_map[version_id] = text 
-        return [text_map[v] for v in version_ids]
+        return text_map, content_map
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
