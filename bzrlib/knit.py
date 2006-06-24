@@ -135,6 +135,9 @@ class KnitContent(object):
     def text(self):
         return [text for origin, text in self._lines]
 
+    def copy(self):
+        return KnitContent(self._lines[:])
+
 
 class _KnitFactory(object):
     """Base factory for creating content objects."""
@@ -775,19 +778,24 @@ class KnitVersionedFile(VersionedFile):
             position_map[version_id] = \
                 self._get_component_positions(version_id)
 
-        version_components = self._get_version_components(position_map).items()
+        version_components = self._get_version_components(position_map)
 
         text_map = {}
-        for version_id, components in version_components:
+        content_map = {}
+        for version_id, components in version_components.iteritems():
             content = None
             for component_id, method, data, digest in reversed(components):
                 version_idx = self._index.lookup(component_id)
-                if method == 'fulltext':
+                if component_id in content_map:
+                    content = content_map[component_id]
+                elif method == 'fulltext':
                     assert content is None
                     content = self.factory.parse_fulltext(data, version_idx)
                 elif method == 'line-delta':
                     delta = self.factory.parse_line_delta(data[:], version_idx)
+                    content = content.copy()
                     content._lines = self._apply_delta(content._lines, delta)
+                content_map[component_id] = content
 
             if 'no-eol' in self._index.get_options(version_id):
                 line = content._lines[-1][1].rstrip('\n')
