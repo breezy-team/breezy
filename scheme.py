@@ -36,15 +36,35 @@ class BranchingScheme:
         """
         raise NotImplementedError
 
+    @staticmethod
+    def guess_scheme(relpath):
+        """Try to guess the branching scheme based on a partial URL.
+
+        :param relpath: Relative URL to a branch.
+        :return: New BranchingScheme instance.
+        """
+        parts = relpath.strip("/").split("/")
+        for i in range(0,len(parts)):
+            if parts[i] == "trunk" or \
+               parts[i] == "branches" or \
+               parts[i] == "tags":
+                return TrunkBranchingScheme(level=i)
+
+        return NoBranchingScheme()
+                
 
 class TrunkBranchingScheme:
+    def __init__(self, level=0):
+        self.level = level
+
     def is_branch(self, path):
         """See BranchingScheme.is_branch()."""
         parts = path.strip("/").split("/")
-        if len(parts) == 1 and parts[0] == "trunk":
+        if len(parts) == self.level+1 and parts[self.level] == "trunk":
             return True
 
-        if len(parts) == 2 and (parts[0] == "branches" or parts[0] == "tags"):
+        if len(parts) == self.level+2 and \
+           (parts[self.level] == "branches" or parts[self.level] == "tags"):
             return True
 
         return False
@@ -52,10 +72,15 @@ class TrunkBranchingScheme:
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
         parts = path.strip("/").split("/")
-        if parts[0] == "trunk" or parts[0] == "hooks":
-            return (parts[0], "/".join(parts[1:]))
-        elif parts[0] == "tags" or parts[0] == "branches":
-            return ("%s/%s" % (parts[0], parts[1]), "/".join(parts[2:]).strip("/"))
+        if len(parts) == 0 or self.level >= len(parts):
+            raise NotBranchError(path=path)
+
+        if parts[self.level] == "trunk" or parts[self.level] == "hooks":
+            return ("/".join(parts[0:self.level+1]).strip("/"), 
+                    "/".join(parts[self.level+1:]).strip("/"))
+        elif parts[self.level] == "tags" or parts[self.level] == "branches":
+            return ("/".join(parts[0:self.level+2]).strip("/"), 
+                    "/".join(parts[self.level+2:]).strip("/"))
         else:
             raise NotBranchError(path=path)
 

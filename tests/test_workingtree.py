@@ -155,4 +155,33 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv.has_filename("bl"))
         self.assertTrue(inv.has_filename("foo/bar"))
         self.assertTrue(inv.has_filename("test"))
-    
+
+    def test_ignore_list(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": None})
+        self.client_add("dc/bl")
+        self.client_set_prop("dc/bl", "svn:ignore", "test.*\n")
+        self.client_commit("dc", "bla")
+        self.client_set_prop("dc", "svn:ignore", "foo\nbar\n")
+
+        tree = WorkingTree.open("dc")
+        ignorelist = tree.get_ignore_list()
+        self.assertTrue("bl/test.*" in ignorelist)
+        self.assertTrue("foo" in ignorelist)
+        self.assertTrue("bar" in ignorelist)
+
+    def test_is_ignored(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": None})
+        self.client_add("dc/bl")
+        self.client_set_prop("dc/bl", "svn:ignore", "test.*\n")
+        self.client_commit("dc", "bla")
+        self.client_set_prop("dc", "svn:ignore", "foo\nbar\n")
+
+        tree = WorkingTree.open("dc")
+        self.assertTrue(tree.is_ignored("bl/test.foo"))
+        self.assertFalse(tree.is_ignored("bl/notignored"))
+        self.assertTrue(tree.is_ignored("foo"))
+        self.assertTrue(tree.is_ignored("bar"))
+        self.assertFalse(tree.is_ignored("alsonotignored"))
+

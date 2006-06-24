@@ -77,6 +77,9 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         svn.client.checkout2(repos_url, relpath, 
                 rev, rev, True, False, self.client_ctx)
 
+    def client_set_prop(self, path, name, value):
+        svn.client.propset2(name, value, path, False, True, self.client_ctx)
+
     def client_set_revprops(self, url, revnum, name, value):
         rev = svn.core.svn_opt_revision_t()
         rev.kind = svn.core.svn_opt_revision_number

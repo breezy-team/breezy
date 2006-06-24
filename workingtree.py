@@ -32,6 +32,10 @@ import os
 import svn.core, svn.wc
 from svn.core import SubversionException
 
+import svn.core
+
+svn_config = svn.core.svn_config_get_config(None)
+
 class SvnWorkingTree(WorkingTree):
     """Implementation of WorkingTree that uses a Subversion 
     Working Copy for storage."""
@@ -52,14 +56,47 @@ class SvnWorkingTree(WorkingTree):
     def unlock(self):
         pass
 
+    def get_ignore_list(self):
+        ignores = []
+
+        def dir_add(wc, prefix):
+            for pat in svn.wc.get_ignores(svn_config, wc):
+                ignores.append(os.path.join(prefix, pat))
+
+            entries = svn.wc.entries_read(wc, True)
+            for entry in entries:
+                if entry == "":
+                    continue
+
+                if entries[entry].kind != svn.core.svn_node_dir:
+                    continue
+
+                subwc = svn.wc.adm_open3(wc, os.path.join(self.basedir, prefix, entry), False, 0, None)
+                try:
+                    dir_add(subwc, os.path.join(prefix, entry))
+                finally:
+                    svn.wc.adm_close(subwc)
+
+        wc = self._get_wc()
+        dir_add(wc, "")
+        svn.wc.adm_close(wc)
+
+        return ignores
+
+    def is_ignored(self, filename):
+        (wc, name) = self._get_rel_wc(filename)
+        try:
+            ignores = svn.wc.get_ignores(svn_config, wc)
+            from fnmatch import fnmatch
+            for pattern in ignores:
+                if fnmatch(name, pattern):
+                    return True
+            return False
+        finally:
+            svn.wc.adm_close(wc)
+
     def is_control_filename(self, path):
         return svn.wc.is_adm_dir(path)
-
-    def get_file_by_path(self, path):
-        raise NotImplementedError(self.get_file_by_path)
-
-    def get_file_lines(self, file_id):
-        raise NotImplementedError(self.get_file_lines)
 
     def remove(self, files, verbose=False, to_file=None):
         wc = self._get_wc(write_lock=True)
@@ -76,20 +113,6 @@ class SvnWorkingTree(WorkingTree):
         dir = os.path.dirname(relpath)
         file = os.path.basename(relpath)
         return (self._get_wc(dir, write_lock), file)
-
-    def revert(self, files, old_tree=None, backups=True, pb=DummyProgress()):
-        if old_tree is not None:
-            # TODO: Also make sure old_tree != basis_tree
-            super(SvnWorkingTree, self).revert(files, old_tree, backups, pb)
-            return
-        
-        wc = self._get_wc(write_lock=True)
-        try:
-            for f in files:
-                svn.wc.revert(os.path.join(self.basedir, f),
-                      wc, False, False, None, None)
-        finally:
-            svn.wc.adm_close(wc)
 
     def move(self, from_paths, to_name):
         revt = svn.core.svn_opt_revision_t()
@@ -280,7 +303,7 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
     def probe_transport(klass, transport):
         format = klass()
 
-        if transport.has('.svn'):
+        if transport.has(svn.wc.get_adm_dir()):
             return format
 
         raise NotBranchError(path=transport.base)
