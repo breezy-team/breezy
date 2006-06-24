@@ -36,6 +36,7 @@ from cStringIO import StringIO
 
 import branch
 import logwalker
+from tree import SvnRevisionTree
 
 class SvnInventoryFile(InventoryFile):
     """Inventory entry that can either be a plain file or a 
@@ -248,6 +249,12 @@ class SvnRepository(Repository):
             raise
 
         return (kind != svn.core.svn_node_none)
+
+    def revision_tree(self, revid):
+        if revision_id is None or revision_id == NULL_REVISION:
+            return EmptyTree()
+        else:
+            return SvnRevisionTree(self, revid)
 
     def revision_parents(self, revision_id):
         (path, revnum) = self.parse_revision_id(revision_id)

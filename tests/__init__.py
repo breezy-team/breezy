@@ -192,10 +192,11 @@ def test_suite():
     suite = TestSuite()
 
     testmod_names = [
-            'test_repos', 
             'test_branch', 
+            'test_commit',
             'test_fileids', 
             'test_logwalker',
+            'test_repos', 
             'test_scheme', 
             'test_transport',
             'test_workingtree']
