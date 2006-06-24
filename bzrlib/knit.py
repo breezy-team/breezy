@@ -1444,13 +1444,13 @@ class _KnitData(_KnitComponentFile):
         # 4168   calls to readv              in 1411
         # 4168   calls to parse_record       in 2880
 
-        needed_records = []
+        needed_records = set() 
         for version_id, pos, size in records:
             if version_id not in self._records:
-                needed_records.append((version_id, pos, size))
+                needed_records.add((version_id, pos, size))
 
         if len(needed_records):
-            needed_records.sort(key=operator.itemgetter(1))
+            sorted(needed_records, key=operator.itemgetter(1))
             # We take it that the transport optimizes the fetching as good
             # as possible (ie, reads continuous ranges.)
             response = self._transport.readv(self._filename,

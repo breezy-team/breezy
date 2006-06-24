@@ -566,7 +566,7 @@ class Repository(object):
         an `EmptyTree` is returned."""
         assert None not in revision_ids
         assert NULL_REVISION not in revision_ids
-        texts = [self.get_inventory_weave().get_text(r) for r in revision_ids]
+        texts = self.get_inventory_weave().get_texts(revision_ids)
         for text, revision_id in zip(texts, revision_ids):
             inv = self.deserialise_inventory(revision_id, text)
             yield RevisionTree(self, inv, revision_id)
