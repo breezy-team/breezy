@@ -41,6 +41,12 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
 
         repos = svn.repos.create(abspath, '', '', None, None)
 
+        revprop_hook = os.path.join(abspath, "hooks", "pre-revprop-change")
+
+        open(revprop_hook, 'w').write("#!/bin/sh")
+
+        os.chmod(revprop_hook, os.stat(revprop_hook).st_mode | 0111)
+
         return repos_url
 
     def make_remote_bzrdir(self, relpath):

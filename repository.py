@@ -253,11 +253,14 @@ class SvnRepository(Repository):
         (path, revnum) = self.parse_revision_id(revision_id)
 
         # TODO: Use get_file_revs()
-        # TODO: Read 'bzr:parents' from the revprops
-        def rcvr((paths, rev, a, b, c)):
-            return self.generate_revision_id(rev, path)
 
-        parent_ids = map(rcvr, self._log.get_branch_log(path, revnum - 1, 0, 1, False))
+        parent_ids = []
+
+        for (paths, rev, a, b, c) in self._log.get_branch_log(path, revnum - 1, 0, 1, False):
+            parent_ids.append(self.generate_revision_id(rev, path))
+            ghosts = svn.ra.rev_prop(self.ra, rev, "bzr:parents")
+            if ghosts is not None:
+                parent_ids.extend(ghosts.splitlines())
 
         return parent_ids
 

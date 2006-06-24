@@ -19,7 +19,7 @@ from bzrlib.bzrdir import BzrDirFormat
 from bzrlib.errors import NotBranchError, NoSuchFile
 from bzrlib.inventory import Inventory, InventoryDirectory, InventoryFile
 from bzrlib.lockable_files import TransportLock
-from bzrlib.osutils import rand_bytes
+from bzrlib.osutils import rand_bytes, fingerprint_file
 from bzrlib.progress import DummyProgress
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
@@ -35,10 +35,9 @@ from svn.core import SubversionException
 class SvnWorkingTree(WorkingTree):
     """Implementation of WorkingTree that uses a Subversion 
     Working Copy for storage."""
-    def __init__(self, bzrdir, wc, branch, base_revid):
+    def __init__(self, bzrdir, local_path, branch, base_revid):
         self._format = SvnWorkingTreeFormat()
-        self.wc = wc
-        self.basedir = svn.wc.adm_access_path(self.wc)
+        self.basedir = local_path
         self.base_revid = base_revid
         self.bzrdir = bzrdir
         self._branch = branch
@@ -63,9 +62,20 @@ class SvnWorkingTree(WorkingTree):
         raise NotImplementedError(self.get_file_lines)
 
     def remove(self, files, verbose=False, to_file=None):
-        for file in files:
-            svn.wc.delete2(os.path.join(self.basedir, file), self.wc, None, 
-                           None, None)
+        wc = self._get_wc(write_lock=True)
+        try:
+            for file in files:
+                svn.wc.delete2(os.path.join(self.basedir, file), wc, None, None, None)
+        finally:
+            svn.wc.adm_close(wc)
+
+    def _get_wc(self, relpath="", write_lock=False):
+        return svn.wc.adm_open3(None, os.path.join(self.basedir, relpath).rstrip("/"), write_lock, 0, None)
+
+    def _get_rel_wc(self, relpath, write_lock=False):
+        dir = os.path.dirname(relpath)
+        file = os.path.basename(relpath)
+        return (self._get_wc(dir, write_lock), file)
 
     def revert(self, files, old_tree=None, backups=True, pb=DummyProgress()):
         if old_tree is not None:
@@ -73,27 +83,37 @@ class SvnWorkingTree(WorkingTree):
             super(SvnWorkingTree, self).revert(files, old_tree, backups, pb)
             return
         
-        for f in files:
-            svn.wc.revert(os.path.join(self.basedir, f),
-                      self.wc, False, False, None, None)
+        wc = self._get_wc(write_lock=True)
+        try:
+            for f in files:
+                svn.wc.revert(os.path.join(self.basedir, f),
+                      wc, False, False, None, None)
+        finally:
+            svn.wc.adm_close(wc)
 
     def move(self, from_paths, to_name):
         revt = svn.core.svn_opt_revision_t()
         revt.kind = svn.core.svn_opt_revision_working
+        to_wc = self._get_wc(to_name, write_lock=True)
+        try:
+            for entry in from_paths:
+                svn.wc.copy(os.path.join(self.basedir, entry), to_wc, os.path.basename(entry), None, None)
+        finally:
+            svn.wc.adm_close(to_wc)
+
         for entry in from_paths:
-            old_path = os.path.join(self.basedir, entry)
-            new_path = os.path.join(self.basedir, to_name, entry)
-            svn.wc.copy(old_path, self.wc, new_path, None, None)
             self.remove([entry])
 
     def rename_one(self, from_rel, to_rel):
         revt = svn.core.svn_opt_revision_t()
         revt.kind = svn.core.svn_opt_revision_unspecified
-        svn.wc.copy(os.path.join(self.basedir, from_rel), 
-                    self.wc,
-                    os.path.join(self.basedir, to_rel),
-                    None, None)
-        self.remove([from_rel])
+        (to_wc, to_file) = self._get_rel_wc(to_rel, write_lock=True)
+        try:
+            svn.wc.copy(os.path.join(self.basedir, from_rel), 
+                        to_wc, to_file, None, None)
+            svn.wc.delete2(os.path.join(self.basedir, from_rel), to_wc, None, None, None)
+        finally:
+            svn.wc.adm_close(to_wc)
 
     def read_working_inventory(self):
         basis_inv = self.basis_tree().inventory
@@ -127,31 +147,42 @@ class SvnWorkingTree(WorkingTree):
                     add_dir_to_inv(os.path.join(relpath, entry), subwc)
                     svn.wc.adm_close(subwc)
                 else:
-                    from bzrlib.osutils import fingerprint_file
-                    data = fingerprint_file(open(abspath))
                     file = InventoryFile(subid, entry, id)
-                    file.text_sha1 = data['sha1']
-                    file.text_size = data['size']
-                    inv.add(file)
+                    try:
+                        data = fingerprint_file(open(abspath))
+                        file.text_sha1 = data['sha1']
+                        file.text_size = data['size']
+                        inv.add(file)
+                    except IOError:
+                        # Ignore non-existing files
+                        pass
 
-        add_dir_to_inv("", self.wc)
+        wc = self._get_wc() 
+        try:
+            add_dir_to_inv("", wc)
+        finally:
+            svn.wc.adm_close(wc)
 
         return inv
 
     def add(self, files, ids=None):
-        for f in files:
-            try:
-                svn.wc.add2(os.path.join(self.basedir, f), self.wc, None, 0, None, None, None)
-            except SubversionException, (_, num):
-                if num == svn.core.SVN_ERR_ENTRY_EXISTS:
-                    continue
-                if num == svn.core.SVN_ERR_WC_PATH_NOT_FOUND:
-                    raise NoSuchFile(path=f)
-                raise
-            if ids:
-                id = ids.pop()
-                if id:
-                    svn.wc.prop_set2('bzr:fileid', id, f, False)
+        wc = self._get_wc(write_lock=True)
+        try:
+            for f in files:
+                try:
+                    svn.wc.add2(os.path.join(self.basedir, f), wc, None, 0, None, None, None)
+                except SubversionException, (_, num):
+                    if num == svn.core.SVN_ERR_ENTRY_EXISTS:
+                        continue
+                    if num == svn.core.SVN_ERR_WC_PATH_NOT_FOUND:
+                        raise NoSuchFile(path=f)
+                    raise
+                if ids:
+                    id = ids.pop()
+                    if id:
+                        svn.wc.prop_set2('bzr:fileid', id, f, False)
+        finally:
+            svn.wc.adm_close(wc)
 
     def pending_merges(self):
         return []
@@ -170,6 +201,13 @@ class SvnWorkingTree(WorkingTree):
 
     def extras(self):
         raise NotImplementedError(self.extras)
+
+    def get_file_sha1(self, file_id, path=None):
+        if not path:
+            path = self._inventory.id2path(file_id)
+
+        return fingerprint_file(open(os.path.join(self.basedir, path)))['sha1']
+
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
     def get_format_description(self):
@@ -194,29 +232,25 @@ class OptimizedRepository(SvnRepository):
 
 class SvnLocalAccess(SvnRemoteAccess):
     def __init__(self, transport, format):
-        self.wc = None
         self.local_path = transport.base.rstrip("/")
         if self.local_path.startswith("file://"):
             self.local_path = self.local_path[len("file://"):]
         
-        self.wc = svn.wc.adm_open3(None, self.local_path, True, 0, None)
+        wc = svn.wc.adm_open3(None, self.local_path, True, 0, None)
         self.transport = transport
 
         # Open related remote repository + branch
-        url, revno = svn.wc.get_ancestry(self.local_path, self.wc)
+        url, revno = svn.wc.get_ancestry(self.local_path, wc)
         if not url.startswith("svn"):
             url = "svn+" + url
 
-        self.base_revno = svn.wc.status2(self.local_path, self.wc).ood_last_cmt_rev
+        self.base_revno = svn.wc.status2(self.local_path, wc).ood_last_cmt_rev
 
         remote_transport = SvnRaTransport(url)
 
         super(SvnLocalAccess, self).__init__(remote_transport, format)
 
-    def __del__(self):
-        if self.wc is not None:
-            svn.wc.adm_close(self.wc)
-            self.wc = None
+        svn.wc.adm_close(wc)
 
     def open_repository(self):
         repos = OptimizedRepository(self, self.root_transport)
@@ -231,7 +265,7 @@ class SvnLocalAccess(SvnRemoteAccess):
 
     # Working trees never exist on Subversion repositories
     def open_workingtree(self, _unsupported=False):
-        return SvnWorkingTree(self, self.wc, self.open_branch(), 
+        return SvnWorkingTree(self, self.local_path, self.open_branch(), 
                 self.open_repository().generate_revision_id(
                     self.base_revno, self.branch_path))
 

@@ -16,7 +16,7 @@
 
 from bzrlib.config import config_dir
 from bzrlib.errors import NoSuchRevision
-from bzrlib.progress import ProgressBar
+from bzrlib.progress import ProgressBar, DummyProgress
 from bzrlib.trace import mutter
 
 from svn.core import SubversionException
@@ -29,7 +29,7 @@ from cStringIO import StringIO
 cache_dir = os.path.join(config_dir(), 'svn-cache')
 
 class LogWalker(object):
-    def __init__(self, ra=None, uuid=None, last_revnum=None, repos_url=None):
+    def __init__(self, ra=None, uuid=None, last_revnum=None, repos_url=None, pb=ProgressBar()):
         if not ra:
             callbacks = svn.ra.callbacks2_t()
             ra = svn.ra.open2(repos_url.encode('utf8'), callbacks, None, None)
@@ -55,13 +55,13 @@ class LogWalker(object):
             self.saved_revnum = 0
 
         if self.saved_revnum < last_revnum:
-            self.fetch_revisions(self.saved_revnum, last_revnum)
+            self.fetch_revisions(self.saved_revnum, last_revnum, pb)
         else:
             self.last_revnum = self.saved_revnum
 
-    def fetch_revisions(self, from_revnum, to_revnum):
+    def fetch_revisions(self, from_revnum, to_revnum, pb=ProgressBar()):
         def rcvr(orig_paths, rev, author, date, message, pool):
-            self.pb.update('fetching svn revision info', rev, to_revnum)
+            pb.update('fetching svn revision info', rev, to_revnum)
             paths = {}
             if orig_paths is None:
                 orig_paths = {}
@@ -79,9 +79,8 @@ class LogWalker(object):
 
         mutter('log -r %r:%r /' % (self.saved_revnum, to_revnum))
         self.last_revnum = to_revnum
-        self.pb = ProgressBar()
         svn.ra.get_log(self.ra, ["/"], self.saved_revnum, to_revnum, 0, True, True, rcvr)
-        self.pb.clear()
+        pb.clear()
 
     def __del__(self):
         if self.saved_revnum != self.last_revnum:

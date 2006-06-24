@@ -92,7 +92,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree = WorkingTree.open("dc")
         tree.rename_one("bl", "bloe")
         
-        basis_inv = tree.basis_tree()
+        basis_inv = tree.basis_tree().inventory
         inv = tree.read_working_inventory()
         self.assertFalse(inv.has_filename("bl"))
         self.assertTrue(inv.has_filename("bloe"))
@@ -111,7 +111,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree = WorkingTree.open("dc")
         tree.move(["bl", "a"], "dir")
         
-        basis_inv = tree.basis_tree()
+        basis_inv = tree.basis_tree().inventory
         inv = tree.read_working_inventory()
         self.assertFalse(inv.has_filename("bl"))
         self.assertFalse(inv.has_filename("a"))

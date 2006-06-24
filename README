@@ -1,15 +1,30 @@
+== Introduction ==
+
 This directory contains a simple plugin that adds 
 Subversion (http://subversion.tigris.org/) branch support to 
 Bazaar (http://www.bazaar-vcs.org/)
 
-You will need a recent version of Bazaar-NG, most likely bzr.dev. If you have 
-an older version of Bazaar and don't want to upgrade, try the svn-0.8 branch. 
-This contains some hacks to make the Subversion plugin work with Bazaar 0.8.
+== Dependencies == 
+You will need at least version 0.9 of Bazaar-NG (currently unreleased).
 
-You also need the Subversion bindings for python, with my patch for svn_info_t,
-which has been in Subversions' repository since r19413.
+You also need a fairly recent version of the Python bindings to the 
+Subversion libraries. At the moment, the svn plugin only works with 
+Subversion 1.5 (trunk). I plan to submit patches against the python-subversion 
+package in Ubuntu Edgy later.
+
+== Installation ==
 
 Simply place this directory in ~/.bazaar/plugins and you should be able 
 to check out branches from Subversion using bzr.
 
-Jelmer Vernooij <jelmer@samba.org>, April 2006.
+== License ==
+
+GNU General Public License, v2 or later.
+
+== Unit testing ==
+
+Simply run 'bzr selftest svn'
+
+== Author ==
+
+Jelmer Vernooij <jelmer@samba.org>
