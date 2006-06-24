@@ -786,7 +786,7 @@ class KnitVersionedFile(VersionedFile):
                     assert content is None
                     content = self.factory.parse_fulltext(data, version_idx)
                 elif method == 'line-delta':
-                    delta = self.factory.parse_line_delta(data, version_idx)
+                    delta = self.factory.parse_line_delta(data[:], version_idx)
                     content._lines = self._apply_delta(content._lines, delta)
 
             if 'no-eol' in self._index.get_options(version_id):
