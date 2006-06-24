@@ -811,7 +811,7 @@ class KnitVersionedFile(VersionedFile):
                         content = content.copy()
                         content._lines = self._apply_delta(content._lines, 
                                                            delta)
-                    content_map[component_id] = content
+                    content_map[component_id] = content.copy()
 
             if 'no-eol' in self._index.get_options(version_id):
                 line = content._lines[-1][1].rstrip('\n')
