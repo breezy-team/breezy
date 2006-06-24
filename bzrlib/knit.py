@@ -516,32 +516,54 @@ class KnitVersionedFile(VersionedFile):
         return diff_hunks
 
     def _get_component_versions(self, version_id):
-        basis = self.basis_knit
-        needed_versions = []
-        basis_versions = []
-        cursor = version_id
+        return list(self._get_components_versions([version_id]))[0]
 
-        while 1:
-            picked_knit = self
-            if basis and basis._index.has_version(cursor):
-                picked_knit = basis
-                basis_versions.append(cursor)
-            method = picked_knit._index.get_method(cursor)
-            needed_versions.append((method, cursor))
-            if method == 'fulltext':
-                break
-            cursor = picked_knit.get_parents(cursor)[0]
-        return needed_versions, basis_versions
+    def _get_components_versions(self, version_ids):
+        component_data = {}
+        for version_id in version_ids:
+            basis = self.basis_knit
+            needed_versions = []
+            basis_versions = []
+            cursor = version_id
+
+            while 1:
+                picked_knit = self
+                if basis and basis._index.has_version(cursor):
+                    picked_knit = basis
+                    basis_versions.append(cursor)
+                try:
+                    method, next = component_data[cursor]
+                    needed_versions.append((method, cursor))
+                    if method == 'fulltext':
+                        break
+                    cursor = next
+                except KeyError:
+                    method = picked_knit._index.get_method(cursor)
+                    needed_versions.append((method, cursor))
+                    if method == 'fulltext':
+                        break
+                    next = picked_knit.get_parents(cursor)[0]
+                    component_data[cursor] = (method, next)
+                    cursor = next
+            yield needed_versions, basis_versions
 
     def _get_component_positions(self, version_id):
-        needed_versions, basis_versions = \
-            self._get_component_versions(version_id)
-        assert len(basis_versions) == 0
-        positions = []
-        for method, comp_id in needed_versions:
-            data_pos, data_size = self._index.get_position(comp_id)
-            positions.append((method, comp_id, data_pos, data_size))
-        return positions
+        return list(self._get_components_positions([version_id]))[0]
+
+    def _get_components_positions(self, version_ids):
+        position_cache = {}
+        for needed_versions, basis_versions in\
+                self._get_components_versions(version_ids):
+            assert len(basis_versions) == 0
+            positions = []
+            for method, comp_id in needed_versions:
+                try:
+                    data_pos, data_size = position_cache[comp_id] 
+                except KeyError:
+                    data_pos, data_size = self._index.get_position(comp_id)
+                    position_cache[comp_id] = data_pos, data_size
+                positions.append((method, comp_id, data_pos, data_size))
+            yield positions
 
     def _get_components(self, version_id):
         """Return a list of (version_id, method, data) tuples that
@@ -748,14 +770,14 @@ class KnitVersionedFile(VersionedFile):
 
     def _get_version_components(self, position_map):
         records = set() 
-        for version_id, positions in position_map.iteritems():
+        for (version_id, positions) in position_map:
             for method, comp_id, position, size in positions:
                 records.add((comp_id, position, size))
         record_map = dict((r,( c, d)) for r, c, d in 
                           self._data.read_records_iter(records))
 
         component_map = {}
-        for version_id, positions in position_map.iteritems():
+        for (version_id, positions) in position_map:
             components = []
             for method, comp_id, position, size in positions:
                 data, digest = record_map[comp_id]
@@ -771,12 +793,12 @@ class KnitVersionedFile(VersionedFile):
 
     def get_line_list(self, version_ids):
         """Return the texts of listed versions as a list of strings."""
-        position_map = {}
-        for version_id in version_ids:
+        position_map = []
+        for version_id, pos in izip(version_ids,
+            self._get_components_positions(version_ids)):
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
-            position_map[version_id] = \
-                self._get_component_positions(version_id)
+            position_map.append((version_id, pos))
 
         version_components = self._get_version_components(position_map)
 
