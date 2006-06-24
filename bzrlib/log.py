@@ -214,21 +214,21 @@ def _show_log(branch,
         revision_ids = [r for r, n, d in view_revisions]
         zeros = set(r for r, n, d in view_revisions if d == 0)
         num = 9
+        cur_deltas = {}
         while revision_ids:
             revisions = branch.repository.get_revisions(revision_ids[:num])
+            if verbose or specific_fileid:
+                delta_revisions = [r for r in revisions if
+                                   r.revision_id in zeros]
+                deltas = branch.repository.get_revision_deltas(delta_revisions)
+                cur_deltas = dict(zip((d.revision_id for d in 
+                                       delta_revisions), deltas))
             for revision in revisions:
                 revision_id = revision.revision_id
-                if (verbose or specific_fileid) and revision_id in zeros:
-                    delta = branch.repository.get_revision_delta(revision_id)
-                else:
-                    delta = None
-                yield revision, delta
+                yield revision, cur_deltas.get(revision.revision_id)
             revision_ids  = revision_ids[num:]
             num = int(num * 1.5)
             
-        revisions = branch.repository.get_revisions()
-        for revision in revisions:
-            yield revision
     # now we just print all the revisions
     for ((rev_id, revno, merge_depth), (rev, delta)) in \
          izip(view_revisions, iter_revisions()):
