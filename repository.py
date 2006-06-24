@@ -28,7 +28,7 @@ from bzrlib.revision import Revision
 from bzrlib.transport import Transport
 from bzrlib.trace import mutter
 
-from svn.core import SubversionException
+from svn.core import SubversionException, Pool
 import svn.core
 
 import os
@@ -119,6 +119,7 @@ class SvnRepository(Repository):
         self.text_cache = {}
         self.dir_cache = {}
         self.scheme = bzrdir.scheme
+        self.pool = Pool()
 
         assert self.url
         assert self.uuid
@@ -439,7 +440,7 @@ class SvnRepository(Repository):
                 self.ra, path.encode('utf8'), 
                 revnum, svn.core.SVN_DIRENT_KIND
                 + svn.core.SVN_DIRENT_CREATED_REV
-                + svn.core.SVN_DIRENT_HAS_PROPS)
+                + svn.core.SVN_DIRENT_HAS_PROPS, self.pool)
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(self, revnum)
@@ -460,7 +461,7 @@ class SvnRepository(Repository):
         stream = StringIO()
         mutter('svn getfile -r %r %s' % (revnum, path))
         (realrevnum, props) = svn.ra.get_file(self.ra, path.encode('utf8'), 
-            revnum, stream)
+            revnum, stream, self.pool)
         if not self.text_cache.has_key(path):
             self.text_cache[path] = {}
 
