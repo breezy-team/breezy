@@ -762,10 +762,15 @@ class KnitVersionedFile(VersionedFile):
         """See VersionedFile.get_lines()."""
         return self.get_line_list([version_id])[0]
 
-    def _get_record_map(self, position_map, version_ids):
+    def _get_record_map(self, version_ids):
+        position_map = self._get_components_positions(version_ids)
         records = [(c, p, s) for c, (m, p, s, n) in position_map.iteritems()]
-        record_map = dict((r,( c, d)) for r, c, d in 
-                          self._data.read_records_iter(records))
+        record_map = {}
+        for component_id, content, digest in\
+            self._data.read_records_iter(records): 
+            method, position, size, next = position_map[component_id]
+            record_map[component_id] = method, content, digest, next
+                          
         return record_map
 
     def get_text(self, version_id):
@@ -780,8 +785,7 @@ class KnitVersionedFile(VersionedFile):
         for version_id in version_ids:
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
-        position_map = self._get_components_positions(version_ids)
-        record_map = self._get_record_map(position_map, version_ids)
+        record_map = self._get_record_map(version_ids)
 
         text_map = {}
         content_map = {}
@@ -789,8 +793,7 @@ class KnitVersionedFile(VersionedFile):
             components = []
             cursor = version_id
             while cursor is not None:
-                method, data_pos, data_size, next = position_map[cursor]
-                data, digest = record_map[cursor]
+                method, data, digest, next = record_map[cursor]
                 components.append((cursor, method, data, digest))
                 if cursor in content_map:
                     break
