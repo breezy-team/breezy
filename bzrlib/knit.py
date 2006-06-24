@@ -747,11 +747,12 @@ class KnitVersionedFile(VersionedFile):
         return self.get_line_list([version_id])[0]
 
     def _get_version_components(self, position_map):
-        records = []
+        records = set() 
         for version_id, positions in position_map.iteritems():
             for method, comp_id, position, size in positions:
-                records.append((comp_id, position, size))
-        record_map = self._data.read_records(records)
+                records.add((comp_id, position, size))
+        record_map = dict((r,( c, d)) for r, c, d in 
+                          self._data.read_records_iter(records))
 
         component_map = {}
         for version_id, positions in position_map.iteritems():
@@ -759,8 +760,7 @@ class KnitVersionedFile(VersionedFile):
             for method, comp_id, position, size in positions:
                 data, digest = record_map[comp_id]
                 components.append((comp_id, method, data, digest))
-            component_map[version_id] = components
-        return component_map
+            yield version_id, components
 
     def get_text(self, version_id):
         """See VersionedFile.get_text"""
@@ -782,20 +782,23 @@ class KnitVersionedFile(VersionedFile):
 
         text_map = {}
         content_map = {}
-        for version_id, components in version_components.iteritems():
+        for version_id, components in version_components:
             content = None
             for component_id, method, data, digest in reversed(components):
-                version_idx = self._index.lookup(component_id)
                 if component_id in content_map:
                     content = content_map[component_id]
-                elif method == 'fulltext':
-                    assert content is None
-                    content = self.factory.parse_fulltext(data, version_idx)
-                elif method == 'line-delta':
-                    delta = self.factory.parse_line_delta(data[:], version_idx)
-                    content = content.copy()
-                    content._lines = self._apply_delta(content._lines, delta)
-                content_map[component_id] = content
+                else:
+                    version_idx = self._index.lookup(component_id)
+                    if method == 'fulltext':
+                        assert content is None
+                        content = self.factory.parse_fulltext(data, version_idx)
+                    elif method == 'line-delta':
+                        delta = self.factory.parse_line_delta(data[:], 
+                                                              version_idx)
+                        content = content.copy()
+                        content._lines = self._apply_delta(content._lines, 
+                                                           delta)
+                    content_map[component_id] = content
 
             if 'no-eol' in self._index.get_options(version_id):
                 line = content._lines[-1][1].rstrip('\n')
