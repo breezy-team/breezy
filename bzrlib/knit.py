@@ -794,11 +794,12 @@ class KnitVersionedFile(VersionedFile):
                 content._lines[-1] = (content._lines[-1][0], line)
 
             # digest here is the digest from the last applied component.
-            if sha_strings(content.text()) != digest:
+            text = content.text()
+            if sha_strings(text) != digest:
                 raise KnitCorrupt(self.filename, 
                                   'sha-1 does not match %s' % version_id)
 
-            text_map[version_id] = content.text()
+            text_map[version_id] = text 
         return [text_map[v] for v in version_ids]
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None):
@@ -1448,9 +1449,9 @@ class _KnitData(_KnitComponentFile):
         for version_id, pos, size in records:
             if version_id not in self._records:
                 needed_records.add((version_id, pos, size))
+        needed_records = sorted(needed_records, key=operator.itemgetter(1))
 
         if len(needed_records):
-            sorted(needed_records, key=operator.itemgetter(1))
             # We take it that the transport optimizes the fetching as good
             # as possible (ie, reads continuous ranges.)
             response = self._transport.readv(self._filename,
