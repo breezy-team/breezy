@@ -5,6 +5,7 @@ Subversion (http://subversion.tigris.org/) branch support to
 Bazaar (http://www.bazaar-vcs.org/)
 
 == Dependencies == 
+
 You will need at least version 0.9 of Bazaar-NG (currently unreleased).
 
 You also need a fairly recent version of the Python bindings to the 
