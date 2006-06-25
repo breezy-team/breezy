@@ -30,6 +30,8 @@ import os
 import svn.core, svn.ra
 from svn.core import SubversionException
 
+from tree import SvnBasisTree
+
 svn.ra.initialize()
 
 class FakeControlFiles(object):
@@ -56,6 +58,9 @@ class SvnBranch(Branch):
         self.base = "%s/%s" % (repos.url, branch_path)
         self._format = SvnBranchFormat()
         mutter("Connected to branch at %s" % branch_path)
+
+    def basis_tree(self):
+        return SvnBasisTree(self)
 
     def check(self):
         """See Branch.Check.

@@ -19,9 +19,12 @@ from repository import SvnRepository
 from bzrlib.decorators import needs_write_lock
 from bzrlib.progress import ProgressBar
 from bzrlib.repository import InterRepository
+from bzrlib.trace import mutter
 
 from svn.core import SubversionException
 import svn.core
+
+import os
 
 class InterSvnRepository(InterRepository):
     """Svn to any repository actions."""
@@ -30,10 +33,8 @@ class InterSvnRepository(InterRepository):
     """The format to test with - as yet there is no SvnRepoFormat."""
 
     @needs_write_lock
-    def copy_content(self, revision_id=None, basis=None):
+    def copy_content(self, revision_id=None, basis=None, pb=ProgressBar()):
         """See InterRepository.copy_content."""
-        pb = ProgressBar()
-
         # Loop over all the revnums until revision_id
         # (or youngest_revnum) and call self.target.add_revision() 
         # or self.target.add_inventory() each time
@@ -62,29 +63,34 @@ class InterSvnRepository(InterRepository):
             self.target.add_revision(revid, rev, inv)
 
             #FIXME: use svn.ra.do_update
-            for item in paths:
+            keys = paths.keys()
+            keys.sort()
+            for item in keys:
                 (fileid, orig_revid) = self.source.path_to_file_id(revnum, item)
                 branch_path = self.source.parse_revision_id(orig_revid)[0]
                 if branch_path != path:
                     continue
 
-                parents = []
-                if current.has_key(fileid):
-                    parents = [current[fileid]]
-
-                current[fileid] = revid
-
                 if paths[item][0] == 'A':
                     weave = weave_store.get_weave_or_empty(fileid, transact)
                 elif paths[item][0] == 'M' or paths[item][0] == 'R':
-                    weave = weave_store.get_weave(fileid, transact)
+                    weave = weave_store.get_weave_or_empty(fileid, transact)
                 elif paths[item][0] == 'D':
+                    # Not interested in removed files/directories
                     continue
                 else:
                     raise BzrError("Unknown SVN action '%s'" % 
                         paths[item][0])
+
+                if current.has_key(fileid):
+                    parents = [current[fileid]]
+                else:
+                    parents = []
+
+                current[fileid] = revid
+
+                mutter('attempting to add %r' % item)
                 
-                lines = None
                 try:
                     stream = self.source._get_file(item, revnum)
                     stream.seek(0)
@@ -94,16 +100,28 @@ class InterSvnRepository(InterRepository):
                         raise
                     lines = []
 
-                if lines:
-                    if not weave.has_version(revid):
-                        weave.add_lines(revid, parents, lines)
+                if weave.has_version(revid):
+                    mutter('%r already has %r' % (item, revid))
+                else:
+                    mutter('adding weave %r, %r' % (item, fileid))
+                    weave.add_lines(revid, parents, lines)
             
+                pid = inv[fileid].parent_id
+                while pid != inv.path2id('') and pid != None:
+                    weave = weave_store.get_weave_or_empty(pid, transact)
+                    if weave.has_version(revid):
+                        pid = None
+                    else:
+                        mutter('adding parent %r' % pid)
+                        weave.add_lines(revid, parents, [])
+                        pid = inv[pid].parent_id
+
         pb.clear()
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None):
+    def fetch(self, revision_id=None, pb=ProgressBar()):
         """Fetch revisions. """
-        self.copy_content(revision_id)
+        self.copy_content(revision_id=revision_id, pb=pb)
 
     @staticmethod
     def is_compatible(source, target):
