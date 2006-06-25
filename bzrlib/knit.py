@@ -514,15 +514,10 @@ class KnitVersionedFile(VersionedFile):
             diff_hunks.append((op[1], op[2], op[4]-op[3], new_content._lines[op[3]:op[4]]))
         return diff_hunks
 
-    def _get_component_versions(self, version_id):
-        component_data = self._get_components_versions([version_id])
-        return list(self._iter_needed(version_id, component_data)), []
-
     def _get_components_versions(self, version_ids):
         component_data = {}
         for version_id in version_ids:
             basis = self.basis_knit
-            needed_versions = []
             basis_versions = []
             cursor = version_id
 
@@ -536,11 +531,6 @@ class KnitVersionedFile(VersionedFile):
                 component_data[cursor] = (method, next)
                 cursor = next
             cursor = version_id
-            needed_versions2 = []
-            while cursor is not None:
-                method, next = component_data[cursor]
-                needed_versions2.append((method, cursor))
-                cursor = next
         return component_data
     
     def _iter_needed(self, version_id, component_data):
