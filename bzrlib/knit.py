@@ -445,8 +445,7 @@ class KnitVersionedFile(VersionedFile):
 
     def get_sha1(self, version_id):
         """See VersionedFile.get_sha1()."""
-        components = self._get_components(version_id)
-        return components[-1][-1][-1]
+        return self._get_record_map([version_id])[version_id][2]
 
     @staticmethod
     def get_suffixes():
@@ -559,58 +558,6 @@ class KnitVersionedFile(VersionedFile):
             data_map[comp_id] = (method, data_pos, data_size, next)
         return data_map
 
-    def _get_components(self, version_id):
-        """Return a list of (version_id, method, data) tuples that
-        makes up version specified by version_id of the knit.
-
-        The components should be applied in the order of the returned
-        list.
-
-        The basis knit will be used to the largest extent possible
-        since it is assumed that accesses to it is faster.
-        """
-        #profile notes:
-        # 4168 calls in 14912, 2289 internal
-        # 4168 in 9711 to read_records
-        # 52554 in 1250 to get_parents
-        # 170166 in 865 to list.append
-        
-        # needed_revisions holds a list of (method, version_id) of
-        # versions that is needed to be fetched to construct the final
-        # version of the file.
-        #
-        # basis_revisions is a list of versions that needs to be
-        # fetched but exists in the basis knit.
-
-        needed_versions, basis_versions = \
-            self._get_component_versions(version_id)
-
-        components = {}
-        if basis_versions:
-            assert False, "I am broken"
-            basis = self.basis_knit
-            records = []
-            for comp_id in basis_versions:
-                data_pos, data_size = basis._index.get_data_position(comp_id)
-                records.append((comp_id, data_pos, data_size))
-            components.update(basis._data.read_records(records))
-
-        records = []
-        for comp_id in [vid for method, vid in needed_versions
-                        if vid not in basis_versions]:
-            data_pos, data_size = self._index.get_position(comp_id)
-            records.append((comp_id, data_pos, data_size))
-        components.update(self._data.read_records(records))
-
-        # get_data_records returns a mapping with the version id as
-        # index and the value as data.  The order the components need
-        # to be applied is held by needed_versions (reversed).
-        out = []
-        for method, comp_id in reversed(needed_versions):
-            out.append((comp_id, method, components[comp_id]))
-
-        return out
-
     def _get_content(self, version_id, parent_texts={}):
         """Returns a content object that makes up the specified
         version."""
@@ -624,26 +571,7 @@ class KnitVersionedFile(VersionedFile):
         if self.basis_knit and version_id in self.basis_knit:
             return self.basis_knit._get_content(version_id)
 
-        content = None
-        components = self._get_components(version_id)
-        for component_id, method, (data, digest) in components:
-            version_idx = self._index.lookup(component_id)
-            if method == 'fulltext':
-                assert content is None
-                content = self.factory.parse_fulltext(data, version_idx)
-            elif method == 'line-delta':
-                delta = self.factory.parse_line_delta(data, version_idx)
-                content._lines = self._apply_delta(content._lines, delta)
-
-        if 'no-eol' in self._index.get_options(version_id):
-            line = content._lines[-1][1].rstrip('\n')
-            content._lines[-1] = (content._lines[-1][0], line)
-
-        # digest here is the digest from the last applied component.
-        if sha_strings(content.text()) != digest:
-            raise KnitCorrupt(self.filename, 'sha-1 does not match %s' % version_id)
-
-        return content
+        return self._get_content_maps([version_id])[1][version_id]
 
     def _check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
