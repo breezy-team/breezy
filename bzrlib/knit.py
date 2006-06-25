@@ -531,16 +531,8 @@ class KnitVersionedFile(VersionedFile):
                 data_pos, data_size = self._index.get_position(cursor)
                 component_data[cursor] = (method, data_pos, data_size, next)
                 cursor = next
-            cursor = version_id
         return component_data
-    
-    def _iter_needed(self, version_id, component_data):
-        cursor = version_id
-        while cursor is not None:
-            method, next = component_data[cursor]
-            yield method, cursor
-            cursor = next
-        
+       
     def _get_content(self, version_id, parent_texts={}):
         """Returns a content object that makes up the specified
         version."""
