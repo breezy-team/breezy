@@ -211,19 +211,24 @@ def _show_log(branch,
                           direction, include_merges=include_merges))
 
     def iter_revisions():
+        # r = revision, n = revno, d = merge depth
         revision_ids = [r for r, n, d in view_revisions]
         zeros = set(r for r, n, d in view_revisions if d == 0)
         num = 9
-        cur_deltas = {}
+        repository = branch.repository
         while revision_ids:
-            revisions = branch.repository.get_revisions(revision_ids[:num])
+            cur_deltas = {}
+            revisions = repository.get_revisions(revision_ids[:num])
             if verbose or specific_fileid:
                 delta_revisions = [r for r in revisions if
                                    r.revision_id in zeros]
-                deltas = branch.repository.get_revision_deltas(delta_revisions)
-                cur_deltas = dict(zip((d.revision_id for d in 
-                                       delta_revisions), deltas))
+                deltas = repository.get_deltas_for_revisions(delta_revisions)
+                cur_deltas = dict(izip((r.revision_id for r in 
+                                        delta_revisions), deltas))
             for revision in revisions:
+                # The delta value will be None unless
+                # 1. verbose or specific_fileid is specified, and
+                # 2. the revision is a mainline revision
                 yield revision, cur_deltas.get(revision.revision_id)
             revision_ids  = revision_ids[num:]
             num = int(num * 1.5)

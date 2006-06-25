@@ -445,7 +445,9 @@ class KnitVersionedFile(VersionedFile):
 
     def get_sha1(self, version_id):
         """See VersionedFile.get_sha1()."""
-        return self._get_record_map([version_id])[version_id][2]
+        record_map = self._get_record_map([version_id])
+        method, content, digest, next = record_map[version_id]
+        return digest 
 
     @staticmethod
     def get_suffixes():
@@ -517,7 +519,7 @@ class KnitVersionedFile(VersionedFile):
     def _get_components_positions(self, version_ids):
         """Produce a map of position data for the components of versions.
 
-        This data is indended to be used for retrieving the knit records.
+        This data is intended to be used for retrieving the knit records.
 
         A dict of version_id to (method, data_pos, data_size, next) is
         returned.
@@ -554,8 +556,9 @@ class KnitVersionedFile(VersionedFile):
 
         if self.basis_knit and version_id in self.basis_knit:
             return self.basis_knit._get_content(version_id)
-
-        return self._get_content_maps([version_id])[1][version_id]
+        
+        text_map, contents_map = self._get_content_maps([version_id])
+        return contents_map[version_id]
 
     def _check_versions_present(self, version_ids):
         """Check that all specified versions are present."""
@@ -686,6 +689,7 @@ class KnitVersionedFile(VersionedFile):
         If the method is fulltext, next will be None.
         """
         position_map = self._get_components_positions(version_ids)
+        # c = component_id, m = method, p = position, s = size, n = next
         records = [(c, p, s) for c, (m, p, s, n) in position_map.iteritems()]
         record_map = {}
         for component_id, content, digest in\
@@ -712,7 +716,7 @@ class KnitVersionedFile(VersionedFile):
         
         :return: (text_map, content_map) where text_map contains the texts for
         the requested versions and content_map contains the KnitContents.
-        Both dicts are take version_ids as their keys.
+        Both dicts take version_ids as their keys.
         """
         for version_id in version_ids:
             if not self.has_version(version_id):

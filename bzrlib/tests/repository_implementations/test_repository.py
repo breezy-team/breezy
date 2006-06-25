@@ -346,11 +346,11 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
             delta = compare_trees(tree1, tree2)
             assert not delta.has_changed()
 
-    def test_get_revision_deltas(self):
+    def test_get_deltas_for_revisions(self):
         repository = self.bzrdir.open_repository()
         revisions = [repository.get_revision(r) for r in 
                      ['rev1', 'rev2', 'rev3', 'rev4']]
-        deltas1 = list(repository.get_revision_deltas(revisions))
+        deltas1 = list(repository.get_deltas_for_revisions(revisions))
         deltas2 = [repository.get_revision_delta(r.revision_id) for r in
                    revisions]
         assert deltas1 == deltas2

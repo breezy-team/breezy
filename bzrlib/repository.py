@@ -332,7 +332,7 @@ class Repository(object):
         return r
 
     @needs_read_lock
-    def get_revision_deltas(self, revisions):
+    def get_deltas_for_revisions(self, revisions):
         """Produce a generator of revision deltas.
         
         Note that the input is a sequence of REVISIONS, not revision_ids.
@@ -360,7 +360,7 @@ class Repository(object):
         revision.
         """
         r = self.get_revision(revision_id)
-        return list(self.get_revision_deltas([r]))[0]
+        return list(self.get_deltas_for_revisions([r]))[0]
 
     def _check_revision_parents(self, revision, inventory):
         """Private to Repository and Fetch.
