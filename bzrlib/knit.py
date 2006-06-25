@@ -515,10 +515,19 @@ class KnitVersionedFile(VersionedFile):
         return diff_hunks
 
     def _get_components_positions(self, version_ids):
+        """Produce a map of position data for the components of versions.
+
+        This data is indended to be used for retrieving the knit records.
+
+        A dict of version_id to (method, data_pos, data_size, next) is
+        returned.
+        method is the way referenced data should be applied.
+        data_pos is the position of the data in the knit.
+        data_size is the size of the data in the knit.
+        next is the build-parent of the version, or None for fulltexts.
+        """
         component_data = {}
         for version_id in version_ids:
-            basis = self.basis_knit
-            basis_versions = []
             cursor = version_id
 
             while cursor is not None and cursor not in component_data:
@@ -666,6 +675,16 @@ class KnitVersionedFile(VersionedFile):
         return self.get_line_list([version_id])[0]
 
     def _get_record_map(self, version_ids):
+        """Produce a dictionary of knit records.
+        
+        The keys are version_ids, the values are tuples of (method, content,
+        digest, next).
+        method is the way the content should be applied.  
+        content is a KnitContent object.
+        digest is the SHA1 digest of this version id after all steps are done
+        next is the build-parent of the version, i.e. the leftmost ancestor.
+        If the method is fulltext, next will be None.
+        """
         position_map = self._get_components_positions(version_ids)
         records = [(c, p, s) for c, (m, p, s, n) in position_map.iteritems()]
         record_map = {}
@@ -689,6 +708,12 @@ class KnitVersionedFile(VersionedFile):
         return [text_map[v] for v in version_ids]
 
     def _get_content_maps(self, version_ids):
+        """Produce maps of text and KnitContents
+        
+        :return: (text_map, content_map) where text_map contains the texts for
+        the requested versions and content_map contains the KnitContents.
+        Both dicts are take version_ids as their keys.
+        """
         for version_id in version_ids:
             if not self.has_version(version_id):
                 raise RevisionNotPresent(version_id, self.filename)
@@ -1386,6 +1411,8 @@ class _KnitData(_KnitComponentFile):
         for version_id, pos, size in records:
             if version_id not in self._records:
                 needed_records.add((version_id, pos, size))
+
+        # turn our set into a list, sorted by file position
         needed_records = sorted(needed_records, key=operator.itemgetter(1))
 
         if len(needed_records):

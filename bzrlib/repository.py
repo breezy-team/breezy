@@ -331,7 +331,14 @@ class Repository(object):
         self._check_revision_parents(r, inv)
         return r
 
+    @needs_read_lock
     def get_revision_deltas(self, revisions):
+        """Produce a generator of revision deltas.
+        
+        Note that the input is a sequence of REVISIONS, not revision_ids.
+        Trees will be held in memory until the generator exits.
+        Each delta is relative to the revision's lefthand predecessor.
+        """
         required_trees = set()
         for revision in revisions:
             required_trees.add(revision.revision_id)
@@ -345,6 +352,7 @@ class Repository(object):
                 old_tree = trees[revision.parent_ids[0]]
             yield delta.compare_trees(old_tree, trees[revision.revision_id])
 
+    @needs_read_lock
     def get_revision_delta(self, revision_id):
         """Return the delta for one revision.
 
@@ -562,8 +570,7 @@ class Repository(object):
     def revision_trees(self, revision_ids):
         """Return Tree for a revision on this branch.
 
-        `revision_id` may be None for the null revision, in which case
-        an `EmptyTree` is returned."""
+        `revision_id` may not be None or 'null:'"""
         assert None not in revision_ids
         assert NULL_REVISION not in revision_ids
         texts = self.get_inventory_weave().get_texts(revision_ids)

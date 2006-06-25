@@ -224,7 +224,6 @@ def _show_log(branch,
                 cur_deltas = dict(zip((d.revision_id for d in 
                                        delta_revisions), deltas))
             for revision in revisions:
-                revision_id = revision.revision_id
                 yield revision, cur_deltas.get(revision.revision_id)
             revision_ids  = revision_ids[num:]
             num = int(num * 1.5)
