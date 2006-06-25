@@ -1281,11 +1281,10 @@ class _KnitData(_KnitComponentFile):
         self._checked = False
         if create:
             self._transport.put(self._filename, StringIO(''), mode=file_mode)
-        self._records = {}
 
     def clear_cache(self):
         """Clear the record cache."""
-        self._records = {}
+        pass
 
     def _open_file(self):
         if self._file is None:
@@ -1326,8 +1325,6 @@ class _KnitData(_KnitComponentFile):
         """Write new text record to disk.  Returns the position in the
         file where it was written."""
         size, sio = self._record_to_data(version_id, digest, lines)
-        # cache
-        self._records[version_id] = (digest, lines)
         # write to disk
         start_pos = self._transport.append(self._filename, sio)
         return start_pos, size
@@ -1372,32 +1369,19 @@ class _KnitData(_KnitComponentFile):
         It will actively recompress currently cached records on the
         basis that that is cheaper than I/O activity.
         """
-        needed_records = []
-        for version_id, pos, size in records:
-            if version_id not in self._records:
-                needed_records.append((version_id, pos, size))
-
         # setup an iterator of the external records:
         # uses readv so nice and fast we hope.
-        if len(needed_records):
+        if len(records):
             # grab the disk data needed.
             raw_records = self._transport.readv(self._filename,
-                [(pos, size) for version_id, pos, size in needed_records])
+                [(pos, size) for version_id, pos, size in records])
 
         for version_id, pos, size in records:
-            if version_id in self._records:
-                # compress a new version
-                size, sio = self._record_to_data(version_id,
-                                                 self._records[version_id][0],
-                                                 self._records[version_id][1])
-                yield version_id, sio.getvalue()
-            else:
-                pos, data = raw_records.next()
-                # validate the header
-                df, rec = self._parse_record_header(version_id, data)
-                df.close()
-                yield version_id, data
-
+            pos, data = raw_records.next()
+            # validate the header
+            df, rec = self._parse_record_header(version_id, data)
+            df.close()
+            yield version_id, data
 
     def read_records_iter(self, records):
         """Read text records from data file and yield result.
@@ -1406,32 +1390,30 @@ class _KnitData(_KnitComponentFile):
         will be read in the given order.  Yields (version_id,
         contents, digest).
         """
+        if len(records) == 0:
+            return
         # profiling notes:
         # 60890  calls for 4168 extractions in 5045, 683 internal.
         # 4168   calls to readv              in 1411
         # 4168   calls to parse_record       in 2880
 
-        needed_records = set() 
+        # Get unique records, sorted by position
+        needed_records = sorted(set(records), key=operator.itemgetter(1))
+
+        # We take it that the transport optimizes the fetching as good
+        # as possible (ie, reads continuous ranges.)
+        response = self._transport.readv(self._filename,
+            [(pos, size) for version_id, pos, size in needed_records])
+
+        record_map = {}
+        for (record_id, pos, size), (pos, data) in \
+            izip(iter(needed_records), response):
+            content, digest = self._parse_record(record_id, data)
+            record_map[record_id] = (digest, content)
+
         for version_id, pos, size in records:
-            if version_id not in self._records:
-                needed_records.add((version_id, pos, size))
-
-        # turn our set into a list, sorted by file position
-        needed_records = sorted(needed_records, key=operator.itemgetter(1))
-
-        if len(needed_records):
-            # We take it that the transport optimizes the fetching as good
-            # as possible (ie, reads continuous ranges.)
-            response = self._transport.readv(self._filename,
-                [(pos, size) for version_id, pos, size in needed_records])
-
-            for (record_id, pos, size), (pos, data) in \
-                izip(iter(needed_records), response):
-                content, digest = self._parse_record(record_id, data)
-                self._records[record_id] = (digest, content)
-    
-        for version_id, pos, size in records:
-            yield version_id, list(self._records[version_id][1]), self._records[version_id][0]
+            digest, content = record_map[version_id]
+            yield version_id, content, digest
 
     def read_records(self, records):
         """Read records into a dictionary."""
