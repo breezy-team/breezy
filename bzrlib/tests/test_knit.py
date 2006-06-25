@@ -319,6 +319,18 @@ class BasicKnitTests(KnitTests):
         k1.add_lines('sub2', ['base'], ['text\n', 'text3\n'])
         # should read the first component only
         self.assertEqual([('id.knit', [(0, 87)])], instrumented_t._calls)
+
+    def test_get_line_delta_texts(self):
+        """Make sure we can call get_texts on text with reused line deltas"""
+        k1 = KnitVersionedFile('test1', get_transport('.'), 
+                               factory=KnitPlainFactory(), create=True)
+        for t in range(3):
+            if t == 0:
+                parents = []
+            else:
+                parents = ['%d' % (t-1)]
+            k1.add_lines('%d' % t, parents, ['hello\n'] * t)
+        k1.get_texts(('%d' % t) for t in range(3))
         
     def test_iter_lines_reads_in_order(self):
         t = MemoryTransport()
