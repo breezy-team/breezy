@@ -54,10 +54,8 @@ all the changes since the previous revision that touched hello.c.
 from itertools import izip
 import re
 
-from bzrlib.delta import compare_trees
 import bzrlib.errors as errors
 from bzrlib.trace import mutter
-from bzrlib.tree import EmptyTree
 from bzrlib.tsort import merge_sort
 
 
@@ -113,17 +111,6 @@ def _enumerate_history(branch):
         rh.append((revno, rev_id))
         revno += 1
     return rh
-
-
-def _get_revision_delta(branch, revno):
-    """Return the delta for a mainline revision.
-    
-    This is used to show summaries in verbose logs, and also for finding 
-    revisions which touch a given file."""
-    # XXX: What are we supposed to do when showing a summary for something 
-    # other than a mainline revision.  The delta to it's first parent, or
-    # (more useful) the delta to a nominated other revision.
-    return branch.get_revision_delta(revno)
 
 
 def show_log(branch,
@@ -224,20 +211,30 @@ def _show_log(branch,
                           direction, include_merges=include_merges))
 
     def iter_revisions():
+        # r = revision, n = revno, d = merge depth
         revision_ids = [r for r, n, d in view_revisions]
+        zeros = set(r for r, n, d in view_revisions if d == 0)
         num = 9
+        repository = branch.repository
         while revision_ids:
-            revisions = branch.repository.get_revisions(revision_ids[:num])
+            cur_deltas = {}
+            revisions = repository.get_revisions(revision_ids[:num])
+            if verbose or specific_fileid:
+                delta_revisions = [r for r in revisions if
+                                   r.revision_id in zeros]
+                deltas = repository.get_deltas_for_revisions(delta_revisions)
+                cur_deltas = dict(izip((r.revision_id for r in 
+                                        delta_revisions), deltas))
             for revision in revisions:
-                yield revision
+                # The delta value will be None unless
+                # 1. verbose or specific_fileid is specified, and
+                # 2. the revision is a mainline revision
+                yield revision, cur_deltas.get(revision.revision_id)
             revision_ids  = revision_ids[num:]
             num = int(num * 1.5)
             
-        revisions = branch.repository.get_revisions()
-        for revision in revisions:
-            yield revision
     # now we just print all the revisions
-    for ((rev_id, revno, merge_depth), rev) in \
+    for ((rev_id, revno, merge_depth), (rev, delta)) in \
          izip(view_revisions, iter_revisions()):
 
         if searchRE:
@@ -246,8 +243,6 @@ def _show_log(branch,
 
         if merge_depth == 0:
             # a mainline revision.
-            if verbose or specific_fileid:
-                delta = _get_revision_delta(branch, rev_nos[rev_id])
                 
             if specific_fileid:
                 if not delta.touches_file_id(specific_fileid):
