@@ -195,7 +195,7 @@ def _show_log(branch,
         return
 
     # convert the revision history to a dictionary:
-    rev_nos = dict([(k, v) for v, k in cut_revs])
+    rev_nos = dict((k, v) for v, k in cut_revs)
 
     # override the mainline to look like the revision history.
     mainline_revs = [revision_id for index, revision_id in cut_revs]
@@ -272,7 +272,7 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
 
     if direction == 'forward':
         # forward means oldest first.
-        merge_sorted_revisions.reverse()
+        merge_sorted_revisions = reverse_by_depth(merge_sorted_revisions)
     elif direction != 'reverse':
         raise ValueError('invalid direction %r' % direction)
 
@@ -280,6 +280,30 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
 
     for sequence, rev_id, merge_depth, end_of_merge in merge_sorted_revisions:
         yield rev_id, rev_nos.get(rev_id), merge_depth
+
+
+def reverse_by_depth(merge_sorted_revisions, _depth=0):
+    """Reverse revisions by depth.
+
+    Revisions with a different depth are sorted as a group with the previous
+    revision of that depth.  There may be no topological justification for this,
+    but it looks much nicer.
+    """
+    zd_revisions = []
+    for val in merge_sorted_revisions:
+        if val[2] == _depth:
+            zd_revisions.append([val])
+        else:
+            assert val[2] > _depth
+            zd_revisions[-1].append(val)
+    for revisions in zd_revisions:
+        if len(revisions) > 1:
+            revisions[1:] = reverse_by_depth(revisions[1:], _depth + 1)
+    zd_revisions.reverse()
+    result = []
+    for chunk in zd_revisions:
+        result.extend(chunk)
+    return result
 
 
 class LogFormatter(object):
