@@ -71,6 +71,7 @@ from itertools import izip, chain
 import operator
 import os
 import sys
+import warnings
 
 import bzrlib
 import bzrlib.errors as errors
@@ -82,6 +83,7 @@ from bzrlib.trace import mutter
 from bzrlib.osutils import contains_whitespace, contains_linebreaks, \
      sha_strings
 from bzrlib.versionedfile import VersionedFile, InterVersionedFile
+from bzrlib.symbol_versioning import DEPRECATED_PARAMETER, deprecated_passed
 from bzrlib.tsort import topo_sort
 import bzrlib.weave
 
@@ -271,21 +273,22 @@ class KnitVersionedFile(VersionedFile):
     """
 
     def __init__(self, relpath, transport, file_mode=None, access_mode=None, 
-                 factory=None, basis_knit=None, delta=True, create=False):
+                 factory=None, basis_knit=DEPRECATED_PARAMETER, delta=True,
+                 create=False):
         """Construct a knit at location specified by relpath.
         
         :param create: If not True, only open an existing knit.
         """
+        if deprecated_passed(basis_knit):
+            warnings.warn("KnitVersionedFile.__(): The basis_knit parameter is"
+                 " deprecated as of bzr 0.9.",
+                 DeprecationWarning, stacklevel=2)
         if access_mode is None:
             access_mode = 'w'
         super(KnitVersionedFile, self).__init__(access_mode)
         assert access_mode in ('r', 'w'), "invalid mode specified %r" % access_mode
-        assert not basis_knit or isinstance(basis_knit, KnitVersionedFile), \
-            type(basis_knit)
-
         self.transport = transport
         self.filename = relpath
-        self.basis_knit = basis_knit
         self.factory = factory or KnitAnnotateFactory()
         self.writable = (access_mode == 'w')
         self.delta = delta
@@ -533,12 +536,11 @@ class KnitVersionedFile(VersionedFile):
             cursor = version_id
 
             while cursor is not None and cursor not in component_data:
-                picked_knit = self
-                method = picked_knit._index.get_method(cursor)
+                method = self._index.get_method(cursor)
                 if method == 'fulltext':
                     next = None
                 else:
-                    next = picked_knit.get_parents(cursor)[0]
+                    next = self.get_parents(cursor)[0]
                 data_pos, data_size = self._index.get_position(cursor)
                 component_data[cursor] = (method, data_pos, data_size, next)
                 cursor = next
@@ -554,9 +556,6 @@ class KnitVersionedFile(VersionedFile):
         if cached_version is not None:
             return cached_version
 
-        if self.basis_knit and version_id in self.basis_knit:
-            return self.basis_knit._get_content(version_id)
-        
         text_map, contents_map = self._get_content_maps([version_id])
         return contents_map[version_id]
 
