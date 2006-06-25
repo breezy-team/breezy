@@ -793,6 +793,7 @@ class KnitVersionedFile(VersionedFile):
 
         text_map = {}
         content_map = {}
+        final_content = {}
         for version_id in version_ids:
             components = []
             cursor = version_id
@@ -818,11 +819,13 @@ class KnitVersionedFile(VersionedFile):
                         content = content.copy()
                         content._lines = self._apply_delta(content._lines, 
                                                            delta)
-                    content_map[component_id] = content.copy()
+                    content_map[component_id] = content
 
             if 'no-eol' in self._index.get_options(version_id):
+                content = content.copy()
                 line = content._lines[-1][1].rstrip('\n')
                 content._lines[-1] = (content._lines[-1][0], line)
+            final_content[version_id] = content
 
             # digest here is the digest from the last applied component.
             text = content.text()
@@ -831,7 +834,7 @@ class KnitVersionedFile(VersionedFile):
                                   'sha-1 does not match %s' % version_id)
 
             text_map[version_id] = text 
-        return text_map, content_map
+        return text_map, final_content 
 
     def iter_lines_added_or_present_in_versions(self, version_ids=None):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
