@@ -514,7 +514,7 @@ class KnitVersionedFile(VersionedFile):
             diff_hunks.append((op[1], op[2], op[4]-op[3], new_content._lines[op[3]:op[4]]))
         return diff_hunks
 
-    def _get_components_versions(self, version_ids):
+    def _get_components_positions(self, version_ids):
         component_data = {}
         for version_id in version_ids:
             basis = self.basis_knit
@@ -528,7 +528,8 @@ class KnitVersionedFile(VersionedFile):
                     next = None
                 else:
                     next = picked_knit.get_parents(cursor)[0]
-                component_data[cursor] = (method, next)
+                data_pos, data_size = self._index.get_position(cursor)
+                component_data[cursor] = (method, data_pos, data_size, next)
                 cursor = next
             cursor = version_id
         return component_data
@@ -540,14 +541,6 @@ class KnitVersionedFile(VersionedFile):
             yield method, cursor
             cursor = next
         
-    def _get_components_positions(self, version_ids):
-        data_map = {}
-        component_data = self._get_components_versions(version_ids)
-        for comp_id, (method, next) in component_data.iteritems():
-            data_pos, data_size = self._index.get_position(comp_id)
-            data_map[comp_id] = (method, data_pos, data_size, next)
-        return data_map
-
     def _get_content(self, version_id, parent_texts={}):
         """Returns a content object that makes up the specified
         version."""
