@@ -133,7 +133,9 @@ class SvnRepository(Repository):
         return BranchCheckResult(self)
 
     def get_inventory(self, revision_id):
+        assert revision_id != None
         (path, revnum) = self.parse_revision_id(revision_id)
+        assert path != None
         mutter('getting inventory %r for branch %r' % (revnum, path))
 
         def read_directory(inv, id, path, revnum):
@@ -173,6 +175,7 @@ class SvnRepository(Repository):
     
         inv = Inventory()
 
+        assert path != None
         read_directory(inv, ROOT_ID, path, revnum)
 
         return inv
@@ -350,7 +353,7 @@ class SvnRepository(Repository):
         for path in ranges:
             self._tmp = path
             (min, max) = ranges[path]
-            for (paths, revnum, _, _, _) in self._log.get_branch_log(path, min, max, 0, False, rcvr):
+            for (paths, revnum, _, _, _) in self._log.get_branch_log(path, min, max, 0, False):
                 if not revnum in interested[self._tmp]:
                     return
                 for path in paths:
@@ -377,7 +380,7 @@ class SvnRepository(Repository):
 
         :return: New revision id.
         """
-        return "svn:%d@%s-%s" % (revnum, self.uuid, path)
+        return "svn:%d@%s-%s" % (revnum, self.uuid, path.strip("/"))
 
     def parse_revision_id(self, revid):
         """Parse an existing Subversion-based revision id.
@@ -429,6 +432,8 @@ class SvnRepository(Repository):
         raise NoSuchRevision(self, revision_id)
 
     def _cache_get_dir(self, path, revnum):
+        assert path != None
+        path = path.lstrip("/")
         if self.dir_cache.has_key(path) and \
            self.dir_cache[path].has_key(revnum):
             return self.dir_cache[path][revnum]
@@ -454,6 +459,8 @@ class SvnRepository(Repository):
         return self.dir_cache[path][revnum]
 
     def _cache_get_file(self, path, revnum):
+        assert path != None
+        path = path.lstrip("/")
         if self.text_cache.has_key(path) and \
            self.text_cache[path].has_key(revnum):
                return self.text_cache[path][revnum]
@@ -508,67 +515,6 @@ class SvnRepository(Repository):
     def get_physical_lock_status(self):
         return False
 
-    def copy_content_into(self, destination, revision_id=None, basis=None):
-        pb = ProgressBar()
-
-        # Loop over all the revnums until revision_id
-        # (or youngest_revnum) and call destination.add_revision() 
-        # or destination.add_inventory() each time
-
-        if revision_id is None:
-            path = None
-            until_revnum = svn.ra.get_latest_revnum(self.ra)
-        else:
-            (path, until_revnum) = self.parse_revision_id(revision_id)
-        
-        weave_store = destination.weave_store
-
-        transact = destination.get_transaction()
-
-        current = {}
-
-        for (paths, revnum, _, _, _) in self._log.get_branch_log(path, 0, until_revnum, 0, False):
-            pb.update('copying revision', revnum, until_revnum)
-            revid = self.generate_revision_id(revnum, path)
-            inv = self.get_inventory(revid)
-            rev = self.get_revision(revid)
-            destination.add_revision(revid, rev, inv)
-
-            #FIXME: use svn.ra.do_update
-            for item in paths:
-                (fileid, orig_revid) = self.path_to_file_id(revnum, item)
-                branch_path = self.parse_revision_id(orig_revid)[0]
-                if branch_path != path:
-                    continue
-
-                parents = []
-                if current.has_key(fileid):
-                    parents = [current[fileid]]
-
-                current[fileid] = revid
-
-                if paths[item][0] == 'A':
-                    weave = weave_store.get_weave_or_empty(fileid, transact)
-                elif paths[item][0] == 'M' or paths[item][0] == 'R':
-                    weave = weave_store.get_weave(fileid, transact)
-                elif paths[item][0] == 'D':
-                    continue
-                else:
-                    raise BzrError("Unknown SVN action '%s'" % 
-                        paths[item][0])
-                
-                try:
-                    stream = self._get_file(item, revnum)
-                except SubversionException, (_, num):
-                    if num != svn.core.SVN_ERR_FS_NOT_FILE:
-                        raise
-                    stream = None
-
-                if stream:
-                    stream.seek(0)
-                    weave.add_lines(revid, parents, stream.readlines())
-            
-        pb.clear()
 
     def fetch(self, source, revision_id=None, pb=None):
         raise NotImplementedError(self.fetch)

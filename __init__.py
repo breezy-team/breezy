@@ -33,11 +33,17 @@ register_transport('svn+', transport.SvnRaTransport)
 
 from bzrlib.bzrdir import BzrDirFormat
 
+from bzrlib.repository import InterRepository
+
+from fetch import InterSvnRepository
+
 BzrDirFormat.register_control_format(format.SvnFormat)
 
 BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
 
 BzrDirFormat.register_control_format(dumpfile.SvnDumpFileFormat)
+
+InterRepository.register_optimiser(InterSvnRepository)
 
 def test_suite():
     from unittest import TestSuite, TestLoader

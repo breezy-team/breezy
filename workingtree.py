@@ -68,6 +68,7 @@ class SvnWorkingTree(WorkingTree):
         ignores = []
 
         def dir_add(wc, prefix):
+            ignores.append(os.path.join(prefix, svn.wc.get_adm_dir()))
             for pat in svn.wc.get_ignores(svn_config, wc):
                 ignores.append(os.path.join(prefix, pat))
 
@@ -92,6 +93,9 @@ class SvnWorkingTree(WorkingTree):
         return ignores
 
     def is_ignored(self, filename):
+        if svn.wc.is_adm_dir(os.path.basename(filename)):
+            return True
+
         (wc, name) = self._get_rel_wc(filename)
         try:
             ignores = svn.wc.get_ignores(svn_config, wc)
@@ -200,17 +204,17 @@ class SvnWorkingTree(WorkingTree):
         try:
             for f in files:
                 try:
-                    svn.wc.add2(self.abspath(f), wc, None, 0, None, None, None)
+                    svn.wc.add2(os.path.join(self.basedir, f), wc, None, 0, 
+                            None, None, None)
+                    if ids:
+                        svn.wc.prop_set2('bzr:fileid', ids.pop(), relpath, wc, 
+                                False)
                 except SubversionException, (_, num):
                     if num == svn.core.SVN_ERR_ENTRY_EXISTS:
                         continue
-                    if num == svn.core.SVN_ERR_WC_PATH_NOT_FOUND:
+                    elif num == svn.core.SVN_ERR_WC_PATH_NOT_FOUND:
                         raise NoSuchFile(path=f)
                     raise
-                if ids:
-                    id = ids.pop()
-                    if id:
-                        svn.wc.prop_set2('bzr:fileid', id, f, False)
         finally:
             svn.wc.adm_close(wc)
 
@@ -220,17 +224,11 @@ class SvnWorkingTree(WorkingTree):
     def set_pending_merges(self):
         raise NotImplementedError(self.set_pending_merges)
 
-    def unknowns(self):
-        raise NotImplementedError(self.unknowns)
-
     def basis_tree(self):
         return SvnBasisTree(self)
 
     def pull(self, source, overwrite=False, stop_revision=None):
         raise NotImplementedError(self.pull)
-
-    def extras(self):
-        raise NotImplementedError(self.extras)
 
     def get_file_sha1(self, file_id, path=None):
         if not path:

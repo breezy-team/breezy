@@ -19,6 +19,7 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.transport.local import LocalTransport
 
 import svn
 import format
@@ -241,4 +242,24 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertTrue(repository.is_shared())
+
+    def test_fetch_local(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/foo/blo': "data2", "dc/bar/foo": "data3", 'dc/foo/bla': "data"})
+        self.client_add("dc/foo/blo")
+        self.client_add("dc/bar")
+        self.client_commit("dc", "Second Message")
+        oldrepos = Repository.open("dc")
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision("svn:1@%s-" % oldrepos.uuid))
+        self.assertTrue(newrepos.has_revision("svn:2@%s-" % oldrepos.uuid))
+        tree = newrepos.revision_tree("svn:2@%s-" % oldrepos.uuid)
+        self.assertTrue(tree.has_filename("foo/bla"))
+        self.assertTrue(tree.has_filename("foo"))
+        self.assertEqual("data", tree.get_file_by_path("foo/bla").read())
 

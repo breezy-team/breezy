@@ -185,3 +185,22 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(tree.is_ignored("bar"))
         self.assertFalse(tree.is_ignored("alsonotignored"))
 
+    def test_ignore_controldir(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        tree = WorkingTree.open("dc")
+        self.assertEqual([], list(tree.unknowns()))
+
+    def test_unknowns(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": None})
+
+        tree = WorkingTree.open("dc")
+        self.assertEqual(['bl'], list(tree.unknowns()))
+
+    def test_extras(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": None})
+
+        tree = WorkingTree.open("dc")
+        self.assertEqual(['.svn', 'bl'], list(tree.extras()))
+
