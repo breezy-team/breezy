@@ -17,7 +17,6 @@
 import os
 import errno
 from stat import S_ISREG
-import sys
 
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ReusingTransform, NotVersionedError, CantMoveRoot,
@@ -1011,7 +1010,6 @@ def change_entry(tt, file_id, working_tree, target_tree,
     entry = target_tree.inventory[file_id]
     has_contents, contents_mod, meta_mod, = _entry_changes(file_id, entry, 
                                                            working_tree)
-    executable = getattr(entry, 'executable', False)
     if contents_mod:
         mode_id = e_trans_id
         if has_contents:
@@ -1029,8 +1027,8 @@ def change_entry(tt, file_id, working_tree, target_tree,
         create_by_entry(tt, entry, target_tree, e_trans_id, mode_id=mode_id)
         create_entry_executability(tt, entry, e_trans_id)
 
-    elif meta_mod or sys.platform == 'win32' and executable:
-        tt.set_executability(executable, e_trans_id)
+    elif meta_mod:
+        tt.set_executability(entry.executable, e_trans_id)
     if tt.final_name(e_trans_id) != entry.name:
         adjust_path  = True
     else:
