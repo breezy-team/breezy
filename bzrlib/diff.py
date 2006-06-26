@@ -27,7 +27,8 @@ import bzrlib.errors as errors
 import bzrlib.osutils
 from bzrlib.patiencediff import unified_diff
 import bzrlib.patiencediff
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function,
+        zero_eight)
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning
 

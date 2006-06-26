@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005, 2006 by Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -26,11 +26,14 @@ from unittest import TestSuite
 
 import bzrlib.errors as errors
 from bzrlib.inter import InterObject
-from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.tsort import topo_sort
 from bzrlib import ui
+from bzrlib.symbol_versioning import (deprecated_function,
+        deprecated_method,
+        zero_eight,
+        )
 
 
 class VersionedFile(object):

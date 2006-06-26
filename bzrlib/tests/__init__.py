@@ -29,6 +29,7 @@
 import codecs
 from cStringIO import StringIO
 import difflib
+import doctest
 import errno
 import logging
 import os
@@ -69,7 +70,11 @@ import bzrlib.transport
 from bzrlib.transport.local import LocalRelpathServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter
-from bzrlib.tests.TestUtil import TestLoader, TestSuite
+from bzrlib.tests import TestUtil
+from bzrlib.tests.TestUtil import (
+                          TestSuite,
+                          TestLoader,
+                          )
 from bzrlib.tests.treeshape import build_tree_contents
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
@@ -684,7 +689,6 @@ class TestCase(unittest.TestCase):
         self.log('run bzr: %r', argv)
         # FIXME: don't call into logging here
         handler = logging.StreamHandler(stderr)
-        handler.setFormatter(bzrlib.trace.QuietFormatter())
         handler.setLevel(logging.INFO)
         logger = logging.getLogger('')
         logger.addHandler(handler)
@@ -1137,7 +1141,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
 
 def filter_suite_by_re(suite, pattern):
-    result = TestSuite()
+    result = TestUtil.TestSuite()
     filter_re = re.compile(pattern)
     for test in iter_suite_tests(suite):
         if filter_re.search(test.id()):
@@ -1198,11 +1202,7 @@ def test_suite():
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
     """
-    from doctest import DocTestSuite
-
-    global MODULES_TO_DOCTEST
-
-    testmod_names = [ \
+    testmod_names = [
                    'bzrlib.tests.test_ancestry',
                    'bzrlib.tests.test_api',
                    'bzrlib.tests.test_bad_files',
@@ -1282,8 +1282,7 @@ def test_suite():
         'bzrlib.tests.test_transport_implementations',
         'bzrlib.tests.test_read_bundle',
         ]
-
-    suite = TestSuite()
+    suite = TestUtil.TestSuite()
     loader = TestUtil.TestLoader()
     from bzrlib.transport import TransportTestProviderAdapter
     adapter = TransportTestProviderAdapter()
@@ -1293,8 +1292,8 @@ def test_suite():
         suite.addTest(package.test_suite())
     for m in MODULES_TO_TEST:
         suite.addTest(loader.loadTestsFromModule(m))
-    for m in (MODULES_TO_DOCTEST):
-        suite.addTest(DocTestSuite(m))
+    for m in MODULES_TO_DOCTEST:
+        suite.addTest(doctest.DocTestSuite(m))
     for name, plugin in bzrlib.plugin.all_plugins().items():
         if getattr(plugin, 'test_suite', None) is not None:
             suite.addTest(plugin.test_suite())
