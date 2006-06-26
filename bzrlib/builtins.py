@@ -1327,8 +1327,9 @@ class cmd_log(Command):
             (rev2, rev1) = (rev1, rev2)
 
         if (log_format == None):
-            default = config.BranchConfig(b).log_format()
-            log_format = get_log_format(long=long, short=short, line=line, default=default)
+            default = b.get_config().log_format()
+            log_format = get_log_format(long=long, short=short, line=line, 
+                                        default=default)
         lf = log_formatter(log_format,
                            show_ids=show_ids,
                            to_file=self.outf,
@@ -1785,8 +1786,7 @@ class cmd_whoami(Command):
     @display_command
     def run(self, email=False):
         try:
-            b = WorkingTree.open_containing(u'.')[0].branch
-            c = config.BranchConfig(b)
+            c = WorkingTree.open_containing(u'.')[0].branch.get_config()
         except NotBranchError:
             c = config.GlobalConfig()
         if email:
@@ -2350,8 +2350,9 @@ class cmd_missing(Command):
             try:
                 local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
                 if (log_format == None):
-                    default = config.BranchConfig(local_branch).log_format()
-                    log_format = get_log_format(long=long, short=short, line=line, default=default)
+                    default = local_branch.get_config().log_format()
+                    log_format = get_log_format(long=long, short=short, 
+                                                line=line, default=default)
                 lf = log_formatter(log_format, sys.stdout,
                                    show_ids=show_ids,
                                    show_timezone='original')
@@ -2416,7 +2417,8 @@ class cmd_plugins(Command):
 class cmd_testament(Command):
     """Show testament (signing-form) of a revision."""
     takes_options = ['revision', 'long', 
-                     Option('strict', help='Produce a strict testament')]
+                     Option('strict', help='Produce a strict-format'
+                            ' testament')]
     takes_args = ['branch?']
     @display_command
     def run(self, branch=u'.', revision=None, long=False, strict=False):
@@ -2496,7 +2498,7 @@ class cmd_re_sign(Command):
         if revision_id_list is None and revision is None:
             raise BzrCommandError('You must supply either --revision or a revision_id')
         b = WorkingTree.open_containing(u'.')[0].branch
-        gpg_strategy = gpg.GPGStrategy(config.BranchConfig(b))
+        gpg_strategy = gpg.GPGStrategy(b.get_config())
         if revision_id_list is not None:
             for revision_id in revision_id_list:
                 b.repository.sign_revision(revision_id, gpg_strategy)

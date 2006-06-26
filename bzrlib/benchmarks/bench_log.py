@@ -47,6 +47,12 @@ class LogBenchmark(Benchmark):
         lf = log_formatter('long', to_file=StringIO())
         self.time(show_log, tree.branch, lf, direction='reverse')
 
+    def test_merge_log(self):
+        """Run log in a tree with many merges"""
+        tree = self.make_heavily_merged_tree()
+        lf = log_formatter('short', to_file=StringIO())
+        self.time(show_log, tree.branch, lf, direction='reverse')
+
     def test_log_screenful(self):
         """Simulate log --long|less"""
         self.screenful_tester('long')
@@ -81,3 +87,9 @@ class LogBenchmark(Benchmark):
         """Text startup and execution of the log command.""" 
         tree = self.make_many_commit_tree()
         self.time(self.run_bzr_subprocess, 'log', '-r', '-4..')
+
+    def test_log_verbose(self):
+        """'verbose' log -- shows file changes"""
+        tree = self.make_many_commit_tree()
+        lf = log_formatter('long', to_file=StringIO())
+        self.time(show_log, tree.branch, lf, direction='reverse', verbose=True)

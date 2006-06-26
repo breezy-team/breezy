@@ -6,7 +6,7 @@ Common entries, like strings, etc, for the bundle reading + writing code.
 import bzrlib
 
 header_str = 'Bazaar revision bundle v'
-version = (0, 7)
+version = (0, 8)
 
 
 def get_header():

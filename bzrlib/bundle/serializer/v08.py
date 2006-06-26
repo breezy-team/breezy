@@ -86,7 +86,7 @@ class Action(object):
         to_file.write(text_line+'\n')
 
 
-class BundleSerializerV07(BundleSerializer):
+class BundleSerializerV08(BundleSerializer):
     def read(self, f):
         """Read the rest of the bundles from the supplied file.
 
@@ -123,7 +123,7 @@ class BundleSerializerV07(BundleSerializer):
         """Write the header for the changes"""
         f = self.to_file
         f.write(BUNDLE_HEADER)
-        f.write('0.7\n')
+        f.write('0.8\n')
         f.write('#\n')
 
     def _write(self, key, value, indent=1):
@@ -329,7 +329,8 @@ class BundleReader(object):
     def _read(self):
         self._next().next()
         while self._next_line is not None:
-            self._read_revision_header()
+            if not self._read_revision_header():
+                break
             if self._next_line is None:
                 break
             self._read_patches()
@@ -359,13 +360,19 @@ class BundleReader(object):
         yield last
 
     def _read_revision_header(self):
+        found_something = False
         self.info.revisions.append(RevisionInfo(None))
         for line in self._next():
             # The bzr header is terminated with a blank line
             # which does not start with '#'
             if line is None or line == '\n':
                 break
+            found_something = True
             self._handle_next(line)
+        if not found_something:
+            # Nothing was there, so remove the added revision
+            self.info.revisions.pop()
+        return found_something
 
     def _read_next_entry(self, line, indent=1):
         """Read in a key-value pair

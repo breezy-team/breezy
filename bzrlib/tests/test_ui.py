@@ -157,6 +157,7 @@ class UITests(TestCase):
         factory.stdin = StringIO("yada\ny\n")
         pb = self.apply_redirected(
             factory.stdin, factory.stdout, factory.stdout, factory.nested_progress_bar)
+        pb.start_time = None
         self.apply_redirected(
             factory.stdin, factory.stdout, factory.stdout, pb.update, "foo", 0, 1)
         self.assertEqual(

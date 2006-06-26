@@ -49,7 +49,8 @@ class cmd_sign_my_commits(Command):
             bzrdir = BzrDir.open(location)
         branch = bzrdir.open_branch()
         repo = branch.repository
-        branch_config = config.BranchConfig(branch)
+        branch_config = branch.get_config()
+
         if committer is None:
             committer = branch_config.username()
         gpg_strategy = gpg.GPGStrategy(branch_config)
