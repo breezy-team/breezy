@@ -93,17 +93,16 @@ class cmd_bundle_revisions(Command):
         if base is None:
             base_specified = False
             base = submit_branch
-            note('Using saved location: %s' % base)
         else:
             base_specified = True
 
         if base is None:
             base = target_branch.get_parent()
-            if base is None:
-                raise errors.BzrCommandError("No base branch known or"
-                                             " specified.")
-            else:
-                note('Using saved location: %s' % base)
+        if base is None:
+            raise errors.BzrCommandError("No base branch known or"
+                                         " specified.")
+        elif not base_specified:
+            note('Using saved location: %s' % base)
         base_branch = Branch.open(base)
 
         # We don't want to lock the same branch across
