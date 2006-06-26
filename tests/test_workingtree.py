@@ -219,3 +219,13 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+" + repos_url)
         BzrDir.create(branch, 'dc')
 
+    def test_pending_merges(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": None})
+
+        tree = WorkingTree.open("dc")
+        tree.set_pending_merges(["a", "c"])
+        self.assertEqual(["a", "c"], tree.pending_merges())
+        tree.set_pending_merges([])
+        self.assertEqual([], tree.pending_merges())
+

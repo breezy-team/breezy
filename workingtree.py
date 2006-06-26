@@ -218,14 +218,6 @@ class SvnWorkingTree(WorkingTree):
         finally:
             svn.wc.adm_close(wc)
 
-    def pending_merges(self):
-        return []
-
-    def set_pending_merges(self, merges):
-        if len(merges) == 0:
-            return
-        raise NotImplementedError(self.set_pending_merges)
-
     def basis_tree(self):
         return SvnBasisTree(self)
 

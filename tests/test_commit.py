@@ -41,3 +41,27 @@ class TestCommit(TestCaseWithSubversionRepository):
         self.assertTrue(new_inventory.has_filename("foo"))
         self.assertTrue(new_inventory.has_filename("foo/bla"))
 
+    def test_commit_message(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        wt = WorkingTree.open("dc")
+        self.assertEqual("svn:1@%s-" % wt.branch.repository.uuid, 
+                         wt.commit(message="data"))
+        self.assertEqual("svn:1@%s-" % wt.branch.repository.uuid, 
+                         wt.branch.last_revision())
+        new_revision = wt.branch.repository.get_revision(
+                            wt.branch.last_revision())
+        self.assertEqual(wt.branch.last_revision(), new_revision.revision_id)
+        self.assertEqual("data", new_revision.message)
+
+    def test_commit_parents(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        wt = WorkingTree.open("dc")
+        wt.set_pending_merges(["some-ghost-revision"])
+        wt.commit(message="data")
+        self.assertEqual([None, "some-ghost-revision"],
+                         wt.branch.repository.revision_parents(
+                             wt.branch.last_revision()))
