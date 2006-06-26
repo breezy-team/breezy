@@ -226,6 +226,13 @@ class SvnRepository(Repository):
     def get_inventory_weave(self):
         raise NotImplementedError(self.get_inventory_weave)
 
+    def set_make_working_trees(self, new_value):
+        """See Repository.set_make_working_trees()."""
+        pass # FIXME: ignored, nowhere to store it... 
+
+    def make_working_trees(self):
+        return False
+
     def get_ancestry(self, revision_id):
         if revision_id is None: # FIXME: Is this correct?
             return [None]

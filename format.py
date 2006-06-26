@@ -17,6 +17,8 @@
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import NotBranchError, NotLocalUrl
 from bzrlib.lockable_files import TransportLock
+from bzrlib.transport.local import LocalTransport
+
 import bzrlib.urlutils as urlutils
 
 from branch import SvnBranch
@@ -25,7 +27,7 @@ from scheme import BranchingScheme
 from transport import SvnRaTransport
 
 from svn.core import SubversionException
-import svn.core
+import svn.core, svn.repos
 
 class SvnRemoteAccess(BzrDir):
     def __init__(self, _transport, _format):
@@ -70,10 +72,17 @@ class SvnRemoteAccess(BzrDir):
         raise NotLocalUrl(self.url)
 
     def create_workingtree(self, revision_id=None):
-        # TODO
-        raise NotImplementedError(self.create_workingtree)
+        raise NotLocalUrl(self.url)
+
+    def create_branch(self):
+        """See BzrDir.create_branch()."""
+        repos = self.open_repository()
+        # TODO: Check if there are any revisions in this repository 
+        # yet if it is the top-level one
+        return SvnBranch(repos, self.branch_path)
 
     def open_branch(self, unsupported=True):
+        """See BzrDir.open_branch()."""
         repos = self.open_repository()
 
         try:
@@ -85,6 +94,7 @@ class SvnRemoteAccess(BzrDir):
  
         branch.bzrdir = self
         return branch
+
 
 class SvnFormat(BzrDirFormat):
     _lock_class = TransportLock
@@ -107,5 +117,17 @@ class SvnFormat(BzrDirFormat):
     def get_format_description(self):
         return 'Subversion Smart Server'
 
-    def initialize(self, url):
-        raise NotImplementedError(self.initialize)
+    def initialize_on_transport(self, transport):
+        """See BzrDir.initialize_on_transport()."""
+        if not isinstance(transport, LocalTransport):
+            raise NotImplementedError(self.initialize, 
+                "Can't create Subversion Repositories/branches on "
+                "non-local transports")
+
+        local_path = transport._local_base.rstrip("/")
+        repos = svn.repos.create(local_path, '', '', None, None)
+        return self.open(SvnRaTransport("svn+" + transport.base), _found=True)
+
+    def is_supported(self):
+        """See BzrDir.is_supported()."""
+        return True
