@@ -31,7 +31,13 @@ class TestCommit(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo/bla': "data"})
         self.client_add("dc/foo")
         wt = WorkingTree.open("dc")
-        wt.commit(message="data")
+        self.assertEqual("svn:1@%s-" % wt.branch.repository.uuid, 
+                         wt.commit(message="data"))
         self.assertEqual("svn:1@%s-" % wt.branch.repository.uuid, 
                          wt.branch.last_revision())
+        wt = WorkingTree.open("dc")
+        new_inventory = wt.branch.repository.get_inventory(
+                            wt.branch.last_revision())
+        self.assertTrue(new_inventory.has_filename("foo"))
+        self.assertTrue(new_inventory.has_filename("foo/bla"))
 

@@ -44,6 +44,15 @@ from bzrlib.progress import ProgressBar
 from bzrlib.workingtree import WorkingTree
 import bzrlib.trace
 
+#FIXME: Rewrite, so:
+# * Get list of branches to generate by:
+#  * Looping over all revisions, listing branch paths. Generate unique name
+#    possibly in attic/name-r423423
+# * Create repository
+# * For each branch path:
+#  * Create new branch from latest revision that branch existed below 
+#    repository.
+
 VERSION = "0.8.2"
 
 # Bogus difflib
@@ -601,12 +610,6 @@ class DynamicBranchCreator(BranchCreator):
             BranchCreator.remove(self, path)
         
 
-class TrunkBranchCreator(DynamicBranchCreator):
-
-    def _want_branch(self, path):
-        return path not in ("", "tags", "branches")
-
-
 def svn2bzr(url, output_dir, creator_class=None, prefix=None, filter=[], consistency_check=False):
 
     if os.path.exists(output_dir):
@@ -688,9 +691,6 @@ def parse_options():
 
 
 def main():
-
-    bzrlib.user_encoding = 'utf8'
-
     opts = parse_options()
 
     if opts.scheme == "trunk":

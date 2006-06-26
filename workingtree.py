@@ -324,5 +324,6 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
     def get_format_description(self):
         return 'Subversion Local Checkout'
 
-    def initialize(self,url):
+    def initialize(self, url):
+        print url
         raise NotImplementedError(self.initialize)

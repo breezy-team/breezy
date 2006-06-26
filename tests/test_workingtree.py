@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.delta import compare_trees
 from bzrlib.errors import NoSuchRevision, NoSuchFile
@@ -212,4 +213,9 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
 
         tree = WorkingTree.open("dc")
         self.assertEqual(['.svn', 'bl'], list(tree.extras()))
+
+    def test_create(self):
+        repos_url = self.make_repository('a')
+        branch = Branch.open("svn+" + repos_url)
+        BzrDir.create(branch, 'dc')
 
