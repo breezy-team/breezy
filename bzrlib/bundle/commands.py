@@ -77,17 +77,25 @@ class cmd_bundle_revisions(Command):
         - Bundle to transform revision A of BASE into revision B
           of the local tree
     """
-    takes_options = ['verbose', 'revision',
+    takes_options = ['verbose', 'revision', 'remember',
                      Option("output", help="write bundle to specified file",
                             type=unicode)]
     takes_args = ['base?']
     aliases = ['bundle']
 
-    def run(self, base=None, revision=None, output=None):
+    def run(self, base=None, revision=None, output=None, remember=False):
         from bzrlib import user_encoding
         from bzrlib.bundle.serializer import write_bundle
 
         target_branch = Branch.open_containing(u'.')[0]
+        submit_branch = target_branch.get_submit_branch()
+
+        if base is None:
+            base_specified = False
+            base = submit_branch
+            note('Using saved location: %s' % base)
+        else:
+            base_specified = True
 
         if base is None:
             base = target_branch.get_parent()
@@ -102,6 +110,12 @@ class cmd_bundle_revisions(Command):
         # 2 different branches
         if target_branch.base == base_branch.base:
             base_branch = target_branch 
+        if submit_branch is None or remember:
+            if base_specified:
+                target_branch.set_submit_branch(base_branch.base)
+            elif remember:
+                raise errors.BzrCommandError('--remember requires a branch to'
+                                             ' be specified.')
 
         base_revision = None
         if revision is None:

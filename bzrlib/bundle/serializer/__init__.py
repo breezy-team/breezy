@@ -52,6 +52,8 @@ def read_bundle(f):
         if m:
             version = m.group('version')
             break
+        elif line.startswith(BUNDLE_HEADER):
+            raise errors.MalformedHeader()
         m = CHANGESET_OLD_HEADER_RE.match(line)
         if m:
             version = m.group('version')

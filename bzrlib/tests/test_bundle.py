@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from StringIO import StringIO
+from cStringIO import StringIO
 
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
@@ -22,10 +22,11 @@ from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
 from bzrlib.diff import internal_diff
-from bzrlib.errors import BzrError, TestamentMismatch, NotABundle
+from bzrlib.errors import BzrError, TestamentMismatch, NotABundle, BadBundle
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
-from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
+from bzrlib.tests import (TestCaseInTempDir, TestCaseWithTransport,
+                          TestCase, TestSkipped)
 from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
@@ -294,18 +295,9 @@ class BTreeTester(TestCase):
         self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'd', 'e'])
 
 
-class CSetTester(TestCaseInTempDir):
+class BundleTester(TestCaseInTempDir):
 
-    def get_valid_bundle(self, base_rev_id, rev_id, checkout_dir=None,
-                         message=None):
-        """Create a bundle from base_rev_id -> rev_id in built-in branch.
-        Make sure that the text generated is valid, and that it
-        can be applied against the base, and generate the same information.
-        
-        :return: The in-memory bundle 
-        """
-        from cStringIO import StringIO
-
+    def create_bundle_text(self, base_rev_id, rev_id):
         bundle_txt = StringIO()
         rev_ids = write_bundle(self.b1.repository, rev_id, base_rev_id, 
                                bundle_txt)
@@ -320,6 +312,17 @@ class CSetTester(TestCaseInTempDir):
 
         open(',,bundle', 'wb').write(bundle_txt.getvalue())
         bundle_txt.seek(0)
+        return bundle_txt, rev_ids
+
+    def get_valid_bundle(self, base_rev_id, rev_id, checkout_dir=None):
+        """Create a bundle from base_rev_id -> rev_id in built-in branch.
+        Make sure that the text generated is valid, and that it
+        can be applied against the base, and generate the same information.
+        
+        :return: The in-memory bundle 
+        """
+        bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
+
         # This should also validate the generated bundle 
         bundle = read_bundle(bundle_txt)
         repository = self.b1.repository
@@ -349,14 +352,7 @@ class CSetTester(TestCaseInTempDir):
         
         :return: The in-memory bundle
         """
-        from cStringIO import StringIO
-
-        bundle_txt = StringIO()
-        rev_ids = write_bundle(self.b1.repository, rev_id, base_rev_id, 
-                               bundle_txt)
-        bundle_txt.seek(0)
-        open(',,bundle', 'wb').write(bundle_txt.getvalue())
-        bundle_txt.seek(0)
+        bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = bundle_txt.getvalue().replace('executable:no', 
                                                'executable:yes')
         bundle_txt = StringIO(new_text)
@@ -366,6 +362,19 @@ class CSetTester(TestCaseInTempDir):
 
     def test_non_bundle(self):
         self.assertRaises(NotABundle, read_bundle, StringIO('#!/bin/sh\n'))
+
+    def test_malformed(self):
+        self.assertRaises(BadBundle, read_bundle, 
+                          StringIO('# Bazaar revision bundle v'))
+
+    def test_crlf_bundle(self):
+        try:
+            read_bundle(StringIO('# Bazaar revision bundle v0.7\r\n'))
+        except BadBundle:
+            # It is currently permitted for bundles with crlf line endings to
+            # make read_bundle raise a BadBundle, but this should be fixed.
+            # Anything else, especially NotABundle, is an error.
+            pass
 
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.
@@ -453,20 +462,20 @@ class CSetTester(TestCaseInTempDir):
             #         to_tree.get_file(fileid).read())
 
     def test_bundle(self):
-
-        import os, sys
-        pjoin = os.path.join
-
         self.tree1 = BzrDir.create_standalone_workingtree('b1')
         self.b1 = self.tree1.branch
 
-        open(pjoin('b1/one'), 'wb').write('one\n')
+        open('b1/one', 'wb').write('one\n')
         self.tree1.add('one')
         self.tree1.commit('add one', rev_id='a@cset-0-1')
 
         bundle = self.get_valid_bundle(None, 'a@cset-0-1')
-        bundle = self.get_valid_bundle(None, 'a@cset-0-1',
-                message='With a specialized message')
+        # FIXME: The current write_bundle api no longer supports
+        #        setting a custom summary message
+        #        We should re-introduce the ability, and update
+        #        the tests to make sure it works.
+        # bundle = self.get_valid_bundle(None, 'a@cset-0-1',
+        #         message='With a specialized message')
 
         # Make sure we can handle files with spaces, tabs, other
         # bogus characters
@@ -663,18 +672,15 @@ class CSetTester(TestCaseInTempDir):
         bundle = self.get_valid_bundle('a@lmod-0-2a', 'a@lmod-0-4')
 
     def test_hide_history(self):
-        import os, sys
-        pjoin = os.path.join
-
         self.tree1 = BzrDir.create_standalone_workingtree('b1')
         self.b1 = self.tree1.branch
 
-        open(pjoin('b1/one'), 'wb').write('one\n')
+        open('b1/one', 'wb').write('one\n')
         self.tree1.add('one')
         self.tree1.commit('add file', rev_id='a@cset-0-1')
-        open(pjoin('b1/one'), 'wb').write('two\n')
+        open('b1/one', 'wb').write('two\n')
         self.tree1.commit('modify', rev_id='a@cset-0-2')
-        open(pjoin('b1/one'), 'wb').write('three\n')
+        open('b1/one', 'wb').write('three\n')
         self.tree1.commit('modify', rev_id='a@cset-0-3')
         bundle_file = StringIO()
         rev_ids = write_bundle(self.tree1.branch.repository, 'a@cset-0-3',
@@ -682,3 +688,69 @@ class CSetTester(TestCaseInTempDir):
         self.assertNotContainsRe(bundle_file.getvalue(), 'two')
         self.assertContainsRe(bundle_file.getvalue(), 'one')
         self.assertContainsRe(bundle_file.getvalue(), 'three')
+
+
+class MungedBundleTester(TestCaseWithTransport):
+
+    def build_test_bundle(self):
+        wt = self.make_branch_and_tree('b1')
+
+        self.build_tree(['b1/one'])
+        wt.add('one')
+        wt.commit('add one', rev_id='a@cset-0-1')
+        self.build_tree(['b1/two'])
+        wt.add('two')
+        wt.commit('add two', rev_id='a@cset-0-2')
+
+        bundle_txt = StringIO()
+        rev_ids = write_bundle(wt.branch.repository, 'a@cset-0-2',
+                               'a@cset-0-1', bundle_txt)
+        self.assertEqual(['a@cset-0-2'], rev_ids)
+        bundle_txt.seek(0, 0)
+        return bundle_txt
+
+    def check_valid(self, bundle):
+        """Check that after whatever munging, the final object is valid."""
+        self.assertEqual(['a@cset-0-2'], 
+            [r.revision_id for r in bundle.real_revisions])
+
+    def test_extra_whitespace(self):
+        bundle_txt = self.build_test_bundle()
+
+        # Seek to the end of the file
+        # Adding one extra newline used to give us
+        # TypeError: float() argument must be a string or a number
+        bundle_txt.seek(0, 2)
+        bundle_txt.write('\n')
+        bundle_txt.seek(0)
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+
+    def test_extra_whitespace_2(self):
+        bundle_txt = self.build_test_bundle()
+
+        # Seek to the end of the file
+        # Adding two extra newlines used to give us
+        # MalformedPatches: The first line of all patches should be ...
+        bundle_txt.seek(0, 2)
+        bundle_txt.write('\n\n')
+        bundle_txt.seek(0)
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+
+    def test_missing_trailing_whitespace(self):
+        bundle_txt = self.build_test_bundle()
+
+        # Remove a trailing newline, it shouldn't kill the parser
+        raw = bundle_txt.getvalue()
+        # The contents of the bundle don't have to be this, but this
+        # test is concerned with the exact case where the serializer
+        # creates a blank line at the end, and fails if that
+        # line is stripped
+        self.assertEqual('\n\n', raw[-2:])
+        bundle_text = StringIO(raw[:-1])
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
