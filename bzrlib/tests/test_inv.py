@@ -611,6 +611,14 @@ class TestExecutable(TestCaseWithTransport):
         self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
         self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
 
+        # Just do a simple revert without anything changed, and 
+        # make sure the bits don't swap.
+        t2.revert([], t2.branch.repository.revision_tree('r3'), backups=False)
+        self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
+
+        self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
+        self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
+
 
 class TestRevert(TestCaseWithTransport):
 
