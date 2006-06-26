@@ -130,56 +130,6 @@ class TestCommands(ExternalBase):
         self.assertEquals(self.capture('unknowns'), '')
         self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\ngarh\n')
 
-    def test_revert(self):
-        self.runbzr('init')
-
-        file('hello', 'wt').write('foo')
-        self.runbzr('add hello')
-        self.runbzr('commit -m setup hello')
-
-        file('goodbye', 'wt').write('baz')
-        self.runbzr('add goodbye')
-        self.runbzr('commit -m setup goodbye')
-
-        file('hello', 'wt').write('bar')
-        file('goodbye', 'wt').write('qux')
-        self.runbzr('revert hello')
-        self.check_file_contents('hello', 'foo')
-        self.check_file_contents('goodbye', 'qux')
-        self.runbzr('revert')
-        self.check_file_contents('goodbye', 'baz')
-
-        os.mkdir('revertdir')
-        self.runbzr('add revertdir')
-        self.runbzr('commit -m f')
-        os.rmdir('revertdir')
-        self.runbzr('revert')
-
-        if has_symlinks():
-            os.symlink('/unlikely/to/exist', 'symlink')
-            self.runbzr('add symlink')
-            self.runbzr('commit -m f')
-            os.unlink('symlink')
-            self.runbzr('revert')
-            self.failUnlessExists('symlink')
-            os.unlink('symlink')
-            os.symlink('a-different-path', 'symlink')
-            self.runbzr('revert')
-            self.assertEqual('/unlikely/to/exist',
-                             os.readlink('symlink'))
-        else:
-            self.log("skipping revert symlink tests")
-        
-        file('hello', 'wt').write('xyz')
-        self.runbzr('commit -m xyz hello')
-        self.runbzr('revert -r 1 hello')
-        self.check_file_contents('hello', 'foo')
-        self.runbzr('revert hello')
-        self.check_file_contents('hello', 'xyz')
-        os.chdir('revertdir')
-        self.runbzr('revert')
-        os.chdir('..')
-
     def test_mv_modes(self):
         """Test two modes of operation for mv"""
         self.runbzr('init')
