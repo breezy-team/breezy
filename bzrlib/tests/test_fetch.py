@@ -232,7 +232,6 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertEqual(1, self._count_log_matches('/ce/id.kndx', http_logs))
         self.assertEqual(1, self._count_log_matches('/ce/id.knit', http_logs))
         self.assertEqual(1, self._count_log_matches('inventory.kndx', http_logs))
-        self.assertEqual(1, self._count_log_matches('inventory.knit', http_logs))
         # this r-h check test will prevent regressions, but it currently already 
         # passes, before the patch to cache-rh is applied :[
         self.assertEqual(1, self._count_log_matches('revision-history', http_logs))
