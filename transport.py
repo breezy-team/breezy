@@ -21,22 +21,26 @@ import bzrlib.urlutils as urlutils
 from cStringIO import StringIO
 import os
 
-from svn.core import SubversionException
+from svn.core import SubversionException, Pool
 import svn.ra
 
-def _create_auth_baton():
+import svn.core
+
+svn_config = svn.core.svn_config_get_config(None)
+
+def _create_auth_baton(pool):
     """ Create a Subversion authentication baton.  """
     import svn.client
     # Give the client context baton a suite of authentication
     # providers.h
     providers = [
-        svn.client.svn_client_get_simple_provider(),
-        svn.client.svn_client_get_ssl_client_cert_file_provider(),
-        svn.client.svn_client_get_ssl_client_cert_pw_file_provider(),
-        svn.client.svn_client_get_ssl_server_trust_file_provider(),
-        svn.client.svn_client_get_username_provider(),
+        svn.client.get_simple_provider(pool),
+        svn.client.get_username_provider(pool),
+        svn.client.get_ssl_client_cert_file_provider(pool),
+        svn.client.get_ssl_client_cert_pw_file_provider(pool),
+        svn.client.get_ssl_server_trust_file_provider(pool),
         ]
-    return svn.core.svn_auth_open(providers)
+    return svn.core.svn_auth_open(providers, pool)
 
 
 # Don't run any tests on SvnTransport as it is not intended to be 
@@ -46,9 +50,10 @@ def get_test_permutations():
 
 
 class SvnRaCallbacks(svn.ra.callbacks2_t):
-    def __init__(self):
+    def __init__(self, pool):
         svn.ra.callbacks2_t.__init__(self)
-        self.auth_baton = _create_auth_baton()
+        self.auth_baton = _create_auth_baton(pool)
+        self.pool = pool
 
     def open_tmp_file(self):
         print "foo"
@@ -61,6 +66,7 @@ class SvnRaTransport(Transport):
     """Fake transport for Subversion-related namespaces. This implements 
     just as much of Transport as is necessary to fool Bazaar-NG. """
     def __init__(self, url="", ra=None):
+        self.pool = Pool()
         if not url.startswith("svn+"):
             url = "svn+%s" % url
         Transport.__init__(self, url)
@@ -74,12 +80,13 @@ class SvnRaTransport(Transport):
         self.svn_url = self.svn_url.rstrip('/')
 
         if ra is None:
-            callbacks = SvnRaCallbacks()
+            callbacks = SvnRaCallbacks(self.pool)
             try:
-                self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, None, None)
+                self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, svn_config)
             except SubversionException, (_, num):
                 if num == svn.core.SVN_ERR_RA_ILLEGAL_URL:
                     raise NotBranchError(path=url)
+                raise
 
         else:
             self.ra = ra

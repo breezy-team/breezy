@@ -26,17 +26,13 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
-from transport import SvnRaTransport
+from transport import SvnRaTransport, svn_config
 from tree import SvnBasisTree
 
 import os
 
 import svn.core, svn.wc
 from svn.core import SubversionException
-
-import svn.core
-
-svn_config = svn.core.svn_config_get_config(None)
 
 class SvnWorkingTree(WorkingTree):
     """Implementation of WorkingTree that uses a Subversion 
@@ -200,6 +196,7 @@ class SvnWorkingTree(WorkingTree):
         return inv
 
     def add(self, files, ids=None):
+        assert isinstance(files, list)
         wc = self._get_wc(write_lock=True)
         try:
             for f in files:
@@ -221,7 +218,9 @@ class SvnWorkingTree(WorkingTree):
     def pending_merges(self):
         return []
 
-    def set_pending_merges(self):
+    def set_pending_merges(self, merges):
+        if len(merges) == 0:
+            return
         raise NotImplementedError(self.set_pending_merges)
 
     def basis_tree(self):

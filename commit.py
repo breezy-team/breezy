@@ -20,6 +20,9 @@ import svn.ra
 from bzrlib.errors import UnsupportedOperation, BzrError
 from bzrlib.repository import CommitBuilder
 
+from branch import SvnBranch
+from repository import SvnRepository
+
 class SvnCommitBuilder(CommitBuilder):
     """Commit Builder implementation wrapped around svn_delta_editor. """
     def __init__(self, repository, branch, parents, config, revprops):
@@ -45,9 +48,6 @@ class SvnCommitBuilder(CommitBuilder):
     def _generate_revision_if_needed(self):
         pass
 
-    def set_message(self, message):
-        self.message = message
-
     def finish_inventory(self):
         # Subversion doesn't have an inventory
         pass
@@ -70,7 +70,7 @@ class SvnCommitBuilder(CommitBuilder):
         # FIXME
         pass
 
-    def commit(self):
+    def commit(self, message):
         def done(info, pool):
             if not info.post_commit_err is None:
                 raise BzrError(info.post_commit_err)
@@ -78,14 +78,14 @@ class SvnCommitBuilder(CommitBuilder):
             self.revnum = info.revision
 
         editor, editor_baton = svn.ra.get_commit_editor2(
-            self.repository.ra, self.message, done, None, False)
+            self.repository.ra, message, done, None, False)
 
         root = svn.delta.editor_invoke_open_root(editor, editor_baton, 4)
 
         svn.delta.editor_invoke_close_edit(editor, editor_baton)
 
         # Throw away the cache of revision ids
-        self.branch._generate_revnum_map()
+        self.branch._generate_revision_history()
 
         return self.repository.generate_revision_id(self.revnum, 
                                                     self.branch.branch_path)
