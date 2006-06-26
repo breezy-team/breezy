@@ -90,6 +90,7 @@ class TreeDelta(object):
             
 
     def show(self, to_file, show_ids=False, show_unchanged=False):
+        """output this delta in status-like form to to_file."""
         def show_list(files):
             for item in files:
                 path, fid, kind = item[:3]
@@ -139,7 +140,6 @@ class TreeDelta(object):
         if show_unchanged and self.unchanged:
             print >>to_file, 'unchanged:'
             show_list(self.unchanged)
-
 
 
 def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None):
