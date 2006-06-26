@@ -29,9 +29,9 @@ class TestCommit(TestCaseWithSubversionRepository):
     def test_simple_commit(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
         wt = WorkingTree.open("dc")
-        wt.add(["foo", "foo/bla"])
         wt.commit(message="data")
-        self.assertEqual("svn:1@%s-", wt.branch.repository.uuid, 
+        self.assertEqual("svn:1@%s-" % wt.branch.repository.uuid, 
                          wt.branch.last_revision())
 

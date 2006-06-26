@@ -13,3 +13,4 @@ Convert dumpfile to test:
 creating working trees (checkouts)
 commits
 push as merged
+better test for WorkingTree.add()

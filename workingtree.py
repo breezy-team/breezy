@@ -195,6 +195,9 @@ class SvnWorkingTree(WorkingTree):
 
         return inv
 
+    def set_last_revision(self, revid):
+        pass # FIXME
+
     def add(self, files, ids=None):
         assert isinstance(files, list)
         wc = self._get_wc(write_lock=True)

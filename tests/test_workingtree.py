@@ -50,6 +50,15 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv.has_filename("bl"))
         self.assertFalse(inv.has_filename("aa"))
 
+    def test_add_reopen(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": "data"})
+        tree = WorkingTree.open("dc")
+        tree.add(["bl"])
+
+        inv = WorkingTree.open("dc").read_working_inventory()
+        self.assertTrue(inv.has_filename("bl"))
+
     def test_remove(self):
         self.make_client_and_bzrdir('a', 'dc')
         self.build_tree({"dc/bl": "data"})

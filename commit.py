@@ -18,7 +18,9 @@ import svn.delta
 import svn.ra
 
 from bzrlib.errors import UnsupportedOperation, BzrError
+from bzrlib.inventory import Inventory
 from bzrlib.repository import CommitBuilder
+from bzrlib.trace import mutter
 
 from branch import SvnBranch
 from repository import SvnRepository
@@ -45,30 +47,70 @@ class SvnCommitBuilder(CommitBuilder):
         # matches and the revnum is in the future. Set the 
         # revision num on the delta editor using set_target_revision
 
+        # At least one of the parents has to be the last revision on the 
+        # mainline in # Subversion.
+        assert len(parents) == 0 or self.branch.last_revision() in parents
+
+        if self.branch.last_revision() is None:
+            self.old_inv = Inventory()
+        else:
+            self.old_inv = self.repository.get_inventory(
+                               self.branch.last_revision())
+        
+        # Fill with paths from self.old_inv
+        self.missing_entries = map(lambda (x,_): x, self.old_inv.entries())
+        self.added_entries = {}
+        self.removed_entries = []
+        self.modified_entries = []
+        self.modified_dirs = []
+        self.modified_links = []
+
     def _generate_revision_if_needed(self):
         pass
 
-    def finish_inventory(self):
-        # Subversion doesn't have an inventory
-        pass
+    def _add_file(self, path, copyfrom=None):
+        assert not self.added_entries.has_key(path)
+        self.added_entries[path] = copyfrom
 
-    def record_entry_contents(self, ie, parent_invs, path, tree):
-        # Subversion doesn't have an inventory
-        pass
+    def _delete_file(self, path):
+        self.removed_entries.append(path)
+
+    def finish_inventory(self):
+        # Delete missing
+        for path in self.missing_entries:
+            self._delete_file(path)
+
+    def record_entry_contents(self, ie, parent_invs, new_path, tree):
+        mutter('recording path %s' % new_path)
+        self.new_inventory.add(ie)
+        
+        # File was added in this revision
+        if not ie.file_id in self.old_inv:
+            self._add_file(new_path)
+
+        # Nothing changed on inventory level
+        elif self.old_inv.id2path(ie.file_id) == new_path:
+            self.missing_entries.remove(new_path)
+        
+        # File was renamed
+        else:
+            old_path = self.old_inv.id2path(ie.file_id)
+            self._add_file(new_path, old_path)
+            self._delete_file(old_path)
 
     def modified_file_text(self, file_id, file_parents,
                            get_content_byte_lines, text_sha1=None,
                            text_size=None):
-        # FIXME
-        pass
+        mutter('modifying file %s' % file_id)
+        self.modified_entries.append(self.old_inv.id2path(file_id))
 
     def modified_link(self, file_id, file_parents, link_target):
-        # FIXME
-        pass
+        mutter('modifying link %s' % file_id)
+        self.modified_links.append(self.old_inv.id2path(file_id))
 
     def modified_directory(self, file_id, file_parents):
-        # FIXME
-        pass
+        mutter('modifying directory %s' % file_id)
+        self.modified_dirs.append(self.old_inv.id2path(file_id))
 
     def commit(self, message):
         def done(info, pool):
@@ -77,12 +119,19 @@ class SvnCommitBuilder(CommitBuilder):
 
             self.revnum = info.revision
 
+        mutter('obtaining commit editor')
         editor, editor_baton = svn.ra.get_commit_editor2(
             self.repository.ra, message, done, None, False)
 
         root = svn.delta.editor_invoke_open_root(editor, editor_baton, 4)
 
+        # FIXME: Report status
+
         svn.delta.editor_invoke_close_edit(editor, editor_baton)
+
+        self._revprops['bzr:parents'] = "\n".join(self.parents)
+
+        # FIXME: Set revision properties on new revision
 
         # Throw away the cache of revision ids
         self.branch._generate_revision_history()
