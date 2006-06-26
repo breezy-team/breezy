@@ -1,0 +1,15 @@
+Convert dumpfile to test:
+	branchtagcopy.dump
+	changeaftercp.dump
+	combinedbranch.dump
+	executable.dump
+	ignore.dump
+	inheritance.dump
+	movebranch.dump
+	movefileorder.dump
+	recreatebranch.dump
+	simplemove.dump
+
+creating working trees (checkouts)
+commits
+push as merged
