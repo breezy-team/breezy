@@ -86,6 +86,8 @@ class SvnRaTransport(Transport):
             except SubversionException, (_, num):
                 if num == svn.core.SVN_ERR_RA_ILLEGAL_URL:
                     raise NotBranchError(path=url)
+                if num == svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED:
+                    raise NotBranchError(path=url)
                 raise
 
         else:
@@ -107,11 +109,15 @@ class SvnRaTransport(Transport):
     def listable(self):
         return False
 
+    class PhonyLock:
+        def unlock(self):
+            pass
+
+    def lock_write(self, relpath):
+        return self.PhonyLock()
+
     def lock_read(self, relpath):
-        class PhonyLock:
-            def unlock(self):
-                pass
-        return PhonyLock()
+        return self.PhonyLock()
 
     def clone(self, offset=None):
         if offset is None:

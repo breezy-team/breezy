@@ -230,6 +230,12 @@ class SvnWorkingTree(WorkingTree):
 
         return fingerprint_file(open(self.abspath(path)))['sha1']
 
+    def pending_merges(self):
+        try:
+            super(SvnWorkingTree, self).pending_merges()
+        except NoSuchFile:
+            return []
+
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
     def get_format_description(self):
@@ -316,6 +322,5 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
     def get_format_description(self):
         return 'Subversion Local Checkout'
 
-    def initialize(self, url):
-        print url
-        raise NotImplementedError(self.initialize)
+    def initialize_on_transport(self, transport):
+        raise NotImplementedError(self.initialize_on_transport)

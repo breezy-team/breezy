@@ -523,9 +523,6 @@ class SvnRepository(Repository):
         return False
 
 
-    def fetch(self, source, revision_id=None, pb=None):
-        raise NotImplementedError(self.fetch)
-
     def get_commit_builder(self, branch, parents, config, timestamp=None, 
                            timezone=None, committer=None, revprops=None, 
                            revision_id=None):

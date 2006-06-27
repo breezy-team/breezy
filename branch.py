@@ -111,7 +111,7 @@ class SvnBranch(Branch):
     def revision_history(self):
         return self._revision_history
 
-    def pull(self, source, overwrite=False):
+    def pull(self, source, overwrite=False, stop_revision=None):
         raise NotImplementedError(self.pull)
 
     def update_revisions(self, other, stop_revision=None):
