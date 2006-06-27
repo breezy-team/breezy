@@ -28,8 +28,6 @@ import re
 from bzrlib.errors import TransportError
 from bzrlib.trace import mutter
 
-__all__ = ['handle_response']
-
 
 class ResponseRange(object):
     def __init__(self, ent_start, ent_end, data_start):
@@ -110,6 +108,7 @@ class RangeFile(object):
 
         if self._pos < 0:
             self._pos = 0
+
 
 class HttpRangeResponse(RangeFile):
     """A single-range HTTP response."""

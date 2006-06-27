@@ -23,8 +23,6 @@ import bzrlib  # for the version
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
-from bzrlib.transport.http._response import (HttpMultipartRangeResponse,
-                                             HttpRangeResponse)
 from bzrlib.errors import (TransportNotPossible, NoSuchFile, BzrError,
                            TransportError, ConnectionError)
 
@@ -52,50 +50,6 @@ class HttpTransport_urllib(HttpTransportBase):
     def __init__(self, base):
         """Set the base path where files will be stored."""
         super(HttpTransport_urllib, self).__init__(base)
-
-    def readv(self, relpath, offsets):
-        """Get parts of the file at the given relative path.
-
-        :param offsets: A list of (offset, size) tuples.
-        :param return: A list or generator of (offset, data) tuples
-        """
-        mutter('readv of %s [%s]', relpath, offsets)
-        ranges = self._offsets_to_ranges(offsets)
-        code, f = self._get(relpath, ranges)
-        for start, size in offsets:
-            f.seek(start, 0)
-            data = f.read(size)
-            assert len(data) == size
-            yield start, data
-
-    def _is_multipart(self, content_type):
-        return content_type.startswith('multipart/byteranges;')
-
-    def _handle_response(self, path, response):
-        """Interpret the code & headers and return a HTTP response.
-
-        This is a factory method which returns an appropriate HTTP response
-        based on the code & headers it's given.
-        """
-        content_type = response.headers['Content-Type']
-        mutter('handling response code %s ctype %s', response.code,
-            content_type)
-
-        if response.code == 206 and self._is_multipart(content_type):
-            # Full fledged multipart response
-            return HttpMultipartRangeResponse(path, content_type, response)
-        elif response.code == 206:
-            # A response to a range request, but not multipart
-            content_range = response.headers['Content-Range']
-            return HttpRangeResponse(path, content_range, response)
-        elif response.code == 200:
-            # A regular non-range response, unfortunately the result from
-            # urllib doesn't support seek, so we wrap it in a StringIO
-            return StringIO(response.read())
-        elif response.code == 404:
-            raise NoSuchFile(path)
-
-        raise BzrError("HTTP couldn't handle code %s", response.code)
 
     def _get(self, relpath, ranges):
         path = relpath

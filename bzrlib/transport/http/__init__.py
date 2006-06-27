@@ -30,14 +30,17 @@ import urlparse
 import urllib
 from warnings import warn
 
-from bzrlib.transport import Transport, register_transport, Server
+# TODO: load these only when running http tests
+import BaseHTTPServer, SimpleHTTPServer, socket, time
+import threading
+
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            TransportError, ConnectionError, InvalidURL)
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
-# TODO: load these only when running http tests
-import BaseHTTPServer, SimpleHTTPServer, socket, time
-import threading
+from bzrlib.transport import Transport, register_transport, Server
+from bzrlib.transport.http._response import (HttpMultipartRangeResponse,
+                                             HttpRangeResponse)
 from bzrlib.ui import ui_factory
 
 
@@ -195,58 +198,43 @@ class HttpTransportBase(Transport):
         :param offsets: A list of (offset, size) tuples.
         :param return: A list or generator of (offset, data) tuples
         """
-        # Ideally we would pass one big request asking for all the ranges in
-        # one go; however then the server will give a multipart mime response
-        # back, and we can't parse them yet.  So instead we just get one range
-        # per region, and try to coallesce the regions as much as possible.
-        #
-        # The read-coallescing code is not quite regular enough to have a
-        # single driver routine and
-        # helper method in Transport.
-        def do_combined_read(combined_offsets):
-            # read one coalesced block
-            total_size = 0
-            for offset, size in combined_offsets:
-                total_size += size
-            mutter('readv coalesced %d reads.', len(combined_offsets))
-            offset = combined_offsets[0][0]
-            byte_range = (offset, offset + total_size - 1)
-            code, result_file = self._get(relpath, [byte_range])
-            if code == 206:
-                for off, size in combined_offsets:
-                    result_bytes = result_file.read(size)
-                    assert len(result_bytes) == size
-                    yield off, result_bytes
-            elif code == 200:
-                data = result_file.read(offset + total_size)[offset:offset + total_size]
-                pos = 0
-                for offset, size in combined_offsets:
-                    yield offset, data[pos:pos + size]
-                    pos += size
-                del data
-        if not len(offsets):
-            return
-        pending_offsets = deque(offsets)
-        combined_offsets = []
-        while len(pending_offsets):
-            offset, size = pending_offsets.popleft()
-            if not combined_offsets:
-                combined_offsets = [[offset, size]]
-            else:
-                if (len (combined_offsets) < 500 and
-                    combined_offsets[-1][0] + combined_offsets[-1][1] == offset):
-                    # combatible offset:
-                    combined_offsets.append([offset, size])
-                else:
-                    # incompatible, or over the threshold issue a read and yield
-                    pending_offsets.appendleft((offset, size))
-                    for result in do_combined_read(combined_offsets):
-                        yield result
-                    combined_offsets = []
-        # whatever is left is a single coalesced request
-        if len(combined_offsets):
-            for result in do_combined_read(combined_offsets):
-                yield result
+        mutter('readv of %s [%s]', relpath, offsets)
+        ranges = self._offsets_to_ranges(offsets)
+        code, f = self._get(relpath, ranges)
+        for start, size in offsets:
+            f.seek(start, 0)
+            data = f.read(size)
+            assert len(data) == size
+            yield start, data
+
+    def _is_multipart(self, content_type):
+        return content_type.startswith('multipart/byteranges;')
+
+    def _handle_response(self, path, response):
+        """Interpret the code & headers and return a HTTP response.
+
+        This is a factory method which returns an appropriate HTTP response
+        based on the code & headers it's given.
+        """
+        content_type = response.headers['Content-Type']
+        mutter('handling response code %s ctype %s', response.code,
+            content_type)
+
+        if response.code == 206 and self._is_multipart(content_type):
+            # Full fledged multipart response
+            return HttpMultipartRangeResponse(path, content_type, response)
+        elif response.code == 206:
+            # A response to a range request, but not multipart
+            content_range = response.headers['Content-Range']
+            return HttpRangeResponse(path, content_range, response)
+        elif response.code == 200:
+            # A regular non-range response, unfortunately the result from
+            # urllib doesn't support seek, so we wrap it in a StringIO
+            return StringIO(response.read())
+        elif response.code == 404:
+            raise NoSuchFile(path)
+
+        raise BzrError("HTTP couldn't handle code %s", response.code)
 
     def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
@@ -354,8 +342,7 @@ class HttpTransportBase(Transport):
         """
         # We need a copy of the offsets, as the caller might expect it to
         # remain unsorted. This doesn't seem expensive for memory at least.
-        offsets = offsets[:]
-        offsets.sort(key=lambda i: i[0])
+        offsets = sorted(offsets)
 
         start, size = offsets[0]
         prev_end = start + size - 1
