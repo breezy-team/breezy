@@ -219,8 +219,9 @@ class SvnCommitBuilder(CommitBuilder):
 
         # FIXME: Set revision properties on new revision
 
-        # Throw away the cache of revision ids
-        self.branch._generate_revision_history()
-
-        return self.repository.generate_revision_id(self.revnum, 
+        revid = self.repository.generate_revision_id(self.revnum, 
                                                     self.branch.branch_path)
+
+        self.branch._revision_history.append(revid)
+
+        return revid

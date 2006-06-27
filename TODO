@@ -7,3 +7,5 @@
 - support for 'svn:ignore' -> maps to .bzrignore. Generated from the 'svn:ignore' properties on each directory, sorted alphabetically.
 - support tracking of moves. SVN does not support moves or renames, but only copies. This means in order to see whether a file was renamed, there needs to be a check to see if that file was only copied once and the original was removed. 
 - support pushing to SVN branches. Push as merged.
+- support creating working trees
+- support recording a commit has happened

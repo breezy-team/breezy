@@ -26,6 +26,8 @@ import svn.ra
 
 import svn.core
 
+svn.ra.initialize()
+
 svn_config = svn.core.svn_config_get_config(None)
 
 def _create_auth_baton(pool):

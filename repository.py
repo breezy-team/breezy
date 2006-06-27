@@ -24,7 +24,7 @@ from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar
 from bzrlib.repository import Repository
-from bzrlib.revision import Revision
+from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
 from bzrlib.trace import mutter
 
@@ -261,11 +261,11 @@ class SvnRepository(Repository):
 
         return (kind != svn.core.svn_node_none)
 
-    def revision_tree(self, revid):
+    def revision_tree(self, revision_id):
         if revision_id is None or revision_id == NULL_REVISION:
             return EmptyTree()
         else:
-            return SvnRevisionTree(self, revid)
+            return SvnRevisionTree(self, revision_id)
 
     def revision_parents(self, revision_id):
         (path, revnum) = self.parse_revision_id(revision_id)

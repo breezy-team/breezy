@@ -30,9 +30,8 @@ import os
 import svn.core, svn.ra
 from svn.core import SubversionException
 
+from repository import SvnRepository
 from tree import SvnBasisTree
-
-svn.ra.initialize()
 
 class FakeControlFiles(object):
     def get_utf8(self, name):
@@ -52,12 +51,13 @@ class SvnBranch(Branch):
             branch is located at.
         """
         self.repository = repos
+        assert isinstance(self.repository, SvnRepository)
         self.branch_path = branch_path
         self.control_files = FakeControlFiles()
-        self._generate_revision_history()
-        self.base = "%s/%s" % (repos.url, branch_path)
+        self.base = "%s/%s" % (repos.url.rstrip("/"), branch_path.lstrip("/"))
         self._format = SvnBranchFormat()
-        mutter("Connected to branch at %s" % branch_path)
+        mutter("Connected to branch at %s" % self.branch_path)
+        self._generate_revision_history()
 
     def basis_tree(self):
         return SvnBasisTree(self)
@@ -70,11 +70,11 @@ class SvnBranch(Branch):
         return BranchCheckResult(self)
         
     def _generate_revision_history(self):
-        def rcvr((paths, rev)):
-            return self.repository.generate_revision_id(rev, self.branch_path)
-        self._revision_history = map(rcvr, 
-                self.repository._log.follow_history(self.branch_path, 
-                    svn.ra.get_latest_revnum(self.repository.ra)))
+        self._revision_history = []
+        for (_, rev) in self.repository._log.follow_history(self.branch_path, 
+                svn.ra.get_latest_revnum(self.repository.ra)):
+            self._revision_history.append(
+                    self.repository.generate_revision_id(rev, self.branch_path))
         self._revision_history.reverse()
 
     def set_root_id(self, file_id):
@@ -112,7 +112,8 @@ class SvnBranch(Branch):
         return self._revision_history
 
     def pull(self, source, overwrite=False, stop_revision=None):
-        raise NotImplementedError(self.pull)
+        print "Copying in data from %s" % source
+        #raise NotImplementedError(self.pull)
 
     def update_revisions(self, other, stop_revision=None):
         raise NotImplementedError(self.update_revisions)
@@ -166,6 +167,10 @@ class SvnBranch(Branch):
         if parent:
             destination.set_parent(parent)
 
+    def __str__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.base)
+
+    __repr__ = __str__
 
 class SvnBranchFormat(BranchFormat):
     """ Branch format for Subversion Branches."""
