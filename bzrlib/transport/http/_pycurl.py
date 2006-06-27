@@ -179,7 +179,7 @@ class PyCurlTransport(HttpTransportBase):
         response = CurlResponse(curl)
 
         if ranges is not None:
-            curl.setopt(pycurl.RANGE, self._range_header(ranges))
+            curl.setopt(pycurl.RANGE, self.range_header(ranges))
         self._curl_perform(curl)
         response.update()
         if response.code == 0:

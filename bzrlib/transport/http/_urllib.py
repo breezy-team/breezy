@@ -87,7 +87,7 @@ class HttpTransport_urllib(HttpTransportBase):
         request.add_header('Cache-control', 'max-age=0')
         request.add_header('User-Agent', 'bzr/%s (urllib)' % bzrlib.__version__)
         if ranges:
-            request.add_header('Range', self._range_header(ranges))
+            request.add_header('Range', self.range_header(ranges))
         mutter("GET %s [%s]" % (url, request.get_header('Range')))
         response = opener.open(request)
         return response

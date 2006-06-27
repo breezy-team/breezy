@@ -199,7 +199,7 @@ class HttpTransportBase(Transport):
         :param return: A list or generator of (offset, data) tuples
         """
         mutter('readv of %s [%s]', relpath, offsets)
-        ranges = self._offsets_to_ranges(offsets)
+        ranges = self.offsets_to_ranges(offsets)
         code, f = self._get(relpath, ranges)
         for start, size in offsets:
             f.seek(start, 0)
@@ -331,7 +331,8 @@ class HttpTransportBase(Transport):
         else:
             return self.__class__(self.abspath(offset))
 
-    def _offsets_to_ranges(self, offsets):
+    @staticmethod
+    def offsets_to_ranges(offsets):
         """Turn a list of offsets and sizes into a list of byte ranges.
 
         :param offsets: A list of tuples of (start, size).
@@ -361,7 +362,8 @@ class HttpTransportBase(Transport):
 
         return combined
 
-    def _range_header(self, ranges):
+    @staticmethod
+    def range_header(ranges):
         """Turn a list of bytes ranges into a HTTP Range header value.
 
         :param offsets: A list of byte ranges, (start, end). An empty list

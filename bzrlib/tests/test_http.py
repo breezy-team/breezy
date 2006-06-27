@@ -23,7 +23,7 @@ import bzrlib
 from bzrlib.errors import DependencyNotPresent
 from bzrlib.tests import TestCase, TestSkipped
 from bzrlib.transport import Transport
-from bzrlib.transport.http import extract_auth
+from bzrlib.transport.http import extract_auth, HttpTransportBase
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 
@@ -159,3 +159,42 @@ class TestHttpTransportRegistration(TestCase):
         t = get_transport('http+urllib://bzr.google.com/')
         self.assertIsInstance(t, Transport)
         self.assertIsInstance(t, bzrlib.transport.http._urllib.HttpTransport_urllib)
+
+
+class TestHttpRangeHelpers(TestCase):
+
+    def test_http_range_offsets_to_ranges_basic_1(self):
+        offsets = [[100, 1]]
+        ranges = HttpTransportBase.offsets_to_ranges(offsets)
+        self.assertEqual(ranges, [[100, 100]])
+
+    def test_http_range_offsets_to_ranges_basic_2(self):
+        offsets = [[0, 1], [1, 1]]
+        ranges = HttpTransportBase.offsets_to_ranges(offsets)
+        self.assertEqual(ranges, [[0, 1]])
+
+    def test_http_range_offsets_to_ranges_sorting(self):
+        offsets = [[1, 1], [0, 1]]
+        ranges = HttpTransportBase.offsets_to_ranges(offsets)
+        self.assertEqual(ranges, [[0, 1]])
+
+    def test_http_range_offsets_to_ranges_merging_1(self):
+        offsets = [[10, 1], [15, 10], [20, 5]]
+        ranges = HttpTransportBase.offsets_to_ranges(offsets)
+        self.assertEqual(ranges, [[10, 10], [15, 24]])
+
+    def test_http_range_offsets_to_ranges_merging_2(self):
+        offsets = [[10, 1], [15, 10], [20, 10]]
+        ranges = HttpTransportBase.offsets_to_ranges(offsets)
+        self.assertEqual(ranges, [[10, 10], [15, 29]])
+
+    def test_http_range_offsets_to_ranges_offsets_unchanged(self):
+        offsets = [[10, 1], [0, 1], [5, 1]]
+        ranges = HttpTransportBase.offsets_to_ranges(offsets)
+        self.assertEqual(ranges, [[0, 0], [5, 5], [10, 10]])
+        self.assertEqual(offsets, [[10, 1], [0, 1], [5, 1]])
+
+    def test_http_range_header_string(self):
+        ranges = [[0, 9], [10,19], [200,1999]]
+        hdr = HttpTransportBase.range_header(ranges)
+        self.assertEqual(hdr, 'bytes=0-9,10-19,200-1999')
