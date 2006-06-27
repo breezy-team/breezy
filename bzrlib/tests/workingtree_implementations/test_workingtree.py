@@ -477,6 +477,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual('foo', tree.last_revision())
         self.assertEqual('foo', tree.branch.last_revision())
 
+    def test_missing_pending_merges(self):
+        master_tree = self.make_branch_and_tree('master')
+        tree = self.make_branch_and_tree('tree')
+        tree._control_files._transport.delete("pending-merges")
+        self.assertEqual([], tree.pending_merges())
+
     def test_update_turns_local_commit_into_merge(self):
         # doing an update with a few local commits and no master commits
         # makes pending-merges. 

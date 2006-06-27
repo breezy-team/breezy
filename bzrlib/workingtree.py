@@ -656,9 +656,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         try:
             merges_file = self._control_files.get_utf8('pending-merges')
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
+        except NoSuchFile:
             return []
         p = []
         for l in merges_file.readlines():
