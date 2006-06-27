@@ -139,7 +139,6 @@ class SvnRepository(Repository):
         mutter('getting inventory %r for branch %r' % (revnum, path))
 
         def read_directory(inv, id, path, revnum):
-
             (props, dirents) = self._cache_get_dir(path, revnum)
 
             recurse = {}
@@ -173,7 +172,9 @@ class SvnRepository(Repository):
                     child_path)
                 read_directory(inv, child_id, child_path, recurse[child_path])
     
-        inv = Inventory()
+        inv = Inventory(revision_id=revision_id, root_id=ROOT_ID)
+        # FIXME: Is this the correct revision_id to set? Probably not...
+        inv[ROOT_ID].revision = revision_id
 
         assert path != None
         read_directory(inv, ROOT_ID, path, revnum)

@@ -389,11 +389,7 @@ class BranchCreator(object):
             revprops = svn.ra.rev_proplist(self._ra, revno)
 
             # Parse timestamps like 2005-09-23T17:52:33.719737Z
-            time_tokens = revprops["svn:date"].split(".")
-            parsed_time = time.strptime(time_tokens[0],
-                                        "%Y-%m-%dT%H:%M:%S")
-            timestamp = time.mktime(parsed_time)
-            timestamp += float(time_tokens[1][:-1])
+			timestamp svn.core.secs_from_timestr(revprops["svn:date"])
 
             self.commit(revno, revprops.get("svn:log", ""),
                         committer=revprops["svn:author"],

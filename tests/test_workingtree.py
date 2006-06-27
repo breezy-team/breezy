@@ -229,3 +229,18 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree.set_pending_merges([])
         self.assertEqual([], tree.pending_merges())
 
+    def test_update_after_commit(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": "data"})
+        self.client_add("dc/bl")
+        tree = WorkingTree.open("dc")
+        tree.commit(message="data")
+        self.assertEqual("svn:1@%s-" % tree.branch.repository.uuid, 
+                         tree.basis_tree().get_revision_id())
+        delta = compare_trees(tree, tree.basis_tree())
+        self.assertFalse(delta.has_changed())
+        tree = WorkingTree.open("dc")
+        self.assertEqual("svn:1@%s-" % tree.branch.repository.uuid, 
+                         tree.basis_tree().get_revision_id())
+        self.assertFalse(delta.has_changed())
+

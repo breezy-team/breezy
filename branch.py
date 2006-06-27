@@ -31,7 +31,7 @@ import svn.core, svn.ra
 from svn.core import SubversionException
 
 from repository import SvnRepository
-from tree import SvnBasisTree
+from tree import SvnRevisionTree
 
 class FakeControlFiles(object):
     def get_utf8(self, name):
@@ -58,9 +58,6 @@ class SvnBranch(Branch):
         self._format = SvnBranchFormat()
         mutter("Connected to branch at %s" % self.branch_path)
         self._generate_revision_history()
-
-    def basis_tree(self):
-        return SvnBasisTree(self)
 
     def check(self):
         """See Branch.Check.

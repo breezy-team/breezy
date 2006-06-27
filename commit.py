@@ -199,6 +199,8 @@ class SvnCommitBuilder(CommitBuilder):
 
             self.revnum = info.revision
             assert self.revnum > 0
+            self.date = info.date
+            self.author = info.author
 
         mutter('obtaining commit editor')
         self.editor, editor_baton = svn.ra.get_commit_editor2(
@@ -234,5 +236,8 @@ class SvnCommitBuilder(CommitBuilder):
                                                     self.branch.branch_path)
 
         self.branch._revision_history.append(revid)
+
+        mutter('commit finished. author: %r, date: %r' % 
+               (self.author, self.date))
 
         return revid

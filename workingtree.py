@@ -197,7 +197,40 @@ class SvnWorkingTree(WorkingTree):
         return inv
 
     def set_last_revision(self, revid):
-        pass # FIXME
+        # TODO: Implement more efficient version
+        newrev = self.branch.repository.get_revision(revid)
+        newrevtree = self.branch.repository.revision_tree(revid)
+        self.base_revid = revid
+
+        def update_settings(wc, path):
+            id = newrevtree.inventory.path2id(path)
+            mutter("Updating settings for %r" % id)
+            (_, revnum) = self.branch.repository.parse_revision_id(
+                    newrevtree.inventory[id].revision)
+
+            svn.wc.process_committed2(os.path.join(self.basedir, path).rstrip("/"), wc, 
+                          False, revnum, 
+                          svn.core.svn_time_to_cstring(newrev.timestamp), 
+                          newrev.committer, None, False)
+
+            if newrevtree.inventory[id].kind != 'directory':
+                return
+
+            entries = svn.wc.entries_read(wc, True)
+            for entry in entries:
+                if entry == "":
+                    continue
+
+                subwc = svn.wc.adm_open3(wc, os.path.join(self.basedir, path, entry), False, 0, None)
+                try:
+                    update_settings(subwc, os.path.join(path, entry))
+                finally:
+                    svn.wc.adm_close(subwc)
+
+        # Set proper version for all files in the wc
+        wc = self._get_wc(write_lock=True)
+        update_settings(wc, "")
+        svn.wc.adm_close(wc)
 
     def add(self, files, ids=None):
         assert isinstance(files, list)
