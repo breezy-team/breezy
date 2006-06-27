@@ -31,7 +31,16 @@ from svn.core import SubversionException
 
 class SvnRevisionTree(RevisionTree):
     def __init__(self, repository, revision_id):
-        pass
+        self._repository = repository
+        self._revision_id = revision_id
+        self._inventory = repository.get_inventory(revision_id)
+        (self._branch_path, self._revnum) = repository.parse_revision_id(revision_id)
+        # FIXME: Use checkout
+
+    def get_file_lines(self, file_id):
+        path = "%s/%s" % (self._branch_path, self.id2path(file_id))
+        stream = self._repository._get_file(path, self._revnum)
+        return stream.readlines()
 
 class SvnBasisTree(RevisionTree):
     def __init__(self, workingtree):
@@ -46,7 +55,7 @@ class SvnBasisTree(RevisionTree):
         self.workingtree = workingtree
 
     def get_file_lines(self, file_id):
-        path = self._inventory.id2path(file_id)
+        path = self.id2path(file_id)
         base_copy = svn.wc.get_pristine_copy_path(self.workingtree.abspath(path))
         return open(base_copy).readlines()
 

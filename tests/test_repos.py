@@ -263,3 +263,29 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertTrue(tree.has_filename("foo"))
         self.assertEqual("data", tree.get_file_by_path("foo/bla").read())
 
+
+class TestSvnRevisionTree(TestCaseWithSubversionRepository):
+    def setUp(self):
+        super(TestSvnRevisionTree, self).setUp()
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.repos = Repository.open("dc")
+        self.inventory = self.repos.get_inventory("svn:1@%s-" % self.repos.uuid)
+        self.tree = self.repos.revision_tree("svn:1@%s-" % self.repos.uuid)
+
+    def test_inventory(self):
+        self.assertIsInstance(self.tree.inventory, Inventory)
+        self.assertEqual(self.inventory, self.tree.inventory)
+
+    def test_get_parent_ids(self):
+        self.assertEqual([], self.tree.get_parent_ids())
+
+    def test_get_revision_id(self):
+        self.assertEqual("svn:1@%s-" % self.repos.uuid, 
+                         self.tree.get_revision_id())
+
+    def test_get_file_lines(self):
+        self.assertEqual(["data"], 
+                self.tree.get_file_lines(self.inventory.path2id("foo/bla")))
