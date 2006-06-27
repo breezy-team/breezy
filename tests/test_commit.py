@@ -62,6 +62,6 @@ class TestCommit(TestCaseWithSubversionRepository):
         wt = WorkingTree.open("dc")
         wt.set_pending_merges(["some-ghost-revision"])
         wt.commit(message="data")
-        self.assertEqual([None, "some-ghost-revision"],
+        self.assertEqual(["some-ghost-revision"],
                          wt.branch.repository.revision_parents(
                              wt.branch.last_revision()))

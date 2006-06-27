@@ -22,6 +22,7 @@ from bzrlib.lockable_files import TransportLock, LockableFiles
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import rand_bytes, fingerprint_file
 from bzrlib.progress import DummyProgress
+from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from format import SvnRemoteAccess, SvnFormat
@@ -232,7 +233,7 @@ class SvnWorkingTree(WorkingTree):
 
     def pending_merges(self):
         try:
-            super(SvnWorkingTree, self).pending_merges()
+            return super(SvnWorkingTree, self).pending_merges()
         except NoSuchFile:
             return []
 
@@ -271,7 +272,8 @@ class SvnLocalAccess(SvnRemoteAccess):
         if not url.startswith("svn"):
             url = "svn+" + url
 
-        self.base_revno = svn.wc.status2(self.local_path, wc).ood_last_cmt_rev
+        self.base_revnum = svn.wc.entry(self.local_path, wc, True).revision
+        assert self.base_revnum >= 0
 
         remote_transport = SvnRaTransport(url)
 
@@ -295,7 +297,7 @@ class SvnLocalAccess(SvnRemoteAccess):
     def open_workingtree(self, _unsupported=False):
         return SvnWorkingTree(self, self.local_path, self.open_branch(), 
                 self.open_repository().generate_revision_id(
-                    self.base_revno, self.branch_path))
+                    self.base_revnum, self.branch_path))
 
     def create_workingtree(self):
         raise NotImplementedError(SvnRemoteAccess.create_workingtree)

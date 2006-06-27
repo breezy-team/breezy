@@ -52,7 +52,8 @@ class SvnCommitBuilder(CommitBuilder):
 
         # At least one of the parents has to be the last revision on the 
         # mainline in # Subversion.
-        assert len(parents) == 0 or self.branch.last_revision() in parents
+        assert (self.branch.last_revision() is None or 
+                self.branch.last_revision() in parents)
 
         if self.branch.last_revision() is None:
             self.old_inv = Inventory()
@@ -197,6 +198,7 @@ class SvnCommitBuilder(CommitBuilder):
                 raise BzrError(info.post_commit_err)
 
             self.revnum = info.revision
+            assert self.revnum > 0
 
         mutter('obtaining commit editor')
         self.editor, editor_baton = svn.ra.get_commit_editor2(
@@ -217,7 +219,16 @@ class SvnCommitBuilder(CommitBuilder):
 
         self._revprops['bzr:parents'] = "\n".join(self.parents)
 
-        # FIXME: Set revision properties on new revision
+        # Set revision properties on new revision
+        for name in self._revprops:
+            if self._revprops[name] is None:
+                continue
+
+            mutter('setting revprop %r=%r' % (name, self._revprops[name]))
+            assert isinstance(name, basestring)
+            assert isinstance(self._revprops[name], basestring)
+            svn.ra.change_rev_prop(self.repository.ra, self.revnum, 
+                    name.encode('utf-8'), self._revprops[name].encode('utf-8'))
 
         revid = self.repository.generate_revision_id(self.revnum, 
                                                     self.branch.branch_path)

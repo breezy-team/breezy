@@ -55,6 +55,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
         self.assertTrue(repository.has_revision("svn:1@%s-" % repository.uuid))
+        self.assertFalse(repository.has_revision("some-other-revision"))
 
     def test_revision_parents(self):
         repos_url = self.make_client('d', 'dc')

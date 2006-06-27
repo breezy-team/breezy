@@ -249,7 +249,10 @@ class SvnRepository(Repository):
         return self._ancestry
 
     def has_revision(self, revision_id):
-        (path, revnum) = self.parse_revision_id(revision_id)
+        try:
+            (path, revnum) = self.parse_revision_id(revision_id)
+        except NoSuchRevision:
+            return False
 
         mutter("svn check_path -r%d %s" % (revnum, path))
         try:
@@ -276,9 +279,12 @@ class SvnRepository(Repository):
 
         for (paths, rev, a, b, c) in self._log.get_branch_log(path, revnum - 1, 0, 1, False):
             parent_ids.append(self.generate_revision_id(rev, path))
-            ghosts = svn.ra.rev_prop(self.ra, rev, "bzr:parents")
-            if ghosts is not None:
-                parent_ids.extend(ghosts.splitlines())
+        
+        mutter('getting revprop -r %r bzr:parents' % revnum)
+        ghosts = svn.ra.rev_prop(self.ra, revnum, "bzr:parents")
+
+        if ghosts is not None:
+            parent_ids.extend(ghosts.splitlines())
 
         return parent_ids
 
@@ -394,7 +400,7 @@ class SvnRepository(Repository):
 
         :param revid: The revision id.
         :raises: NoSuchRevision
-        :return: Tuple with revision number and branch path.
+        :return: Tuple with branch path and revision number.
         """
 
         assert revid
@@ -412,7 +418,10 @@ class SvnRepository(Repository):
         if uuid != self.uuid:
             raise NoSuchRevision(self, revid)
 
-        return (revid[fash+1:], int(revid[0:at]))
+        branch_path = revid[fash+1:]
+        revnum = int(revid[0:at])
+        assert revnum >= 0
+        return (branch_path, revnum)
 
     def get_inventory_xml(self, revision_id):
         return bzrlib.xml5.serializer_v5.write_inventory_to_string(
