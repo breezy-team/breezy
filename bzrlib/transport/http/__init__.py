@@ -373,7 +373,7 @@ class HttpTransportBase(Transport):
         for start, end in ranges:
             strings.append('%d-%d' % (start, end))
 
-        return 'bytes=' + ', '.join(strings)
+        return 'bytes=' + ','.join(strings)
 
 
 #---------------- test server facilities ----------------
