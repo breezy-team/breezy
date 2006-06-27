@@ -400,10 +400,6 @@ class cmd_pull(Command):
     from one into the other.  Once one branch has merged, the other should
     be able to pull it again.
 
-    If branches have diverged, you can use 'bzr merge' to pull the text changes
-    from one into the other.  Once one branch has merged, the other should
-    be able to pull it again.
-
     If you want to forget your local changes and just update your branch to
     match the remote one, use pull --overwrite.
 

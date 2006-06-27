@@ -310,8 +310,6 @@ bzr 0.8  2006-05-08
 
     * Add --revision option to 'annotate' command.  (Olaf Conradi)
 
-    * Add --revision option to 'annotate' command.  (Olaf Conradi)
-
     * If bzr shows an unexpected revision-history after pulling (perhaps due
       to a reweave) it can now be corrected by 'bzr reconcile'.
       (Robert Collins)
