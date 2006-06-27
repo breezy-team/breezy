@@ -234,7 +234,7 @@ class HttpTransportBase(Transport):
         elif response.code == 404:
             raise NoSuchFile(path)
 
-        raise BzrError("HTTP couldn't handle code %s", response.code)
+        raise TransportError("HTTP couldn't handle code %s" % response.code)
 
     def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
