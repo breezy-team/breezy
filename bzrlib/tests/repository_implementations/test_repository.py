@@ -23,7 +23,7 @@ import sys
 import bzrlib
 from bzrlib import bzrdir, errors, repository
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.delta import TreeDelta
+from bzrlib.delta import TreeDelta, compare_trees
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
@@ -335,6 +335,25 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         tree_a.add_pending_merge('ghost1')
         tree_a.add_pending_merge('ghost2')
         tree_a.commit('rev4', rev_id='rev4', allow_pointless=True)
+
+    def test_revision_trees(self):
+        revision_ids = ['rev1', 'rev2', 'rev3', 'rev4']
+        repository = self.bzrdir.open_repository()
+        trees1 = list(repository.revision_trees(revision_ids))
+        trees2 = [repository.revision_tree(t) for t in revision_ids]
+        assert len(trees1) == len(trees2)
+        for tree1, tree2 in zip(trees1, trees2):
+            delta = compare_trees(tree1, tree2)
+            assert not delta.has_changed()
+
+    def test_get_deltas_for_revisions(self):
+        repository = self.bzrdir.open_repository()
+        revisions = [repository.get_revision(r) for r in 
+                     ['rev1', 'rev2', 'rev3', 'rev4']]
+        deltas1 = list(repository.get_deltas_for_revisions(revisions))
+        deltas2 = [repository.get_revision_delta(r.revision_id) for r in
+                   revisions]
+        assert deltas1 == deltas2
 
     def test_all_revision_ids(self):
         # all_revision_ids -> all revisions

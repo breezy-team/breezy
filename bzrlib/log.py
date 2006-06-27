@@ -54,10 +54,8 @@ all the changes since the previous revision that touched hello.c.
 from itertools import izip
 import re
 
-from bzrlib.delta import compare_trees
 import bzrlib.errors as errors
 from bzrlib.trace import mutter
-from bzrlib.tree import EmptyTree
 from bzrlib.tsort import merge_sort
 
 
@@ -115,17 +113,6 @@ def _enumerate_history(branch):
     return rh
 
 
-def _get_revision_delta(branch, revno):
-    """Return the delta for a mainline revision.
-    
-    This is used to show summaries in verbose logs, and also for finding 
-    revisions which touch a given file."""
-    # XXX: What are we supposed to do when showing a summary for something 
-    # other than a mainline revision.  The delta to it's first parent, or
-    # (more useful) the delta to a nominated other revision.
-    return branch.get_revision_delta(revno)
-
-
 def show_log(branch,
              lf,
              specific_fileid=None,
@@ -174,7 +161,6 @@ def _show_log(branch,
     """Worker function for show_log - see show_log."""
     from bzrlib.osutils import format_date
     from bzrlib.errors import BzrCheckError
-    from bzrlib.textui import show_status
     
     from warnings import warn
 
@@ -208,7 +194,7 @@ def _show_log(branch,
         return
 
     # convert the revision history to a dictionary:
-    rev_nos = dict([(k, v) for v, k in cut_revs])
+    rev_nos = dict((k, v) for v, k in cut_revs)
 
     # override the mainline to look like the revision history.
     mainline_revs = [revision_id for index, revision_id in cut_revs]
@@ -224,20 +210,30 @@ def _show_log(branch,
                           direction, include_merges=include_merges))
 
     def iter_revisions():
+        # r = revision, n = revno, d = merge depth
         revision_ids = [r for r, n, d in view_revisions]
+        zeros = set(r for r, n, d in view_revisions if d == 0)
         num = 9
+        repository = branch.repository
         while revision_ids:
-            revisions = branch.repository.get_revisions(revision_ids[:num])
+            cur_deltas = {}
+            revisions = repository.get_revisions(revision_ids[:num])
+            if verbose or specific_fileid:
+                delta_revisions = [r for r in revisions if
+                                   r.revision_id in zeros]
+                deltas = repository.get_deltas_for_revisions(delta_revisions)
+                cur_deltas = dict(izip((r.revision_id for r in 
+                                        delta_revisions), deltas))
             for revision in revisions:
-                yield revision
+                # The delta value will be None unless
+                # 1. verbose or specific_fileid is specified, and
+                # 2. the revision is a mainline revision
+                yield revision, cur_deltas.get(revision.revision_id)
             revision_ids  = revision_ids[num:]
             num = int(num * 1.5)
             
-        revisions = branch.repository.get_revisions()
-        for revision in revisions:
-            yield revision
     # now we just print all the revisions
-    for ((rev_id, revno, merge_depth), rev) in \
+    for ((rev_id, revno, merge_depth), (rev, delta)) in \
          izip(view_revisions, iter_revisions()):
 
         if searchRE:
@@ -246,8 +242,6 @@ def _show_log(branch,
 
         if merge_depth == 0:
             # a mainline revision.
-            if verbose or specific_fileid:
-                delta = _get_revision_delta(branch, rev_nos[rev_id])
                 
             if specific_fileid:
                 if not delta.touches_file_id(specific_fileid):
@@ -282,7 +276,7 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
 
     if direction == 'forward':
         # forward means oldest first.
-        merge_sorted_revisions.reverse()
+        merge_sorted_revisions = reverse_by_depth(merge_sorted_revisions)
     elif direction != 'reverse':
         raise ValueError('invalid direction %r' % direction)
 
@@ -290,6 +284,30 @@ def get_view_revisions(mainline_revs, rev_nos, branch, direction,
 
     for sequence, rev_id, merge_depth, end_of_merge in merge_sorted_revisions:
         yield rev_id, rev_nos.get(rev_id), merge_depth
+
+
+def reverse_by_depth(merge_sorted_revisions, _depth=0):
+    """Reverse revisions by depth.
+
+    Revisions with a different depth are sorted as a group with the previous
+    revision of that depth.  There may be no topological justification for this,
+    but it looks much nicer.
+    """
+    zd_revisions = []
+    for val in merge_sorted_revisions:
+        if val[2] == _depth:
+            zd_revisions.append([val])
+        else:
+            assert val[2] > _depth
+            zd_revisions[-1].append(val)
+    for revisions in zd_revisions:
+        if len(revisions) > 1:
+            revisions[1:] = reverse_by_depth(revisions[1:], _depth + 1)
+    zd_revisions.reverse()
+    result = []
+    for chunk in zd_revisions:
+        result.extend(chunk)
+    return result
 
 
 class LogFormatter(object):
