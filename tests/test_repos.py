@@ -77,7 +77,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "Second Message")
-        self.client_set_revprops(repos_url, 2, "bzr:parents", "ghostparent")
+        self.client_set_revprops(repos_url, 2, "bzr:parents", "ghostparent\n")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual([],
                 repository.revision_parents("svn:1@%s-" % repository.uuid))
