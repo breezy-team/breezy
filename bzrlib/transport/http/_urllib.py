@@ -16,7 +16,6 @@
 
 import errno
 import urllib, urllib2
-import errno
 from StringIO import StringIO
 
 import bzrlib  # for the version
