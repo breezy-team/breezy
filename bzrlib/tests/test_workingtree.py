@@ -27,7 +27,6 @@ from bzrlib.lockdir import LockDir
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
-from bzrlib.transform import TreeTransform
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
@@ -202,39 +201,6 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         self.assertTrue(our_lock.peek())
         tree.unlock()
         self.assertEquals(our_lock.peek(), None)
-
-    def test_executable(self):
-        """Format 3 trees should keep executable=yes in the working inventory."""
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        control.create_repository()
-        control.create_branch()
-        try:
-            tree = workingtree.WorkingTreeFormat3().initialize(control)
-        except errors.NotLocalUrl:
-            raise TestSkipped('Not a local URL')
-        tt = TreeTransform(tree)
-        tt.new_file('a', tt.root, 'contents of a\n', 'a-xxyy', True)
-        tt.new_file('b', tt.root, 'contents of b\n', 'b-xxyy', False)
-        tt.apply()
-
-        t = control.get_workingtree_transport(None)
-        inventory_text = (
-                '<inventory format="5">\n'
-                '<file executable="yes" file_id="a-xxyy" name="a" />\n'
-                '<file file_id="b-xxyy" name="b" />\n'
-                '</inventory>\n'
-                )
-        # Check that the executable flag is set in the XML
-        self.assertEqualDiff(inventory_text, t.get('inventory').read())
-
-        # Committing shouldn't remove it
-        tree.commit('first rev')
-        self.assertEqualDiff(inventory_text, t.get('inventory').read())
-
-        # And neither should reverting
-        last_tree = tree.branch.repository.revision_tree(tree.last_revision())
-        tree.revert([], last_tree, backups=False)
-        self.assertEqualDiff(inventory_text, t.get('inventory').read())
 
 
 class TestFormat2WorkingTree(TestCaseWithTransport):
