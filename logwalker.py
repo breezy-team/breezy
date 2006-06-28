@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.config import config_dir
-from bzrlib.errors import NoSuchRevision
+from bzrlib.errors import NoSuchRevision, BzrError
 from bzrlib.progress import ProgressBar, DummyProgress
 from bzrlib.trace import mutter
 
@@ -28,8 +28,15 @@ from cStringIO import StringIO
 
 cache_dir = os.path.join(config_dir(), 'svn-cache')
 
+class NotSvnBranchPath(BzrError):
+    def __init__(self, branch_path):
+        BzrError.__init__(self, 
+                "%r is not a valid Svn branch path", 
+                branch_path)
+        self.branch_path = branch_path
+
 class LogWalker(object):
-    def __init__(self, ra=None, uuid=None, last_revnum=None, repos_url=None, pb=ProgressBar()):
+    def __init__(self, scheme, ra=None, uuid=None, last_revnum=None, repos_url=None, pb=ProgressBar()):
         if not ra:
             callbacks = svn.ra.callbacks2_t()
             ra = svn.ra.open2(repos_url.encode('utf8'), callbacks, None, None)
@@ -45,6 +52,7 @@ class LogWalker(object):
 
         self.cache_file = os.path.join(cache_dir, uuid)
         self.ra = ra
+        self.scheme = scheme
 
         # Try to load cache from file
         try:
@@ -94,11 +102,13 @@ class LogWalker(object):
         pickle.dump(self.revisions, open(self.cache_file, 'w'))
 
     def follow_history(self, branch_path, revnum):
-        for (paths, rev, _, _, _) in self.get_branch_log(branch_path, revnum, 0, 0, False):
+        for (paths, rev, _, _, _) in self.get_branch_log(branch_path, revnum, 0):
             yield (paths, rev)
 
-    def get_branch_log(self, branch_path, from_revnum, to_revnum, limit, 
-                strict_node_history):
+    def get_branch_log(self, branch_path, from_revnum, to_revnum, limit=0):
+        if not self.scheme.is_branch(branch_path):
+            raise NotSvnBranchPath(branch_path)
+
         if max(from_revnum, to_revnum) > self.last_revnum:
             try:
                 self.fetch_revisions(self.last_revnum, max(from_revnum, to_revnum))

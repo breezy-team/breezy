@@ -44,6 +44,10 @@ from bzrlib.progress import ProgressBar
 from bzrlib.workingtree import WorkingTree
 import bzrlib.trace
 
+# Iterating depth-first search until scheme.is_branch() returns true.
+def get_branches(repository, revnum):
+
+
 #FIXME: Rewrite, so:
 # * Get list of branches to generate by:
 #  * Looping over all revisions, listing branch paths. Generate unique name

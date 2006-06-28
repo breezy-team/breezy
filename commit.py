@@ -117,7 +117,6 @@ class SvnCommitBuilder(CommitBuilder):
 
         # Loop over file members of file_id in self.new_inventory
         for child_id in self.new_inventory[file_id].children:
-            mutter('child %r of %r' % (child_id, file_id))
             assert child_id in self.new_inventory
 
             if (self.new_inventory[child_id].kind != 'file' and 

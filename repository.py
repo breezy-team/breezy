@@ -247,7 +247,7 @@ class SvnRepository(Repository):
 
         self._ancestry = [None]
 
-        for (paths, rev, _, _, _) in self._log.get_branch_log(path, 0, revnum - 1, 0, False):
+        for (paths, rev, _, _, _) in self._log.get_branch_log(path, 0, revnum - 1):
             self._ancestry.append(self.generate_revision_id(rev, path))
 
         return self._ancestry
@@ -277,11 +277,9 @@ class SvnRepository(Repository):
     def revision_parents(self, revision_id):
         (path, revnum) = self.parse_revision_id(revision_id)
 
-        # TODO: Use get_file_revs()
-
         parent_ids = []
 
-        for (paths, rev, a, b, c) in self._log.get_branch_log(path, revnum - 1, 0, 1, False):
+        for (paths, rev, a, b, c) in self._log.get_branch_log(path, revnum - 1, 0, 1):
             parent_ids.append(self.generate_revision_id(rev, path))
         
         mutter('getting revprop -r %r bzr:parents' % revnum)
@@ -370,7 +368,7 @@ class SvnRepository(Repository):
         for path in ranges:
             self._tmp = path
             (min, max) = ranges[path]
-            for (paths, revnum, _, _, _) in self._log.get_branch_log(path, min, max, 0, False):
+            for (paths, revnum, _, _, _) in self._log.get_branch_log(path, min, max):
                 if not revnum in interested[self._tmp]:
                     return
                 for path in paths:
