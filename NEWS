@@ -65,6 +65,9 @@ IN DEVELOPMENT
      to more locations than just branch locations.
      (Aaron Bentley)
 
+   * 'bzr checkout' now aliased to 'bzr co', and 'bzr annotate' to 'bzr ann'.
+     (Michael Ellerman)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
