@@ -705,6 +705,7 @@ class cmd_checkout(Command):
                                  "such access, and also support local commits."
                             ),
                      ]
+    aliases = ['co']
 
     def run(self, branch_location=None, to_location=None, revision=None, basis=None,
             lightweight=False):
@@ -2451,7 +2452,7 @@ class cmd_annotate(Command):
     # TODO: annotate directories; showing when each file was last changed
     # TODO: if the working copy is modified, show annotations on that 
     #       with new uncommitted lines marked
-    aliases = ['blame', 'praise']
+    aliases = ['ann', 'blame', 'praise']
     takes_args = ['filename']
     takes_options = [Option('all', help='show annotations on all lines'),
                      Option('long', help='show date in annotations'),
