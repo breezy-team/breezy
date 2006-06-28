@@ -97,10 +97,10 @@ class Branch(object):
         
     @staticmethod
     def open(base, _unsupported=False):
-        """Open the repository rooted at base.
+        """Open the branch rooted at base.
 
-        For instance, if the repository is at URL/.bzr/repository,
-        Repository.open(URL) -> a Repository instance.
+        For instance, if the branch is at URL/.bzr/branch,
+        Branch.open(URL) -> a Branch instance.
         """
         control = bzrdir.BzrDir.open(base, _unsupported)
         return control.open_branch(_unsupported)
