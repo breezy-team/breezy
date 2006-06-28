@@ -1,4 +1,4 @@
-# (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,17 +21,15 @@ import re
 import sys
 
 import bzrlib
-import bzrlib.bzrdir as bzrdir
+from bzrlib import bzrdir, errors, repository
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.commit import commit
-import bzrlib.errors as errors
+from bzrlib.delta import TreeDelta, compare_trees
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
                            UninitializableFormat,
                            NotBranchError,
                            )
-import bzrlib.repository as repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
@@ -167,6 +165,22 @@ class TestRepository(TestCaseWithRepository):
                    revision_id=None,
                    pb=bzrlib.progress.DummyProgress())
 
+    def test_get_revision_delta(self):
+        tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/foo'])
+        tree_a.add('foo', 'file1')
+        tree_a.commit('rev1', rev_id='rev1')
+        self.build_tree(['a/vla'])
+        tree_a.add('vla', 'file2')
+        tree_a.commit('rev2', rev_id='rev2')
+
+        delta = tree_a.branch.repository.get_revision_delta('rev1')
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([('foo', 'file1', 'file')], delta.added)
+        delta = tree_a.branch.repository.get_revision_delta('rev2')
+        self.assertIsInstance(delta, TreeDelta)
+        self.assertEqual([('vla', 'file2', 'file')], delta.added)
+
     def test_clone_bzrdir_repository_revision(self):
         # make a repository with some revisions,
         # and clone it, this should not have unreferenced revisions.
@@ -270,6 +284,34 @@ class TestRepository(TestCaseWithRepository):
         self.assertMessageRoundtrips(
             "All 8-bit chars: " +  ''.join([unichr(x) for x in range(256)]))
 
+    def test_check_repository(self):
+        """Check a fairly simple repository's history"""
+        tree = self.make_branch_and_tree('.')
+        tree.commit('initial empty commit', rev_id='a-rev',
+                    allow_pointless=True)
+        result = tree.branch.repository.check(['a-rev'])
+        # writes to log; should accept both verbose or non-verbose
+        result.report_results(verbose=True)
+        result.report_results(verbose=False)
+
+    def test_get_revisions(self):
+        tree = self.make_branch_and_tree('.')
+        tree.commit('initial empty commit', rev_id='a-rev',
+                    allow_pointless=True)
+        tree.commit('second empty commit', rev_id='b-rev',
+                    allow_pointless=True)
+        tree.commit('third empty commit', rev_id='c-rev',
+                    allow_pointless=True)
+        repo = tree.branch.repository
+        revision_ids = ['a-rev', 'b-rev', 'c-rev']
+        revisions = repo.get_revisions(revision_ids)
+        assert len(revisions) == 3, repr(revisions)
+        zipped = zip(revisions, revision_ids)
+        self.assertEqual(len(zipped), 3)
+        for revision, revision_id in zipped:
+            self.assertEqual(revision.revision_id, revision_id)
+            self.assertEqual(revision, repo.get_revision(revision_id))
+
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 
     def setUp(self):
@@ -293,6 +335,25 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         tree_a.add_pending_merge('ghost1')
         tree_a.add_pending_merge('ghost2')
         tree_a.commit('rev4', rev_id='rev4', allow_pointless=True)
+
+    def test_revision_trees(self):
+        revision_ids = ['rev1', 'rev2', 'rev3', 'rev4']
+        repository = self.bzrdir.open_repository()
+        trees1 = list(repository.revision_trees(revision_ids))
+        trees2 = [repository.revision_tree(t) for t in revision_ids]
+        assert len(trees1) == len(trees2)
+        for tree1, tree2 in zip(trees1, trees2):
+            delta = compare_trees(tree1, tree2)
+            assert not delta.has_changed()
+
+    def test_get_deltas_for_revisions(self):
+        repository = self.bzrdir.open_repository()
+        revisions = [repository.get_revision(r) for r in 
+                     ['rev1', 'rev2', 'rev3', 'rev4']]
+        deltas1 = list(repository.get_deltas_for_revisions(revisions))
+        deltas2 = [repository.get_revision_delta(r.revision_id) for r in
+                   revisions]
+        assert deltas1 == deltas2
 
     def test_all_revision_ids(self):
         # all_revision_ids -> all revisions

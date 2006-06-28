@@ -20,7 +20,8 @@ ways exist to tell Bazaar-NG what email to use
 The order of precedence is
 
  1. If the `$BZREMAIL` env variable is set, use it.
- 2. If an email is set for your current branch in the `branches.conf` ini file.
+ 2. If an email is set for your current branch in the `locations.conf` ini
+    file.
  3. If an email is set in the `bazaar.conf` default ini file.
  4. If the `$EMAIL` env variable is set.
  5. Bazaar-NG will try to guess based on your username and the hostname.
@@ -49,7 +50,7 @@ Setting email on a per-branch basis
 ===================================
 
 The second approach is to set email on a branch by branch basis by using the
-`$HOME/.bazaar/branches.conf` ini file, thusly::
+`$HOME/.bazaar/locations.conf` ini file, thusly::
 
     [/some/branch/location]
     email=Your Name <name@other-isp.com>

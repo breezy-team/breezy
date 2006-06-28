@@ -18,7 +18,7 @@ from StringIO import StringIO
 
 from bzrlib.errors import BinaryFile
 from bzrlib.tests import TestCase, TestCaseInTempDir
-from bzrlib.textfile import *
+from bzrlib.textfile import text_file, check_text_lines, check_text_path
 
 
 class TextFile(TestCase):

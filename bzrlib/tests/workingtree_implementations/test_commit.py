@@ -1,4 +1,4 @@
-# (C) 2005,2006 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,20 +18,13 @@
 from cStringIO import StringIO
 import os
 
-import bzrlib
-import bzrlib.branch
-from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
-from bzrlib.bzrdir import BzrDir
-import bzrlib.errors as errors
+from bzrlib import branch, bzrdir, errors, ui, workingtree
 from bzrlib.errors import (NotBranchError, NotVersionedError, 
                            UnsupportedOperation)
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped, TestCase
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
-import bzrlib.ui as ui
-import bzrlib.workingtree as workingtree
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
 
@@ -89,8 +82,16 @@ class TestCommit(TestCaseWithWorkingTree):
 
     def test_commit_sets_last_revision(self):
         tree = self.make_branch_and_tree('tree')
-        tree.commit('foo', rev_id='foo', allow_pointless=True)
+        committed_id = tree.commit('foo', rev_id='foo', allow_pointless=True)
         self.assertEqual('foo', tree.last_revision())
+        # the commit should have returned the same id we asked for.
+        self.assertEqual('foo', committed_id)
+
+    def test_commit_returns_revision_id(self):
+        tree = self.make_branch_and_tree('.')
+        committed_id = tree.commit('message', allow_pointless=True)
+        self.assertTrue(tree.branch.repository.has_revision(committed_id))
+        self.assertNotEqual(None, committed_id)
 
     def test_commit_local_unbound(self):
         # using the library api to do a local commit on unbound branches is 
@@ -137,7 +138,7 @@ class TestCommit(TestCaseWithWorkingTree):
         self.assertEqual(None, master.last_revision())
         
 
-class TestCommmitProgress(TestCaseWithWorkingTree):
+class TestCommitProgress(TestCaseWithWorkingTree):
     
     def restoreDefaults(self):
         ui.ui_factory = self.old_ui_factory
@@ -167,19 +168,18 @@ class TestCommmitProgress(TestCaseWithWorkingTree):
         # into the factory for this test - just make the test ui factory
         # pun as a reporter. Then we can check the ordering is right.
         tree.commit('second post', specific_files=['b'])
-        # 11 steps: 1 for rev, 1 for inventory, 1 for finishing. 2 for root
-        # and 3 for basis files, and 3 for new inventory files.
+        # 9 steps: 1 for rev, 2 for inventory, 1 for finishing. 2 for root
+        # and 6 for inventory files.
+        # 2 steps don't trigger an update, as 'a' and 'c' are not 
+        # committed.
         self.assertEqual(
-            [("update", 0, 10),
-             ("update", 1, 10),
-             ("update", 2, 10),
-             ("update", 3, 10),
-             ("update", 4, 10),
-             ("update", 5, 10),
-             ("update", 6, 10),
-             ("update", 7, 10),
-             ("update", 8, 10),
-             ("update", 9, 10),
-             ("update", 10, 10)],
+            [("update", 0, 9),
+             ("update", 1, 9),
+             ("update", 2, 9),
+             ("update", 3, 9),
+             ("update", 4, 9),
+             ("update", 5, 9),
+             ("update", 6, 9),
+             ("update", 7, 9)],
             factory._calls
            )

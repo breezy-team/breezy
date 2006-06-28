@@ -1,15 +1,17 @@
 # Copyright (C) 2005 by Canonical Ltd
-
+# -*- coding: utf-8 -*-
+# vim: encoding=utf-8
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -18,10 +20,15 @@ import os
 from cStringIO import StringIO
 
 from bzrlib.tests import BzrTestBase, TestCaseWithTransport
-from bzrlib.log import (LogFormatter, show_log, LongLogFormatter,
-                        ShortLogFormatter, LineLogFormatter)
+from bzrlib.log import (show_log, 
+                        get_view_revisions, 
+                        LogFormatter, 
+                        LongLogFormatter, 
+                        ShortLogFormatter, 
+                        LineLogFormatter)
 from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionNumber
+
 
 class _LogEntry(object):
     # should probably move into bzrlib.log?
@@ -298,3 +305,105 @@ added:
         logfile.seek(0)
         log_contents = logfile.read()
         self.assertEqualDiff(log_contents, '1: Line-Log-Formatte... 2005-11-23 add a\n')
+
+    def make_tree_with_commits(self):
+        """Create a tree with well-known revision ids"""
+        wt = self.make_branch_and_tree('tree1')
+        wt.commit('commit one', rev_id='1')
+        wt.commit('commit two', rev_id='2')
+        wt.commit('commit three', rev_id='3')
+        mainline_revs = [None, '1', '2', '3']
+        rev_nos = {'1': 1, '2': 2, '3': 3}
+        return mainline_revs, rev_nos, wt
+
+    def pseudo_merge(self, source, target):
+        revision_id = source.last_revision()
+        target.branch.fetch(source.branch, revision_id)
+        target.add_pending_merge(revision_id)
+
+    def make_tree_with_merges(self):
+        """Create a tree with well-known revision ids and a merge"""
+        mainline_revs, rev_nos, wt = self.make_tree_with_commits()
+        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
+        tree2.commit('four-a', rev_id='4a')
+        self.pseudo_merge(tree2, wt)
+        wt.commit('four-b', rev_id='4b')
+        mainline_revs.append('4b')
+        rev_nos['4b'] = 4
+        return mainline_revs, rev_nos, wt
+
+    def make_tree_with_many_merges(self):
+        """Create a tree with well-known revision ids"""
+        wt = self.make_branch_and_tree('tree1')
+        wt.commit('commit one', rev_id='1')
+        wt.commit('commit two', rev_id='2')
+        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
+        tree3 = wt.bzrdir.sprout('tree3').open_workingtree()
+        tree3.commit('commit three a', rev_id='3a')
+        self.pseudo_merge(tree3, tree2)
+        tree2.commit('commit three b', rev_id='3b')
+        self.pseudo_merge(tree2, wt)
+        wt.commit('commit three c', rev_id='3c')
+        tree2.commit('four-a', rev_id='4a')
+        self.pseudo_merge(tree2, wt)
+        wt.commit('four-b', rev_id='4b')
+        mainline_revs = [None, '1', '2', '3c', '4b']
+        rev_nos = {'1': 1, '2': 2, '3c': 3, '4b': 4}
+        return mainline_revs, rev_nos, wt
+
+    def test_get_view_revisions_forward(self):
+        """Test the get_view_revisions method"""
+        mainline_revs, rev_nos, wt = self.make_tree_with_commits()
+        revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
+                                            'forward'))
+        self.assertEqual(revisions, [('1', 1, 0), ('2', 2, 0), ('3', 3, 0)])
+        revisions2 = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
+                                             'forward', include_merges=False))
+        self.assertEqual(revisions, revisions2)
+
+    def test_get_view_revisions_reverse(self):
+        """Test the get_view_revisions with reverse"""
+        mainline_revs, rev_nos, wt = self.make_tree_with_commits()
+        revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
+                                            'reverse'))
+        self.assertEqual(revisions, [('3', 3, 0), ('2', 2, 0), ('1', 1, 0), ])
+        revisions2 = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
+                                             'reverse', include_merges=False))
+        self.assertEqual(revisions, revisions2)
+
+    def test_get_view_revisions_merge(self):
+        """Test get_view_revisions when there are merges"""
+        mainline_revs, rev_nos, wt = self.make_tree_with_merges()
+        revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
+                                            'forward'))
+        self.assertEqual(revisions, [('1', 1, 0), ('2', 2, 0), ('3', 3, 0),
+                                     ('4b', 4, 0), ('4a', None, 1)])
+        revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
+                                             'forward', include_merges=False))
+        self.assertEqual(revisions, [('1', 1, 0), ('2', 2, 0), ('3', 3, 0),
+                                     ('4b', 4, 0)])
+
+    def test_get_view_revisions_merge_reverse(self):
+        """Test get_view_revisions in reverse when there are merges"""
+        mainline_revs, rev_nos, wt = self.make_tree_with_merges()
+        revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
+                                            'reverse'))
+        self.assertEqual(revisions, [('4b', 4, 0), ('4a', None, 1), 
+                                     ('3', 3, 0), ('2', 2, 0), ('1', 1, 0)])
+        revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
+                                             'reverse', include_merges=False))
+        self.assertEqual(revisions, [('4b', 4, 0), ('3', 3, 0), ('2', 2, 0),
+                                     ('1', 1, 0)])
+
+    def test_get_view_revisions_merge2(self):
+        """Test get_view_revisions when there are merges"""
+        mainline_revs, rev_nos, wt = self.make_tree_with_many_merges()
+        revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
+                                            'forward'))
+        expected = [('1', 1, 0), ('2', 2, 0), ('3c', 3, 0), ('3a', None, 1),
+                    ('3b', None, 1), ('4b', 4, 0), ('4a', None, 1)]
+        self.assertEqual(revisions, expected)
+        revisions = list(get_view_revisions(mainline_revs, rev_nos, wt.branch,
+                                             'forward', include_merges=False))
+        self.assertEqual(revisions, [('1', 1, 0), ('2', 2, 0), ('3c', 3, 0),
+                                     ('4b', 4, 0)])

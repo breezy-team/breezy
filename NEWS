@@ -2,6 +2,16 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * Tests updates to ensure proper URL handling, UNICODE support, and
+     proper printing when the user's terminal encoding cannot display 
+     the path of a file that has been versioned.
+     ``bzr branch`` can take a target URL rather than only a local directory.
+     Branch.get_parent()/set_parent() now save a relative path if possible,
+     and normalize the parent based on root, allowing access across
+     different transports. (John Arbash Meinel, Wouter van Heyst, Martin Pool)
+     (Malone #48906, #42699, #40675, #5281, #3980, #36363, #43689,
+      #42517, #42514)
+
    * On Unix, detect terminal width using an ioctl not just $COLUMNS.
      Use terminal width for single-line logs from ``bzr log --line`` and
      pending-merge display.  (Robert Widhopf-Fenk, Gustavo Niemeyer)
@@ -20,6 +30,9 @@ IN DEVELOPMENT
      for the PQM status window. (Robert Collins).
 
    * 'bzr selftest --benchmark' will run a new benchmarking selftest.
+     'bzr selftest --benchmark --lsprof-timed' will use lsprofile to generate
+     profile data for the individual profiled calls, allowing for fine
+     grained analysis of performance.
      (Robert Collins, Martin Pool).
 
    * 'bzr commit' shows a progress bar. This is useful for commits over sftp
@@ -35,13 +48,34 @@ IN DEVELOPMENT
      ftp support has been improved, including support for supplying a
      non-standard port. (John Arbash Meinel).
 
-   * ``log --line`` shows the revision number.  (#5162, Alexander Belchenko)
+   * 'bzr log --line' shows the revision number, and uses only the
+     first line of the log message (#5162, Alexander Belchenko;
+     Matthieu Moy)
+
+   * 'bzr status' has had the --all option removed. The 'bzr ls' command
+     should be used to retrieve all versioned files. (Robert Collins)
+
+   * 'bzr bundle OTHER/BRANCH' will create a bundle which can be sent
+     over email, and applied on the other end, while maintaining ancestry.
+     This bundle can be applied with either 'bzr merge' or 'bzr pull',
+     the same way you would apply another branch.
+     (John Arbash Meinel, Aaron Bentley)
+  
+   * 'branches.conf' has been changed to 'locations.conf', since it can apply
+     to more locations than just branch locations.
+     (Aaron Bentley)
 
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
       tests not to run.  (#32587, Erik Bågfors, Michael Ellerman, 
       Martin Pool)
+
+    * Fix unnecessary requirement of sign-my-commits that it be run from
+      a working directory.  (Martin Pool, Robert Collins)
+
+    * 'bzr push location' will only remember the push location if it succeeds
+      in connecting to the remote location. (#49742, John Arbash Meinel)
 
   INTERNALS:
 
@@ -52,6 +86,33 @@ IN DEVELOPMENT
     * 'bzr push' should only push the ancestry of the current revision, not
       all of the history in the repository. This is especially important for
       shared repositories. (John Arbash Meinel)
+
+    * bzrlib.delta.compare_trees now iterates in alphabetically sorted order,
+      rather than randomly walking the inventories. (John Arbash Meinel)
+
+    * Doctests are now run in temporary directories which are cleaned up when
+      they finish, rather than using special ScratchDir/ScratchBranch objects.
+      (Martin Pool)
+
+    * Split ``check`` into separate methods on the branch and on the repository,
+      so that it can be specialized in ways that are useful or efficient for
+      different formats.  (Martin Pool, Robert Collins)
+
+    * Deprecate Repository.all_revision_ids; most methods don't really need
+      the global revision graph but only that part leading up to a particular
+      revision.  (Martin Pool, Robert Collins)
+
+    * Add a BzrDirFormat control_formats list which allows for control formats
+      that do not use '.bzr' to store their data - i.e. '.svn', '.hg' etc.
+      (Robert Collins, Jelmer Vernooij).
+
+    * bzrlib.diff.external_diff can be redirected to any file-like object.
+      Uses subprocess instead of spawnvp.
+      (#4047, #48914, James Henstridge, John Arbash Meinel)
+
+    * New command line option '--profile-imports', which will install a custom
+      importer to log time to import modules and regex compilation time to 
+      sys.stderr (John Arbash Meinel)
 
 bzr 0.8.2  2006-05-17
   
@@ -246,8 +307,6 @@ bzr 0.8  2006-05-08
     * New option 'diff --prefix' to control how files are named in diff
       output, with shortcuts '-p0' and '-p1' corresponding to the options for 
       GNU patch.  (Alexander Belchenko, Goffredo Baroncelli, Martin Pool)
-
-    * Add --revision option to 'annotate' command.  (Olaf Conradi)
 
     * Add --revision option to 'annotate' command.  (Olaf Conradi)
 
