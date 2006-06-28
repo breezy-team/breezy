@@ -247,8 +247,8 @@ class SvnRepository(Repository):
 
         self._ancestry = []
 
-        for (paths, rev, _, _, _) in self._log.get_branch_log(path, revnum - 1, 0):
-            self._ancestry.append(self.generate_revision_id(rev, path))
+        for (branch, paths, rev, _, _, _) in self._log.get_branch_log(path, revnum - 1, 0):
+            self._ancestry.append(self.generate_revision_id(rev, branch))
         
         self._ancestry.append(None)
 
@@ -283,8 +283,8 @@ class SvnRepository(Repository):
 
         parent_ids = []
 
-        for (paths, rev, a, b, c) in self._log.get_branch_log(path, revnum - 1, 0, 1):
-            parent_ids.append(self.generate_revision_id(rev, path))
+        for (branch, paths, rev, a, b, c) in self._log.get_branch_log(path, revnum - 1, 0, 1):
+            parent_ids.append(self.generate_revision_id(rev, branch))
         
         mutter('getting revprop -r %r bzr:parents' % revnum)
         ghosts = svn.ra.rev_prop(self.ra, revnum, "bzr:parents")
@@ -369,12 +369,10 @@ class SvnRepository(Repository):
 
         result = {}
 
-        for path in ranges:
-            self._tmp = path
-            (min, max) = ranges[path]
-            for (paths, revnum, _, _, _) in self._log.get_branch_log(path, min, max):
-                if not revnum in interested[self._tmp]:
-                    return
+        for branch_path in ranges:
+            for (branch, paths, revnum, _, _, _) in self._log.get_branch_log(path, ranges[branch_path][1], ranges[branch_path][0]):
+                if not revnum in interested[branch_path]:
+                    continue
                 for path in paths:
                     (file_id, revid) = self.path_to_file_id(revnum, path)
                     if not result.has_key(file_id):
@@ -524,8 +522,8 @@ class SvnRepository(Repository):
         self._previous = revision_id
         self._ancestry = {}
         
-        for (_, rev) in self._log.follow_history(path, revnum - 1):
-            revid = self.generate_revision_id(rev, path)
+        for (branch, _, rev) in self._log.follow_history(path, revnum - 1):
+            revid = self.generate_revision_id(rev, branch)
             self._ancestry[self._previous] = [revid]
             self._previous = revid
 

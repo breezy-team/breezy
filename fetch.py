@@ -17,6 +17,7 @@
 from repository import SvnRepository
 
 from bzrlib.decorators import needs_write_lock
+from bzrlib.inventory import ROOT_ID
 from bzrlib.progress import ProgressBar
 from bzrlib.repository import InterRepository
 from bzrlib.trace import mutter
@@ -51,10 +52,10 @@ class InterSvnRepository(InterRepository):
 
         current = {}
 
-        for (paths, revnum, _, _, _) in self.source._log.get_branch_log(path, until_revnum, 0):
+        for (branch, paths, revnum, _, _, _) in self.source._log.get_branch_log(path, until_revnum):
             pb.update('copying revision', until_revnum-revnum, until_revnum)
-            assert path != None
-            revid = self.source.generate_revision_id(revnum, path)
+            assert branch != None
+            revid = self.source.generate_revision_id(revnum, branch)
             assert revid != None
             if self.target.has_revision(revid):
                 continue
@@ -67,9 +68,6 @@ class InterSvnRepository(InterRepository):
             keys.sort()
             for item in keys:
                 (fileid, orig_revid) = self.source.path_to_file_id(revnum, item)
-                branch_path = self.source.parse_revision_id(orig_revid)[0]
-                if branch_path != path:
-                    continue
 
                 if paths[item][0] == 'A':
                     weave = weave_store.get_weave_or_empty(fileid, transact)
@@ -107,7 +105,7 @@ class InterSvnRepository(InterRepository):
                     weave.add_lines(revid, parents, lines)
             
                 pid = inv[fileid].parent_id
-                while pid != inv.path2id('') and pid != None:
+                while pid != ROOT_ID and pid != None:
                     weave = weave_store.get_weave_or_empty(pid, transact)
                     if weave.has_version(revid):
                         pid = None

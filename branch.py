@@ -68,10 +68,10 @@ class SvnBranch(Branch):
         
     def _generate_revision_history(self):
         self._revision_history = []
-        for (_, rev) in self.repository._log.follow_history(self.branch_path, 
-                svn.ra.get_latest_revnum(self.repository.ra)):
+        for (branch, _, rev) in self.repository._log.follow_history(
+                self.branch_path, svn.ra.get_latest_revnum(self.repository.ra)):
             self._revision_history.append(
-                    self.repository.generate_revision_id(rev, self.branch_path))
+                    self.repository.generate_revision_id(rev, branch))
         self._revision_history.reverse()
 
     def set_root_id(self, file_id):

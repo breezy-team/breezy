@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.config import config_dir
-from bzrlib.errors import NoSuchRevision, BzrError
+from bzrlib.errors import NoSuchRevision, BzrError, NotBranchError
 from bzrlib.progress import ProgressBar, DummyProgress
 from bzrlib.trace import mutter
 
@@ -104,8 +104,9 @@ class LogWalker(object):
         pickle.dump(self.revisions, open(self.cache_file, 'w'))
 
     def follow_history(self, branch_path, revnum):
-        for (paths, rev, _, _, _) in self.get_branch_log(branch_path, revnum):
-            yield (paths, rev)
+        for (branch, paths, rev, _, _, _) in self.get_branch_log(branch_path, 
+                                                                 revnum):
+            yield (branch, paths, rev)
 
     def get_branch_log(self, branch_path, from_revnum, to_revnum=0, limit=0):
         assert from_revnum >= to_revnum
@@ -113,10 +114,8 @@ class LogWalker(object):
         if not branch_path is None and not self.scheme.is_branch(branch_path):
             raise NotSvnBranchPath(branch_path)
 
-        if branch_path is None:
-            branch_path = ""
-
-        branch_path = branch_path.strip("/")
+        if branch_path:
+            branch_path = branch_path.strip("/")
 
         if max(from_revnum, to_revnum) > self.last_revnum:
             try:
@@ -146,22 +145,33 @@ class LogWalker(object):
             rev = self.revisions[i]
             changed_paths = {}
             for p in rev['paths']:
-                if p.startswith(branch_path) or p[1:].startswith(branch_path):
-                    changed_paths[p] = rev['paths'][p]
+                if (branch_path is None or 
+                    p.startswith(branch_path) or 
+                    p[1:].startswith(branch_path)):
 
-            if (branch_path in rev['paths'] and 
+                    try:
+                        (bp, rp) = self.scheme.unprefix(p)
+                        if not changed_paths.has_key(bp):
+                            changed_paths[bp] = {}
+                        changed_paths[bp][p] = rev['paths'][p]
+                    except NotBranchError:
+                        pass
+
+            assert branch_path is None or len(changed_paths) <= 1
+
+            for bp in changed_paths:
+                num = num + 1
+                yield (bp, changed_paths[bp], i, rev['author'], rev['date'], 
+                       rev['message'])
+
+            if (not branch_path is None and 
+                branch_path in rev['paths'] and 
                 not rev['paths'][branch_path][1] is None):
                 # In this revision, this branch was copied from 
                 # somewhere else
                 # FIXME: What if copyfrom_path is not a branch path?
                 continue_revnum = rev['paths'][branch_path][2]
                 branch_path = rev['paths'][branch_path][1]
-
-            if len(changed_paths) == 0:
-                continue
-
-            num = num + 1
-            yield (changed_paths, i, rev['author'], rev['date'], rev['message'])
 
             if limit and num == limit:
                 return

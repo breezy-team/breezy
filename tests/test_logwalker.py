@@ -59,7 +59,8 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
     def test_branch_log_all(self):
         repos_url = self.make_client("a", "dc")
-        self.build_tree({'dc/foo': "data"})
+        self.build_tree({'dc/trunk/file': "data", "dc/foo/file":"data"})
+        self.client_add("dc/trunk")
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
 
@@ -76,7 +77,8 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
 
-        for (paths, rev) in walker.follow_history("", 1):
+        for (branch, paths, rev) in walker.follow_history("", 1):
+           self.assertEqual(branch, "")
            self.assertTrue(paths.has_key("foo"))
            self.assertEqual(rev, 1)
 
@@ -89,7 +91,8 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
 
-        for (paths, rev) in walker.follow_history("", 1):
+        for (branch, paths, rev) in walker.follow_history("", 1):
+           self.assertEqual(branch, "")
            self.assertTrue(paths.has_key("foo"))
            self.assertEqual(rev, 1)
 
