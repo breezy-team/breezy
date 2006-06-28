@@ -22,7 +22,7 @@ For concrete class tests see this file, and for storage formats tests
 also see this file.
 """
 
-from stat import *
+from stat import S_ISDIR
 from StringIO import StringIO
 
 import bzrlib

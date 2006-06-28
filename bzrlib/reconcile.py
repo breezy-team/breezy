@@ -20,12 +20,9 @@
 __all__ = ['reconcile', 'Reconciler', 'RepoReconciler', 'KnitReconciler']
 
 
-import bzrlib.branch
-import bzrlib.errors as errors
-import bzrlib.progress
+from bzrlib import ui
 from bzrlib.trace import mutter
 from bzrlib.tsort import TopoSorter
-import bzrlib.ui as ui
 
 
 def reconcile(dir, other=None):

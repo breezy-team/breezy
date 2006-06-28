@@ -700,8 +700,8 @@ class TestTransportImplementation(TestCaseInTempDir):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        t = bzrlib.transport.get_transport(url)
         try:
+            t = bzrlib.transport.get_transport(url)
             t.get('.bzr/branch')
         except (ConnectionError, NoSuchFile), e:
             pass
@@ -922,7 +922,7 @@ class TestTransportImplementation(TestCaseInTempDir):
                 ]
 
         try:
-            self.build_tree(files, transport=t)
+            self.build_tree(files, transport=t, line_endings='binary')
         except UnicodeError:
             raise TestSkipped("cannot handle unicode paths in current encoding")
 

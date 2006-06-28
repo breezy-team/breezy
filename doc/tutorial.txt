@@ -126,7 +126,7 @@ guess that Bazaar-NG makes, then three options exist:
  
  1. Override the previous setting on a
  branch by branch basis by creating a branch section in
- ``~/.bazaar/branches.conf`` by adding the following lines::
+ ``~/.bazaar/locations.conf`` by adding the following lines::
 
     [/the/directory/to/the/branch]
     email=Your Name <email@isp.com>
@@ -389,13 +389,12 @@ and intelligently merge them::
     % mkdir src
     % echo 'int main() {}' > src/simple.c
     % bzr add src
+    added src
+    added src/simple.c
     % bzr status
-    A       src/
-    ?       src/simple.c
-    % bzr add src/simple.c
-    % bzr status
-    A       src/
-    A       src/simple.c
+    added:
+      src/
+      src/simple.c
 
 
 Deleting and removing files
@@ -415,9 +414,12 @@ do **cvs remove**.
     % bzr remove -v hello.txt
     ?       hello.txt
     % bzr status
-    ?       hello.txt
-    D       src/
-    D       src/simple.c
+    removed:
+      hello.txt
+      src/
+      src/simple.c
+    unknown:
+      hello.txt
 
 If you remove the wrong file by accident, you can use **bzr revert** to
 restore it.
@@ -497,5 +499,5 @@ the following three methods:
 
   (The directory that must already exist)
 
-* The push plugin that comes with BzrTools
+* The rspush plugin that comes with BzrTools
 

@@ -18,7 +18,6 @@
 """
 
 import os
-import bzrlib
 from bzrlib.errors import BoundBranchOutOfDate
 
 def test_remove(filename):
@@ -35,7 +34,6 @@ def uncommit(branch, dry_run=False, verbose=False, revno=None, tree=None):
     :param verbose: Print each step as you do it
     :param revno: Remove back to this revision
     """
-    from bzrlib.atomicfile import AtomicFile
     unlockable = []
     try:
         if tree is not None:

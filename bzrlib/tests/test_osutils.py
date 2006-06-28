@@ -25,7 +25,12 @@ import sys
 import bzrlib
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
 import bzrlib.osutils as osutils
-from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
+from bzrlib.tests import (
+        StringIOWrapper,
+        TestCase, 
+        TestCaseInTempDir, 
+        TestSkipped,
+        )
 
 
 class TestOSUtils(TestCaseInTempDir):
@@ -265,4 +270,119 @@ class TestWalkDirs(TestCaseInTempDir):
             result.append(dirblock)
         self.assertEqual(expected_dirblocks[1:],
             [[line[0:3] for line in block] for block in result])
+
+    def assertPathCompare(self, path_less, path_greater):
+        """check that path_less and path_greater compare correctly."""
+        self.assertEqual(0, osutils.compare_paths_prefix_order(
+            path_less, path_less))
+        self.assertEqual(0, osutils.compare_paths_prefix_order(
+            path_greater, path_greater))
+        self.assertEqual(-1, osutils.compare_paths_prefix_order(
+            path_less, path_greater))
+        self.assertEqual(1, osutils.compare_paths_prefix_order(
+            path_greater, path_less))
+
+    def test_compare_paths_prefix_order(self):
+        # root before all else
+        self.assertPathCompare("/", "/a")
+        # alpha within a dir
+        self.assertPathCompare("/a", "/b")
+        self.assertPathCompare("/b", "/z")
+        # high dirs before lower.
+        self.assertPathCompare("/z", "/a/a")
+        # except if the deeper dir should be output first
+        self.assertPathCompare("/a/b/c", "/d/g")
+        # lexical betwen dirs of the same height
+        self.assertPathCompare("/a/z", "/z/z")
+        self.assertPathCompare("/a/c/z", "/a/d/e")
+
+        # this should also be consistent for no leading / paths
+        # root before all else
+        self.assertPathCompare("", "a")
+        # alpha within a dir
+        self.assertPathCompare("a", "b")
+        self.assertPathCompare("b", "z")
+        # high dirs before lower.
+        self.assertPathCompare("z", "a/a")
+        # except if the deeper dir should be output first
+        self.assertPathCompare("a/b/c", "d/g")
+        # lexical betwen dirs of the same height
+        self.assertPathCompare("a/z", "z/z")
+        self.assertPathCompare("a/c/z", "a/d/e")
+
+    def test_path_prefix_sorting(self):
+        """Doing a sort on path prefix should match our sample data."""
+        original_paths = [
+            'a',
+            'a/b',
+            'a/b/c',
+            'b',
+            'b/c',
+            'd',
+            'd/e',
+            'd/e/f',
+            'd/f',
+            'd/g',
+            'g',
+            ]
+
+        dir_sorted_paths = [
+            'a',
+            'b',
+            'd',
+            'g',
+            'a/b',
+            'a/b/c',
+            'b/c',
+            'd/e',
+            'd/f',
+            'd/g',
+            'd/e/f',
+            ]
+
+        self.assertEqual(
+            dir_sorted_paths,
+            sorted(original_paths, key=osutils.path_prefix_key))
+        # using the comparison routine shoudl work too:
+        self.assertEqual(
+            dir_sorted_paths,
+            sorted(original_paths, cmp=osutils.compare_paths_prefix_order))
+
+
+class TestTerminalEncoding(TestCase):
+    """Test the auto-detection of proper terminal encoding."""
+
+    def setUp(self):
+        self._stdout = sys.stdout
+        self._stderr = sys.stderr
+        self._stdin = sys.stdin
+        self._user_encoding = bzrlib.user_encoding
+
+        self.addCleanup(self._reset)
+
+        sys.stdout = StringIOWrapper()
+        sys.stdout.encoding = 'stdout_encoding'
+        sys.stderr = StringIOWrapper()
+        sys.stderr.encoding = 'stderr_encoding'
+        sys.stdin = StringIOWrapper()
+        sys.stdin.encoding = 'stdin_encoding'
+        bzrlib.user_encoding = 'user_encoding'
+
+    def _reset(self):
+        sys.stdout = self._stdout
+        sys.stderr = self._stderr
+        sys.stdin = self._stdin
+        bzrlib.user_encoding = self._user_encoding
+
+    def test_get_terminal_encoding(self):
+        # first preference is stdout encoding
+        self.assertEqual('stdout_encoding', osutils.get_terminal_encoding())
+
+        sys.stdout.encoding = None
+        # if sys.stdout is None, fall back to sys.stdin
+        self.assertEqual('stdin_encoding', osutils.get_terminal_encoding())
+
+        sys.stdin.encoding = None
+        # and in the worst case, use bzrlib.user_encoding
+        self.assertEqual('user_encoding', osutils.get_terminal_encoding())
 
