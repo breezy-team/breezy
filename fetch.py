@@ -51,8 +51,8 @@ class InterSvnRepository(InterRepository):
 
         current = {}
 
-        for (paths, revnum, _, _, _) in self.source._log.get_branch_log(path, 0, until_revnum):
-            pb.update('copying revision', revnum, until_revnum)
+        for (paths, revnum, _, _, _) in self.source._log.get_branch_log(path, until_revnum, 0):
+            pb.update('copying revision', until_revnum-revnum, until_revnum)
             assert path != None
             revid = self.source.generate_revision_id(revnum, path)
             assert revid != None

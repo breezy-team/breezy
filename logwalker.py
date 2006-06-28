@@ -37,7 +37,7 @@ class NotSvnBranchPath(BzrError):
 
 class LogWalker(object):
     def __init__(self, scheme, ra=None, uuid=None, last_revnum=None, repos_url=None, pb=ProgressBar()):
-        if not ra:
+        if ra is None:
             callbacks = svn.ra.callbacks2_t()
             ra = svn.ra.open2(repos_url.encode('utf8'), callbacks, None, None)
             root = svn.ra.get_repos_root(ra)

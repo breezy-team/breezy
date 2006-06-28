@@ -126,7 +126,7 @@ class SvnRepository(Repository):
 
         mutter("Connected to repository , UUID %s" % self.uuid)
 
-        self._log = logwalker.LogWalker(self.ra, self.uuid, 
+        self._log = logwalker.LogWalker(self.scheme, self.ra, self.uuid, 
                 svn.ra.get_latest_revnum(self.ra))
 
     def _check(self, revision_ids):
@@ -245,10 +245,14 @@ class SvnRepository(Repository):
         # but also branches from which this branch was copied
         (path, revnum) = self.parse_revision_id(revision_id)
 
-        self._ancestry = [None]
+        self._ancestry = []
 
-        for (paths, rev, _, _, _) in self._log.get_branch_log(path, 0, revnum - 1):
+        for (paths, rev, _, _, _) in self._log.get_branch_log(path, revnum - 1, 0):
             self._ancestry.append(self.generate_revision_id(rev, path))
+        
+        self._ancestry.append(None)
+
+        self._ancestry.reverse()
 
         return self._ancestry
 

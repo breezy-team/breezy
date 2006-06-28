@@ -19,6 +19,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.delta import compare_trees
 from bzrlib.errors import NoSuchRevision, NoSuchFile
 from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.tree import EmptyTree
 from bzrlib.workingtree import WorkingTree
 
 import os
