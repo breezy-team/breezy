@@ -18,6 +18,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.transport.local import LocalTransport
 
@@ -139,8 +140,10 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertIsInstance(inv, Inventory)
         self.assertIsInstance(inv.path2id("foo"), basestring)
         inv = repository.get_inventory("svn:2@%s-" % repository.uuid)
-        self.assertEqual("svn:1@%s-" % repository.uuid, 
+        self.assertEqual("svn:2@%s-" % repository.uuid, 
                          inv[inv.path2id("foo")].revision)
+        self.assertEqual("svn:1@%s-" % repository.uuid, 
+                         inv[inv.path2id("blah")].revision)
         self.assertIsInstance(inv, Inventory)
         self.assertIsInstance(inv.path2id("foo"), basestring)
         self.assertIsInstance(inv.path2id("bar"), basestring)
@@ -149,8 +152,14 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_generate_revision_id(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertEqual("svn:0@%s-bla/bloe" % repository.uuid, 
-            repository.generate_revision_id(0, "bla/bloe"))
+        self.assertEqual("svn:1@%s-bla/bloe" % repository.uuid, 
+            repository.generate_revision_id(1, "bla/bloe"))
+
+    def test_generate_revision_id_none(self):
+        repos_url = self.make_client('d', 'dc')
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertEqual(NULL_REVISION, 
+                repository.generate_revision_id(0, "bla/bloe"))
 
     def test_parse_revision_id(self):
         repos_url = self.make_client('d', 'dc')

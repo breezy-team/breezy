@@ -42,16 +42,11 @@ class SvnRevisionTree(RevisionTree):
         stream = self._repository._get_file(path, self._revnum)
         return stream.readlines()
 
-class SvnBasisTree(RevisionTree):
-    def __init__(self, workingtree):
-        revid = workingtree.base_revid
-        if revid is None:
-            self._inventory = EmptyTree().inventory
-        else:
-            self._inventory = workingtree.branch.repository.get_inventory(revid)
-
-        self._repository = workingtree.branch.repository
-        self._revision_id = revid
+class SvnBasisTree(SvnRevisionTree):
+    """Optimized version of SvnRevisionTree."""
+    def __init__(self, workingtree, revid):
+        super(SvnBasisTree, self).__init__(workingtree.branch.repository,
+                                           revid)
         self.workingtree = workingtree
 
     def get_file_lines(self, file_id):

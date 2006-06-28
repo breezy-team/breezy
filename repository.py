@@ -193,6 +193,9 @@ class SvnRepository(Repository):
 
     def path_to_file_id(self, revnum, path):
         """Generate a bzr file id from a Subversion file name. """
+        assert isinstance(revnum, int)
+        assert isinstance(path, basestring)
+        assert revnum >= 0
 
         if self.path_map.has_key(revnum) and self.path_map[revnum].has_key(path):
             return self.path_map[revnum][path]
@@ -394,6 +397,9 @@ class SvnRepository(Repository):
 
         :return: New revision id.
         """
+        assert revnum >= 0
+        if revnum == 0:
+            return NULL_REVISION
         return "svn:%d@%s-%s" % (revnum, self.uuid, path.strip("/"))
 
     def parse_revision_id(self, revid):

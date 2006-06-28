@@ -18,7 +18,7 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.delta import compare_trees
 from bzrlib.errors import NoSuchRevision, NoSuchFile
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, ROOT_ID
 from bzrlib.workingtree import WorkingTree
 
 import os
@@ -111,6 +111,20 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertIs(None, inv.has_filename("bl"))
         self.assertIs(None, basis_inv.has_filename("bloe"))
 
+    def test_empty_basis_tree(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        tree = WorkingTree.open("dc")
+        self.assertIsInstance(tree.basis_tree(), EmptyTree)
+
+    def test_basis_tree(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": "data"})
+        self.client_add("dc/bl")
+        self.client_commit("dc", "Bla")
+        tree = WorkingTree.open("dc")
+        self.assertEqual("svn:1@%s-" % tree.branch.repository.uuid,
+                         tree.basis_tree().get_revision_id())
+
     def test_move(self):
         self.make_client_and_bzrdir('a', 'dc')
         self.build_tree({"dc/bl": "data", "dc/a": "data2", "dc/dir": None})
@@ -162,7 +176,10 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_add("dc/test")
         tree = WorkingTree.open("dc")
         inv = tree.read_working_inventory()
+        self.assertEqual(ROOT_ID, inv.path2id(""))
+        self.assertTrue(inv.path2id("foo") != "")
         self.assertTrue(inv.has_filename("bl"))
+        self.assertTrue(inv.has_filename("foo"))
         self.assertTrue(inv.has_filename("foo/bar"))
         self.assertTrue(inv.has_filename("test"))
 

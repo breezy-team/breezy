@@ -101,6 +101,7 @@ class SvnCommitBuilder(CommitBuilder):
 
     def _dir_process(self, path, file_id, baton):
         mutter('committing changes in %r' % path)
+        mutter("children: %r" % self.new_inventory.entries())
 
         # Loop over entries of file_id in self.old_inv
         # remove if they no longer exist at the same path
@@ -116,6 +117,9 @@ class SvnCommitBuilder(CommitBuilder):
 
         # Loop over file members of file_id in self.new_inventory
         for child_id in self.new_inventory[file_id].children:
+            mutter('child %r of %r' % (child_id, file_id))
+            assert child_id in self.new_inventory
+
             if (self.new_inventory[child_id].kind != 'file' and 
                 self.new_inventory[child_id].kind != 'symlink'):
                 continue
