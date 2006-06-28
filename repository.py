@@ -202,11 +202,50 @@ class SvnRepository(Repository):
 
         (path_branch, filename) = self.scheme.unprefix(path)
 
-#        for (paths, rev) in self._log.follow_history(path_branch, revnum):
-#            if copied_from:
-#                if exists(copied_from, revnum):
-#                    break
-#                filename = copied_from
+        if filename == "":
+            return (ROOT_ID, self.generate_revision_id(revnum, path_branch))
+
+        continue_revnum = None
+        for (branch, paths, rev) in self._log.follow_history(path_branch, 
+                                                             revnum):
+            if not (continue_revnum is None or continue_revnum == rev):
+                continue
+
+            continue_revnum = None
+
+            expected_path = ("%s/%s" % (branch, filename)).strip("/")
+            mutter('expected path: %s' % expected_path)
+            if not expected_path in paths:
+                # File didn't exist yet in this revision
+                path_branch = branch
+                revnum = rev
+                break
+            
+            # File is being copied from somewhere else
+            if paths[expected_path][1]:
+                copyfrom_path = paths[expected_path][1]
+                copyfrom_rev = paths[expected_path][2]
+                (bp, rp) = self.scheme.unprefix(copyfrom_path)
+
+                # individual non-root dir/file copied from somewhere in 
+                # another branch, don't track a rename
+                if bp != branch:
+                    path_branch = branch
+                    revnum = rev
+                    break
+
+                # check if there is other offspring of that location
+                offspring = self._log.get_offspring(copyfrom_path, copyfrom_rev, rev)
+                # FIXME: Filter out files from offspring that are not in this branch.
+                if list(offspring) != [path]:
+                    path_branch = branch
+                    revnum = rev
+                    break
+
+                filename = rp
+                continue_revnum = copyfrom_rev
+
+        assert continue_revnum is None
 
         revision_id = self.generate_revision_id(revnum, path_branch)
 
@@ -217,8 +256,8 @@ class SvnRepository(Repository):
             self.path_map[revnum] = {}
 
         file_id = filename.replace("/", "@")
-        if file_id == "":
-            file_id = ROOT_ID
+        
+        assert file_id != None
 
         self.path_map[revnum][path] = (file_id, revision_id)
         self.fileid_map[revision_id][file_id] = (path, revnum)

@@ -128,7 +128,7 @@ class LogWalker(object):
 
         continue_revnum = None
         num = 0
-        for i in range(0, abs(from_revnum-to_revnum)+1):
+        for i in range(abs(from_revnum-to_revnum)+1):
             if to_revnum < from_revnum:
                 i = from_revnum - i
             else:
@@ -176,3 +176,33 @@ class LogWalker(object):
             if limit and num == limit:
                 return
 
+    def get_offspring(self, path, orig_revnum, revnum):
+        """Check which files in revnum directly descend from path in orig_revnum."""
+        assert orig_revnum <= revnum
+
+        ancestors = [path]
+        dest = (path, orig_revnum)
+
+        for i in range(revnum-orig_revnum):
+            paths = self.revisions[i+1+orig_revnum]['paths']
+            for p in paths:
+                new_ancestors = list(ancestors)
+
+                if paths[p][0] in ('R', 'A') and paths[p][1]:
+                    if paths[p][1:3] == dest:
+                        new_ancestors.append(p)
+
+                    for s in ancestors:
+                        if s.startswith(paths[p][1]+"/"):
+                            new_ancestors.append(s.replace(paths[p][1], p, 1))
+
+                ancestors = new_ancestors
+
+                if paths[p][0] in ('R', 'D'):
+                    for s in ancestors:
+                        if s == p or s.startswith(p+"/"):
+                            new_ancestors.remove(s)
+
+                ancestors = new_ancestors
+
+        return ancestors

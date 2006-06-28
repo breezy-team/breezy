@@ -17,6 +17,8 @@
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
+from bzrlib.repository import Repository
+from bzrlib.trace import mutter
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 
 import svn
@@ -43,14 +45,18 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         self.build_tree({'dc/bar': "data2"})
         self.client_commit("dc", "Second Message")
 
-        bzrdir = BzrDir.open("svn+%s" % repos_url)
-        repository = bzrdir.open_repository()
+        repository = Repository.open("svn+"+repos_url)
 
         inv1 = repository.get_inventory("svn:1@%s-" % repository.uuid)
         inv2 = repository.get_inventory("svn:2@%s-" % repository.uuid)
+        mutter('inv1: %r' % inv1.entries())
+        mutter('inv2: %r' % inv2.entries())
         self.assertEqual(inv1.path2id("foo"), inv2.path2id("bar"))
+        self.assertNotEqual(None, inv1.path2id("foo"))
+        self.assertIs(None, inv2.path2id("foo"))
+        self.assertNotEqual(None, inv2.path2id("bar"))
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("blie"))
-        self.assertNotEqual(inv1.path2id("bar"), inv2.path2id("blie"))
+        self.assertNotEqual(inv2.path2id("bar"), inv2.path2id("blie"))
 
     def test_simplecopy(self):
         repos_url = self.make_client('d', 'dc')

@@ -115,3 +115,33 @@ class TestLogWalker(TestCaseWithSubversionRepository):
         items = list(walker.get_branch_log("branches/abranch", 2, 0))
         self.assertEqual(2, len(items))
 
+    def test_get_offspring(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/afile': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+
+        self.client_copy("dc/trunk/afile", "dc/trunk/bfile")
+        self.client_commit("dc", "Create branch")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     repos_url=repos_url)
+
+        self.assertEqual(["trunk/afile", "trunk/bfile"], 
+                list(walker.get_offspring("trunk/afile", 1, 2)))
+
+    def test_get_offspring_dir(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({'dc/trunk/afile': "data"})
+        self.client_add("dc/trunk")
+        self.client_commit("dc", "My Message")
+
+        self.client_copy("dc/trunk", "dc/foobar")
+        self.client_commit("dc", "Create branch")
+
+        walker = logwalker.LogWalker(NoBranchingScheme(), 
+                                     repos_url=repos_url)
+
+        self.assertEqual(["trunk/afile", "foobar/afile"], 
+            list(walker.get_offspring("trunk/afile", 1, 2)))
+
