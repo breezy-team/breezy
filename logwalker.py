@@ -74,9 +74,11 @@ class LogWalker(object):
             if orig_paths is None:
                 orig_paths = {}
             for p in orig_paths:
-                paths[p] = (orig_paths[p].action,
-                            orig_paths[p].copyfrom_path,
-                            orig_paths[p].copyfrom_rev)
+                copyfrom_path = orig_paths[p].copyfrom_path
+                if copyfrom_path:
+                    copyfrom_path = copyfrom_path.strip("/")
+                paths[p.strip("/")] = (orig_paths[p].action,
+                            copyfrom_path, orig_paths[p].copyfrom_rev)
 
             self.revisions[rev] = {
                     'paths': paths,
@@ -102,12 +104,19 @@ class LogWalker(object):
         pickle.dump(self.revisions, open(self.cache_file, 'w'))
 
     def follow_history(self, branch_path, revnum):
-        for (paths, rev, _, _, _) in self.get_branch_log(branch_path, revnum, 0):
+        for (paths, rev, _, _, _) in self.get_branch_log(branch_path, revnum):
             yield (paths, rev)
 
-    def get_branch_log(self, branch_path, from_revnum, to_revnum, limit=0):
-        if not self.scheme.is_branch(branch_path):
+    def get_branch_log(self, branch_path, from_revnum, to_revnum=0, limit=0):
+        assert from_revnum >= to_revnum
+
+        if not branch_path is None and not self.scheme.is_branch(branch_path):
             raise NotSvnBranchPath(branch_path)
+
+        if branch_path is None:
+            branch_path = ""
+
+        branch_path = branch_path.strip("/")
 
         if max(from_revnum, to_revnum) > self.last_revnum:
             try:
@@ -118,22 +127,35 @@ class LogWalker(object):
                         revision="Between %d and %d" % (from_revnum, to_revnum))
                 raise
 
-        if branch_path is None:
-            branch_path = ""
+        continue_revnum = None
         num = 0
         for i in range(0, abs(from_revnum-to_revnum)+1):
             if to_revnum < from_revnum:
                 i = from_revnum - i
             else:
                 i = from_revnum + i
+
             if i == 0:
                 continue
+
+            if not (continue_revnum is None or continue_revnum == i):
+                continue
+
+            continue_revnum = None
 
             rev = self.revisions[i]
             changed_paths = {}
             for p in rev['paths']:
                 if p.startswith(branch_path) or p[1:].startswith(branch_path):
                     changed_paths[p] = rev['paths'][p]
+
+            if (branch_path in rev['paths'] and 
+                not rev['paths'][branch_path][1] is None):
+                # In this revision, this branch was copied from 
+                # somewhere else
+                # FIXME: What if copyfrom_path is not a branch path?
+                continue_revnum = rev['paths'][branch_path][2]
+                branch_path = rev['paths'][branch_path][1]
 
             if len(changed_paths) == 0:
                 continue
@@ -143,5 +165,4 @@ class LogWalker(object):
 
             if limit and num == limit:
                 return
-
 
