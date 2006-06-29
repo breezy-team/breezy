@@ -22,6 +22,7 @@ from bzrlib.errors import IllegalPath
 from bzrlib.delta import compare_trees
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.transform import TreeTransform
 from bzrlib.workingtree import WorkingTree
 
 
@@ -31,6 +32,9 @@ class FileIdInvolvedBase(TestCaseWithRepository):
         f = file(filename,"a")
         f.write("appended line\n")
         f.close( )
+
+    def assertDictsEqual(self, a, b):
+        self.assertEqual(sorted(a.iteritems()), sorted(b.iteritems()))
 
     def compare_tree_fileids(self, branch, old_rev, new_rev):
         old_tree = self.branch.repository.revision_tree(old_rev)
@@ -67,6 +71,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         # J changes: 'b-file-id-2006-01-01-defg'
         # K changes: 'c-funky<file-id> quiji%bo'
 
+        self.branch = None
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
         self.build_tree(["main/a","main/b","main/c"])
@@ -100,7 +105,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         d2 = main_branch.bzrdir.clone('branch2')
         branch2_branch = d2.open_branch()
         bt2 = d2.open_workingtree()
-        os.chmod("branch2/b",0770)
+        set_executability(bt2, 'b', True)
         bt2.commit("branch2, Commit one", rev_id="rev-J")
 
         #-------- end J -----------
@@ -134,22 +139,27 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.branch = main_branch
 
     def test_fileids_altered_between_two_revs(self):
+        if self.branch is None:
+            # Could not create the branching structure
+            # for this repository format
+            return
+
         def foo(old, new):
             print set(self.branch.repository.get_ancestry(new)).difference(set(self.branch.repository.get_ancestry(old)))
 
-        self.assertEqual(
+        self.assertDictsEqual(
             {'b-file-id-2006-01-01-defg':set(['rev-J']),
              'c-funky<file-id> quiji%bo':set(['rev-K'])
              },
             self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"]))
 
-        self.assertEqual(
+        self.assertDictsEqual(
             {'b-file-id-2006-01-01-defg': set(['rev-<D>']),
              'file-d': set(['rev-F']),
              },
             self.branch.repository.fileids_altered_by_revision_ids(['rev-<D>', 'rev-F']))
 
-        self.assertEqual(
+        self.assertDictsEqual(
             {
              'b-file-id-2006-01-01-defg': set(['rev-<D>', 'rev-G', 'rev-J']), 
              'c-funky<file-id> quiji%bo': set(['rev-K']),
@@ -158,7 +168,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             self.branch.repository.fileids_altered_by_revision_ids(
                 ['rev-<D>', 'rev-G', 'rev-F', 'rev-K', 'rev-J']))
 
-        self.assertEqual(
+        self.assertDictsEqual(
             {'a-file-id-2006-01-01-abcd': set(['rev-B']),
              'b-file-id-2006-01-01-defg': set(['rev-<D>', 'rev-G', 'rev-J']),
              'c-funky<file-id> quiji%bo': set(['rev-K']),
@@ -168,22 +178,30 @@ class TestFileIdInvolved(FileIdInvolvedBase):
                 ['rev-G', 'rev-F', 'rev-C', 'rev-B', 'rev-<D>', 'rev-K', 'rev-J']))
 
     def test_fileids_altered_by_revision_ids(self):
-        self.assertEqual(
+        if self.branch is None:
+            # See earlier comment about not being able
+            # to run this test with older formats
+            return
+        self.assertDictsEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-A']),
              'b-file-id-2006-01-01-defg': set(['rev-A']),
              'c-funky<file-id> quiji%bo': set(['rev-A']),
              }, 
             self.branch.repository.fileids_altered_by_revision_ids(["rev-A"]))
-        self.assertEqual(
+        self.assertDictsEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-B'])
              }, 
             self.branch.repository.fileids_altered_by_revision_ids(["rev-B"]))
-        self.assertEqual(
+        self.assertDictsEqual(
             {'b-file-id-2006-01-01-defg':set(['rev-<D>'])
              },
             self.branch.repository.fileids_altered_by_revision_ids(["rev-<D>"]))
 
     def test_fileids_involved_full_compare(self):
+        if self.branch is None:
+            # See earlier comment about not being able
+            # to run this test with older formats
+            return
         # this tests that the result of each fileid_involved calculation 
         # along a revision history selects only the fileids selected by
         # comparing the trees - no less, and no more. This is correct 
@@ -213,6 +231,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
     def setUp(self):
         super(TestFileIdInvolvedSuperset, self).setUp()
 
+        self.branch = None
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
         self.build_tree(["main/a","main/b","main/c"])
@@ -228,17 +247,21 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         branch2_bzrdir = main_branch.bzrdir.sprout("branch2")
         branch2_branch = branch2_bzrdir.open_branch()
         branch2_wt = branch2_bzrdir.open_workingtree()
-        os.chmod("branch2/b",0770)
+        set_executability(branch2_wt, 'b', True)
         branch2_wt.commit("branch2, Commit one", rev_id="rev-J")
 
         self.merge(branch2_branch, main_wt)
-        os.chmod("main/b",0660)
+        set_executability(main_wt, 'b', True)
         main_wt.commit("merge branch1, rev-22",  rev_id="rev-G")
 
         # end G
         self.branch = main_branch
 
     def test_fileid_involved_full_compare2(self):
+        if self.branch is None:
+            # See earlier comment about not being able
+            # to run this test with older formats
+            return
         # this tests that fileids_alteted_by_revision_ids returns 
         # more information than compare_tree can, because it 
         # sees each change rather than the aggregate delta.
@@ -255,3 +278,15 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         l2 = self.compare_tree_fileids(self.branch, old_rev, new_rev)
         self.assertNotEqual(l2, l1)
         self.assertSubset(l2, l1)
+
+
+def set_executability(wt, path, executable=True):
+    """Set the executable bit for the file at path in the working tree
+
+    os.chmod() doesn't work on windows. But TreeTransform can mark or
+    unmark a file as executable.
+    """
+    file_id = wt.path2id(path)
+    tt = TreeTransform(wt)
+    tt.set_executability(True, tt.trans_id_tree_file_id(file_id))
+    tt.apply()
