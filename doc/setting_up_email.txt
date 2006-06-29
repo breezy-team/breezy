@@ -1,3 +1,10 @@
+================
+Setting up email
+================
+
+The various ways that exist to tell Bazaar-NG your email address for
+commits.
+
 Why set up an email address with Bazaar-NG?
 ===========================================
 Bazaar-NG stores the claimed email address in revisions when they're

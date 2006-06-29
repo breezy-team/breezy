@@ -1,3 +1,9 @@
+=================
+Bazaar-NG plugins
+=================
+
+Information on how to use plugins in Bazaar-NG.
+
 What is a Plugin
 ================
 A plugin is an external component for Bazaar-NG that is typically made by

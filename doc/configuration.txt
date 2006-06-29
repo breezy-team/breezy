@@ -1,3 +1,9 @@
+=======================
+Bazaar-NG configuration
+=======================
+
+Information on how to configure Bazaar-NG.
+
 Location of configuration file
 ==============================
 Each user gets a pair of configurations files in $HOME/.bazaar. The first
