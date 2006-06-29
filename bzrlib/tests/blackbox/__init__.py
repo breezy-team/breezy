@@ -83,6 +83,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_update',
                      'bzrlib.tests.blackbox.test_upgrade',
                      'bzrlib.tests.blackbox.test_versioning',
+                     'bzrlib.tests.blackbox.test_whoami',
                      ]
     test_encodings = [
         'bzrlib.tests.blackbox.test_non_ascii',
