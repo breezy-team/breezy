@@ -19,8 +19,7 @@ from bzrlib.branch import BranchCheckResult
 from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile, 
                            NoSuchRevision)
 from bzrlib.graph import Graph
-from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile,
-                              ROOT_ID)
+from bzrlib.inventory import ROOT_ID
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar
@@ -38,64 +37,6 @@ from cStringIO import StringIO
 import branch
 import logwalker
 from tree import SvnRevisionTree
-
-class SvnInventoryFile(InventoryFile):
-    """Inventory entry that can either be a plain file or a 
-    symbolic link. Avoids fetching data until necessary. """
-    def __init__(self, file_id, name, parent_id, repository, path, revnum, 
-                 has_props):
-        self.repository = repository
-        self.path = path
-        self.has_props = has_props
-        self.revnum = revnum
-        InventoryFile.__init__(self, file_id, name, parent_id)
-
-    def _get_sha1(self):
-        text = self.repository._get_file(self.path, self.revnum).read()
-        return osutils.sha_string(text)
-
-    def _get_executable(self):
-        if not self.has_props:
-            return False
-
-        value = self.repository._get_file_prop(self.path, self.revnum, 
-                    svn.core.SVN_PROP_EXECUTABLE)
-        if value and value == svn.core.SVN_PROP_EXECUTABLE_VALUE:
-            return True
-        return False 
-
-    def _is_special(self):
-        if not self.has_props:
-            return False
-
-        value = self.repository._get_file_prop(self.path, self.revnum, 
-                    svn.core.SVN_PROP_SPECIAL)
-        if value and value == svn.core.SVN_PROP_SPECIAL_VALUE:
-            return True
-        return False 
-
-    def _get_symlink_target(self):
-        if not self._is_special():
-            return None
-        data = self.repository._get_file(self.path, self.revnum).read()
-        if not data.startswith("link "):
-            raise BzrError("Improperly formatted symlink file")
-        return data[len("link "):]
-
-    def _get_kind(self):
-        if self._is_special():
-            return 'symlink'
-        return 'file'
-
-    # FIXME: we need a set function here because of InventoryEntry.__init__
-    def _phony_set(self, data):
-        pass
-   
-    text_sha1 = property(_get_sha1, _phony_set)
-    executable = property(_get_executable, _phony_set)
-    symlink_target = property(_get_symlink_target, _phony_set)
-    kind = property(_get_kind, _phony_set)
-
 
 class SvnRepository(Repository):
     """
@@ -137,49 +78,7 @@ class SvnRepository(Repository):
 
     def get_inventory(self, revision_id):
         assert revision_id != None
-        (path, revnum) = self.parse_revision_id(revision_id)
-        assert path != None
-        mutter('getting inventory %r for branch %r' % (revnum, path))
-
-        def read_directory(inv, id, path, revnum):
-            (props, dirents) = self._cache_get_dir(path, revnum)
-
-            recurse = {}
-
-            for child_name in dirents:
-                dirent = dirents[child_name]
-
-                child_path = os.path.join(path, child_name)
-
-                (child_id, revid) = self.path_to_file_id(dirent.created_rev, 
-                    child_path)
-                if dirent.kind == svn.core.svn_node_dir:
-                    inventry = InventoryDirectory(child_id, child_name, id)
-                    recurse[child_path] = dirent.created_rev
-                elif dirent.kind == svn.core.svn_node_file:
-                    inventry = SvnInventoryFile(child_id, child_name, id, self, 
-                        child_path, dirent.created_rev, dirent.has_props)
-
-                else:
-                    raise BzrError("Unknown entry kind for '%s': %s" % 
-                        (child_path, dirent.kind))
-
-                inventry.revision = revid
-                inv.add(inventry)
-
-            for child_path in recurse:
-                (child_id, _) = self.path_to_file_id(recurse[child_path], 
-                    child_path)
-                read_directory(inv, child_id, child_path, recurse[child_path])
-    
-        inv = Inventory(revision_id=revision_id, root_id=ROOT_ID)
-        # FIXME: Is this the correct revision_id to set? Probably not...
-        inv[ROOT_ID].revision = revision_id
-
-        assert path != None
-        read_directory(inv, ROOT_ID, path, revnum)
-
-        return inv
+        return self.revision_tree(revision_id).inventory
 
     def path_from_file_id(self, revision_id, file_id):
         """Generate a full Subversion path from a bzr file id.
