@@ -559,6 +559,8 @@ class TestCase(unittest.TestCase):
 
         Read contents into memory, close, and delete.
         """
+        if self._log_file is None:
+            return
         bzrlib.trace.disable_test_log(self._log_nonce)
         self._log_file.seek(0)
         self._log_contents = self._log_file.read()
