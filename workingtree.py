@@ -60,7 +60,7 @@ class SvnWorkingTree(WorkingTree):
         except OSError:
             pass
         self._control_files = LockableFiles(bzrdir.transport, 
-                os.path.join(svn.wc.get_adm_dir(), 'bzr'), LockDir)
+                os.path.join(self.basedir, svn.wc.get_adm_dir(), 'bzr'), LockDir)
 
     def lock_write(self):
         pass
