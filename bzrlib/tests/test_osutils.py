@@ -176,7 +176,20 @@ class TestWin32Funcs(TestCase):
         self.assertEqual('path/to/foo', osutils._win32_normpath('path//from/../to/./foo'))
 
     def test_getcwd(self):
-        self.assertEqual(os.getcwdu().replace('\\', '/'), osutils._win32_getcwd())
+        cwd = osutils._win32_getcwd()
+        os_cwd = os.getcwdu()
+        self.assertEqual(os_cwd[1:].replace('\\', '/'), cwd[1:])
+        # win32 is inconsistent whether it returns lower or upper case
+        # and even if it was consistent the user might type the other
+        # so we force it to uppercase
+        # running python.exe under cmd.exe return capital C:\\
+        # running win32 python inside a cygwin shell returns lowercase
+        self.assertEqual(os_cwd[0].upper(), cwd[0])
+
+    def test_fixdrive(self):
+        self.assertEqual('H:/foo', osutils._win32_fixdrive('h:/foo'))
+        self.assertEqual('H:/foo', osutils._win32_fixdrive('H:/foo'))
+        self.assertEqual('C:\\foo', osutils._win32_fixdrive('c:\\foo'))
 
 
 class TestWin32FuncsDirs(TestCaseInTempDir):
