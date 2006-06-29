@@ -64,6 +64,9 @@ IN DEVELOPMENT
    * 'branches.conf' has been changed to 'locations.conf', since it can apply
      to more locations than just branch locations.
      (Aaron Bentley)
+   
+   * 'bzr whoami' can now be used to set your identity from the command line,
+     for a branch or globally.  (Robey Pointer)
 
   BUG FIXES:
 
