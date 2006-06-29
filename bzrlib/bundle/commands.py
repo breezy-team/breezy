@@ -114,8 +114,11 @@ class cmd_bundle_revisions(Command):
                 raise errors.BzrCommandError("No base branch known or"
                                              " specified.")
             elif not base_specified:
-                note(('Using saved location: %s' % \
-                      urlutils.unescape_for_display(base, 'ascii')))
+                # FIXME:
+                # note() doesn't pay attention to terminal_encoding() so
+                # we must format with 'ascii' to be safe
+                note('Using saved location: %s',
+                     urlutils.unescape_for_display(base, 'ascii'))
             base_branch = Branch.open(base)
 
             # We don't want to lock the same branch across
