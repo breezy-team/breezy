@@ -1776,19 +1776,39 @@ class cmd_upgrade(Command):
 
 
 class cmd_whoami(Command):
-    """Show bzr user id."""
-    takes_options = ['email']
+    """Show or set bzr user id."""
+    takes_options = [ Option('email',
+                             help='display email address only'),
+                      Option('branch',
+                             help='set identity for the current branch instead of '
+                                  'gobally'),
+                    ]
+    takes_args = ['name?']
+    encoding_type = 'replace'
     
     @display_command
-    def run(self, email=False):
-        try:
-            c = WorkingTree.open_containing(u'.')[0].branch.get_config()
-        except NotBranchError:
-            c = config.GlobalConfig()
-        if email:
-            print c.user_email()
+    def run(self, email=False, branch=False, name=None):
+        if name is None:
+            # use branch if we're inside one; otherwise global config
+            try:
+                c = WorkingTree.open_containing(u'.')[0].branch.get_config()
+            except NotBranchError:
+                c = config.GlobalConfig()
         else:
-            print c.username()
+            # why is this necessary?
+            name = name.decode(bzrlib.user_encoding)
+            # use global config unless --branch given
+            if branch:
+                c = WorkingTree.open_containing(u'.')[0].branch.get_config()
+            else:
+                c = config.GlobalConfig()
+            c.set_user_option('email', name)
+
+        if email:
+            self.outf.write(c.user_email())
+        else:
+            self.outf.write(c.username())
+        self.outf.write('\n')
 
 
 class cmd_nick(Command):
