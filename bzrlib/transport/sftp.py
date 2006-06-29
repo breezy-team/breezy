@@ -101,10 +101,15 @@ def os_specific_subprocess_params():
                 }
 
 
-# don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
-_default_do_prefetch = False
-if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 5):
-    _default_do_prefetch = True
+_paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
+# don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
+_default_do_prefetch = (_paramiko_version >= (1, 5, 5))
+
+# Paramiko 1.5 tries to open a socket.AF_UNIX in order to connect
+# to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
+# so we get an AttributeError exception. So we will not try to
+# connect to an agent if we are on win32 and using Paramiko older than 1.6
+_use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0)) 
 
 
 _ssh_vendor = None
@@ -774,11 +779,7 @@ class SFTPTransport (Transport):
         # Also, it would mess up the self.relpath() functionality
         username = self._username or getpass.getuser()
 
-        # Paramiko tries to open a socket.AF_UNIX in order to connect
-        # to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
-        # so we get an AttributeError exception. For now, just don't try to
-        # connect to an agent if we are on win32
-        if sys.platform != 'win32':
+        if _use_ssh_agent:
             agent = paramiko.Agent()
             for key in agent.get_keys():
                 mutter('Trying SSH agent key %s' % paramiko.util.hexify(key.get_fingerprint()))
@@ -979,7 +980,12 @@ class SFTPServer(Server):
         global _ssh_vendor
         self._original_vendor = _ssh_vendor
         _ssh_vendor = self._vendor
-        self._homedir = getcwd()
+        if sys.platform == 'win32':
+            # Win32 needs to use the UNICODE api
+            self._homedir = getcwd()
+        else:
+            # But Linux SFTP servers should just deal in bytestreams
+            self._homedir = os.getcwd()
         if self._server_homedir is None:
             self._server_homedir = self._homedir
         self._root = '/'
