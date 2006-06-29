@@ -980,7 +980,12 @@ class SFTPServer(Server):
         global _ssh_vendor
         self._original_vendor = _ssh_vendor
         _ssh_vendor = self._vendor
-        self._homedir = getcwd()
+        if sys.platform == 'win32':
+            # Win32 needs to use the UNICODE api
+            self._homedir = getcwd()
+        else:
+            # But Linux SFTP servers should just deal in bytestreams
+            self._homedir = os.getcwd()
         if self._server_homedir is None:
             self._server_homedir = self._homedir
         self._root = '/'
