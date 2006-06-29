@@ -132,15 +132,24 @@ class bzr_build(build):
 if not ('py2exe' in sys.argv):
     # std setup
     ARGS = {'scripts': ['bzr'],
-            'cmdclass': {'build': bzr_build,
-                         'install_scripts': my_install_scripts,
-                        },
             'data_files': [('man/man1', ['bzr.1'])],
             # install the txt files from bzrlib.doc.api.
             'package_data': {'bzrlib': ['doc/api/*.txt']},
            }
+
+    # for python-based installer we don't need to use custom cmdclasses
+    if not ('bdist_wininst' in sys.argv):
+        ARGS['cmdclass'] = {'build': bzr_build,
+                            'install_scripts': my_install_scripts,
+                           }
+    else:
+        # but need to add postinstall script
+        ARGS['scripts'].append('tools/win32/bzr-win32-bdist-postinstall.py')
+    
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
+
+    print ARGS
     
     setup(**ARGS)
 

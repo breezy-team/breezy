@@ -62,6 +62,12 @@ installer: exe copy_docs
 	cog.py -d -o tools\win32\bzr.iss tools\win32\bzr.iss.cog
 	"C:\Program Files\Inno Setup 5\iscc" /Q tools\win32\bzr.iss
 
+# win32 python's distutils-based installer
+# require to have python interpreter installed on win32
+python-installer:
+	python setup.py bdist_wininst --target-version=2.4 --title="Bazaar-NG" --install-script="bzr-win32-bdist-postinstall.py"
+
+
 # clean on win32 all installer-related files and directories
 clean_win32:
 	if exist build rmdir /S /Q build
@@ -71,3 +77,4 @@ clean_win32:
 	if exist doc\bzr_man.txt del /Q doc\bzr_man.txt
 	if exist tools\win32\bzr.iss del /Q tools\win32\bzr.iss
 	if exist bzr-setup*.exe del /Q bzr-setup*.exe
+	if exist dist rmdir /S /Q dist

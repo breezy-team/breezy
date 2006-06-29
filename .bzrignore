@@ -25,3 +25,4 @@ doc/*.htm
 doc/bzr_man.txt
 py2exe.log
 tools/win32/bzr.iss
+dist
