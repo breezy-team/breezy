@@ -84,7 +84,7 @@ class SvnRaTransport(Transport):
         if ra is None:
             callbacks = SvnRaCallbacks(self.pool)
             try:
-                self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, svn_config)
+                self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, svn_config, None)
             except SubversionException, (_, num):
                 if num == svn.core.SVN_ERR_RA_ILLEGAL_URL:
                     raise NotBranchError(path=url)

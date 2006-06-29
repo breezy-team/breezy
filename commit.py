@@ -209,17 +209,14 @@ class SvnCommitBuilder(CommitBuilder):
                                              self.pool)
 
     def commit(self, message):
-        def done(info, pool):
-            if not info.post_commit_err is None:
-                raise BzrError(info.post_commit_err)
-
-            self.revnum = info.revision
+        def done(revision, date, author):
+            self.revnum = revision
             assert self.revnum > 0
-            self.date = info.date
-            self.author = info.author
+            self.date = date
+            self.author = author
 
         mutter('obtaining commit editor')
-        self.editor, editor_baton = svn.ra.get_commit_editor2(
+        self.editor, editor_baton = svn.ra.get_commit_editor(
             self.repository.ra, message, done, None, False)
 
         if self.branch.last_revision() is None:

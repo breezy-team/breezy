@@ -16,10 +16,11 @@
 
 import bzrlib
 from bzrlib.branch import BranchCheckResult
-from bzrlib.errors import NoSuchRevision, InvalidRevisionId, BzrError
+from bzrlib.errors import (BzrError, InvalidRevisionId, NoSuchFile, 
+                           NoSuchRevision)
 from bzrlib.graph import Graph
-from bzrlib.inventory import Inventory, InventoryFile, InventoryDirectory, \
-            ROOT_ID
+from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile,
+                              ROOT_ID)
 from bzrlib.lockable_files import LockableFiles, TransportLock
 import bzrlib.osutils as osutils
 from bzrlib.progress import ProgressBar

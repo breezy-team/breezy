@@ -36,7 +36,7 @@ class NotSvnBranchPath(BzrError):
         self.branch_path = branch_path
 
 class LogWalker(object):
-    def __init__(self, scheme, ra=None, uuid=None, last_revnum=None, repos_url=None, pb=ProgressBar()):
+    def __init__(self, scheme, ra=None, uuid=None, last_revnum=None, repos_url=None, pb=None):
         if ra is None:
             callbacks = svn.ra.callbacks2_t()
             ra = svn.ra.open2(repos_url.encode('utf8'), callbacks, None, None)
@@ -67,7 +67,7 @@ class LogWalker(object):
         else:
             self.last_revnum = self.saved_revnum
 
-    def fetch_revisions(self, from_revnum, to_revnum, pb=ProgressBar()):
+    def fetch_revisions(self, from_revnum, to_revnum, pb=None):
         def rcvr(orig_paths, rev, author, date, message, pool):
             pb.update('fetching svn revision info', rev, to_revnum)
             paths = {}
@@ -87,6 +87,11 @@ class LogWalker(object):
                     'message': message
                     }
 
+        # Don't bother for only a few revisions
+        if abs(self.saved_revnum-to_revnum) < 100:
+            pb = DummyProgress()
+        else:
+            pb = ProgressBar()
         self.last_revnum = to_revnum
         svn.ra.get_log(self.ra, ["/"], self.saved_revnum, to_revnum, 0, True, True, rcvr)
         pb.clear()
