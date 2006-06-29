@@ -337,6 +337,19 @@ class GlobalConfig(IniBasedConfig):
     def __init__(self):
         super(GlobalConfig, self).__init__(config_filename)
 
+    def set_user_option(self, option, value):
+        """Save option and its value in the configuration."""
+        # FIXME: RBC 20051029 This should refresh the parser and also take a
+        # file lock on bazaar.conf.
+        conf_dir = os.path.dirname(self._get_filename())
+        ensure_config_dir_exists(conf_dir)
+        if 'DEFAULT' not in self._get_parser():
+            self._get_parser()['DEFAULT'] = {}
+        self._get_parser()['DEFAULT'][option] = value
+        f = open(self._get_filename(), 'wb')
+        self._get_parser().write(f)
+        f.close()
+
 
 class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""
@@ -597,13 +610,25 @@ def _auto_user_id():
         uid = os.getuid()
         w = pwd.getpwuid(uid)
 
+        # we try utf-8 first, because on many variants (like Linux),
+        # /etc/passwd "should" be in utf-8, and because it's unlikely to give
+        # false positives.  (many users will have their user encoding set to
+        # latin-1, which cannot raise UnicodeError.)
         try:
-            gecos = w.pw_gecos.decode(bzrlib.user_encoding)
-            username = w.pw_name.decode(bzrlib.user_encoding)
-        except UnicodeDecodeError:
-            # We're using pwd, therefore we're on Unix, so /etc/passwd is ok.
-            raise errors.BzrError("Can't decode username in " \
-                    "/etc/passwd as %s." % bzrlib.user_encoding)
+            gecos = w.pw_gecos.decode('utf-8')
+            encoding = 'utf-8'
+        except UnicodeError:
+            try:
+                gecos = w.pw_gecos.decode(bzrlib.user_encoding)
+                encoding = bzrlib.user_encoding
+            except UnicodeError:
+                raise errors.BzrCommandError('Unable to determine your name.  '
+                   'Use "bzr whoami" to set it.')
+        try:
+            username = w.pw_name.decode(encoding)
+        except UnicodeError:
+            raise errors.BzrCommandError('Unable to determine your name.  '
+                'Use "bzr whoami" to set it.')
 
         comma = gecos.find(',')
         if comma == -1:
