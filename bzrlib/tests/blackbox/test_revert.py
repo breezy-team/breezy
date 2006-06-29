@@ -18,6 +18,7 @@
 
 import os
 
+import bzrlib.osutils
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.trace import mutter
 
@@ -72,3 +73,54 @@ class TestRevert(ExternalBase):
         self.assertEqual('', self.capture('status'))
         self.runbzr('revert')
         self.assertEqual('', self.capture('status'))
+
+    def test_revert(self):
+        self.run_bzr('init')
+
+        file('hello', 'wt').write('foo')
+        self.run_bzr('add', 'hello')
+        self.run_bzr('commit', '-m', 'setup', 'hello')
+
+        file('goodbye', 'wt').write('baz')
+        self.run_bzr('add', 'goodbye')
+        self.run_bzr('commit', '-m', 'setup', 'goodbye')
+
+        file('hello', 'wt').write('bar')
+        file('goodbye', 'wt').write('qux')
+        self.run_bzr('revert', 'hello')
+        self.check_file_contents('hello', 'foo')
+        self.check_file_contents('goodbye', 'qux')
+        self.run_bzr('revert')
+        self.check_file_contents('goodbye', 'baz')
+
+        os.mkdir('revertdir')
+        self.run_bzr('add', 'revertdir')
+        self.run_bzr('commit', '-m', 'f')
+        os.rmdir('revertdir')
+        self.run_bzr('revert')
+
+        if bzrlib.osutils.has_symlinks():
+            os.symlink('/unlikely/to/exist', 'symlink')
+            self.run_bzr('add', 'symlink')
+            self.run_bzr('commit', '-m', 'f')
+            os.unlink('symlink')
+            self.run_bzr('revert')
+            self.failUnlessExists('symlink')
+            os.unlink('symlink')
+            os.symlink('a-different-path', 'symlink')
+            self.run_bzr('revert')
+            self.assertEqual('/unlikely/to/exist',
+                             os.readlink('symlink'))
+        else:
+            self.log("skipping revert symlink tests")
+        
+        file('hello', 'wt').write('xyz')
+        self.run_bzr('commit', '-m', 'xyz', 'hello')
+        self.run_bzr('revert', '-r', '1', 'hello')
+        self.check_file_contents('hello', 'foo')
+        self.run_bzr('revert', 'hello')
+        self.check_file_contents('hello', 'xyz')
+        os.chdir('revertdir')
+        self.run_bzr('revert')
+        os.chdir('..')
+
