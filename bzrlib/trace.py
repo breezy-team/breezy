@@ -75,6 +75,7 @@ _bzr_log_file = None
 _bzr_logger = logging.getLogger('bzr')
 
 def note(*args, **kwargs):
+    # FIXME note always emits utf-8, regardless of the terminal encoding
     import bzrlib.ui
     bzrlib.ui.ui_factory.clear_term()
     _bzr_logger.info(*args, **kwargs)
