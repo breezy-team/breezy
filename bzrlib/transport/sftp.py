@@ -40,7 +40,7 @@ from bzrlib.errors import (ConnectionError,
                            PathError,
                            ParamikoNotPresent,
                            )
-from bzrlib.osutils import pathjoin, fancy_rename
+from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import (
     register_urlparse_netloc_protocol,
@@ -375,6 +375,7 @@ class SFTPTransport (Transport):
                 basepath.append(p)
 
         path = '/'.join(basepath)
+        # mutter('relpath => remotepath %s => %s', relpath, path)
         return path
 
     def relpath(self, abspath):
@@ -498,8 +499,8 @@ class SFTPTransport (Transport):
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
+        path = self._remote_path(relpath)
         try:
-            path = self._remote_path(relpath)
             # In the paramiko documentation, it says that passing a mode flag 
             # will filtered against the server umask.
             # StubSFTPServer does not do this, which would be nice, because it is
@@ -850,6 +851,7 @@ class SFTPTransport (Transport):
         :param mode: The mode permissions bits for the new file
         """
         path = self._sftp._adjust_cwd(abspath)
+        # mutter('sftp abspath %s => %s', abspath, path)
         attr = SFTPAttributes()
         if mode is not None:
             attr.st_mode = mode
@@ -959,7 +961,7 @@ class SFTPServer(Server):
 
     def _run_server(self, s):
         ssh_server = paramiko.Transport(s)
-        key_file = os.path.join(self._homedir, 'test_rsa.key')
+        key_file = pathjoin(self._homedir, 'test_rsa.key')
         f = open(key_file, 'w')
         f.write(STUB_SERVER_KEY)
         f.close()
@@ -977,11 +979,12 @@ class SFTPServer(Server):
         global _ssh_vendor
         self._original_vendor = _ssh_vendor
         _ssh_vendor = self._vendor
-        self._homedir = os.getcwd()
+        self._homedir = getcwd()
         if self._server_homedir is None:
             self._server_homedir = self._homedir
         self._root = '/'
-        # FIXME WINDOWS: _root should be _server_homedir[0]:/
+        if sys.platform == 'win32':
+            self._root = ''
         self._listener = SocketListener(self._run_server)
         self._listener.setDaemon(True)
         self._listener.start()
@@ -1039,7 +1042,10 @@ class SFTPAbsoluteServer(SFTPServerWithoutSSH):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
+        if sys.platform == 'win32':
+            return self._get_sftp_url(urlutils.escape(self._homedir))
+        else:
+            return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
 
 
 class SFTPHomeDirServer(SFTPServerWithoutSSH):
