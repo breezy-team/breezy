@@ -740,10 +740,18 @@ class TestCase(unittest.TestCase):
         return self.run_bzr(*args, **kwargs)[0].decode(encoding)
 
     def run_bzr_error(self, error_regexes, *args, **kwargs):
-        """Run bzr, and check that stderr contains the supplied regexes"""
+        """Run bzr, and check that stderr contains the supplied regexes
+        
+        This defaults to retcode=3, so you must supply retcode=? if you expect
+        a different value.
+        :return: (out, err) The actual output of running the command (in case you
+                 want to do more inspection)
+        """
+        kwargs.setdefault('retcode', 3)
         out, err = self.run_bzr(*args, **kwargs)
         for regex in error_regexes:
             self.assertContainsRe(err, regex)
+        return out, err
 
     def run_bzr_subprocess(self, *args, **kwargs):
         """Run bzr in a subprocess for testing.
