@@ -77,6 +77,11 @@ IN DEVELOPMENT
     * 'bzr push location' will only remember the push location if it succeeds
       in connecting to the remote location. (#49742, John Arbash Meinel)
 
+    * 'bzr revert' no longer toggles the executable bit on win32
+      (#45010, John Arbash Meinel)
+
+    * Handle broken pipe under win32 correctly. (John Arbash Meinel)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
