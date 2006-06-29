@@ -16,6 +16,7 @@ from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note
+from bzrlib import urlutils
 
 
 class cmd_send_changeset(Command):
@@ -113,7 +114,8 @@ class cmd_bundle_revisions(Command):
                 raise errors.BzrCommandError("No base branch known or"
                                              " specified.")
             elif not base_specified:
-                note('Using saved location: %s' % base)
+                note(('Using saved location: %s' % \
+                      urlutils.unescape_for_display(base, 'ascii')))
             base_branch = Branch.open(base)
 
             # We don't want to lock the same branch across
