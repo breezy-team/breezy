@@ -400,10 +400,6 @@ class cmd_pull(Command):
     from one into the other.  Once one branch has merged, the other should
     be able to pull it again.
 
-    If branches have diverged, you can use 'bzr merge' to pull the text changes
-    from one into the other.  Once one branch has merged, the other should
-    be able to pull it again.
-
     If you want to forget your local changes and just update your branch to
     match the remote one, use pull --overwrite.
 
@@ -709,6 +705,7 @@ class cmd_checkout(Command):
                                  "such access, and also support local commits."
                             ),
                      ]
+    aliases = ['co']
 
     def run(self, branch_location=None, to_location=None, revision=None, basis=None,
             lightweight=False):
@@ -1702,8 +1699,8 @@ class cmd_commit(Command):
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
-            raise BzrCommandError("no changes to commit",
-                                  ["use --unchanged to commit anyhow"])
+            raise BzrCommandError("no changes to commit."
+                                  " use --unchanged to commit anyhow")
         except ConflictsInTree:
             raise BzrCommandError("Conflicts detected in working tree.  "
                 'Use "bzr conflicts" to list, "bzr resolve FILE" to resolve.')
@@ -2328,7 +2325,9 @@ class cmd_missing(Command):
                      'show-ids',
                      'verbose'
                      ]
+    encoding_type = 'replace'
 
+    @display_command
     def run(self, other_branch=None, reverse=False, mine_only=False,
             theirs_only=False, log_format=None, long=False, short=False, line=False, 
             show_ids=False, verbose=False):
@@ -2353,7 +2352,8 @@ class cmd_missing(Command):
                     default = local_branch.get_config().log_format()
                     log_format = get_log_format(long=long, short=short, 
                                                 line=line, default=default)
-                lf = log_formatter(log_format, sys.stdout,
+                lf = log_formatter(log_format,
+                                   to_file=self.outf,
                                    show_ids=show_ids,
                                    show_timezone='original')
                 if reverse is False:
@@ -2455,7 +2455,7 @@ class cmd_annotate(Command):
     # TODO: annotate directories; showing when each file was last changed
     # TODO: if the working copy is modified, show annotations on that 
     #       with new uncommitted lines marked
-    aliases = ['blame', 'praise']
+    aliases = ['ann', 'blame', 'praise']
     takes_args = ['filename']
     takes_options = [Option('all', help='show annotations on all lines'),
                      Option('long', help='show date in annotations'),

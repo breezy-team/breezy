@@ -65,6 +65,9 @@ IN DEVELOPMENT
      to more locations than just branch locations.
      (Aaron Bentley)
 
+   * 'bzr checkout' now aliased to 'bzr co', and 'bzr annotate' to 'bzr ann'.
+     (Michael Ellerman)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
@@ -307,8 +310,6 @@ bzr 0.8  2006-05-08
     * New option 'diff --prefix' to control how files are named in diff
       output, with shortcuts '-p0' and '-p1' corresponding to the options for 
       GNU patch.  (Alexander Belchenko, Goffredo Baroncelli, Martin Pool)
-
-    * Add --revision option to 'annotate' command.  (Olaf Conradi)
 
     * Add --revision option to 'annotate' command.  (Olaf Conradi)
 
