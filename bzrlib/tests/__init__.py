@@ -739,6 +739,12 @@ class TestCase(unittest.TestCase):
             encoding = bzrlib.user_encoding
         return self.run_bzr(*args, **kwargs)[0].decode(encoding)
 
+    def run_bzr_error(self, error_regexes, *args, **kwargs):
+        """Run bzr, and check that stderr contains the supplied regexes"""
+        out, err = self.run_bzr(*args, **kwargs)
+        for regex in error_regexes:
+            self.assertContainsRe(err, regex)
+
     def run_bzr_subprocess(self, *args, **kwargs):
         """Run bzr in a subprocess for testing.
 
