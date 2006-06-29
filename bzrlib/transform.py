@@ -259,11 +259,13 @@ class TreeTransform(object):
         New file takes the permissions of any existing file with that id,
         unless mode_id is specified.
         """
-        f = file(self._limbo_name(trans_id), 'wb')
-        unique_add(self._new_contents, trans_id, 'file')
-        for segment in contents:
-            f.write(segment)
-        f.close()
+        f = open(self._limbo_name(trans_id), 'wb')
+        try:
+            unique_add(self._new_contents, trans_id, 'file')
+            for segment in contents:
+                f.write(segment)
+        finally:
+            f.close()
         self._set_mode(trans_id, mode_id, S_ISREG)
 
     def _set_mode(self, trans_id, mode_id, typefunc):
