@@ -2325,7 +2325,9 @@ class cmd_missing(Command):
                      'show-ids',
                      'verbose'
                      ]
+    encoding_type = 'replace'
 
+    @display_command
     def run(self, other_branch=None, reverse=False, mine_only=False,
             theirs_only=False, log_format=None, long=False, short=False, line=False, 
             show_ids=False, verbose=False):
@@ -2350,7 +2352,8 @@ class cmd_missing(Command):
                     default = local_branch.get_config().log_format()
                     log_format = get_log_format(long=long, short=short, 
                                                 line=line, default=default)
-                lf = log_formatter(log_format, sys.stdout,
+                lf = log_formatter(log_format,
+                                   to_file=self.outf,
                                    show_ids=show_ids,
                                    show_timezone='original')
                 if reverse is False:

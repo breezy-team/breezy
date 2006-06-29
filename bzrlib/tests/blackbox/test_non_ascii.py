@@ -494,4 +494,19 @@ class TestNonAscii(TestCaseInTempDir):
         txt = bzr('unknowns')
         self.assertEqual('', txt)
 
+    def test_missing(self):
+        bzr = self.run_bzr_decode
 
+        # create empty tree as reference for missing
+        self.run_bzr('init', 'empty-tree')
+
+        msg = self.info['message']
+
+        txt = bzr('missing', 'empty-tree', retcode=1)
+        self.assertNotEqual(-1, txt.find(self.info['committer']))
+        self.assertNotEqual(-1, txt.find(msg))
+
+        # Make sure missing doesn't fail even if we can't write out
+        txt = bzr('missing', 'empty-tree', encoding='ascii', retcode=1)
+        self.assertEqual(-1, txt.find(msg))
+        self.assertNotEqual(-1, txt.find(msg.encode('ascii', 'replace')))
