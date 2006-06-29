@@ -126,8 +126,10 @@ class SvnRepository(Repository):
 
         mutter("Connected to repository , UUID %s" % self.uuid)
 
+        self._latest_revnum = svn.ra.get_latest_revnum(self.ra)
+
         self._log = logwalker.LogWalker(self.scheme, self.ra, self.uuid, 
-                svn.ra.get_latest_revnum(self.ra))
+                self._latest_revnum)
 
     def _check(self, revision_ids):
         return BranchCheckResult(self)
@@ -247,7 +249,8 @@ class SvnRepository(Repository):
 
         assert continue_revnum is None
 
-        assert introduced_revision_id != None
+        if not introduced_revision_id:
+            raise NoSuchFile(path=filename)
 
         if not self.fileid_map.has_key(last_changed_revid):
             self.fileid_map[last_changed_revid] = {}
@@ -506,11 +509,9 @@ class SvnRepository(Repository):
         mutter("svn ls -r %d '%r'" % (revnum, path))
 
         try:
-            (dirents, _, props) = svn.ra.get_dir2(
+            (dirents, _, props) = svn.ra.get_dir(
                 self.ra, path.encode('utf8'), 
-                revnum, svn.core.SVN_DIRENT_KIND
-                + svn.core.SVN_DIRENT_CREATED_REV
-                + svn.core.SVN_DIRENT_HAS_PROPS, self.pool)
+                revnum, self.pool)
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
                 raise NoSuchRevision(self, revnum)

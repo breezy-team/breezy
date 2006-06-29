@@ -87,7 +87,6 @@ class LogWalker(object):
                     'message': message
                     }
 
-        mutter('log -r %r:%r /' % (self.saved_revnum, to_revnum))
         self.last_revnum = to_revnum
         svn.ra.get_log(self.ra, ["/"], self.saved_revnum, to_revnum, 0, True, True, rcvr)
         pb.clear()
@@ -109,6 +108,8 @@ class LogWalker(object):
             yield (branch, paths, rev)
 
     def get_branch_log(self, branch_path, from_revnum, to_revnum=0, limit=0):
+        """Return iterator over all the revisions between from_revnum and 
+        to_revnum that touch branch_path."""
         assert from_revnum >= to_revnum
 
         if not branch_path is None and not self.scheme.is_branch(branch_path):
@@ -145,9 +146,11 @@ class LogWalker(object):
             rev = self.revisions[i]
             changed_paths = {}
             for p in rev['paths']:
+                mutter('eval: %r, %r' % (branch_path, p))
                 if (branch_path is None or 
-                    p.startswith(branch_path) or 
-                    p[1:].startswith(branch_path)):
+                    p == branch_path or
+                    branch_path == "" or
+                    p.startswith(branch_path+"/")):
 
                     try:
                         (bp, rp) = self.scheme.unprefix(p)

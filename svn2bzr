@@ -224,7 +224,7 @@ class BranchCreator(object):
         # Got it? :-)
         #
         dest_branch, dest_path_branch = self._get_branch_path(dest_path)
-        (dirents, _, _) = svn.ra.get_dir2(self._ra, orig_path.encode('utf8'), orig_revno, 0)
+        (dirents, _, _) = svn.ra.get_dir(self._ra, orig_path.encode('utf8'), orig_revno)
         changed = False
         for name in dirents:
             path = "%s/%s" % (orig_path, name)
@@ -442,7 +442,7 @@ class BranchCreator(object):
                     stream.seek(0)
                     content = stream.read()
                 elif node_kind == svn.core.svn_node_dir:
-                    (_, _, props) = svn.ra.get_dir2(self._ra, node_path.encode('utf8'), revno, 0)
+                    (_, _, props) = svn.ra.get_dir(self._ra, node_path.encode('utf8'), revno)
                     content = None
                 elif node_kind == svn.core.svn_node_none:
                     content = None

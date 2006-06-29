@@ -42,7 +42,7 @@ class InterSvnRepository(InterRepository):
 
         if revision_id is None:
             path = ""
-            until_revnum = svn.ra.get_latest_revnum(self.source.ra)
+            until_revnum = self.source._latest_revnum
         else:
             (path, until_revnum) = self.source.parse_revision_id(revision_id)
         

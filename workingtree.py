@@ -16,6 +16,7 @@
 
 from binascii import hexlify
 from bzrlib.bzrdir import BzrDirFormat
+from bzrlib.delta import compare_trees
 from bzrlib.errors import NotBranchError, NoSuchFile
 from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile, 
                               ROOT_ID)
@@ -100,6 +101,9 @@ class SvnWorkingTree(WorkingTree):
         svn.wc.adm_close(wc)
 
         return ignores
+
+    def _write_inventory(self, inv):
+        pass
 
     def is_ignored(self, filename):
         if svn.wc.is_adm_dir(os.path.basename(filename)):

@@ -1,9 +1,8 @@
-- svn2bzr: use commitbuilder so there's no need for workingtrees? 
-  Use more mapping functions.
-- use svn.ra.checkout() rather than individial get_file() and get_dir() 
-  calls
+- rewrite svn2bzr
 - bug 44312
 - more tests
+- improve performance
+ - use svn.ra.checkout() rather than individial get_file() and get_dir() calls
 - support for 'svn:ignore' -> maps to .bzrignore. Generated from the 'svn:ignore' properties on each directory, sorted alphabetically.
 - support pushing to SVN branches. Push as merged.
 - support creating working trees

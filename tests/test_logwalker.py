@@ -69,6 +69,23 @@ class TestLogWalker(TestCaseWithSubversionRepository):
 
         self.assertEqual(1, len(list(walker.get_branch_log(None, 1, 0))))
 
+    def test_branch_log_specific(self):
+        repos_url = self.make_client("a", "dc")
+        self.build_tree({
+            'dc/branches': None,
+            'dc/branches/brancha': None,
+            'dc/branches/branchab': None,
+            'dc/branches/brancha/data': "data", 
+            "dc/branches/branchab/data":"data"})
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+
+        walker = logwalker.LogWalker(TrunkBranchingScheme(), 
+                                     repos_url=repos_url)
+
+        self.assertEqual(1, len(list(walker.get_branch_log("branches/brancha",
+            1, 0))))
+
     def test_follow_history(self):
         repos_url = self.make_client("a", "dc")
         walker = logwalker.LogWalker(NoBranchingScheme(), repos_url=repos_url)

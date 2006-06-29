@@ -59,7 +59,7 @@ class SvnBranch(Branch):
         self.base = "%s/%s" % (repos.url.rstrip("/"), branch_path.lstrip("/"))
         self._format = SvnBranchFormat()
         mutter("Connected to branch at %s" % self.branch_path)
-        self._generate_revision_history()
+        self._generate_revision_history(self.repository._latest_revnum)
 
     def check(self):
         """See Branch.Check.
@@ -68,17 +68,14 @@ class SvnBranch(Branch):
         """
         return BranchCheckResult(self)
         
-    def _generate_revision_history(self):
+    def _generate_revision_history(self, last_revnum):
         self._revision_history = []
         for (branch, _, rev) in self.repository._log.follow_history(
-                self.branch_path, svn.ra.get_latest_revnum(self.repository.ra)):
+                self.branch_path, last_revnum):
             self._revision_history.append(
                     self.repository.generate_revision_id(rev, branch))
         self._revision_history.reverse()
 
-    def set_root_id(self, file_id):
-        raise NotImplementedError(self.set_root_id)
-            
     def get_root_id(self):
         inv = self.repository.get_inventory(self.last_revision())
         return inv.root.file_id
@@ -93,9 +90,6 @@ class SvnBranch(Branch):
 
     def abspath(self, name):
         return self.base+"/"+name
-
-    def push_stores(self, branch_to):
-        raise NotImplementedError(self.push_stores)
 
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)
@@ -117,9 +111,6 @@ class SvnBranch(Branch):
     def update_revisions(self, other, stop_revision=None):
         raise NotImplementedError(self.update_revisions)
 
-    def pullable_revisions(self, other, stop_revision):
-        raise NotImplementedError(self.pullable_revisions)
-        
     # The remote server handles all this for us
     def lock_write(self):
         pass

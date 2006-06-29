@@ -135,7 +135,10 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         """
         for f in files:
             if files[f] is None:
-                os.mkdir(f)
+                try:
+                    os.makedirs(f)
+                except OSError:
+                    pass
             else:
                 try:
                     os.makedirs(os.path.dirname(f))
