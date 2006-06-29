@@ -58,7 +58,7 @@ class TestRemerge(ExternalBase):
         self.assertTrue('|||||||' in conflict_text)
         self.assertTrue('hi world' in conflict_text)
 
-        self.run_bzr('remerge', retcode=1)
+        self.run_bzr_error(['conflicts encountered'], 'remerge', retcode=1)
         conflict_text = open('hello').read()
         self.assertFalse('|||||||' in conflict_text)
         self.assertFalse('hi world' in conflict_text)
@@ -66,16 +66,21 @@ class TestRemerge(ExternalBase):
         os.unlink('hello.OTHER')
         os.unlink('question.OTHER')
 
-        self.run_bzr('remerge', 'jello', '--merge-type', 'weave', retcode=3)
-        self.run_bzr('remerge', 'hello', '--merge-type', 'weave', retcode=1)
+        self.run_bzr_error(['jello is not versioned'],
+                     'remerge', 'jello', '--merge-type', 'weave')
+        self.run_bzr_error(['conflicts encountered'],
+                           'remerge', 'hello', '--merge-type', 'weave',
+                           retcode=1)
 
         self.failUnlessExists('hello.OTHER')
         self.failIfExists('question.OTHER')
 
         file_id = self.run_bzr('file-id', 'hello')[0]
-        self.run_bzr('file-id', 'hello.THIS', retcode=3)
+        self.run_bzr_error(['\'hello.THIS\' is not a versioned file'],
+                           'file-id', 'hello.THIS')
 
-        self.run_bzr('remerge', '--merge-type', 'weave', retcode=1)
+        self.run_bzr_error(['conflicts encountered'],
+                           'remerge', '--merge-type', 'weave', retcode=1)
 
         self.failUnlessExists('hello.OTHER')
         self.failIfExists('hello.BASE')
@@ -83,11 +88,9 @@ class TestRemerge(ExternalBase):
         self.assertFalse('hi world' in conflict_text)
 
         self.run_bzr_error(['Showing base is not supported.*Weave'],
-                           'remerge', '.', '--merge-type', 'weave', '--show-base',
-                           retcode=3)
+                           'remerge', '.', '--merge-type', 'weave', '--show-base')
         self.run_bzr_error(['Can\'t reprocess and show base'],
-                           'remerge', '.', '--show-base', '--reprocess',
-                           retcode=3)
+                           'remerge', '.', '--show-base', '--reprocess')
         self.run_bzr_error(['conflicts encountered'],
                            'remerge', '.', '--merge-type', 'weave', '--reprocess',
                            retcode=1)
@@ -102,5 +105,4 @@ class TestRemerge(ExternalBase):
 
         self.run_bzr_error(['remerge only works after normal merges',
                             'Not cherrypicking or multi-merges'],
-                           'remerge',
-                           retcode=3)
+                           'remerge')
