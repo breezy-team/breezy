@@ -288,5 +288,8 @@ def set_executability(wt, path, executable=True):
     """
     file_id = wt.path2id(path)
     tt = TreeTransform(wt)
-    tt.set_executability(True, tt.trans_id_tree_file_id(file_id))
-    tt.apply()
+    try:
+        tt.set_executability(True, tt.trans_id_tree_file_id(file_id))
+        tt.apply()
+    finally:
+        tt.finalize()
