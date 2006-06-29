@@ -262,7 +262,14 @@ class _MyResult(unittest._TextTestResult):
         self.stream.flush()
         # seems best to treat this as success from point-of-view of unittest
         # -- it actually does nothing so it barely matters :)
-        unittest.TestResult.addSuccess(self, test)
+        try:
+            test.tearDown()
+        except KeyboardInterrupt:
+            raise
+        except:
+            self.addError(test, test.__exc_info())
+        else:
+            unittest.TestResult.addSuccess(self, test)
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
