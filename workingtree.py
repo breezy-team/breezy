@@ -28,6 +28,7 @@ from bzrlib.trace import mutter
 from bzrlib.tree import EmptyTree
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
+from branch import SvnBranch
 from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
 from transport import SvnRaTransport, svn_config
@@ -49,9 +50,11 @@ class SvnWorkingTree(WorkingTree):
         self.base_revnum = 0
 
         self._set_inventory(self.read_working_inventory())
+        mutter('working inv: %r' % self.read_working_inventory().entries())
 
         self.base_revid = branch.repository.generate_revision_id(
                     self.base_revnum, branch.branch_path)
+        mutter('basis inv: %r' % self.basis_tree().inventory.entries())
         try:
             os.makedirs(os.path.join(self.basedir, svn.wc.get_adm_dir(), 'bzr'))
         except OSError:
@@ -76,7 +79,7 @@ class SvnWorkingTree(WorkingTree):
             for pat in svn.wc.get_ignores(svn_config, wc):
                 ignores.append(os.path.join(prefix, pat))
 
-            entries = svn.wc.entries_read(wc, True)
+            entries = svn.wc.entries_read(wc, False)
             for entry in entries:
                 if entry == "":
                     continue
@@ -172,24 +175,44 @@ class SvnWorkingTree(WorkingTree):
                 # Ignore non-existing files
                 pass
 
+        def find_copies(url, relpath=""):
+            wc = self._get_wc(relpath)
+            entries = svn.wc.entries_read(wc, False)
+            for entry in entries.values():
+                subrelpath = os.path.join(relpath, entry.name)
+                if entry.name == "" or entry.kind != 'directory':
+                    if ((entry.copyfrom_url == url or entry.url == url) and 
+                        not (entry.schedule in (svn.wc.schedule_delete,
+                                                svn.wc.schedule_replace))):
+                        yield os.path.join(self.branch.branch_path.strip("/"), subrelpath)
+                else:
+                    find_copies(subrelpath)
+            svn.wc.adm_close(wc)
+
         def find_ids(entry):
+            relpath = entry.url[len(entry.repos):].strip("/")
             if entry.schedule == svn.wc.schedule_normal:
                 assert entry.revision >= 0
                 # Keep old id
+                mutter('stay: %r' % relpath)
                 return self.branch.repository.path_to_file_id(entry.revision, 
-                        entry.url[len(entry.repos):])
+                        relpath)
             elif entry.schedule == svn.wc.schedule_delete:
                 return (None, None)
             elif (entry.schedule == svn.wc.schedule_add or 
                   entry.schedule == svn.wc.schedule_replace):
-                # TODO: See if the file this file was copied from disappeared
+                # See if the file this file was copied from disappeared
                 # and has no other copies -> in that case, take id of other file
-                return (entry.url.split("/")[-1], None)
+                mutter('copies(%r): %r' % (relpath, list(find_copies(entry.copyfrom_url))))
+                if entry.copyfrom_url and list(find_copies(entry.copyfrom_url)) == [relpath]:
+                    return self.branch.repository.path_to_file_id(entry.copyfrom_rev,
+                        entry.copyfrom_url[len(entry.repos):])
+                return ("NEW-" + entry.url[len(entry.repos):].strip("/").replace("/", "@"), None)
             else:
                 assert 0
 
         def add_dir_to_inv(relpath, wc, parent_id):
-            entries = svn.wc.entries_read(wc, True)
+            entries = svn.wc.entries_read(wc, False)
 
             entry = entries[""]
             
@@ -339,6 +362,8 @@ class OptimizedRepository(SvnRepository):
         # return working_tree.basis_tree() 
         return super(OptimizedRepository, self).revision_tree(revision_id)
 
+class OptimizedBranch(SvnBranch):
+    """Wrapper around SvnBranch that uses some files from local disk."""
 
 class SvnLocalAccess(SvnRemoteAccess):
     def __init__(self, transport, format):
@@ -364,6 +389,20 @@ class SvnLocalAccess(SvnRemoteAccess):
         repos = OptimizedRepository(self, self.root_transport)
         repos._format = self._format
         return repos
+
+    def open_branch(self, _unsupported=True):
+        """See BzrDir.open_branch()."""
+        repos = self.open_repository()
+
+        try:
+            branch = OptimizedBranch(repos, self.branch_path)
+        except SubversionException, (msg, num):
+            if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
+                raise NotBranchError(path=self.url)
+            raise
+
+        branch.bzrdir = self
+        return branch
 
     def clone(self, path):
         raise NotImplementedError(self.clone)

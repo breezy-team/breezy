@@ -146,10 +146,7 @@ class SvnRepository(Repository):
             for child_name in dirents:
                 dirent = dirents[child_name]
 
-                if path:
-                    child_path = "%s/%s" % (path, child_name)
-                else:
-                    child_path = child_name
+                child_path = os.path.join(path, child_name)
 
                 (child_id, revid) = self.path_to_file_id(dirent.created_rev, 
                     child_path)
@@ -200,11 +197,15 @@ class SvnRepository(Repository):
         if self.path_map.has_key(revnum) and self.path_map[revnum].has_key(path):
             return self.path_map[revnum][path]
 
+        mutter('creating file id for %r:%d' % (path, revnum))
+
         (path_branch, filename) = self.scheme.unprefix(path)
 
         if filename == "":
             return (ROOT_ID, self.generate_revision_id(revnum, path_branch))
 
+        introduced_revision_id = None
+        last_changed_revid = None
         continue_revnum = None
         for (branch, paths, rev) in self._log.follow_history(path_branch, 
                                                              revnum):
@@ -214,13 +215,16 @@ class SvnRepository(Repository):
             continue_revnum = None
 
             expected_path = ("%s/%s" % (branch, filename)).strip("/")
-            mutter('expected path: %s' % expected_path)
+            mutter('expected path: %r in %r' % (expected_path, paths))
             if not expected_path in paths:
-                # File didn't exist yet in this revision
-                path_branch = branch
-                revnum = rev
-                break
+                # File didn't change in this revision
+                continue
+
+            if last_changed_revid is None:
+                last_changed_revid = self.generate_revision_id(revnum, branch)
             
+            introduced_revision_id = self.generate_revision_id(rev, branch)
+
             # File is being copied from somewhere else
             if paths[expected_path][1]:
                 copyfrom_path = paths[expected_path][1]
@@ -230,16 +234,12 @@ class SvnRepository(Repository):
                 # individual non-root dir/file copied from somewhere in 
                 # another branch, don't track a rename
                 if bp != branch:
-                    path_branch = branch
-                    revnum = rev
                     break
 
                 # check if there is other offspring of that location
                 offspring = self._log.get_offspring(copyfrom_path, copyfrom_rev, rev)
                 # FIXME: Filter out files from offspring that are not in this branch.
                 if list(offspring) != [path]:
-                    path_branch = branch
-                    revnum = rev
                     break
 
                 filename = rp
@@ -247,21 +247,20 @@ class SvnRepository(Repository):
 
         assert continue_revnum is None
 
-        revision_id = self.generate_revision_id(revnum, path_branch)
+        assert introduced_revision_id != None
 
-        if not self.fileid_map.has_key(revision_id):
-            self.fileid_map[revision_id] = {}
+        if not self.fileid_map.has_key(last_changed_revid):
+            self.fileid_map[last_changed_revid] = {}
 
         if not self.path_map.has_key(revnum):
             self.path_map[revnum] = {}
 
-        file_id = filename.replace("/", "@")
-        
+        file_id = "%s-%s" % (introduced_revision_id, filename.replace("/", "@"))
         assert file_id != None
 
-        self.path_map[revnum][path] = (file_id, revision_id)
-        self.fileid_map[revision_id][file_id] = (path, revnum)
-        return (file_id, revision_id)
+        self.path_map[revnum][path] = (file_id, last_changed_revid)
+        self.fileid_map[last_changed_revid][file_id] = (path, revnum)
+        return (file_id, last_changed_revid)
 
     def all_revision_ids(self):
         raise NotImplementedError(self.all_revision_ids)
@@ -310,6 +309,10 @@ class SvnRepository(Repository):
             raise
 
         return (kind != svn.core.svn_node_none)
+
+    def revision_trees(self, revids):
+        for revid in revids:
+            yield self.revision_tree(revid)
 
     def revision_tree(self, revision_id):
         if revision_id is None or revision_id == NULL_REVISION:

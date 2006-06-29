@@ -21,6 +21,7 @@ from bzrlib.errors import (NotBranchError, NoWorkingTree, NoSuchRevision,
 from bzrlib.inventory import (Inventory, InventoryFile, InventoryDirectory, 
                               ROOT_ID)
 from bzrlib.revision import Revision, NULL_REVISION
+from bzrlib.symbol_versioning import deprecated_function, zero_nine
 from bzrlib.tree import Tree, EmptyTree
 from bzrlib.trace import mutter, note
 from bzrlib.workingtree import WorkingTree
@@ -168,6 +169,13 @@ class SvnBranch(Branch):
         return '%s(%r)' % (self.__class__.__name__, self.base)
 
     __repr__ = __str__
+
+    @deprecated_function(zero_nine)
+    def tree_config(self):
+        """DEPRECATED; call get_config instead.  
+        TreeConfig has become part of BranchConfig."""
+        return TreeConfig(self)
+
 
 class SvnBranchFormat(BranchFormat):
     """ Branch format for Subversion Branches."""

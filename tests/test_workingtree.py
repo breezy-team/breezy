@@ -19,6 +19,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.delta import compare_trees
 from bzrlib.errors import NoSuchRevision, NoSuchFile
 from bzrlib.inventory import Inventory, ROOT_ID
+from bzrlib.trace import mutter
 from bzrlib.tree import EmptyTree
 from bzrlib.workingtree import WorkingTree
 
@@ -109,8 +110,8 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv.has_filename("bloe"))
         self.assertEqual(basis_inv.path2id("bl"), 
                          inv.path2id("bloe"))
-        self.assertIs(None, inv.has_filename("bl"))
-        self.assertIs(None, basis_inv.has_filename("bloe"))
+        self.assertIs(None, inv.path2id("bl"))
+        self.assertIs(None, basis_inv.path2id("bloe"))
 
     def test_empty_basis_tree(self):
         self.make_client_and_bzrdir('a', 'dc')
@@ -142,6 +143,8 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertFalse(inv.has_filename("a"))
         self.assertTrue(inv.has_filename("dir/bl"))
         self.assertTrue(inv.has_filename("dir/a"))
+        mutter('basis: %r' % basis_inv.entries())
+        mutter('working: %r' % inv.entries())
         self.assertEqual(basis_inv.path2id("bl"), 
                          inv.path2id("dir/bl"))
         self.assertEqual(basis_inv.path2id("a"), 
