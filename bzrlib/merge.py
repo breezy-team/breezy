@@ -693,7 +693,7 @@ class Merge3Merger(object):
         if winner == "conflict":
         # There must be a None in here, if we have a conflict, but we
         # need executability since file status was not deleted.
-            if self.other_tree.is_executable(file_id) is None:
+            if self.executable(self.other_tree, file_id) is None:
                 winner = "this"
             else:
                 winner = "other"
