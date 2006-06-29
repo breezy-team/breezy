@@ -394,10 +394,7 @@ class Merge3Merger(object):
             except UnsupportedOperation:
                 pass
         finally:
-            try:
-                self.tt.finalize()
-            except:
-                pass
+            self.tt.finalize()
             working_tree.unlock()
             self.pb.clear()
 
