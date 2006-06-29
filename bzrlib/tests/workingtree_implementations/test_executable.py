@@ -24,128 +24,151 @@ from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
 class TestExecutable(TestCaseWithWorkingTree):
 
-    def test_stays_executable(self):
-        a_id = "a-20051208024829-849e76f7968d7a86"
-        b_id = "b-20051208024829-849e76f7968d7a86"
+    def setUp(self):
+        super(TestExecutable, self).setUp()
+
+        self.a_id = "a-20051208024829-849e76f7968d7a86"
+        self.b_id = "b-20051208024829-849e76f7968d7a86"
         wt = self.make_branch_and_tree('b1')
         b = wt.branch
         tt = TreeTransform(wt)
-        tt.new_file('a', tt.root, 'a test\n', a_id, True)
-        tt.new_file('b', tt.root, 'b test\n', b_id, False)
+        tt.new_file('a', tt.root, 'a test\n', self.a_id, True)
+        tt.new_file('b', tt.root, 'b test\n', self.b_id, False)
         tt.apply()
 
-        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
+        self.wt = wt
 
-        # reopen the tree and ensure it stuck.
-        wt = wt.bzrdir.open_workingtree()
-        self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
+    def check_exist(self, tree):
+        """Just check that both files have the right executable bits set"""
+        measured = [(cn,ie.executable) 
+                    for cn,ie in tree.inventory.iter_entries()]
+        self.assertEqual([('a', True), ('b', False)], measured)
+        self.failUnless(tree.is_executable(self.a_id),
+                        "'a' lost the execute bit")
+        self.failIf(tree.is_executable(self.b_id),
+                    "'b' gained an execute bit")
 
-        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(wt.is_executable(b_id), "'b' gained an execute bit")
+    def check_empty(self, tree, ignore_inv=False):
+        """Check that the files are truly missing
+        :param ignore_inv: If you just delete files from a working tree
+                the inventory still shows them, so don't assert that
+                the inventory is empty, just that the tree doesn't have them
+        """
+        if not ignore_inv:
+            self.assertEqual([], list(tree.inventory.iter_entries()))
+        self.failIf(tree.has_id(self.a_id))
+        self.failIf(tree.has_filename('a'))
+        self.failIf(tree.has_id(self.b_id))
+        self.failIf(tree.has_filename('b'))
 
-        wt.commit('adding a,b', rev_id='r1')
+    def commit_and_branch(self):
+        """Commit the current tree, and create a second tree"""
+        self.wt.commit('adding a,b', rev_id='r1')
 
-        rev_tree = b.repository.revision_tree('r1')
-        self.failUnless(rev_tree.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(rev_tree.is_executable(b_id), "'b' gained an execute bit")
+        # Now make sure that 'bzr branch' also preserves the
+        # executable bit
+        # TODO: Maybe this should be a blackbox test
+        dir2 = self.wt.branch.bzrdir.clone('b2', revision_id='r1')
+        wt2 = dir2.open_workingtree()
+        self.assertEqual('r1', wt2.last_revision())
+        self.assertEqual('r1', wt2.branch.last_revision())
+        return wt2
 
-        self.failUnless(rev_tree.inventory[a_id].executable)
-        self.failIf(rev_tree.inventory[b_id].executable)
+    def test_01_is_executable(self):
+        """Make sure that the tree was created and has the executable bit set"""
+        self.check_exist(self.wt)
+
+    def test_02_stays_executable(self):
+        """reopen the tree and ensure it stuck."""
+        self.wt = self.wt.bzrdir.open_workingtree()
+        self.check_exist(self.wt)
+
+    def test_03_after_commit(self):
+        """Commit the change, and check the history"""
+        self.wt.commit('adding a,b', rev_id='r1')
+
+        rev_tree = self.wt.branch.repository.revision_tree('r1')
+        self.check_exist(rev_tree)
+
+    def test_04_after_removed(self):
+        """Make sure reverting removed files brings them back correctly"""
+        self.wt.commit('adding a,b', rev_id='r1')
 
         # Make sure the entries are gone
         os.remove('b1/a')
         os.remove('b1/b')
-        self.failIf(wt.has_id(a_id))
-        self.failIf(wt.has_filename('a'))
-        self.failIf(wt.has_id(b_id))
-        self.failIf(wt.has_filename('b'))
+        self.check_empty(self.wt, ignore_inv=True)
 
         # Make sure that revert is able to bring them back,
         # and sets 'a' back to being executable
 
-        wt.revert(['a', 'b'], rev_tree, backups=False)
-        self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
+        rev_tree = self.wt.branch.repository.revision_tree('r1')
 
-        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(wt.is_executable(b_id), "'b' gained an execute bit")
+        self.wt.revert(['a', 'b'], rev_tree, backups=False)
+        self.check_exist(self.wt)
+
+    def test_05_removed_and_committed(self):
+        """Check that reverting to an earlier commit restores them"""
+        self.wt.commit('adding a,b', rev_id='r1')
 
         # Now remove them again, and make sure that after a
         # commit, they are still marked correctly
         os.remove('b1/a')
         os.remove('b1/b')
-        wt.commit('removed', rev_id='r2')
+        self.wt.commit('removed', rev_id='r2')
 
-        self.assertEqual([], [cn for cn,ie in wt.inventory.iter_entries()])
-        self.failIf(wt.has_id(a_id))
-        self.failIf(wt.has_filename('a'))
-        self.failIf(wt.has_id(b_id))
-        self.failIf(wt.has_filename('b'))
+        self.check_empty(self.wt)
 
+        rev_tree = self.wt.branch.repository.revision_tree('r1')
         # Now revert back to the previous commit
-        wt.revert([], rev_tree, backups=False)
-        self.assertEqual(['a', 'b'], [cn for cn,ie in wt.inventory.iter_entries()])
+        self.wt.revert([], rev_tree, backups=False)
 
-        self.failUnless(wt.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(wt.is_executable(b_id), "'b' gained an execute bit")
+        self.check_exist(self.wt)
 
-        # Now make sure that 'bzr branch' also preserves the
-        # executable bit
+    def test_06_branch(self):
+        """branch b1=>b2 should preserve the executable bits"""
         # TODO: Maybe this should be a blackbox test
-        d2 = b.bzrdir.clone('b2', revision_id='r1')
-        t2 = d2.open_workingtree()
-        b2 = t2.branch
-        self.assertEquals('r1', b2.last_revision())
+        wt2 = self.commit_and_branch()
 
-        self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
-        self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
+        self.check_exist(wt2)
+
+    def test_07_pull(self):
+        """Test that pull will handle bits correctly"""
+        wt2 = self.commit_and_branch()
+
+        os.remove('b1/a')
+        os.remove('b1/b')
+        self.wt.commit('removed', rev_id='r2')
+
+        # now wt2 can pull and the files should be removed
 
         # Make sure pull will delete the files
-        t2.pull(b)
-        self.assertEquals('r2', b2.last_revision())
-        self.assertEqual([], [cn for cn,ie in t2.inventory.iter_entries()])
+        wt2.pull(self.wt.branch)
+        self.assertEquals('r2', wt2.last_revision())
+        self.assertEquals('r2', wt2.branch.last_revision())
+        self.check_empty(wt2)
 
-        # Now commit the changes on the first branch
+        # Now restore the files on the first branch and commit
         # so that the second branch can pull the changes
         # and make sure that the executable bit has been copied
-        wt.commit('resurrected', rev_id='r3')
+        rev_tree = self.wt.branch.repository.revision_tree('r1')
+        self.wt.revert([], rev_tree, backups=False)
+        self.wt.commit('resurrected', rev_id='r3')
 
-        t2.pull(b)
-        self.assertEquals('r3', b2.last_revision())
-        self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
+        self.check_exist(self.wt)
 
-        self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
+        wt2.pull(self.wt.branch)
+        self.assertEquals('r3', wt2.last_revision())
+        self.assertEquals('r3', wt2.branch.last_revision())
+        self.check_exist(wt2)
 
-        # Just do a simple revert without anything changed, and 
-        # make sure the bits don't swap.
-        t2.revert([], t2.branch.repository.revision_tree('r3'), backups=False)
-        self.assertEqual(['a', 'b'], [cn for cn,ie in t2.inventory.iter_entries()])
+    def test_08_no_op_revert(self):
+        """Just do a simple revert without anything changed
+        
+        The bits shouldn't swap.
+        """
+        self.wt.commit('adding a,b', rev_id='r1')
+        rev_tree = self.wt.branch.repository.revision_tree('r1')
+        self.wt.revert([], rev_tree, backups=False)
+        self.check_exist(self.wt)
 
-        self.failUnless(t2.is_executable(a_id), "'a' lost the execute bit")
-        self.failIf(t2.is_executable(b_id), "'b' gained an execute bit")
-
-    def test_executable(self):
-        """Format 3 trees should keep executable=yes in the working inventory."""
-        wt = self.make_branch_and_tree('.')
-        tt = TreeTransform(wt)
-        tt.new_file('a', tt.root, 'contents of a\n', 'a-xxyy', True)
-        tt.new_file('b', tt.root, 'contents of b\n', 'b-xxyy', False)
-        tt.apply()
-
-        tree_values = [(cn, ie.executable) 
-                       for cn,ie in wt.inventory.iter_entries()]
-        self.assertEqual([('a', True), ('b', False)], tree_values)
-
-        # Committing shouldn't remove it
-        wt.commit('first rev')
-        tree_values = [(cn, ie.executable) 
-                       for cn,ie in wt.inventory.iter_entries()]
-        self.assertEqual([('a', True), ('b', False)], tree_values)
-
-        # And neither should reverting
-        last_tree = wt.branch.repository.revision_tree(wt.last_revision())
-        wt.revert([], last_tree, backups=False)
-        tree_values = [(cn, ie.executable) 
-                       for cn,ie in wt.inventory.iter_entries()]
-        self.assertEqual([('a', True), ('b', False)], tree_values)
