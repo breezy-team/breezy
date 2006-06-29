@@ -2178,8 +2178,8 @@ class cmd_remerge(Command):
             pending_merges = tree.pending_merges() 
             if len(pending_merges) != 1:
                 raise BzrCommandError("Sorry, remerge only works after normal"
-                                      + " merges.  Not cherrypicking or"
-                                      + "multi-merges.")
+                                      " merges.  Not cherrypicking or"
+                                      " multi-merges.")
             repository = tree.branch.repository
             base_revision = common_ancestor(tree.branch.last_revision(), 
                                             pending_merges[0], repository)
