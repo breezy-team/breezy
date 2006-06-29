@@ -34,12 +34,12 @@ class SvnRemoteAccess(BzrDir):
         assert isinstance(_transport, SvnRaTransport)
 
         self._format = _format
-        self.root_transport = _transport.get_root()
-        self.transport = _transport
+        self.svn_root_transport = _transport.get_root()
+        self.root_transport = self.transport = _transport
         self.url = _transport.base
 
-        assert self.transport.base.startswith(self.root_transport.base)
-        self.branch_path = self.transport.base[len(self.root_transport.base):]
+        assert self.transport.base.startswith(self.svn_root_transport.base)
+        self.branch_path = self.transport.base[len(self.svn_root_transport.base):]
 
         self.scheme = BranchingScheme.guess_scheme(self.branch_path)
 
@@ -60,7 +60,7 @@ class SvnRemoteAccess(BzrDir):
         return result
 
     def open_repository(self):
-        repos = SvnRepository(self, self.root_transport)
+        repos = SvnRepository(self, self.svn_root_transport)
         repos._format = self._format
         return repos
 

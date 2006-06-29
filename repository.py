@@ -125,7 +125,7 @@ class SvnRepository(Repository):
         assert self.url
         assert self.uuid
 
-        mutter("Connected to repository , UUID %s" % self.uuid)
+        mutter("Connected to repository with UUID %s" % self.uuid)
 
         self._latest_revnum = svn.ra.get_latest_revnum(self.ra)
 
@@ -218,7 +218,6 @@ class SvnRepository(Repository):
             continue_revnum = None
 
             expected_path = ("%s/%s" % (branch, filename)).strip("/")
-            mutter('expected path: %r in %r' % (expected_path, paths))
             if not expected_path in paths:
                 # File didn't change in this revision
                 continue
@@ -318,11 +317,11 @@ class SvnRepository(Repository):
         for revid in revids:
             yield self.revision_tree(revid)
 
-    def revision_tree(self, revision_id):
+    def revision_tree(self, revision_id, inventory=None):
         if revision_id is None or revision_id == NULL_REVISION:
             return EmptyTree()
         else:
-            return SvnRevisionTree(self, revision_id)
+            return SvnRevisionTree(self, revision_id, inventory)
 
     def revision_parents(self, revision_id):
         (path, revnum) = self.parse_revision_id(revision_id)
@@ -345,7 +344,6 @@ class SvnRepository(Repository):
         if not revision_id or not isinstance(revision_id, basestring):
             raise InvalidRevisionId(revision_id=revision_id, branch=self)
 
-        mutter("retrieving %s" % revision_id)
         (path, revnum) = self.parse_revision_id(revision_id)
         
         mutter('svn proplist -r %r' % revnum)

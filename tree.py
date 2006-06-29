@@ -30,10 +30,13 @@ import svn.core, svn.wc
 from svn.core import SubversionException
 
 class SvnRevisionTree(RevisionTree):
-    def __init__(self, repository, revision_id):
+    def __init__(self, repository, revision_id, inventory=None):
         self._repository = repository
         self._revision_id = revision_id
-        self._inventory = repository.get_inventory(revision_id)
+        if inventory:
+            self._inventory = inventory
+        else:
+            self._inventory = repository.get_inventory(revision_id)
         (self._branch_path, self._revnum) = repository.parse_revision_id(revision_id)
         # FIXME: Use checkout
 

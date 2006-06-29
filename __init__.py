@@ -25,7 +25,7 @@ import branch
 import dumpfile
 import format
 import transport
-import workingtree
+import checkout
 
 from bzrlib.transport import register_transport
 register_transport('svn:', transport.SvnRaTransport)
@@ -39,7 +39,7 @@ from fetch import InterSvnRepository
 
 BzrDirFormat.register_control_format(format.SvnFormat)
 
-BzrDirFormat.register_control_format(workingtree.SvnWorkingTreeDirFormat)
+BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
 
 BzrDirFormat.register_control_format(dumpfile.SvnDumpFileFormat)
 

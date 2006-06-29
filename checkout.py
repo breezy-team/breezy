@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from binascii import hexlify
-from bzrlib.bzrdir import BzrDirFormat
+from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.delta import compare_trees
 from bzrlib.errors import NotBranchError, NoSuchFile
 from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile, 
@@ -30,8 +30,8 @@ from bzrlib.tree import EmptyTree
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
-from format import SvnRemoteAccess, SvnFormat
 from repository import SvnRepository
+from scheme import BranchingScheme
 from transport import SvnRaTransport, svn_config
 from tree import SvnBasisTree
 
@@ -359,67 +359,73 @@ class SvnWorkingTreeFormat(WorkingTreeFormat):
         raise NotImplementedError(self.initialize)
 
 
-class OptimizedRepository(SvnRepository):
-    """Wrapper around SvnRepository that uses some files from local disk."""
-    def revision_tree(self, revision_id):
-        # TODO: if revision id matches base revno, 
-        # return working_tree.basis_tree() 
-        return super(OptimizedRepository, self).revision_tree(revision_id)
-
-class OptimizedBranch(SvnBranch):
-    """Wrapper around SvnBranch that uses some files from local disk."""
-
-class SvnLocalAccess(SvnRemoteAccess):
+class SvnCheckout(BzrDir):
     def __init__(self, transport, format):
-        self.local_path = transport.base.rstrip("/")
-        if self.local_path.startswith("file://"):
-            self.local_path = self.local_path[len("file://"):]
+        super(SvnCheckout, self).__init__(transport, format)
+        self.local_path = transport.local_abspath(".")
         
         wc = svn.wc.adm_open3(None, self.local_path, True, 0, None)
 
         # Open related remote repository + branch
-        url, revno = svn.wc.get_ancestry(self.local_path, wc)
+        url = svn.wc.entry(self.local_path, wc, True).url
         if not url.startswith("svn"):
             url = "svn+" + url
 
-        remote_transport = SvnRaTransport(url)
+        self.remote_transport = SvnRaTransport(url)
+        self.svn_root_transport = self.remote_transport.get_root()
+        self.root_transport = self.transport = transport
+        self.url = transport.base
+        self.branch_path = url[len(self.svn_root_transport.base):]
+        self.scheme = BranchingScheme.guess_scheme(self.branch_path)
+        if not self.scheme.is_branch(self.branch_path):
+            raise NotBranchError(path=self.transport.base)
 
-        super(SvnLocalAccess, self).__init__(remote_transport, format)
-
-        self.transport = transport
         svn.wc.adm_close(wc)
-
-    def open_repository(self):
-        repos = OptimizedRepository(self, self.root_transport)
-        repos._format = self._format
-        return repos
-
-    def open_branch(self, _unsupported=True):
-        """See BzrDir.open_branch()."""
-        repos = self.open_repository()
-
-        try:
-            branch = OptimizedBranch(repos, self.branch_path)
-        except SubversionException, (msg, num):
-            if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
-                raise NotBranchError(path=self.url)
-            raise
-
-        branch.bzrdir = self
-        return branch
 
     def clone(self, path):
         raise NotImplementedError(self.clone)
 
-    # Subversion has all-in-one, so a repository is always present
-    find_repository = open_repository
-
-    # Working trees never exist on Subversion repositories
     def open_workingtree(self, _unsupported=False):
         return SvnWorkingTree(self, self.local_path, self.open_branch())
 
-    def create_workingtree(self):
-        raise NotImplementedError(SvnRemoteAccess.create_workingtree)
+    def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
+        # FIXME: honor force_new_repo
+        result = BzrDirFormat.get_default_format().initialize(url)
+        repo = self.open_repository()
+        result_repo = repo.clone(result, revision_id, basis)
+        branch = self.open_branch()
+        branch.sprout(result, revision_id)
+        result.create_workingtree()
+        return result
+
+    def open_repository(self):
+        repos = SvnRepository(self, self.svn_root_transport)
+        repos._format = self._format
+        return repos
+
+    # Subversion has all-in-one, so a repository is always present
+    find_repository = open_repository
+
+    def create_workingtree(self, revision_id=None):
+        raise NotImplementedError(self.create_workingtree)
+
+    def create_branch(self):
+        """See BzrDir.create_branch()."""
+        raise NotImplementedError(self.create_branch)
+
+    def open_branch(self, unsupported=True):
+        """See BzrDir.open_branch()."""
+        repos = self.open_repository()
+
+        try:
+            branch = SvnBranch(repos, self.branch_path)
+        except SubversionException, (msg, num):
+            if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
+               raise NotBranchError(path=self.url)
+            raise
+ 
+        branch.bzrdir = self
+        return branch
 
 
 class SvnWorkingTreeDirFormat(BzrDirFormat):
@@ -435,7 +441,7 @@ class SvnWorkingTreeDirFormat(BzrDirFormat):
         raise NotBranchError(path=transport.base)
 
     def _open(self, transport):
-        return SvnLocalAccess(transport, self)
+        return SvnCheckout(transport, self)
 
     def get_format_string(self):
         return 'Subversion Local Checkout'

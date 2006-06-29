@@ -17,7 +17,6 @@
 from bzrlib.config import config_dir
 from bzrlib.errors import NoSuchRevision, BzrError, NotBranchError
 from bzrlib.progress import ProgressBar, DummyProgress
-from bzrlib.trace import mutter
 
 from svn.core import SubversionException
 import svn.ra
@@ -151,7 +150,6 @@ class LogWalker(object):
             rev = self.revisions[i]
             changed_paths = {}
             for p in rev['paths']:
-                mutter('eval: %r, %r' % (branch_path, p))
                 if (branch_path is None or 
                     p == branch_path or
                     branch_path == "" or
