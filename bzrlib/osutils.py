@@ -264,7 +264,7 @@ def _win32_rename(old, new):
     try:
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
     except OSError, e:
-        if e.errno in (errno.EPERM, errno.EACCES):
+        if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY):
             # If we try to rename a non-existant file onto cwd, we get EPERM
             # instead of ENOENT, this will raise ENOENT if the old path
             # doesn't exist
