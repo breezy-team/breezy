@@ -993,29 +993,27 @@ class BzrBranch(Branch):
         return self.control_files.is_locked()
 
     def lock_write(self):
-        # TODO: test for failed two phase locks. This is known broken.
-        self.control_files.lock_write()
+        self.repository.lock_write()
         try:
-            self.repository.lock_write()
+            self.control_files.lock_write()
         except:
-            self.control_files.unlock()
+            self.repository.unlock()
             raise
 
     def lock_read(self):
-        # TODO: test for failed two phase locks. This is known broken.
-        self.control_files.lock_read()
+        self.repository.lock_read()
         try:
-            self.repository.lock_read()
+            self.control_files.lock_read()
         except:
-            self.control_files.unlock()
+            self.repository.unlock()
             raise
 
     def unlock(self):
         # TODO: test for failed two phase locks. This is known broken.
         try:
-            self.repository.unlock()
-        finally:
             self.control_files.unlock()
+        finally:
+            self.repository.unlock()
         
     def peek_lock_mode(self):
         if self.control_files._lock_count == 0:
