@@ -33,9 +33,6 @@ class FileIdInvolvedBase(TestCaseWithRepository):
         f.write("appended line\n")
         f.close( )
 
-    def assertDictsEqual(self, a, b):
-        self.assertEqual(sorted(a.iteritems()), sorted(b.iteritems()))
-
     def compare_tree_fileids(self, branch, old_rev, new_rev):
         old_tree = self.branch.repository.revision_tree(old_rev)
         new_tree = self.branch.repository.revision_tree(new_rev)
@@ -147,19 +144,19 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         def foo(old, new):
             print set(self.branch.repository.get_ancestry(new)).difference(set(self.branch.repository.get_ancestry(old)))
 
-        self.assertDictsEqual(
+        self.assertEqual(
             {'b-file-id-2006-01-01-defg':set(['rev-J']),
              'c-funky<file-id> quiji%bo':set(['rev-K'])
              },
             self.branch.repository.fileids_altered_by_revision_ids(["rev-J","rev-K"]))
 
-        self.assertDictsEqual(
+        self.assertEqual(
             {'b-file-id-2006-01-01-defg': set(['rev-<D>']),
              'file-d': set(['rev-F']),
              },
             self.branch.repository.fileids_altered_by_revision_ids(['rev-<D>', 'rev-F']))
 
-        self.assertDictsEqual(
+        self.assertEqual(
             {
              'b-file-id-2006-01-01-defg': set(['rev-<D>', 'rev-G', 'rev-J']), 
              'c-funky<file-id> quiji%bo': set(['rev-K']),
@@ -168,7 +165,7 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             self.branch.repository.fileids_altered_by_revision_ids(
                 ['rev-<D>', 'rev-G', 'rev-F', 'rev-K', 'rev-J']))
 
-        self.assertDictsEqual(
+        self.assertEqual(
             {'a-file-id-2006-01-01-abcd': set(['rev-B']),
              'b-file-id-2006-01-01-defg': set(['rev-<D>', 'rev-G', 'rev-J']),
              'c-funky<file-id> quiji%bo': set(['rev-K']),
@@ -182,17 +179,17 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             # See earlier comment about not being able
             # to run this test with older formats
             return
-        self.assertDictsEqual(
+        self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-A']),
              'b-file-id-2006-01-01-defg': set(['rev-A']),
              'c-funky<file-id> quiji%bo': set(['rev-A']),
              }, 
             self.branch.repository.fileids_altered_by_revision_ids(["rev-A"]))
-        self.assertDictsEqual(
+        self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-B'])
              }, 
             self.branch.repository.fileids_altered_by_revision_ids(["rev-B"]))
-        self.assertDictsEqual(
+        self.assertEqual(
             {'b-file-id-2006-01-01-defg':set(['rev-<D>'])
              },
             self.branch.repository.fileids_altered_by_revision_ids(["rev-<D>"]))
