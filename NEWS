@@ -84,6 +84,9 @@ IN DEVELOPMENT
       (#45010, John Arbash Meinel)
 
     * Handle broken pipe under win32 correctly. (John Arbash Meinel)
+    
+    * sftp tests now work correctly on win32 if you have a newer paramiko
+      (John Arbash Meinel)
 
   INTERNALS:
 
