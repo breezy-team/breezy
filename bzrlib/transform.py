@@ -987,19 +987,36 @@ def create_entry_executability(tt, entry, trans_id):
 
 def find_interesting(working_tree, target_tree, filenames):
     """Find the ids corresponding to specified filenames."""
+    trees = (working_tree, target_tree)
     if not filenames:
         interesting_ids = None
     else:
         interesting_ids = set()
         for tree_path in filenames:
             not_found = True
-            for tree in (working_tree, target_tree):
+            for tree in trees:
                 file_id = tree.inventory.path2id(tree_path)
                 if file_id is not None:
                     interesting_ids.add(file_id)
                     not_found = False
             if not_found:
                 raise NotVersionedError(path=tree_path)
+        
+        pending = interesting_ids
+        # now handle children of interesting ids
+        # we loop so that we handle all children of each id in both trees
+        while len(pending) > 0:
+            new_pending = set()
+            for file_id in pending:
+                for tree in trees:
+                    if file_id not in tree:
+                        continue
+                    entry = tree.inventory[file_id]
+                    for child in getattr(entry, 'children', {}).itervalues():
+                        if child.file_id not in interesting_ids:
+                            new_pending.add(child.file_id)
+            interesting_ids.update(new_pending)
+            pending = new_pending
     return interesting_ids
 
 
