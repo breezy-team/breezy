@@ -20,7 +20,7 @@ def _thread_profile(f, *args, **kwds):
     thr = thread.get_ident()
     _g_threadmap[thr] = p = Profiler()
     # this overrides our sys.setprofile hook:
-    p.enable(subcalls=True)
+    p.enable(subcalls=True, builtins=True)
 
 
 def profile(f, *args, **kwds):
@@ -92,11 +92,11 @@ class Stats(object):
             e = self.data[i]
             if not isinstance(e.code, str):
                 self.data[i] = type(e)((label(e.code),) + e[1:])
-                if e.calls:
-                    for j in range(len(e.calls)):
-                        se = e.calls[j]
-                        if not isinstance(se.code, str):
-                            e.calls[j] = type(se)((label(se.code),) + se[1:])
+            if e.calls:
+                for j in range(len(e.calls)):
+                    se = e.calls[j]
+                    if not isinstance(se.code, str):
+                        e.calls[j] = type(se)((label(se.code),) + se[1:])
         for s in self.threads.values():
             s.freeze()
 
