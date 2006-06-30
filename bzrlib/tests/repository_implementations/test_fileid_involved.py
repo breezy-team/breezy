@@ -251,7 +251,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         branch2_wt.commit("branch2, Commit one", rev_id="rev-J")
 
         self.merge(branch2_branch, main_wt)
-        set_executability(main_wt, 'b', True)
+        set_executability(main_wt, 'b', False)
         main_wt.commit("merge branch1, rev-22",  rev_id="rev-G")
 
         # end G
@@ -289,7 +289,7 @@ def set_executability(wt, path, executable=True):
     file_id = wt.path2id(path)
     tt = TreeTransform(wt)
     try:
-        tt.set_executability(True, tt.trans_id_tree_file_id(file_id))
+        tt.set_executability(executable, tt.trans_id_tree_file_id(file_id))
         tt.apply()
     finally:
         tt.finalize()
