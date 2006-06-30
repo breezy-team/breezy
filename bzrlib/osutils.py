@@ -258,14 +258,18 @@ def _win32_mkdtemp(*args, **kwargs):
 def _win32_rename(old, new):
     """We expect to be able to atomically replace 'new' with old.
 
-    On win32, if new exists, it must be moved out of the way first, and then
-    deleted. However, if this function is called and 'old' doesn't exist
-    we should get a ENOENT error.
+    On win32, if new exists, it must be moved out of the way first,
+    and then deleted. 
     """
-    # Force ENOENT in the case that 'old' doesn't exist, before we do
-    # all the work of trying to move the file around
-    os.lstat(old)
-    fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+    try:
+        fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+    except OSError, e:
+        if e.errno in (errno.EPERM, errno.EACCES):
+            # If we try to rename a non-existant file onto cwd, we get EPERM
+            # instead of ENOENT, this will raise ENOENT if the old path
+            # doesn't exist
+            os.lstat(old)
+        raise
 
 
 # Default is to just use the python builtins, but these can be rebound on
