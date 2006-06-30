@@ -38,8 +38,6 @@ import branch
 import logwalker
 from tree import SvnRevisionTree
 
-TRACK_RENAMES = False
-
 class SvnRepository(Repository):
     """
     Provides a simplified interface to a Subversion repository 
@@ -93,7 +91,10 @@ class SvnRepository(Repository):
         return self.fileid_map[revision_id][file_id]
 
     def path_to_file_id(self, revnum, path):
-        """Generate a bzr file id from a Subversion file name. """
+        """Generate a bzr file id from a Subversion file name. 
+        
+        This implementation DOES NOT track renames.
+        """
         assert isinstance(revnum, int)
         assert isinstance(path, basestring)
         assert revnum >= 0
@@ -139,26 +140,7 @@ class SvnRepository(Repository):
             
             introduced_revision_id = self.generate_revision_id(rev, branch)
 
-            # File is being copied from somewhere else
-            if paths[expected_path][1] and TRACK_RENAMES:
-                copyfrom_path = paths[expected_path][1]
-                copyfrom_rev = paths[expected_path][2]
-                (bp, rp) = self.scheme.unprefix(copyfrom_path)
-
-                # individual non-root dir/file copied from somewhere in 
-                # another branch, don't track a rename
-                if bp != branch:
-                    break
-
-                # check if there is other offspring of that location
-                offspring = self._log.get_offspring(copyfrom_path, copyfrom_rev, rev)
-                # FIXME: Filter out files from offspring that are not in this branch.
-                if list(offspring) != [path]:
-                    break
-
-                filename = rp
-                continue_revnum = copyfrom_rev
-            elif paths[expected_path][0] in ('A', 'R'):
+            if paths[expected_path][0] in ('A', 'R'):
                 break
 
         assert continue_revnum is None
@@ -461,10 +443,6 @@ class SvnRepository(Repository):
         return None
 
     def _get_file(self, path, revnum):
-        if path == ".bzrignore":
-            # TODO: Generate ignore file for specified revision
-            return StringIO()
-
         (_, stream) = self._cache_get_file(path, revnum)
         stream.seek(0)
         return stream
@@ -516,3 +494,94 @@ class SvnRepository(Repository):
 
         from commit import SvnCommitBuilder
         return SvnCommitBuilder(self, branch, parents, config, revprops)
+
+
+class SvnRepositoryRenaming(SvnRepository):
+    """Instance of SvnRepository that tracks renames."""
+
+    def path_to_file_id(self, revnum, path):
+        """Generate a bzr file id from a Subversion file name. """
+        assert isinstance(revnum, int)
+        assert isinstance(path, basestring)
+        assert revnum >= 0
+
+        if self.path_map.has_key(revnum) and self.path_map[revnum].has_key(path):
+            return self.path_map[revnum][path]
+
+        mutter('creating file id for %r:%d' % (path, revnum))
+
+        (path_branch, filename) = self.scheme.unprefix(path)
+
+        if filename == "":
+            return (ROOT_ID, self.generate_revision_id(revnum, path_branch))
+
+        introduced_revision_id = None
+        last_changed_revid = None
+        continue_revnum = None
+        for (branch, paths, rev) in self._log.follow_history(path_branch, 
+                                                             revnum):
+            if not (continue_revnum is None or continue_revnum == rev):
+                continue
+
+            continue_revnum = None
+
+            expected_path = ("%s/%s" % (branch, filename)).strip("/")
+            parent_changed = False
+            # FIXME: Handle renames of directories
+            for p in paths:
+                if expected_path.startswith(p+"/"):
+                    parent_changed = True
+                    break
+
+            if parent_changed:
+                introduced_revision_id = self.generate_revision_id(rev, branch)
+                break
+
+            if not expected_path in paths:
+                # File changed in this revision
+                continue
+
+            if last_changed_revid is None:
+                last_changed_revid = self.generate_revision_id(rev, branch)
+            
+            introduced_revision_id = self.generate_revision_id(rev, branch)
+
+            # File is being copied from somewhere else
+            if paths[expected_path][1]:
+                copyfrom_path = paths[expected_path][1]
+                copyfrom_rev = paths[expected_path][2]
+                (bp, rp) = self.scheme.unprefix(copyfrom_path)
+
+                # individual non-root dir/file copied from somewhere in 
+                # another branch, don't track a rename
+                if bp != branch:
+                    break
+
+                # check if there is other offspring of that location
+                offspring = self._log.get_offspring(copyfrom_path, copyfrom_rev, rev)
+                # FIXME: Filter out files from offspring that are not in this branch.
+                if list(offspring) != [path]:
+                    break
+
+                filename = rp
+                continue_revnum = copyfrom_rev
+            elif paths[expected_path][0] in ('A', 'R'):
+                break
+
+        assert continue_revnum is None
+
+        if not introduced_revision_id:
+            raise NoSuchFile(path=filename)
+
+        if not self.fileid_map.has_key(last_changed_revid):
+            self.fileid_map[last_changed_revid] = {}
+
+        if not self.path_map.has_key(revnum):
+            self.path_map[revnum] = {}
+
+        file_id = "%s-%s" % (introduced_revision_id, filename.replace("/", "@"))
+        assert file_id != None
+
+        self.path_map[revnum][path] = (file_id, last_changed_revid)
+        self.fileid_map[last_changed_revid][file_id] = (path, revnum)
+        return (file_id, last_changed_revid)

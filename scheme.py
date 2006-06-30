@@ -84,6 +84,9 @@ class TrunkBranchingScheme:
         else:
             raise NotBranchError(path=path)
 
+    def __str__(self):
+        return "trunk%d" % self.level
+
 
 class NoBranchingScheme:
     def is_branch(self, path):
@@ -93,6 +96,9 @@ class NoBranchingScheme:
     def unprefix(self, path):
         """See BranchingScheme.unprefix()."""
         return ("", path.strip("/"))
+
+    def __str__(self):
+        return "null"
 
 
 class ListBranchingScheme:

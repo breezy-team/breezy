@@ -1,9 +1,7 @@
 - rewrite svn2bzr
-- bug 44312
+ - bug 44312
 - more tests
 - improve performance
- - use svn.ra.checkout() rather than individial get_file() and get_dir() calls
-- support for 'svn:ignore' -> maps to .bzrignore. Generated from the 'svn:ignore' properties on each directory, sorted alphabetically.
+ - use do_update() in fetch code
+- split out fileid mapping code
 - support pushing to SVN branches. Push as merged.
-- support creating working trees
-- support pull to SVN working trees

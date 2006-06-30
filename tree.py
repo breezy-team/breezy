@@ -60,6 +60,7 @@ class TreeBuildEditor(svn.delta.Editor):
         self.repository = tree._repository
         self.last_revnum = {}
         self.dir_revnum = {}
+        self.dir_ignores = {}
 
     def set_target_revision(self, revnum):
         self.revnum = revnum
@@ -92,6 +93,8 @@ class TreeBuildEditor(svn.delta.Editor):
     def change_dir_prop(self, id, name, value, pool):
         if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.dir_revnum[id] = int(value)
+        elif name == svn.core.SVN_PROP_IGNORE:
+            self.dir_ignores[id] = value
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
                       svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
@@ -124,6 +127,10 @@ class TreeBuildEditor(svn.delta.Editor):
         self.is_executable = False
         self.file_data = ""
         return path
+
+    def close_dir(self, id):
+        if id in self.tree._inventory and self.dir_ignores.has_key(id):
+            self.tree._inventory[id].ignores = self.dir_ignores[id]
 
     def close_file(self, path, checksum):
         relpath = self.relpath(path)
@@ -160,7 +167,9 @@ class TreeBuildEditor(svn.delta.Editor):
 
     def apply_textdelta(self, file_id, base_checksum):
         def handler(window):
-            pass # TODO
+            if window is not None:
+                self.file_data = window.apply_instructions(self.file_data)
+            
         return handler
 
 

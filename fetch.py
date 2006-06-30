@@ -27,6 +27,116 @@ import svn.core
 
 import os
 
+class RevisionBuildEditor(svn.delta.Editor):
+    def __init__(self, tree):
+        self.tree = tree
+        self.repository = tree._repository
+        self.last_revnum = {}
+        self.dir_revnum = {}
+
+    def set_target_revision(self, revnum):
+        self.revnum = revnum
+
+    def open_root(self, revnum, baton):
+        return ROOT_ID
+
+    def relpath(self, path):
+        bp, rp = self.tree._repository.scheme.unprefix(path)
+        if bp == self.tree.branch_path:
+            return rp
+        return None
+
+    def get_file_id(self, path, revnum):
+        return self.tree._repository.path_to_file_id(revnum, path)
+
+    def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
+        relpath = self.relpath(path)
+        if relpath is None:
+            return ROOT_ID
+        file_id, revision_id = self.get_file_id(path, self.revnum)
+        ie = self.tree._inventory.add_path(relpath, 'directory', file_id)
+        if ie is None:
+            self.tree._inventory.revision_id = revision_id
+            return ROOT_ID
+
+        ie.revision = revision_id
+        return file_id
+
+    def change_dir_prop(self, id, name, value, pool):
+        if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
+            self.dir_revnum[id] = int(value)
+        elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
+                      svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
+                      svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
+                      svn.core.SVN_PROP_ENTRY_UUID,
+                      svn.core.SVN_PROP_EXECUTABLE):
+            pass
+        else:
+            mutter('unsupported file property %r' % name)
+
+    def change_file_prop(self, id, name, value, pool):
+        if (name == svn.core.SVN_PROP_EXECUTABLE and 
+            value == svn.core.SVN_PROP_EXECUTABLE_VALUE):
+            self.is_executable = True
+        elif (name == svn.core.SVN_PROP_SPECIAL and 
+            value == svn.core.SVN_PROP_SPECIAL_VALUE):
+            self.is_symlink = True
+        elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
+            self.last_file_rev = int(value)
+        elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
+                      svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
+                      svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
+                      svn.core.SVN_PROP_ENTRY_UUID,
+                      svn.core.SVN_PROP_MIME_TYPE):
+            pass
+        else:
+            mutter('unsupported file property %r' % name)
+
+    def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
+        self.is_symlink = False
+        self.is_executable = False
+        self.file_data = ""
+        return path
+
+    def close_file(self, path, checksum):
+        relpath = self.relpath(path)
+        if relpath is None:
+            return 
+
+        file_id, revision_id = self.get_file_id(path, self.revnum)
+
+        ie = self.tree._inventory.add_path(relpath, 'file', file_id)
+        ie.revision = revision_id
+
+        if self.file_data:
+            file_data = self.file_data
+        else:
+            file_data = ""
+
+        if self.is_symlink:
+            ie.kind = 'symlink'
+            ie.symlink_target = file_data[len("link "):]
+        else:
+            ie.text_sha1 = osutils.sha_string(file_data)
+            ie.text_size = len(file_data)
+            self.tree.file_data[file_id] = file_data
+            if self.is_executable:
+                ie.executable = True
+
+        self.file_data = None
+
+    def finish_edit(self):
+        pass
+
+    def abort_edit(self):
+        pass
+
+    def apply_textdelta(self, file_id, base_checksum):
+        def handler(window):
+            pass # TODO
+        return handler
+
+
 class InterSvnRepository(InterRepository):
     """Svn to any repository actions."""
 
@@ -39,7 +149,6 @@ class InterSvnRepository(InterRepository):
         # Loop over all the revnums until revision_id
         # (or youngest_revnum) and call self.target.add_revision() 
         # or self.target.add_inventory() each time
-
         if revision_id is None:
             path = ""
             until_revnum = self.source._latest_revnum
@@ -62,6 +171,19 @@ class InterSvnRepository(InterRepository):
             inv = self.source.get_inventory(revid)
             rev = self.source.get_revision(revid)
             self.target.add_revision(revid, rev, inv)
+
+            editor = RevisionBuildEditor()
+
+            edit, edit_baton = svn.delta.make_editor(editor)
+
+            mutter('do update: %r, %r' % (self.revnum, self.branch_path))
+            reporter, reporter_baton = svn.ra.do_update(repository.ra, revnum, branch, True, edit, edit_baton)
+
+            svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", 0, True, None)
+
+            svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton)
+
+
 
             #FIXME: use svn.ra.do_update
             keys = paths.keys()
