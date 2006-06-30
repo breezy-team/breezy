@@ -95,6 +95,5 @@ class TestGetTo(TestCaseInTempDir):
             )
         my_config = config.BranchConfig(self.branch)
         config_file = StringIO(text)
-        (my_config._get_location_config().
-            _get_global_config()._get_parser(config_file))
+        (my_config._get_global_config()._get_parser(config_file))
         return EmailSender(self.branch, 'A', my_config)
