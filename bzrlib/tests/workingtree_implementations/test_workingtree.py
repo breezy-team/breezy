@@ -17,6 +17,7 @@
 
 from cStringIO import StringIO
 import os
+import sys
 
 import bzrlib
 from bzrlib import branch, bzrdir, errors, urlutils, workingtree
@@ -29,6 +30,7 @@ from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
 from bzrlib.conflicts import ConflictList
+
 
 class TestWorkingTree(TestCaseWithWorkingTree):
 
@@ -80,7 +82,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt, relpath = WorkingTree.open_containing('./foo')
         self.assertEqual('foo', relpath)
         self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
-        wt, relpath = WorkingTree.open_containing('file://' + getcwd() + '/foo')
+        if sys.platform == 'win32':
+            wt, relpath = WorkingTree.open_containing('file:///' + getcwd() + '/foo')
+        else:
+            wt, relpath = WorkingTree.open_containing('file://' + getcwd() + '/foo')
         self.assertEqual('foo', relpath)
         self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
 
