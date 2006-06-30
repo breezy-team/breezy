@@ -202,6 +202,14 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         tree.unlock()
         self.assertEquals(our_lock.peek(), None)
 
+    def test_missing_pending_merges(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        control.create_repository()
+        control.create_branch()
+        tree = workingtree.WorkingTreeFormat3().initialize(control)
+        tree._control_files._transport.delete("pending-merges")
+        self.assertEqual([], tree.pending_merges())
+
 
 class TestFormat2WorkingTree(TestCaseWithTransport):
     """Tests that are specific to format 2 trees."""

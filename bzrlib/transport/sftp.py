@@ -23,6 +23,7 @@ import os
 import random
 import re
 import select
+import socket
 import stat
 import subprocess
 import sys
@@ -1030,7 +1031,17 @@ class SFTPServerWithoutSSH(SFTPServer):
 
         server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
                                      root=self._root, home=self._server_homedir)
-        server.start_subsystem('sftp', None, sock)
+        try:
+            server.start_subsystem('sftp', None, sock)
+        except socket.error, e:
+            if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
+                # it's okay for the client to disconnect abruptly
+                # (bug in paramiko 1.6: it should absorb this exception)
+                pass
+            else:
+                raise
+        except Exception, e:
+            import sys; sys.stderr.write('\nEXCEPTION %r\n\n' % e.__class__)
         server.finish_subsystem()
 
 

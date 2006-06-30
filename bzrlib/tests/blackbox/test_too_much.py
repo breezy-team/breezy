@@ -441,39 +441,6 @@ class TestCommands(ExternalBase):
                                    "times nine?")
         self.runbzr('commit -m this')
 
-    def test_remerge(self):
-        """Remerge command works as expected"""
-        self.create_conflicts()
-        self.runbzr('merge ../other --show-base', retcode=1)
-        conflict_text = file('hello').read()
-        assert '|||||||' in conflict_text
-        assert 'hi world' in conflict_text
-        self.runbzr('remerge', retcode=1)
-        conflict_text = file('hello').read()
-        assert '|||||||' not in conflict_text
-        assert 'hi world' not in conflict_text
-        os.unlink('hello.OTHER')
-        os.unlink('question.OTHER')
-        self.runbzr('remerge jello --merge-type weave', retcode=3)
-        self.runbzr('remerge hello --merge-type weave', retcode=1)
-        assert os.path.exists('hello.OTHER')
-        self.assertIs(False, os.path.exists('question.OTHER'))
-        file_id = self.runbzr('file-id hello')
-        file_id = self.runbzr('file-id hello.THIS', retcode=3)
-        self.runbzr('remerge --merge-type weave', retcode=1)
-        assert os.path.exists('hello.OTHER')
-        assert not os.path.exists('hello.BASE')
-        assert '|||||||' not in conflict_text
-        assert 'hi world' not in conflict_text
-        self.runbzr('remerge . --merge-type weave --show-base', retcode=3)
-        self.runbzr('remerge . --show-base --reprocess', retcode=3)
-        self.runbzr('remerge . --merge-type weave --reprocess', retcode=1)
-        self.runbzr('remerge hello --show-base', retcode=1)
-        self.runbzr('remerge hello --reprocess', retcode=1)
-        self.runbzr('resolve --all')
-        self.runbzr('commit -m done',)
-        self.runbzr('remerge', retcode=3)
-
     def test_status(self):
         os.mkdir('branch1')
         os.chdir('branch1')
