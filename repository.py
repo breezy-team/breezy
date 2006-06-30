@@ -38,6 +38,8 @@ import branch
 import logwalker
 from tree import SvnRevisionTree
 
+TRACK_RENAMES = False
+
 class SvnRepository(Repository):
     """
     Provides a simplified interface to a Subversion repository 
@@ -117,17 +119,28 @@ class SvnRepository(Repository):
             continue_revnum = None
 
             expected_path = ("%s/%s" % (branch, filename)).strip("/")
+            parent_changed = False
+            # FIXME: Handle renames of directories
+            for p in paths:
+                if expected_path.startswith(p+"/"):
+                    parent_changed = True
+                    break
+
+            if parent_changed:
+                introduced_revision_id = self.generate_revision_id(rev, branch)
+                break
+
             if not expected_path in paths:
-                # File didn't change in this revision
+                # File changed in this revision
                 continue
 
             if last_changed_revid is None:
-                last_changed_revid = self.generate_revision_id(revnum, branch)
+                last_changed_revid = self.generate_revision_id(rev, branch)
             
             introduced_revision_id = self.generate_revision_id(rev, branch)
 
             # File is being copied from somewhere else
-            if paths[expected_path][1]:
+            if paths[expected_path][1] and TRACK_RENAMES:
                 copyfrom_path = paths[expected_path][1]
                 copyfrom_rev = paths[expected_path][2]
                 (bp, rp) = self.scheme.unprefix(copyfrom_path)
@@ -145,6 +158,8 @@ class SvnRepository(Repository):
 
                 filename = rp
                 continue_revnum = copyfrom_rev
+            elif paths[expected_path][0] in ('A', 'R'):
+                break
 
         assert continue_revnum is None
 

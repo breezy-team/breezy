@@ -94,10 +94,7 @@ class LogWalker(object):
         self.last_revnum = to_revnum
         svn.ra.get_log(self.ra, ["/"], self.saved_revnum, to_revnum, 0, True, True, rcvr)
         pb.clear()
-
-    def __del__(self):
-        if self.saved_revnum != self.last_revnum:
-            self.save()
+        self.save()
 
     def save(self):
         try:

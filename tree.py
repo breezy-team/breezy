@@ -27,6 +27,7 @@ from bzrlib.trace import mutter
 from bzrlib.tree import RevisionTree, EmptyTree
 
 import os
+from cStringIO import StringIO
 
 import svn.core, svn.wc, svn.delta
 from svn.core import SubversionException
@@ -57,6 +58,8 @@ class TreeBuildEditor(svn.delta.Editor):
     def __init__(self, tree):
         self.tree = tree
         self.repository = tree._repository
+        self.last_revnum = {}
+        self.dir_revnum = {}
 
     def set_target_revision(self, revnum):
         self.revnum = revnum
@@ -70,16 +73,15 @@ class TreeBuildEditor(svn.delta.Editor):
             return rp
         return None
 
-    def get_file_id(self, path):
-        return self.tree._repository.path_to_file_id(self.revnum, path)
+    def get_file_id(self, path, revnum):
+        return self.tree._repository.path_to_file_id(revnum, path)
 
-    def add_directory(self, path, parent_id, copyfrom_path, copyfrom_revnum, pool):
+    def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
         relpath = self.relpath(path)
         if relpath is None:
             return ROOT_ID
-        file_id, revision_id = self.get_file_id(path)
-        ie = self.tree._inventory.add_path(relpath, 'directory', file_id, 
-            parent_id=parent_id)
+        file_id, revision_id = self.get_file_id(path, self.revnum)
+        ie = self.tree._inventory.add_path(relpath, 'directory', file_id)
         if ie is None:
             self.tree._inventory.revision_id = revision_id
             return ROOT_ID
@@ -87,32 +89,68 @@ class TreeBuildEditor(svn.delta.Editor):
         ie.revision = revision_id
         return file_id
 
-    def change_file_prop(self, file_id, name, value, pool):
-        assert file_id in self.tree._inventory
+    def change_dir_prop(self, id, name, value, pool):
+        if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
+            self.dir_revnum[id] = int(value)
+        elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
+                      svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
+                      svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
+                      svn.core.SVN_PROP_ENTRY_UUID,
+                      svn.core.SVN_PROP_EXECUTABLE):
+            pass
+        else:
+            mutter('unsupported file property %r' % name)
+
+    def change_file_prop(self, id, name, value, pool):
         if (name == svn.core.SVN_PROP_EXECUTABLE and 
             value == svn.core.SVN_PROP_EXECUTABLE_VALUE):
-            self.tree._inventory[file_id].executable = True
+            self.is_executable = True
         elif (name == svn.core.SVN_PROP_SPECIAL and 
             value == svn.core.SVN_PROP_SPECIAL_VALUE):
-            self.tree._inventory[file_id].kind = 'symlink' 
+            self.is_symlink = True
+        elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
+            self.last_file_rev = int(value)
+        elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
+                      svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
+                      svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
+                      svn.core.SVN_PROP_ENTRY_UUID,
+                      svn.core.SVN_PROP_MIME_TYPE):
+            pass
         else:
             mutter('unsupported file property %r' % name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
+        self.is_symlink = False
+        self.is_executable = False
+        self.file_data = ""
+        return path
+
+    def close_file(self, path, checksum):
         relpath = self.relpath(path)
         if relpath is None:
-            return ROOT_ID
-        file_id, revision_id = self.get_file_id(path)
+            return 
 
-        ie = self.tree._inventory.add_path(relpath, 'file', file_id, 
-            parent_id=parent_id)
+        file_id, revision_id = self.get_file_id(path, self.revnum)
+
+        ie = self.tree._inventory.add_path(relpath, 'file', file_id)
         ie.revision = revision_id
 
-        return file_id
+        if self.file_data:
+            file_data = self.file_data
+        else:
+            file_data = ""
 
-    def close_file(self, file_id, checksum):
-        self.tree._inventory[file_id].text_sha1 = osutils.sha_string(self.tree.file_data[file_id])
-        self.tree._inventory[file_id].text_size = len(self.tree.file_data[file_id])
+        if self.is_symlink:
+            ie.kind = 'symlink'
+            ie.symlink_target = file_data[len("link "):]
+        else:
+            ie.text_sha1 = osutils.sha_string(file_data)
+            ie.text_size = len(file_data)
+            self.tree.file_data[file_id] = file_data
+            if self.is_executable:
+                ie.executable = True
+
+        self.file_data = None
 
     def finish_edit(self):
         pass
@@ -121,10 +159,9 @@ class TreeBuildEditor(svn.delta.Editor):
         pass
 
     def apply_textdelta(self, file_id, base_checksum):
-        def textdelta_handler(textdelta):
-            if textdelta is not None:
-                self.tree.file_data[file_id] = textdelta.new_data
-        return textdelta_handler
+        def handler(window):
+            pass # TODO
+        return handler
 
 
 class SvnInventoryFile(InventoryFile):
@@ -186,7 +223,11 @@ class SvnInventoryFile(InventoryFile):
 
 
 class SlowSvnRevisionTree(RevisionTree):
-    """Original implementation of SvnRevisionTree."""
+    """Original implementation of SvnRevisionTree.
+    
+    More roundtrip intensive than SvnRevisionTree, but more 
+    efficient on bandwidth usage if the full tree isn't used.
+    """
     def __init__(self, repository, revision_id, inventory=None):
         self._repository = repository
         self._revision_id = revision_id
