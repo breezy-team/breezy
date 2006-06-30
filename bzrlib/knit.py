@@ -390,9 +390,13 @@ class KnitVersionedFile(VersionedFile):
         # writes
         transport.put(name + INDEX_SUFFIX + '.tmp', self.transport.get(self._index._filename),)
         # copy the data file
-        transport.put(name + DATA_SUFFIX, self._data._open_file())
-        # rename the copied index into place
-        transport.rename(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
+        f = self._data._open_file()
+        try:
+            transport.put(name + DATA_SUFFIX, f)
+        finally:
+            f.close()
+        # move the copied index into place
+        transport.move(name + INDEX_SUFFIX + '.tmp', name + INDEX_SUFFIX)
 
     def create_empty(self, name, transport, mode=None):
         return KnitVersionedFile(name, transport, factory=self.factory, delta=self.delta, create=True)
@@ -1044,61 +1048,64 @@ class _KnitIndex(_KnitComponentFile):
             try:
                 pb.update('read knit index', count, total)
                 fp = self._transport.get(self._filename)
-                self.check_header(fp)
-                # readlines reads the whole file at once:
-                # bad for transports like http, good for local disk
-                # we save 60 ms doing this one change (
-                # from calling readline each time to calling
-                # readlines once.
-                # probably what we want for nice behaviour on
-                # http is a incremental readlines that yields, or
-                # a check for local vs non local indexes,
-                for l in fp.readlines():
-                    rec = l.split()
-                    if len(rec) < 5 or rec[-1] != ':':
-                        # corrupt line.
-                        # FIXME: in the future we should determine if its a
-                        # short write - and ignore it 
-                        # or a different failure, and raise. RBC 20060407
-                        continue
-                    count += 1
-                    total += 1
-                    #pb.update('read knit index', count, total)
-                    # See self._parse_parents
-                    parents = []
-                    for value in rec[4:-1]:
-                        if '.' == value[0]:
-                            # uncompressed reference
-                            parents.append(value[1:])
+                try:
+                    self.check_header(fp)
+                    # readlines reads the whole file at once:
+                    # bad for transports like http, good for local disk
+                    # we save 60 ms doing this one change (
+                    # from calling readline each time to calling
+                    # readlines once.
+                    # probably what we want for nice behaviour on
+                    # http is a incremental readlines that yields, or
+                    # a check for local vs non local indexes,
+                    for l in fp.readlines():
+                        rec = l.split()
+                        if len(rec) < 5 or rec[-1] != ':':
+                            # corrupt line.
+                            # FIXME: in the future we should determine if its a
+                            # short write - and ignore it 
+                            # or a different failure, and raise. RBC 20060407
+                            continue
+                        count += 1
+                        total += 1
+                        #pb.update('read knit index', count, total)
+                        # See self._parse_parents
+                        parents = []
+                        for value in rec[4:-1]:
+                            if '.' == value[0]:
+                                # uncompressed reference
+                                parents.append(value[1:])
+                            else:
+                                # this is 15/4000ms faster than isinstance,
+                                # (in lsprof)
+                                # this function is called thousands of times a 
+                                # second so small variations add up.
+                                assert value.__class__ is str
+                                parents.append(self._history[int(value)])
+                        # end self._parse_parents
+                        # self._cache_version(rec[0], 
+                        #                     rec[1].split(','),
+                        #                     int(rec[2]),
+                        #                     int(rec[3]),
+                        #                     parents)
+                        # --- self._cache_version
+                        # only want the _history index to reference the 1st 
+                        # index entry for version_id
+                        version_id = rec[0]
+                        if version_id not in self._cache:
+                            index = len(self._history)
+                            self._history.append(version_id)
                         else:
-                            # this is 15/4000ms faster than isinstance,
-                            # (in lsprof)
-                            # this function is called thousands of times a 
-                            # second so small variations add up.
-                            assert value.__class__ is str
-                            parents.append(self._history[int(value)])
-                    # end self._parse_parents
-                    # self._cache_version(rec[0], 
-                    #                     rec[1].split(','),
-                    #                     int(rec[2]),
-                    #                     int(rec[3]),
-                    #                     parents)
-                    # --- self._cache_version
-                    # only want the _history index to reference the 1st 
-                    # index entry for version_id
-                    version_id = rec[0]
-                    if version_id not in self._cache:
-                        index = len(self._history)
-                        self._history.append(version_id)
-                    else:
-                        index = self._cache[version_id][5]
-                    self._cache[version_id] = (version_id,
-                                               rec[1].split(','),
-                                               int(rec[2]),
-                                               int(rec[3]),
-                                               parents,
-                                               index)
-                    # --- self._cache_version 
+                            index = self._cache[version_id][5]
+                        self._cache[version_id] = (version_id,
+                                                   rec[1].split(','),
+                                                   int(rec[2]),
+                                                   int(rec[3]),
+                                                   parents,
+                                                   index)
+                        # --- self._cache_version 
+                finally:
+                    fp.close()
             except NoSuchFile, e:
                 if mode != 'w' or not create:
                     raise
@@ -1276,7 +1283,6 @@ class _KnitData(_KnitComponentFile):
 
     def __init__(self, transport, filename, mode, create=False, file_mode=None):
         _KnitComponentFile.__init__(self, transport, filename, mode)
-        self._file = None
         self._checked = False
         if create:
             self._transport.put(self._filename, StringIO(''), mode=file_mode)
@@ -1286,12 +1292,11 @@ class _KnitData(_KnitComponentFile):
         pass
 
     def _open_file(self):
-        if self._file is None:
-            try:
-                self._file = self._transport.get(self._filename)
-            except NoSuchFile:
-                pass
-        return self._file
+        try:
+            return self._transport.get(self._filename)
+        except NoSuchFile:
+            pass
+        return None
 
     def _record_to_data(self, version_id, digest, lines):
         """Convert version_id, digest, lines into a raw data block.
