@@ -38,6 +38,9 @@ import branch
 import logwalker
 from tree import SvnRevisionTree
 
+MAPPING_VERSION = 1
+REVISION_ID_PREFIX = "svn-v%d:" % MAPPING_VERSION
+
 class SvnRepository(Repository):
     """
     Provides a simplified interface to a Subversion repository 
@@ -347,7 +350,7 @@ class SvnRepository(Repository):
         assert revnum >= 0
         if revnum == 0:
             return NULL_REVISION
-        return "svn:%d@%s-%s" % (revnum, self.uuid, path.strip("/"))
+        return "%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, self.uuid, path.strip("/"))
 
     def parse_revision_id(self, revid):
         """Parse an existing Subversion-based revision id.
@@ -360,10 +363,10 @@ class SvnRepository(Repository):
         assert revid
         assert isinstance(revid, basestring)
 
-        if not revid.startswith("svn:"):
+        if not revid.startswith(REVISION_ID_PREFIX):
             raise NoSuchRevision(self, revid)
 
-        revid = revid[len("svn:"):]
+        revid = revid[len(REVISION_ID_PREFIX):]
 
         at = revid.index("@")
         fash = revid.rindex("-")
