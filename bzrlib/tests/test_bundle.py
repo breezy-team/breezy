@@ -15,13 +15,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from cStringIO import StringIO
+import os
+import tempfile
 
 from bzrlib.builtins import merge
 from bzrlib.bzrdir import BzrDir
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
 from bzrlib.bundle.serializer import write_bundle, read_bundle
+from bzrlib.branch import Branch
 from bzrlib.diff import internal_diff
+from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError, TestamentMismatch, NotABundle, BadBundle
 from bzrlib.merge import Merge3Merger
 from bzrlib.osutils import has_symlinks, sha_file
@@ -52,8 +56,7 @@ class MockTree(object):
             return self.make_entry(file_id, self.paths[file_id])
 
     def parent_id(self, file_id):
-        from os.path import dirname
-        parent_dir = dirname(self.paths[file_id])
+        parent_dir = os.path.dirname(self.paths[file_id])
         if parent_dir == "":
             return None
         return self.ids[parent_dir]
@@ -70,10 +73,9 @@ class MockTree(object):
         return kind
 
     def make_entry(self, file_id, path):
-        from os.path import basename
         from bzrlib.inventory import (InventoryEntry, InventoryFile
                                     , InventoryDirectory, InventoryLink)
-        name = basename(path)
+        name = os.path.basename(path)
         kind = self.get_file_kind(file_id)
         parent_id = self.parent_id(file_id)
         text_sha_1, text_size = self.contents_stats(file_id)
@@ -379,13 +381,10 @@ class BundleTester(TestCaseInTempDir):
     def get_checkout(self, rev_id, checkout_dir=None):
         """Get a new tree, with the specified revision in it.
         """
-        from bzrlib.branch import Branch
-        import tempfile
 
         if checkout_dir is None:
             checkout_dir = tempfile.mkdtemp(prefix='test-branch-', dir='.')
         else:
-            import os
             if not os.path.exists(checkout_dir):
                 os.mkdir(checkout_dir)
         tree = BzrDir.create_standalone_workingtree(checkout_dir)
@@ -398,6 +397,12 @@ class BundleTester(TestCaseInTempDir):
         for ancestor in ancestors:
             old = self.b1.repository.revision_tree(ancestor)
             new = tree.branch.repository.revision_tree(ancestor)
+
+            # Check that there aren't any inventory level changes
+            delta = compare_trees(old, new)
+            self.assertFalse(delta.has_changed)
+
+            # Now check that the file contents are all correct
             for inventory_id in old:
                 try:
                     old_file = old.get_file(inventory_id)
@@ -411,6 +416,10 @@ class BundleTester(TestCaseInTempDir):
             rh = self.b1.revision_history()
             tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
             tree.update()
+            #tree.revert()
+            delta = compare_trees(tree, 
+                                self.b1.repository.revision_tree(rev_id))
+            self.assertFalse(delta.has_changed)
         return tree
 
     def valid_apply_bundle(self, base_rev_id, info, checkout_dir=None):
