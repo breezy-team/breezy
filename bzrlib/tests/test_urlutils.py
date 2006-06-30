@@ -380,8 +380,8 @@ class TestUrlToPath(TestCase):
 
         test('http://foo', 'http://foo')
         if sys.platform == 'win32':
-            test('c:/foo/path', 'file:///C|/foo/path')
-            test('c:/foo/path', 'file:///C:/foo/path')
+            test('C:/foo/path', 'file:///C|/foo/path')
+            test('C:/foo/path', 'file:///C:/foo/path')
         else:
             test('/foo/path', 'file:///foo/path')
 
