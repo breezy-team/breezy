@@ -69,10 +69,7 @@ class StubSFTPServer (SFTPServerInterface):
         # this is like implementing chroot().
         self.root = root
         if home is None:
-            # XXX: if 'home' is None, shouldn't it
-            #       be set to '', since it should
-            #       be relative to 'root'?
-            self.home = self.root
+            self.home = ''
         else:
             assert home.startswith(self.root), \
                     "home must be a subdirectory of root (%s vs %s)" \
@@ -83,28 +80,35 @@ class StubSFTPServer (SFTPServerInterface):
         server._test_case.log('sftpserver - new connection')
 
     def _realpath(self, path):
-        if sys.platform == 'win32':
+        # paths returned from self.canonicalize() always start with
+        # a path separator. So if 'root' is just '/', this would cause
+        # a double slash at the beginning '//home/dir'. 
+        if self.root == '/':
+            return self.canonicalize(path)
+        return self.root + self.canonicalize(path)
+
+    if sys.platform == 'win32':
+        def canonicalize(self, path):
             # Win32 sftp paths end up looking like
-            # sftp://host@foo/h:/foo/bar
-            # which gets translated here to:
-            # /h:/foo/bar
-            # Local paths stay 'foo/bar', though.
-            # Also, win32 needs to use the Unicode APIs.
+            #     sftp://host@foo/h:/foo/bar
+            # which means absolute paths look like:
+            #     /h:/foo/bar
+            # and relative paths stay the same:
+            #     foo/bar
+            # win32 needs to use the Unicode APIs. so we require the 
+            # paths to be utf8 (Linux just uses bytestreams)
             thispath = path.decode('utf8')
             if path.startswith('/'):
-                # Abspath
-                realpath = os.path.normpath(thispath[1:])
+                # Abspath H:/foo/bar
+                return os.path.normpath(thispath[1:])
             else:
-                realpath = os.path.normpath(os.path.join(self.home, thispath))
-        else:
-            realpath = self.root + self.canonicalize(path)
-        return realpath
-
-    def canonicalize(self, path):
-        if os.path.isabs(path):
-            return os.path.normpath(path)
-        else:
-            return os.path.normpath('/' + os.path.join(self.home, path))
+                return os.path.normpath(os.path.join(self.home, thispath))
+    else:
+        def canonicalize(self, path):
+            if os.path.isabs(path):
+                return os.path.normpath(path)
+            else:
+                return os.path.normpath('/' + os.path.join(self.home, path))
 
     def chattr(self, path, attr):
         try:
