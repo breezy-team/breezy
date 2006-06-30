@@ -23,13 +23,17 @@ class cmd_statistics(bzrlib.commands.Command):
             b = wt.branch
             last_rev = wt.last_revision()
 
+        pb = bzrlib.ui.ui_factory.nested_progress_bar()
         committers = {}
         b.lock_read()
         try:
-            ancestry = b.repository.get_ancestry(last_rev)
-            revisions = b.repository.get_revisions(ancestry[1:])
+            pb.note('getting ancestry')
+            ancestry = b.repository.get_ancestry(last_rev)[1:]
+            pb.note('getting revisions')
+            revisions = b.repository.get_revisions(ancestry)
 
-            for rev in revisions:
+            for count, rev in enumerate(revisions):
+                pb.update('checking', count, len(ancestry))
                 try:
                     email = extract_email_address(rev.committer)
                 except errors.BzrError:
@@ -37,6 +41,7 @@ class cmd_statistics(bzrlib.commands.Command):
                 committers.setdefault(email, []).append(rev)
         finally:
             b.unlock()
+        pb.clear()
 
         committer_list = sorted(((len(v), k, v) for k,v in committers.iteritems()), reverse=True)
         for count, k, v in committer_list:
