@@ -995,12 +995,20 @@ class BzrBranch(Branch):
     def lock_write(self):
         # TODO: test for failed two phase locks. This is known broken.
         self.control_files.lock_write()
-        self.repository.lock_write()
+        try:
+            self.repository.lock_write()
+        except:
+            self.control_files.unlock()
+            raise
 
     def lock_read(self):
         # TODO: test for failed two phase locks. This is known broken.
         self.control_files.lock_read()
-        self.repository.lock_read()
+        try:
+            self.repository.lock_read()
+        except:
+            self.control_files.unlock()
+            raise
 
     def unlock(self):
         # TODO: test for failed two phase locks. This is known broken.
