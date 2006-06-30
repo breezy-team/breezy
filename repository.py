@@ -123,12 +123,13 @@ class SvnRepository(Repository):
             parent_changed = False
             # FIXME: Handle renames of directories
             for p in paths:
-                if expected_path.startswith(p+"/"):
+                if expected_path.startswith(p+"/") and paths[p][0] != 'M':
                     parent_changed = True
                     break
 
             if parent_changed:
                 introduced_revision_id = self.generate_revision_id(rev, branch)
+                last_changed_revid = self.generate_revision_id(rev, branch)
                 break
 
             if not expected_path in paths:
@@ -145,8 +146,10 @@ class SvnRepository(Repository):
 
         assert continue_revnum is None
 
-        if not introduced_revision_id:
+        if introduced_revision_id is None:
             raise NoSuchFile(path=filename)
+
+        assert last_changed_revid is not None
 
         if not self.fileid_map.has_key(last_changed_revid):
             self.fileid_map[last_changed_revid] = {}
@@ -219,7 +222,7 @@ class SvnRepository(Repository):
         else:
             return SvnRevisionTree(self, revision_id, inventory)
 
-    def revision_parents(self, revision_id):
+    def revision_parents(self, revision_id, revprops=None):
         (path, revnum) = self.parse_revision_id(revision_id)
 
         parent_ids = []
@@ -227,8 +230,13 @@ class SvnRepository(Repository):
         for (branch, paths, rev, a, b, c) in self._log.get_branch_log(path, revnum - 1, 0, 1):
             parent_ids.append(self.generate_revision_id(rev, branch))
         
-        mutter('getting revprop -r %r bzr:parents' % revnum)
-        ghosts = svn.ra.rev_prop(self.ra, revnum, "bzr:parents")
+        if revprops is None:
+            mutter('getting revprop -r %r bzr:parents' % revnum)
+            ghosts = svn.ra.rev_prop(self.ra, revnum, "bzr:parents")
+        elif revprops.has_key("bzr:parents"):
+            ghosts = revprops["bzr:parents"]
+        else: 
+            ghosts = None
 
         if ghosts is not None:
             parent_ids.extend(ghosts.splitlines())
@@ -245,12 +253,11 @@ class SvnRepository(Repository):
         mutter('svn proplist -r %r' % revnum)
         svn_props = svn.ra.rev_proplist(self.ra, revnum)
 
-        parent_ids = self.revision_parents(revision_id)
+        parent_ids = self.revision_parents(revision_id, svn_props)
 
         # Commit SVN revision properties to a Revision object
         bzr_props = {}
-        rev = Revision(revision_id=revision_id,
-                       parent_ids=parent_ids)
+        rev = Revision(revision_id=revision_id, parent_ids=parent_ids)
 
         for name in svn_props:
             bzr_props[name] = svn_props[name].decode('utf8')
@@ -264,7 +271,7 @@ class SvnRepository(Repository):
 
         rev.properties = bzr_props
 
-        rev.inventory_sha1 = self.get_inventory_sha1(revision_id)
+        rev.inventory_sha1 = property(lambda: self.get_inventory_sha1(revision_id))
 
         return rev
 
@@ -569,8 +576,9 @@ class SvnRepositoryRenaming(SvnRepository):
                 break
 
         assert continue_revnum is None
+        assert last_changed_revid is not None
 
-        if not introduced_revision_id:
+        if introduced_revision_id is None:
             raise NoSuchFile(path=filename)
 
         if not self.fileid_map.has_key(last_changed_revid):

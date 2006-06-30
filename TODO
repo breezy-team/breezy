@@ -2,6 +2,6 @@
  - bug 44312
 - more tests
 - improve performance
- - use do_update() in fetch code
+ - store revision properties in file properties of branch path
 - split out fileid mapping code
 - support pushing to SVN branches. Push as merged.

@@ -82,7 +82,7 @@ class SvnBranch(Branch):
 
     def _get_nick(self):
         try:
-            return "/".split(self.branch_path)[-1]
+            return self.branch_path
         except ValueError:
             return None
 

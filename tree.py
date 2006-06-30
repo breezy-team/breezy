@@ -154,12 +154,11 @@ class TreeBuildEditor(svn.delta.Editor):
             ie.text_sha1 = osutils.sha_string(file_data)
             ie.text_size = len(file_data)
             self.tree.file_data[file_id] = file_data
-            if self.is_executable:
-                ie.executable = True
+            ie.executable = self.is_executable
 
         self.file_data = None
 
-    def finish_edit(self):
+    def close_edit(self):
         pass
 
     def abort_edit(self):
