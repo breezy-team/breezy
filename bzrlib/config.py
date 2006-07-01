@@ -512,10 +512,17 @@ class BranchConfig(Config):
         return self._get_safe_value('_post_commit')
 
     def _get_nickname(self):
-        value = self._get_best_value('_get_nickname')
+        value = self._get_explicit_nickname()
         if value is not None:
             return value
         return self.branch.base.split('/')[-2]
+
+    def has_explicit_nickname(self):
+        """Return true if a nickname has been explicitly assigned."""
+        return self._get_explicit_nickname() is not None
+
+    def _get_explicit_nickname(self):
+        return self._get_best_value('_get_nickname')
 
     def _log_format(self):
         """See Config.log_format."""

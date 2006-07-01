@@ -294,9 +294,14 @@ y
         builder.change_contents("1", other="text4", this="text3")
         builder.add_file("2", "TREE_ROOT", "name2", "text1", True)
         builder.change_contents("2", other="\x00", this="text3")
+        builder.add_file("3", "TREE_ROOT", "name3", "text5", False)
+        builder.change_perms("3", this=True)
+        builder.change_contents('3', this='moretext')
+        builder.remove_file('3', other=True)
         conflicts = builder.merge(merge_factory)
         self.assertEqual(conflicts, [TextConflict('name1', file_id='1'),
-                                     ContentsConflict('name2', file_id='2')])
+                                     ContentsConflict('name2', file_id='2'),
+                                     ContentsConflict('name3', file_id='3')])
         self.assertEqual(builder.this.get_file('2').read(), '\x00')
         builder.cleanup()
 
