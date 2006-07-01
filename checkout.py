@@ -30,7 +30,7 @@ from bzrlib.tree import EmptyTree
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
-from repository import SvnRepository
+from repository import SvnRepository, escape_svn_path
 from scheme import BranchingScheme
 from transport import (SvnRaTransport, svn_config, 
                        svn_to_bzr_url) 
@@ -212,7 +212,7 @@ class SvnWorkingTree(WorkingTree):
                 if entry.copyfrom_url and list(find_copies(entry.copyfrom_url)) == [relpath]:
                     return self.branch.repository.path_to_file_id(entry.copyfrom_rev,
                         entry.copyfrom_url[len(entry.repos):])
-                return ("NEW-" + entry.url[len(entry.repos):].strip("/").replace("/", "@"), None)
+                return ("NEW-" + escape_svn_path(entry.url[len(entry.repos):].strip("/")), None)
             else:
                 assert 0
 

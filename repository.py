@@ -43,6 +43,26 @@ REVISION_ID_PREFIX = "svn-v%d:" % MAPPING_VERSION
 SVN_PROP_BZR_PARENTS = 'bzr:parents'
 SVN_PROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
+_unsafe = "%/-"
+def escape_svn_path(id):
+    r = [((c in _unsafe) and ('%%%02x' % ord(c)) or c)
+         for c in id]
+    return ''.join(r)
+
+
+def unescape_svn_path(id):
+    ret = ""
+    i = 0
+    while i < len(id): 
+        if id[i]  == '%':
+            ret += chr(int(id[i+1:i+3], 16))
+            i+=3
+        else:
+            ret += str(id[i])
+            i+=1
+    return ret
+
+
 class SvnRepository(Repository):
     """
     Provides a simplified interface to a Subversion repository 
@@ -126,7 +146,8 @@ class SvnRepository(Repository):
             parent_changed = False
             # FIXME: Handle renames of directories
             for p in paths:
-                if expected_path.startswith(p+"/") and paths[p][0] != 'M':
+                otherpath = p[len(branch):].strip("/")
+                if expected_path.startswith(otherpath+"/") and paths[p][0] != 'M':
                     parent_changed = True
                     break
 
@@ -162,7 +183,7 @@ class SvnRepository(Repository):
         if not self.path_map.has_key(revnum):
             self.path_map[revnum] = {}
 
-        file_id = "%s-%s" % (introduced_revision_id, filename.replace("/", "@"))
+        file_id = "%s-%s" % (introduced_revision_id, escape_svn_path(filename))
         assert file_id != None
 
         self.path_map[revnum][path] = (file_id, last_changed_revid)
@@ -352,7 +373,7 @@ class SvnRepository(Repository):
         assert revnum >= 0
         if revnum == 0:
             return NULL_REVISION
-        return "%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, self.uuid, path.strip("/"))
+        return "%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, self.uuid, escape_svn_path(path.strip("/")))
 
     def parse_revision_id(self, revid):
         """Parse an existing Subversion-based revision id.
@@ -377,7 +398,7 @@ class SvnRepository(Repository):
         if uuid != self.uuid:
             raise NoSuchRevision(self, revid)
 
-        branch_path = revid[fash+1:]
+        branch_path = unescape_svn_path(revid[fash+1:])
         revnum = int(revid[0:at])
         assert revnum >= 0
         return (branch_path, revnum)
@@ -541,7 +562,8 @@ class SvnRepositoryRenaming(SvnRepository):
             parent_changed = False
             # FIXME: Handle renames of directories
             for p in paths:
-                if expected_path.startswith(p+"/"):
+                otherpath = p[len(branch):].strip("/")
+                if expected_path.startswith(otherpath+"/") and paths[p][0] != 'M':
                     parent_changed = True
                     break
 
@@ -595,7 +617,7 @@ class SvnRepositoryRenaming(SvnRepository):
         if not self.path_map.has_key(revnum):
             self.path_map[revnum] = {}
 
-        file_id = "%s-%s" % (introduced_revision_id, filename.replace("/", "@"))
+        file_id = "%s-%s" % (introduced_revision_id, escape_svn_path(filename))
         assert file_id != None
 
         self.path_map[revnum][path] = (file_id, last_changed_revid)

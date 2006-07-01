@@ -141,9 +141,8 @@ class RevisionBuildEditor(svn.delta.Editor):
             mutter('unsupported file property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
-        if (name == svn.core.SVN_PROP_EXECUTABLE and 
-            value == svn.core.SVN_PROP_EXECUTABLE_VALUE):
-            self.is_executable = True
+        if name == svn.core.SVN_PROP_EXECUTABLE: 
+            self.is_executable = (value == svn.core.SVN_PROP_EXECUTABLE_VALUE)
         elif (name == svn.core.SVN_PROP_SPECIAL):
             self.is_symlink = (value == svn.core.SVN_PROP_SPECIAL_VALUE)
         elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
@@ -158,11 +157,11 @@ class RevisionBuildEditor(svn.delta.Editor):
             mutter('unsupported file property %r' % name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
-        mutter('open %r' % path)
         self.is_symlink = False
         self.is_executable = False
         self.file_data = ""
         self.file_parents = []
+        self.file_stream = None
         return path
 
     def open_file(self, path, parent_id, base_revnum, pool):
@@ -173,7 +172,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
         self.file_data = file_weave.get_text(revision_id)
         self.file_parents = [revision_id]
-        mutter('opening %r, revnum %r, revid: %r, md5: %r' % (path, base_revnum, revision_id, md5.new(self.file_data).hexdigest()))
+        self.file_stream = None
         return path
 
     def close_file(self, path, checksum):
@@ -181,14 +180,13 @@ class RevisionBuildEditor(svn.delta.Editor):
         if relpath is None:
             return 
 
-        if self.file_stream:
+        if self.file_stream is not None:
             self.file_stream.seek(0)
             lines = osutils.split_lines(self.file_stream.read())
         else:
             lines = []
 
         actual_checksum = md5_strings(lines)
-        mutter('%r has checksum %r' % (path, actual_checksum))
         assert checksum is None or checksum == actual_checksum
 
         file_id, revision_id = self.get_file_id(path, self.revnum)
@@ -264,7 +262,7 @@ class InterSvnRepository(InterRepository):
         prev_revnum = 0
         prev_inv = Inventory()
         for (branch, revnum, revid) in needed:
-            pb.update('copying revision', num, len(needed))
+            pb.update('copying revision', num+1, len(needed)+1)
             num += 1
 
             mutter('svn proplist -r %r' % revnum)
