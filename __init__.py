@@ -53,15 +53,11 @@ class cmd_import_svn(Command):
     
     """
     takes_args = ['url', 'output_dir']
-    takes_options = ['']
+    takes_options = []
 
     @display_command
     def run(self, url, output_dir):
-        if opts.scheme == "trunk":
-            scheme = TrunkBranchingScheme()
-        else:
-            scheme = NoBranchingScheme()
-
+        from convert import convert_repository
         convert_repository(url, output_dir)
 
 
