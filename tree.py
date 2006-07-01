@@ -165,7 +165,7 @@ class TreeBuildEditor(svn.delta.Editor):
         else:
             file_data = ""
 
-        actual_checksum = md5(file_data).hexdigest()
+        actual_checksum = md5.new(file_data).hexdigest()
         assert(checksum is None or checksum == actual_checksum,
                 "checksum mismatch: %r != %r" % (checksum, actual_checksum))
 

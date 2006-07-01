@@ -184,7 +184,8 @@ class RevisionBuildEditor(svn.delta.Editor):
             self.file_stream.seek(0)
             lines = osutils.split_lines(self.file_stream.read())
         else:
-            lines = []
+            # Data didn't change or file is new
+            lines = osutils.split_lines(self.file_data)
 
         actual_checksum = md5_strings(lines)
         assert checksum is None or checksum == actual_checksum

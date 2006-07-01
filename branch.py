@@ -18,7 +18,7 @@ from bzrlib.branch import Branch, BranchFormat, BranchCheckResult, BzrBranch
 from bzrlib.config import TreeConfig
 from bzrlib.delta import compare_trees
 from bzrlib.errors import (NotBranchError, NoWorkingTree, NoSuchRevision, 
-                           NoSuchFile)
+                           NoSuchFile, DivergedBranches)
 from bzrlib.inventory import (Inventory, InventoryFile, InventoryDirectory, 
                               ROOT_ID)
 from bzrlib.revision import Revision, NULL_REVISION
@@ -32,8 +32,10 @@ import os
 import svn.core, svn.ra
 from svn.core import SubversionException
 
+from commit import push_as_merged
 from repository import SvnRepository
 from tree import SvnRevisionTree
+
 
 class FakeControlFiles(object):
     def get_utf8(self, name):
@@ -105,23 +107,63 @@ class SvnBranch(Branch):
         return self._revision_history
 
     def pull(self, source, overwrite=False, stop_revision=None):
-        if isinstance(source, SvnBranch):
+        source.lock_read()
+        try:
+            old_count = len(self.revision_history())
+            try:
+                self.update_revisions(source, stop_revision)
+            except DivergedBranches:
+                if overwrite:
+                    raise BzrError('overwrite not supported for Subversion branches')
+            new_count = len(self.revision_history())
+            return new_count - old_count
+        finally:
+            source.unlock()
+
+    def generate_revision_history(self, revision_id, last_rev=None, 
+        other_branch=None):
+        """Create a new revision history that will finish with revision_id.
+        
+        :param revision_id: the new tip to use.
+        :param last_rev: The previous last_revision. If not None, then this
+            must be a ancestory of revision_id, or DivergedBranches is raised.
+        :param other_branch: The other branch that DivergedBranches should
+            raise with respect to.
+        """
+        # stop_revision must be a descendant of last_revision
+        # make a new revision history from the graph
+
+    def update_revisions(self, other, stop_revision=None):
+        if isinstance(other, SvnBranch):
             # Import from another Subversion branch
-            assert source.repository.uuid == self.repository.uuid, \
+            assert other.repository.uuid == self.repository.uuid, \
                     "can only import from elsewhere in the same repository."
 
             # FIXME: Make sure branches haven't diverged
             # FIXME: svn.ra.del_dir(self.base_path)
-            # FIXME: svn.ra.copy_dir(source.base_path, self.base_path)
+            # FIXME: svn.ra.copy_dir(other.base_path, self.base_path)
+            raise NotImplementedError(self.pull)
         else:
-            # FIXME: Find missing entries in revision history
-            # FIXME: Run commit for each of the missing revisions
-            pass
+            if stop_revision is None:
+                stop_revision = other.last_revision()
+                if stop_revision is None:
+                    return
 
-        #raise NotImplementedError(self.pull)
+            last_rev = self.last_revision()
 
-    def update_revisions(self, other, stop_revision=None):
-        raise NotImplementedError(self.update_revisions)
+            my_ancestry = self.repository.get_ancestry(last_rev)
+            if stop_revision in my_ancestry:
+                # last_revision is a descendant of stop_revision
+                return
+
+            stop_graph = other.repository.get_revision_graph(stop_revision)
+            if last_rev is not None and last_rev not in stop_graph:
+                raise DivergedBranches(self, other)
+
+            for rev_id in other.revision_history():
+                if rev_id not in self.revision_history():
+                    mutter('integration %r' % rev_id)
+                    push_as_merged(self, other, rev_id)
 
     # The remote server handles all this for us
     def lock_write(self):

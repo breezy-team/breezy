@@ -18,13 +18,13 @@ import svn.delta
 import svn.ra
 from svn.core import Pool, SubversionException
 
+from bzrlib.delta import compare_trees
 from bzrlib.errors import UnsupportedOperation, BzrError
 from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.repository import CommitBuilder
 from bzrlib.trace import mutter, warning
 
-from branch import SvnBranch
 from repository import SvnRepository, SVN_PROP_BZR_PARENTS
 
 import os
@@ -43,7 +43,6 @@ class SvnCommitBuilder(CommitBuilder):
         super(SvnCommitBuilder, self).__init__(repository, parents, 
             config, None, None, None, revprops, None)
         assert isinstance(repository, SvnRepository)
-        assert isinstance(branch, SvnBranch)
         self.branch = branch
         self.pool = Pool()
 
@@ -209,6 +208,7 @@ class SvnCommitBuilder(CommitBuilder):
             assert self.revnum > 0
             self.date = date
             self.author = author
+            mutter('committed %r, author: %r, date: %r' % (revision, author, date))
 
         mutter('obtaining commit editor')
         self.editor, editor_baton = svn.ra.get_commit_editor(
@@ -270,3 +270,35 @@ class SvnCommitBuilder(CommitBuilder):
                (self.author, self.date))
 
         return revid
+
+
+def push_as_merged(target, source, revision_id):
+    rev = source.repository.get_revision(revision_id)
+    inv = source.repository.get_inventory(revision_id)
+
+    mutter('committing %r on top of %r' % (revision_id, 
+                                  target.last_revision()))
+
+    old_tree = source.repository.revision_tree(revision_id)
+    new_tree = target.repository.revision_tree(target.last_revision())
+
+    builder = target.get_commit_builder([revision_id, target.last_revision()])
+    delta = compare_trees(old_tree, new_tree)
+    builder.new_inventory = inv
+
+    for (id, ie) in inv.entries():
+        if not delta.touches_file_id(id):
+            continue
+
+        if ie.kind == 'directory':
+            builder.modified_directory(ie.file_id, [])
+        elif ie.kind == 'link':
+            builder.modified_link(ie.file_id, [], ie.symlink_target)
+        elif ie.kind == 'file':
+            def get_text():
+                return new_tree.get_file_text(ie.file_id)
+            builder.modified_file_text(ie.file_id, [], get_text)
+
+    return builder.commit(rev.message)
+
+

@@ -113,7 +113,7 @@ class SvnRepository(Repository):
         :return: Subversion file name relative to the current repository.
         """
         # TODO: Do real parsing here
-        return self.fileid_map[revision_id][file_id]
+        return self.fileid_map[(revision_id, file_id)]
 
     def path_to_file_id(self, revnum, path):
         """Generate a bzr file id from a Subversion file name. 
@@ -124,8 +124,10 @@ class SvnRepository(Repository):
         assert isinstance(path, basestring)
         assert revnum >= 0
 
-        if self.path_map.has_key(revnum) and self.path_map[revnum].has_key(path):
-            return self.path_map[revnum][path]
+        path = path.strip("/")
+
+        if self.path_map.has_key((revnum, path)):
+            return self.path_map[(revnum, path)]
 
         (path_branch, filename) = self.scheme.unprefix(path)
 
@@ -134,29 +136,33 @@ class SvnRepository(Repository):
 
         introduced_revision_id = None
         last_changed_revid = None
-        continue_revnum = None
         for (branch, paths, rev) in self._log.follow_history(path_branch, 
                                                              revnum):
-            if not (continue_revnum is None or continue_revnum == rev):
-                continue
-
-            continue_revnum = None
-
             expected_path = ("%s/%s" % (branch, filename)).strip("/")
-            parent_changed = False
-            # FIXME: Handle renames of directories
-            for p in paths:
-                otherpath = p[len(branch):].strip("/")
-                if expected_path.startswith(otherpath+"/") and paths[p][0] != 'M':
-                    parent_changed = True
-                    break
 
             revid = self.generate_revision_id(rev, branch)
-            if parent_changed:
-                introduced_revision_id = revid
+
+            if not expected_path in paths:
+                parent_changed = False
+                for p in paths:
+                    if osutils.is_inside(p, expected_path) and paths[p][0] != 'M':
+                        parent_changed = True
+
+                if parent_changed:
+                    introduced_revision_id = revid
+                    if last_changed_revid is None:
+                        last_changed_revid = revid
+                    break
+
+            if self.path_map.has_key((rev, expected_path)):
+                file_id, old_revid = self.path_map[(rev, expected_path)]
                 if last_changed_revid is None:
-                    last_changed_revid = revid
-                break
+                    revid = old_revid
+                else:
+                    revid = last_changed_revid
+                self.path_map[(revnum, path)] = (file_id, revid)
+                self.fileid_map[(revid, file_id)] = (path, revnum)
+                return self.path_map[(revnum, path)]
 
             if not expected_path in paths:
                 # File changed in this revision
@@ -170,24 +176,16 @@ class SvnRepository(Repository):
             if paths[expected_path][0] in ('A', 'R'):
                 break
 
-        assert continue_revnum is None
-
         if introduced_revision_id is None:
             raise NoSuchFile(path=filename)
 
         assert last_changed_revid is not None
 
-        if not self.fileid_map.has_key(last_changed_revid):
-            self.fileid_map[last_changed_revid] = {}
-
-        if not self.path_map.has_key(revnum):
-            self.path_map[revnum] = {}
-
         file_id = "%s-%s" % (introduced_revision_id, escape_svn_path(filename))
         assert file_id != None
 
-        self.path_map[revnum][path] = (file_id, last_changed_revid)
-        self.fileid_map[last_changed_revid][file_id] = (path, revnum)
+        self.path_map[(revnum, path)] = (file_id, last_changed_revid)
+        self.fileid_map[(last_changed_revid, file_id)] = (path, revnum)
         return (file_id, last_changed_revid)
 
     def all_revision_ids(self):
@@ -207,8 +205,6 @@ class SvnRepository(Repository):
         if revision_id is None: # FIXME: Is this correct?
             return [None]
 
-        #FIXME: Find not just direct predecessors 
-        # but also branches from which this branch was copied
         (path, revnum) = self.parse_revision_id(revision_id)
 
         self._ancestry = []
@@ -565,8 +561,6 @@ class SvnRepositoryRenaming(SvnRepository):
                 otherpath = p[len(branch):].strip("/")
                 if expected_path.startswith(otherpath+"/") and paths[p][0] != 'M':
                     parent_changed = True
-                    break
-
 
             revid = self.generate_revision_id(rev, branch)
             if parent_changed:
@@ -611,15 +605,9 @@ class SvnRepositoryRenaming(SvnRepository):
         if introduced_revision_id is None:
             raise NoSuchFile(path=filename)
 
-        if not self.fileid_map.has_key(last_changed_revid):
-            self.fileid_map[last_changed_revid] = {}
-
-        if not self.path_map.has_key(revnum):
-            self.path_map[revnum] = {}
-
         file_id = "%s-%s" % (introduced_revision_id, escape_svn_path(filename))
         assert file_id != None
 
-        self.path_map[revnum][path] = (file_id, last_changed_revid)
-        self.fileid_map[last_changed_revid][file_id] = (path, revnum)
+        self.path_map[revnum, path] = (file_id, last_changed_revid)
+        self.fileid_map[last_changed_revid, file_id] = (path, revnum)
         return (file_id, last_changed_revid)
