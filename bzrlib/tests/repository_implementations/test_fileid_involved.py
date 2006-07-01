@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import sys
 
 from bzrlib.add import smart_add
 from bzrlib.builtins import merge
@@ -68,7 +69,6 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         # J changes: 'b-file-id-2006-01-01-defg'
         # K changes: 'c-funky<file-id> quiji%bo'
 
-        self.branch = None
         main_wt = self.make_branch_and_tree('main')
         main_branch = main_wt.branch
         self.build_tree(["main/a","main/b","main/c"])
@@ -79,10 +79,15 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         try:
             main_wt.commit("Commit one", rev_id="rev-A")
         except IllegalPath:
-            # ("File-id with <> not supported with this format")
-            # this is not a skip because newer formats do support this,
-            # and nothin can done to correct this test - its not a bug.
-            return
+            # TODO: jam 20060701 Consider raising a different exception
+            #       newer formats do support this, and nothin can done to 
+            #       correct this test - its not a bug.
+            if sys.platform == 'win32':
+                raise TestSkipped('Old repository formats do not'
+                                  ' support file ids with <> on win32')
+            # This is not a known error condition
+            raise
+
         #-------- end A -----------
 
         d1 = main_branch.bzrdir.clone('branch1')
@@ -136,11 +141,6 @@ class TestFileIdInvolved(FileIdInvolvedBase):
         self.branch = main_branch
 
     def test_fileids_altered_between_two_revs(self):
-        if self.branch is None:
-            # Could not create the branching structure
-            # for this repository format
-            return
-
         def foo(old, new):
             print set(self.branch.repository.get_ancestry(new)).difference(set(self.branch.repository.get_ancestry(old)))
 
@@ -175,10 +175,6 @@ class TestFileIdInvolved(FileIdInvolvedBase):
                 ['rev-G', 'rev-F', 'rev-C', 'rev-B', 'rev-<D>', 'rev-K', 'rev-J']))
 
     def test_fileids_altered_by_revision_ids(self):
-        if self.branch is None:
-            # See earlier comment about not being able
-            # to run this test with older formats
-            return
         self.assertEqual(
             {'a-file-id-2006-01-01-abcd':set(['rev-A']),
              'b-file-id-2006-01-01-defg': set(['rev-A']),
@@ -195,10 +191,6 @@ class TestFileIdInvolved(FileIdInvolvedBase):
             self.branch.repository.fileids_altered_by_revision_ids(["rev-<D>"]))
 
     def test_fileids_involved_full_compare(self):
-        if self.branch is None:
-            # See earlier comment about not being able
-            # to run this test with older formats
-            return
         # this tests that the result of each fileid_involved calculation 
         # along a revision history selects only the fileids selected by
         # comparing the trees - no less, and no more. This is correct 
@@ -239,7 +231,14 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         try:
             main_wt.commit("Commit one", rev_id="rev-A")
         except IllegalPath: 
-            return # not an error, and not fixable. New formats are fixed.
+            # TODO: jam 20060701 Consider raising a different exception
+            #       newer formats do support this, and nothin can done to 
+            #       correct this test - its not a bug.
+            if sys.platform == 'win32':
+                raise TestSkipped('Old repository formats do not'
+                                  ' support file ids with <> on win32')
+            # This is not a known error condition
+            raise
 
         branch2_bzrdir = main_branch.bzrdir.sprout("branch2")
         branch2_branch = branch2_bzrdir.open_branch()
@@ -255,10 +254,6 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         self.branch = main_branch
 
     def test_fileid_involved_full_compare2(self):
-        if self.branch is None:
-            # See earlier comment about not being able
-            # to run this test with older formats
-            return
         # this tests that fileids_alteted_by_revision_ids returns 
         # more information than compare_tree can, because it 
         # sees each change rather than the aggregate delta.
