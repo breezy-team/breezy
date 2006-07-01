@@ -87,7 +87,12 @@ def check_old_format_lock_error(repository_format):
     if description in ("Repository format 4",
                        "Weave repository format 5",
                        "Weave repository format 6"):
-        return
+        # jam 20060701
+        # win32 OS locks are not re-entrant. So one process cannot
+        # open the same repository twice and lock them both.
+        raise TestSkipped('%s on win32 cannot open the same'
+                          ' repository twice in different objects'
+                          % description)
     raise
 
 
