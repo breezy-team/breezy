@@ -18,8 +18,15 @@
 
 from cStringIO import StringIO
 import errno
+from ntpath import (abspath as _nt_abspath,
+                    join as _nt_join,
+                    normpath as _nt_normpath,
+                    realpath as _nt_realpath,
+                    splitdrive as _nt_splitdrive,
+                    )
 import os
 from os import listdir
+import posixpath
 import re
 import sha
 import shutil
@@ -33,11 +40,6 @@ import time
 import types
 import tempfile
 import unicodedata
-from ntpath import (abspath as _nt_abspath,
-                    join as _nt_join,
-                    normpath as _nt_normpath,
-                    realpath as _nt_realpath,
-                    )
 
 import bzrlib
 from bzrlib.errors import (BzrError,
@@ -46,9 +48,9 @@ from bzrlib.errors import (BzrError,
                            PathNotChild,
                            IllegalPath,
                            )
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function, 
+        zero_nine)
 from bzrlib.trace import mutter
-import bzrlib.win32console
 
 
 def make_readonly(filename):
@@ -203,24 +205,38 @@ def fancy_rename(old, new, rename_func, unlink_func):
 # string.
 _fs_enc = sys.getfilesystemencoding()
 def _posix_abspath(path):
-    return os.path.abspath(path.encode(_fs_enc)).decode(_fs_enc)
-    # jam 20060426 This is another possibility which mimics 
-    # os.path.abspath, only uses unicode characters instead
-    # if not os.path.isabs(path):
-    #     return os.path.join(os.getcwdu(), path)
-    # return path
+    # jam 20060426 rather than encoding to fsencoding
+    # copy posixpath.abspath, but use os.getcwdu instead
+    if not posixpath.isabs(path):
+        path = posixpath.join(getcwd(), path)
+    return posixpath.normpath(path)
 
 
 def _posix_realpath(path):
-    return os.path.realpath(path.encode(_fs_enc)).decode(_fs_enc)
+    return posixpath.realpath(path.encode(_fs_enc)).decode(_fs_enc)
+
+
+def _win32_fixdrive(path):
+    """Force drive letters to be consistent.
+
+    win32 is inconsistent whether it returns lower or upper case
+    and even if it was consistent the user might type the other
+    so we force it to uppercase
+    running python.exe under cmd.exe return capital C:\\
+    running win32 python inside a cygwin shell returns lowercase c:\\
+    """
+    drive, path = _nt_splitdrive(path)
+    return drive.upper() + path
 
 
 def _win32_abspath(path):
-    return _nt_abspath(path.encode(_fs_enc)).decode(_fs_enc).replace('\\', '/')
+    # Real _nt_abspath doesn't have a problem with a unicode cwd
+    return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_realpath(path):
-    return _nt_realpath(path.encode(_fs_enc)).decode(_fs_enc).replace('\\', '/')
+    # Real _nt_realpath doesn't have a problem with a unicode cwd
+    return _win32_fixdrive(_nt_realpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_pathjoin(*args):
@@ -228,15 +244,15 @@ def _win32_pathjoin(*args):
 
 
 def _win32_normpath(path):
-    return _nt_normpath(path).replace('\\', '/')
+    return _win32_fixdrive(_nt_normpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_getcwd():
-    return os.getcwdu().replace('\\', '/')
+    return _win32_fixdrive(os.getcwdu().replace('\\', '/'))
 
 
 def _win32_mkdtemp(*args, **kwargs):
-    return tempfile.mkdtemp(*args, **kwargs).replace('\\', '/')
+    return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
 
 
 def _win32_rename(old, new):
@@ -286,6 +302,33 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
+
+
+def get_terminal_encoding():
+    """Find the best encoding for printing to the screen.
+
+    This attempts to check both sys.stdout and sys.stdin to see
+    what encoding they are in, and if that fails it falls back to
+    bzrlib.user_encoding.
+    The problem is that on Windows, locale.getpreferredencoding()
+    is not the same encoding as that used by the console:
+    http://mail.python.org/pipermail/python-list/2003-May/162357.html
+
+    On my standard US Windows XP, the preferred encoding is
+    cp1252, but the console is cp437
+    """
+    output_encoding = getattr(sys.stdout, 'encoding', None)
+    if not output_encoding:
+        input_encoding = getattr(sys.stdin, 'encoding', None)
+        if not input_encoding:
+            output_encoding = bzrlib.user_encoding
+            mutter('encoding stdout as bzrlib.user_encoding %r', output_encoding)
+        else:
+            output_encoding = input_encoding
+            mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
+    else:
+        mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+    return output_encoding
 
 
 def normalizepath(f):

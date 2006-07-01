@@ -65,6 +65,12 @@ IN DEVELOPMENT
      to more locations than just branch locations.
      (Aaron Bentley)
 
+   * 'bzr checkout' now aliased to 'bzr co', and 'bzr annotate' to 'bzr ann'.
+     (Michael Ellerman)
+
+   * 'bzr revert DIRECTORY' now reverts the contents of the directory as well.
+     (Aaron Bentley)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
@@ -73,6 +79,17 @@ IN DEVELOPMENT
 
     * Fix unnecessary requirement of sign-my-commits that it be run from
       a working directory.  (Martin Pool, Robert Collins)
+
+    * 'bzr push location' will only remember the push location if it succeeds
+      in connecting to the remote location. (#49742, John Arbash Meinel)
+
+    * 'bzr revert' no longer toggles the executable bit on win32
+      (#45010, John Arbash Meinel)
+
+    * Handle broken pipe under win32 correctly. (John Arbash Meinel)
+    
+    * sftp tests now work correctly on win32 if you have a newer paramiko
+      (John Arbash Meinel)
 
   INTERNALS:
 
@@ -86,6 +103,10 @@ IN DEVELOPMENT
 
     * bzrlib.delta.compare_trees now iterates in alphabetically sorted order,
       rather than randomly walking the inventories. (John Arbash Meinel)
+
+    * Doctests are now run in temporary directories which are cleaned up when
+      they finish, rather than using special ScratchDir/ScratchBranch objects.
+      (Martin Pool)
 
     * Split ``check`` into separate methods on the branch and on the repository,
       so that it can be specialized in ways that are useful or efficient for
@@ -102,6 +123,10 @@ IN DEVELOPMENT
     * bzrlib.diff.external_diff can be redirected to any file-like object.
       Uses subprocess instead of spawnvp.
       (#4047, #48914, James Henstridge, John Arbash Meinel)
+
+    * New command line option '--profile-imports', which will install a custom
+      importer to log time to import modules and regex compilation time to 
+      sys.stderr (John Arbash Meinel)
 
 bzr 0.8.2  2006-05-17
   
@@ -296,8 +321,6 @@ bzr 0.8  2006-05-08
     * New option 'diff --prefix' to control how files are named in diff
       output, with shortcuts '-p0' and '-p1' corresponding to the options for 
       GNU patch.  (Alexander Belchenko, Goffredo Baroncelli, Martin Pool)
-
-    * Add --revision option to 'annotate' command.  (Olaf Conradi)
 
     * Add --revision option to 'annotate' command.  (Olaf Conradi)
 

@@ -21,6 +21,7 @@ import sys
 import os
 
 import bzrlib
+import bzrlib.osutils as osutils
 from bzrlib.tests import TestCaseInTempDir, TestSkipped
 from bzrlib.trace import mutter, note
 import bzrlib.urlutils as urlutils
@@ -52,6 +53,7 @@ class TestNonAscii(TestCaseInTempDir):
         bzr = self.run_bzr
 
         fs_enc = sys.getfilesystemencoding()
+        terminal_enc = osutils.get_terminal_encoding()
         fname = self.info['filename']
         dir_name = self.info['directory']
         for thing in [fname, dir_name]:
@@ -59,8 +61,16 @@ class TestNonAscii(TestCaseInTempDir):
                 thing.encode(fs_enc)
             except UnicodeEncodeError:
                 raise TestSkipped(('Unable to represent path %r'
-                                   ' in filesystem encoding %s')
+                                   ' in filesystem encoding "%s"')
                                     % (thing, fs_enc))
+            try:
+                thing.encode(terminal_enc)
+            except UnicodeEncodeError:
+                raise TestSkipped(('Unable to represent path %r'
+                                   ' in terminal encoding "%s"'
+                                   ' (even though it is valid in'
+                                   ' filesystem encoding "%s")')
+                                   % (thing, terminal_enc, fs_enc))
 
         bzr('init')
         open('a', 'wb').write('foo\n')
@@ -208,7 +218,7 @@ class TestNonAscii(TestCaseInTempDir):
         open('a', 'ab').write('more text\n')
         bzr('commit', '-m', 'mod a')
 
-        pwd = os.getcwdu()
+        pwd = osutils.getcwd()
 
         os.chdir(u'../' + dirname2)
         txt = bzr('pull')
@@ -484,4 +494,19 @@ class TestNonAscii(TestCaseInTempDir):
         txt = bzr('unknowns')
         self.assertEqual('', txt)
 
+    def test_missing(self):
+        bzr = self.run_bzr_decode
 
+        # create empty tree as reference for missing
+        self.run_bzr('init', 'empty-tree')
+
+        msg = self.info['message']
+
+        txt = bzr('missing', 'empty-tree', retcode=1)
+        self.assertNotEqual(-1, txt.find(self.info['committer']))
+        self.assertNotEqual(-1, txt.find(msg))
+
+        # Make sure missing doesn't fail even if we can't write out
+        txt = bzr('missing', 'empty-tree', encoding='ascii', retcode=1)
+        self.assertEqual(-1, txt.find(msg))
+        self.assertNotEqual(-1, txt.find(msg.encode('ascii', 'replace')))

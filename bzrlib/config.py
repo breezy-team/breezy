@@ -227,6 +227,12 @@ class Config(object):
     def _get_alias(self, value):
         pass
 
+    def get_nickname(self):
+        return self._get_nickname()
+
+    def _get_nickname(self):
+        return None
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -255,7 +261,7 @@ class IniBasedConfig(Config):
             return self._string_to_signature_policy(policy)
 
     def _get_signing_policy(self):
-        """See Config._get_signature_checking."""
+        """See Config._get_signing_policy"""
         policy = self._get_user_option('create_signatures')
         if policy:
             return self._string_to_signing_policy(policy)
@@ -318,6 +324,9 @@ class IniBasedConfig(Config):
         except KeyError:
             pass
 
+    def _get_nickname(self):
+        return self.get_user_option('nickname')
+
 
 class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
@@ -339,13 +348,7 @@ class LocationConfig(IniBasedConfig):
             warning('Please rename branches.conf to locations.conf')
             name_generator = branches_config_filename
         super(LocationConfig, self).__init__(name_generator)
-        self._global_config = None
         self.location = location
-
-    def _get_global_config(self):
-        if self._global_config is None:
-            self._global_config = GlobalConfig()
-        return self._global_config
 
     def _get_section(self):
         """Get the section we should look in for config items.
@@ -388,55 +391,6 @@ class LocationConfig(IniBasedConfig):
         matches.sort(reverse=True)
         return matches[0][1]
 
-    def _gpg_signing_command(self):
-        """See Config.gpg_signing_command."""
-        command = super(LocationConfig, self)._gpg_signing_command()
-        if command is not None:
-            return command
-        return self._get_global_config()._gpg_signing_command()
-
-    def _log_format(self):
-        """See Config.log_format."""
-        command = super(LocationConfig, self)._log_format()
-        if command is not None:
-            return command
-        return self._get_global_config()._log_format()
-
-    def _get_user_id(self):
-        user_id = super(LocationConfig, self)._get_user_id()
-        if user_id is not None:
-            return user_id
-        return self._get_global_config()._get_user_id()
-
-    def _get_user_option(self, option_name):
-        """See Config._get_user_option."""
-        option_value = super(LocationConfig, 
-                             self)._get_user_option(option_name)
-        if option_value is not None:
-            return option_value
-        return self._get_global_config()._get_user_option(option_name)
-
-    def _get_signature_checking(self):
-        """See Config._get_signature_checking."""
-        check = super(LocationConfig, self)._get_signature_checking()
-        if check is not None:
-            return check
-        return self._get_global_config()._get_signature_checking()
-
-    def _get_signing_policy(self):
-        """See Config._get_signing_policy."""
-        sign = super(LocationConfig, self)._get_signing_policy()
-        if sign is not None:
-            return sign
-        return self._get_global_config()._get_signing_policy()
-
-    def _post_commit(self):
-        """See Config.post_commit."""
-        hook = self._get_user_option('post_commit')
-        if hook is not None:
-            return hook
-        return self._get_global_config()._post_commit()
-
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
         # FIXME: RBC 20051029 This should refresh the parser and also take a
@@ -458,10 +412,47 @@ class LocationConfig(IniBasedConfig):
 class BranchConfig(Config):
     """A configuration object giving the policy for a branch."""
 
+    def _get_branch_data_config(self):
+        if self._branch_data_config is None:
+            self._branch_data_config = TreeConfig(self.branch)
+        return self._branch_data_config
+
     def _get_location_config(self):
         if self._location_config is None:
             self._location_config = LocationConfig(self.branch.base)
         return self._location_config
+
+    def _get_global_config(self):
+        if self._global_config is None:
+            self._global_config = GlobalConfig()
+        return self._global_config
+
+    def _get_best_value(self, option_name):
+        """This returns a user option from local, tree or global config.
+
+        They are tried in that order.  Use get_safe_value if trusted values
+        are necessary.
+        """
+        for source in self.option_sources:
+            value = getattr(source(), option_name)()
+            if value is not None:
+                return value
+        return None
+
+    def _get_safe_value(self, option_name):
+        """This variant of get_best_value never returns untrusted values.
+        
+        It does not return values from the branch data, because the branch may
+        not be controlled by the user.
+
+        We may wish to allow locations.conf to control whether branches are
+        trusted in the future.
+        """
+        for source in (self._get_location_config, self._get_global_config):
+            value = getattr(source(), option_name)()
+            if value is not None:
+                return value
+        return None
 
     def _get_user_id(self):
         """Return the full user id for the branch.
@@ -477,36 +468,65 @@ class BranchConfig(Config):
         except errors.NoSuchFile, e:
             pass
         
-        return self._get_location_config()._get_user_id()
+        return self._get_best_value('_get_user_id')
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
-        return self._get_location_config()._get_signature_checking()
+        return self._get_best_value('_get_signature_checking')
 
     def _get_signing_policy(self):
         """See Config._get_signing_policy."""
-        return self._get_location_config()._get_signing_policy()
+        return self._get_best_value('_get_signing_policy')
 
     def _get_user_option(self, option_name):
         """See Config._get_user_option."""
-        return self._get_location_config()._get_user_option(option_name)
+        for source in self.option_sources:
+            value = source()._get_user_option(option_name)
+            if value is not None:
+                return value
+        return None
+
+    def set_user_option(self, name, value, local=False):
+        if local is True:
+            self._get_location_config().set_user_option(name, value)
+        else:
+            self._get_branch_data_config().set_option(value, name)
+
 
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
-        return self._get_location_config()._gpg_signing_command()
+        return self._get_safe_value('_gpg_signing_command')
         
     def __init__(self, branch):
         super(BranchConfig, self).__init__()
         self._location_config = None
+        self._branch_data_config = None
+        self._global_config = None
         self.branch = branch
+        self.option_sources = (self._get_location_config, 
+                               self._get_branch_data_config,
+                               self._get_global_config)
 
     def _post_commit(self):
         """See Config.post_commit."""
-        return self._get_location_config()._post_commit()
+        return self._get_safe_value('_post_commit')
+
+    def _get_nickname(self):
+        value = self._get_explicit_nickname()
+        if value is not None:
+            return value
+        return self.branch.base.split('/')[-2]
+
+    def has_explicit_nickname(self):
+        """Return true if a nickname has been explicitly assigned."""
+        return self._get_explicit_nickname() is not None
+
+    def _get_explicit_nickname(self):
+        return self._get_best_value('_get_nickname')
 
     def _log_format(self):
         """See Config.log_format."""
-        return self._get_location_config()._log_format()
+        return self._get_best_value('_log_format')
 
 
 def ensure_config_dir_exists(path=None):
@@ -541,7 +561,7 @@ def config_dir():
         if base is None:
             base = os.environ.get('HOME', None)
         if base is None:
-            raise BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
+            raise errors.BzrError('You must have one of BZR_HOME, APPDATA, or HOME set')
         return pathjoin(base, 'bazaar', '2.0')
     else:
         # cygwin, linux, and darwin all have a $HOME directory
@@ -628,10 +648,15 @@ def extract_email_address(e):
     return m.group(0)
 
 
-class TreeConfig(object):
+class TreeConfig(IniBasedConfig):
     """Branch configuration data associated with its contents, not location"""
     def __init__(self, branch):
         self.branch = branch
+
+    def _get_parser(self, file=None):
+        if file is not None:
+            return IniBasedConfig._get_parser(file)
+        return self._get_config()
 
     def _get_config(self):
         try:

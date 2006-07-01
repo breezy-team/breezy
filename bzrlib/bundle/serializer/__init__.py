@@ -40,7 +40,7 @@ def _get_filename(f):
     return '<unknown>'
 
 
-def read(f):
+def read_bundle(f):
     """Read in a bundle from a filelike object.
 
     :param f: A file-like object
@@ -52,13 +52,15 @@ def read(f):
         if m:
             version = m.group('version')
             break
+        elif line.startswith(BUNDLE_HEADER):
+            raise errors.MalformedHeader()
         m = CHANGESET_OLD_HEADER_RE.match(line)
         if m:
             version = m.group('version')
             raise errors.BundleNotSupported(version, 'old format bundles not supported')
 
     if version is None:
-        raise errors.NoBundleFound(_get_filename(f))
+        raise errors.NotABundle('Did not find an opening header')
 
     # Now we have a version, to figure out how to read the bundle 
     if not _serializers.has_key(version):
@@ -259,6 +261,6 @@ def binary_diff(old_filename, old_lines, new_filename, new_lines, to_file):
     base64.encode(temp, to_file)
     to_file.write('\n')
 
-register_lazy('0.7', 'bzrlib.bundle.serializer.v07', 'BundleSerializerV07')
-register_lazy(None, 'bzrlib.bundle.serializer.v07', 'BundleSerializerV07')
+register_lazy('0.8', 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
+register_lazy(None, 'bzrlib.bundle.serializer.v08', 'BundleSerializerV08')
 

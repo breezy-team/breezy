@@ -6,7 +6,7 @@
 import sys
 import thread
 import threading
-from _lsprof import Profiler, profiler_entry, profiler_subentry
+from _lsprof import Profiler, profiler_entry
 
 __all__ = ['profile', 'Stats']
 

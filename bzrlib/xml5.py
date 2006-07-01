@@ -1,3 +1,5 @@
+# Copyright (C) 2005, 2006 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -13,10 +15,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 
-from bzrlib.xml_serializer import ElementTree, SubElement, Element, Serializer
+from bzrlib.xml_serializer import SubElement, Element, Serializer
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 import bzrlib.inventory as inventory
-from bzrlib.revision import Revision        
+from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 
 
@@ -197,11 +199,11 @@ class Serializer_v5(Serializer):
             return
         for prop_elt in props_elt:
             assert prop_elt.tag == 'property', \
-                "bad tag under properties list: %r" % p.tag
+                "bad tag under properties list: %r" % prop_elt.tag
             name = prop_elt.get('name')
             value = prop_elt.text
             assert name not in rev.properties, \
-                "repeated property %r" % p.name
+                "repeated property %r" % name
             rev.properties[name] = value
 
 

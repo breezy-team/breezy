@@ -88,6 +88,7 @@ if sys.platform == 'darwin':
     sys.platform = 'darwin'
 else:
     import locale
+# XXX: This probably belongs in osutils instead
 user_encoding = locale.getpreferredencoding() or 'ascii'
 del locale
 

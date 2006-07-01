@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical Ltd
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -18,8 +18,8 @@
 import os
 import errno
 from tempfile import mkdtemp
+import warnings
 
-import bzrlib
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, Conflict
 from bzrlib.delta import compare_trees
@@ -41,13 +41,12 @@ import bzrlib.osutils
 from bzrlib.osutils import rename, pathjoin, rmtree
 from progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor, is_ancestor, NULL_REVISION
-from bzrlib.symbol_versioning import *
 from bzrlib.textfile import check_text_lines
 from bzrlib.trace import mutter, warning, note
 from bzrlib.transform import (TreeTransform, resolve_conflicts, cook_conflicts,
                               FinalPaths, create_by_entry, unique_add)
 from bzrlib.versionedfile import WeaveMerge
-import bzrlib.ui
+from bzrlib import ui
 
 # TODO: Report back as changes are merged in
 
@@ -120,7 +119,7 @@ class Merger(object):
             changes = compare_trees(self.other_tree, other_basis_tree)
             if changes.has_changed():
                 raise WorkingTreeNotRevision(self.this_tree)
-            other_rev_id = other_basis
+            other_rev_id = self.other_basis
             self.other_tree = other_basis_tree
 
     def file_revisions(self, file_id):
@@ -368,7 +367,7 @@ class Merge3Merger(object):
         self.tt = TreeTransform(working_tree, self.pb)
         try:
             self.pp.next_phase()
-            child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            child_pb = ui.ui_factory.nested_progress_bar()
             try:
                 for num, file_id in enumerate(all_ids):
                     child_pb.update('Preparing file merge', num, len(all_ids))
@@ -379,7 +378,7 @@ class Merge3Merger(object):
                 child_pb.finished()
                 
             self.pp.next_phase()
-            child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+            child_pb = ui.ui_factory.nested_progress_bar()
             try:
                 fs_conflicts = resolve_conflicts(self.tt, child_pb)
             finally:
@@ -694,7 +693,7 @@ class Merge3Merger(object):
         if winner == "conflict":
         # There must be a None in here, if we have a conflict, but we
         # need executability since file status was not deleted.
-            if self.other_tree.is_executable(file_id) is None:
+            if self.executable(self.other_tree, file_id) is None:
                 winner = "this"
             else:
                 winner = "other"
@@ -896,7 +895,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                      branch.get_revision_tree(base_revision))'
         """
     if this_tree is None:
-        warn("bzrlib.merge.merge_inner requires a this_tree parameter as of "
+        warnings.warn("bzrlib.merge.merge_inner requires a this_tree parameter as of "
              "bzrlib version 0.8.",
              DeprecationWarning,
              stacklevel=2)
