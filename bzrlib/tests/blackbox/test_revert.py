@@ -18,13 +18,10 @@
 
 import os
 
-<<<<<<< TREE
-from bzrlib.workingtree import WorkingTree
-=======
 import bzrlib.osutils
->>>>>>> MERGE-SOURCE
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.trace import mutter
+from bzrlib.workingtree import WorkingTree
 
 
 class TestRevert(ExternalBase):
@@ -56,6 +53,7 @@ class TestRevert(ExternalBase):
         self.run_bzr('commit', '-m', '1')
         wt = WorkingTree.open('.')
         wt.rename_one('a/b', 'f/b')
+        wt.rename_one('a/d/e', 'f/e')
         wt.rename_one('a/d', 'f/d')
         wt.rename_one('f/g', 'a/g')
         wt.rename_one('f/h', 'h')
@@ -103,6 +101,7 @@ class TestRevert(ExternalBase):
         self.run_bzr('revert', 'f')
         self.failIfExists('j')
         self.failIfExists('h')
+        self.failUnlessExists('a/d/e')
 
     def test_revert(self):
         self.run_bzr('init')

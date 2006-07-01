@@ -68,6 +68,9 @@ IN DEVELOPMENT
    * 'bzr checkout' now aliased to 'bzr co', and 'bzr annotate' to 'bzr ann'.
      (Michael Ellerman)
 
+   * 'bzr revert DIRECTORY' now reverts the contents of the directory as well.
+     (Aaron Bentley)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
