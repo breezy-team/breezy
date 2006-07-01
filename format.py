@@ -29,6 +29,9 @@ from transport import SvnRaTransport
 from svn.core import SubversionException
 import svn.core, svn.repos
 
+
+
+
 class SvnRemoteAccess(BzrDir):
     def __init__(self, _transport, _format):
         assert isinstance(_transport, SvnRaTransport)
@@ -126,7 +129,7 @@ class SvnFormat(BzrDirFormat):
 
         local_path = transport._local_base.rstrip("/")
         repos = svn.repos.create(local_path, '', '', None, None)
-        return self.open(SvnRaTransport("svn+" + transport.base), _found=True)
+        return self.open(SvnRaTransport(svn_to_bzr_url(transport.base)), _found=True)
 
     def is_supported(self):
         """See BzrDir.is_supported()."""

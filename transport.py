@@ -51,6 +51,20 @@ def get_test_permutations():
     return []
 
 
+def svn_to_bzr_url(url):
+    if not (url.startswith("svn+") or url.startswith("svn:")):
+        url = "svn+%s" % url
+    return url
+
+
+def bzr_to_svn_url(url):
+    if url.startswith("svn+") and not url.startswith("svn+ssh://"):
+        url = url[len("svn+"):] # Skip svn+
+
+    # The SVN libraries don't like trailing slashes...
+    return ret.rstrip('/')
+
+
 class SvnRaCallbacks(svn.ra.callbacks2_t):
     def __init__(self, pool):
         svn.ra.callbacks2_t.__init__(self)
@@ -69,17 +83,9 @@ class SvnRaTransport(Transport):
     just as much of Transport as is necessary to fool Bazaar-NG. """
     def __init__(self, url="", ra=None):
         self.pool = Pool()
-        if not url.startswith("svn+"):
-            url = "svn+%s" % url
-        Transport.__init__(self, url)
-
-        if url.startswith("svn+") and not url.startswith("svn+ssh://"):
-            self.svn_url = url[4:] # Skip svn+
-        else:
-            self.svn_url = url
-
-        # The SVN libraries don't like trailing slashes...
-        self.svn_url = self.svn_url.rstrip('/')
+        bzr_url = url
+        self.svn_url = svn_to_bzr_url(url)
+        Transport.__init__(self, bzr_url)
 
         if ra is None:
             callbacks = SvnRaCallbacks(self.pool)

@@ -22,6 +22,7 @@ import sys
 import unittest
 
 import branch
+import convert
 import dumpfile
 import format
 import transport
@@ -44,6 +45,27 @@ BzrDirFormat.register_control_format(checkout.SvnWorkingTreeDirFormat)
 BzrDirFormat.register_control_format(dumpfile.SvnDumpFileFormat)
 
 InterRepository.register_optimiser(InterSvnRepository)
+
+from bzrlib.commands import Command, register_command, display_command
+
+class cmd_import_svn(Command):
+    """Convert a Subversion repository to a Bazaar repository.
+    
+    """
+    takes_args = ['url', 'output_dir']
+    takes_options = ['']
+
+    @display_command
+    def run(self, url, output_dir):
+        if opts.scheme == "trunk":
+            scheme = TrunkBranchingScheme()
+        else:
+            scheme = NoBranchingScheme()
+
+        convert_repository(url, output_dir)
+
+
+register_command(cmd_import_svn)
 
 def test_suite():
     from unittest import TestSuite, TestLoader

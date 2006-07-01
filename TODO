@@ -1,7 +1,5 @@
-- rewrite svn2bzr
- - bug 44312
-- more tests
 - improve performance
- - store revision properties in file properties of branch path
-- split out fileid mapping code
+ - store revision properties in file properties of branch path?
 - support pushing to SVN branches. Push as merged.
+- store inventory in 'bzr:inventory' revision property and revision id in 'bzr:revision-id'?
+- fix fileid tracking code

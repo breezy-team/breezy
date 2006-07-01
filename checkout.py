@@ -367,15 +367,14 @@ class SvnCheckout(BzrDir):
         wc = svn.wc.adm_open3(None, self.local_path, True, 0, None)
 
         # Open related remote repository + branch
-        url = svn.wc.entry(self.local_path, wc, True).url
-        if not url.startswith("svn"):
-            url = "svn+" + url
+        svn_url = svn.wc.entry(self.local_path, wc, True).url
+        bzr_url = svn_to_bzr_url(svn_url)
 
-        self.remote_transport = SvnRaTransport(url)
+        self.remote_transport = SvnRaTransport(svn_url)
         self.svn_root_transport = self.remote_transport.get_root()
         self.root_transport = self.transport = transport
         self.url = transport.base
-        self.branch_path = url[len(self.svn_root_transport.base):]
+        self.branch_path = bzr_url[len(self.svn_root_transport.base):]
         self.scheme = BranchingScheme.guess_scheme(self.branch_path)
         if not self.scheme.is_branch(self.branch_path):
             raise NotBranchError(path=self.transport.base)

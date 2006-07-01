@@ -30,7 +30,7 @@ relative to the repository root:
 
  * Assume NoBranchingScheme
 
-FIXME: Allow specifying the branching scheme in ~/.bazaar/locations.conf.
+NEXT VERSION: Allow specifying the branching scheme in ~/.bazaar/locations.conf.
 
 == Revision ids ==
 
@@ -43,7 +43,7 @@ including the branch path (trunk, branches/SAMBA_4_0, etc) in the
 revision-id. Example revision id:
 
 {{{
-svn-v1:14323@0c0555d6-39d7-0310-84fc-f1cc0bd64818-trunk-trunk
+svn-v1:14323@0c0555d6-39d7-0310-84fc-f1cc0bd64818-trunk
 }}}
 
 The version number is used to distinguish between versions of the mapping 
@@ -51,7 +51,9 @@ between Bazaar and Subversion. The mapping will change when previously
 unsupported features are added to Bazaar (see below), or when a bug in bzr-svn 
 is fixed that may affect the mappings.
 
-FIXME: Also needs to contain branching scheme as it might influence the parents of the current revision (if a parent path is a branch according but not according to another) 
+Once branching schemes can be manually specified, also needs to contain branching 
+scheme as it might influence the parents of the current revision (if a parent path 
+is a branch according but not according to another) 
 
 == File ids ==
 

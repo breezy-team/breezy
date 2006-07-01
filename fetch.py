@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from repository import SvnRepository
+from tree import apply_txdelta_handler
 
 import bzrlib
 from bzrlib.decorators import needs_write_lock
@@ -27,6 +28,8 @@ from bzrlib.trace import mutter
 
 from svn.core import SubversionException
 import svn.core
+
+from cStringIO import StringIO
 
 import os
 
@@ -103,7 +106,6 @@ class RevisionBuildEditor(svn.delta.Editor):
 
         if copyfrom_path:
             base_file_id, base_revid = self.get_file_id(copyfrom_path, copyfrom_revnum)
-            mutter('%r == %r?' % (base_file_id, file_id))
             if base_file_id == file_id:
                 self.dir_baserev[file_id] = [base_revid]
                 ie = self.inventory[file_id]
@@ -150,6 +152,7 @@ class RevisionBuildEditor(svn.delta.Editor):
             mutter('unsupported file property %r' % name)
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
+        mutter('open %r' % path)
         self.is_symlink = False
         self.is_executable = False
         self.file_data = ""
@@ -171,11 +174,15 @@ class RevisionBuildEditor(svn.delta.Editor):
         if relpath is None:
             return 
 
+        if self.file_stream:
+            self.file_stream.seek(0)
+            lines = self.file_stream.readlines()
+        else:
+            lines = []
         file_id, revision_id = self.get_file_id(path, self.revnum)
-        if self.file_data is not None:
-            file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
-            if not file_weave.has_version(revision_id):
-                file_weave.add_lines(revision_id, self.file_parents, self.file_data.splitlines(True))
+        file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
+        if not file_weave.has_version(revision_id):
+            file_weave.add_lines(revision_id, self.file_parents, lines)
 
         if file_id in self.inventory:
             ie = self.inventory[file_id]
@@ -183,18 +190,16 @@ class RevisionBuildEditor(svn.delta.Editor):
             ie = self.inventory.add_path(relpath, 'file', file_id)
         ie.revision = revision_id
 
-        file_data = self.file_data
-
         if self.is_symlink:
             ie.kind = 'symlink'
-            ie.symlink_target = file_data[len("link "):]
+            ie.symlink_target = lines[0][len("link "):]
         else:
-            ie.text_sha1 = osutils.sha_string(file_data)
-            ie.text_size = len(file_data)
+            ie.text_sha1 = osutils.sha_strings(lines)
+            ie.text_size = sum(map(len, lines))
             if not ie.executable is None:
                 ie.executable = self.is_executable
 
-        self.file_data = None
+        self.file_stream = None
 
     def close_edit(self):
         rev = self._get_revision(self.revid, self.revprops)
@@ -208,10 +213,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         pass
 
     def apply_textdelta(self, file_id, base_checksum):
-        def handler(window):
-            if window is not None:
-                self.file_data = window.apply_instructions(self.file_data)
-        return handler
+        self.file_stream = StringIO()
+        return apply_txdelta_handler(StringIO(self.file_data), self.file_stream)
 
 
 class InterSvnRepository(InterRepository):

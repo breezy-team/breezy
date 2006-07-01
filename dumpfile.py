@@ -77,7 +77,7 @@ class SvnDumpFile(SvnRemoteAccess):
         except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):
             raise NotBranchError(path=nested_transport.base)
 
-        svn_url = 'svn+file://%s/%s' % (self.tmp_repos, repos_path)
+        svn_url = 'file://%s/%s' % (self.tmp_repos, repos_path)
         remote_transport = SvnRaTransport(svn_url)
 
         super(SvnDumpFile, self).__init__(remote_transport, format)

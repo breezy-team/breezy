@@ -30,7 +30,21 @@ import os
 from cStringIO import StringIO
 
 import svn.core, svn.wc, svn.delta
-from svn.core import SubversionException
+from svn.core import SubversionException, Pool
+
+_global_pool = Pool()
+
+def apply_txdelta_handler(src_stream, target_stream):
+    ret = svn.delta.svn_txdelta_apply(
+            src_stream, 
+            target_stream,
+            _global_pool)
+
+    print ret
+    def wrapper(window):
+        ret[1](window)
+
+    return wrapper
 
 class SvnRevisionTree(RevisionTree):
      def __init__(self, repository, revision_id, inventory=None):
@@ -125,7 +139,6 @@ class TreeBuildEditor(svn.delta.Editor):
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
         self.is_symlink = False
         self.is_executable = False
-        self.file_data = ""
         return path
 
     def close_dir(self, id):
@@ -142,8 +155,9 @@ class TreeBuildEditor(svn.delta.Editor):
         ie = self.tree._inventory.add_path(relpath, 'file', file_id)
         ie.revision = revision_id
 
-        if self.file_data:
-            file_data = self.file_data
+        if self.file_stream:
+            self.file_stream.seek(0)
+            file_data = self.file_stream.read()
         else:
             file_data = ""
 
@@ -156,7 +170,7 @@ class TreeBuildEditor(svn.delta.Editor):
             self.tree.file_data[file_id] = file_data
             ie.executable = self.is_executable
 
-        self.file_data = None
+        self.file_stream = None
 
     def close_edit(self):
         pass
@@ -165,11 +179,8 @@ class TreeBuildEditor(svn.delta.Editor):
         pass
 
     def apply_textdelta(self, file_id, base_checksum):
-        def handler(window):
-            if window is not None:
-                self.file_data = window.apply_instructions(self.file_data)
-            
-        return handler
+        self.file_stream = StringIO()
+        return apply_txdelta_handler(StringIO(""), self.file_stream)
 
 
 class SvnInventoryFile(InventoryFile):

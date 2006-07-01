@@ -209,3 +209,23 @@ class LogWalker(object):
                 ancestors = new_ancestors
 
         return ancestors
+
+    def find_branches(self, revnum):
+        created_branches = {}
+
+        for i in range(revnum):
+            if i == 0:
+                continue
+            rev = self.revisions[i]
+            for p in rev['paths']:
+                if self.scheme.is_branch(p):
+                    if rev['paths'][p][0] in ('R', 'D'):
+                        del created_branches[p]
+                        yield (p, i, False)
+
+                    if rev['paths'][p][0] in ('A', 'R'): 
+                        created_branches[p] = i
+
+        for p in created_branches:
+            yield (p, i, True)
+
