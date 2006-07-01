@@ -50,6 +50,7 @@ class SvnWorkingTree(WorkingTree):
         self.bzrdir = bzrdir
         self._branch = branch
         self.base_revnum = 0
+        self.client_ctx = svn.client.create_context()
 
         self._set_inventory(self.read_working_inventory())
         mutter('working inv: %r' % self.read_working_inventory().entries())
@@ -332,7 +333,13 @@ class SvnWorkingTree(WorkingTree):
         return SvnBasisTree(self, self.base_revid)
 
     def pull(self, source, overwrite=False, stop_revision=None):
-        raise NotImplementedError(self.pull)
+        if stop_revision is None:
+            stop_revision = self.branch.last_revision()
+        rev = svn.core.svn_opt_revision_t()
+        rev.kind = svn.core.svn_opt_revision_number
+        rev.value.number = self.branch.repository.parse_revision_id(stop_revision)[1]
+        fetched = svn.client.update(self.basedir, rev, True, self.client_ctx)
+        return fetched-rev.value.number
 
     def get_file_sha1(self, file_id, path=None):
         if not path:
