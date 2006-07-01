@@ -1,5 +1,9 @@
 - improve performance
  - store revision properties in file properties of branch path?
 - support pushing to SVN branches. Push as merged.
-- store inventory in 'bzr:inventory' revision property and revision id in 'bzr:revision-id'?
+- build packages for Dapper
 - fix fileid tracking code
+
+later:
+- save/retrieve GPG signatures
+- store inventory in 'bzr:inventory' revision property and revision id in 'bzr:revision-id'?

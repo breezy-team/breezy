@@ -40,6 +40,8 @@ from tree import SvnRevisionTree
 
 MAPPING_VERSION = 1
 REVISION_ID_PREFIX = "svn-v%d:" % MAPPING_VERSION
+SVN_PROP_BZR_PARENTS = 'bzr:parents'
+SVN_PROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
 class SvnRepository(Repository):
     """
@@ -105,8 +107,6 @@ class SvnRepository(Repository):
         if self.path_map.has_key(revnum) and self.path_map[revnum].has_key(path):
             return self.path_map[revnum][path]
 
-        mutter('creating file id for %r:%d' % (path, revnum))
-
         (path_branch, filename) = self.scheme.unprefix(path)
 
         if filename == "":
@@ -130,9 +130,11 @@ class SvnRepository(Repository):
                     parent_changed = True
                     break
 
+            revid = self.generate_revision_id(rev, branch)
             if parent_changed:
-                introduced_revision_id = self.generate_revision_id(rev, branch)
-                last_changed_revid = self.generate_revision_id(rev, branch)
+                introduced_revision_id = revid
+                if last_changed_revid is None:
+                    last_changed_revid = revid
                 break
 
             if not expected_path in paths:
@@ -140,9 +142,9 @@ class SvnRepository(Repository):
                 continue
 
             if last_changed_revid is None:
-                last_changed_revid = self.generate_revision_id(rev, branch)
+                last_changed_revid = revid
             
-            introduced_revision_id = self.generate_revision_id(rev, branch)
+            introduced_revision_id = revid
 
             if paths[expected_path][0] in ('A', 'R'):
                 break
@@ -234,10 +236,10 @@ class SvnRepository(Repository):
             parent_ids.append(self.generate_revision_id(rev, branch))
         
         if revprops is None:
-            mutter('getting revprop -r %r bzr:parents' % revnum)
-            ghosts = svn.ra.rev_prop(self.ra, revnum, "bzr:parents")
-        elif revprops.has_key("bzr:parents"):
-            ghosts = revprops["bzr:parents"]
+            mutter('getting revprop -r %r %r' % (revnum, SVN_PROP_BZR_PARENTS))
+            ghosts = svn.ra.rev_prop(self.ra, revnum, SVN_PROP_BZR_PARENTS)
+        elif revprops.has_key(SVN_PROP_BZR_PARENTS):
+            ghosts = revprops[SVN_PROP_BZR_PARENTS]
         else: 
             ghosts = None
 
@@ -395,12 +397,12 @@ class SvnRepository(Repository):
         return osutils.sha_string(self.get_revision_xml(revision_id))
 
     def has_signature_for_revision_id(self, revision_id):
-        # TODO: Retrieve from 'bzr:gpg-signature'
+        # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 
         return False # SVN doesn't store GPG signatures. Perhaps 
                      # store in SVN revision property?
 
     def get_signature_text(self, revision_id):
-        # TODO: Retrieve from 'bzr:gpg-signature'
+        # TODO: Retrieve from SVN_PROP_BZR_SIGNATURE 
         # SVN doesn't store GPG signatures
         raise NoSuchRevision(self, revision_id)
 
@@ -543,8 +545,10 @@ class SvnRepositoryRenaming(SvnRepository):
                     parent_changed = True
                     break
 
+
+            revid = self.generate_revision_id(rev, branch)
             if parent_changed:
-                introduced_revision_id = self.generate_revision_id(rev, branch)
+                introduced_revision_id = revid
                 break
 
             if not expected_path in paths:
@@ -552,9 +556,10 @@ class SvnRepositoryRenaming(SvnRepository):
                 continue
 
             if last_changed_revid is None:
-                last_changed_revid = self.generate_revision_id(rev, branch)
+                mutter('change in %r' % rev)
+                last_changed_revid = revid
             
-            introduced_revision_id = self.generate_revision_id(rev, branch)
+            introduced_revision_id = revid
 
             # File is being copied from somewhere else
             if paths[expected_path][1]:

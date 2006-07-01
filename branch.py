@@ -105,7 +105,19 @@ class SvnBranch(Branch):
         return self._revision_history
 
     def pull(self, source, overwrite=False, stop_revision=None):
-        print "Copying in data from %s" % source
+        if isinstance(source, SvnBranch):
+            # Import from another Subversion branch
+            assert source.repository.uuid == self.repository.uuid, \
+                    "can only import from elsewhere in the same repository."
+
+            # FIXME: Make sure branches haven't diverged
+            # FIXME: svn.ra.del_dir(self.base_path)
+            # FIXME: svn.ra.copy_dir(source.base_path, self.base_path)
+        else:
+            # FIXME: Find missing entries in revision history
+            # FIXME: Run commit for each of the missing revisions
+            pass
+
         #raise NotImplementedError(self.pull)
 
     def update_revisions(self, other, stop_revision=None):

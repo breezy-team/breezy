@@ -32,6 +32,12 @@ import svn.core
 from cStringIO import StringIO
 
 import os
+import md5
+
+def md5_strings(strings):
+    s = md5.new()
+    map(s.update, strings)
+    return s.hexdigest()
 
 class RevisionBuildEditor(svn.delta.Editor):
     def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, revprops):
@@ -167,6 +173,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
         self.file_data = file_weave.get_text(revision_id)
         self.file_parents = [revision_id]
+        mutter('opening %r, revnum %r, revid: %r, md5: %r' % (path, base_revnum, revision_id, md5.new(self.file_data).hexdigest()))
         return path
 
     def close_file(self, path, checksum):
@@ -176,9 +183,14 @@ class RevisionBuildEditor(svn.delta.Editor):
 
         if self.file_stream:
             self.file_stream.seek(0)
-            lines = self.file_stream.readlines()
+            lines = osutils.split_lines(self.file_stream.read())
         else:
             lines = []
+
+        actual_checksum = md5_strings(lines)
+        mutter('%r has checksum %r' % (path, actual_checksum))
+        assert checksum is None or checksum == actual_checksum
+
         file_id, revision_id = self.get_file_id(path, self.revnum)
         file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
         if not file_weave.has_version(revision_id):
@@ -213,6 +225,9 @@ class RevisionBuildEditor(svn.delta.Editor):
         pass
 
     def apply_textdelta(self, file_id, base_checksum):
+        actual_checksum = md5.new(self.file_data).hexdigest(),
+        assert (base_checksum is None or base_checksum == actual_checksum,
+            "base checksum mismatch: %r != %r" % (base_checksum, actual_checksum))
         self.file_stream = StringIO()
         return apply_txdelta_handler(StringIO(self.file_data), self.file_stream)
 
@@ -355,7 +370,7 @@ class SlowInterSvnRepository(InterRepository):
                 try:
                     stream = self.source._get_file(item, revnum)
                     stream.seek(0)
-                    lines = stream.readlines()
+                    lines = osutils.split_lines(stream.read())
                 except SubversionException, (_, num):
                     if num != svn.core.SVN_ERR_FS_NOT_FILE:
                         raise

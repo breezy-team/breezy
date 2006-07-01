@@ -32,7 +32,8 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 from branch import SvnBranch
 from repository import SvnRepository
 from scheme import BranchingScheme
-from transport import SvnRaTransport, svn_config
+from transport import (SvnRaTransport, svn_config, 
+                       svn_to_bzr_url) 
 from tree import SvnBasisTree
 
 import os

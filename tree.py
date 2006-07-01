@@ -27,6 +27,7 @@ from bzrlib.trace import mutter
 from bzrlib.tree import RevisionTree, EmptyTree
 
 import os
+import md5
 from cStringIO import StringIO
 
 import svn.core, svn.wc, svn.delta
@@ -35,14 +36,17 @@ from svn.core import SubversionException, Pool
 _global_pool = Pool()
 
 def apply_txdelta_handler(src_stream, target_stream):
+    assert hasattr(src_stream, 'read')
+    assert hasattr(target_stream, 'write')
     ret = svn.delta.svn_txdelta_apply(
             src_stream, 
             target_stream,
+            None,
             _global_pool)
 
-    print ret
     def wrapper(window):
-        ret[1](window)
+        svn.delta.invoke_txdelta_window_handler(
+            ret[1], window, ret[2])
 
     return wrapper
 
@@ -65,7 +69,7 @@ class SvnRevisionTree(RevisionTree):
         svn.ra.reporter2_invoke_finish_report(reporter, reporter_baton)
 
      def get_file_lines(self, file_id):
-        return self.file_data[file_id].splitlines(True)
+        return osutils.split_lines(self.file_data[file_id])
 
 
 class TreeBuildEditor(svn.delta.Editor):
@@ -160,6 +164,10 @@ class TreeBuildEditor(svn.delta.Editor):
             file_data = self.file_stream.read()
         else:
             file_data = ""
+
+        actual_checksum = md5(file_data).hexdigest()
+        assert(checksum is None or checksum == actual_checksum,
+                "checksum mismatch: %r != %r" % (checksum, actual_checksum))
 
         if self.is_symlink:
             ie.kind = 'symlink'
@@ -303,7 +311,7 @@ class SlowSvnRevisionTree(RevisionTree):
     def get_file_lines(self, file_id):
         path = "%s/%s" % (self._branch_path, self.id2path(file_id))
         stream = self._repository._get_file(path, self._revnum)
-        return stream.readlines()
+        return osutils.split_lines(stream.read())
 
 
 class SvnBasisTree(SvnRevisionTree):
@@ -316,5 +324,5 @@ class SvnBasisTree(SvnRevisionTree):
     def get_file_lines(self, file_id):
         path = self.id2path(file_id)
         base_copy = svn.wc.get_pristine_copy_path(self.workingtree.abspath(path))
-        return open(base_copy).readlines()
+        return osutils.split_lines(open(base_copy).read())
 

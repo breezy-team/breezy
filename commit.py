@@ -25,7 +25,7 @@ from bzrlib.repository import CommitBuilder
 from bzrlib.trace import mutter, warning
 
 from branch import SvnBranch
-from repository import SvnRepository
+from repository import SvnRepository, SVN_PROP_BZR_PARENTS
 
 import os
 
@@ -46,11 +46,6 @@ class SvnCommitBuilder(CommitBuilder):
         assert isinstance(branch, SvnBranch)
         self.branch = branch
         self.pool = Pool()
-
-        # TODO: Allow revision id to be specified, but only if it 
-        # matches the format for Subversion revision ids, the UUID
-        # matches and the revnum is in the future. Set the 
-        # revision num on the delta editor using set_target_revision
 
         # At least one of the parents has to be the last revision on the 
         # mainline in # Subversion.
@@ -246,7 +241,7 @@ class SvnCommitBuilder(CommitBuilder):
         svn.delta.editor_invoke_close_edit(self.editor, editor_baton)
 
         if len(self.parents) > 1:
-            self._revprops['bzr:parents'] = "\n".join(self.parents)
+            self._revprops[SVN_PROP_BZR_PARENTS] = "\n".join(self.parents)
 
         # Set revision properties on new revision
         for name in self._revprops:
