@@ -671,7 +671,41 @@ class TestBranchLocking(TestCaseWithBranch):
             # For cleanup purposes, make sure we are unlocked
             b.repository._other.unlock()
 
-    def test_04_lock_read_fail_repo(self):
+    def test_04_lock_fail_unlock_control(self):
+        # Make sure repository.unlock() is called, if we fail to unlock self
+        b = self.get_instrumented_branch()
+        b.control_files.disable_unlock()
+
+        self.assertFalse(b.is_locked())
+        self.assertFalse(b.repository.is_locked())
+        b.lock_write()
+        try:
+            self.assertTrue(b.is_locked())
+            self.assertTrue(b.repository.is_locked())
+            self.assertRaises(TestPreventLocking, b.unlock)
+            self.assertTrue(b.is_locked())
+            if self.combined_control:
+                self.assertTrue(b.repository.is_locked())
+            else:
+                self.assertFalse(b.repository.is_locked())
+
+            # We unlock the repository even if 
+            # we fail to unlock the control files
+            self.assertEqual([('b', 'lw', True),
+                              ('r', 'lw', True),
+                              ('rc', 'lw', True),
+                              ('bc', 'lw', True),
+                              ('b', 'ul', True),
+                              ('bc', 'ul', False),
+                              ('r', 'ul', True), 
+                              ('rc', 'ul', True), 
+                             ], self.locks)
+
+        finally:
+            # For cleanup purposes, make sure we are unlocked
+            b.control_files._other.unlock()
+
+    def test_05_lock_read_fail_repo(self):
         # Test that the branch is not locked if it cannot lock the repository
         b = self.get_instrumented_branch()
         b.repository.disable_lock_read()
@@ -684,7 +718,7 @@ class TestBranchLocking(TestCaseWithBranch):
                           ('r', 'lr', False), 
                          ], self.locks)
 
-    def test_05_lock_write_fail_repo(self):
+    def test_06_lock_write_fail_repo(self):
         # Test that the branch is not locked if it cannot lock the repository
         b = self.get_instrumented_branch()
         b.repository.disable_lock_write()
@@ -697,7 +731,7 @@ class TestBranchLocking(TestCaseWithBranch):
                           ('r', 'lw', False), 
                          ], self.locks)
 
-    def test_06_lock_read_fail_control(self):
+    def test_07_lock_read_fail_control(self):
         # Test the repository is unlocked if we can't lock self
         b = self.get_instrumented_branch()
         b.control_files.disable_lock_read()
@@ -714,7 +748,7 @@ class TestBranchLocking(TestCaseWithBranch):
                           ('rc', 'ul', True),
                          ], self.locks)
 
-    def test_07_lock_write_fail_control(self):
+    def test_08_lock_write_fail_control(self):
         # Test the repository is unlocked if we can't lock self
         b = self.get_instrumented_branch()
         b.control_files.disable_lock_write()
