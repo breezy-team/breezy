@@ -65,6 +65,9 @@ class NormalizedFilename(TestCaseWithTransport):
 
     def test__accessible_normalized_filename(self):
         anf = osutils._accessible_normalized_filename
+        # normalized_filename should allow plain ascii strings
+        # not just unicode strings
+        self.assertEqual((u'ascii', True), anf('ascii'))
         self.assertEqual((a_circle_c, True), anf(a_circle_c))
         self.assertEqual((a_circle_c, True), anf(a_circle_d))
         self.assertEqual((a_dots_c, True), anf(a_dots_c))
@@ -74,6 +77,9 @@ class NormalizedFilename(TestCaseWithTransport):
 
     def test__inaccessible_normalized_filename(self):
         inf = osutils._inaccessible_normalized_filename
+        # normalized_filename should allow plain ascii strings
+        # not just unicode strings
+        self.assertEqual((u'ascii', True), inf('ascii'))
         self.assertEqual((a_circle_c, True), inf(a_circle_c))
         self.assertEqual((a_circle_c, False), inf(a_circle_d))
         self.assertEqual((a_dots_c, True), inf(a_dots_c))

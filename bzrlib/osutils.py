@@ -790,13 +790,13 @@ def _accessible_normalized_filename(path):
     can be accessed by that path.
     """
 
-    return unicodedata.normalize('NFKC', path), True
+    return unicodedata.normalize('NFKC', unicode(path)), True
 
 
 def _inaccessible_normalized_filename(path):
     __doc__ = _accessible_normalized_filename.__doc__
 
-    normalized = unicodedata.normalize('NFKC', path) 
+    normalized = unicodedata.normalize('NFKC', unicode(path))
     return normalized, normalized == path
 
 
