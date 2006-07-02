@@ -23,15 +23,18 @@ import os
 
 from svn.core import SubversionException, Pool
 import svn.ra
-
 import svn.core
 
+# Some older versions of the Python bindings need to be 
+# explicitly initialized
 svn.ra.initialize()
+
 
 svn_config = svn.core.svn_config_get_config(None)
 
+
 def _create_auth_baton(pool):
-    """ Create a Subversion authentication baton.  """
+    """Create a Subversion authentication baton. """
     import svn.client
     # Give the client context baton a suite of authentication
     # providers.h
@@ -52,13 +55,21 @@ def get_test_permutations():
 
 
 def svn_to_bzr_url(url):
+    """Convert a Subversion URL to a URL understood by Bazaar.
+
+    This will optionally prefix the URL with "svn+".
+    """
     if not (url.startswith("svn+") or url.startswith("svn:")):
         url = "svn+%s" % url
     return url
 
 
 def bzr_to_svn_url(url):
-    if url.startswith("svn+") and not url.startswith("svn+ssh://"):
+    """Convert a Bazaar URL to a URL understood by Subversion.
+
+    This will possibly remove the svn+ prefix.
+    """
+    if url.startswith("svn+http://") or url.startswith("svn+file://"):
         url = url[len("svn+"):] # Skip svn+
 
     # The SVN libraries don't like trailing slashes...
@@ -66,21 +77,18 @@ def bzr_to_svn_url(url):
 
 
 class SvnRaCallbacks(svn.ra.callbacks2_t):
+    """Remote access callbacks implementation for bzr-svn."""
     def __init__(self, pool):
         svn.ra.callbacks2_t.__init__(self)
         self.auth_baton = _create_auth_baton(pool)
         self.pool = pool
 
-    def open_tmp_file(self):
-        print "foo"
-
-    def progress(self, f, c, pool):
-        print "%s: %d / %d" % (self, f, c)
-
 
 class SvnRaTransport(Transport):
-    """Fake transport for Subversion-related namespaces. This implements 
-    just as much of Transport as is necessary to fool Bazaar-NG. """
+    """Fake transport for Subversion-related namespaces.
+    
+    This implements just as much of Transport as is necessary 
+    to fool Bazaar-NG. """
     def __init__(self, url="", ra=None):
         self.pool = Pool()
         bzr_url = url
@@ -96,6 +104,8 @@ class SvnRaTransport(Transport):
                     raise NotBranchError(path=url)
                 if num == svn.core.SVN_ERR_RA_LOCAL_REPOS_OPEN_FAILED:
                     raise NotBranchError(path=url)
+                if num == svn.core.SVN_ERR_BAD_URL:
+                    raise NotBranchError(path=url)
                 raise
 
         else:
@@ -103,31 +113,47 @@ class SvnRaTransport(Transport):
             svn.ra.reparent(self.ra, self.svn_url.encode('utf8'))
 
     def has(self, relpath):
+        """See Transport.has()."""
         return False
 
     def get(self, relpath):
+        """See Transport.get()."""
         raise NoSuchFile(relpath)
 
     def stat(self, relpath):
-        return os.stat('.') #FIXME
+        """See Transport.stat()."""
+        return os.stat('.')
 
     def get_root(self):
+        """Open a connection to the root of this repository.
+        
+        :return: A new instance of SvnRaTransport connected to the root.
+        """
         return SvnRaTransport(svn.ra.get_repos_root(self.ra), ra=self.ra)
 
     def listable(self):
+        """See Transport.listable().
+        
+        :return: False.
+        """
         return False
 
+    # There is no real way to do locking directly on the transport 
+    # nor is there a need to.
     class PhonyLock:
         def unlock(self):
             pass
 
     def lock_write(self, relpath):
+        """See Transport.lock_write()."""
         return self.PhonyLock()
 
     def lock_read(self, relpath):
+        """See Transport.lock_read()."""
         return self.PhonyLock()
 
     def clone(self, offset=None):
+        """See Transport.clone()."""
         if offset is None:
             return self.__class__(self.base)
 

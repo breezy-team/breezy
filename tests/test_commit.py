@@ -26,6 +26,23 @@ import checkout
 from tests import TestCaseWithSubversionRepository
 
 class TestCommit(TestCaseWithSubversionRepository):
+    def test_push(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "foo")
+
+    def test_push_diverged(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "rev1 log")
+
+        branch = Branch.create_branch_convenience("br")
+
+        self.build_tree({'dc/foo/bla': "data2"})
+        self.client_commit("dc", "rev2 log")
+
     def test_simple_commit(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
