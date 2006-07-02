@@ -114,11 +114,15 @@ class SvnRaTransport(Transport):
 
     def has(self, relpath):
         """See Transport.has()."""
-        raise TransportNotPossible('has not supported on Subversion')
+        # TODO: Raise TransportNotPossible here instead and 
+        # catch it in bzrdir.py
+        return False
 
     def get(self, relpath):
         """See Transport.get()."""
-        raise TransportNotPossible('get not supported on Subversion')
+        # TODO: Raise TransportNotPossible here instead and 
+        # catch it in bzrdir.py
+        raise NoSuchFile(path=relpath)
 
     def stat(self, relpath):
         """See Transport.stat()."""
@@ -150,7 +154,7 @@ class SvnRaTransport(Transport):
             def unlock(self):
                 pass
 
-        return self.PhonyLock()
+        return PhonyLock()
 
     def clone(self, offset=None):
         """See Transport.clone()."""

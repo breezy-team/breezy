@@ -37,7 +37,7 @@ class TestCommit(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "rev1 log")
 
-        branch = Branch.create_branch_convenience("br")
+        branch = BzrDir.create_branch_convenience("br")
 
         self.build_tree({'dc/foo/bla': "data2"})
         self.client_commit("dc", "rev2 log")

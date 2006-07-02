@@ -59,7 +59,6 @@ class SvnBranch(Branch):
         self.branch_path = branch_path
         self.control_files = FakeControlFiles()
         self.base = base.rstrip("/")
-        assert self.base.endswith(self.branch_path)
         self._format = SvnBranchFormat()
         mutter("Connected to branch at %s" % self.branch_path)
         self._generate_revision_history(self.repository._latest_revnum)
@@ -92,9 +91,6 @@ class SvnBranch(Branch):
             return None
 
     nick = property(_get_nick)
-
-    def abspath(self, name):
-        return self.base+"/"+name
 
     def set_revision_history(self, rev_history):
         raise NotImplementedError(self.set_revision_history)
