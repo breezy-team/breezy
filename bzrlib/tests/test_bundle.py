@@ -543,7 +543,6 @@ class BundleTester(TestCaseWithTransport):
         # Check a rollup bundle 
         bundle = self.get_valid_bundle(None, 'a@cset-0-3')
 
-
         # Now move the directory
         self.tree1.rename_one('dir', 'sub/dir')
         self.tree1.commit('rename dir', rev_id='a@cset-0-4')
@@ -561,31 +560,19 @@ class BundleTester(TestCaseWithTransport):
         self.tree1.commit('Modified files', rev_id='a@cset-0-5')
         bundle = self.get_valid_bundle('a@cset-0-4', 'a@cset-0-5')
 
-        # Handle international characters
-        try:
-            f = open(u'b1/with Dod\xe9', 'wb')
-        except UnicodeEncodeError:
-            raise TestSkipped("Filesystem doesn't support unicode")
-        f.write((u'A file\n'
-            u'With international man of mystery\n'
-            u'William Dod\xe9\n').encode('utf-8'))
-        self.tree1.add([u'with Dod\xe9'])
-        self.tree1.commit(u'i18n commit from William Dod\xe9', 
-                          rev_id='a@cset-0-6', committer=u'William Dod\xe9')
-        bundle = self.get_valid_bundle('a@cset-0-5', 'a@cset-0-6')
         self.tree1.rename_one('sub/dir/WithCaps.txt', 'temp')
         self.tree1.rename_one('with space.txt', 'WithCaps.txt')
         self.tree1.rename_one('temp', 'with space.txt')
-        self.tree1.commit(u'swap filenames', rev_id='a@cset-0-7',
+        self.tree1.commit(u'swap filenames', rev_id='a@cset-0-6',
+                          verbose=False)
+        bundle = self.get_valid_bundle('a@cset-0-5', 'a@cset-0-6')
+        other = self.get_checkout('a@cset-0-5')
+        other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
+        other.commit('rename file', rev_id='a@cset-0-6b')
+        merge([other.basedir, -1], [None, None], this_dir=self.tree1.basedir)
+        self.tree1.commit(u'Merge', rev_id='a@cset-0-7',
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-6', 'a@cset-0-7')
-        other = self.get_checkout('a@cset-0-6')
-        other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
-        other.commit('rename file', rev_id='a@cset-0-7b')
-        merge([other.basedir, -1], [None, None], this_dir=self.tree1.basedir)
-        self.tree1.commit(u'Merge', rev_id='a@cset-0-8',
-                          verbose=False)
-        bundle = self.get_valid_bundle('a@cset-0-7', 'a@cset-0-8')
 
     def test_symlink_bundle(self):
         if not has_symlinks():
@@ -695,6 +682,54 @@ class BundleTester(TestCaseWithTransport):
         self.assertNotContainsRe(bundle_file.getvalue(), 'two')
         self.assertContainsRe(bundle_file.getvalue(), 'one')
         self.assertContainsRe(bundle_file.getvalue(), 'three')
+
+    def test_unicode_bundle(self):
+        # Handle international characters
+        os.mkdir('b1')
+        try:
+            f = open(u'b1/with Dod\xe9', 'wb')
+        except UnicodeEncodeError:
+            raise TestSkipped("Filesystem doesn't support unicode")
+
+        self.tree1 = self.make_branch_and_tree('b1')
+        self.b1 = self.tree1.branch
+
+        f.write((u'A file\n'
+            u'With international man of mystery\n'
+            u'William Dod\xe9\n').encode('utf-8'))
+        f.close()
+
+        self.tree1.add([u'with Dod\xe9'])
+        self.tree1.commit(u'i18n commit from William Dod\xe9', 
+                          rev_id='i18n-1', committer=u'William Dod\xe9')
+
+        # Add
+        bundle = self.get_valid_bundle(None, 'i18n-1')
+
+        # Modified
+        f = open(u'b1/with Dod\xe9', 'wb')
+        f.write(u'Modified \xb5\n'.encode('utf8'))
+        f.close()
+        self.tree1.commit(u'modified', rev_id='i18n-2')
+
+        bundle = self.get_valid_bundle('i18n-1', 'i18n-2')
+        
+        # Renamed
+        self.tree1.rename_one(u'with Dod\xe9', u'B\xe5gfors')
+        self.tree1.commit(u'renamed, the new i18n man', rev_id='i18n-3',
+                          committer=u'Erik B\xe5gfors')
+
+        bundle = self.get_valid_bundle('i18n-2', 'i18n-3')
+
+        # Removed
+        self.tree1.remove([u'B\xe5gfors'])
+        self.tree1.commit(u'removed', rev_id='i18n-4')
+
+        bundle = self.get_valid_bundle('i18n-3', 'i18n-4')
+
+        # Rollup
+        bundle = self.get_valid_bundle(None, 'i18n-4')
+
 
     def test_whitespace_bundle(self):
         if sys.platform in ('win32', 'cygwin'):
