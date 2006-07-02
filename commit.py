@@ -129,7 +129,7 @@ class SvnCommitBuilder(CommitBuilder):
 
                 child_baton = svn.delta.editor_invoke_add_file(self.editor, 
                            os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)),
-                           baton, None, self.base_revnum, self.pool)
+                           baton, None, -1, self.pool)
 
 
             # copy if they existed at different location
@@ -229,7 +229,7 @@ class SvnCommitBuilder(CommitBuilder):
             branch_baton = svn.delta.editor_invoke_open_directory(self.editor, 
                     self.branch.branch_path, root, self.base_revnum, self.pool)
 
-        self._dir_process("", self.new_inventory.root.file_id, root)
+        self._dir_process("", self.new_inventory.root.file_id, branch_baton)
 
         if self.branch.branch_path != "":
             svn.delta.editor_invoke_close_directory(self.editor, branch_baton, 

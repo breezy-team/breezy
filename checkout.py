@@ -51,6 +51,8 @@ class SvnWorkingTree(WorkingTree):
         self._branch = branch
         self.base_revnum = 0
         self.client_ctx = svn.client.create_context()
+        self.client_ctx.log_msg_func2 = svn.client.svn_swig_py_get_commit_log_func
+        self.client_ctx.log_msg_baton2 = self.log_message_func
 
         self._set_inventory(self.read_working_inventory())
         mutter('working inv: %r' % self.read_working_inventory().entries())
@@ -305,6 +307,27 @@ class SvnWorkingTree(WorkingTree):
         update_settings(wc, "")
         svn.wc.adm_close(wc)
         self.base_revid = revid
+
+
+    def log_message_func(self, items, pool):
+        """ Simple log message provider for unit tests. """
+        return self._message
+
+    def commit(self, message=None, revprops=None, timestamp=None, timezone=None, committer=None, rev_id=None, allow_pointless=True, 
+            strict=False, verbose=False, local=False, reporter=None, config=None, specific_files=None):
+        assert timestamp is None
+        assert timezone is None
+        assert rev_id is None
+
+        if specific_files:
+            specific_files = [self.abspath(x).encode('utf8') for x in specific_files]
+        else:
+            specific_files = [self.basedir.encode('utf8')]
+
+        assert isinstance(message, basestring)
+        self._message = message
+
+        commit_info = svn.client.commit3(specific_files, True, False, self.client_ctx)
 
     def add(self, files, ids=None):
         assert isinstance(files, list)

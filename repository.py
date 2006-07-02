@@ -41,7 +41,7 @@ from tree import SvnRevisionTree
 MAPPING_VERSION = 1
 REVISION_ID_PREFIX = "svn-v%d:" % MAPPING_VERSION
 SVN_PROP_BZR_PARENTS = 'bzr:parents'
-SVN_PROP_BZR_SIGNATURE = 'bzr:gpg-signature'
+SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
 _unsafe = "%/-"
 def escape_svn_path(id):
@@ -211,7 +211,7 @@ class SvnRepository(Repository):
 
         for (branch, paths, rev, _, _, _) in self._log.get_branch_log(path, revnum - 1, 0):
             self._ancestry.append(self.generate_revision_id(rev, branch))
-        
+
         self._ancestry.append(None)
 
         self._ancestry.reverse()

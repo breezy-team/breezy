@@ -179,8 +179,7 @@ class SvnBranch(Branch):
         return None
 
     def set_parent(self, url):
-        raise NotImplementedError(self.set_parent, 
-                                  'can not change parent of SVN branch')
+        pass # FIXME: Use svn.client.switch()
 
     def get_transaction(self):
         raise NotImplementedError(self.get_transaction)
