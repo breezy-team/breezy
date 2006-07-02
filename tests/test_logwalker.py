@@ -19,7 +19,6 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
 
 import os
-import svn
 import logwalker
 from scheme import NoBranchingScheme, TrunkBranchingScheme
 from tests import TestCaseWithSubversionRepository

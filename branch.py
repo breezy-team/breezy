@@ -47,18 +47,19 @@ class FakeControlFiles(object):
 
 class SvnBranch(Branch):
     """Maps to a Branch in a Subversion repository """
-    def __init__(self, repos, branch_path):
+    def __init__(self, base, repository, branch_path):
         """Instantiate a new SvnBranch.
 
         :param repos: SvnRepository this branch is part of.
         :param branch_path: Relative path inside the repository this
             branch is located at.
         """
-        self.repository = repos
+        self.repository = repository
         assert isinstance(self.repository, SvnRepository)
         self.branch_path = branch_path
         self.control_files = FakeControlFiles()
-        self.base = "%s/%s" % (repos.url.rstrip("/"), branch_path.lstrip("/"))
+        self.base = base.rstrip("/")
+        assert self.base.endswith(self.branch_path)
         self._format = SvnBranchFormat()
         mutter("Connected to branch at %s" % self.branch_path)
         self._generate_revision_history(self.repository._latest_revnum)
@@ -178,7 +179,7 @@ class SvnBranch(Branch):
         pass
 
     def get_parent(self):
-        return None
+        return self.bzrdir.root_transport.base
 
     def set_parent(self, url):
         pass # FIXME: Use svn.client.switch()
@@ -196,7 +197,6 @@ class SvnBranch(Branch):
     def sprout(self, to_bzrdir, revision_id=None):
         result = BranchFormat.get_default_format().initialize(to_bzrdir)
         self.copy_content_into(result, revision_id=revision_id)
-        result.set_parent(self.bzrdir.root_transport.base)
         return result
 
     def copy_content_into(self, destination, revision_id=None):

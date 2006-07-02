@@ -204,6 +204,7 @@ def test_suite():
     testmod_names = [
             'test_branch', 
             'test_commit',
+            'test_dumpfile',
             'test_fileids', 
             'test_logwalker',
             'test_repos', 

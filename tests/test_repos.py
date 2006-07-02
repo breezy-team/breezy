@@ -22,7 +22,6 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.transport.local import LocalTransport
 
-import svn
 import format
 from tests import TestCaseWithSubversionRepository
 

@@ -80,7 +80,7 @@ class SvnRepository(Repository):
         self.ra = transport.ra
 
         self.uuid = svn.ra.get_uuid(self.ra)
-        self.base = self.url = transport.base
+        self.base = transport.base
         self.fileid_map = {}
         self.path_map = {}
         self.text_cache = {}
@@ -88,7 +88,7 @@ class SvnRepository(Repository):
         self.scheme = bzrdir.scheme
         self.pool = Pool()
 
-        assert self.url
+        assert self.base
         assert self.uuid
 
         mutter("Connected to repository with UUID %s" % self.uuid)

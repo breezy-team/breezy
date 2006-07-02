@@ -18,43 +18,52 @@ from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.errors import NotBranchError, NotLocalUrl
 from bzrlib.lockable_files import TransportLock
 from bzrlib.transport.local import LocalTransport
-
 import bzrlib.urlutils as urlutils
+
+from svn.core import SubversionException
+import svn.core, svn.repos
 
 from branch import SvnBranch
 from repository import SvnRepository
 from scheme import BranchingScheme
 from transport import SvnRaTransport, bzr_to_svn_url
 
-from svn.core import SubversionException
-import svn.core, svn.repos
-
 
 class SvnRemoteAccess(BzrDir):
+    """BzrDir implementation for Subversion connections.
+    
+    This is used for all non-checkout connections 
+    to Subversion repositories.
+    """
     def __init__(self, _transport, _format):
+        """See BzrDir.__init__()."""
         assert isinstance(_transport, SvnRaTransport)
+        super(SvnRemoteAccess, self).__init__(_transport, _format)
 
-        self.transport = _transport
-        self._format = _format
+        self.transport = None
         self.svn_root_transport = _transport.get_root()
-        self.root_transport = self.transport = _transport
-        self.url = _transport.base
 
-        svn_url = bzr_to_svn_url(self.transport.base)
+        svn_url = bzr_to_svn_url(self.root_transport.base)
         root_svn_url = bzr_to_svn_url(self.svn_root_transport.base)
+
         assert svn_url.startswith(root_svn_url)
         self.branch_path = svn_url[len(root_svn_url):]
 
         self.scheme = BranchingScheme.guess_scheme(self.branch_path)
 
         if not self.scheme.is_branch(self.branch_path):
-            raise NotBranchError(path=self.transport.base)
+            raise NotBranchError(path=self.root_transport.base)
 
     def clone(self, url, revision_id=None, basis=None, force_new_repo=False):
+        """See BzrDir.clone().
+
+        Not supported on Subversion connections.
+        """
         raise NotImplementedError(SvnRemoteAccess.clone)
 
     def sprout(self, url, revision_id=None, basis=None, force_new_repo=False):
-        # FIXME: honor force_new_repo
+        """See BzrDir.sprout()."""
+        # TODO: honor force_new_repo
         result = BzrDirFormat.get_default_format().initialize(url)
         repo = self.open_repository()
         result_repo = repo.clone(result, revision_id, basis)
@@ -64,19 +73,34 @@ class SvnRemoteAccess(BzrDir):
         return result
 
     def open_repository(self):
+        """Open the repository associated with this BzrDir.
+        
+        :return: instance of SvnRepository.
+        """
         repos = SvnRepository(self, self.svn_root_transport)
         repos._format = self._format
         return repos
 
-    # Subversion has all-in-one, so a repository is always present
+    # Subversion has all-in-one, so a repository is always present,
+    # no need to look for it.
     find_repository = open_repository
 
-    # Working trees never exist on remote Subversion repositories
     def open_workingtree(self):
-        raise NotLocalUrl(self.url)
+        """See BzrDir.open_workingtree().
+
+        Will always raise NotLocalUrl as this 
+        BzrDir can not be associated with working trees.
+        """
+        # Working trees never exist on remote Subversion repositories
+        raise NotLocalUrl(self.root_transport.base)
 
     def create_workingtree(self, revision_id=None):
-        raise NotLocalUrl(self.url)
+        """See BzrDir.create_workingtree().
+
+        Will always raise NotLocalUrl as this 
+        BzrDir can not be associated with working trees.
+        """
+        raise NotLocalUrl(self.root_transport.base)
 
     def create_branch(self):
         """See BzrDir.create_branch()."""
@@ -89,12 +113,7 @@ class SvnRemoteAccess(BzrDir):
         """See BzrDir.open_branch()."""
         repos = self.open_repository()
 
-        try:
-            branch = SvnBranch(repos, self.branch_path)
-        except SubversionException, (msg, num):
-            if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
-               raise NotBranchError(path=self.url)
-            raise
+        branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
  
         branch.bzrdir = self
         return branch

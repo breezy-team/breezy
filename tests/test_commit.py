@@ -20,7 +20,6 @@ from bzrlib.inventory import Inventory
 from bzrlib.workingtree import WorkingTree
 
 import os
-import svn
 import format
 import checkout
 from tests import TestCaseWithSubversionRepository

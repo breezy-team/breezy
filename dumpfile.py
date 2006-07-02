@@ -14,25 +14,24 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from transport import SvnRaTransport
-from format import SvnRemoteAccess
-
-import bzrlib
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
-from bzrlib.errors import NotBranchError, NoSuchFile
-from bzrlib.inventory import Inventory
+from bzrlib.errors import NotBranchError, NoSuchFile, TransportNotPossible
 from bzrlib.lockable_files import TransportLock
-from bzrlib.progress import DummyProgress
+from bzrlib.trace import mutter
 from bzrlib.transport import Transport
+from bzrlib.transport.local import LocalTransport
 import bzrlib.urlutils as urlutils
 import bzrlib.osutils as osutils
-from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
+from stat import S_ISDIR
 import tempfile
 from cStringIO import StringIO
 
 import svn.repos, svn.core
 from svn.core import SubversionException
+
+from format import SvnRemoteAccess
+from transport import SvnRaTransport
 
 class SvnDumpFile(SvnRemoteAccess):
     """Allow directly accessing Repositories in Subversion Dump Files.
@@ -40,17 +39,26 @@ class SvnDumpFile(SvnRemoteAccess):
     This will build the repository from the dumpfile in a temporary
     directory.
     """
-    def __init__(self, nested_transport, format):
+    def __init__(self, _transport, format):
         """Instantiate a new instance of SvnDumpFile.
 
-        :param nested_transport: Transport to use for reading the file.
+        :param _transport: Transport to use for reading the file.
         :param format: BzrDirFormat
         """
-        assert isinstance(nested_transport, Transport)
-        assert isinstance(format, BzrDirFormat)
         self.tmp_repos = None
 
-        transport = nested_transport
+        assert isinstance(_transport, Transport)
+        assert isinstance(format, BzrDirFormat)
+
+        try:
+            if S_ISDIR(_transport.stat('.').st_mode):
+                raise NotBranchError(path=_transport.base)
+        except TransportNotPossible:
+            raise NotBranchError(path=_transport.base)
+        except NoSuchFile:
+            pass
+
+        transport = _transport
 
         dumpfile = None
 
@@ -58,16 +66,22 @@ class SvnDumpFile(SvnRemoteAccess):
             last_name = urlutils.basename(transport.base)
             parent_transport = transport
             transport = transport.clone('..')
-            from stat import S_ISDIR
-            if not S_ISDIR(transport.stat(last_name).st_mode):
-                dumpfile = transport.get(last_name)
+            try:
+                if not S_ISDIR(transport.stat(last_name).st_mode):
+                    dumpfile = transport.get(last_name)
+            except NoSuchFile:
+                pass
 
-        if dumpfile.readline() != "SVN-fs-dump-format-version: 2":
-            raise NotBranchError(path=nested_transport.base)
+        first_line = dumpfile.readline()
+        expected_line = "SVN-fs-dump-format-version: 2\n"
+        if first_line != expected_line:
+            mutter('first line mismatched: %r != %r' % 
+                                  (first_line, expected_line))
+            raise NotBranchError(path=_transport.base)
         
         dumpfile.seek(0)
 
-        repos_path = parent_transport.relpath(nested_transport.base)
+        repos_path = parent_transport.relpath(_transport.base)
 
         self.tmp_repos = tempfile.mkdtemp(prefix='bzr-svn-dump-')
         repos = svn.repos.create(self.tmp_repos, '', '', None, None)
@@ -75,12 +89,14 @@ class SvnDumpFile(SvnRemoteAccess):
             svn.repos.load_fs2(repos, dumpfile, StringIO(), 
                 svn.repos.load_uuid_default, '', 0, 0, None)
         except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):
-            raise NotBranchError(path=nested_transport.base)
+            raise NotBranchError(path=_transport.base)
 
         svn_url = 'file://%s/%s' % (self.tmp_repos, repos_path)
         remote_transport = SvnRaTransport(svn_url)
 
         super(SvnDumpFile, self).__init__(remote_transport, format)
+
+        self.root_transport = _transport
 
     def __del__(self):
         if self.tmp_repos:
@@ -95,9 +111,10 @@ class SvnDumpFileFormat(BzrDirFormat):
     def probe_transport(klass, transport):
         format = klass()
 
-        # FIXME: This is way inefficient over remote transports..
-        #if SvnDumpFile(transport, format):
-        #    return format
+        # TODO: This is way inefficient over remote transports..
+        if (isinstance(transport, LocalTransport) and 
+            SvnDumpFile(transport, format)):
+            return format
 
         raise NotBranchError(path=transport.base)
 

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.errors import NoSuchFile, NotBranchError
+from bzrlib.errors import NoSuchFile, NotBranchError, TransportNotPossible
 from bzrlib.transport import Transport
 import bzrlib.urlutils as urlutils
 
@@ -114,15 +114,15 @@ class SvnRaTransport(Transport):
 
     def has(self, relpath):
         """See Transport.has()."""
-        return False
+        raise TransportNotPossible('has not supported on Subversion')
 
     def get(self, relpath):
         """See Transport.get()."""
-        raise NoSuchFile(relpath)
+        raise TransportNotPossible('get not supported on Subversion')
 
     def stat(self, relpath):
         """See Transport.stat()."""
-        return os.stat('.')
+        raise TransportNotPossible('stat not supported on Subversion')
 
     def get_root(self):
         """Open a connection to the root of this repository.
@@ -138,18 +138,18 @@ class SvnRaTransport(Transport):
         """
         return False
 
-    # There is no real way to do locking directly on the transport 
-    # nor is there a need to.
-    class PhonyLock:
-        def unlock(self):
-            pass
-
     def lock_write(self, relpath):
         """See Transport.lock_write()."""
-        return self.PhonyLock()
+        raise TransportNotPossible('lock_write not supported on Subversion')
 
     def lock_read(self, relpath):
         """See Transport.lock_read()."""
+        # There is no real way to do locking directly on the transport 
+        # nor is there a need to.
+        class PhonyLock:
+            def unlock(self):
+                pass
+
         return self.PhonyLock()
 
     def clone(self, offset=None):

@@ -24,7 +24,6 @@ from bzrlib.tree import EmptyTree
 from bzrlib.workingtree import WorkingTree
 
 import os
-import svn
 import format
 import checkout
 from tests import TestCaseWithSubversionRepository, RENAMES

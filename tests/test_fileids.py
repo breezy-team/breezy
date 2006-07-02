@@ -21,7 +21,6 @@ from bzrlib.repository import Repository
 from bzrlib.trace import mutter
 from bzrlib.tests import TestSkipped
 
-import svn
 import format
 from tests import TestCaseWithSubversionRepository, RENAMES
 
