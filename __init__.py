@@ -74,9 +74,8 @@ def test_suite():
     return suite
 
 if __name__ == '__main__':
-    from unittest import TextTestRunner
-    runner = TextTestRunner()
-    runner.run(test_suite())
+    print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "
+          "to use it.\n")
 else:
     sys.path.append(os.path.dirname(__file__))
 
