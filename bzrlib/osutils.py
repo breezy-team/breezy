@@ -775,39 +775,35 @@ def normalizes_filenames():
     return _platform_normalizes_filenames
 
 
+def _accessible_unicode_filename(path):
+    """Get the unicode normalized path, and if you can access the file.
+
+    On platforms where the system normalizes filenames (Mac OSX),
+    you can access a file by any path which will normalize correctly.
+    On platforms where the system does not normalize filenames 
+    (Windows, Linux), you have to access a file by its exact path.
+
+    Internally, bzr only supports NFC/NFKC normalization, since that is 
+    the standard for XML documents.
+
+    So return the normalized path, and a flag indicating if the file
+    can be accessed by that path.
+    """
+
+    return unicodedata.normalize('NFKC', path), True
+
+
+def _inaccessible_unicode_filename(path):
+    __doc__ = _accessible_unicode_filename.__doc__
+
+    normalized = unicodedata.normalize('NFKC', path) 
+    return normalized, normalized == path
+
+
 if _platform_normalizes_filenames:
-    def unicode_filename(path):
-        """Make sure 'path' is a properly normalized filename.
-
-        On platforms where the system normalizes filenames (Mac OSX),
-        you can access a file by any path which will normalize
-        correctly.
-        Internally, bzr only supports NFC/NFKC normalization, since
-        that is the standard for XML documents.
-        So we return an normalized path, and indicate this has been
-        properly normalized.
-
-        :return: (path, is_normalized) Return a path which can
-                access the file, and whether or not this path is
-                normalized.
-        """
-        return unicodedata.normalize('NFKC', path), True
+    unicode_filename = _accessible_unicode_filename
 else:
-    def unicode_filename(path):
-        """Make sure 'path' is a properly normalized filename.
-
-        On platforms where the system does not normalize filenames 
-        (Windows, Linux), you have to access a file by its exact path.
-        Internally, bzr only supports NFC/NFKC normalization, since
-        that is the standard for XML documents.
-        So we return the original path, and indicate if this is
-        properly normalized.
-
-        :return: (path, is_normalized) Return a path which can
-                access the file, and whether or not this path is
-                normalized.
-        """
-        return path, unicodedata.normalize('NFKC', path) == path
+    unicode_filename = _inaccessible_unicode_filename
 
 
 def terminal_width():

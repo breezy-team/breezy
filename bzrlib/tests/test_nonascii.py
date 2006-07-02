@@ -20,8 +20,9 @@ import os
 import sys
 from unicodedata import normalize
 
-from bzrlib.osutils import pathjoin, normalizes_filenames, unicode_filename
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib import osutils
+from bzrlib.osutils import pathjoin
+from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.workingtree import WorkingTree
 
 
@@ -47,18 +48,46 @@ z_umlat_c = u'\u017d'
 z_umlat_d = u'Z\u030c'
 
 
-class UnicodeFilename(TestCaseWithTransport):
-    """Test that UnicodeFilename returns the expected values."""
+class TestNormalization(TestCase):
+    """Verify that we have our normalizations correct."""
 
-    def test_a_circle(self):
+    def test_normalize(self):
         self.assertEqual(a_circle_d, normalize('NFKD', a_circle_c))
         self.assertEqual(a_circle_c, normalize('NFKC', a_circle_d))
+        self.assertEqual(a_dots_d, normalize('NFKD', a_dots_c))
+        self.assertEqual(a_dots_c, normalize('NFKC', a_dots_d))
+        self.assertEqual(z_umlat_d, normalize('NFKD', z_umlat_c))
+        self.assertEqual(z_umlat_c, normalize('NFKC', z_umlat_d))
 
-        self.assertEqual((a_circle_c, True), unicode_filename(a_circle_c))
-        if normalizes_filenames():
-            self.assertEqual((a_circle_c, True), unicode_filename(a_circle_d))
+
+class UnicodeFilename(TestCaseWithTransport):
+    """Test unicode_filename and associated helpers"""
+
+    def test__accessible_unicode_filename(self):
+        auf = osutils._accessible_unicode_filename
+        self.assertEqual((a_circle_c, True), auf(a_circle_c))
+        self.assertEqual((a_circle_c, True), auf(a_circle_d))
+        self.assertEqual((a_dots_c, True), auf(a_dots_c))
+        self.assertEqual((a_dots_c, True), auf(a_dots_d))
+        self.assertEqual((z_umlat_c, True), auf(z_umlat_c))
+        self.assertEqual((z_umlat_c, True), auf(z_umlat_d))
+
+    def test__inaccessible_unicode_filename(self):
+        iuf = osutils._inaccessible_unicode_filename
+        self.assertEqual((a_circle_c, True), iuf(a_circle_c))
+        self.assertEqual((a_circle_c, False), iuf(a_circle_d))
+        self.assertEqual((a_dots_c, True), iuf(a_dots_c))
+        self.assertEqual((a_dots_c, False), iuf(a_dots_d))
+        self.assertEqual((z_umlat_c, True), iuf(z_umlat_c))
+        self.assertEqual((z_umlat_c, False), iuf(z_umlat_d))
+
+    def test_functions(self):
+        if osutils.normalizes_filenames():
+            self.assertEqual(osutils.unicode_filename,
+                             osutils._accessible_unicode_filename)
         else:
-            self.assertEqual((a_circle_d, False), unicode_filename(a_circle_d))
+            self.assertEqual(osutils.unicode_filename,
+                             osutils._inaccessible_unicode_filename)
 
     def test_platform(self):
         try:
@@ -74,9 +103,8 @@ class UnicodeFilename(TestCaseWithTransport):
         present = sorted(os.listdir(u'.'))
         self.assertEqual(expected, present)
 
-    def test_access(self):
-        # We should always be able to access files by the path returned
-        # from unicode_filename
+    def test_access_normalized(self):
+        # We should always be able to access files created with normalized filenames
         files = [a_circle_c, a_dots_c, z_umlat_c]
         try:
             self.build_tree(files)
@@ -84,10 +112,42 @@ class UnicodeFilename(TestCaseWithTransport):
             raise TestSkipped("filesystem cannot create unicode files")
 
         for fname in files:
-            path = unicode_filename(fname)[0]
             # We should get an exception if we can't open the file at
             # this location.
+            path, can_access = osutils.unicode_filename(fname)
+
+            self.assertEqual(path, fname)
+            self.assertTrue(can_access)
+
             f = open(path, 'rb')
             f.close()
 
+    def test_access_non_normalized(self):
+        # Sometimes we can access non-normalized files by their normalized
+        # path, verify that unicode_filename returns the right info
+        files = [a_circle_d, a_dots_d, z_umlat_d]
 
+        try:
+            self.build_tree(files)
+        except UnicodeError:
+            raise TestSkipped("filesystem cannot create unicode files")
+
+        for fname in files:
+            # We should get an exception if we can't open the file at
+            # this location.
+            path, can_access = osutils.unicode_filename(fname)
+
+            self.assertNotEqual(path, fname)
+
+            # We should always be able to access them from the name
+            # they were created with
+            f = open(fname, 'rb')
+            f.close()
+
+            # And unicode_filename sholud tell us correctly if we can
+            # access them by an alternate name
+            if can_access:
+                f = open(path, 'rb')
+                f.close()
+            else:
+                self.assertRaises(IOError, open, path, 'rb')
