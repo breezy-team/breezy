@@ -66,8 +66,15 @@ class SvnDumpFile(SvnRemoteAccess):
             last_name = urlutils.basename(transport.base)
             parent_transport = transport
             transport = transport.clone('..')
+            if transport.base == parent_transport.base:
+                # Reached top-level
+                raise NotBranchError(path=_transport.base)
+
             try:
-                if not S_ISDIR(transport.stat(last_name).st_mode):
+                mode = transport.stat(last_name).st_mode
+                if S_ISDIR(mode):
+                    raise NotBranchError(path=_transport.base)
+                else:
                     dumpfile = transport.get(last_name)
             except NoSuchFile:
                 pass

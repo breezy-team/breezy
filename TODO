@@ -1,9 +1,10 @@
-- improve performance
- - store revision properties in file properties of branch path?
 - support pushing to SVN branches. Push as merged.
 - build packages for Dapper
 
 later:
+- move get_file()/get_dir()/stat() calls to SvnRaTransport
+- add get_dir_revs() to subversion and use it for getting 
+  bzr revision properties
 - use svn_ra_replay() instead of individual checkouts 
   if subversion 1.4 is available
 - custom implementation of Repository.get_revision_delta() to speed 
