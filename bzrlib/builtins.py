@@ -2215,7 +2215,7 @@ class cmd_remerge(Command):
                     pass
             conflicts = merge_inner(tree.branch, other_tree, base_tree,
                                     this_tree=tree,
-                                    interesting_ids = interesting_ids, 
+                                    interesting_ids=interesting_ids, 
                                     other_rev_id=pending_merges[0], 
                                     merge_type=merge_type, 
                                     show_base=show_base,

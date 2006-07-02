@@ -575,7 +575,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                                        TextConflict('path_a'),
                                        TextConflict('path_b')]))
 
-
     def test_revert_clear_conflicts(self):
         tree = self.make_merge_conflicts()
         self.assertEqual(len(tree.conflicts()), 1)
