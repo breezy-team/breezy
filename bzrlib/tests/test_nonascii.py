@@ -41,8 +41,8 @@ class NonAsciiTest(TestCaseWithTransport):
 
 
 a_circle_c = u'\xe5'
-a_dots_c = u'\xe4'
 a_circle_d = u'a\u030a'
+a_dots_c = u'\xe4'
 a_dots_d = u'a\u0308'
 z_umlat_c = u'\u017d'
 z_umlat_d = u'Z\u030c'
