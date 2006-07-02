@@ -84,6 +84,8 @@ class SvnBranch(Branch):
 
     def _get_nick(self):
         try:
+            if self.branch_path == "":
+                return None
             return self.branch_path
         except ValueError:
             return None

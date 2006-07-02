@@ -98,11 +98,11 @@ class RevisionBuildEditor(svn.delta.Editor):
         revid = self.source.generate_revision_id(self.dir_revnum[id], 
                                                  self.branch_path)
 
-        self.inventory[id].revision = revid
-
-        file_weave = self.weave_store.get_weave_or_empty(id, self.transact)
-        if not file_weave.has_version(revid):
-            file_weave.add_lines(revid, self.dir_baserev[id], [])
+        if id != ROOT_ID:
+            self.inventory[id].revision = revid
+            file_weave = self.weave_store.get_weave_or_empty(id, self.transact)
+            if not file_weave.has_version(revid):
+                file_weave.add_lines(revid, self.dir_baserev[id], [])
 
     def add_directory(self, path, parent_baton, copyfrom_path, copyfrom_revnum, pool):
         relpath = self.relpath(path)

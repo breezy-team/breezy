@@ -27,7 +27,7 @@ import os
 import svn
 import format
 import checkout
-from tests import TestCaseWithSubversionRepository
+from tests import TestCaseWithSubversionRepository, RENAMES
 
 class TestWorkingTree(TestCaseWithSubversionRepository):
     def test_add_duplicate(self):
@@ -124,7 +124,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.client_add("dc/bl")
         self.client_commit("dc", "Bla")
         tree = WorkingTree.open("dc")
-        self.assertEqual("svn:1@%s-" % tree.branch.repository.uuid,
+        self.assertEqual("svn-v1:1@%s-" % tree.branch.repository.uuid,
                          tree.basis_tree().get_revision_id())
 
     def test_move(self):
@@ -145,12 +145,13 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertTrue(inv.has_filename("dir/a"))
         mutter('basis: %r' % basis_inv.entries())
         mutter('working: %r' % inv.entries())
-        self.assertEqual(basis_inv.path2id("bl"), 
-                         inv.path2id("dir/bl"))
-        self.assertEqual(basis_inv.path2id("a"), 
-                         inv.path2id("dir/a"))
-        self.assertIs(None, inv.has_filename("bl"))
-        self.assertIs(None, basis_inv.has_filename("dir/bl"))
+        if RENAMES:
+            self.assertEqual(basis_inv.path2id("bl"), 
+                             inv.path2id("dir/bl"))
+            self.assertEqual(basis_inv.path2id("a"), 
+                            inv.path2id("dir/a"))
+        self.assertFalse(inv.has_filename("bl"))
+        self.assertFalse(basis_inv.has_filename("dir/bl"))
 
     def test_pending_merges(self):
         self.make_client_and_bzrdir('a', 'dc')
@@ -235,11 +236,6 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree = WorkingTree.open("dc")
         self.assertEqual(['.svn', 'bl'], list(tree.extras()))
 
-    def test_create(self):
-        repos_url = self.make_repository('a')
-        branch = Branch.open("svn+" + repos_url)
-        BzrDir.create(branch, 'dc')
-
     def test_pending_merges(self):
         self.make_client_and_bzrdir('a', 'dc')
         self.build_tree({"dc/bl": None})
@@ -255,13 +251,15 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.build_tree({"dc/bl": "data"})
         self.client_add("dc/bl")
         tree = WorkingTree.open("dc")
+        orig_tree = tree.basis_tree()
         tree.commit(message="data")
-        self.assertEqual("svn:1@%s-" % tree.branch.repository.uuid, 
+        self.assertEqual("svn-v1:1@%s-" % tree.branch.repository.uuid, 
                          tree.basis_tree().get_revision_id())
-        delta = compare_trees(tree, tree.basis_tree())
-        self.assertFalse(delta.has_changed())
+        delta = compare_trees(orig_tree, tree.basis_tree())
+        self.assertTrue(delta.has_changed())
         tree = WorkingTree.open("dc")
-        self.assertEqual("svn:1@%s-" % tree.branch.repository.uuid, 
+        delta = compare_trees(tree, tree.basis_tree())
+        self.assertEqual("svn-v1:1@%s-" % tree.branch.repository.uuid, 
                          tree.basis_tree().get_revision_id())
         self.assertFalse(delta.has_changed())
 

@@ -21,6 +21,8 @@ from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseInTempDir
 
+RENAMES = False
+
 import svn.ra, svn.repos, svn.wc
 
 class TestCaseWithSubversionRepository(TestCaseInTempDir):

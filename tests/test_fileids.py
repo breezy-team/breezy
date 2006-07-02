@@ -19,11 +19,11 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
 from bzrlib.trace import mutter
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.tests import TestSkipped
 
 import svn
 import format
-from tests import TestCaseWithSubversionRepository
+from tests import TestCaseWithSubversionRepository, RENAMES
 
 class TestComplexFileids(TestCaseWithSubversionRepository):
     # branchtagcopy.dump
@@ -47,11 +47,12 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
 
         repository = Repository.open("svn+"+repos_url)
 
-        inv1 = repository.get_inventory("svn:1@%s-" % repository.uuid)
-        inv2 = repository.get_inventory("svn:2@%s-" % repository.uuid)
+        inv1 = repository.get_inventory("svn-v1:1@%s-" % repository.uuid)
+        inv2 = repository.get_inventory("svn-v1:2@%s-" % repository.uuid)
         mutter('inv1: %r' % inv1.entries())
         mutter('inv2: %r' % inv2.entries())
-        self.assertEqual(inv1.path2id("foo"), inv2.path2id("bar"))
+        if RENAMES:
+            self.assertEqual(inv1.path2id("foo"), inv2.path2id("bar"))
         self.assertNotEqual(None, inv1.path2id("foo"))
         self.assertIs(None, inv2.path2id("foo"))
         self.assertNotEqual(None, inv2.path2id("bar"))
@@ -71,8 +72,8 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         bzrdir = BzrDir.open("svn+%s" % repos_url)
         repository = bzrdir.open_repository()
 
-        inv1 = repository.get_inventory("svn:1@%s-" % repository.uuid)
-        inv2 = repository.get_inventory("svn:2@%s-" % repository.uuid)
+        inv1 = repository.get_inventory("svn-v1:1@%s-" % repository.uuid)
+        inv2 = repository.get_inventory("svn-v1:2@%s-" % repository.uuid)
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("bar"))
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("blie"))
         self.assertIs(None, inv1.path2id("bar"))
@@ -89,7 +90,7 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         bzrdir = BzrDir.open("svn+%s" % repos_url)
         repository = bzrdir.open_repository()
 
-        inv1 = repository.get_inventory("svn:1@%s-" % repository.uuid)
-        inv2 = repository.get_inventory("svn:2@%s-" % repository.uuid)
+        inv1 = repository.get_inventory("svn-v1:1@%s-" % repository.uuid)
+        inv2 = repository.get_inventory("svn-v1:2@%s-" % repository.uuid)
         self.assertNotEqual(None, inv1.path2id("foo"))
         self.assertIs(None, inv2.path2id("foo"))

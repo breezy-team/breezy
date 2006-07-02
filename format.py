@@ -24,25 +24,26 @@ import bzrlib.urlutils as urlutils
 from branch import SvnBranch
 from repository import SvnRepository
 from scheme import BranchingScheme
-from transport import SvnRaTransport
+from transport import SvnRaTransport, bzr_to_svn_url
 
 from svn.core import SubversionException
 import svn.core, svn.repos
-
-
 
 
 class SvnRemoteAccess(BzrDir):
     def __init__(self, _transport, _format):
         assert isinstance(_transport, SvnRaTransport)
 
+        self.transport = _transport
         self._format = _format
         self.svn_root_transport = _transport.get_root()
         self.root_transport = self.transport = _transport
         self.url = _transport.base
 
-        assert self.transport.base.startswith(self.svn_root_transport.base)
-        self.branch_path = self.transport.base[len(self.svn_root_transport.base):]
+        svn_url = bzr_to_svn_url(self.transport.base)
+        root_svn_url = bzr_to_svn_url(self.svn_root_transport.base)
+        assert svn_url.startswith(root_svn_url)
+        self.branch_path = svn_url[len(root_svn_url):]
 
         self.scheme = BranchingScheme.guess_scheme(self.branch_path)
 

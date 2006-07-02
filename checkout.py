@@ -30,7 +30,7 @@ from bzrlib.tree import EmptyTree
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
-from repository import SvnRepository, escape_svn_path
+from repository import SvnRepository, escape_svn_path, SVN_PROP_BZR_PARENTS
 from scheme import BranchingScheme
 from transport import (SvnRaTransport, svn_config, 
                        svn_to_bzr_url) 
@@ -60,12 +60,14 @@ class SvnWorkingTree(WorkingTree):
         self.base_revid = branch.repository.generate_revision_id(
                     self.base_revnum, branch.branch_path)
         mutter('basis inv: %r' % self.basis_tree().inventory.entries())
+        self.controldir = os.path.join(self.basedir, svn.wc.get_adm_dir(), 'bzr')
         try:
-            os.makedirs(os.path.join(self.basedir, svn.wc.get_adm_dir(), 'bzr'))
+            os.makedirs(self.controldir)
+            os.makedirs(os.path.join(self.controldir, 'lock'))
         except OSError:
             pass
-        self._control_files = LockableFiles(bzrdir.transport, 
-                os.path.join(self.basedir, svn.wc.get_adm_dir(), 'bzr'), LockDir)
+        control_transport = bzrdir.transport.clone(os.path.join(svn.wc.get_adm_dir(), 'bzr'))
+        self._control_files = LockableFiles(control_transport, 'lock', LockDir)
 
     def lock_write(self):
         pass
@@ -329,6 +331,25 @@ class SvnWorkingTree(WorkingTree):
 
         commit_info = svn.client.commit3(specific_files, True, False, self.client_ctx)
 
+        revid = self.branch.repository.generate_revision_id(commit_info.revision, self.branch.branch_path)
+
+        merges = self.pending_merges()
+
+        if len(merges) > 0:
+            try:
+                svn.ra.change_rev_prop(self.branch.repository.ra, commit_info.revision,
+                    SVN_PROP_BZR_PARENTS.encode('utf8'), "\n".join(merges).encode('utf8'))
+            except SubversionException, (_, num):
+                if num == svn.core.SVN_ERR_REPOS_DISABLED_FEATURE:
+                    raise BzrError("Revision properties can't be modified on Subversion repository.")
+
+        self.set_pending_merges([])
+
+        self.base_revid = revid
+        self.branch._revision_history.append(revid)
+
+        return revid
+
     def add(self, files, ids=None):
         assert isinstance(files, list)
         wc = self._get_wc(write_lock=True)
@@ -362,6 +383,7 @@ class SvnWorkingTree(WorkingTree):
         rev.kind = svn.core.svn_opt_revision_number
         rev.value.number = self.branch.repository.parse_revision_id(stop_revision)[1]
         fetched = svn.client.update(self.basedir, rev, True, self.client_ctx)
+        self.base_revid = self.branch.repository.generate_revision_id(fetched, self.branch.branch_path)
         return fetched-rev.value.number
 
     def get_file_sha1(self, file_id, path=None):
@@ -405,8 +427,9 @@ class SvnCheckout(BzrDir):
         self.svn_root_transport = self.remote_transport.get_root()
         self.root_transport = self.transport = transport
         self.url = transport.base
-        self.branch_path = bzr_url[len(self.svn_root_transport.base):]
+        self.branch_path = svn_url[len(svn_to_bzr_url(self.svn_root_transport.base)):]
         self.scheme = BranchingScheme.guess_scheme(self.branch_path)
+        mutter('scheme for %r is %r' % (self.branch_path, self.scheme))
         if not self.scheme.is_branch(self.branch_path):
             raise NotBranchError(path=self.transport.base)
 

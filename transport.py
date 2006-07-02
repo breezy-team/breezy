@@ -62,7 +62,7 @@ def bzr_to_svn_url(url):
         url = url[len("svn+"):] # Skip svn+
 
     # The SVN libraries don't like trailing slashes...
-    return ret.rstrip('/')
+    return url.rstrip('/')
 
 
 class SvnRaCallbacks(svn.ra.callbacks2_t):
@@ -84,7 +84,7 @@ class SvnRaTransport(Transport):
     def __init__(self, url="", ra=None):
         self.pool = Pool()
         bzr_url = url
-        self.svn_url = svn_to_bzr_url(url)
+        self.svn_url = bzr_to_svn_url(url)
         Transport.__init__(self, bzr_url)
 
         if ra is None:

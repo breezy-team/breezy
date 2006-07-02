@@ -55,7 +55,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data"})
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
-        self.assertTrue(repository.has_revision("svn:1@%s-" % repository.uuid))
+        self.assertTrue(repository.has_revision("svn-v1:1@%s-" % repository.uuid))
         self.assertFalse(repository.has_revision("some-other-revision"))
 
     def test_revision_parents(self):
@@ -67,9 +67,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual([],
-                repository.revision_parents("svn:1@%s-" % repository.uuid))
-        self.assertEqual(["svn:1@%s-" % repository.uuid], 
-                repository.revision_parents("svn:2@%s-" % repository.uuid))
+                repository.revision_parents("svn-v1:1@%s-" % repository.uuid))
+        self.assertEqual(["svn-v1:1@%s-" % repository.uuid], 
+                repository.revision_parents("svn-v1:2@%s-" % repository.uuid))
 
     def test_revision_ghost_parents(self):
         repos_url = self.make_client('d', 'dc')
@@ -81,9 +81,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_set_revprops(repos_url, 2, "bzr:parents", "ghostparent\n")
         repository = Repository.open("svn+%s" % repos_url)
         self.assertEqual([],
-                repository.revision_parents("svn:1@%s-" % repository.uuid))
-        self.assertEqual(["svn:1@%s-" % repository.uuid, "ghostparent"], 
-                repository.revision_parents("svn:2@%s-" % repository.uuid))
+                repository.revision_parents("svn-v1:1@%s-" % repository.uuid))
+        self.assertEqual(["svn-v1:1@%s-" % repository.uuid, "ghostparent"], 
+                repository.revision_parents("svn-v1:2@%s-" % repository.uuid))
  
     
     def test_get_revision(self):
@@ -96,10 +96,10 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data2"})
         (num, date, author) = self.client_commit("dc", "Second Message")
         repository = Repository.open("svn+%s" % repos_url)
-        rev = repository.get_revision("svn:2@%s-" % repository.uuid)
-        self.assertEqual(["svn:1@%s-" % repository.uuid],
+        rev = repository.get_revision("svn-v1:2@%s-" % repository.uuid)
+        self.assertEqual(["svn-v1:1@%s-" % repository.uuid],
                 rev.parent_ids)
-        self.assertEqual(rev.revision_id,"svn:2@%s-" % repository.uuid)
+        self.assertEqual(rev.revision_id,"svn-v1:2@%s-" % repository.uuid)
         self.assertEqual(author, rev.committer)
 
     def test_get_ancestry(self):
@@ -114,12 +114,12 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data3"})
         self.client_commit("dc", "Third Message")
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertEqual([None, "svn:1@%s-" % repository.uuid, "svn:2@%s-" % repository.uuid],
-                repository.get_ancestry("svn:3@%s-" % repository.uuid))
-        self.assertEqual([None, "svn:1@%s-" % repository.uuid], 
-                repository.get_ancestry("svn:2@%s-" % repository.uuid))
+        self.assertEqual([None, "svn-v1:1@%s-" % repository.uuid, "svn-v1:2@%s-" % repository.uuid],
+                repository.get_ancestry("svn-v1:3@%s-" % repository.uuid))
+        self.assertEqual([None, "svn-v1:1@%s-" % repository.uuid], 
+                repository.get_ancestry("svn-v1:2@%s-" % repository.uuid))
         self.assertEqual([None],
-                repository.get_ancestry("svn:1@%s-" % repository.uuid))
+                repository.get_ancestry("svn-v1:1@%s-" % repository.uuid))
         self.assertEqual([None], repository.get_ancestry(None))
 
     def test_get_inventory(self):
@@ -136,13 +136,13 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data3"})
         self.client_commit("dc", "Third Message")
         repository = Repository.open("svn+%s" % repos_url)
-        inv = repository.get_inventory("svn:1@%s-" % repository.uuid)
+        inv = repository.get_inventory("svn-v1:1@%s-" % repository.uuid)
         self.assertIsInstance(inv, Inventory)
         self.assertIsInstance(inv.path2id("foo"), basestring)
-        inv = repository.get_inventory("svn:2@%s-" % repository.uuid)
-        self.assertEqual("svn:2@%s-" % repository.uuid, 
+        inv = repository.get_inventory("svn-v1:2@%s-" % repository.uuid)
+        self.assertEqual("svn-v1:2@%s-" % repository.uuid, 
                          inv[inv.path2id("foo")].revision)
-        self.assertEqual("svn:1@%s-" % repository.uuid, 
+        self.assertEqual("svn-v1:1@%s-" % repository.uuid, 
                          inv[inv.path2id("blah")].revision)
         self.assertIsInstance(inv, Inventory)
         self.assertIsInstance(inv.path2id("foo"), basestring)
@@ -152,7 +152,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_generate_revision_id(self):
         repos_url = self.make_client('d', 'dc')
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertEqual("svn:1@%s-bla/bloe" % repository.uuid, 
+        self.assertEqual("svn-v1:1@%s-bla%%2fbloe" % repository.uuid, 
             repository.generate_revision_id(1, "bla/bloe"))
 
     def test_generate_revision_id_none(self):
@@ -167,7 +167,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertRaises(NoSuchRevision, repository.parse_revision_id, 
             "nonexisting")
         self.assertEqual(("bloe", 0), 
-            repository.parse_revision_id("svn:0@%s-bloe" % repository.uuid))
+            repository.parse_revision_id("svn-v1:0@%s-bloe" % repository.uuid))
         
     def test_check(self):
         repos_url = self.make_client('d', 'dc')
@@ -176,8 +176,8 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.client_commit("dc", "My Message")
         repository = Repository.open("svn+%s" % repos_url)
         repository.check([
-            "svn:0@%s-" % repository.uuid, 
-            "svn:1@%s-" % repository.uuid])
+            "svn-v1:0@%s-" % repository.uuid, 
+            "svn-v1:1@%s-" % repository.uuid])
 
     def test_get_file(self):
         repos_url = self.make_client('d', 'dc')
@@ -241,12 +241,12 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         to_repos = BzrDir.create_repository("e")
 
         repository.copy_content_into(to_repos, 
-                "svn:2@%s-" % repository.uuid)
+                "svn-v1:2@%s-" % repository.uuid)
 
-        self.assertTrue(repository.has_revision("svn:2@%s-" % repository.uuid))
-        self.assertTrue(repository.has_revision("svn:1@%s-" % repository.uuid))
-        self.assertTrue(repository.has_revision("svn:0@%s-" % repository.uuid))
-        self.assertFalse(repository.has_revision("svn:4@%s-" % repository.uuid))
+        self.assertTrue(repository.has_revision("svn-v1:2@%s-" % repository.uuid))
+        self.assertTrue(repository.has_revision("svn-v1:1@%s-" % repository.uuid))
+        self.assertTrue(repository.has_revision("svn-v1:0@%s-" % repository.uuid))
+        self.assertFalse(repository.has_revision("svn-v1:4@%s-" % repository.uuid))
 
     def test_is_shared(self):
         repos_url = self.make_client('d', 'dc')
@@ -269,9 +269,9 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         dir = BzrDir.create("f")
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos)
-        self.assertTrue(newrepos.has_revision("svn:1@%s-" % oldrepos.uuid))
-        self.assertTrue(newrepos.has_revision("svn:2@%s-" % oldrepos.uuid))
-        tree = newrepos.revision_tree("svn:2@%s-" % oldrepos.uuid)
+        self.assertTrue(newrepos.has_revision("svn-v1:1@%s-" % oldrepos.uuid))
+        self.assertTrue(newrepos.has_revision("svn-v1:2@%s-" % oldrepos.uuid))
+        tree = newrepos.revision_tree("svn-v1:2@%s-" % oldrepos.uuid)
         self.assertTrue(tree.has_filename("foo/bla"))
         self.assertTrue(tree.has_filename("foo"))
         self.assertEqual("data", tree.get_file_by_path("foo/bla").read())
@@ -285,8 +285,8 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
         self.client_add("dc/foo")
         self.client_commit("dc", "My Message")
         self.repos = Repository.open("dc")
-        self.inventory = self.repos.get_inventory("svn:1@%s-" % self.repos.uuid)
-        self.tree = self.repos.revision_tree("svn:1@%s-" % self.repos.uuid)
+        self.inventory = self.repos.get_inventory("svn-v1:1@%s-" % self.repos.uuid)
+        self.tree = self.repos.revision_tree("svn-v1:1@%s-" % self.repos.uuid)
 
     def test_inventory(self):
         self.assertIsInstance(self.tree.inventory, Inventory)
@@ -296,7 +296,7 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
         self.assertEqual([], self.tree.get_parent_ids())
 
     def test_get_revision_id(self):
-        self.assertEqual("svn:1@%s-" % self.repos.uuid, 
+        self.assertEqual("svn-v1:1@%s-" % self.repos.uuid, 
                          self.tree.get_revision_id())
 
     def test_get_file_lines(self):

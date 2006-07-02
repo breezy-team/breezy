@@ -36,7 +36,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = bzrdir.open_branch()
         repos = bzrdir.open_repository()
 
-        self.assertEqual("svn:1@%s-" % repos.uuid, branch.last_revision())
+        self.assertEqual("svn-v1:1@%s-" % repos.uuid, branch.last_revision())
 
         self.build_tree({'dc/foo': "data2"})
         self.client_commit("dc", "My Message")
@@ -44,7 +44,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
-        self.assertEqual("svn:2@%s-" % repos.uuid, branch.last_revision())
+        self.assertEqual("svn-v1:2@%s-" % repos.uuid, branch.last_revision())
 
     def test_revision_history(self):
         repos_url = self.make_client('a', 'dc')
@@ -59,7 +59,7 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         branch = Branch.open("svn+"+repos_url)
         repos = Repository.open("svn+"+repos_url)
 
-        self.assertEqual(["svn:1@%s-" % repos.uuid], branch.revision_history())
+        self.assertEqual(["svn-v1:1@%s-" % repos.uuid], branch.revision_history())
 
         self.build_tree({'dc/foo': "data34"})
         self.client_commit("dc", "My Message")
@@ -68,8 +68,8 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         repos = Repository.open("svn+"+repos_url)
 
         self.assertEqual([
-            "svn:1@%s-" % repos.uuid, 
-            "svn:2@%s-" % repos.uuid],
+            "svn-v1:1@%s-" % repos.uuid, 
+            "svn-v1:2@%s-" % repos.uuid],
             branch.revision_history())
 
     def test_get_nick(self):
