@@ -17,13 +17,14 @@
 from bzrlib.config import config_dir
 from bzrlib.errors import NoSuchRevision, BzrError, NotBranchError
 from bzrlib.progress import ProgressBar, DummyProgress
-
-from svn.core import SubversionException
-import svn.ra
+from bzrlib.trace import mutter
 
 import os
 import pickle
 from cStringIO import StringIO
+
+from svn.core import SubversionException
+import svn.ra
 
 cache_dir = os.path.join(config_dir(), 'svn-cache')
 
@@ -94,6 +95,7 @@ class LogWalker(object):
 
         try:
             try:
+                mutter('getting log %r:%r' % (self.saved_revnum, to_revnum))
                 svn.ra.get_log(self.ra, ["/"], self.saved_revnum, to_revnum, 
                                0, True, True, rcvr)
                 self.last_revnum = to_revnum
@@ -241,8 +243,8 @@ class LogWalker(object):
         :param revnum: Revision number.
         :returns: Tuple with author, log message and date of the revision.
         """
-        self.fetch_revisions(self.saved_revnum, revnum, pb)
-        assert revnum in self.revisions
+        if revnum > self.last_revnum:
+            self.fetch_revisions(self.saved_revnum, revnum, pb)
         return (self.revisions[revnum]['author'], 
                 self.revisions[revnum]['message'],
                 self.revisions[revnum]['date'])

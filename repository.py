@@ -320,7 +320,7 @@ class SvnRepository(Repository):
         rev = Revision(revision_id=revision_id, parent_ids=parent_ids)
 
         svn_props = self._get_dir_proplist(path, revnum)
-        bzr_props = []
+        bzr_props = {}
         for name in svn_props:
             if not name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
                 continue

@@ -102,6 +102,7 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 rev.parent_ids)
         self.assertEqual(rev.revision_id,"svn-v1:2@%s-" % repository.uuid)
         self.assertEqual(author, rev.committer)
+        self.assertIsInstance(rev.properties, dict)
 
     def test_get_ancestry(self):
         repos_url = self.make_client('d', 'dc')

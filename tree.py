@@ -61,7 +61,7 @@ class SvnRevisionTree(RevisionTree):
 
         editor, baton = svn.delta.make_editor(self.editor)
 
-        mutter('do update: %r, %r' % (self.revnum, self.branch_path))
+        mutter('svn checkout -r %r %r' % (self.revnum, self.branch_path))
         reporter, reporter_baton = svn.ra.do_update(repository.ra, self.revnum, self.branch_path, True, editor, baton)
 
         svn.ra.reporter2_invoke_set_path(reporter, reporter_baton, "", 0, True, None)
@@ -109,10 +109,17 @@ class TreeBuildEditor(svn.delta.Editor):
         return file_id
 
     def change_dir_prop(self, id, name, value, pool):
+        from repository import (SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE, 
+                        SVN_PROP_BZR_REVPROP_PREFIX)
+
         if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.dir_revnum[id] = int(value)
         elif name == svn.core.SVN_PROP_IGNORE:
             self.dir_ignores[id] = value
+        elif name == SVN_PROP_BZR_MERGE or name == SVN_PROP_SVK_MERGE:
+            if id != ROOT_ID:
+                mutter('%r set on non-root dir!' % SVN_PROP_BZR_MERGE)
+                return
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
                       svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
@@ -120,7 +127,7 @@ class TreeBuildEditor(svn.delta.Editor):
                       svn.core.SVN_PROP_EXECUTABLE):
             pass
         else:
-            mutter('unsupported file property %r' % name)
+            mutter('unsupported dir property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
         if (name == svn.core.SVN_PROP_EXECUTABLE and 
