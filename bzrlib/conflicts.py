@@ -274,6 +274,9 @@ class Conflict(object):
             return -1
         return cmp(self._cmp_list(), other._cmp_list())
 
+    def __hash__(self):
+        return hash((type(self), self.path, self.file_id))
+
     def __eq__(self, other):
         return self.__cmp__(other) == 0
 

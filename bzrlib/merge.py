@@ -390,9 +390,7 @@ class Merge3Merger(object):
             results = self.tt.apply()
             self.write_modified(results)
             try:
-                new_conflicts = (self.cooked_conflicts +
-                                 list(working_tree.conflicts()))
-                working_tree.set_conflicts(ConflictList(new_conflicts))
+                working_tree.add_conflicts(self.cooked_conflicts)
             except UnsupportedOperation:
                 pass
         finally:

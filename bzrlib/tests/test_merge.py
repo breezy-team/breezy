@@ -144,5 +144,5 @@ class TestMerge(TestCaseWithTransport):
     def test_merge_inner_conflicts(self):
         tree_a = self.make_branch_and_tree('a')
         tree_a.set_conflicts(ConflictList([TextConflict('patha')]))
-        merge_inner(tree_a.branch, tree_a, tree_a, tree_a)
+        merge_inner(tree_a.branch, tree_a, tree_a, this_tree=tree_a)
         self.assertEqual(len(tree_a.conflicts()), 1)
