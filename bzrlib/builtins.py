@@ -28,6 +28,7 @@ from bzrlib import (bundle, branch, bzrdir, errors, osutils, ui, config,
     repository, log)
 from bzrlib.bundle import read_bundle_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
+from bzrlib.conflicts import ConflictList
 from bzrlib.commands import Command, display_command
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
@@ -2186,6 +2187,8 @@ class cmd_remerge(Command):
             base_tree = repository.revision_tree(base_revision)
             other_tree = repository.revision_tree(pending_merges[0])
             interesting_ids = None
+            new_conflicts = []
+            conflicts = tree.conflicts()
             if file_list is not None:
                 interesting_ids = set()
                 for filename in file_list:
@@ -2198,7 +2201,9 @@ class cmd_remerge(Command):
                     
                     for name, ie in tree.inventory.iter_entries(file_id):
                         interesting_ids.add(ie.file_id)
+                new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
             transform_tree(tree, tree.basis_tree(), interesting_ids)
+            tree.set_conflicts(ConflictList(new_conflicts))
             if file_list is None:
                 restore_files = list(tree.iter_conflicts())
             else:
@@ -2208,13 +2213,13 @@ class cmd_remerge(Command):
                     restore(tree.abspath(filename))
                 except NotConflicted:
                     pass
-            conflicts =  merge_inner(tree.branch, other_tree, base_tree,
-                                     this_tree=tree,
-                                     interesting_ids = interesting_ids, 
-                                     other_rev_id=pending_merges[0], 
-                                     merge_type=merge_type, 
-                                     show_base=show_base,
-                                     reprocess=reprocess)
+            conflicts = merge_inner(tree.branch, other_tree, base_tree,
+                                    this_tree=tree,
+                                    interesting_ids = interesting_ids, 
+                                    other_rev_id=pending_merges[0], 
+                                    merge_type=merge_type, 
+                                    show_base=show_base,
+                                    reprocess=reprocess)
         finally:
             tree.unlock()
         if conflicts > 0:

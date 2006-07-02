@@ -25,8 +25,10 @@ class TestRemerge(ExternalBase):
 
     def make_file(self, name, contents):
         f = open(name, 'wb')
-        f.write(contents)
-        f.close()
+        try:
+            f.write(contents)
+        finally:
+            f.close()
 
     def create_conflicts(self):
         """Create a conflicted tree"""
@@ -106,3 +108,14 @@ class TestRemerge(ExternalBase):
         self.run_bzr_error(['remerge only works after normal merges',
                             'Not cherrypicking or multi-merges'],
                            'remerge')
+
+    def test_conflicts(self):
+        self.create_conflicts()
+        self.run_bzr('merge', '../other', retcode=1)
+        wt = WorkingTree.open('.')
+        self.assertEqual(len(wt.conflicts()), 2)
+        self.run_bzr('remerge', retcode=1)
+        wt = WorkingTree.open('.')
+        self.assertEqual(len(wt.conflicts()), 2)
+        self.run_bzr('remerge', 'hello', retcode=1)
+        self.assertEqual(len(wt.conflicts()), 2)

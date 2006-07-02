@@ -207,6 +207,7 @@ class ConflictList(object):
         """Select the conflicts associated with paths in a tree.
         
         File-ids are also used for this.
+        :return: a pair of ConflictLists: (not_selected, selected)
         """
         path_set = set(paths)
         ids = {}
