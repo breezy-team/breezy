@@ -418,8 +418,8 @@ class BundleTester(TestCaseInTempDir):
             rh = self.b1.revision_history()
             tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
             tree.update()
-            delta = compare_trees(tree, 
-                                self.b1.repository.revision_tree(rev_id))
+            delta = compare_trees(self.b1.repository.revision_tree(rev_id),
+                                  tree)
             self.assertFalse(delta.has_changed(),
                              'Working tree has modifications')
         return tree
