@@ -105,16 +105,22 @@ class TestInit(ExternalBase):
 class TestSFTPInit(TestCaseWithSFTPServer):
 
     def test_init(self):
-        url = self.get_url()
-        out, err = self.run_bzr('init', url)
+        # init on a remote url should succeed.
+        out, err = self.run_bzr('init', self.get_url())
         self.assertEqual('', out)
         self.assertEqual('', err)
-
-        out, err = self.run_bzr('init', url, retcode=3)
+    
+    def test_init_existing_branch(self):
+        # when there is already a branch present, make mention
+        self.run_bzr('init', self.get_url())
+        out, err = self.run_bzr('init', self.get_url(), retcode=3)
         self.assertContainsRe(err, 'Already a branch')
 
-        self.run_bzr('checkout', '.')
-        # when the transport is not local, don't distinguish between the branch
-        # having a working tree or not.
-        out, err = self.run_bzr('init', url, retcode=3)
+    def test_init_something(self):
+        # don't distinguish between the branch having a working tree or not
+        # when the branch itself is remote.
+        self.make_branch_and_tree('.')
+
+        # rely on SFTPServer get_url() pointing at '.'
+        out, err = self.run_bzr('init', self.get_url(), retcode=3)
         self.assertFalse(re.search(r'checkout', err))
