@@ -60,34 +60,34 @@ class TestNormalization(TestCase):
         self.assertEqual(z_umlat_c, normalize('NFKC', z_umlat_d))
 
 
-class UnicodeFilename(TestCaseWithTransport):
-    """Test unicode_filename and associated helpers"""
+class NormalizedFilename(TestCaseWithTransport):
+    """Test normalized_filename and associated helpers"""
 
-    def test__accessible_unicode_filename(self):
-        auf = osutils._accessible_unicode_filename
-        self.assertEqual((a_circle_c, True), auf(a_circle_c))
-        self.assertEqual((a_circle_c, True), auf(a_circle_d))
-        self.assertEqual((a_dots_c, True), auf(a_dots_c))
-        self.assertEqual((a_dots_c, True), auf(a_dots_d))
-        self.assertEqual((z_umlat_c, True), auf(z_umlat_c))
-        self.assertEqual((z_umlat_c, True), auf(z_umlat_d))
+    def test__accessible_normalized_filename(self):
+        anf = osutils._accessible_normalized_filename
+        self.assertEqual((a_circle_c, True), anf(a_circle_c))
+        self.assertEqual((a_circle_c, True), anf(a_circle_d))
+        self.assertEqual((a_dots_c, True), anf(a_dots_c))
+        self.assertEqual((a_dots_c, True), anf(a_dots_d))
+        self.assertEqual((z_umlat_c, True), anf(z_umlat_c))
+        self.assertEqual((z_umlat_c, True), anf(z_umlat_d))
 
-    def test__inaccessible_unicode_filename(self):
-        iuf = osutils._inaccessible_unicode_filename
-        self.assertEqual((a_circle_c, True), iuf(a_circle_c))
-        self.assertEqual((a_circle_c, False), iuf(a_circle_d))
-        self.assertEqual((a_dots_c, True), iuf(a_dots_c))
-        self.assertEqual((a_dots_c, False), iuf(a_dots_d))
-        self.assertEqual((z_umlat_c, True), iuf(z_umlat_c))
-        self.assertEqual((z_umlat_c, False), iuf(z_umlat_d))
+    def test__inaccessible_normalized_filename(self):
+        inf = osutils._inaccessible_normalized_filename
+        self.assertEqual((a_circle_c, True), inf(a_circle_c))
+        self.assertEqual((a_circle_c, False), inf(a_circle_d))
+        self.assertEqual((a_dots_c, True), inf(a_dots_c))
+        self.assertEqual((a_dots_c, False), inf(a_dots_d))
+        self.assertEqual((z_umlat_c, True), inf(z_umlat_c))
+        self.assertEqual((z_umlat_c, False), inf(z_umlat_d))
 
     def test_functions(self):
         if osutils.normalizes_filenames():
-            self.assertEqual(osutils.unicode_filename,
-                             osutils._accessible_unicode_filename)
+            self.assertEqual(osutils.normalized_filename,
+                             osutils._accessible_normalized_filename)
         else:
-            self.assertEqual(osutils.unicode_filename,
-                             osutils._inaccessible_unicode_filename)
+            self.assertEqual(osutils.normalized_filename,
+                             osutils._inaccessible_normalized_filename)
 
     def test_platform(self):
         try:
@@ -114,7 +114,7 @@ class UnicodeFilename(TestCaseWithTransport):
         for fname in files:
             # We should get an exception if we can't open the file at
             # this location.
-            path, can_access = osutils.unicode_filename(fname)
+            path, can_access = osutils.normalized_filename(fname)
 
             self.assertEqual(path, fname)
             self.assertTrue(can_access)
@@ -124,7 +124,7 @@ class UnicodeFilename(TestCaseWithTransport):
 
     def test_access_non_normalized(self):
         # Sometimes we can access non-normalized files by their normalized
-        # path, verify that unicode_filename returns the right info
+        # path, verify that normalized_filename returns the right info
         files = [a_circle_d, a_dots_d, z_umlat_d]
 
         try:
@@ -135,7 +135,7 @@ class UnicodeFilename(TestCaseWithTransport):
         for fname in files:
             # We should get an exception if we can't open the file at
             # this location.
-            path, can_access = osutils.unicode_filename(fname)
+            path, can_access = osutils.normalized_filename(fname)
 
             self.assertNotEqual(path, fname)
 
@@ -144,7 +144,7 @@ class UnicodeFilename(TestCaseWithTransport):
             f = open(fname, 'rb')
             f.close()
 
-            # And unicode_filename sholud tell us correctly if we can
+            # And normalized_filename sholud tell us correctly if we can
             # access them by an alternate name
             if can_access:
                 f = open(path, 'rb')

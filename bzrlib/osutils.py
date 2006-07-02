@@ -775,7 +775,7 @@ def normalizes_filenames():
     return _platform_normalizes_filenames
 
 
-def _accessible_unicode_filename(path):
+def _accessible_normalized_filename(path):
     """Get the unicode normalized path, and if you can access the file.
 
     On platforms where the system normalizes filenames (Mac OSX),
@@ -793,17 +793,17 @@ def _accessible_unicode_filename(path):
     return unicodedata.normalize('NFKC', path), True
 
 
-def _inaccessible_unicode_filename(path):
-    __doc__ = _accessible_unicode_filename.__doc__
+def _inaccessible_normalized_filename(path):
+    __doc__ = _accessible_normalized_filename.__doc__
 
     normalized = unicodedata.normalize('NFKC', path) 
     return normalized, normalized == path
 
 
 if _platform_normalizes_filenames:
-    unicode_filename = _accessible_unicode_filename
+    normalized_filename = _accessible_normalized_filename
 else:
-    unicode_filename = _inaccessible_unicode_filename
+    normalized_filename = _inaccessible_normalized_filename
 
 
 def terminal_width():
