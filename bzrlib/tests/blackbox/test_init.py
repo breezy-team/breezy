@@ -112,11 +112,13 @@ class TestSFTPInit(TestCaseWithSFTPServer):
     
     def test_init_existing_branch(self):
         # when there is already a branch present, make mention
-        self.run_bzr('init', self.get_url())
+        self.make_branch('.')
+
+        # rely on SFTPServer get_url() pointing at '.'
         out, err = self.run_bzr('init', self.get_url(), retcode=3)
         self.assertContainsRe(err, 'Already a branch')
 
-    def test_init_something(self):
+    def test_init_existing_branch_with_workingtree(self):
         # don't distinguish between the branch having a working tree or not
         # when the branch itself is remote.
         self.make_branch_and_tree('.')

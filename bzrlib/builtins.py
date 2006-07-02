@@ -39,7 +39,7 @@ from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
-from bzrlib.transport import get_transport
+import  bzrlib.transport
 from bzrlib.transport.local import LocalTransport
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
@@ -524,7 +524,7 @@ class cmd_push(Command):
                 self.outf.write("Using saved location: %s\n" % display_url)
                 location = stored_loc
 
-        transport = get_transport(location)
+        transport = bzrlib.transport.get_transport(location)
         location_url = transport.base
 
         old_rh = []
@@ -645,7 +645,7 @@ class cmd_branch(Command):
             else:
                 name = os.path.basename(to_location) + '\n'
 
-            to_transport = get_transport(to_location)
+            to_transport = bzrlib.transport.get_transport(to_location)
             try:
                 to_transport.mkdir('.')
             except errors.FileExists:
@@ -1006,7 +1006,7 @@ class cmd_init(Command):
     def run(self, location=None, format=None):
         if format is None:
             format = get_format_type('default')
-        transport = get_transport(location)
+        transport = bzrlib.transport.get_transport(location)
         if location is None:
             location = u'.'
         else:
@@ -1062,7 +1062,7 @@ class cmd_init_repository(Command):
     def run(self, location, format=None, trees=False):
         if format is None:
             format = get_format_type('default')
-        transport = get_transport(location)
+        transport = bzrlib.transport.get_transport(location)
         if not transport.has('.'):
             transport.mkdir('')
         newdir = format.initialize_on_transport(transport)
