@@ -28,7 +28,7 @@ from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
-from bzrlib.conflicts import ConflictList
+from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
 
 class TestWorkingTree(TestCaseWithWorkingTree):
 
@@ -553,6 +553,27 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         except UnsupportedOperation:
             raise TestSkipped
         self.assertEqual(tree.conflicts(), ConflictList())
+
+    def test_add_conflicts(self):
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.add_conflicts([TextConflict('path_a')])
+        except UnsupportedOperation:
+            raise TestSkipped()
+        self.assertEqual(ConflictList([TextConflict('path_a')]),
+                         tree.conflicts())
+        tree.add_conflicts([TextConflict('path_a')])
+        self.assertEqual(ConflictList([TextConflict('path_a')]), 
+                         tree.conflicts())
+        tree.add_conflicts([ContentsConflict('path_a')])
+        self.assertEqual(ConflictList([ContentsConflict('path_a'), 
+                                       TextConflict('path_a')]),
+                         tree.conflicts())
+        tree.add_conflicts([TextConflict('path_b')])
+        self.assertEqual(ConflictList([ContentsConflict('path_a'), 
+                                       TextConflict('path_a'),
+                                       TextConflict('path_b')]),
+                         tree.conflicts())
 
     def test_revert_clear_conflicts(self):
         tree = self.make_merge_conflicts()
