@@ -560,20 +560,20 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             tree.add_conflicts([TextConflict('path_a')])
         except UnsupportedOperation:
             raise TestSkipped()
-        self.assertEqual(tree.conflicts(), 
-                         ConflictList([TextConflict('path_a')]))
+        self.assertEqual(ConflictList([TextConflict('path_a')]),
+                         tree.conflicts())
         tree.add_conflicts([TextConflict('path_a')])
-        self.assertEqual(tree.conflicts(), 
-                         ConflictList([TextConflict('path_a')]))
+        self.assertEqual(ConflictList([TextConflict('path_a')]), 
+                         tree.conflicts())
         tree.add_conflicts([ContentsConflict('path_a')])
-        self.assertEqual(tree.conflicts(), 
-                         ConflictList([ContentsConflict('path_a'), 
-                                       TextConflict('path_a')]))
+        self.assertEqual(ConflictList([ContentsConflict('path_a'), 
+                                       TextConflict('path_a')]),
+                         tree.conflicts())
         tree.add_conflicts([TextConflict('path_b')])
-        self.assertEqual(tree.conflicts(), 
-                         ConflictList([ContentsConflict('path_a'), 
+        self.assertEqual(ConflictList([ContentsConflict('path_a'), 
                                        TextConflict('path_a'),
-                                       TextConflict('path_b')]))
+                                       TextConflict('path_b')]),
+                         tree.conflicts())
 
     def test_revert_clear_conflicts(self):
         tree = self.make_merge_conflicts()
