@@ -1005,8 +1005,10 @@ class cmd_init(Command):
                             type=get_format_type),
                      ]
     def run(self, location=None, format=None):
+        from bzrlib.transport import get_transport
         if format is None:
             format = get_format_type('default')
+        transport = get_transport(location)
         if location is None:
             location = u'.'
         else:
@@ -1015,8 +1017,9 @@ class cmd_init(Command):
             # Just using os.mkdir, since I don't
             # believe that we want to create a bunch of
             # locations if the user supplies an extended path
-            if not os.path.exists(location):
-                os.mkdir(location)
+            if not transport.has('.'):
+                transport.mkdir('')
+                    
         try:
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except NotBranchError:
@@ -1024,10 +1027,10 @@ class cmd_init(Command):
             bzrdir.BzrDir.create_branch_convenience(location, format=format)
         else:
             if existing_bzrdir.has_branch():
-                if existing_bzrdir.has_workingtree():
-                    raise errors.AlreadyBranchError(location)
-                else:
-                    raise errors.BranchExistsWithoutWorkingTree(location)
+                if isinstance(transport, LocalTransport):
+                    if not existing_bzrdir.has_workingtree():
+                        raise errors.BranchExistsWithoutWorkingTree(location)
+                raise errors.AlreadyBranchError(location)
             else:
                 existing_bzrdir.create_branch()
                 existing_bzrdir.create_workingtree()

@@ -22,6 +22,7 @@ import re
 
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.workingtree import WorkingTree
 
 
@@ -100,3 +101,20 @@ class TestInit(ExternalBase):
         # suggests using checkout
         self.assertContainsRe(err, 'ontains a branch.*but no working tree.*checkout')
 
+
+class TestSFTPInit(TestCaseWithSFTPServer):
+
+    def test_init(self):
+        url = self.get_url()
+        out, err = self.run_bzr('init', url)
+        self.assertEqual('', out)
+        self.assertEqual('', err)
+
+        out, err = self.run_bzr('init', url, retcode=3)
+        self.assertContainsRe(err, 'Already a branch')
+
+        self.run_bzr('checkout', '.')
+        # when the transport is not local, don't distinguish between the branch
+        # having a working tree or not.
+        out, err = self.run_bzr('init', url, retcode=3)
+        self.assertFalse(re.search(r'checkout', err))

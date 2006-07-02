@@ -71,6 +71,9 @@ IN DEVELOPMENT
    * 'bzr revert DIRECTORY' now reverts the contents of the directory as well.
      (Aaron Bentley)
 
+   * 'bzr init' now also works on remote locations.
+     (Wouter van Heyst)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
