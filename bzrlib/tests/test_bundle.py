@@ -16,6 +16,7 @@
 
 from cStringIO import StringIO
 import os
+import sys
 import tempfile
 
 from bzrlib.builtins import merge
@@ -297,7 +298,7 @@ class BTreeTester(TestCase):
         self.assertEqual(self.sorted_ids(btree), ['a', 'b', 'd', 'e'])
 
 
-class BundleTester(TestCaseInTempDir):
+class BundleTester(TestCaseWithTransport):
 
     def create_bundle_text(self, base_rev_id, rev_id):
         bundle_txt = StringIO()
@@ -473,7 +474,7 @@ class BundleTester(TestCaseInTempDir):
             #         to_tree.get_file(fileid).read())
 
     def test_bundle(self):
-        self.tree1 = BzrDir.create_standalone_workingtree('b1')
+        self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
         open('b1/one', 'wb').write('one\n')
@@ -499,8 +500,6 @@ class BundleTester(TestCaseInTempDir):
                 , 'b1/sub/'
                 , 'b1/sub/sub/'
                 , 'b1/sub/sub/nonempty.txt'
-                # Tabs are not valid in filenames on windows
-                #'b1/with\ttab.txt'
                 ])
         open('b1/sub/sub/emptyfile.txt', 'wb').close()
         open('b1/dir/nolastnewline.txt', 'wb').write('bloop')
@@ -696,6 +695,44 @@ class BundleTester(TestCaseInTempDir):
         self.assertNotContainsRe(bundle_file.getvalue(), 'two')
         self.assertContainsRe(bundle_file.getvalue(), 'one')
         self.assertContainsRe(bundle_file.getvalue(), 'three')
+
+    def test_whitespace_bundle(self):
+        if sys.platform in ('win32', 'cygwin'):
+            raise TestSkipped('Windows doesn\'t support filenames'
+                              ' with tabs or trailing spaces')
+        self.tree1 = self.make_branch_and_tree('b1')
+        self.b1 = self.tree1.branch
+
+        self.build_tree(['b1/trailing space '])
+        self.tree1.add(['trailing space '])
+        # TODO: jam 20060701 Check for handling files with '\t' characters
+        #       once we actually support them
+
+        # Added
+        self.tree1.commit('funky whitespace', rev_id='white-1')
+
+        bundle = self.get_valid_bundle(None, 'white-1')
+
+        # Modified
+        open('b1/trailing space ', 'ab').write('add some text\n')
+        self.tree1.commit('add text', rev_id='white-2')
+
+        bundle = self.get_valid_bundle('white-1', 'white-2')
+
+        # Renamed
+        self.tree1.rename_one('trailing space ', ' start and end space ')
+        self.tree1.commit('rename', rev_id='white-3')
+
+        bundle = self.get_valid_bundle('white-2', 'white-3')
+
+        # Removed
+        self.tree1.remove([' start and end space '])
+        self.tree1.commit('removed', rev_id='white-4')
+
+        bundle = self.get_valid_bundle('white-3', 'white-4')
+        
+        # Now test a complet roll-up
+        bundle = self.get_valid_bundle(None, 'white-4')
 
 
 class MungedBundleTester(TestCaseWithTransport):
