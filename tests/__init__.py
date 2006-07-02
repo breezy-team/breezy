@@ -82,11 +82,16 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
     def client_set_prop(self, path, name, value):
         svn.client.propset2(name, value, path, False, True, self.client_ctx)
 
-    def client_set_revprops(self, url, revnum, name, value):
+    def client_get_prop(self, path, name, revnum, recursive=False):
         rev = svn.core.svn_opt_revision_t()
         rev.kind = svn.core.svn_opt_revision_number
         rev.value.number = revnum
-        svn.client.revprop_set(name, value, url, rev, True, self.client_ctx)
+        ret = svn.client.propget2(name, path, rev, rev, recursive, 
+                                  self.client_ctx)
+        if recursive:
+            return ret
+        else:
+            return ret.values()[0]
 
     def client_get_revprop(self, url, revnum, name):
         rev = svn.core.svn_opt_revision_t()

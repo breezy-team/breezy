@@ -4,6 +4,8 @@
 - build packages for Dapper
 
 later:
+- use svn_ra_replay() instead of individual checkouts 
+  if subversion 1.4 is available
 - fix fileid tracking code
 - save/retrieve GPG signatures
 - store inventory in 'bzr:inventory' revision property and revision id in 'bzr:revision-id'?

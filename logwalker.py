@@ -91,9 +91,20 @@ class LogWalker(object):
             pb = DummyProgress()
         else:
             pb = ProgressBar()
-        self.last_revnum = to_revnum
-        svn.ra.get_log(self.ra, ["/"], self.saved_revnum, to_revnum, 0, True, True, rcvr)
-        pb.clear()
+
+        try:
+            try:
+                svn.ra.get_log(self.ra, ["/"], self.saved_revnum, to_revnum, 
+                               0, True, True, rcvr)
+                self.last_revnum = to_revnum
+            finally:
+                pb.clear()
+        except SubversionException, (_, num):
+            if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
+                raise NoSuchRevision(branch=self, 
+                    revision="Revision number %d" % to_revnum)
+            raise
+
         self.save()
 
     def save(self):
@@ -120,13 +131,8 @@ class LogWalker(object):
             branch_path = branch_path.strip("/")
 
         if max(from_revnum, to_revnum) > self.last_revnum:
-            try:
-                self.fetch_revisions(self.last_revnum, max(from_revnum, to_revnum))
-            except SubversionException, (msg, num):
-                if num == svn.core.SVN_ERR_FS_NO_SUCH_REVISION:
-                    raise NoSuchRevision(branch=self, 
-                        revision="Between %d and %d" % (from_revnum, to_revnum))
-                raise
+            self.fetch_revisions(self.last_revnum, max(from_revnum, to_revnum))
+
 
         continue_revnum = None
         num = 0
@@ -229,3 +235,14 @@ class LogWalker(object):
         for p in created_branches:
             yield (p, i, True)
 
+    def get_revision_info(self, revnum, pb=None):
+        """Obtain basic information for a specific revision.
+
+        :param revnum: Revision number.
+        :returns: Tuple with author, log message and date of the revision.
+        """
+        self.fetch_revisions(self.saved_revnum, revnum, pb)
+        assert revnum in self.revisions
+        return (self.revisions[revnum]['author'], 
+                self.revisions[revnum]['message'],
+                self.revisions[revnum]['date'])

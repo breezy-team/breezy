@@ -40,7 +40,9 @@ from tree import SvnRevisionTree
 
 MAPPING_VERSION = 1
 REVISION_ID_PREFIX = "svn-v%d:" % MAPPING_VERSION
-SVN_PROP_BZR_PARENTS = 'bzr:parents'
+SVN_PROP_BZR_MERGE = 'bzr:merge'
+SVN_PROP_SVK_MERGE = 'svk:merge'
+SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
 _unsafe = "%/-"
@@ -61,6 +63,32 @@ def unescape_svn_path(id):
             ret += str(id[i])
             i+=1
     return ret
+
+
+def parse_svn_revision_id(revid):
+    """Parse an existing Subversion-based revision id.
+
+    :param revid: The revision id.
+    :raises: InvalidRevisionId
+    :return: Tuple with uuid, branch path and revision number.
+    """
+
+    assert revid
+    assert isinstance(revid, basestring)
+
+    if not revid.startswith(REVISION_ID_PREFIX):
+        raise InvalidRevisionId(revid, "")
+
+    revid = revid[len(REVISION_ID_PREFIX):]
+
+    at = revid.index("@")
+    fash = revid.rindex("-")
+    uuid = revid[at+1:fash]
+
+    branch_path = unescape_svn_path(revid[fash+1:])
+    revnum = int(revid[0:at])
+    assert revnum >= 0
+    return (uuid, branch_path, revnum)
 
 
 class SvnRepository(Repository):
@@ -202,13 +230,15 @@ class SvnRepository(Repository):
         return False
 
     def get_ancestry(self, revision_id):
-        if revision_id is None: # FIXME: Is this correct?
+        """See Repository.get_ancestry()."""
+        if revision_id is None: 
             return [None]
 
         (path, revnum) = self.parse_revision_id(revision_id)
 
         self._ancestry = []
 
+        # TODO: Parse bzr:merged as well
         for (branch, paths, rev, _, _, _) in self._log.get_branch_log(path, revnum - 1, 0):
             self._ancestry.append(self.generate_revision_id(rev, branch))
 
@@ -244,24 +274,36 @@ class SvnRepository(Repository):
         else:
             return SvnRevisionTree(self, revision_id, inventory)
 
-    def revision_parents(self, revision_id, revprops=None):
+    def revision_parents(self, revision_id, merged_data=None):
         (path, revnum) = self.parse_revision_id(revision_id)
 
         parent_ids = []
+        parent_path = None
 
         for (branch, paths, rev, a, b, c) in self._log.get_branch_log(path, revnum - 1, 0, 1):
+            parent_revnum = rev
+            parent_path = branch
             parent_ids.append(self.generate_revision_id(rev, branch))
-        
-        if revprops is None:
-            mutter('getting revprop -r %r %r' % (revnum, SVN_PROP_BZR_PARENTS))
-            ghosts = svn.ra.rev_prop(self.ra, revnum, SVN_PROP_BZR_PARENTS)
-        elif revprops.has_key(SVN_PROP_BZR_PARENTS):
-            ghosts = revprops[SVN_PROP_BZR_PARENTS]
-        else: 
-            ghosts = None
+       
+        if merged_data is None:
+            if parent_path is None:
+                old_merge = ""
+            else:
+                old_merge = self._get_dir_prop(parent_path, parent_revnum, 
+                        SVN_PROP_BZR_MERGE, "").splitlines()
+            new_merge = self._get_dir_prop(path, revnum, 
+                                           SVN_PROP_BZR_MERGE, "").splitlines()
 
-        if ghosts is not None:
-            parent_ids.extend(ghosts.splitlines())
+            assert (len(old_merge) == len(new_merge) or 
+                    len(old_merge) + 1 == len(new_merge))
+
+            if len(old_merge) < len(new_merge):
+                merged_data = new_merge[-1]
+            else:
+                merged_data = ""
+
+        if merged_data != "":
+            parent_ids.extend(merged_data.split("\t"))
 
         return parent_ids
 
@@ -272,24 +314,23 @@ class SvnRepository(Repository):
 
         (path, revnum) = self.parse_revision_id(revision_id)
         
-        mutter('svn proplist -r %r' % revnum)
-        svn_props = svn.ra.rev_proplist(self.ra, revnum)
-
-        parent_ids = self.revision_parents(revision_id, svn_props)
+        parent_ids = self.revision_parents(revision_id)
 
         # Commit SVN revision properties to a Revision object
-        bzr_props = {}
         rev = Revision(revision_id=revision_id, parent_ids=parent_ids)
 
+        svn_props = self._get_dir_proplist(path, revnum)
+        bzr_props = []
         for name in svn_props:
-            bzr_props[name] = svn_props[name].decode('utf8')
+            if not name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
+                continue
 
-        rev.timestamp = 1.0 * svn.core.secs_from_timestr(
-            bzr_props[svn.core.SVN_PROP_REVISION_DATE], None)
+            bzr_props[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = svn_props[name].decode('utf8')
+
+        (rev.committer, rev.message, date) = self._log.get_revision_info(revnum)
+
+        rev.timestamp = 1.0 * svn.core.secs_from_timestr(date, None)
         rev.timezone = None
-
-        rev.committer = bzr_props[svn.core.SVN_PROP_REVISION_AUTHOR]
-        rev.message = bzr_props[svn.core.SVN_PROP_REVISION_LOG]
 
         rev.properties = bzr_props
 
@@ -379,24 +420,14 @@ class SvnRepository(Repository):
         :return: Tuple with branch path and revision number.
         """
 
-        assert revid
-        assert isinstance(revid, basestring)
-
-        if not revid.startswith(REVISION_ID_PREFIX):
+        try:
+            (uuid, branch_path, revnum) = parse_svn_revision_id(revid)
+        except InvalidRevisionId:
             raise NoSuchRevision(self, revid)
-
-        revid = revid[len(REVISION_ID_PREFIX):]
-
-        at = revid.index("@")
-        fash = revid.rindex("-")
-        uuid = revid[at+1:fash]
 
         if uuid != self.uuid:
             raise NoSuchRevision(self, revid)
 
-        branch_path = unescape_svn_path(revid[fash+1:])
-        revnum = int(revid[0:at])
-        assert revnum >= 0
         return (branch_path, revnum)
 
     def get_inventory_xml(self, revision_id):
@@ -470,6 +501,16 @@ class SvnRepository(Repository):
         if props.has_key(name):
             return props[name]
         return None
+
+    def _get_dir_proplist(self, path, revnum):
+        (props, _) = self._cache_get_dir(path, revnum)
+        return props
+
+    def _get_dir_prop(self, path, revnum, name, default=None):
+        (props, _) = self._cache_get_dir(path, revnum)
+        if props.has_key(name):
+            return props[name]
+        return default
 
     def _get_file(self, path, revnum):
         (_, stream) = self._cache_get_file(path, revnum)

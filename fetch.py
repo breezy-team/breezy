@@ -14,9 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from repository import SvnRepository
-from tree import apply_txdelta_handler
-
 import bzrlib
 from bzrlib.decorators import needs_write_lock
 from bzrlib.inventory import Inventory, ROOT_ID
@@ -26,13 +23,17 @@ from bzrlib.revision import Revision
 from bzrlib.repository import InterRepository
 from bzrlib.trace import mutter
 
+from cStringIO import StringIO
+import md5
+import os
+
 from svn.core import SubversionException
 import svn.core
 
-from cStringIO import StringIO
+from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE,
+                SVN_PROP_BZR_REVPROP_PREFIX)
+from tree import apply_txdelta_handler
 
-import os
-import md5
 
 def md5_strings(strings):
     s = md5.new()
@@ -40,12 +41,11 @@ def md5_strings(strings):
     return s.hexdigest()
 
 class RevisionBuildEditor(svn.delta.Editor):
-    def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, revprops):
+    def __init__(self, source, target, branch_path, revnum, prev_inventory, revid, svn_revprops):
         self.branch_path = branch_path
         self.inventory = prev_inventory.copy()
         self.revid = revid
         self.revnum = revnum
-        self.revprops = revprops
         self.source = source
         self.target = target
         self.transact = target.get_transaction()
@@ -54,24 +54,27 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.dir_revnum = {}
         self.dir_baserev = {}
 
-    def _get_revision(self, revid, svn_props):
-        parent_ids = self.source.revision_parents(revid, svn_props)
+        self._parent_ids = None
+        self._revprops = {}
+        self._svn_revprops = svn_revprops
+
+    def _get_revision(self, revid):
+        if self._parent_ids is None:
+            self._parent_ids = ""
+
+        parent_ids = self.source.revision_parents(revid, self._parent_ids)
 
         # Commit SVN revision properties to a Revision object
-        bzr_props = {}
         rev = Revision(revision_id=revid, parent_ids=parent_ids)
 
-        for name in svn_props:
-            bzr_props[name] = svn_props[name].decode('utf8')
-
         rev.timestamp = 1.0 * svn.core.secs_from_timestr(
-            bzr_props[svn.core.SVN_PROP_REVISION_DATE], None)
+            self._svn_revprops['date'], None)
         rev.timezone = None
 
-        rev.committer = bzr_props[svn.core.SVN_PROP_REVISION_AUTHOR]
-        rev.message = bzr_props[svn.core.SVN_PROP_REVISION_LOG]
+        rev.committer = self._svn_revprops['author']
+        rev.message = self._svn_revprops['message']
 
-        rev.properties = bzr_props
+        rev.properties = self._revprops
         return rev
 
     def open_root(self, revnum, baton):
@@ -131,6 +134,19 @@ class RevisionBuildEditor(svn.delta.Editor):
     def change_dir_prop(self, id, name, value, pool):
         if name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.dir_revnum[id] = int(value)
+        elif name == SVN_PROP_BZR_MERGE:
+            if id != ROOT_ID:
+                mutter('rogue %r on non-root directory' % SVN_PROP_BZR_MERGE)
+                return
+
+            self._parent_ids = value
+        elif name == SVN_PROP_SVK_MERGE:
+            if self._parent_ids is None:
+                # Only set parents using svk:merge if no 
+                # bzr:merge set.
+                pass # FIXME 
+        elif name.startswith(SVN_PROP_BZR_REVPROP_PREFIX):
+            self._revprops[name[len(SVN_PROP_BZR_REVPROP_PREFIX):]] = value
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,
                       svn.core.SVN_PROP_ENTRY_LAST_AUTHOR,
                       svn.core.SVN_PROP_ENTRY_LOCK_TOKEN,
@@ -213,7 +229,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         self.file_stream = None
 
     def close_edit(self):
-        rev = self._get_revision(self.revid, self.revprops)
+        rev = self._get_revision(self.revid)
         self.inventory.revision_id = self.revid
         rev.inventory_sha1 = osutils.sha_string(
             bzrlib.xml5.serializer_v5.write_inventory_to_string(
@@ -252,22 +268,21 @@ class InterSvnRepository(InterRepository):
             (path, until_revnum) = self.source.parse_revision_id(revision_id)
         
         needed = []
-        for (branch, paths, revnum, _, _, _) in self.source._log.get_branch_log(path, until_revnum):
+        for (branch, paths, revnum, author, date, message) in \
+            self.source._log.get_branch_log(path, until_revnum):
             revid = self.source.generate_revision_id(revnum, branch)
 
             if not self.target.has_revision(revid):
-                needed.append((branch, revnum, revid))
+                needed.append((branch, revnum, revid, {
+                    'author': author, 'date': date, 'message': message}))
 
         num = 0
         needed.reverse()
         prev_revnum = 0
         prev_inv = Inventory()
-        for (branch, revnum, revid) in needed:
+        for (branch, revnum, revid, svn_props) in needed:
             pb.update('copying revision', num+1, len(needed)+1)
             num += 1
-
-            mutter('svn proplist -r %r' % revnum)
-            svn_props = svn.ra.rev_proplist(self.source.ra, revnum)
 
             editor = RevisionBuildEditor(self.source, self.target, branch, 
                                          revnum, prev_inv, revid, svn_props)

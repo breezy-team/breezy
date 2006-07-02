@@ -86,7 +86,7 @@ can be copied, moved or merged from other branches, which can result in partial 
 that bzr doesn't support at the moment.
 
 Whenever a Bazaar commit to Subversion has more than one parent (merges two 
-revisions), it will add a line to the 'bzr:ancestry' property set on the 
+revisions), it will add a line to the 'bzr:merge' property set on the 
 branch path. The format of these lines is:
 
 ([\tPARENT-REV-ID]+)\n
@@ -102,7 +102,7 @@ previous revision of the branch path.
 
 Bazaar will also set 'svk:merge' if one of the merges is originally from a 
 Subversion branch and not on the mainline. If 'svk:merge' is changed and 
-'bzr:ancestry' didn't, the diff in 'svk:merge' is also used to obtain the 
+'bzr:merge' didn't, the diff in 'svk:merge' is also used to obtain the 
 parents of a commit.
 
 This means svk and bzr _should be_ interoperable. However, there are no tests 

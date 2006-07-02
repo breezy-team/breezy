@@ -30,7 +30,7 @@ from bzrlib.tree import EmptyTree
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
-from repository import SvnRepository, escape_svn_path, SVN_PROP_BZR_PARENTS
+from repository import SvnRepository, escape_svn_path, SVN_PROP_BZR_MERGE
 from scheme import BranchingScheme
 from transport import (SvnRaTransport, svn_config, 
                        svn_to_bzr_url) 
@@ -103,8 +103,10 @@ class SvnWorkingTree(WorkingTree):
                     svn.wc.adm_close(subwc)
 
         wc = self._get_wc()
-        dir_add(wc, "")
-        svn.wc.adm_close(wc)
+        try:
+            dir_add(wc, "")
+        finally:
+            svn.wc.adm_close(wc)
 
         return ignores
 
@@ -194,7 +196,9 @@ class SvnWorkingTree(WorkingTree):
                     if ((entry.copyfrom_url == url or entry.url == url) and 
                         not (entry.schedule in (svn.wc.schedule_delete,
                                                 svn.wc.schedule_replace))):
-                        yield os.path.join(self.branch.branch_path.strip("/"), subrelpath)
+                        yield os.path.join(
+                                self.branch.branch_path.strip("/"), 
+                                subrelpath)
                 else:
                     find_copies(subrelpath)
             svn.wc.adm_close(wc)
@@ -253,8 +257,10 @@ class SvnWorkingTree(WorkingTree):
                 if entry.kind == svn.core.svn_node_dir:
                     subwc = svn.wc.adm_open3(wc, self.abspath(subrelpath), 
                                              False, 0, None)
-                    add_dir_to_inv(subrelpath, subwc, id)
-                    svn.wc.adm_close(subwc)
+                    try:
+                        add_dir_to_inv(subrelpath, subwc, id)
+                    finally:
+                        svn.wc.adm_close(subwc)
                 else:
                     (subid, subrevid) = find_ids(entry)
                     if subid:
@@ -306,8 +312,10 @@ class SvnWorkingTree(WorkingTree):
 
         # Set proper version for all files in the wc
         wc = self._get_wc(write_lock=True)
-        update_settings(wc, "")
-        svn.wc.adm_close(wc)
+        try:
+            update_settings(wc, "")
+        finally:
+            svn.wc.adm_close(wc)
         self.base_revid = revid
 
 
@@ -332,18 +340,6 @@ class SvnWorkingTree(WorkingTree):
         commit_info = svn.client.commit3(specific_files, True, False, self.client_ctx)
 
         revid = self.branch.repository.generate_revision_id(commit_info.revision, self.branch.branch_path)
-
-        merges = self.pending_merges()
-
-        if len(merges) > 0:
-            try:
-                svn.ra.change_rev_prop(self.branch.repository.ra, commit_info.revision,
-                    SVN_PROP_BZR_PARENTS.encode('utf8'), "\n".join(merges).encode('utf8'))
-            except SubversionException, (_, num):
-                if num == svn.core.SVN_ERR_REPOS_DISABLED_FEATURE:
-                    raise BzrError("Revision properties can't be modified on Subversion repository.")
-
-        self.set_pending_merges([])
 
         self.base_revid = revid
         self.branch._revision_history.append(revid)
@@ -392,11 +388,45 @@ class SvnWorkingTree(WorkingTree):
 
         return fingerprint_file(open(self.abspath(path)))['sha1']
 
-    def pending_merges(self):
+    def _get_base_merges(self):
+        return self.branch.repository._get_dir_prop(self.branch.branch_path, 
+                                            self.base_revnum, 
+                                            SVN_PROP_BZR_MERGE, "")
+
+
+    def set_pending_merges(self, merges):
+        merged = self._get_base_merges()
+        if len(merges) > 0:
+            merged += "\t".join(merges) + "\n"
+
+        wc = self._get_wc(write_lock=True)
         try:
-            return super(SvnWorkingTree, self).pending_merges()
-        except NoSuchFile:
-            return []
+            svn.wc.prop_set2(SVN_PROP_BZR_MERGE, merged, self.basedir, wc, 
+            False)
+        finally:
+            svn.wc.adm_close(wc)
+
+    def add_pending_merge(self, revid):
+        merges = self.pending_merges()
+        merges.append(revid)
+        self.set_pending_merges(existing)
+
+    def pending_merges(self):
+        merged = self._get_base_merges().splitlines()
+        wc = self._get_wc()
+        try:
+            set_merged = svn.wc.prop_get(SVN_PROP_BZR_MERGE, 
+                                         self.basedir, wc).splitlines()
+        finally:
+            svn.wc.adm_close(wc)
+
+        assert (len(merged) == len(set_merged) or 
+               len(merged)+1 == len(set_merged))
+
+        if len(set_merged) > len(merged):
+            return set_merged[-1].split("\t")
+
+        return []
 
 
 class SvnWorkingTreeFormat(WorkingTreeFormat):
@@ -417,23 +447,23 @@ class SvnCheckout(BzrDir):
         super(SvnCheckout, self).__init__(transport, format)
         self.local_path = transport.local_abspath(".")
         
-        wc = svn.wc.adm_open3(None, self.local_path, True, 0, None)
-
         # Open related remote repository + branch
-        svn_url = svn.wc.entry(self.local_path, wc, True).url
+        wc = svn.wc.adm_open3(None, self.local_path, False, 0, None)
+        try:
+            svn_url = svn.wc.entry(self.local_path, wc, True).url
+        finally:
+            svn.wc.adm_close(wc)
+
         bzr_url = svn_to_bzr_url(svn_url)
 
         self.remote_transport = SvnRaTransport(svn_url)
         self.svn_root_transport = self.remote_transport.get_root()
         self.root_transport = self.transport = transport
-        self.url = transport.base
         self.branch_path = svn_url[len(svn_to_bzr_url(self.svn_root_transport.base)):]
         self.scheme = BranchingScheme.guess_scheme(self.branch_path)
         mutter('scheme for %r is %r' % (self.branch_path, self.scheme))
         if not self.scheme.is_branch(self.branch_path):
             raise NotBranchError(path=self.transport.base)
-
-        svn.wc.adm_close(wc)
 
     def clone(self, path):
         raise NotImplementedError(self.clone)
@@ -471,7 +501,7 @@ class SvnCheckout(BzrDir):
         repos = self.open_repository()
 
         try:
-            branch = SvnBranch(repos, self.branch_path)
+            branch = SvnBranch(self.root_transport.base, repos, self.branch_path)
         except SubversionException, (msg, num):
             if num == svn.core.SVN_ERR_WC_NOT_DIRECTORY:
                raise NotBranchError(path=self.url)

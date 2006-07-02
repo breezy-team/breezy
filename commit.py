@@ -25,7 +25,8 @@ import bzrlib.osutils as osutils
 from bzrlib.repository import CommitBuilder
 from bzrlib.trace import mutter, warning
 
-from repository import SvnRepository, SVN_PROP_BZR_PARENTS
+from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE, 
+                       SVN_PROP_BZR_REVPROP_PREFIX, parse_svn_revision_id)
 
 import os
 
@@ -45,6 +46,32 @@ class SvnCommitBuilder(CommitBuilder):
         assert isinstance(repository, SvnRepository)
         self.branch = branch
         self.pool = Pool()
+
+        self._svnprops = []
+        for prop in self._revprops:
+            self._svnprops[SVN_PROP_BZR_REVPROP_PREFIX+prop] = self._revprops[prop]
+
+        if len(parents) > 1:
+            # Bazaar Parents
+            (bp, revnum) = repository.parse_revision_id(branch.last_revision())
+            old = repository.get_dir_prop(revnum, bp, SVN_PROP_BZR_MERGE)
+            self._svnprops[SVN_PROP_BZR_MERGE] = old + "\n" + "\t".join(parents)
+
+            old = repository.get_dir_prop(revnum, bp, SVN_PROP_SVK_MERGE)
+            new = old
+            # SVK compatibility
+            for p in parents:
+                if p == branch.last_revision():
+                    continue
+
+                try:
+                    (uuid, bp, revnum) = parse_svn_revision_id(p)
+                    new += "%s:/%s:%d\n" % (uuid, bp, revnum)
+                except NoSuchRevision:
+                    pass
+
+            if old != new:
+                self._svnprops[SVN_PROP_SVK_MERGE] = new
 
         # At least one of the parents has to be the last revision on the 
         # mainline in # Subversion.
@@ -92,6 +119,12 @@ class SvnCommitBuilder(CommitBuilder):
     def _dir_process(self, path, file_id, baton):
         mutter('committing changes in %r' % path)
         mutter("children: %r" % self.new_inventory.entries())
+
+        if path == self.branch_path:
+            # Set all the revprops
+            for prop in self._svnprops:
+                svn.delta.editor_invoke_change_dir_prop(self.editor, 
+                            prop, self._svnprops[prop], self.pool)
 
         mutter('old root id %r, new one %r' % (self.old_inv.root.file_id, self.new_inventory.root.file_id))
         # Loop over entries of file_id in self.old_inv
@@ -239,27 +272,6 @@ class SvnCommitBuilder(CommitBuilder):
         svn.delta.editor_invoke_close_directory(self.editor, root, self.pool)
 
         svn.delta.editor_invoke_close_edit(self.editor, editor_baton)
-
-        if len(self.parents) > 1:
-            self._revprops[SVN_PROP_BZR_PARENTS] = "\n".join(self.parents)
-
-        # Set revision properties on new revision
-        for name in self._revprops:
-            if self._revprops[name] is None:
-                continue
-
-            mutter('setting revprop %r=%r' % (name, self._revprops[name]))
-            assert isinstance(name, basestring)
-            assert isinstance(self._revprops[name], basestring)
-            try:
-                svn.ra.change_rev_prop(self.repository.ra, self.revnum, 
-                    name.encode('utf-8'), self._revprops[name].encode('utf-8'))
-            except SubversionException, (_, num):
-                if num == svn.core.SVN_ERR_REPOS_DISABLED_FEATURE:
-                    if len(self.parents) > 1:
-                        raise BzrError("Revision properties can't be modified on Subversion repository.")
-                    else:
-                        warning('Unable to set revision properties, not enabled at repository. Ignoring %r' % name)
 
         revid = self.repository.generate_revision_id(self.revnum, 
                                                     self.branch.branch_path)

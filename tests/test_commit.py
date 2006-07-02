@@ -81,5 +81,5 @@ class TestCommit(TestCaseWithSubversionRepository):
         self.assertEqual(["some-ghost-revision"],
                          wt.branch.repository.revision_parents(
                              wt.branch.last_revision()))
-        self.assertEqual("some-ghost-revision", 
-                self.client_get_revprop(repos_url, 1, "bzr:parents"))
+        self.assertEqual("some-ghost-revision\n", 
+                self.client_get_prop(repos_url, "bzr:merge", 1))
