@@ -39,6 +39,7 @@ from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
+from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
@@ -511,7 +512,6 @@ class cmd_push(Command):
             create_prefix=False, verbose=False):
         # FIXME: Way too big!  Put this into a function called from the
         # command.
-        from bzrlib.transport import get_transport
         
         br_from = Branch.open_containing('.')[0]
         stored_loc = br_from.get_push_location()
@@ -613,7 +613,6 @@ class cmd_branch(Command):
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None, basis=None):
-        from bzrlib.transport import get_transport
         if revision is None:
             revision = [None]
         elif len(revision) > 1:
@@ -1005,7 +1004,6 @@ class cmd_init(Command):
                             type=get_format_type),
                      ]
     def run(self, location=None, format=None):
-        from bzrlib.transport import get_transport
         if format is None:
             format = get_format_type('default')
         transport = get_transport(location)
@@ -1062,7 +1060,6 @@ class cmd_init_repository(Command):
                              ' a working tree')]
     aliases = ["init-repo"]
     def run(self, location, format=None, trees=False):
-        from bzrlib.transport import get_transport
         if format is None:
             format = get_format_type('default')
         transport = get_transport(location)
