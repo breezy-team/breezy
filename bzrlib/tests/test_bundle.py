@@ -400,7 +400,9 @@ class BundleTester(TestCaseInTempDir):
 
             # Check that there aren't any inventory level changes
             delta = compare_trees(old, new)
-            self.assertFalse(delta.has_changed)
+            self.assertFalse(delta.has_changed(),
+                             'Revision %s not copied correctly.'
+                             % (ancestor,))
 
             # Now check that the file contents are all correct
             for inventory_id in old:
@@ -416,10 +418,10 @@ class BundleTester(TestCaseInTempDir):
             rh = self.b1.revision_history()
             tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
             tree.update()
-            #tree.revert()
             delta = compare_trees(tree, 
                                 self.b1.repository.revision_tree(rev_id))
-            self.assertFalse(delta.has_changed)
+            self.assertFalse(delta.has_changed(),
+                             'Working tree has modifications')
         return tree
 
     def valid_apply_bundle(self, base_rev_id, info, checkout_dir=None):
@@ -493,7 +495,7 @@ class BundleTester(TestCaseInTempDir):
                 , 'b1/dir/'
                 , 'b1/dir/filein subdir.c'
                 , 'b1/dir/WithCaps.txt'
-                , 'b1/dir/trailing space '
+                , 'b1/dir/ pre space'
                 , 'b1/sub/'
                 , 'b1/sub/sub/'
                 , 'b1/sub/sub/nonempty.txt'
@@ -510,7 +512,7 @@ class BundleTester(TestCaseInTempDir):
                 , 'dir'
                 , 'dir/filein subdir.c'
                 , 'dir/WithCaps.txt'
-                , 'dir/trailing space '
+                , 'dir/ pre space'
                 , 'dir/nolastnewline.txt'
                 , 'sub'
                 , 'sub/sub'
@@ -553,10 +555,10 @@ class BundleTester(TestCaseInTempDir):
 
         # Modified files
         open('b1/sub/dir/WithCaps.txt', 'ab').write('\nAdding some text\n')
-        open('b1/sub/dir/trailing space ', 'ab').write('\nAdding some\nDOS format lines\n')
+        open('b1/sub/dir/ pre space', 'ab').write('\r\nAdding some\r\nDOS format lines\r\n')
         open('b1/sub/dir/nolastnewline.txt', 'ab').write('\n')
-        self.tree1.rename_one('sub/dir/trailing space ', 
-                              'sub/ start and end space ')
+        self.tree1.rename_one('sub/dir/ pre space', 
+                              'sub/ start space')
         self.tree1.commit('Modified files', rev_id='a@cset-0-5')
         bundle = self.get_valid_bundle('a@cset-0-4', 'a@cset-0-5')
 
@@ -569,11 +571,8 @@ class BundleTester(TestCaseInTempDir):
             u'With international man of mystery\n'
             u'William Dod\xe9\n').encode('utf-8'))
         self.tree1.add([u'with Dod\xe9'])
-        # BUG: (sort of) You must set verbose=False, so that python doesn't try
-        #       and print the name of William Dode as part of the commit
         self.tree1.commit(u'i18n commit from William Dod\xe9', 
-                          rev_id='a@cset-0-6', committer=u'William Dod\xe9',
-                          verbose=False)
+                          rev_id='a@cset-0-6', committer=u'William Dod\xe9')
         bundle = self.get_valid_bundle('a@cset-0-5', 'a@cset-0-6')
         self.tree1.rename_one('sub/dir/WithCaps.txt', 'temp')
         self.tree1.rename_one('with space.txt', 'WithCaps.txt')
