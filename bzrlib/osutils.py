@@ -264,10 +264,11 @@ def _win32_rename(old, new):
     try:
         fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
     except OSError, e:
-        if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY):
-            # If we try to rename a non-existant file onto cwd, we get EPERM
-            # instead of ENOENT, this will raise ENOENT if the old path
-            # doesn't exist
+        if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
+            # If we try to rename a non-existant file onto cwd, we get 
+            # EPERM or EACCES instead of ENOENT, this will raise ENOENT 
+            # if the old path doesn't exist, sometimes we get EACCES
+            # On Linux, we seem to get EBUSY, on Mac we get EINVAL
             os.lstat(old)
         raise
 
