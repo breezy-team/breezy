@@ -21,6 +21,7 @@ import os
 import bzrlib.osutils
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.trace import mutter
+from bzrlib.workingtree import WorkingTree
 
 
 class TestRevert(ExternalBase):
@@ -43,6 +44,20 @@ class TestRevert(ExternalBase):
 
         # check status
         self.assertEquals('modified:\n  dir/file\n', self.capture('status'))
+
+    def _prepare_rename_mod_tree(self):
+        self.build_tree(['a/', 'a/b', 'a/c', 'a/d/', 'a/d/e', 'f/', 'f/g', 
+                         'f/h', 'f/i'])
+        self.run_bzr('init')
+        self.run_bzr('add')
+        self.run_bzr('commit', '-m', '1')
+        wt = WorkingTree.open('.')
+        wt.rename_one('a/b', 'f/b')
+        wt.rename_one('a/d/e', 'f/e')
+        wt.rename_one('a/d', 'f/d')
+        wt.rename_one('f/g', 'a/g')
+        wt.rename_one('f/h', 'h')
+        wt.rename_one('f', 'j')
 
     def helper(self, param=''):
         self._prepare_tree()
@@ -73,6 +88,20 @@ class TestRevert(ExternalBase):
         self.assertEqual('', self.capture('status'))
         self.runbzr('revert')
         self.assertEqual('', self.capture('status'))
+
+    def test_revert_dirname(self):
+        """Test that revert DIRECTORY does what's expected"""
+        self._prepare_rename_mod_tree()
+        self.run_bzr('revert', 'a')
+        self.failUnlessExists('a/b')
+        self.failUnlessExists('a/d')
+        self.failIfExists('a/g')
+        self.failUnlessExists('j')
+        self.failUnlessExists('h')
+        self.run_bzr('revert', 'f')
+        self.failIfExists('j')
+        self.failIfExists('h')
+        self.failUnlessExists('a/d/e')
 
     def test_revert(self):
         self.run_bzr('init')

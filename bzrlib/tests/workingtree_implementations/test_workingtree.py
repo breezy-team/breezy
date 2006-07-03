@@ -29,7 +29,7 @@ from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
-from bzrlib.conflicts import ConflictList
+from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):
@@ -165,22 +165,19 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.revert(['hello.txt'])
         self.failUnlessExists('hello.txt')
 
-    def test_unknowns_by_default_patterns(self):
-        """Backup files are ignored by default"""
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['hello.txt',
-                         'hello.txt.~1~'])
-        self.assertEquals(list(tree.unknowns()),
-                          ['hello.txt'])
-
     def test_versioned_files_not_unknown(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['hello.txt',
-                         'hello.txt.~1~'])
+        self.build_tree(['hello.txt'])
         tree.add('hello.txt')
         self.assertEquals(list(tree.unknowns()),
                           [])
-        tree.remove('hello.txt')
+
+    def test_unknowns(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['hello.txt',
+                         'hello.txt.~1~'])
+        self.build_tree_contents([('.bzrignore', '*.~*\n')])
+        tree.add('.bzrignore')
         self.assertEquals(list(tree.unknowns()),
                           ['hello.txt'])
 
@@ -573,6 +570,27 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         except UnsupportedOperation:
             raise TestSkipped
         self.assertEqual(tree.conflicts(), ConflictList())
+
+    def test_add_conflicts(self):
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.add_conflicts([TextConflict('path_a')])
+        except UnsupportedOperation:
+            raise TestSkipped()
+        self.assertEqual(ConflictList([TextConflict('path_a')]),
+                         tree.conflicts())
+        tree.add_conflicts([TextConflict('path_a')])
+        self.assertEqual(ConflictList([TextConflict('path_a')]), 
+                         tree.conflicts())
+        tree.add_conflicts([ContentsConflict('path_a')])
+        self.assertEqual(ConflictList([ContentsConflict('path_a'), 
+                                       TextConflict('path_a')]),
+                         tree.conflicts())
+        tree.add_conflicts([TextConflict('path_b')])
+        self.assertEqual(ConflictList([ContentsConflict('path_a'), 
+                                       TextConflict('path_a'),
+                                       TextConflict('path_b')]),
+                         tree.conflicts())
 
     def test_revert_clear_conflicts(self):
         tree = self.make_merge_conflicts()

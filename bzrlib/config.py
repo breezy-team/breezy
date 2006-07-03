@@ -345,7 +345,13 @@ class LocationConfig(IniBasedConfig):
         name_generator = locations_config_filename
         if (not os.path.exists(name_generator()) and 
                 os.path.exists(branches_config_filename())):
-            warning('Please rename branches.conf to locations.conf')
+            if sys.platform == 'win32':
+                warning('Please rename %s to %s' 
+                         % (branches_config_filename(),
+                            locations_config_filename()))
+            else:
+                warning('Please rename ~/.bazaar/branches.conf'
+                        ' to ~/.bazaar/locations.conf')
             name_generator = branches_config_filename
         super(LocationConfig, self).__init__(name_generator)
         self.location = location
@@ -512,10 +518,17 @@ class BranchConfig(Config):
         return self._get_safe_value('_post_commit')
 
     def _get_nickname(self):
-        value = self._get_best_value('_get_nickname')
+        value = self._get_explicit_nickname()
         if value is not None:
             return value
         return self.branch.base.split('/')[-2]
+
+    def has_explicit_nickname(self):
+        """Return true if a nickname has been explicitly assigned."""
+        return self._get_explicit_nickname() is not None
+
+    def _get_explicit_nickname(self):
+        return self._get_best_value('_get_nickname')
 
     def _log_format(self):
         """See Config.log_format."""
@@ -571,6 +584,7 @@ def config_filename():
 def branches_config_filename():
     """Return per-user configuration ini file filename."""
     return pathjoin(config_dir(), 'branches.conf')
+
 
 def locations_config_filename():
     """Return per-user configuration ini file filename."""
