@@ -93,3 +93,22 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         inv2 = repository.get_inventory("svn-v1:2@%s-" % repository.uuid)
         self.assertNotEqual(None, inv1.path2id("foo"))
         self.assertIs(None, inv2.path2id("foo"))
+
+    def test_replace(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.client_delete("dc/foo")
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "Second Message")
+
+        bzrdir = BzrDir.open("svn+"+repos_url)
+        repository = bzrdir.open_repository()
+
+        inv1 = repository.get_inventory("svn-v1:1@%s-" % repository.uuid)
+        inv2 = repository.get_inventory("svn-v1:2@%s-" % repository.uuid)
+        self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("foo"))
+
+

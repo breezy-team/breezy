@@ -37,7 +37,6 @@ class SvnRemoteAccess(BzrDir):
     """
     def __init__(self, _transport, _format):
         """See BzrDir.__init__()."""
-        assert isinstance(_transport, SvnRaTransport)
         super(SvnRemoteAccess, self).__init__(_transport, _format)
 
         self.transport = None

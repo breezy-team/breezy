@@ -278,6 +278,25 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.assertTrue(tree.has_filename("foo"))
         self.assertEqual("data", tree.get_file_by_path("foo/bla").read())
 
+    def test_fetch_replace(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bla': "data"})
+        self.client_add("dc/bla")
+        self.client_commit("dc", "My Message")
+        self.client_delete("dc/bla")
+        self.build_tree({'dc/bla': "data2"})
+        self.client_add("dc/bla")
+        self.client_commit("dc", "Second Message")
+        oldrepos = Repository.open("svn+"+repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision("svn-v1:1@%s-" % oldrepos.uuid))
+        self.assertTrue(newrepos.has_revision("svn-v1:2@%s-" % oldrepos.uuid))
+        inv1 = newrepos.get_inventory("svn-v1:1@%s-" % oldrepos.uuid)
+        inv2 = newrepos.get_inventory("svn-v1:2@%s-" % oldrepos.uuid)
+        self.assertNotEqual(inv1.path2id("bla"), inv2.path2id("bla"))
+
 
 class TestSvnRevisionTree(TestCaseWithSubversionRepository):
     def setUp(self):

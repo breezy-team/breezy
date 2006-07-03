@@ -94,7 +94,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         relpath = self.relpath(path)
         if relpath is None:
             return ROOT_ID
-        file_id, _ = self.get_file_id(path, self.revnum)
+        mutter('removed %r' % revnum)
+        file_id, _ = self.get_file_id(path, self.revnum-1)
         del self.inventory[file_id]
 
     def close_directory(self, id):
