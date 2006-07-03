@@ -354,7 +354,7 @@ class WorkingTree(bzrlib.tree.Tree):
         :return: The WorkingTree that contains 'path', and the rest of path
         """
         if path is None:
-            path = os.getcwdu()
+            path = osutils.getcwd()
         control, relpath = bzrdir.BzrDir.open_containing(path)
 
         return control.open_workingtree(), relpath
