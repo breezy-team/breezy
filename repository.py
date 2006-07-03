@@ -56,7 +56,7 @@ def unescape_svn_path(id):
     ret = ""
     i = 0
     while i < len(id): 
-        if id[i]  == '%':
+        if id[i] == '%':
             ret += chr(int(id[i+1:i+3], 16))
             i+=3
         else:
@@ -89,6 +89,61 @@ def parse_svn_revision_id(revid):
     revnum = int(revid[0:at])
     assert revnum >= 0
     return (uuid, branch_path, revnum)
+
+
+def generate_svn_revision_id(uuid, revnum, path):
+    """Generate a unambiguous revision id. 
+    
+    :param uuid: UUID of the repository.
+    :param revnum: Subversion revision number.
+    :param path: Branch path.
+
+    :return: New revision id.
+    """
+    assert isinstance(revnum, int)
+    assert isinstance(path, basestring)
+    assert revnum >= 0
+    if revnum == 0:
+        return NULL_REVISION
+    return "%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, uuid, escape_svn_path(path.strip("/")))
+
+def parse_revision_id(self, revid):
+    """Parse an existing Subversion-based revision id.
+
+    :param revid: The revision id.
+    :raises: NoSuchRevision
+    :return: Tuple with branch path and revision number.
+    """
+
+    try:
+        (uuid, branch_path, revnum) = parse_svn_revision_id(revid)
+    except InvalidRevisionId:
+        raise NoSuchRevision(self, revid)
+
+    if uuid != self.uuid:
+        raise NoSuchRevision(self, revid)
+
+    return (branch_path, revnum)
+
+
+
+def svk_feature_to_revision_id(feature):
+    """Create a revision id from a svk feature identifier.
+
+    :param feature: The feature identifier as string.
+    :return: Matching revision id.
+    """
+    (uuid, branch, revnum) = feature.split(":")
+    return generate_svn_revision_id(uuid, int(revnum), branch.strip("/"))
+
+def revision_id_to_svk_feature(revid):
+    """Create a SVK feature identifier from a revision id.
+
+    :param revid: Revision id to convert.
+    :return: Matching SVK feature identifier.
+    """
+    (uuid, branch, revnum) = parse_svn_revision_id(revid)
+    return "%s:/%s:%d" % (uuid, branch, revnum)
 
 
 class SvnRepository(Repository):
@@ -396,10 +451,7 @@ class SvnRepository(Repository):
 
         :return: New revision id.
         """
-        assert revnum >= 0
-        if revnum == 0:
-            return NULL_REVISION
-        return "%s%d@%s-%s" % (REVISION_ID_PREFIX, revnum, self.uuid, escape_svn_path(path.strip("/")))
+        return generate_svn_revision_id(self.uuid, revnum, path)
 
     def parse_revision_id(self, revid):
         """Parse an existing Subversion-based revision id.

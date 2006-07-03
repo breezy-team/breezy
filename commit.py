@@ -26,7 +26,7 @@ from bzrlib.repository import CommitBuilder
 from bzrlib.trace import mutter, warning
 
 from repository import (SvnRepository, SVN_PROP_BZR_MERGE, SVN_PROP_SVK_MERGE, 
-                       SVN_PROP_BZR_REVPROP_PREFIX, parse_svn_revision_id)
+                       SVN_PROP_BZR_REVPROP_PREFIX, revision_id_to_svk_feature)
 
 import os
 
@@ -65,8 +65,7 @@ class SvnCommitBuilder(CommitBuilder):
                     continue
 
                 try:
-                    (uuid, bp, revnum) = parse_svn_revision_id(p)
-                    new += "%s:/%s:%d\n" % (uuid, bp, revnum)
+                    new += "%s\n" % revision_id_to_svk_feature(p)
                 except NoSuchRevision:
                     pass
 

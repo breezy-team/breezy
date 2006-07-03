@@ -19,7 +19,7 @@ from bzrlib.errors import NoSuchRevision
 from bzrlib.inventory import Inventory
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
+from bzrlib.tests import TestCase
 from bzrlib.transport.local import LocalTransport
 
 import os
@@ -28,6 +28,9 @@ import svn.fs
 
 import format
 from tests import TestCaseWithSubversionRepository
+from repository import (parse_svn_revision_id, generate_svn_revision_id, 
+                        svk_feature_to_revision_id, revision_id_to_svk_feature)
+
 
 class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
     def test_format(self):
@@ -368,3 +371,28 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
     def test_not_executable(self):
         self.assertFalse(self.inventory[
             self.inventory.path2id("foo/bla")].executable)
+
+class RevisionIdMappingTest(TestCase):
+    def test_generate_revid(self):
+        self.assertEqual("svn-v1:5@myuuid-branch", 
+                         generate_svn_revision_id("myuuid", 5, "branch"))
+        self.assertEqual("svn-v1:5@myuuid-branch%2fpath", 
+                         generate_svn_revision_id("myuuid", 5, "branch/path"))
+
+    def test_parse_revid(self):
+        self.assertEqual(("uuid", "", 4),
+                         parse_svn_revision_id("svn-v1:4@uuid-"))
+        self.assertEqual(("uuid", "bp/data", 4),
+                         parse_svn_revision_id("svn-v1:4@uuid-bp%2fdata"))
+
+    def test_svk_revid_map(self):
+        self.assertEqual("svn-v1:6@auuid-",
+                         svk_feature_to_revision_id("auuid:/:6"))
+        self.assertEqual("svn-v1:6@auuid-bp",
+                         svk_feature_to_revision_id("auuid:/bp:6"))
+
+    def test_revid_svk_map(self):
+        self.assertEqual("auuid:/:6", 
+                         revision_id_to_svk_feature("svn-v1:6@auuid-"))
+
+
