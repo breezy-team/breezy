@@ -802,15 +802,17 @@ class cmd_update(Command):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_write()
         try:
-            if tree.last_revision() == tree.branch.last_revision():
+            last_rev = tree.last_revision() 
+            if last_rev == tree.branch.last_revision():
                 # may be up to date, check master too.
                 master = tree.branch.get_master_branch()
-                if master is None or master.last_revision == tree.last_revision():
-                    note("Tree is up to date.")
-                    return
+                if master is None or last_rev == master.last_revision():
+                    revno = tree.branch.revision_id_to_revno(last_rev)
+                    note("Tree is up to date at revision %d." % (revno,))
+                    return 0
             conflicts = tree.update()
-            note('Updated to revision %d.' %
-                 (tree.branch.revision_id_to_revno(tree.last_revision()),))
+            revno = tree.branch.revision_id_to_revno(tree.last_revision())
+            note('Updated to revision %d.' % (revno,))
             if conflicts != 0:
                 return 1
             else:
