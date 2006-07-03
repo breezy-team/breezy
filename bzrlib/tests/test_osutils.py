@@ -198,16 +198,16 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
     def test_getcwd(self):
         # Make sure getcwd can handle unicode filenames
         try:
-            os.mkdir(u'B\xe5gfors')
+            os.mkdir(u'mu-\xb5')
         except UnicodeError:
             raise TestSkipped("Unable to create Unicode filename")
 
-        os.chdir(u'B\xe5gfors')
+        os.chdir(u'mu-\xb5')
         # TODO: jam 20060427 This will probably fail on Mac OSX because
         #       it will change the normalization of B\xe5gfors
         #       Consider using a different unicode character, or make
         #       osutils.getcwd() renormalize the path.
-        self.assertTrue(osutils._win32_getcwd().endswith(u'/B\xe5gfors'))
+        self.assertEndsWith(osutils._win32_getcwd(), u'mu-\xb5')
 
     def test_mkdtemp(self):
         tmpdir = osutils._win32_mkdtemp(dir='.')
