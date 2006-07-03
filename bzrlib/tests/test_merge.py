@@ -19,6 +19,7 @@ from StringIO import StringIO
 
 from bzrlib.branch import Branch
 from bzrlib.builtins import merge
+from bzrlib.conflicts import ConflictList, TextConflict
 from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
 from bzrlib.merge import transform_tree, merge_inner
 from bzrlib.osutils import pathjoin
@@ -139,3 +140,9 @@ class TestMerge(TestCaseWithTransport):
                     this_tree=tree_b, ignore_zero=False)
         log = self._get_log()
         self.failUnless('All changes applied successfully.\n' in log)
+
+    def test_merge_inner_conflicts(self):
+        tree_a = self.make_branch_and_tree('a')
+        tree_a.set_conflicts(ConflictList([TextConflict('patha')]))
+        merge_inner(tree_a.branch, tree_a, tree_a, this_tree=tree_a)
+        self.assertEqual(1, len(tree_a.conflicts()))

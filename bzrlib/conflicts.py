@@ -207,6 +207,7 @@ class ConflictList(object):
         """Select the conflicts associated with paths in a tree.
         
         File-ids are also used for this.
+        :return: a pair of ConflictLists: (not_selected, selected)
         """
         path_set = set(paths)
         ids = {}
@@ -272,6 +273,9 @@ class Conflict(object):
         if getattr(other, "_cmp_list", None) is None:
             return -1
         return cmp(self._cmp_list(), other._cmp_list())
+
+    def __hash__(self):
+        return hash((type(self), self.path, self.file_id))
 
     def __eq__(self, other):
         return self.__cmp__(other) == 0

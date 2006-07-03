@@ -107,9 +107,6 @@ class TestCommands(ExternalBase):
         self.runbzr('init')
         self.assertEquals(self.capture('unknowns'), '')
 
-        file('foo.tmp', 'wt').write('tmp files are ignored')
-        self.assertEquals(self.capture('unknowns'), '')
-
         file('foo.c', 'wt').write('int main() {}')
         self.assertEquals(self.capture('unknowns'), 'foo.c\n')
 
@@ -129,6 +126,56 @@ class TestCommands(ExternalBase):
         self.runbzr('ignore garh')
         self.assertEquals(self.capture('unknowns'), '')
         self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\ngarh\n')
+
+    def test_revert(self):
+        self.runbzr('init')
+
+        file('hello', 'wt').write('foo')
+        self.runbzr('add hello')
+        self.runbzr('commit -m setup hello')
+
+        file('goodbye', 'wt').write('baz')
+        self.runbzr('add goodbye')
+        self.runbzr('commit -m setup goodbye')
+
+        file('hello', 'wt').write('bar')
+        file('goodbye', 'wt').write('qux')
+        self.runbzr('revert hello')
+        self.check_file_contents('hello', 'foo')
+        self.check_file_contents('goodbye', 'qux')
+        self.runbzr('revert')
+        self.check_file_contents('goodbye', 'baz')
+
+        os.mkdir('revertdir')
+        self.runbzr('add revertdir')
+        self.runbzr('commit -m f')
+        os.rmdir('revertdir')
+        self.runbzr('revert')
+
+        if has_symlinks():
+            os.symlink('/unlikely/to/exist', 'symlink')
+            self.runbzr('add symlink')
+            self.runbzr('commit -m f')
+            os.unlink('symlink')
+            self.runbzr('revert')
+            self.failUnlessExists('symlink')
+            os.unlink('symlink')
+            os.symlink('a-different-path', 'symlink')
+            self.runbzr('revert')
+            self.assertEqual('/unlikely/to/exist',
+                             os.readlink('symlink'))
+        else:
+            self.log("skipping revert symlink tests")
+        
+        file('hello', 'wt').write('xyz')
+        self.runbzr('commit -m xyz hello')
+        self.runbzr('revert -r 1 hello')
+        self.check_file_contents('hello', 'foo')
+        self.runbzr('revert hello')
+        self.check_file_contents('hello', 'xyz')
+        os.chdir('revertdir')
+        self.runbzr('revert')
+        os.chdir('..')
 
     def test_mv_modes(self):
         """Test two modes of operation for mv"""
@@ -246,41 +293,54 @@ class TestCommands(ExternalBase):
             self.assertEquals(out, value)
 
         bzr('init')
-        open('a', 'wb').write('hello\n')
+        self.build_tree_contents(
+            [('.bzrignore', '*.pyo\n'),
+             ('a', 'hello\n'),
+             ])
 
         # Can't supply both
         bzr('ls --verbose --null', retcode=3)
 
-        ls_equals('a\n')
-        ls_equals('?        a\n', '--verbose')
-        ls_equals('a\n', '--unknown')
+        ls_equals('.bzrignore\na\n')
+        ls_equals('?        .bzrignore\n'
+                  '?        a\n',
+                  '--verbose')
+        ls_equals('.bzrignore\n'
+                  'a\n',
+                  '--unknown')
         ls_equals('', '--ignored')
         ls_equals('', '--versioned')
-        ls_equals('a\n', '--unknown', '--ignored', '--versioned')
+        ls_equals('.bzrignore\n'
+                  'a\n',
+                  '--unknown', '--ignored', '--versioned')
         ls_equals('', '--ignored', '--versioned')
-        ls_equals('a\0', '--null')
+        ls_equals('.bzrignore\0a\0', '--null')
 
         bzr('add a')
-        ls_equals('V        a\n', '--verbose')
+        ls_equals('?        .bzrignore\nV        a\n', '--verbose')
         bzr('commit -m add')
         
         os.mkdir('subdir')
-        ls_equals('V        a\n'
+        ls_equals('?        .bzrignore\n'
+                  'V        a\n'
                   '?        subdir/\n'
                   , '--verbose')
         open('subdir/b', 'wb').write('b\n')
         bzr('add')
-        ls_equals('V        a\n'
+        ls_equals('V        .bzrignore\n'
+                  'V        a\n'
                   'V        subdir/\n'
                   'V        subdir/b\n'
                   , '--verbose')
         bzr('commit -m subdir')
 
-        ls_equals('a\n'
+        ls_equals('.bzrignore\n'
+                  'a\n'
                   'subdir\n'
                   , '--non-recursive')
 
-        ls_equals('V        a\n'
+        ls_equals('V        .bzrignore\n'
+                  'V        a\n'
                   'V        subdir/\n'
                   , '--verbose', '--non-recursive')
 
@@ -289,15 +349,18 @@ class TestCommands(ExternalBase):
         ls_equals('b\n')
         ls_equals('b\0'
                   , '--null')
-        ls_equals('a\n'
+        ls_equals('.bzrignore\n'
+                  'a\n'
                   'subdir\n'
                   'subdir/b\n'
                   , '--from-root')
-        ls_equals('a\0'
+        ls_equals('.bzrignore\0'
+                  'a\0'
                   'subdir\0'
                   'subdir/b\0'
                   , '--from-root', '--null')
-        ls_equals('a\n'
+        ls_equals('.bzrignore\n'
+                  'a\n'
                   'subdir\n'
                   , '--from-root', '--non-recursive')
 
@@ -315,12 +378,14 @@ class TestCommands(ExternalBase):
         os.chdir('..')
         open('blah.py', 'wb').write('unknown\n')
         open('blah.pyo', 'wb').write('ignored\n')
-        ls_equals('a\n'
+        ls_equals('.bzrignore\n'
+                  'a\n'
                   'blah.py\n'
                   'blah.pyo\n'
                   'subdir\n'
                   'subdir/b\n')
-        ls_equals('V        a\n'
+        ls_equals('V        .bzrignore\n'
+                  'V        a\n'
                   '?        blah.py\n'
                   'I        blah.pyo\n'
                   'V        subdir/\n'
@@ -330,7 +395,8 @@ class TestCommands(ExternalBase):
                   , '--ignored')
         ls_equals('blah.py\n'
                   , '--unknown')
-        ls_equals('a\n'
+        ls_equals('.bzrignore\n'
+                  'a\n'
                   'subdir\n'
                   'subdir/b\n'
                   , '--versioned')

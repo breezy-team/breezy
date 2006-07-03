@@ -37,10 +37,10 @@ class TestDiff(ExternalBase):
     def make_example_branch(test):
         # FIXME: copied from test_too_much -- share elsewhere?
         test.runbzr('init')
-        file('hello', 'wt').write('foo\n')
+        file('hello', 'wb').write('foo\n')
         test.runbzr('add hello')
         test.runbzr('commit -m setup hello')
-        file('goodbye', 'wt').write('baz\n')
+        file('goodbye', 'wb').write('baz\n')
         test.runbzr('add goodbye')
         test.runbzr('commit -m setup goodbye')
 
@@ -60,7 +60,7 @@ class TestDiff(ExternalBase):
     def test_diff_prefix(self):
         """diff --prefix appends to filenames in output"""
         self.make_example_branch()
-        file('hello', 'wt').write('hello world!\n')
+        file('hello', 'wb').write('hello world!\n')
         out, err = self.runbzr('diff --prefix old/:new/', retcode=1)
         self.assertEquals(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
@@ -76,7 +76,7 @@ class TestDiff(ExternalBase):
     def test_diff_p1(self):
         """diff -p1 produces lkml-style diffs"""
         self.make_example_branch()
-        file('hello', 'wt').write('hello world!\n')
+        file('hello', 'wb').write('hello world!\n')
         out, err = self.runbzr('diff -p1', retcode=1)
         self.assertEquals(err, '')
         self.assertEqualDiff(subst_dates(out), '''\
@@ -92,7 +92,7 @@ class TestDiff(ExternalBase):
     def test_diff_p0(self):
         """diff -p0 produces diffs with no prefix"""
         self.make_example_branch()
-        file('hello', 'wt').write('hello world!\n')
+        file('hello', 'wb').write('hello world!\n')
         out, err = self.runbzr('diff -p0', retcode=1)
         self.assertEquals(err, '')
         self.assertEqualDiff(subst_dates(out), '''\

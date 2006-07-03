@@ -46,4 +46,8 @@ def check_text_path(path):
     """Check whether the supplied path is a text, not binary file.
     Raise BinaryFile if a NUL occurs in the first 1024 bytes.
     """
-    text_file(open(path, 'rb'))
+    f = open(path, 'rb')
+    try:
+        text_file(f)
+    finally:
+        f.close()
