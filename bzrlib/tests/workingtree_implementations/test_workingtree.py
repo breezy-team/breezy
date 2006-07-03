@@ -1,4 +1,4 @@
-# (C) 2005,2006 Canonical Ltd
+# Copyright (C) 2005, 2006 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -19,22 +19,16 @@ from cStringIO import StringIO
 import os
 
 import bzrlib
-import bzrlib.branch
-from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
-from bzrlib.bzrdir import BzrDir
-import bzrlib.errors as errors
+from bzrlib import branch, bzrdir, errors, urlutils, workingtree
 from bzrlib.errors import (NotBranchError, NotVersionedError, 
                            UnsupportedOperation)
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
-import bzrlib.urlutils as urlutils
-import bzrlib.workingtree as workingtree
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
-
+from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
 
 class TestWorkingTree(TestCaseWithWorkingTree):
 
@@ -151,6 +145,13 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.revert(['hello.txt'])
         self.failUnlessExists('hello.txt')
 
+    def test_versioned_files_not_unknown(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['hello.txt'])
+        tree.add('hello.txt')
+        self.assertEquals(list(tree.unknowns()),
+                          [])
+
     def test_unknowns(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['hello.txt',
@@ -177,7 +178,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_initialize(self):
         # initialize should create a working tree and branch in an existing dir
         t = self.make_branch_and_tree('.')
-        b = Branch.open('.')
+        b = branch.Branch.open('.')
         self.assertEqual(t.branch.base, b.base)
         t2 = WorkingTree.open('.')
         self.assertEqual(t.basedir, t2.basedir)
@@ -390,7 +391,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        bzrlib.branch.BranchReferenceFormat().initialize(checkout, main_branch)
+        branch.BranchReferenceFormat().initialize(checkout, main_branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
@@ -421,7 +422,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        bzrlib.branch.BranchReferenceFormat().initialize(checkout, main_branch)
+        branch.BranchReferenceFormat().initialize(checkout, main_branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
@@ -528,7 +529,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.add('blo')
         tree.commit("blah", allow_pointless=False)
         base = tree.basis_tree()
-        BzrDir.open("mine").sprout("other")
+        bzrdir.BzrDir.open("mine").sprout("other")
         file('other/bloo', 'wb').write('two')
         othertree = WorkingTree.open('other')
         othertree.commit('blah', allow_pointless=False)
@@ -542,7 +543,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(len(tree.conflicts()), 1)
 
     def test_clear_merge_conflicts(self):
-        from bzrlib.conflicts import ConflictList
         tree = self.make_merge_conflicts()
         self.assertEqual(len(tree.conflicts()), 1)
         try:
@@ -550,6 +550,27 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         except UnsupportedOperation:
             raise TestSkipped
         self.assertEqual(tree.conflicts(), ConflictList())
+
+    def test_add_conflicts(self):
+        tree = self.make_branch_and_tree('tree')
+        try:
+            tree.add_conflicts([TextConflict('path_a')])
+        except UnsupportedOperation:
+            raise TestSkipped()
+        self.assertEqual(ConflictList([TextConflict('path_a')]),
+                         tree.conflicts())
+        tree.add_conflicts([TextConflict('path_a')])
+        self.assertEqual(ConflictList([TextConflict('path_a')]), 
+                         tree.conflicts())
+        tree.add_conflicts([ContentsConflict('path_a')])
+        self.assertEqual(ConflictList([ContentsConflict('path_a'), 
+                                       TextConflict('path_a')]),
+                         tree.conflicts())
+        tree.add_conflicts([TextConflict('path_b')])
+        self.assertEqual(ConflictList([ContentsConflict('path_a'), 
+                                       TextConflict('path_a'),
+                                       TextConflict('path_b')]),
+                         tree.conflicts())
 
     def test_revert_clear_conflicts(self):
         tree = self.make_merge_conflicts()

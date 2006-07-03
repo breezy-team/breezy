@@ -13,7 +13,7 @@ def install_bundle(repository, bundle_reader):
     pb = bzrlib.ui.ui_factory.nested_progress_bar()
     repository.lock_write()
     try:
-        real_revisions = bundle_reader.info.real_revisions
+        real_revisions = bundle_reader.real_revisions
         for i, revision in enumerate(reversed(real_revisions)):
             pb.update("Install revisions",i, len(real_revisions))
             if repository.has_revision(revision.revision_id):
@@ -38,9 +38,9 @@ def merge_bundle(reader, tree, check_clean, merge_type,
         merger.pp = pp
         merger.pp.next_phase()
         merger.check_basis(check_clean, require_commits=False)
-        merger.other_rev_id = reader.info.target
-        merger.other_tree = merger.revision_tree(reader.info.target)
-        merger.other_basis = reader.info.target
+        merger.other_rev_id = reader.target
+        merger.other_tree = merger.revision_tree(reader.target)
+        merger.other_basis = reader.target
         merger.pp.next_phase()
         merger.find_base()
         if merger.base_rev_id == merger.other_rev_id:

@@ -67,7 +67,7 @@ import os
 import re
 import sys
 import time
-import pdb
+import warnings
 
 from cStringIO import StringIO
 
@@ -75,7 +75,6 @@ from bzrlib.atomicfile import AtomicFile
 import bzrlib.config
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError, PointlessCommit,
-                           HistoryMissing,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
@@ -86,7 +85,10 @@ from bzrlib.testament import Testament
 from bzrlib.trace import mutter, note, warning
 from bzrlib.xml5 import serializer_v5
 from bzrlib.inventory import Inventory, ROOT_ID, InventoryEntry
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_passed,
+        deprecated_function,
+        zero_seven,
+        DEPRECATED_PARAMETER)
 from bzrlib.workingtree import WorkingTree
 
 
@@ -98,7 +100,7 @@ def commit(*args, **kwargs):
 
     New code should use the Commit class instead.
     """
-    ## XXX: Remove this in favor of Branch.commit?
+    ## XXX: Remove this in favor of WorkingTree.commit?
     Commit().commit(*args, **kwargs)
 
 
@@ -221,7 +223,7 @@ class Commit(object):
         mutter('preparing to commit')
 
         if deprecated_passed(branch):
-            warn("Commit.commit (branch, ...): The branch parameter is "
+            warnings.warn("Commit.commit (branch, ...): The branch parameter is "
                  "deprecated as of bzr 0.8. Please use working_tree= instead.",
                  DeprecationWarning, stacklevel=2)
             self.branch = branch
@@ -234,7 +236,6 @@ class Commit(object):
         if message is None:
             raise BzrError("The message keyword parameter is required for commit().")
 
-        self.weave_store = self.branch.repository.weave_store
         self.bound_branch = None
         self.local = local
         self.master_branch = None
@@ -270,7 +271,7 @@ class Commit(object):
                     raise StrictCommitFailed()
                    
             if self.config is None:
-                self.config = bzrlib.config.BranchConfig(self.branch)
+                self.config = self.branch.get_config()
       
             if isinstance(message, str):
                 message = message.decode(bzrlib.user_encoding)
@@ -316,7 +317,7 @@ class Commit(object):
             # revision data is in the local branch now.
             
             # upload revision data to the master.
-            # this will propogate merged revisions too if needed.
+            # this will propagate merged revisions too if needed.
             if self.bound_branch:
                 self.master_branch.repository.fetch(self.branch.repository,
                                                     revision_id=self.rev_id)
@@ -344,6 +345,7 @@ class Commit(object):
             self._emit_progress_update()
         finally:
             self._cleanup()
+        return self.rev_id
 
     def _check_bound_branch(self):
         """Check to see if the local branch is bound.
@@ -386,14 +388,6 @@ class Commit(object):
         self.bound_branch = self.branch
         self.master_branch.lock_write()
         self.master_locked = True
-####        
-####        # Check to see if we have any pending merges. If we do
-####        # those need to be pushed into the master branch
-####        pending_merges = self.work_tree.pending_merges()
-####        if pending_merges:
-####            for revision_id in pending_merges:
-####                self.master_branch.repository.fetch(self.bound_branch.repository,
-####                                                    revision_id=revision_id)
 
     def _cleanup(self):
         """Cleanup any open locks, progress bars etc."""
@@ -411,7 +405,7 @@ class Commit(object):
             except Exception, e:
                 found_exception = e
         if found_exception is not None: 
-            # dont do a plan raise, because the last exception may have been
+            # don't do a plan raise, because the last exception may have been
             # trashed, e is our sure-to-work exception even though it loses the
             # full traceback. XXX: RBC 20060421 perhaps we could check the
             # exc_info and if its the same one do a plain raise otherwise 
@@ -452,13 +446,8 @@ class Commit(object):
         """Record the parents of a merge for merge detection."""
         # TODO: Make sure that this list doesn't contain duplicate 
         # entries and the order is preserved when doing this.
-        pending_merges = self.work_tree.pending_merges()
-        self.parents = []
+        self.parents = self.work_tree.get_parent_ids()
         self.parent_invs = []
-        precursor_id = self.branch.last_revision()
-        if precursor_id:
-            self.parents.append(precursor_id)
-        self.parents += pending_merges
         for revision in self.parents:
             if self.branch.repository.has_revision(revision):
                 inventory = self.branch.repository.get_inventory(revision)
@@ -470,9 +459,8 @@ class Commit(object):
             if not self.branch.repository.has_revision(parent_id):
                 if parent_id == self.branch.last_revision():
                     warning("parent is missing %r", parent_id)
-                    raise HistoryMissing(self.branch, 'revision', parent_id)
-                else:
-                    mutter("commit will ghost revision %r", parent_id)
+                    raise BzrCheckError("branch %s is missing revision {%s}"
+                            % (self.branch, parent_id))
             
     def _remove_deleted(self):
         """Remove deleted files from the working inventories.
@@ -532,7 +520,7 @@ class Commit(object):
 
             self.builder.record_entry_contents(ie, self.parent_invs, 
                 path, self.work_tree)
-            # describe the nature of the change that has occured relative to
+            # describe the nature of the change that has occurred relative to
             # the basis inventory.
             if (self.basis_inv.has_id(ie.file_id)):
                 basis_ie = self.basis_inv[ie.file_id]

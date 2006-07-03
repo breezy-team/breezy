@@ -91,7 +91,9 @@ class TestUrlToPath(TestCase):
         norm_file('uni/%25C2%25B5', u'uni/%C2%B5')
         norm_file('uni/%20b', u'uni/ b')
         # All the crazy characters get escaped in local paths => file:/// urls
-        norm_file('%27%3B/%3F%3A%40%26%3D%2B%24%2C%23%20', "';/?:@&=+$,# ")
+        # The ' ' character must not be at the end, because on win32
+        # it gets stripped off by ntpath.abspath
+        norm_file('%27%20%3B/%3F%3A%40%26%3D%2B%24%2C%23', "' ;/?:@&=+$,#")
 
     def test_normalize_url_hybrid(self):
         # Anything with a scheme:// should be treated as a hybrid url
@@ -209,6 +211,12 @@ class TestUrlToPath(TestCase):
         test('http://bar', 'http://foo', 'http://bar')
         test('sftp://bzr/foo', 'http://foo', 'bar', 'sftp://bzr/foo')
         test('file:///bar', 'foo', 'file:///bar')
+
+        # From a base path
+        test('file:///foo', 'file:///', 'foo')
+        test('file:///bar/foo', 'file:///bar/', 'foo')
+        test('http://host/foo', 'http://host/', 'foo')
+        test('http://host/', 'http://host', '')
         
         # Invalid joinings
         # Cannot go above root
@@ -250,6 +258,14 @@ class TestUrlToPath(TestCase):
         to_url = urlutils._win32_local_path_to_url
         self.assertEqual('file:///C:/path/to/foo',
             to_url('C:/path/to/foo'))
+        # BOGUS: on win32, ntpath.abspath will strip trailing
+        #       whitespace, so this will always fail
+        #       Though under linux, it fakes abspath support
+        #       and thus will succeed
+        # self.assertEqual('file:///C:/path/to/foo%20',
+        #     to_url('C:/path/to/foo '))
+        self.assertEqual('file:///C:/path/to/f%20oo',
+            to_url('C:/path/to/f oo'))
 
         try:
             result = to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s')
@@ -270,6 +286,12 @@ class TestUrlToPath(TestCase):
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
         # Not a valid _win32 url, no drive letter
         self.assertRaises(InvalidURL, from_url, 'file:///path/to/foo')
+
+    def test__win32_extract_drive_letter(self):
+        extract = urlutils._win32_extract_drive_letter
+        self.assertEqual(('file:///C:', '/foo'), extract('file://', '/C:/foo'))
+        self.assertEqual(('file:///d|', '/path'), extract('file://', '/d|/path'))
+        self.assertRaises(InvalidURL, extract, 'file://', '/path')
 
     def test_split(self):
         # Test bzrlib.urlutils.split()
@@ -305,6 +327,16 @@ class TestUrlToPath(TestCase):
             split('path/to/foo/', exclude_trailing_slash=False))
         self.assertEqual(('path/..', 'foo'), split('path/../foo'))
         self.assertEqual(('../path', 'foo'), split('../path/foo'))
+
+    def test__win32_strip_local_trailing_slash(self):
+        strip = urlutils._win32_strip_local_trailing_slash
+        self.assertEqual('file://', strip('file://'))
+        self.assertEqual('file:///', strip('file:///'))
+        self.assertEqual('file:///C', strip('file:///C'))
+        self.assertEqual('file:///C:', strip('file:///C:'))
+        self.assertEqual('file:///d|', strip('file:///d|'))
+        self.assertEqual('file:///C:/', strip('file:///C:/'))
+        self.assertEqual('file:///C:/a', strip('file:///C:/a/'))
 
     def test_strip_trailing_slash(self):
         sts = urlutils.strip_trailing_slash
@@ -348,8 +380,8 @@ class TestUrlToPath(TestCase):
 
         test('http://foo', 'http://foo')
         if sys.platform == 'win32':
-            test('C:/foo/path', 'file:///C|/foo/path')
-            test('C:/foo/path', 'file:///C:/foo/path')
+            test('c:/foo/path', 'file:///C|/foo/path')
+            test('c:/foo/path', 'file:///C:/foo/path')
         else:
             test('/foo/path', 'file:///foo/path')
 

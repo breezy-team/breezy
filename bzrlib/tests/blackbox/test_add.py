@@ -121,3 +121,8 @@ class TestAdd(ExternalBase):
         self.run_bzr('add')
         self.assertEquals(self.capture('unknowns'), '')
         self.run_bzr('check')
+
+    def test_add_missing(self):
+        """bzr add foo where foo is missing should error."""
+        self.make_branch_and_tree('.')
+        self.run_bzr('add', 'missing-file', retcode=3)

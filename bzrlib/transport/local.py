@@ -51,6 +51,7 @@ class LocalTransport(Transport):
             base = base + '/'
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
+        ## mutter("_local_base: %r => %r", base, self._local_base)
 
     def should_cache(self):
         return False
@@ -312,23 +313,6 @@ class LocalTransport(Transport):
             return False
         else:
             return True
-
-
-class ScratchTransport(LocalTransport):
-    """A transport that works in a temporary dir and cleans up after itself.
-    
-    The dir only exists for the lifetime of the Python object.
-    Obviously you should not put anything precious in it.
-    """
-
-    def __init__(self, base=None):
-        if base is None:
-            base = tempfile.mkdtemp()
-        super(ScratchTransport, self).__init__(base)
-
-    def __del__(self):
-        rmtree(self.base, ignore_errors=True)
-        mutter("%r destroyed" % self)
 
 
 class LocalRelpathServer(Server):

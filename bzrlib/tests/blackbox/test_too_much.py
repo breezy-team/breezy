@@ -103,6 +103,30 @@ class TestCommands(ExternalBase):
         self.runbzr("--pants off", retcode=3)
         self.runbzr("diff --message foo", retcode=3)
 
+    def test_ignore_patterns(self):
+        self.runbzr('init')
+        self.assertEquals(self.capture('unknowns'), '')
+
+        file('foo.c', 'wt').write('int main() {}')
+        self.assertEquals(self.capture('unknowns'), 'foo.c\n')
+
+        self.runbzr(['add', 'foo.c'])
+        self.assertEquals(self.capture('unknowns'), '')
+
+        # 'ignore' works when creating the .bzignore file
+        file('foo.blah', 'wt').write('blah')
+        self.assertEquals(self.capture('unknowns'), 'foo.blah\n')
+        self.runbzr('ignore *.blah')
+        self.assertEquals(self.capture('unknowns'), '')
+        self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\n')
+
+        # 'ignore' works when then .bzrignore file already exists
+        file('garh', 'wt').write('garh')
+        self.assertEquals(self.capture('unknowns'), 'garh\n')
+        self.runbzr('ignore garh')
+        self.assertEquals(self.capture('unknowns'), '')
+        self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\ngarh\n')
+
     def test_revert(self):
         self.runbzr('init')
 
@@ -483,39 +507,6 @@ class TestCommands(ExternalBase):
                                    "times nine?")
         self.runbzr('commit -m this')
 
-    def test_remerge(self):
-        """Remerge command works as expected"""
-        self.create_conflicts()
-        self.runbzr('merge ../other --show-base', retcode=1)
-        conflict_text = file('hello').read()
-        assert '|||||||' in conflict_text
-        assert 'hi world' in conflict_text
-        self.runbzr('remerge', retcode=1)
-        conflict_text = file('hello').read()
-        assert '|||||||' not in conflict_text
-        assert 'hi world' not in conflict_text
-        os.unlink('hello.OTHER')
-        os.unlink('question.OTHER')
-        self.runbzr('remerge jello --merge-type weave', retcode=3)
-        self.runbzr('remerge hello --merge-type weave', retcode=1)
-        assert os.path.exists('hello.OTHER')
-        self.assertIs(False, os.path.exists('question.OTHER'))
-        file_id = self.runbzr('file-id hello')
-        file_id = self.runbzr('file-id hello.THIS', retcode=3)
-        self.runbzr('remerge --merge-type weave', retcode=1)
-        assert os.path.exists('hello.OTHER')
-        assert not os.path.exists('hello.BASE')
-        assert '|||||||' not in conflict_text
-        assert 'hi world' not in conflict_text
-        self.runbzr('remerge . --merge-type weave --show-base', retcode=3)
-        self.runbzr('remerge . --show-base --reprocess', retcode=3)
-        self.runbzr('remerge . --merge-type weave --reprocess', retcode=1)
-        self.runbzr('remerge hello --show-base', retcode=1)
-        self.runbzr('remerge hello --reprocess', retcode=1)
-        self.runbzr('resolve --all')
-        self.runbzr('commit -m done',)
-        self.runbzr('remerge', retcode=3)
-
     def test_status(self):
         os.mkdir('branch1')
         os.chdir('branch1')
@@ -688,12 +679,6 @@ class OldTests(ExternalBase):
         out = capture("status")
         self.assertEquals(out, 'unknown:\n  test.txt\n')
 
-        out = capture("status --all")
-        self.assertEquals(out, "unknown:\n  test.txt\n")
-
-        out = capture("status test.txt --all")
-        self.assertEquals(out, "unknown:\n  test.txt\n")
-
         f = file('test2.txt', 'wt')
         f.write('goodbye cruel world...\n')
         f.close()
@@ -707,7 +692,7 @@ class OldTests(ExternalBase):
         os.unlink('test2.txt')
 
         progress("command aliases")
-        out = capture("st --all")
+        out = capture("st")
         self.assertEquals(out, ("unknown:\n" "  test.txt\n"))
 
         out = capture("stat")
@@ -729,7 +714,6 @@ class OldTests(ExternalBase):
 
         runbzr("add test.txt")
         self.assertEquals(capture("unknowns"), '')
-        self.assertEquals(capture("status --all"), ("added:\n" "  test.txt\n"))
 
         progress("rename newly-added file")
         runbzr("rename test.txt hello.txt")
