@@ -88,6 +88,9 @@ IN DEVELOPMENT
     * sftp tests now work correctly on win32 if you have a newer paramiko
       (John Arbash Meinel)
 
+    * Cleanup win32 test suite, and general cleanup of places where
+      file handles were being held open. (John Arbash Meinel)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
