@@ -152,7 +152,7 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         self.assertFalse(inv.has_filename("bl"))
         self.assertFalse(basis_inv.has_filename("dir/bl"))
 
-    def test_pending_merges(self):
+    def test_pending_merges_empty(self):
         self.make_client_and_bzrdir('a', 'dc')
         self.build_tree({"dc/bl": "data"})
         tree = WorkingTree.open("dc")

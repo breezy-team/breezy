@@ -415,8 +415,11 @@ class SvnWorkingTree(WorkingTree):
         merged = self._get_base_merges().splitlines()
         wc = self._get_wc()
         try:
-            set_merged = svn.wc.prop_get(SVN_PROP_BZR_MERGE, 
-                                         self.basedir, wc).splitlines()
+            merged_data = svn.wc.prop_get(SVN_PROP_BZR_MERGE, self.basedir, wc)
+            if merged_data is None:
+                set_merged = []
+            else:
+                set_merged = merged_data.splitlines()
         finally:
             svn.wc.adm_close(wc)
 
