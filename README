@@ -13,6 +13,120 @@ Subversion libraries. At the moment, the svn plugin only works with
 Subversion 1.5 (trunk). I plan to submit patches against the python-subversion 
 package in Ubuntu Edgy later.
 
+== Features ==
+
+The following features are currently present:
+
+ * Connecting to remote Subversion repositories over all 
+   protocols supported by Subversion itself (at present: 
+	svn://, svn+ssh://, http:// (webdav), file://) 
+   as well as dump files. 
+
+   Checkouts, lightweight checkouts and branching works.
+
+ * Track Bazaar merges in Subversion. Merged revisions show up 
+   as ghosts.
+
+ * Subversion working copies. Can be modified, queried 
+   (`bzr status' on a vanilla working copied created with 
+	`svn co' works) and committed from.
+
+ * Committing to Subversion from Bazaar.
+
+ * Push Bazaar revisions to Subversion. These revisions will 
+   show up in Subversion as a commit with the pushed revision 
+   as one of the parents.
+
+ * Follow branch copies. Revision history is not 
+   truncated when a branch was copied in Subversion.
+
+ * Efficiently uses network bandwidth. 
+
+ * Recognizes file metadata (executable bits, symlinks).
+ 
+ * 'import-svn' command with functionality similar to svn2bzr.
+
+ * Ability to track merges done with SVK (http://svk.elixus.org/) 
+   and write merges.
+
+ * Generates consistent file ids and revision ids. Two branches made using 
+   this plugin of the same Subversion branch will result in *exactly* the same 
+   Bazaar branch.
+
+== Future Enhancements ==
+
+In the future, I also hope to support:
+
+ * Renames. Initial work has been done to support this, 
+   but the number of corner cases is wide, so support for this 
+   has not been enabled by default yet.
+
+   Those brave enough can test the current support out by 
+   registering SvnRenamingRepository instead of 
+   SvnRepository in __init__.py.
+
+ * "True" push. This requires storing the Bazaar 
+   inventory and revision in Subversion revision properties.
+
+   Ideally, revision id aliases would have to be used so the 
+   revision id that is being 'overriden' can still exist.
+
+   Once this is implemented, it would also be possible and 
+   make sense to store GPG signatures for commits in 
+   Subversion branches.
+
+ * Proper read locking, which has basically been ignored for now. 
+
+ * Performance. Network-wise (both bandwidth and roundtrips), the plugin 
+   is currently pretty much as efficient as it can be. However, it is currently 
+   quite CPU-intensive for no good reason and I hope to make a couple 
+   of improvements in that area.
+
+ * Creating and updating native Subversion working copies. This 
+   would mostly be supported for completeness, there are not 
+   a lot of advantages in supporting it.
+
+Some Subversion properties can currently not be represented in Bazaar 
+and are therefore ignored for the time being:
+
+ * `svn:ignore' is not imported. There should be a 
+   `Repository.get_ignores(revid)' call in Bazaar rather than a magic 
+   '.bzrignore' file. 
+   
+ * `svn:externals'. Externals should be mapped to Bazaar 'by-reference' 
+   nested branches and the other way around. This can't be implemented 
+   this until Bazaars nested branch support lands. AaronBentley's work 
+   in progress is at http://code.aaronbentley.com/bzr/bzrrepo/nested-trees/.
+
+Other features currently held back by Bazaars feature set:
+
+ * Showing SVN merges as merges in Bazaar. This requires support for partial 
+   merges in Bazaar. Another option would be storing full merge information 
+   in Subversion, something which the Subversion folks are working on at the 
+   moment (see https://svn.collab.net/repos/svn/branches/merge-tracking).
+
+ * Branch.revision_history() and generating file ids 
+   currently requires retrieving the full `log' of a Subversion repository.
+
+   It might be possible to get rid of the need to retrieve the full log if 
+   Bazaar supported file id aliases and if Branch.revision_history() would use 
+   iterators.
+
+   The log output can be cached though and only takes a few minutes on large 
+   repositories anyway.
+
+   (needs more thought)
+
+ * Horizon revision history. Most of the existing Subversion repositories 
+   are quite large and it would therefore be nice to be able to limit 
+   the amount of history that needs to be retrieved during checkouts.
+
+== Bugs ==
+ 
+Please file bug reports in launchpad. The product URL for bzr-svn is
+https://launchpad.net/products/bzr-svn/. The wiki for this 
+plugin is at http://bazaar-vcs.org/BzrSvn.
+
 == Installation ==
 
 Simply place this directory in ~/.bazaar/plugins and you should be able 
