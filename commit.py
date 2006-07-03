@@ -47,7 +47,7 @@ class SvnCommitBuilder(CommitBuilder):
         self.branch = branch
         self.pool = Pool()
 
-        self._svnprops = []
+        self._svnprops = {}
         for prop in self._revprops:
             self._svnprops[SVN_PROP_BZR_REVPROP_PREFIX+prop] = self._revprops[prop]
 
@@ -119,10 +119,10 @@ class SvnCommitBuilder(CommitBuilder):
         mutter('committing changes in %r' % path)
         mutter("children: %r" % self.new_inventory.entries())
 
-        if path == self.branch_path:
+        if path == self.branch.branch_path:
             # Set all the revprops
             for prop in self._svnprops:
-                svn.delta.editor_invoke_change_dir_prop(self.editor, 
+                svn.delta.editor_invoke_change_dir_prop(self.editor, baton,
                             prop, self._svnprops[prop], self.pool)
 
         mutter('old root id %r, new one %r' % (self.old_inv.root.file_id, self.new_inventory.root.file_id))

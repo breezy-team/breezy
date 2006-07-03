@@ -254,6 +254,26 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree.set_pending_merges([])
         self.assertEqual([], tree.pending_merges())
 
+    def test_set_pending_merges_prop(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": None})
+        self.client_add("dc/bl")
+        
+        tree = WorkingTree.open("dc")
+        tree.set_pending_merges(["svn-v1:1@a-uuid-foo-branch/path", "c"])
+        self.assertEqual("svn-v1:1@a-uuid-foo-branch/path\tc\n", 
+                         self.client_get_prop("dc/bl", "bzr:merge"))
+
+    def test_set_pending_merges_svk(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bl": None})
+        self.client_add("dc/bl")
+        
+        tree = WorkingTree.open("dc")
+        tree.set_pending_merges(["svn-v1:1@a-uuid-foo-branch/path", "c"])
+        self.assertEqual("a-uuid-foo:/branch/path:1", 
+                         self.client_get_prop("dc/bl", "svk:merge"))
+
     def test_update_after_commit(self):
         self.make_client_and_bzrdir('a', 'dc')
         self.build_tree({"dc/bl": "data"})

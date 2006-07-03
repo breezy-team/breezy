@@ -134,6 +134,9 @@ class SvnBranch(Branch):
 
     def update_revisions(self, other, stop_revision=None):
         if isinstance(other, SvnBranch):
+            if (self.last_revision() == stop_revision or
+                self.last_revision() == other.last_revision()):
+                return
             # Import from another Subversion branch
             assert other.repository.uuid == self.repository.uuid, \
                     "can only import from elsewhere in the same repository."

@@ -302,6 +302,23 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         inv2 = newrepos.get_inventory("svn-v1:2@%s-" % oldrepos.uuid)
         self.assertNotEqual(inv1.path2id("bla"), inv2.path2id("bla"))
 
+    def test_fetch_consistent(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bla': "data"})
+        self.client_add("dc/bla")
+        self.client_set_prop("dc/bla", "svn:executable", "*")
+        self.client_commit("dc", "My Message")
+        oldrepos = Repository.open("svn+"+repos_url)
+        dir1 = BzrDir.create("f")
+        dir2 = BzrDir.create("g")
+        newrepos1 = dir1.create_repository()
+        newrepos2 = dir2.create_repository()
+        oldrepos.copy_content_into(newrepos1)
+        oldrepos.copy_content_into(newrepos2)
+        inv1 = newrepos1.get_inventory("svn-v1:1@%s-" % oldrepos.uuid)
+        inv2 = newrepos2.get_inventory("svn-v1:1@%s-" % oldrepos.uuid)
+        self.assertEqual(inv1, inv2)
+
     def test_fetch_executable(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/bla': "data"})

@@ -389,21 +389,37 @@ class SvnWorkingTree(WorkingTree):
 
         return fingerprint_file(open(self.abspath(path)))['sha1']
 
-    def _get_base_merges(self):
+    def _get_bzr_merges(self):
         return self.branch.repository._get_dir_prop(self.branch.branch_path, 
                                             self.base_revnum, 
                                             SVN_PROP_BZR_MERGE, "")
 
+    def _get_svk_merges(self):
+        return self.branch.repository._get_dir_prop(self.branch.branch_path, 
+                                            self.base_revnum, 
+                                            SVN_PROP_SVK_MERGE, "")
 
     def set_pending_merges(self, merges):
-        merged = self._get_base_merges()
+        # Set bzr:merge
+        bzr_merge = self._get_bzr_merges()
         if len(merges) > 0:
-            merged += "\t".join(merges) + "\n"
+            bzr_merge += "\t".join(merges) + "\n"
+
+        # Set svk:merge
+        svk_merge = self._get_svk_merges()
+        if len(merges) > 0:
+            for merge in merges:
+                try:
+                    svk_merge += revision_id_to_svk_feature(merge) + "\n"
+                except InvalidRevisionId:
+                    pass
 
         wc = self._get_wc(write_lock=True)
         try:
-            svn.wc.prop_set2(SVN_PROP_BZR_MERGE, merged, self.basedir, wc, 
-            False)
+            svn.wc.prop_set2(SVN_PROP_BZR_MERGE, bzr_merge, self.basedir, wc, 
+                             False)
+            svn.wc.prop_set2(SVN_PROP_SVK_MERGE, svk_merge, self.basedir, wc, 
+                             False)
         finally:
             svn.wc.adm_close(wc)
 
@@ -413,7 +429,7 @@ class SvnWorkingTree(WorkingTree):
         self.set_pending_merges(existing)
 
     def pending_merges(self):
-        merged = self._get_base_merges().splitlines()
+        merged = self._get_bzr_merges().splitlines()
         wc = self._get_wc()
         try:
             merged_data = svn.wc.prop_get(SVN_PROP_BZR_MERGE, self.basedir, wc)

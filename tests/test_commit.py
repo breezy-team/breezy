@@ -14,7 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib.bzrdir import BzrDir
+from bzrlib.branch import BranchReferenceFormat
+from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 from bzrlib.delta import compare_trees
 from bzrlib.inventory import Inventory
 from bzrlib.workingtree import WorkingTree
@@ -24,7 +25,7 @@ import format
 import checkout
 from tests import TestCaseWithSubversionRepository
 
-class TestCommit(TestCaseWithSubversionRepository):
+class TestNativeCommit(TestCaseWithSubversionRepository):
     def test_push(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
@@ -83,3 +84,19 @@ class TestCommit(TestCaseWithSubversionRepository):
                              wt.branch.last_revision()))
         self.assertEqual("some-ghost-revision\n", 
                 self.client_get_prop(repos_url, "bzr:merge", 1))
+
+class TestCommitFromBazaar(TestCaseWithSubversionRepository):
+    def setUp(self):
+        super(TestCommitFromBazaar, self).setUp()
+        self.repos_url = self.make_repository('d')
+        source = BzrDir.open("svn+"+self.repos_url)
+        os.mkdir('dc')
+        self.checkout = BzrDirMetaFormat1().initialize('dc')
+        BranchReferenceFormat().initialize(self.checkout, source.open_branch())
+
+    def test_simple_commit(self):
+        wt = self.checkout.create_workingtree()
+        self.build_tree({'dc/bla': "data"})
+        wt.add('bla')
+        wt.commit(message='commit from Bazaar')
+        self.assertNotEqual(None, wt.branch.last_revision())

@@ -27,6 +27,7 @@ from bzrlib.repository import Repository
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.transport import Transport
 from bzrlib.trace import mutter
+from bzrlib.tree import EmptyTree
 
 from svn.core import SubversionException, Pool
 import svn.core
