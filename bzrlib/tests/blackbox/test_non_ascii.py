@@ -22,12 +22,12 @@ import os
 
 import bzrlib
 import bzrlib.osutils as osutils
-from bzrlib.tests import TestCaseInTempDir, TestSkipped
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter, note
 import bzrlib.urlutils as urlutils
 
 
-class TestNonAscii(TestCaseInTempDir):
+class TestNonAscii(TestCaseWithTransport):
     """Test that bzr handles files/committers/etc which are non-ascii."""
 
     def setUp(self):
@@ -72,18 +72,18 @@ class TestNonAscii(TestCaseInTempDir):
                                    ' filesystem encoding "%s")')
                                    % (thing, terminal_enc, fs_enc))
 
-        bzr('init')
+        wt = self.make_branch_and_tree('.')
         open('a', 'wb').write('foo\n')
-        bzr('add', 'a')
-        bzr('commit', '-m', 'adding a')
+        wt.add('a')
+        wt.commit('adding a')
 
         open('b', 'wb').write('non-ascii \xFF\xFF\xFC\xFB\x00 in b\n')
-        bzr('add', 'b')
-        bzr('commit', '-m', self.info['message'])
+        wt.add('b')
+        wt.commit(self.info['message'])
 
         open(fname, 'wb').write('unicode filename\n')
-        bzr('add', fname)
-        bzr('commit', '-m', u'And a unicode file\n')
+        wt.add(fname)
+        wt.commit(u'And a unicode file\n')
 
     def test_status(self):
         bzr = self.run_bzr_decode
