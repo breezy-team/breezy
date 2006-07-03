@@ -3,8 +3,7 @@ import unittest
 
 from bzrlib.add import smart_add, smart_add_tree
 from bzrlib.tests import TestCaseWithTransport, TestCase
-from bzrlib.branch import Branch
-from bzrlib.errors import NotBranchError, NoSuchFile
+from bzrlib.errors import NoSuchFile
 from bzrlib.inventory import InventoryFile, Inventory
 from bzrlib.workingtree import WorkingTree
 
@@ -117,21 +116,25 @@ class TestSmartAdd(TestCaseWithTransport):
         branch = wt.branch
         self.assertRaises(NoSuchFile, smart_add_tree, wt, 'non-existant-file')
 
-    def test_returns(self):
+    def test_returns_and_ignores(self):
         """Correctly returns added/ignored files"""
         from bzrlib.commands import run_bzr
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
+        # no files should be ignored by default, so we need to create
+        # an ignore rule - we create one for the pyc files, which means
+        # CVS should not be ignored.
         self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS', 
                         'inertiatic/foo.pyc'])
+        self.build_tree_contents([('.bzrignore', '*.py[oc]\n')])
         added, ignored = smart_add_tree(wt, u'.')
-        self.assertSubset(('inertiatic', 'inertiatic/esp'), added)
-        self.assertSubset(('CVS', '*.py[oc]'), ignored)
-        self.assertSubset(('inertiatic/CVS',), ignored['CVS'])
+        self.assertSubset(('inertiatic', 'inertiatic/esp', 'inertiatic/CVS'),
+                          added)
+        self.assertSubset(('*.py[oc]',), ignored)
         self.assertSubset(('inertiatic/foo.pyc',), ignored['*.py[oc]'])
 
 
-class TestSmartAddBranch(TestCaseWithTransport):
+class TestSmartAddTree(TestCaseWithTransport):
     """Test smart adds with a specified branch."""
 
     def test_add_dot_from_root(self):
