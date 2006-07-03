@@ -436,11 +436,11 @@ class TestNonAscii(TestCaseInTempDir):
         bzr = self.run_bzr_decode
 
         txt = bzr('ls')
-        self.assertEqual(['a', 'b', self.info['filename']],
-                         txt.splitlines())
+        self.assertEqual(sorted(['a', 'b', self.info['filename']]),
+                         sorted(txt.splitlines()))
         txt = bzr('ls', '--null')
-        self.assertEqual(['a', 'b', self.info['filename'], ''],
-                         txt.split('\0'))
+        self.assertEqual(sorted(['', 'a', 'b', self.info['filename']]),
+                         sorted(txt.split('\0')))
 
         txt = bzr('ls', encoding='ascii', retcode=3)
         txt = bzr('ls', '--null', encoding='ascii', retcode=3)
