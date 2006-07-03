@@ -182,6 +182,7 @@ class SvnWorkingTree(WorkingTree):
                 data = fingerprint_file(open(self.abspath(relpath)))
                 file.text_sha1 = data['sha1']
                 file.text_size = data['size']
+                file.executable = self.is_executable(id, relpath)
                 inv.add(file)
             except IOError:
                 # Ignore non-existing files

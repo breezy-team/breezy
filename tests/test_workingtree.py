@@ -235,6 +235,15 @@ class TestWorkingTree(TestCaseWithSubversionRepository):
         tree = WorkingTree.open("dc")
         self.assertEqual(['.svn', 'bl'], list(tree.extras()))
 
+    def test_executable(self):
+        self.make_client_and_bzrdir('a', 'dc')
+        self.build_tree({"dc/bla": "data"})
+        self.client_add("dc/bla")
+        self.client_set_prop("dc/bla", "svn:executable", "*")
+        tree = WorkingTree.open("dc")
+        inv = tree.read_working_inventory()
+        self.assertTrue(inv[inv.path2id("bla")].executable)
+
     def test_pending_merges(self):
         self.make_client_and_bzrdir('a', 'dc')
         self.build_tree({"dc/bl": None})
