@@ -224,7 +224,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         else:
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
-            if not ie.executable is None:
+            if ie.executable is not None:
                 ie.executable = self.is_executable
 
         self.file_stream = None

@@ -22,6 +22,8 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.tests.repository_implementations.test_repository import TestCaseWithRepository
 from bzrlib.transport.local import LocalTransport
 
+import os
+
 import svn.fs
 
 import format
@@ -297,6 +299,22 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         inv2 = newrepos.get_inventory("svn-v1:2@%s-" % oldrepos.uuid)
         self.assertNotEqual(inv1.path2id("bla"), inv2.path2id("bla"))
 
+    def test_fetch_executable(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bla': "data"})
+        self.client_add("dc/bla")
+        self.client_set_prop("dc/bla", "svn:executable", "*")
+        self.client_commit("dc", "My Message")
+        oldrepos = Repository.open("svn+"+repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision("svn-v1:1@%s-" % oldrepos.uuid))
+        inv1 = newrepos.get_inventory("svn-v1:1@%s-" % oldrepos.uuid)
+        self.assertTrue(inv1[inv1.path2id("bla")].executable)
+
+
+
 
 class TestSvnRevisionTree(TestCaseWithSubversionRepository):
     def setUp(self):
@@ -323,3 +341,15 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
     def test_get_file_lines(self):
         self.assertEqual(["data"], 
                 self.tree.get_file_lines(self.inventory.path2id("foo/bla")))
+
+    def test_executable(self):
+        self.client_set_prop("dc/foo/bla", "svn:executable", "*")
+        self.client_commit("dc", "My Message")
+        
+        inventory = self.repos.get_inventory("svn-v1:2@%s-" % self.repos.uuid)
+
+        self.assertTrue(inventory[inventory.path2id("foo/bla")].executable)
+
+    def test_not_executable(self):
+        self.assertFalse(self.inventory[
+            self.inventory.path2id("foo/bla")].executable)

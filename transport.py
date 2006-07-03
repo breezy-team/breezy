@@ -142,19 +142,19 @@ class SvnRaTransport(Transport):
         """
         return False
 
+    # There is no real way to do locking directly on the transport 
+    # nor is there a need to.
+    class PhonyLock:
+        def unlock(self):
+            pass
+
     def lock_write(self, relpath):
         """See Transport.lock_write()."""
-        raise TransportNotPossible('lock_write not supported on Subversion')
+        return self.PhonyLock()
 
     def lock_read(self, relpath):
         """See Transport.lock_read()."""
-        # There is no real way to do locking directly on the transport 
-        # nor is there a need to.
-        class PhonyLock:
-            def unlock(self):
-                pass
-
-        return PhonyLock()
+        return self.PhonyLock()
 
     def clone(self, offset=None):
         """See Transport.clone()."""
