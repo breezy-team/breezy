@@ -111,4 +111,25 @@ class TestComplexFileids(TestCaseWithSubversionRepository):
         inv2 = repository.get_inventory("svn-v1:2@%s-" % repository.uuid)
         self.assertNotEqual(inv1.path2id("foo"), inv2.path2id("foo"))
 
+    def test_copy_branch(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/trunk/dir/file': "data", 'dc/branches': None})
+        self.client_add("dc/trunk")
+        self.client_add("dc/branches")
+        self.client_commit("dc", "My Message")
+        self.client_copy("dc/trunk", "dc/branches/mybranch")
+        self.client_commit("dc", "Copy branch")
 
+        bzrdir = BzrDir.open("svn+"+repos_url + "/branches/mybranch")
+        repository = bzrdir.open_repository()
+
+        inv1 = repository.get_inventory("svn-v1:1@%s-trunk" % repository.uuid)
+        inv2 = repository.get_inventory("svn-v1:2@%s-branches%%2fmybranch" % 
+                                        repository.uuid)
+        self.assertEqual(inv1.path2id("dir"), inv2.path2id("dir"))
+        self.assertEqual(inv1.path2id("dir/file"), inv2.path2id("dir/file"))
+
+        fileid, revid = repository.path_to_file_id(2, 
+                            "branches/mybranch/dir/file")
+        self.assertEqual(fileid, inv1.path2id("dir/file"))
+        self.assertEqual("svn-v1:1@%s-trunk" % repository.uuid, revid)

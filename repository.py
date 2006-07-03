@@ -109,7 +109,6 @@ class SvnRepository(Repository):
 
         self.uuid = svn.ra.get_uuid(self.ra)
         self.base = transport.base
-        self.fileid_map = {}
         self.path_map = {}
         self.text_cache = {}
         self.dir_cache = {}
@@ -132,16 +131,6 @@ class SvnRepository(Repository):
     def get_inventory(self, revision_id):
         assert revision_id != None
         return self.revision_tree(revision_id).inventory
-
-    def path_from_file_id(self, revision_id, file_id):
-        """Generate a full Subversion path from a bzr file id.
-        
-        :param revision_id: 
-        :param file_id: 
-        :return: Subversion file name relative to the current repository.
-        """
-        # TODO: Do real parsing here
-        return self.fileid_map[(revision_id, file_id)]
 
     def path_to_file_id(self, revnum, path):
         """Generate a bzr file id from a Subversion file name. 
@@ -173,7 +162,9 @@ class SvnRepository(Repository):
             if not expected_path in paths:
                 parent_changed = False
                 for p in paths:
-                    if osutils.is_inside(p, expected_path) and paths[p][0] != 'M':
+                    if (osutils.is_inside(p, expected_path) and 
+                        paths[p][0] != 'M' and 
+                        not self.scheme.is_branch(p)):
                         parent_changed = True
 
                 if parent_changed:
@@ -189,7 +180,6 @@ class SvnRepository(Repository):
                 else:
                     revid = last_changed_revid
                 self.path_map[(revnum, path)] = (file_id, revid)
-                self.fileid_map[(revid, file_id)] = (path, revnum)
                 return self.path_map[(revnum, path)]
 
             if not expected_path in paths:
@@ -213,7 +203,6 @@ class SvnRepository(Repository):
         assert file_id != None
 
         self.path_map[(revnum, path)] = (file_id, last_changed_revid)
-        self.fileid_map[(last_changed_revid, file_id)] = (path, revnum)
         return (file_id, last_changed_revid)
 
     def all_revision_ids(self):
@@ -650,5 +639,4 @@ class SvnRepositoryRenaming(SvnRepository):
         assert file_id != None
 
         self.path_map[revnum, path] = (file_id, last_changed_revid)
-        self.fileid_map[last_changed_revid, file_id] = (path, revnum)
         return (file_id, last_changed_revid)

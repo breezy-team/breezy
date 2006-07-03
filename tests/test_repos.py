@@ -313,7 +313,22 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         inv1 = newrepos.get_inventory("svn-v1:1@%s-" % oldrepos.uuid)
         self.assertTrue(inv1[inv1.path2id("bla")].executable)
 
-
+    def test_fetch_executable_separate(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bla': "data"})
+        self.client_add("dc/bla")
+        self.client_commit("dc", "My Message")
+        self.client_set_prop("dc/bla", "svn:executable", "*")
+        self.client_commit("dc", "Make executable")
+        oldrepos = Repository.open("svn+"+repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision("svn-v1:1@%s-" % oldrepos.uuid))
+        inv1 = newrepos.get_inventory("svn-v1:1@%s-" % oldrepos.uuid)
+        self.assertFalse(inv1[inv1.path2id("bla")].executable)
+        inv2 = newrepos.get_inventory("svn-v1:2@%s-" % oldrepos.uuid)
+        self.assertTrue(inv2[inv2.path2id("bla")].executable)
 
 
 class TestSvnRevisionTree(TestCaseWithSubversionRepository):

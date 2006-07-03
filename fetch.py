@@ -175,7 +175,7 @@ class RevisionBuildEditor(svn.delta.Editor):
 
     def add_file(self, path, parent_id, copyfrom_path, copyfrom_revnum, baton):
         self.is_symlink = False
-        self.is_executable = False
+        self.is_executable = None
         self.file_data = ""
         self.file_parents = []
         self.file_stream = None
@@ -184,8 +184,7 @@ class RevisionBuildEditor(svn.delta.Editor):
     def open_file(self, path, parent_id, base_revnum, pool):
         self.is_executable = None
         file_id, revision_id = self.get_file_id(path, base_revnum)
-        ie = self.inventory[file_id]
-        self.is_symlink = (ie.kind == 'symlink')
+        self.is_symlink = (self.inventory[file_id].kind == 'symlink')
         file_weave = self.weave_store.get_weave_or_empty(file_id, self.transact)
         self.file_data = file_weave.get_text(revision_id)
         self.file_parents = [revision_id]
@@ -224,7 +223,7 @@ class RevisionBuildEditor(svn.delta.Editor):
         else:
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
-            if ie.executable is not None:
+            if self.is_executable is not None:
                 ie.executable = self.is_executable
 
         self.file_stream = None
