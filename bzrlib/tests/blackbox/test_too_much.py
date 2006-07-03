@@ -107,9 +107,6 @@ class TestCommands(ExternalBase):
         self.runbzr('init')
         self.assertEquals(self.capture('unknowns'), '')
 
-        file('foo.tmp', 'wt').write('tmp files are ignored')
-        self.assertEquals(self.capture('unknowns'), '')
-
         file('foo.c', 'wt').write('int main() {}')
         self.assertEquals(self.capture('unknowns'), 'foo.c\n')
 
