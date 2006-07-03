@@ -259,6 +259,10 @@ def _win32_rename(old, new):
     fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
 
 
+def _mac_getcwd():
+    return unicodedata.normalize('NFKC', os.getcwdu())
+
+
 # Default is to just use the python builtins, but these can be rebound on
 # particular platforms.
 abspath = _posix_abspath
@@ -302,6 +306,8 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
+elif sys.platform == 'darwin':
+    getcwd = _mac_getcwd
 
 
 def get_terminal_encoding():

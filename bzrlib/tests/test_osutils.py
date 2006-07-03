@@ -227,6 +227,30 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         self.assertFileEqual('baz\n', 'a')
 
 
+class TestMacFuncsDirs(TestCaseInTempDir):
+    """Test mac special functions that require directories."""
+
+    def test_getcwd(self):
+        # On Mac, this will actually create Ba\u030agfors
+        # but chdir will still work, because it accepts both paths
+        try:
+            os.mkdir(u'B\xe5gfors')
+        except UnicodeError:
+            raise TestSkipped("Unable to create Unicode filename")
+
+        os.chdir(u'B\xe5gfors')
+        self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
+
+    def test_getcwd_nonnorm(self):
+        # Test that _mac_getcwd() will normalize this path
+        try:
+            os.mkdir(u'Ba\u030agfors')
+        except UnicodeError:
+            raise TestSkipped("Unable to create Unicode filename")
+
+        os.chdir(u'Ba\u030agfors')
+        self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
+
 class TestSplitLines(TestCase):
 
     def test_split_unicode(self):
