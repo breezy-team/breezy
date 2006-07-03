@@ -116,16 +116,13 @@ class SvnCommitBuilder(CommitBuilder):
         svn.delta.svn_txdelta_send_string(contents, txdelta, txbaton, self.pool)
 
     def _dir_process(self, path, file_id, baton):
-        mutter('committing changes in %r' % path)
-        mutter("children: %r" % self.new_inventory.entries())
-
+        mutter('processing %r' % path)
         if path == self.branch.branch_path:
             # Set all the revprops
             for prop in self._svnprops:
                 svn.delta.editor_invoke_change_dir_prop(self.editor, baton,
                             prop, self._svnprops[prop], self.pool)
 
-        mutter('old root id %r, new one %r' % (self.old_inv.root.file_id, self.new_inventory.root.file_id))
         # Loop over entries of file_id in self.old_inv
         # remove if they no longer exist with the same name
         # or parents
@@ -145,19 +142,17 @@ class SvnCommitBuilder(CommitBuilder):
                                self.base_revnum, baton, self.pool)
 
         # Loop over file members of file_id in self.new_inventory
-        mutter('root_id: %r' % self.new_inventory.root.file_id)
-        mutter('children: %r' % self.new_inventory[file_id].children)
-        mutter('commit children for %r: %r' % (self.new_inventory.id2path(file_id), self.new_inventory.entries()))
         for child_name in self.new_inventory[file_id].children:
             child_ie = self.new_inventory.get_child(file_id, child_name)
-            assert child_ie
+            assert child_ie is not None
 
             if not (child_ie.kind in ('file', 'symlink')):
                 continue
 
+
             # add them if they didn't exist in old_inv 
             if not child_ie.file_id in self.old_inv:
-                mutter('adding file %r' % self.new_inventory.id2path(child_ie.file_id))
+                mutter('adding %s %r' % (child_ie.kind, self.new_inventory.id2path(child_ie.file_id)))
 
                 child_baton = svn.delta.editor_invoke_add_file(self.editor, 
                            os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)),
@@ -166,8 +161,9 @@ class SvnCommitBuilder(CommitBuilder):
 
             # copy if they existed at different location
             elif self.old_inv.id2path(child_ie.file_id) != self.new_inventory.id2path(child_ie.file_id):
-                mutter('copy file %r -> %r' % (self.old_inv.id2path(child_ie.file_id), 
-                                               self.new_inventory.id2path(child_ie.file_id)))
+                mutter('copy %s %r -> %r' % (child_ie.kind, 
+                                  self.old_inv.id2path(child_ie.file_id), 
+                                  self.new_inventory.id2path(child_ie.file_id)))
 
                 child_baton = svn.delta.editor_invoke_add_file(self.editor, 
                            os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)), baton, 
@@ -176,7 +172,8 @@ class SvnCommitBuilder(CommitBuilder):
 
             # open if they existed at the same location
             elif child_ie.file_id in self.modified_files:
-                mutter('open file %r' % path)
+                mutter('open %s %r' % (child_ie.kind, 
+                                 self.new_inventory.id2path(child_ie.file_id)))
 
                 child_baton = svn.delta.editor_invoke_open_file(self.editor,
                         os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)), 
@@ -190,7 +187,7 @@ class SvnCommitBuilder(CommitBuilder):
                 self._file_process(child_ie.file_id, self.modified_files[child_ie.file_id], 
                                    child_baton)
 
-            if child_baton:
+            if child_baton is not None:
                 svn.delta.editor_invoke_close_file(self.editor, child_baton, None, self.pool)
 
         # Loop over subdirectories of file_id in self.new_inventory
@@ -205,7 +202,7 @@ class SvnCommitBuilder(CommitBuilder):
                 child_baton = svn.delta.editor_invoke_add_directory(
                            self.editor, 
                            os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)),
-                           baton, None, self.base_revnum, self.pool)
+                           baton, None, -1, self.pool)
 
             # copy if they existed at different location
             elif self.old_inv.id2path(child_ie.file_id) != self.new_inventory.id2path(child_ie.file_id):
@@ -218,13 +215,16 @@ class SvnCommitBuilder(CommitBuilder):
                            "%s/%s" % (self.branch.base, self.old_inv.id2path(child_ie.file_id)),
                            self.base_revnum, self.pool)
 
-            # open if they existed at the same location
-            else:
+            # open if they existed at the same location and 
+            # the directory was touched
+            elif self.new_inventory[child_ie.file_id].revision is None:
                 mutter('open dir %r' % self.new_inventory.id2path(child_ie.file_id))
 
                 child_baton = svn.delta.editor_invoke_open_directory(self.editor, 
                         os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)), 
                         baton, self.base_revnum, self.pool)
+            else:
+                continue
 
             # Handle this directory
             if child_ie.file_id in self.modified_dirs:
@@ -233,6 +233,19 @@ class SvnCommitBuilder(CommitBuilder):
 
             svn.delta.editor_invoke_close_directory(self.editor, child_baton, 
                                              self.pool)
+
+    def open_branch_batons(self, root, elements):
+        ret = [root]
+
+        mutter('opening branch %r' % elements)
+
+        for el in elements:
+            if el == "":
+                continue
+            ret.append(svn.delta.editor_invoke_open_directory(self.editor, 
+                    el, ret[-1], self.base_revnum, self.pool))
+
+        return ret
 
     def commit(self, message):
         def done(revision, date, author):
@@ -255,20 +268,15 @@ class SvnCommitBuilder(CommitBuilder):
         root = svn.delta.editor_invoke_open_root(self.editor, editor_baton, 
                                                  self.base_revnum)
         
-        if self.branch.branch_path == "":
-            branch_baton = root
-        else:
-            branch_baton = svn.delta.editor_invoke_open_directory(self.editor, 
-                    self.branch.branch_path, root, self.base_revnum, self.pool)
+        branch_batons = self.open_branch_batons(root,
+                                self.branch.branch_path.split("/"))
 
-        self._dir_process("", self.new_inventory.root.file_id, branch_baton)
+        self._dir_process("", self.new_inventory.root.file_id, branch_batons[-1])
 
-        if self.branch.branch_path != "":
-            svn.delta.editor_invoke_close_directory(self.editor, branch_baton, 
+        branch_batons.reverse()
+        for baton in branch_batons:
+            svn.delta.editor_invoke_close_directory(self.editor, baton, 
                                              self.pool)
-
-
-        svn.delta.editor_invoke_close_directory(self.editor, root, self.pool)
 
         svn.delta.editor_invoke_close_edit(self.editor, editor_baton)
 
