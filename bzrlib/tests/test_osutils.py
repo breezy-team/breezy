@@ -226,6 +226,36 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         self.failIfExists('b')
         self.assertFileEqual('baz\n', 'a')
 
+    def test_rename_missing_file(self):
+        a = open('a', 'wb')
+        a.write('foo\n')
+        a.close()
+
+        try:
+            osutils._win32_rename('b', 'a')
+        except (IOError, OSError), e:
+            self.assertEqual(errno.ENOENT, e.errno)
+        self.assertFileEqual('foo\n', 'a')
+
+    def test_rename_missing_dir(self):
+        os.mkdir('a')
+        try:
+            osutils._win32_rename('b', 'a')
+        except (IOError, OSError), e:
+            self.assertEqual(errno.ENOENT, e.errno)
+
+    def test_rename_current_dir(self):
+        os.mkdir('a')
+        os.chdir('a')
+        # You can't rename the working directory
+        # doing rename non-existant . usually
+        # just raises ENOENT, since non-existant
+        # doesn't exist.
+        try:
+            osutils._win32_rename('b', '.')
+        except (IOError, OSError), e:
+            self.assertEqual(errno.ENOENT, e.errno)
+
 
 class TestSplitLines(TestCase):
 

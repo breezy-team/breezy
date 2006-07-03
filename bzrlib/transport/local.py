@@ -172,17 +172,22 @@ class LocalTransport(Transport):
     def append(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final location."""
         abspath = self._abspath(relpath)
+        fp = None
         try:
-            fp = open(abspath, 'ab')
-            # FIXME should we really be chmodding every time ? RBC 20060523
-            if mode is not None:
-                os.chmod(abspath, mode)
-        except (IOError, OSError),e:
-            self._translate_error(e, relpath)
-        # win32 workaround (tell on an unwritten file returns 0)
-        fp.seek(0, 2)
-        result = fp.tell()
-        self._pump(f, fp)
+            try:
+                fp = open(abspath, 'ab')
+                # FIXME should we really be chmodding every time ? RBC 20060523
+                if mode is not None:
+                    os.chmod(abspath, mode)
+            except (IOError, OSError),e:
+                self._translate_error(e, relpath)
+            # win32 workaround (tell on an unwritten file returns 0)
+            fp.seek(0, 2)
+            result = fp.tell()
+            self._pump(f, fp)
+        finally:
+            if fp is not None:
+                fp.close()
         return result
 
     def copy(self, rel_from, rel_to):
