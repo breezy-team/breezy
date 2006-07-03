@@ -1796,19 +1796,18 @@ class cmd_whoami(Command):
         if name is None:
             # use branch if we're inside one; otherwise global config
             try:
-                c = WorkingTree.open_containing(u'.')[0].branch.get_config()
+                c = Branch.open_containing('.')[0].get_config()
             except NotBranchError:
                 c = config.GlobalConfig()
             if email:
-                self.outf.write(c.user_email())
+                self.outf.write(c.user_email() + '\n')
             else:
-                self.outf.write(c.username())
-            self.outf.write('\n')
+                self.outf.write(c.username() + '\n')
             return
 
         # use global config unless --branch given
         if branch:
-            c = WorkingTree.open_containing(u'.')[0].branch.get_config()
+            c = Branch.open_containing('.')[0].get_config()
         else:
             c = config.GlobalConfig()
         c.set_user_option('email', name)
