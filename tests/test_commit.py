@@ -100,3 +100,39 @@ class TestCommitFromBazaar(TestCaseWithSubversionRepository):
         wt.add('bla')
         wt.commit(message='commit from Bazaar')
         self.assertNotEqual(None, wt.branch.last_revision())
+
+    def test_commit_executable(self):
+        wt = self.checkout.create_workingtree()
+        self.build_tree({'dc/bla': "data"})
+        wt.add('bla')
+        os.chmod(os.path.join(self.test_dir, 'dc', 'bla'), 0755)
+        wt.commit(message='commit from Bazaar')
+
+        inv = wt.branch.repository.get_inventory(wt.branch.last_revision())
+        self.assertTrue(inv[inv.path2id("bla")].executable)
+
+    def test_commit_remove_executable(self):
+        wt = self.checkout.create_workingtree()
+        self.build_tree({'dc/bla': "data"})
+        wt.add('bla')
+        os.chmod(os.path.join(self.test_dir, 'dc', 'bla'), 0755)
+        wt.commit(message='commit from Bazaar')
+
+        os.chmod(os.path.join(self.test_dir, 'dc', 'bla'), 0644)
+        wt.commit(message='remove executable')
+
+        inv = wt.branch.repository.get_inventory(wt.branch.last_revision())
+        self.assertFalse(inv[inv.path2id("bla")].executable)
+
+    def test_commit_parents(self):
+        wt = self.checkout.create_workingtree()
+        self.build_tree({'dc/foo/bla': "data"})
+        wt.add('foo')
+        wt.add('foo/bla')
+        wt.set_pending_merges(["some-ghost-revision"])
+        wt.commit(message="data")
+        self.assertEqual(["some-ghost-revision"],
+                         wt.branch.repository.revision_parents(
+                             wt.branch.last_revision()))
+        self.assertEqual("some-ghost-revision\n", 
+                self.client_get_prop(self.repos_url, "bzr:merge", 1))

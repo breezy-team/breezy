@@ -17,7 +17,7 @@
 from binascii import hexlify
 from bzrlib.bzrdir import BzrDirFormat, BzrDir
 from bzrlib.delta import compare_trees
-from bzrlib.errors import NotBranchError, NoSuchFile
+from bzrlib.errors import NotBranchError, NoSuchFile, InvalidRevisionId
 from bzrlib.inventory import (Inventory, InventoryDirectory, InventoryFile, 
                               ROOT_ID)
 from bzrlib.lockable_files import TransportLock, LockableFiles
@@ -30,7 +30,8 @@ from bzrlib.tree import EmptyTree
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
-from repository import SvnRepository, escape_svn_path, SVN_PROP_BZR_MERGE
+from repository import (SvnRepository, escape_svn_path, SVN_PROP_BZR_MERGE,
+                        SVN_PROP_SVK_MERGE, revision_id_to_svk_feature)
 from scheme import BranchingScheme
 from transport import (SvnRaTransport, svn_config, 
                        svn_to_bzr_url) 
@@ -400,26 +401,29 @@ class SvnWorkingTree(WorkingTree):
                                             SVN_PROP_SVK_MERGE, "")
 
     def set_pending_merges(self, merges):
-        # Set bzr:merge
-        bzr_merge = self._get_bzr_merges()
-        if len(merges) > 0:
-            bzr_merge += "\t".join(merges) + "\n"
+        wc = self._get_wc(write_lock=True)
+        try:
+            # Set bzr:merge
+            if len(merges) > 0:
+                bzr_merge = "\t".join(merges) + "\n"
+            else:
+                bzr_merge = ""
 
-        # Set svk:merge
-        svk_merge = self._get_svk_merges()
-        if len(merges) > 0:
+            svn.wc.prop_set(SVN_PROP_BZR_MERGE, 
+                                 self._get_bzr_merges() + bzr_merge, 
+                                 self.basedir, wc)
+
+            # Set svk:merge
+            svk_merge = ""
             for merge in merges:
                 try:
                     svk_merge += revision_id_to_svk_feature(merge) + "\n"
                 except InvalidRevisionId:
                     pass
 
-        wc = self._get_wc(write_lock=True)
-        try:
-            svn.wc.prop_set2(SVN_PROP_BZR_MERGE, bzr_merge, self.basedir, wc, 
-                             False)
-            svn.wc.prop_set2(SVN_PROP_SVK_MERGE, svk_merge, self.basedir, wc, 
-                             False)
+            svn.wc.prop_set2(SVN_PROP_SVK_MERGE, 
+                             self._get_svk_merges() + svk_merge, self.basedir, 
+                             wc, False)
         finally:
             svn.wc.adm_close(wc)
 

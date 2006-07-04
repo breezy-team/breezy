@@ -19,7 +19,7 @@ import svn.ra
 from svn.core import Pool, SubversionException
 
 from bzrlib.delta import compare_trees
-from bzrlib.errors import UnsupportedOperation, BzrError
+from bzrlib.errors import UnsupportedOperation, BzrError, InvalidRevisionId
 from bzrlib.inventory import Inventory
 import bzrlib.osutils as osutils
 from bzrlib.repository import CommitBuilder
@@ -51,26 +51,33 @@ class SvnCommitBuilder(CommitBuilder):
         for prop in self._revprops:
             self._svnprops[SVN_PROP_BZR_REVPROP_PREFIX+prop] = self._revprops[prop]
 
-        if len(parents) > 1:
+        self.merges = filter(lambda x: x != self.branch.last_revision(),
+                             parents)
+
+        if len(self.merges) > 0:
             # Bazaar Parents
-            (bp, revnum) = repository.parse_revision_id(branch.last_revision())
-            old = repository.get_dir_prop(revnum, bp, SVN_PROP_BZR_MERGE)
-            self._svnprops[SVN_PROP_BZR_MERGE] = old + "\n" + "\t".join(parents)
+            if branch.last_revision():
+                (bp, revnum) = repository.parse_revision_id(branch.last_revision())
+                old = repository.get_dir_prop(revnum, bp, SVN_PROP_BZR_MERGE, "")
+            else:
+                old = ""
+            self._svnprops[SVN_PROP_BZR_MERGE] = old + "\t".join(self.merges) + "\n"
 
-            old = repository.get_dir_prop(revnum, bp, SVN_PROP_SVK_MERGE)
-            new = old
+            if branch.last_revision() is not None:
+                old = repository.get_dir_prop(revnum, bp, SVN_PROP_SVK_MERGE)
+            else:
+                old = ""
+
+            new = ""
             # SVK compatibility
-            for p in parents:
-                if p == branch.last_revision():
-                    continue
-
+            for p in self.merges:
                 try:
                     new += "%s\n" % revision_id_to_svk_feature(p)
-                except NoSuchRevision:
+                except InvalidRevisionId:
                     pass
 
-            if old != new:
-                self._svnprops[SVN_PROP_SVK_MERGE] = new
+            if new != "":
+                self._svnprops[SVN_PROP_SVK_MERGE] = old + new
 
         # At least one of the parents has to be the last revision on the 
         # mainline in # Subversion.
@@ -119,9 +126,12 @@ class SvnCommitBuilder(CommitBuilder):
         mutter('processing %r' % path)
         if path == self.branch.branch_path:
             # Set all the revprops
-            for prop in self._svnprops:
+            for prop, value in self._svnprops.items():
+                mutter('setting %r: %r on branch' % (prop, value))
+                if value is not None:
+                    value = value.encode('utf-8')
                 svn.delta.editor_invoke_change_dir_prop(self.editor, baton,
-                            prop, self._svnprops[prop], self.pool)
+                            prop, value, self.pool)
 
         # Loop over entries of file_id in self.old_inv
         # remove if they no longer exist with the same name
@@ -149,7 +159,6 @@ class SvnCommitBuilder(CommitBuilder):
             if not (child_ie.kind in ('file', 'symlink')):
                 continue
 
-
             # add them if they didn't exist in old_inv 
             if not child_ie.file_id in self.old_inv:
                 mutter('adding %s %r' % (child_ie.kind, self.new_inventory.id2path(child_ie.file_id)))
@@ -171,7 +180,7 @@ class SvnCommitBuilder(CommitBuilder):
                            self.base_revnum, self.pool)
 
             # open if they existed at the same location
-            elif child_ie.file_id in self.modified_files:
+            elif child_ie.revision is None:
                 mutter('open %s %r' % (child_ie.kind, 
                                  self.new_inventory.id2path(child_ie.file_id)))
 
@@ -179,8 +188,32 @@ class SvnCommitBuilder(CommitBuilder):
                         os.path.join(self.branch.branch_path, self.new_inventory.id2path(child_ie.file_id)), 
                         baton, self.base_revnum, self.pool)
 
+
             else:
                 child_baton = None
+
+            if child_ie.file_id in self.old_inv:
+                old_executable = self.old_inv[self.old_inv.id2path(child_ie.file_id)].executable
+                old_special = (self.old_inv[self.old_inv.id2path(child_ie.file_id)].kind == 'symlink')
+            else:
+                old_special = False
+                old_executable = False
+
+            if child_baton is not None:
+                if old_executable != child_ie.executable:
+                    if child_ie.executable:
+                        value = svn.core.SVN_PROP_EXECUTABLE_VALUE
+                    else:
+                        value = None
+                    svn.delta.editor_invoke_change_file_prop(self.editor, child_baton, svn.core.SVN_PROP_EXECUTABLE, value, self.pool)
+
+                if old_special != (child_ie.kind == 'symlink'):
+                    if child_ie.kind == 'symlink':
+                        value = svn.core.SVN_PROP_SPECIAL_VALUE
+                    else:
+                        value = None
+
+                    svn.delta.editor_invoke_change_file_prop(self.editor, child_baton, svn.core.SVN_PROP_SPECIAL, value, self.pool)
 
             # handle the file
             if child_ie.file_id in self.modified_files:

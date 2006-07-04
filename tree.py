@@ -130,12 +130,10 @@ class TreeBuildEditor(svn.delta.Editor):
             mutter('unsupported dir property %r' % name)
 
     def change_file_prop(self, id, name, value, pool):
-        if (name == svn.core.SVN_PROP_EXECUTABLE and 
-            value == svn.core.SVN_PROP_EXECUTABLE_VALUE):
-            self.is_executable = True
-        elif (name == svn.core.SVN_PROP_SPECIAL and 
-            value == svn.core.SVN_PROP_SPECIAL_VALUE):
-            self.is_symlink = True
+        if name == svn.core.SVN_PROP_EXECUTABLE:
+            self.is_executable = (value == svn.core.SVN_PROP_EXECUTABLE_VALUE)
+        elif name == svn.core.SVN_PROP_SPECIAL:
+            self.is_symlink = (value == svn.core.SVN_PROP_SPECIAL_VALUE)
         elif name == svn.core.SVN_PROP_ENTRY_COMMITTED_REV:
             self.last_file_rev = int(value)
         elif name in (svn.core.SVN_PROP_ENTRY_COMMITTED_DATE,

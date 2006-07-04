@@ -20,6 +20,7 @@ import bzrlib
 from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseInTempDir
+from bzrlib.trace import mutter
 
 RENAMES = False
 
@@ -80,6 +81,8 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
                 rev, rev, True, False, self.client_ctx)
 
     def client_set_prop(self, path, name, value):
+        if value is None:
+            value = ""
         svn.client.propset2(name, value, path, False, True, self.client_ctx)
 
     def client_get_prop(self, path, name, revnum=None, recursive=False):

@@ -29,7 +29,6 @@ import svn.core
 # explicitly initialized
 svn.ra.initialize()
 
-
 svn_config = svn.core.svn_config_get_config(None)
 
 
