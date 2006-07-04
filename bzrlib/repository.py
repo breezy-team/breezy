@@ -466,8 +466,14 @@ class Repository(object):
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
         
+        :param revision_id: The revision_id to get a graph from. If None, then
+        the entire revision graph is returned. This is a deprecated mode of
+        operation and will be removed in the future.
         :return: a dictionary of revision_id->revision_parents_list.
         """
+        # special case NULL_REVISION
+        if revision_id == NULL_REVISION:
+            return {}
         weave = self.get_inventory_weave()
         all_revisions = self._eliminate_revisions_not_present(weave.versions())
         entire_graph = dict([(node, weave.get_parents(node)) for 
@@ -501,7 +507,10 @@ class Repository(object):
             required = set([])
         else:
             pending = set(revision_ids)
-            required = set(revision_ids)
+            # special case NULL_REVISION
+            if NULL_REVISION in pending:
+                pending.remove(NULL_REVISION)
+            required = set(pending)
         done = set([])
         while len(pending):
             revision_id = pending.pop()
@@ -873,9 +882,15 @@ class KnitRepository(MetaDirRepository):
     @needs_read_lock
     def get_revision_graph(self, revision_id=None):
         """Return a dictionary containing the revision graph.
-        
+
+        :param revision_id: The revision_id to get a graph from. If None, then
+        the entire revision graph is returned. This is a deprecated mode of
+        operation and will be removed in the future.
         :return: a dictionary of revision_id->revision_parents_list.
         """
+        # special case NULL_REVISION
+        if revision_id == NULL_REVISION:
+            return {}
         weave = self._get_revision_vf()
         entire_graph = weave.get_graph()
         if revision_id is None:
@@ -909,7 +924,10 @@ class KnitRepository(MetaDirRepository):
             required = set([])
         else:
             pending = set(revision_ids)
-            required = set(revision_ids)
+            # special case NULL_REVISION
+            if NULL_REVISION in pending:
+                pending.remove(NULL_REVISION)
+            required = set(pending)
         done = set([])
         while len(pending):
             revision_id = pending.pop()
