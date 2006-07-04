@@ -121,13 +121,43 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         self.build_tree({'dc/foo': "data3"})
         self.client_commit("dc", "Third Message")
         repository = Repository.open("svn+%s" % repos_url)
-        self.assertEqual([None, "svn-v1:1@%s-" % repository.uuid, "svn-v1:2@%s-" % repository.uuid],
+        self.assertEqual([None, "svn-v1:1@%s-" % repository.uuid, 
+                         "svn-v1:2@%s-" % repository.uuid],
                 repository.get_ancestry("svn-v1:3@%s-" % repository.uuid))
         self.assertEqual([None, "svn-v1:1@%s-" % repository.uuid], 
                 repository.get_ancestry("svn-v1:2@%s-" % repository.uuid))
         self.assertEqual([None],
                 repository.get_ancestry("svn-v1:1@%s-" % repository.uuid))
         self.assertEqual([None], repository.get_ancestry(None))
+
+    def test_get_ancestry2(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/foo': "data2"})
+        self.client_commit("dc", "Second Message")
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertEqual([None],
+                repository.get_ancestry("svn-v1:1@%s-" % repository.uuid))
+        self.assertEqual([None, "svn-v1:1@%s-" % repository.uuid], 
+                repository.get_ancestry("svn-v1:2@%s-" % repository.uuid))
+
+    def test_get_ancestry_merged(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.client_set_prop("dc", "bzr:merge", "a-parent\n")
+        self.build_tree({'dc/foo': "data2"})
+        self.client_commit("dc", "Second Message")
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertEqual([None],
+                repository.get_ancestry("svn-v1:1@%s-" % repository.uuid))
+        self.assertEqual([None, "svn-v1:1@%s-" % repository.uuid, 
+                          "a-parent"], 
+                repository.get_ancestry("svn-v1:2@%s-" % repository.uuid))
+
 
     def test_get_inventory(self):
         repos_url = self.make_client('d', 'dc')

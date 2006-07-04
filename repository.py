@@ -275,23 +275,29 @@ class SvnRepository(Repository):
         return False
 
     def get_ancestry(self, revision_id):
-        """See Repository.get_ancestry()."""
+        """See Repository.get_ancestry().
+        
+        Note: only the first bit is topologically ordered!
+        """
         if revision_id is None: 
             return [None]
 
         (path, revnum) = self.parse_revision_id(revision_id)
 
-        self._ancestry = []
+        ancestry = []
 
-        # TODO: Parse bzr:merged as well
+        for l in self._get_dir_prop(path, revnum, 
+                                    SVN_PROP_BZR_MERGE, "").splitlines():
+            ancestry.extend(l.split("\n"))
+
         for (branch, paths, rev, _, _, _) in self._log.get_branch_log(path, revnum - 1, 0):
-            self._ancestry.append(self.generate_revision_id(rev, branch))
+            ancestry.append(self.generate_revision_id(rev, branch))
 
-        self._ancestry.append(None)
+        ancestry.append(None)
 
-        self._ancestry.reverse()
+        ancestry.reverse()
 
-        return self._ancestry
+        return ancestry
 
     def has_revision(self, revision_id):
         try:
