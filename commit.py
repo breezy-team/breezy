@@ -58,13 +58,13 @@ class SvnCommitBuilder(CommitBuilder):
             # Bazaar Parents
             if branch.last_revision():
                 (bp, revnum) = repository.parse_revision_id(branch.last_revision())
-                old = repository.get_dir_prop(revnum, bp, SVN_PROP_BZR_MERGE, "")
+                old = repository._get_dir_prop(bp, revnum, SVN_PROP_BZR_MERGE, "")
             else:
                 old = ""
             self._svnprops[SVN_PROP_BZR_MERGE] = old + "\t".join(self.merges) + "\n"
 
             if branch.last_revision() is not None:
-                old = repository.get_dir_prop(revnum, bp, SVN_PROP_SVK_MERGE)
+                old = repository._get_dir_prop(bp, revnum, SVN_PROP_SVK_MERGE)
             else:
                 old = ""
 

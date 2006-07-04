@@ -17,6 +17,7 @@
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 from bzrlib.delta import compare_trees
+from bzrlib.errors import DivergedBranches
 from bzrlib.inventory import Inventory
 from bzrlib.workingtree import WorkingTree
 
@@ -26,23 +27,6 @@ import checkout
 from tests import TestCaseWithSubversionRepository
 
 class TestNativeCommit(TestCaseWithSubversionRepository):
-    def test_push(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/foo/bla': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "foo")
-
-    def test_push_diverged(self):
-        repos_url = self.make_client('d', 'dc')
-        self.build_tree({'dc/foo/bla': "data"})
-        self.client_add("dc/foo")
-        self.client_commit("dc", "rev1 log")
-
-        branch = BzrDir.create_branch_convenience("br")
-
-        self.build_tree({'dc/foo/bla': "data2"})
-        self.client_commit("dc", "rev2 log")
-
     def test_simple_commit(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo/bla': "data"})
@@ -71,6 +55,16 @@ class TestNativeCommit(TestCaseWithSubversionRepository):
                             wt.branch.last_revision())
         self.assertEqual(wt.branch.last_revision(), new_revision.revision_id)
         self.assertEqual("data", new_revision.message)
+
+    def test_commit_update(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/foo/bla': "data"})
+        self.client_add("dc/foo")
+        wt = WorkingTree.open("dc")
+        wt.set_pending_merges(["some-ghost-revision"])
+        wt.commit(message="data")
+        self.assertEqual('svn-v1:1@%s-' % wt.branch.repository.uuid, 
+                         wt.branch.last_revision())
 
     def test_commit_parents(self):
         repos_url = self.make_client('d', 'dc')
@@ -148,3 +142,88 @@ class TestCommitFromBazaar(TestCaseWithSubversionRepository):
                              wt.branch.last_revision()))
         self.assertEqual("some-ghost-revision\n", 
                 self.client_get_prop(self.repos_url, "bzr:merge", 1))
+
+class TestPush(TestCaseWithSubversionRepository):
+    def setUp(self):
+        super(TestPush, self).setUp()
+        self.repos_url = self.make_client('d', 'sc')
+
+        self.build_tree({'sc/foo/bla': "data"})
+        self.client_add("sc/foo")
+        self.client_commit("sc", "foo")
+
+        self.olddir = BzrDir.open("sc")
+        os.mkdir("dc")
+        self.newdir = self.olddir.sprout("dc")
+
+    def test_empty(self):
+        self.assertEqual(0, self.olddir.open_branch().pull(
+                                self.newdir.open_branch()))
+
+    def test_child(self):
+        self.build_tree({'sc/foo/bar': "data"})
+        self.client_add("sc/foo/bar")
+        self.client_commit("sc", "second message")
+
+        self.assertEqual(0, self.olddir.open_branch().pull(
+                                self.newdir.open_branch()))
+
+    def test_diverged(self):
+        self.build_tree({'sc/foo/bar': "data"})
+        self.client_add("sc/foo/bar")
+        self.client_commit("sc", "second message")
+
+        olddir = BzrDir.open("sc")
+
+        self.build_tree({'dc/file': 'data'})
+        wt = self.newdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")
+
+        self.assertRaises(DivergedBranches, 
+                          olddir.open_branch().pull,
+                          self.newdir.open_branch())
+
+    def test_simple(self):
+        self.build_tree({'dc/file': 'data'})
+        wt = self.newdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")
+
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+
+        repos = self.olddir.open_repository()
+        inv = repos.get_inventory("svn-v1:2@%s-" % repos.uuid)
+        self.assertTrue(inv.has_filename('file'))
+        self.assertTrue(wt.branch.last_revision() in 
+                         repos.revision_parents("svn-v1:2@%s-" % repos.uuid))
+        self.assertEqual("svn-v1:2@%s-" % repos.uuid, 
+                        self.olddir.open_branch().last_revision())
+
+    def test_multiple(self):
+        self.build_tree({'dc/file': 'data'})
+        wt = self.newdir.open_workingtree()
+        wt.add('file')
+        wt.commit(message="Commit from Bzr")
+
+        self.build_tree({'dc/file': 'data2', 'dc/adir': None})
+        wt.add('adir')
+        wt.commit(message="Another commit from Bzr")
+
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+
+        repos = self.olddir.open_repository()
+
+        self.assertEqual("svn-v1:3@%s-" % repos.uuid, 
+                        self.olddir.open_branch().last_revision())
+
+        inv = repos.get_inventory("svn-v1:2@%s-" % repos.uuid)
+        self.assertTrue(inv.has_filename('file'))
+        self.assertFalse(inv.has_filename('adir'))
+
+        inv = repos.get_inventory("svn-v1:3@%s-" % repos.uuid)
+        self.assertTrue(inv.has_filename('file'))
+        self.assertTrue(inv.has_filename('adir'))
+
+        self.assertTrue(wt.branch.last_revision() in 
+                        repos.get_ancestry("svn-v1:3@%s-" % repos.uuid))

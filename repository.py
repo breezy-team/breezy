@@ -555,6 +555,13 @@ class SvnRepository(Repository):
         return props
 
     def _get_dir_prop(self, path, revnum, name, default=None):
+        """Get the Subversion property on a directory.
+
+        Uses the cache.
+        """
+        assert isinstance(revnum, int)
+        assert isinstance(path, basestring)
+
         (props, _) = self._cache_get_dir(path, revnum)
         if props.has_key(name):
             return props[name]

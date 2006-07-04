@@ -60,7 +60,7 @@ class SvnBranch(Branch):
         self.control_files = FakeControlFiles()
         self.base = base.rstrip("/")
         self._format = SvnBranchFormat()
-        mutter("Connected to branch at %s" % self.branch_path)
+        mutter("Connected to branch at %r" % self.branch_path)
         self._generate_revision_history(self.repository._latest_revnum)
 
     def check(self):
@@ -114,6 +114,7 @@ class SvnBranch(Branch):
             except DivergedBranches:
                 if overwrite:
                     raise BzrError('overwrite not supported for Subversion branches')
+                raise
             new_count = len(self.revision_history())
             return new_count - old_count
         finally:
@@ -146,26 +147,9 @@ class SvnBranch(Branch):
             # FIXME: svn.ra.copy_dir(other.base_path, self.base_path)
             raise NotImplementedError(self.pull)
         else:
-            if stop_revision is None:
-                stop_revision = other.last_revision()
-                if stop_revision is None:
-                    return
-
-            last_rev = self.last_revision()
-
-            my_ancestry = self.repository.get_ancestry(last_rev)
-            if stop_revision in my_ancestry:
-                # last_revision is a descendant of stop_revision
-                return
-
-            stop_graph = other.repository.get_revision_graph(stop_revision)
-            if last_rev is not None and last_rev not in stop_graph:
-                raise DivergedBranches(self, other)
-
-            for rev_id in other.revision_history():
-                if rev_id not in self.revision_history():
-                    mutter('integration %r' % rev_id)
-                    push_as_merged(self, other, rev_id)
+            for rev_id in self.missing_revisions(other, stop_revision):
+                mutter('pushing %r to Svn branch' % rev_id)
+                push_as_merged(self, other, rev_id)
 
     # The remote server handles all this for us
     def lock_write(self):

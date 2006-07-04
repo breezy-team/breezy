@@ -14,12 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import svn.core, svn.client
-import format
-from tests import TestCaseWithSubversionRepository
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirTestProviderAdapter, BzrDirFormat
 from bzrlib.repository import Repository
+
+import os
+
+import svn.core, svn.client
+
+import format
+from tests import TestCaseWithSubversionRepository
 
 class WorkingSubversionBranch(TestCaseWithSubversionRepository):
     def test_num_revnums(self):
@@ -83,3 +87,19 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
 
         self.assertIs(None, branch.nick)
  
+    def test_fetch_branch(self):
+        repos_url = self.make_client('d', 'sc')
+
+        self.build_tree({'sc/foo/bla': "data"})
+        self.client_add("sc/foo")
+        self.client_commit("sc", "foo")
+
+        olddir = BzrDir.open("sc")
+
+        os.mkdir("dc")
+        
+        newdir = olddir.sprout('dc')
+
+        self.assertEqual(
+                olddir.open_branch().last_revision(),
+                newdir.open_branch().last_revision())
