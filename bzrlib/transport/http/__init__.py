@@ -272,7 +272,7 @@ class HttpTransportBase(Transport):
         elif response.code == 404:
             raise NoSuchFile(path)
 
-        raise TransportError("HTTP couldn't handle code %s" % response.code)
+        raise HttpError("Unknown response code!", response)
 
     def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
