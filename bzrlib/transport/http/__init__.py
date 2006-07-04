@@ -35,7 +35,8 @@ import BaseHTTPServer, SimpleHTTPServer, socket, time
 import threading
 
 from bzrlib.errors import (TransportNotPossible, NoSuchFile,
-                           TransportError, ConnectionError, InvalidURL)
+                           TransportError, ConnectionError, InvalidURL,
+                           BzrNewError)
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, register_transport, Server
@@ -72,6 +73,35 @@ def extract_auth(url, password_manager):
         password_manager.add_password(None, host, username, password)
     url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
     return url
+
+
+class HttpError(BzrNewError):
+    """Error during HTTP operation: %(message)s
+  Code: %(code)s
+  Headers: %(header_string)s"""
+
+    def __init__(self, message, response):
+        BzrNewError.__init__(self)
+        self.message = message
+        if hasattr(response, 'code'):
+            self.code = response.code
+        else:
+            self.code = None
+
+        if hasattr(response, 'headers'):
+            self.header_string = ''
+            for key in response.headers:
+                self.header_string += "\n    %s: %s" % (key,
+                        response.headers[key])
+        else:
+            self.header_string = None
+
+        try:
+            f = open(os.path.expanduser('~/.bzr.http-dump'), 'w')
+            f.write(response.read())
+            f.close()
+        except Exception:
+            pass
 
 
 class HttpTransportBase(Transport):
