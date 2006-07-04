@@ -5,7 +5,8 @@
 later:
 - move get_file()/get_dir()/stat() calls to SvnRaTransport
 - add get_dir_revs() to subversion and use it for getting 
-  bzr revision properties
+  bzr revision properties (N -> 1 roundtrips for fetching 
+						   revision parents and properties)
 - use svn_ra_replay() instead of individual checkouts 
   if subversion 1.4 is available
 - custom implementation of Repository.get_revision_delta() to speed 
@@ -14,3 +15,4 @@ later:
 - save/retrieve GPG signatures
 - store inventory in 'bzr:inventory' revision property and revision id in 
   'bzr:revision-id'?
+- profiling

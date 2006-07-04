@@ -139,7 +139,7 @@ class RevisionBuildEditor(svn.delta.Editor):
                 mutter('rogue %r on non-root directory' % SVN_PROP_BZR_MERGE)
                 return
 
-            self._parent_ids = value
+            self._parent_ids = value.split("\n")[-1]
         elif name == SVN_PROP_SVK_MERGE:
             if self._parent_ids is None:
                 # Only set parents using svk:merge if no 

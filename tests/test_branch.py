@@ -103,3 +103,23 @@ class WorkingSubversionBranch(TestCaseWithSubversionRepository):
         self.assertEqual(
                 olddir.open_branch().last_revision(),
                 newdir.open_branch().last_revision())
+
+    def test_ghost_workingtree(self):
+        # Looks like bazaar has trouble creating a working tree of a 
+        # revision that has ghost parents
+        repos_url = self.make_client('d', 'sc')
+
+        self.build_tree({'sc/foo/bla': "data"})
+        self.client_add("sc/foo")
+        self.client_set_prop("sc", "bzr:merge", "some-ghost\n")
+        self.client_commit("sc", "foo")
+
+        olddir = BzrDir.open("sc")
+
+        os.mkdir("dc")
+        
+        newdir = olddir.sprout('dc')
+        newdir.open_repository().get_revision(
+                newdir.open_branch().last_revision())
+        newdir.open_repository().get_revision_inventory(
+                newdir.open_branch().last_revision())
