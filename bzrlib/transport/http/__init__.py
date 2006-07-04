@@ -246,7 +246,11 @@ class HttpTransportBase(Transport):
         This is a factory method which returns an appropriate HTTP response
         based on the code & headers it's given.
         """
-        content_type = response.headers['Content-Type']
+        try:
+            content_type = response.headers['Content-Type']
+        except KeyError:
+            raise HttpError('No "Content-Type" header in response', response)
+
         mutter('handling response code %s ctype %s', response.code,
             content_type)
 
