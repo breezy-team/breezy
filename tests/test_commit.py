@@ -184,6 +184,22 @@ class TestPush(TestCaseWithSubversionRepository):
                           olddir.open_branch().pull,
                           self.newdir.open_branch())
 
+    def test_change(self):
+        self.build_tree({'dc/foo/bla': 'other data'})
+        wt = self.newdir.open_workingtree()
+        wt.commit(message="Commit from Bzr")
+
+        self.olddir.open_branch().pull(self.newdir.open_branch())
+
+        repos = self.olddir.open_repository()
+        inv = repos.get_inventory("svn-v1:2@%s-" % repos.uuid)
+        self.assertEqual("svn-v1:2@%s-" % repos.uuid, 
+                         inv[inv.path2id('foo/bla')].revision)
+        self.assertTrue(wt.branch.last_revision() in 
+                         repos.revision_parents("svn-v1:2@%s-" % repos.uuid))
+        self.assertEqual("svn-v1:2@%s-" % repos.uuid, 
+                        self.olddir.open_branch().last_revision())
+
     def test_simple(self):
         self.build_tree({'dc/file': 'data'})
         wt = self.newdir.open_workingtree()

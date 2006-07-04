@@ -20,7 +20,7 @@ from svn.core import Pool, SubversionException
 
 from bzrlib.delta import compare_trees
 from bzrlib.errors import UnsupportedOperation, BzrError, InvalidRevisionId
-from bzrlib.inventory import Inventory
+from bzrlib.inventory import Inventory, ROOT_ID
 import bzrlib.osutils as osutils
 from bzrlib.repository import CommitBuilder
 from bzrlib.trace import mutter, warning
@@ -343,13 +343,20 @@ def push_as_merged(target, source, revision_id):
     delta = compare_trees(old_tree, new_tree)
     builder.new_inventory = inv
 
-    for (id, ie) in inv.entries():
-        if not delta.touches_file_id(id):
+    for (name, ie) in inv.entries():
+        if not delta.touches_file_id(ie.file_id):
             continue
 
-        if ie.kind == 'directory':
-            builder.modified_directory(ie.file_id, [])
-        elif ie.kind == 'link':
+        id = ie.file_id
+        while id != ROOT_ID:
+            if inv[id].revision is None:
+                break
+            inv[id].revision = None
+            if inv[id].kind == 'directory':
+                builder.modified_directory(id, [])
+            id = inv[id].parent_id
+
+        if ie.kind == 'link':
             builder.modified_link(ie.file_id, [], ie.symlink_target)
         elif ie.kind == 'file':
             def get_text():
