@@ -124,7 +124,7 @@ class SvnCommitBuilder(CommitBuilder):
 
     def _dir_process(self, path, file_id, baton):
         mutter('processing %r' % path)
-        if path == self.branch.branch_path:
+        if path == "":
             # Set all the revprops
             for prop, value in self._svnprops.items():
                 mutter('setting %r: %r on branch' % (prop, value))
@@ -360,7 +360,7 @@ def push_as_merged(target, source, revision_id):
             builder.modified_link(ie.file_id, [], ie.symlink_target)
         elif ie.kind == 'file':
             def get_text():
-                return new_tree.get_file_text(ie.file_id)
+                return old_tree.get_file_text(ie.file_id)
             builder.modified_file_text(ie.file_id, [], get_text)
 
     return builder.commit(rev.message)

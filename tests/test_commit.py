@@ -199,6 +199,9 @@ class TestPush(TestCaseWithSubversionRepository):
                          repos.revision_parents("svn-v1:2@%s-" % repos.uuid))
         self.assertEqual("svn-v1:2@%s-" % repos.uuid, 
                         self.olddir.open_branch().last_revision())
+        self.assertEqual("other data", 
+                        repos.revision_tree("svn-v1:2@%s-" % repos.uuid).get_file_text(
+                            inv.path2id("foo/bla")))
 
     def test_simple(self):
         self.build_tree({'dc/file': 'data'})
