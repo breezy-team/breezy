@@ -111,6 +111,18 @@ class TestCommitFromBazaar(TestCaseWithSubversionRepository):
         inv = wt.branch.repository.get_inventory(wt.branch.last_revision())
         self.assertTrue(inv[inv.path2id("bla")].executable)
 
+    def test_commit_symlink(self):
+        wt = self.checkout.create_workingtree()
+        self.build_tree({'dc/bla': "data"})
+        wt.add('bla')
+        os.symlink('bla', 'dc/foo')
+        wt.add('foo')
+        wt.commit(message='commit from Bazaar')
+
+        inv = wt.branch.repository.get_inventory(wt.branch.last_revision())
+        self.assertEqual('symlink', inv[inv.path2id("foo")].kind)
+        self.assertEqual('bla', inv[inv.path2id("foo")].symlink_target)
+
     def test_commit_remove_executable(self):
         wt = self.checkout.create_workingtree()
         self.build_tree({'dc/bla': "data"})

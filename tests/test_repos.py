@@ -130,6 +130,31 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
                 repository.get_ancestry("svn-v1:1@%s-" % repository.uuid))
         self.assertEqual([None], repository.get_ancestry(None))
 
+    def test_get_revision_graph(self):
+        repos_url = self.make_client('d', 'dc')
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertRaises(NoSuchRevision, repository.get_revision_graph, 
+                          "nonexisting")
+        self.build_tree({'dc/foo': "data"})
+        self.client_add("dc/foo")
+        self.client_commit("dc", "My Message")
+        self.build_tree({'dc/foo': "data2"})
+        self.client_commit("dc", "Second Message")
+        self.build_tree({'dc/foo': "data3"})
+        self.client_commit("dc", "Third Message")
+        repository = Repository.open("svn+%s" % repos_url)
+        self.assertEqual({
+           "svn-v1:3@%s-" % repository.uuid: ["svn-v1:2@%s-" % repository.uuid],
+           "svn-v1:2@%s-" % repository.uuid: ["svn-v1:1@%s-" % repository.uuid],
+           "svn-v1:1@%s-" % repository.uuid: []},
+                repository.get_revision_graph("svn-v1:3@%s-" % repository.uuid))
+        self.assertEqual({
+           "svn-v1:2@%s-" % repository.uuid: ["svn-v1:1@%s-" % repository.uuid],
+           "svn-v1:1@%s-" % repository.uuid: []},
+                repository.get_revision_graph("svn-v1:2@%s-" % repository.uuid))
+        self.assertEqual({"svn-v1:1@%s-" % repository.uuid: []},
+                repository.get_revision_graph("svn-v1:1@%s-" % repository.uuid))
+
     def test_get_ancestry2(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/foo': "data"})
@@ -363,6 +388,23 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         inv1 = newrepos.get_inventory("svn-v1:1@%s-" % oldrepos.uuid)
         self.assertTrue(inv1[inv1.path2id("bla")].executable)
 
+    def test_fetch_symlink(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bla': "data"})
+        os.symlink('bla', 'dc/mylink')
+        self.client_add("dc/bla")
+        self.client_add("dc/mylink")
+        self.client_commit("dc", "My Message")
+        oldrepos = Repository.open("svn+"+repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+        self.assertTrue(newrepos.has_revision("svn-v1:1@%s-" % oldrepos.uuid))
+        inv1 = newrepos.get_inventory("svn-v1:1@%s-" % oldrepos.uuid)
+        self.assertEqual('symlink', inv1[inv1.path2id("mylink")].kind)
+        self.assertEqual('bla', inv1[inv1.path2id("mylink")].symlink_target)
+
+
     def test_fetch_executable_separate(self):
         repos_url = self.make_client('d', 'dc')
         self.build_tree({'dc/bla': "data"})
@@ -414,6 +456,16 @@ class TestSvnRevisionTree(TestCaseWithSubversionRepository):
         inventory = self.repos.get_inventory("svn-v1:2@%s-" % self.repos.uuid)
 
         self.assertTrue(inventory[inventory.path2id("foo/bla")].executable)
+
+    def test_symlink(self):
+        os.symlink('foo/bla', 'dc/bar')
+        self.client_add('dc/bar')
+        self.client_commit("dc", "My Message")
+        
+        inventory = self.repos.get_inventory("svn-v1:2@%s-" % self.repos.uuid)
+
+        self.assertEqual('symlink', inventory[inventory.path2id("bar")].kind)
+        self.assertEqual('foo/bla', inventory[inventory.path2id("bar")].symlink_target)
 
     def test_not_executable(self):
         self.assertFalse(self.inventory[
