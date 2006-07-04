@@ -1817,6 +1817,10 @@ class cmd_whoami(Command):
                 self.outf.write(c.username() + '\n')
             return
 
+        # verify that an email address is included in the given name.
+        # if not, a BzrError will be raised.
+        config.extract_email_address(name)
+        
         # use global config unless --branch given
         if branch:
             c = Branch.open_containing('.')[0].get_config()
