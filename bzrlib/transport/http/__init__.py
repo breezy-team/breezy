@@ -259,7 +259,11 @@ class HttpTransportBase(Transport):
             return HttpMultipartRangeResponse(path, content_type, response)
         elif response.code == 206:
             # A response to a range request, but not multipart
-            content_range = response.headers['Content-Range']
+            try:
+                content_range = response.headers['Content-Range']
+            except KeyError:
+                raise HttpError('206 with no "Content-Range" header!', response)
+
             return HttpRangeResponse(path, content_range, response)
         elif response.code == 200:
             # A regular non-range response, unfortunately the result from
