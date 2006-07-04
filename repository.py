@@ -384,6 +384,9 @@ class SvnRepository(Repository):
 
         (rev.committer, rev.message, date) = self._log.get_revision_info(revnum)
 
+        if rev.committer is None:
+            rev.committer = ""
+
         rev.timestamp = 1.0 * svn.core.secs_from_timestr(date, None)
         rev.timezone = None
 

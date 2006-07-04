@@ -21,6 +21,7 @@ import bzrlib.urlutils as urlutils
 
 from cStringIO import StringIO
 import os
+from tempfile import mktemp
 
 from svn.core import SubversionException, Pool
 import svn.ra
@@ -69,7 +70,9 @@ def bzr_to_svn_url(url):
 
     This will possibly remove the svn+ prefix.
     """
-    if url.startswith("svn+http://") or url.startswith("svn+file://"):
+    if (url.startswith("svn+http://") or 
+        url.startswith("svn+file://") or
+        url.startswith("svn+https://")):
         url = url[len("svn+"):] # Skip svn+
 
     # The SVN libraries don't like trailing slashes...
@@ -82,7 +85,9 @@ class SvnRaCallbacks(svn.ra.callbacks2_t):
         svn.ra.callbacks2_t.__init__(self)
         self.auth_baton = _create_auth_baton(pool)
         self.pool = pool
-
+    
+    def open_tmp_file(self, pool):
+        return mktemp(prefix='bzr-svn')
 
 class SvnRaTransport(Transport):
     """Fake transport for Subversion-related namespaces.
@@ -97,10 +102,10 @@ class SvnRaTransport(Transport):
 
 		# Only Subversion 1.4 has reparent()
         if ra is None or not hasattr(svn.ra, 'reparent'):
-            callbacks = SvnRaCallbacks(self.pool)
+            self.callbacks = SvnRaCallbacks(self.pool)
             try:
                 mutter('opening SVN RA connection to %r' % self.svn_url)
-                self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, svn_config, None)
+                self.ra = svn.ra.open2(self.svn_url.encode('utf8'), self.callbacks, svn_config, None)
             except SubversionException, (_, num):
                 if num == svn.core.SVN_ERR_RA_ILLEGAL_URL:
                     raise NotBranchError(path=url)

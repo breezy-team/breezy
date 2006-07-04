@@ -72,6 +72,8 @@ class RevisionBuildEditor(svn.delta.Editor):
         rev.timezone = None
 
         rev.committer = self._svn_revprops['author']
+        if rev.committer is None:
+            rev.committer = ""
         rev.message = self._svn_revprops['message']
 
         rev.properties = self._revprops
