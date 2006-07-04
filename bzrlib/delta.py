@@ -16,6 +16,7 @@
 
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter
+from bzrlib import tree
 
 
 class TreeDelta(object):
@@ -167,15 +168,17 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
     try:
         new_tree.lock_read()
         try:
+            specific_file_ids = tree.specified_file_ids(specific_files, 
+                (new_tree, old_tree), require_versioned=False)
             return _compare_trees(old_tree, new_tree, want_unchanged,
-                                  specific_files)
+                                  specific_file_ids)
         finally:
             new_tree.unlock()
     finally:
         old_tree.unlock()
 
 
-def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
+def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
 
     from osutils import is_inside_any
     
@@ -214,9 +217,9 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
         if old_entry.kind == 'root_directory':
             return
 
-        if specific_files:
-            if (not is_inside_any(specific_files, old_path)
-                and not is_inside_any(specific_files, new_path)):
+        if specific_file_ids:
+            if (old_file_id not in specific_file_ids and 
+                new_file_id not in specific_file_ids):
                 return
 
         # temporary hack until all entries are populated before clients 
@@ -314,13 +317,13 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files):
 
     # Now we have a set of added and removed files, mark them all
     for old_path, old_entry in removed.itervalues():
-        if specific_files:
-            if not is_inside_any(specific_files, old_path):
+        if specific_file_ids:
+            if not old_entry.file_id in specific_file_ids:
                 continue
         delta.removed.append((old_path, old_entry.file_id, old_entry.kind))
     for new_path, new_entry in added.itervalues():
-        if specific_files:
-            if not is_inside_any(specific_files, new_path):
+        if specific_file_ids:
+            if not new_entry.file_id in specific_file_ids:
                 continue
         delta.added.append((new_path, new_entry.file_id, new_entry.kind))
 

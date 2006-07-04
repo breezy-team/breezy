@@ -22,6 +22,7 @@ from cStringIO import StringIO
 
 import bzrlib
 from bzrlib.errors import BzrError, BzrCheckError
+from bzrlib import errors
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
@@ -335,4 +336,40 @@ def find_renames(old_inv, new_inv):
             yield (old_name, new_name)
             
 
-
+def specified_file_ids(filenames, trees, require_versioned=True):
+    """Find the ids corresponding to specified filenames.
+    
+    :param filenames: The filenames to find file_ids for
+    :param trees: The trees to find file_ids within
+    :param require_versioned: if true, all specified filenames must
+    """
+    if not filenames:
+        interesting_ids = None
+    else:
+        interesting_ids = set()
+        for tree_path in filenames:
+            not_found = True
+            for tree in trees:
+                file_id = tree.inventory.path2id(tree_path)
+                if file_id is not None:
+                    interesting_ids.add(file_id)
+                    not_found = False
+            if not_found and require_versioned:
+                raise errors.NotVersionedError(path=tree_path)
+        
+        pending = interesting_ids
+        # now handle children of interesting ids
+        # we loop so that we handle all children of each id in both trees
+        while len(pending) > 0:
+            new_pending = set()
+            for file_id in pending:
+                for tree in trees:
+                    if file_id not in tree:
+                        continue
+                    entry = tree.inventory[file_id]
+                    for child in getattr(entry, 'children', {}).itervalues():
+                        if child.file_id not in interesting_ids:
+                            new_pending.add(child.file_id)
+            interesting_ids.update(new_pending)
+            pending = new_pending
+    return interesting_ids
