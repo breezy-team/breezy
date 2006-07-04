@@ -16,20 +16,10 @@ build
 .*.sw[nop]
 .sw[nop]
 *~
+[#]*#
+.#*
 ./tags
 # The shelf plugin uses this dir
 ./.shelf
 # Mac droppings
 .DS_Store
-# Arch droppings, do we need these anymore?
-.arch-ids
-.arch-inventory
-{arch}
-,,*
-# Old things, probably should be removed
-.bzr.profile
-.bzr-shelf
-bzr-test.log
-testbzr.log
-api
-./ID
