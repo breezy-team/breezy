@@ -7,18 +7,17 @@ setup(name='bzr-svn',
       keywords='plugin bzr svn',
       version='0.1',
       url='http://bazaar-vcs.org/BzrForeignBranches/Subversion',
-      download_url='http://samba.org/~jelmer/bzr/svn',
+      download_url='http://bazaar-vcs.org/BzrSvn',
       license='GPL',
       author='Jelmer Vernooij',
       author_email='jelmer@samba.org',
       long_description="""
-      This plugin adds support for branching off Subversion 
-      repositories.
+      This plugin adds support for branching off and 
+      committing to Subversion repositories from 
+      Bazaar.
       """,
       package_dir={'bzrlib.plugins.svn':'.', 
                    'bzrlib.plugins.svn.tests':'tests'},
       packages=['bzrlib.plugins.svn', 
-                'bzrlib.plugins.svn.tests'],
-      scripts=['svn2bzr'],
-      data_files=[('man/man1', ['svn2bzr.1'])],
+                'bzrlib.plugins.svn.tests']
       )
