@@ -31,10 +31,10 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat
 
 from branch import SvnBranch
 from repository import (SvnRepository, escape_svn_path, SVN_PROP_BZR_MERGE,
-                        SVN_PROP_SVK_MERGE, revision_id_to_svk_feature)
+                        SVN_PROP_SVK_MERGE, revision_id_to_svk_feature) 
 from scheme import BranchingScheme
 from transport import (SvnRaTransport, svn_config, 
-                       svn_to_bzr_url) 
+                       svn_to_bzr_url, bzr_to_svn_url) 
 from tree import SvnBasisTree
 
 import os
@@ -483,7 +483,8 @@ class SvnCheckout(BzrDir):
         self.remote_transport = SvnRaTransport(svn_url)
         self.svn_root_transport = self.remote_transport.get_root()
         self.root_transport = self.transport = transport
-        self.branch_path = svn_url[len(svn_to_bzr_url(self.svn_root_transport.base)):]
+
+        self.branch_path = svn_url[len(bzr_to_svn_url(self.svn_root_transport.base)):]
         self.scheme = BranchingScheme.guess_scheme(self.branch_path)
         mutter('scheme for %r is %r' % (self.branch_path, self.scheme))
         if not self.scheme.is_branch(self.branch_path):
