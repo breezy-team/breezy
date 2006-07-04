@@ -20,6 +20,7 @@
 import codecs
 import errno
 import os
+import os.path
 import sys
 
 import bzrlib
@@ -28,6 +29,7 @@ from bzrlib import (bundle, branch, bzrdir, errors, osutils, ui, config,
     repository, log)
 from bzrlib.bundle import read_bundle_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
+from bzrlib.conflicts import ConflictList
 from bzrlib.commands import Command, display_command
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
@@ -800,15 +802,17 @@ class cmd_update(Command):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_write()
         try:
-            if tree.last_revision() == tree.branch.last_revision():
+            last_rev = tree.last_revision() 
+            if last_rev == tree.branch.last_revision():
                 # may be up to date, check master too.
                 master = tree.branch.get_master_branch()
-                if master is None or master.last_revision == tree.last_revision():
-                    note("Tree is up to date.")
-                    return
+                if master is None or last_rev == master.last_revision():
+                    revno = tree.branch.revision_id_to_revno(last_rev)
+                    note("Tree is up to date at revision %d." % (revno,))
+                    return 0
             conflicts = tree.update()
-            note('Updated to revision %d.' %
-                 (tree.branch.revision_id_to_revno(tree.last_revision()),))
+            revno = tree.branch.revision_id_to_revno(tree.last_revision())
+            note('Updated to revision %d.' % (revno,))
             if conflicts != 0:
                 return 1
             else:
@@ -1453,15 +1457,23 @@ class cmd_ignore(Command):
         bzr ignore '*.class'
     """
     # TODO: Complain if the filename is absolute
-    takes_args = ['name_pattern']
+    takes_args = ['name_pattern?']
+    takes_options = [
+                     Option('old-default-rules',
+                            help='Out the ignore rules bzr < 0.9 always used.')
+                     ]
     
-    def run(self, name_pattern):
+    def run(self, name_pattern=None, old_default_rules=None):
         from bzrlib.atomicfile import AtomicFile
-        import os.path
-
+        if old_default_rules is not None:
+            # dump the rules and exit
+            for pattern in bzrlib.DEFAULT_IGNORE:
+                print pattern
+            return
+        if name_pattern is None:
+            raise BzrCommandError("ignore requires a NAME_PATTERN")
         tree, relpath = WorkingTree.open_containing(u'.')
         ifn = tree.abspath('.bzrignore')
-
         if os.path.exists(ifn):
             f = open(ifn, 'rt')
             try:
@@ -1552,7 +1564,6 @@ class cmd_export(Command):
     takes_args = ['dest']
     takes_options = ['revision', 'format', 'root']
     def run(self, dest, revision=None, format=None, root=None):
-        import os.path
         from bzrlib.export import export
         tree = WorkingTree.open_containing(u'.')[0]
         b = tree.branch
@@ -2186,6 +2197,8 @@ class cmd_remerge(Command):
             base_tree = repository.revision_tree(base_revision)
             other_tree = repository.revision_tree(pending_merges[0])
             interesting_ids = None
+            new_conflicts = []
+            conflicts = tree.conflicts()
             if file_list is not None:
                 interesting_ids = set()
                 for filename in file_list:
@@ -2198,7 +2211,9 @@ class cmd_remerge(Command):
                     
                     for name, ie in tree.inventory.iter_entries(file_id):
                         interesting_ids.add(ie.file_id)
+                new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
             transform_tree(tree, tree.basis_tree(), interesting_ids)
+            tree.set_conflicts(ConflictList(new_conflicts))
             if file_list is None:
                 restore_files = list(tree.iter_conflicts())
             else:
@@ -2208,13 +2223,13 @@ class cmd_remerge(Command):
                     restore(tree.abspath(filename))
                 except NotConflicted:
                     pass
-            conflicts =  merge_inner(tree.branch, other_tree, base_tree,
-                                     this_tree=tree,
-                                     interesting_ids = interesting_ids, 
-                                     other_rev_id=pending_merges[0], 
-                                     merge_type=merge_type, 
-                                     show_base=show_base,
-                                     reprocess=reprocess)
+            conflicts = merge_inner(tree.branch, other_tree, base_tree,
+                                    this_tree=tree,
+                                    interesting_ids=interesting_ids, 
+                                    other_rev_id=pending_merges[0], 
+                                    merge_type=merge_type, 
+                                    show_base=show_base,
+                                    reprocess=reprocess)
         finally:
             tree.unlock()
         if conflicts > 0:

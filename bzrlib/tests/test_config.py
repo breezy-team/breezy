@@ -27,7 +27,7 @@ import bzrlib.config as config
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 import bzrlib.errors as errors
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -321,7 +321,7 @@ class TestGetConfig(TestCase):
                                           'utf-8')])
 
 
-class TestBranchConfig(TestCaseInTempDir):
+class TestBranchConfig(TestCaseWithTransport):
 
     def test_constructs(self):
         branch = FakeBranch()
@@ -347,6 +347,12 @@ class TestBranchConfig(TestCaseInTempDir):
         b2 = Branch.open('.')
         my_config2 = b2.get_config()
         self.assertEqual(my_config2.get_user_option('wacky'), 'unlikely')
+
+    def test_has_explicit_nickname(self):
+        b = self.make_branch('.')
+        self.assertFalse(b.get_config().has_explicit_nickname())
+        b.nick = 'foo'
+        self.assertTrue(b.get_config().has_explicit_nickname())
 
 
 class TestGlobalConfigItems(TestCase):
@@ -473,7 +479,8 @@ class TestLocationConfig(TestCaseInTempDir):
         self.assertEqual(parser._calls,
                          [('__init__', config.locations_config_filename(),
                            'utf-8')])
-        os.mkdir(config.config_dir())
+        config.ensure_config_dir_exists()
+        #os.mkdir(config.config_dir())
         f = file(config.branches_config_filename(), 'wb')
         f.write('')
         f.close()

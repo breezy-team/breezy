@@ -692,7 +692,6 @@ class InventoryFile(InventoryEntry):
 
     def _forget_tree_state(self):
         self.text_sha1 = None
-        self.executable = None
 
     def _snapshot_text(self, file_parents, work_tree, commit_builder):
         """See InventoryEntry._snapshot_text."""

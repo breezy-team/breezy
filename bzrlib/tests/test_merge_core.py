@@ -11,7 +11,7 @@ from bzrlib.errors import (NotBranchError, NotVersionedError,
 from bzrlib.inventory import RootEntry
 import bzrlib.inventory as inventory
 from bzrlib.merge import Merge3Merger, Diff3Merger, WeaveMerger
-from bzrlib.osutils import (file_kind, mkdtemp, pathjoin, rename, rmtree,
+from bzrlib.osutils import (file_kind, getcwd, mkdtemp, pathjoin, rename, rmtree,
                             sha_file, 
                             )
 from bzrlib.transform import TreeTransform
@@ -20,8 +20,8 @@ from bzrlib.workingtree import WorkingTree
 
 
 class MergeBuilder(object):
-    def __init__(self):
-        self.dir = mkdtemp(prefix="merge-test")
+    def __init__(self, dir=None):
+        self.dir = mkdtemp(prefix="merge-test", dir=dir)
         def wt(name):
            path = pathjoin(self.dir, name)
            os.mkdir(path)
@@ -166,11 +166,11 @@ class MergeBuilder(object):
         rmtree(self.dir)
 
 
-class MergeTest(TestCase):
+class MergeTest(TestCaseWithTransport):
 
     def test_change_name(self):
         """Test renames"""
-        builder = MergeBuilder()
+        builder = MergeBuilder(getcwd())
         builder.add_file("1", "TREE_ROOT", "name1", "hello1", True)
         builder.change_name("1", other="name2")
         builder.add_file("2", "TREE_ROOT", "name3", "hello2", True)
@@ -179,7 +179,7 @@ class MergeTest(TestCase):
         builder.change_name("3", this="name6")
         builder.merge()
         builder.cleanup()
-        builder = MergeBuilder()
+        builder = MergeBuilder(getcwd())
         builder.add_file("1", "TREE_ROOT", "name1", "hello1", False)
         builder.change_name("1", other="name2", this="name3")
         conflicts = builder.merge()
@@ -187,7 +187,7 @@ class MergeTest(TestCase):
         builder.cleanup()
 
     def test_merge_one(self):
-        builder = MergeBuilder()
+        builder = MergeBuilder(getcwd())
         builder.add_file("1", "TREE_ROOT", "name1", "hello1", True)
         builder.change_contents("1", other="text4")
         builder.add_file("2", "TREE_ROOT", "name2", "hello1", True)
@@ -198,7 +198,7 @@ class MergeTest(TestCase):
         
     def test_file_moves(self):
         """Test moves"""
-        builder = MergeBuilder()
+        builder = MergeBuilder(getcwd())
         builder.add_dir("1", "TREE_ROOT", "dir1")
         builder.add_dir("2", "TREE_ROOT", "dir2")
         builder.add_file("3", "1", "file1", "hello1", True)
@@ -210,7 +210,7 @@ class MergeTest(TestCase):
         builder.merge()
         builder.cleanup()
 
-        builder = MergeBuilder()
+        builder = MergeBuilder(getcwd())
         builder.add_dir("1", "TREE_ROOT", "dir1")
         builder.add_dir("2", "TREE_ROOT", "dir2")
         builder.add_dir("3", "TREE_ROOT", "dir3")
@@ -239,7 +239,7 @@ class MergeTest(TestCase):
 
     def test_reprocess_weave(self):
         # Reprocess works on weaves, and behaves as expected
-        builder = MergeBuilder()
+        builder = MergeBuilder(getcwd())
         builder.add_file('a', 'TREE_ROOT', 'blah', 'a', False)
         builder.change_contents('a', this='b\nc\nd\ne\n', other='z\nc\nd\ny\n')
         builder.merge(WeaveMerger, reprocess=True)
@@ -267,7 +267,7 @@ y
         self.contents_test_conflicts(merge_factory)
 
     def contents_test_success(self, merge_factory):
-        builder = MergeBuilder()
+        builder = MergeBuilder(getcwd())
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.change_contents("1", other="text4")
         builder.add_file("2", "TREE_ROOT", "name3", "text2", False)
@@ -289,20 +289,25 @@ y
         return builder
 
     def contents_test_conflicts(self, merge_factory):
-        builder = MergeBuilder()
+        builder = MergeBuilder(getcwd())
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.change_contents("1", other="text4", this="text3")
         builder.add_file("2", "TREE_ROOT", "name2", "text1", True)
         builder.change_contents("2", other="\x00", this="text3")
+        builder.add_file("3", "TREE_ROOT", "name3", "text5", False)
+        builder.change_perms("3", this=True)
+        builder.change_contents('3', this='moretext')
+        builder.remove_file('3', other=True)
         conflicts = builder.merge(merge_factory)
         self.assertEqual(conflicts, [TextConflict('name1', file_id='1'),
-                                     ContentsConflict('name2', file_id='2')])
+                                     ContentsConflict('name2', file_id='2'),
+                                     ContentsConflict('name3', file_id='3')])
         self.assertEqual(builder.this.get_file('2').read(), '\x00')
         builder.cleanup()
 
     def test_symlink_conflicts(self):
         if sys.platform != "win32":
-            builder = MergeBuilder()
+            builder = MergeBuilder(getcwd())
             builder.add_symlink("2", "TREE_ROOT", "name2", "target1")
             builder.change_target("2", other="target4", base="text3")
             conflicts = builder.merge()
@@ -312,7 +317,7 @@ y
 
     def test_symlink_merge(self):
         if sys.platform != "win32":
-            builder = MergeBuilder()
+            builder = MergeBuilder(getcwd())
             builder.add_symlink("1", "TREE_ROOT", "name1", "target1")
             builder.add_symlink("2", "TREE_ROOT", "name2", "target1")
             builder.add_symlink("3", "TREE_ROOT", "name3", "target1")
@@ -326,14 +331,14 @@ y
             builder.cleanup()
 
     def test_no_passive_add(self):
-        builder = MergeBuilder()
+        builder = MergeBuilder(getcwd())
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.remove_file("1", this=True)
         builder.merge()
         builder.cleanup()
 
     def test_perms_merge(self):
-        builder = MergeBuilder()
+        builder = MergeBuilder(getcwd())
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.change_perms("1", other=False)
         builder.add_file("2", "TREE_ROOT", "name2", "text2", True)
@@ -350,7 +355,7 @@ y
         builder.cleanup();
 
     def test_new_suffix(self):
-        builder = MergeBuilder()
+        builder = MergeBuilder(getcwd())
         builder.add_file("1", "TREE_ROOT", "name1", "text1", True)
         builder.change_contents("1", other="text3")
         builder.add_file("2", "TREE_ROOT", "name1.new", "text2", True)
@@ -359,7 +364,7 @@ y
         builder.cleanup()
 
     def test_spurious_conflict(self):
-        builder = MergeBuilder()
+        builder = MergeBuilder(getcwd())
         builder.add_file("1", "TREE_ROOT", "name1", "text1", False)
         builder.remove_file("1", other=True)
         builder.add_file("2", "TREE_ROOT", "name1", "text1", False, this=False, 
