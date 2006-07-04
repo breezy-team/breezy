@@ -353,6 +353,10 @@ class SvnRepository(Repository):
             else:
                 merged_data = ""
 
+        if ' ' in merged_data:
+            mutter('invalid revision id %r in merged property, skipping' % merged_data)
+            merged_data = ""
+
         if merged_data != "":
             parent_ids.extend(merged_data.split("\t"))
 

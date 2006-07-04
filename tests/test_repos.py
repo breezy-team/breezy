@@ -422,6 +422,34 @@ class TestSubversionRepositoryWorks(TestCaseWithSubversionRepository):
         inv2 = newrepos.get_inventory("svn-v1:2@%s-" % oldrepos.uuid)
         self.assertTrue(inv2[inv2.path2id("bla")].executable)
 
+    def test_fetch_ghosts(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bla': "data"})
+        self.client_add("dc/bla")
+        self.client_set_prop("dc", "bzr:merge", "aghost\n")
+        self.client_commit("dc", "My Message")
+        oldrepos = Repository.open("svn+"+repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+        rev = newrepos.get_revision("svn-v1:1@%s-" % oldrepos.uuid)
+        self.assertTrue("aghost" in rev.parent_ids)
+
+    def test_fetch_invalid_ghosts(self):
+        repos_url = self.make_client('d', 'dc')
+        self.build_tree({'dc/bla': "data"})
+        self.client_add("dc/bla")
+        self.client_set_prop("dc", "bzr:merge", "a ghost\n")
+        self.client_commit("dc", "My Message")
+        oldrepos = Repository.open("svn+"+repos_url)
+        dir = BzrDir.create("f")
+        newrepos = dir.create_repository()
+        oldrepos.copy_content_into(newrepos)
+
+        rev = newrepos.get_revision("svn-v1:1@%s-" % oldrepos.uuid)
+        self.assertEqual([], rev.parent_ids)
+
 
 class TestSvnRevisionTree(TestCaseWithSubversionRepository):
     def setUp(self):
