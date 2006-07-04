@@ -139,7 +139,7 @@ class TestCaseWithSubversionRepository(TestCaseInTempDir):
         """
         rev = svn.core.svn_opt_revision_t()
         rev.kind = svn.core.svn_opt_revision_head
-        svn.client.copy3(oldpath, rev, newpath, self.client_ctx)
+        svn.client.copy2(oldpath, rev, newpath, self.client_ctx)
 
     def build_tree(self, files):
         """Create a directory tree.

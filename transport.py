@@ -95,7 +95,8 @@ class SvnRaTransport(Transport):
         self.svn_url = bzr_to_svn_url(url)
         Transport.__init__(self, bzr_url)
 
-        if ra is None:
+		# Only Subversion 1.4 has reparent()
+        if ra is None or not hasattr(svn.ra, 'reparent'):
             callbacks = SvnRaCallbacks(self.pool)
             try:
                 mutter('opening SVN RA connection to %r' % self.svn_url)
