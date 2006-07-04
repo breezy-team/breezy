@@ -193,8 +193,8 @@ class SvnCommitBuilder(CommitBuilder):
                 child_baton = None
 
             if child_ie.file_id in self.old_inv:
-                old_executable = self.old_inv[self.old_inv.id2path(child_ie.file_id)].executable
-                old_special = (self.old_inv[self.old_inv.id2path(child_ie.file_id)].kind == 'symlink')
+                old_executable = self.old_inv[child_ie.file_id].executable
+                old_special = (self.old_inv[child_ie.file_id].kind == 'symlink')
             else:
                 old_special = False
                 old_executable = False
@@ -321,6 +321,11 @@ class SvnCommitBuilder(CommitBuilder):
         mutter('commit finished. author: %r, date: %r' % 
                (self.author, self.date))
 
+        # Make sure the logwalker doesn't try to use ra 
+        # during checkouts...
+        self.repository._log.fetch_revisions(
+            self.repository._log.last_revnum, self.revnum)
+
         return revid
 
 
@@ -352,5 +357,4 @@ def push_as_merged(target, source, revision_id):
             builder.modified_file_text(ie.file_id, [], get_text)
 
     return builder.commit(rev.message)
-
 

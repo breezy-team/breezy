@@ -15,6 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from bzrlib.errors import NoSuchFile, NotBranchError, TransportNotPossible
+from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 import bzrlib.urlutils as urlutils
 
@@ -97,6 +98,7 @@ class SvnRaTransport(Transport):
         if ra is None:
             callbacks = SvnRaCallbacks(self.pool)
             try:
+                mutter('opening SVN RA connection to %r' % self.svn_url)
                 self.ra = svn.ra.open2(self.svn_url.encode('utf8'), callbacks, svn_config, None)
             except SubversionException, (_, num):
                 if num == svn.core.SVN_ERR_RA_ILLEGAL_URL:

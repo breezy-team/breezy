@@ -1,5 +1,6 @@
 - support pushing to SVN branches. Push as merged.
 - build packages for Dapper
+- fix weird samba bug
 
 later:
 - move get_file()/get_dir()/stat() calls to SvnRaTransport
