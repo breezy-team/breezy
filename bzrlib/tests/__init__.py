@@ -290,18 +290,21 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  keep_output=False,
-                 pb=None):
+                 pb=None,
+                 bench_history=None):
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
         self.keep_output = keep_output
         self.pb = pb
+        self._bench_history = bench_history
 
     def _makeResult(self):
         result = _MyResult(self.stream,
                            self.descriptions,
                            self.verbosity,
-                           pb=self.pb)
+                           pb=self.pb,
+                           bench_history=self._bench_history)
         result.stop_early = self.stop_on_failure
         return result
 

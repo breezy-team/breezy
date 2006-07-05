@@ -479,7 +479,6 @@ class TestTestResult(TestCase):
         output_string = output.getvalue()
         self.assertContainsRe(output_string, "--date [0-9.]+")
 
-
     def _time_hello_world_encoding(self):
         """Profile two sleep calls
         
@@ -573,6 +572,14 @@ class TestRunner(TestCase):
         test = unittest.FunctionTestCase(skipping_test)
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
+
+    def test_bench_history(self):
+        test = TestRunner('dummy_test')
+        output = StringIO()
+        runner = TextTestRunner(stream=self._log_file, bench_history=output)
+        result = self.run_test_runner(runner, test)
+        output_string = output.getvalue()
+        self.assertContainsRe(output_string, "--date [0-9.]+")
 
 
 class TestTestCase(TestCase):
