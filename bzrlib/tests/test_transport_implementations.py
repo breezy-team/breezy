@@ -186,6 +186,9 @@ class TestTransportImplementation(TestCaseInTempDir):
 
         if t.is_readonly():
             return
+        if not t._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
         t.put('mode644', StringIO('test text\n'), mode=0644)
         self.assertTransportMode(t, 'mode644', 0644)
         t.put('mode666', StringIO('test text\n'), mode=0666)
@@ -922,7 +925,7 @@ class TestTransportImplementation(TestCaseInTempDir):
                 ]
 
         try:
-            self.build_tree(files, transport=t)
+            self.build_tree(files, transport=t, line_endings='binary')
         except UnicodeError:
             raise TestSkipped("cannot handle unicode paths in current encoding")
 

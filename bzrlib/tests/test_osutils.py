@@ -25,7 +25,12 @@ import sys
 import bzrlib
 from bzrlib.errors import BzrBadParameterNotUnicode, InvalidURL
 import bzrlib.osutils as osutils
-from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
+from bzrlib.tests import (
+        StringIOWrapper,
+        TestCase, 
+        TestCaseInTempDir, 
+        TestSkipped,
+        )
 
 
 class TestOSUtils(TestCaseInTempDir):
@@ -171,7 +176,20 @@ class TestWin32Funcs(TestCase):
         self.assertEqual('path/to/foo', osutils._win32_normpath('path//from/../to/./foo'))
 
     def test_getcwd(self):
-        self.assertEqual(os.getcwdu().replace('\\', '/'), osutils._win32_getcwd())
+        cwd = osutils._win32_getcwd()
+        os_cwd = os.getcwdu()
+        self.assertEqual(os_cwd[1:].replace('\\', '/'), cwd[1:])
+        # win32 is inconsistent whether it returns lower or upper case
+        # and even if it was consistent the user might type the other
+        # so we force it to uppercase
+        # running python.exe under cmd.exe return capital C:\\
+        # running win32 python inside a cygwin shell returns lowercase
+        self.assertEqual(os_cwd[0].upper(), cwd[0])
+
+    def test_fixdrive(self):
+        self.assertEqual('H:/foo', osutils._win32_fixdrive('h:/foo'))
+        self.assertEqual('H:/foo', osutils._win32_fixdrive('H:/foo'))
+        self.assertEqual('C:\\foo', osutils._win32_fixdrive('c:\\foo'))
 
 
 class TestWin32FuncsDirs(TestCaseInTempDir):
@@ -207,6 +225,36 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         self.failUnlessExists('a')
         self.failIfExists('b')
         self.assertFileEqual('baz\n', 'a')
+
+    def test_rename_missing_file(self):
+        a = open('a', 'wb')
+        a.write('foo\n')
+        a.close()
+
+        try:
+            osutils._win32_rename('b', 'a')
+        except (IOError, OSError), e:
+            self.assertEqual(errno.ENOENT, e.errno)
+        self.assertFileEqual('foo\n', 'a')
+
+    def test_rename_missing_dir(self):
+        os.mkdir('a')
+        try:
+            osutils._win32_rename('b', 'a')
+        except (IOError, OSError), e:
+            self.assertEqual(errno.ENOENT, e.errno)
+
+    def test_rename_current_dir(self):
+        os.mkdir('a')
+        os.chdir('a')
+        # You can't rename the working directory
+        # doing rename non-existant . usually
+        # just raises ENOENT, since non-existant
+        # doesn't exist.
+        try:
+            osutils._win32_rename('b', '.')
+        except (IOError, OSError), e:
+            self.assertEqual(errno.ENOENT, e.errno)
 
 
 class TestSplitLines(TestCase):
@@ -342,3 +390,42 @@ class TestWalkDirs(TestCaseInTempDir):
         self.assertEqual(
             dir_sorted_paths,
             sorted(original_paths, cmp=osutils.compare_paths_prefix_order))
+
+
+class TestTerminalEncoding(TestCase):
+    """Test the auto-detection of proper terminal encoding."""
+
+    def setUp(self):
+        self._stdout = sys.stdout
+        self._stderr = sys.stderr
+        self._stdin = sys.stdin
+        self._user_encoding = bzrlib.user_encoding
+
+        self.addCleanup(self._reset)
+
+        sys.stdout = StringIOWrapper()
+        sys.stdout.encoding = 'stdout_encoding'
+        sys.stderr = StringIOWrapper()
+        sys.stderr.encoding = 'stderr_encoding'
+        sys.stdin = StringIOWrapper()
+        sys.stdin.encoding = 'stdin_encoding'
+        bzrlib.user_encoding = 'user_encoding'
+
+    def _reset(self):
+        sys.stdout = self._stdout
+        sys.stderr = self._stderr
+        sys.stdin = self._stdin
+        bzrlib.user_encoding = self._user_encoding
+
+    def test_get_terminal_encoding(self):
+        # first preference is stdout encoding
+        self.assertEqual('stdout_encoding', osutils.get_terminal_encoding())
+
+        sys.stdout.encoding = None
+        # if sys.stdout is None, fall back to sys.stdin
+        self.assertEqual('stdin_encoding', osutils.get_terminal_encoding())
+
+        sys.stdin.encoding = None
+        # and in the worst case, use bzrlib.user_encoding
+        self.assertEqual('user_encoding', osutils.get_terminal_encoding())
+

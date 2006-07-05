@@ -16,6 +16,7 @@
 
 """Tests for InterRepository implementastions."""
 
+import sys
 
 import bzrlib
 import bzrlib.bzrdir as bzrdir
@@ -70,6 +71,31 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
         return self.repository_format_to.initialize(made_control)
 
 
+def check_old_format_lock_error(repository_format):
+    """Potentially ignore LockError on old formats.
+
+    On win32, with the old OS locks, we get a failure of double-lock when
+    we open a object in 2 objects and try to lock both.
+
+    On new formats, LockError would be invalid, but for old formats
+    this was not supported on Win32.
+    """
+    if sys.platform != 'win32':
+        raise
+
+    description = repository_format.get_format_description()
+    if description in ("Repository format 4",
+                       "Weave repository format 5",
+                       "Weave repository format 6"):
+        # jam 20060701
+        # win32 OS locks are not re-entrant. So one process cannot
+        # open the same repository twice and lock them both.
+        raise TestSkipped('%s on win32 cannot open the same'
+                          ' repository twice in different objects'
+                          % description)
+    raise
+
+
 class TestInterRepository(TestCaseWithInterRepository):
 
     def test_interrepository_get_returns_correct_optimiser(self):
@@ -112,12 +138,18 @@ class TestInterRepository(TestCaseWithInterRepository):
     def test_fetch_missing_revision_same_location_fails(self):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
-        self.assertRaises(errors.NoSuchRevision, repo_b.fetch, repo_a, revision_id='XXX')
+        try:
+            self.assertRaises(errors.NoSuchRevision, repo_b.fetch, repo_a, revision_id='XXX')
+        except errors.LockError, e:
+            check_old_format_lock_error(self.repository_format)
 
     def test_fetch_same_location_trivial_works(self):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
-        repo_a.fetch(repo_b)
+        try:
+            repo_a.fetch(repo_b)
+        except errors.LockError, e:
+            check_old_format_lock_error(self.repository_format)
 
     def test_fetch_missing_text_other_location_fails(self):
         source_tree = self.make_branch_and_tree('source')

@@ -1,4 +1,4 @@
-# (C) 2005 Canonical Development Ltd
+# Copyright (C) 2005, 2006 Canonical Development Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +29,6 @@ import os
     
 def test_suite():
     candidates = os.listdir(os.path.dirname(__file__))
-    scripts = [candidate for candidate in candidates 
+    scripts = [candidate for candidate in candidates
                if candidate.endswith('.txt')]
     return doctest.DocFileSuite(*scripts)

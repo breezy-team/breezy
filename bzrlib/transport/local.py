@@ -51,6 +51,7 @@ class LocalTransport(Transport):
             base = base + '/'
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
+        ## mutter("_local_base: %r => %r", base, self._local_base)
 
     def should_cache(self):
         return False
@@ -171,17 +172,22 @@ class LocalTransport(Transport):
     def append(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final location."""
         abspath = self._abspath(relpath)
+        fp = None
         try:
-            fp = open(abspath, 'ab')
-            # FIXME should we really be chmodding every time ? RBC 20060523
-            if mode is not None:
-                os.chmod(abspath, mode)
-        except (IOError, OSError),e:
-            self._translate_error(e, relpath)
-        # win32 workaround (tell on an unwritten file returns 0)
-        fp.seek(0, 2)
-        result = fp.tell()
-        self._pump(f, fp)
+            try:
+                fp = open(abspath, 'ab')
+                # FIXME should we really be chmodding every time ? RBC 20060523
+                if mode is not None:
+                    os.chmod(abspath, mode)
+            except (IOError, OSError),e:
+                self._translate_error(e, relpath)
+            # win32 workaround (tell on an unwritten file returns 0)
+            fp.seek(0, 2)
+            result = fp.tell()
+            self._pump(f, fp)
+        finally:
+            if fp is not None:
+                fp.close()
         return result
 
     def copy(self, rel_from, rel_to):
@@ -312,23 +318,6 @@ class LocalTransport(Transport):
             return False
         else:
             return True
-
-
-class ScratchTransport(LocalTransport):
-    """A transport that works in a temporary dir and cleans up after itself.
-    
-    The dir only exists for the lifetime of the Python object.
-    Obviously you should not put anything precious in it.
-    """
-
-    def __init__(self, base=None):
-        if base is None:
-            base = tempfile.mkdtemp()
-        super(ScratchTransport, self).__init__(base)
-
-    def __del__(self):
-        rmtree(self.base, ignore_errors=True)
-        mutter("%r destroyed" % self)
 
 
 class LocalRelpathServer(Server):

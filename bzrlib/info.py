@@ -24,7 +24,8 @@ from bzrlib.errors import (NoWorkingTree, NotBranchError,
                            NoRepositoryPresent, NotLocalUrl)
 from bzrlib.missing import find_unmerged
 import bzrlib.osutils as osutils
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function, 
+        zero_eight)
 
 
 def plural(n, base='', pl=None):

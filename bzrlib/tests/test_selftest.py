@@ -35,6 +35,7 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
+from bzrlib.trace import note
 
 
 class SelftestTests(TestCase):
@@ -506,14 +507,15 @@ class TestTestResult(TestCase):
         #           1        0            ???         ???       ???(sleep) 
         # and then repeated but with 'world', rather than 'hello'.
         # this should appear in the output stream of our test result.
-        self.assertContainsRe(result_stream.getvalue(), 
-            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)\n"
-            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
-            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?"
-            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n"
-            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
-            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?"
-            )
+        output = result_stream.getvalue()
+        self.assertContainsRe(output,
+            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)")
+        self.assertContainsRe(output,
+            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n")
+        self.assertContainsRe(output,
+            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?")
+        self.assertContainsRe(output,
+            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
 
 
 class TestRunner(TestCase):
@@ -693,3 +695,10 @@ class TestSelftest(TestCase):
         err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
                                       retcode=3)[1]
         self.assertContainsRe(err, 'No known merge type magic merge')
+
+    def test_run_bzr_error(self):
+        out, err = self.run_bzr_error(['^$'], 'rocks', retcode=0)
+        self.assertEqual(out, 'it sure does!\n')
+
+        out, err = self.run_bzr_error(["'foobarbaz' is not a versioned file"],
+                                      'file-id', 'foobarbaz')

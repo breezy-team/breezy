@@ -70,9 +70,9 @@ class TestInit(ExternalBase):
         
         out, err = self.run_bzr('init', 'subdir2/nothere', retcode=3)
         self.assertEqual('', out)
-        self.failUnless(err.startswith(
-            'bzr: ERROR: exceptions.OSError: '
-            '[Errno 2] No such file or directory: '))
+        self.assertContainsRe(err,
+            r'^bzr: ERROR: .*'
+            '\[Errno 2\] No such file or directory: ')
         
         os.mkdir('subdir2')
         out, err = self.run_bzr('init', 'subdir2')
@@ -100,3 +100,7 @@ class TestInit(ExternalBase):
         # suggests using checkout
         self.assertContainsRe(err, 'ontains a branch.*but no working tree.*checkout')
 
+    def test_no_defaults(self):
+        """Init creates no default ignore rules."""
+        self.run_bzr('init')
+        self.assertFalse(os.path.exists('.bzrignore'))
