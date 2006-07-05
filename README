@@ -113,11 +113,22 @@ and are therefore ignored for the time being:
    This has been delayed until after 0.9 because of required repository
    format changes.
 
+ * `svn:mime-type'
+
+ * `svn:eol-style'
+
+ * `svn:keywords'. Requires keywords support in Bazaar. Spec at 
+   https://launchpad.net/products/bzr/+spec/bzr-keyword-expansion
+
 Other features currently held back by Bazaars feature set:
 
  * Horizon revision history. Most of the existing Subversion repositories 
    are quite large and it would therefore be nice to be able to limit 
    the amount of history that needs to be retrieved during checkouts.
+
+ * Tracking copies. 
+ 
+   Spec at https://launchpad.net/products/bzr/+spec/filecopies
 
 Features held back by Subversion:
 
@@ -126,7 +137,9 @@ Features held back by Subversion:
    on at the moment (see https://svn.collab.net/repos/svn/branches/merge-tracking).
 
    Might require cherry-picking support in Bazaar (or at least the ability 
-   to know about cherry picks)
+   to know about cherry picks). 
+   
+   Spec at https://launchpad.net/products/bzr/+spec/bzr-cpick-data
 
 == Bugs ==
  
