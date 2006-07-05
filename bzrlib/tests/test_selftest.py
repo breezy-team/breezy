@@ -477,8 +477,28 @@ class TestTestResult(TestCase):
                                         bench_history=output
                                         )
         output_string = output.getvalue()
-        self.assertContainsRe(output_string, "--date [0-9.]+")
+        self.assertContainsRe(output_string, "--date [0-9.]+\n")
 
+    def test_benchhistory_records_test_times(self):
+        result_stream = StringIO()
+        result = bzrlib.tests._MyResult(
+            self._log_file,
+            descriptions=0,
+            verbosity=1,
+            bench_history=result_stream
+            )
+
+        # we want profile a call and check that its test duration is recorded
+        # make a new test instance that when run will generate a benchmark
+        example_test_case = TestTestResult("_time_hello_world_encoding")
+        # execute the test, which should succeed and record times
+        example_test_case.run(result)
+        lines = result_stream.getvalue().splitlines()
+        self.assertEqual(2, len(lines))
+        self.assertContainsRe(lines[1],
+            " *[0-9]+ms bzrlib.tests.test_selftest.TestTestResult"
+            "._time_hello_world_encoding")
+ 
     def _time_hello_world_encoding(self):
         """Profile two sleep calls
         
@@ -579,7 +599,7 @@ class TestRunner(TestCase):
         runner = TextTestRunner(stream=self._log_file, bench_history=output)
         result = self.run_test_runner(runner, test)
         output_string = output.getvalue()
-        self.assertContainsRe(output_string, "--date [0-9.]+")
+        self.assertContainsRe(output_string, "--date [0-9.]+\n")
 
 
 class TestTestCase(TestCase):

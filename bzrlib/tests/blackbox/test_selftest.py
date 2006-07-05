@@ -22,6 +22,7 @@ from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
                           TestCase,
                           TestCaseInTempDir,
+                          TestCaseWithTransport,
                           TestSkipped,
                           )
 from bzrlib.tests.blackbox import ExternalBase
@@ -77,16 +78,6 @@ class TestOptions(TestCase):
             TestOptions.current_test = None
             TestCaseInTempDir.TEST_ROOT = old_root
 
-    def test_benchmark_runs_benchmark_tests(self):
-        """bzr selftest --benchmark should not run the default test suite."""
-        # We test this by passing a regression test name to --benchmark, which
-        # should result in 0 rests run.
-        out, err = self.run_bzr('selftest', '--benchmark', 'workingtree_implementations')
-        self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
-        self.assertEqual(
-            'running tests...\ntests passed\n',
-            err)
-        
 
 class TestRunBzr(ExternalBase):
 
@@ -103,6 +94,31 @@ class TestRunBzr(ExternalBase):
         self.assertEqual('gam', self.stdin)
         self.run_bzr('foo', 'bar', stdin='zippy')
         self.assertEqual('zippy', self.stdin)
+
+
+class TestBenchmarkTests(TestCaseWithTransport):
+
+    def test_benchmark_runs_benchmark_tests(self):
+        """bzr selftest --benchmark should not run the default test suite."""
+        # We test this by passing a regression test name to --benchmark, which
+        # should result in 0 rests run.
+        old_root = TestCaseInTempDir.TEST_ROOT
+        try:
+            TestCaseInTempDir.TEST_ROOT = None
+            out, err = self.run_bzr('selftest', '--benchmark', 'workingtree_implementations')
+        finally:
+            TestCaseInTempDir.TEST_ROOT = old_root
+        self.assertContainsRe(out, 'Ran 0 tests.*\n\nOK')
+        self.assertEqual(
+            'running tests...\ntests passed\n',
+            err)
+        benchfile = open(".perf_history", "rt")
+        try:
+            lines = benchfile.readlines()
+        finally:
+            benchfile.close()
+        self.assertEqual(1, len(lines))
+        self.assertContainsRe(lines[0], "--date [0-9.]+")
 
 
 class TestRunBzrCaptured(ExternalBase):

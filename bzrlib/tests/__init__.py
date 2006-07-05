@@ -137,7 +137,8 @@ class _MyResult(unittest._TextTestResult):
         unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
         self.pb = pb
         if bench_history is not None:
-            bench_history.write("--date %s" % time.time())
+            bench_history.write("--date %s\n" % time.time())
+        self._bench_history = bench_history
     
     def extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -241,6 +242,11 @@ class _MyResult(unittest._TextTestResult):
 
     def addSuccess(self, test):
         self.extractBenchmarkTime(test)
+        if self._bench_history is not None:
+            if self._benchmarkTime is not None:
+                self._bench_history.write("%s %s\n" % (
+                    self._formatTime(self._benchmarkTime),
+                    test.id()))
         if self.showAll:
             self.stream.writeln('   OK %s' % self._testTimeString())
             for bench_called, stats in getattr(test, '_benchcalls', []):
@@ -1157,7 +1163,7 @@ def filter_suite_by_re(suite, pattern):
 
 def run_suite(suite, name='test', verbose=False, pattern=".*",
               stop_on_failure=False, keep_output=False,
-              transport=None, lsprof_timed=None):
+              transport=None, lsprof_timed=None, bench_history=None):
     TestCaseInTempDir._TEST_NAME = name
     TestCase._gather_lsprof_in_benchmarks = lsprof_timed
     if verbose:
@@ -1170,7 +1176,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             descriptions=0,
                             verbosity=verbosity,
                             keep_output=keep_output,
-                            pb=pb)
+                            pb=pb,
+                            bench_history=bench_history)
     runner.stop_on_failure=stop_on_failure
     if pattern != '.*':
         suite = filter_suite_by_re(suite, pattern)
@@ -1182,7 +1189,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              keep_output=False,
              transport=None,
              test_suite_factory=None,
-             lsprof_timed=None):
+             lsprof_timed=None,
+             bench_history=None):
     """Run the whole test suite under the enhanced runner"""
     global default_transport
     if transport is None:
@@ -1197,7 +1205,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
                      stop_on_failure=stop_on_failure, keep_output=keep_output,
                      transport=transport,
-                     lsprof_timed=lsprof_timed)
+                     lsprof_timed=lsprof_timed,
+                     bench_history=bench_history)
     finally:
         default_transport = old_transport
 

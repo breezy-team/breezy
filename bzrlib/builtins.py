@@ -1890,17 +1890,24 @@ class cmd_selftest(Command):
                 test_suite_factory = benchmarks.test_suite
                 if verbose is None:
                     verbose = True
+                benchfile = open(".perf_history", "at")
             else:
                 test_suite_factory = None
                 if verbose is None:
                     verbose = False
-            result = selftest(verbose=verbose, 
-                              pattern=pattern,
-                              stop_on_failure=one, 
-                              keep_output=keep_output,
-                              transport=transport,
-                              test_suite_factory=test_suite_factory,
-                              lsprof_timed=lsprof_timed)
+                benchfile = None
+            try:
+                result = selftest(verbose=verbose, 
+                                  pattern=pattern,
+                                  stop_on_failure=one, 
+                                  keep_output=keep_output,
+                                  transport=transport,
+                                  test_suite_factory=test_suite_factory,
+                                  lsprof_timed=lsprof_timed,
+                                  bench_history=benchfile)
+            finally:
+                if benchfile is not None:
+                    benchfile.close()
             if result:
                 info('tests passed')
             else:
