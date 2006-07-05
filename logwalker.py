@@ -28,12 +28,29 @@ import svn.ra
 
 cache_dir = os.path.join(config_dir(), 'svn-cache')
 
+def create_cache_dir(uuid):
+    if not os.path.exists(cache_dir):
+        os.mkdir(cache_dir)
+
+        open(os.path.join(cache_dir, "README"), 'w').write(
+"""This directory contains information cached by the bzr-svn plugin.
+
+It is used for performance reasons only and can be removed 
+without losing data.
+""")
+
+    dir = os.path.join(cache_dir, uuid)
+    os.mkdir(dir)
+    return dir
+
+
 class NotSvnBranchPath(BzrError):
     def __init__(self, branch_path):
         BzrError.__init__(self, 
                 "%r is not a valid Svn branch path", 
                 branch_path)
         self.branch_path = branch_path
+
 
 class LogWalker(object):
     def __init__(self, scheme, ra=None, uuid=None, last_revnum=None, repos_url=None, pb=None):
@@ -50,7 +67,7 @@ class LogWalker(object):
         if last_revnum is None:
             last_revnum = svn.ra.get_latest_revnum(ra)
 
-        self.cache_file = os.path.join(cache_dir, uuid)
+        self.cache_file = os.path.join(create_cache_dir(uuid), 'log')
         self.ra = ra
         self.scheme = scheme
 
@@ -110,10 +127,6 @@ class LogWalker(object):
         self.save()
 
     def save(self):
-        try:
-            os.mkdir(cache_dir)
-        except OSError:
-            pass
         pickle.dump(self.revisions, open(self.cache_file, 'w'))
 
     def follow_history(self, branch_path, revnum):
