@@ -17,6 +17,7 @@
 
 from cStringIO import StringIO
 import os
+import sys
 
 import bzrlib
 from bzrlib import branch, bzrdir, errors, urlutils, workingtree
@@ -29,6 +30,7 @@ from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
+
 
 class TestWorkingTree(TestCaseWithWorkingTree):
 
@@ -71,18 +73,36 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_open_containing(self):
         branch = self.make_branch_and_tree('.').branch
+        local_base = urlutils.local_path_from_url(branch.base)
+
+        # Empty opens '.'
         wt, relpath = WorkingTree.open_containing()
         self.assertEqual('', relpath)
-        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
+        self.assertEqual(wt.basedir + '/', local_base)
+
+        # '.' opens this dir
         wt, relpath = WorkingTree.open_containing(u'.')
         self.assertEqual('', relpath)
-        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
+        self.assertEqual(wt.basedir + '/', local_base)
+
+        # './foo' finds '.' and a relpath of 'foo'
         wt, relpath = WorkingTree.open_containing('./foo')
         self.assertEqual('foo', relpath)
-        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
-        wt, relpath = WorkingTree.open_containing('file://' + getcwd() + '/foo')
+        self.assertEqual(wt.basedir + '/', local_base)
+
+        # abspath(foo) finds '.' and relpath of 'foo'
+        wt, relpath = WorkingTree.open_containing('./foo')
+        wt, relpath = WorkingTree.open_containing(getcwd() + '/foo')
         self.assertEqual('foo', relpath)
-        self.assertEqual(wt.basedir + '/', urlutils.local_path_from_url(branch.base))
+        self.assertEqual(wt.basedir + '/', local_base)
+
+        # can even be a url: finds '.' and relpath of 'foo'
+        wt, relpath = WorkingTree.open_containing('./foo')
+        wt, relpath = WorkingTree.open_containing(
+                    urlutils.local_path_to_url(getcwd() + '/foo'))
+        self.assertEqual('foo', relpath)
+        self.assertEqual(wt.basedir + '/', local_base)
+
 
     def test_basic_relpath(self):
         # for comprehensive relpath tests, see whitebox.py.
@@ -145,22 +165,19 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         tree.revert(['hello.txt'])
         self.failUnlessExists('hello.txt')
 
-    def test_unknowns_by_default_patterns(self):
-        """Backup files are ignored by default"""
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['hello.txt',
-                         'hello.txt.~1~'])
-        self.assertEquals(list(tree.unknowns()),
-                          ['hello.txt'])
-
     def test_versioned_files_not_unknown(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['hello.txt',
-                         'hello.txt.~1~'])
+        self.build_tree(['hello.txt'])
         tree.add('hello.txt')
         self.assertEquals(list(tree.unknowns()),
                           [])
-        tree.remove('hello.txt')
+
+    def test_unknowns(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['hello.txt',
+                         'hello.txt.~1~'])
+        self.build_tree_contents([('.bzrignore', '*.~*\n')])
+        tree.add('.bzrignore')
         self.assertEquals(list(tree.unknowns()),
                           ['hello.txt'])
 
