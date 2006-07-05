@@ -132,9 +132,12 @@ class _MyResult(unittest._TextTestResult):
     """
     stop_early = False
     
-    def __init__(self, stream, descriptions, verbosity, pb=None):
+    def __init__(self, stream, descriptions, verbosity, pb=None,
+                 bench_history=None):
         unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
         self.pb = pb
+        if bench_history is not None:
+            bench_history.write("--date %s" % time.time())
     
     def extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""

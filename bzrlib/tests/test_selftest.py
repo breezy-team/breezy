@@ -469,6 +469,17 @@ class TestTestResult(TestCase):
         # cheat. Yes, wash thy mouth out with soap.
         self._benchtime = None
 
+    def test_assigned_benchmark_file_stores_date(self):
+        output = StringIO()
+        result = bzrlib.tests._MyResult(self._log_file,
+                                        descriptions=0,
+                                        verbosity=1,
+                                        bench_history=output
+                                        )
+        output_string = output.getvalue()
+        self.assertContainsRe(output_string, "--date [0-9.]+")
+
+
     def _time_hello_world_encoding(self):
         """Profile two sleep calls
         
