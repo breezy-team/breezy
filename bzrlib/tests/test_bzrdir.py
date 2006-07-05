@@ -168,6 +168,11 @@ class TestBzrDirFormat(TestCaseWithTransport):
         repo = bzrdir.BzrDir.create_repository('.', shared=True)
         self.assertTrue(repo.is_shared())
 
+    def test_create_repository_nonshared(self):
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        repo = bzrdir.BzrDir.create_repository('.')
+        self.assertFalse(repo.is_shared())
+
     def test_create_repository_under_shared(self):
         # an explicit create_repository always does so.
         # we trust the format is right from the 'create_repository test'
