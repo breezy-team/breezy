@@ -341,7 +341,9 @@ def specified_file_ids(filenames, trees, require_versioned=True):
     
     :param filenames: The filenames to find file_ids for
     :param trees: The trees to find file_ids within
-    :param require_versioned: if true, all specified filenames must
+    :param require_versioned: if true, all specified filenames must occur in
+    at least one tree.
+    :return: a set of file ids for the specified filenames
     """
     if not filenames:
         interesting_ids = None
