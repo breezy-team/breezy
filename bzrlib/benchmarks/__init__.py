@@ -18,9 +18,11 @@
 """Benchmark test suite for bzr."""
 
 import bzrlib
-from bzrlib.tests.TestUtil import TestLoader
 from bzrlib.bzrdir import BzrDir
+import bzrlib.plugin
+from bzrlib.tests.TestUtil import TestLoader
 from bzrlib.tests.blackbox import ExternalBase
+
 
 class Benchmark(ExternalBase):
 
@@ -118,4 +120,11 @@ def test_suite():
                    'bzrlib.benchmarks.bench_transform',
                    'bzrlib.benchmarks.bench_workingtree',
                    ]
-    return TestLoader().loadTestsFromModuleNames(testmod_names)
+    suite = TestLoader().loadTestsFromModuleNames(testmod_names) 
+
+    # Load any benchmarks from plugins
+    for name, plugin in bzrlib.plugin.all_plugins().items():
+        if getattr(plugin, 'bench_suite', None) is not None:
+            suite.addTest(plugin.bench_suite())
+
+    return suite
