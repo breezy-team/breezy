@@ -269,10 +269,15 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
         new_tree = tree
     else:
         new_tree = spec_tree(new_revision_spec)
+    if new_tree is not tree:
+        extra_trees = (tree,)
+    else:
+        extra_trees = None
 
     return show_diff_trees(old_tree, new_tree, sys.stdout, specific_files,
                            external_diff_options,
-                           old_label=old_label, new_label=new_label)
+                           old_label=old_label, new_label=new_label,
+                           extra_trees=extra_trees)
 
 
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,

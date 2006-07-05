@@ -23,6 +23,7 @@ import re
 
 import bzrlib
 from bzrlib.branch import Branch
+from bzrlib import workingtree
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -172,6 +173,15 @@ class TestDiff(ExternalBase):
         print >> open('branch1/file1', 'wb'), 'new line'
         output = self.run_bzr_captured(['diff', '-r', '1..', 'branch1'], retcode=1)
         self.assertTrue('\n-original line\n+new line\n' in output[0])
+
+    def test_diff_across_rename(self):
+        """The working tree path should always be considered for diffing"""
+        self.make_example_branch()
+        self.run_bzr('diff', '-r', '0..1', 'hello', retcode=1)
+        wt = workingtree.WorkingTree.open_containing('.')[0]
+        wt.rename_one('hello', 'hello1')
+        self.run_bzr('diff', 'hello1', retcode=1)
+        self.run_bzr('diff', '-r', '0..1', 'hello1', retcode=1)
 
 
 class TestCheckoutDiff(TestDiff):
