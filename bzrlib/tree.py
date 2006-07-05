@@ -345,6 +345,7 @@ def specified_file_ids(filenames, trees, require_versioned=True):
     at least one tree.
     :return: a set of file ids for the specified filenames
     """
+    not_versioned = []
     if not filenames:
         interesting_ids = None
     else:
@@ -356,8 +357,8 @@ def specified_file_ids(filenames, trees, require_versioned=True):
                 if file_id is not None:
                     interesting_ids.add(file_id)
                     not_found = False
-            if not_found and require_versioned:
-                raise errors.NotVersionedError(path=tree_path)
+            if not_found:
+                not_versioned.append(tree_path)
         
         pending = interesting_ids
         # now handle children of interesting ids
@@ -374,4 +375,6 @@ def specified_file_ids(filenames, trees, require_versioned=True):
                             new_pending.add(child.file_id)
             interesting_ids.update(new_pending)
             pending = new_pending
+        if len(not_versioned) > 0 and require_versioned:
+            raise errors.PathsNotVersionedError(not_versioned)
     return interesting_ids

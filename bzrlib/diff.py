@@ -277,7 +277,8 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
 
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     external_diff_options=None,
-                    old_label='a/', new_label='b/'):
+                    old_label='a/', new_label='b/',
+                    extra_trees=None):
     """Show in text form the changes from one tree to another.
 
     to_files
@@ -292,7 +293,8 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         try:
             return _show_diff_trees(old_tree, new_tree, to_file,
                                     specific_files, external_diff_options,
-                                    old_label=old_label, new_label=new_label)
+                                    old_label=old_label, new_label=new_label,
+                                    extra_trees=extra_trees)
         finally:
             new_tree.unlock()
     finally:
@@ -301,7 +303,7 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
 def _show_diff_trees(old_tree, new_tree, to_file,
                      specific_files, external_diff_options, 
-                     old_label='a/', new_label='b/' ):
+                     old_label='a/', new_label='b/', extra_trees=None):
 
     # GNU Patch uses the epoch date to detect files that are being added
     # or removed in a diff.
@@ -309,8 +311,6 @@ def _show_diff_trees(old_tree, new_tree, to_file,
 
     # TODO: Generation of pseudo-diffs for added/deleted files could
     # be usefully made into a much faster special case.
-
-    _raise_if_doubly_unversioned(specific_files, old_tree, new_tree)
 
     if external_diff_options:
         assert isinstance(external_diff_options, basestring)
@@ -321,7 +321,8 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         diff_file = internal_diff
     
     delta = compare_trees(old_tree, new_tree, want_unchanged=False,
-                          specific_files=specific_files)
+                          specific_files=specific_files, 
+                          require_versioned=True, extra_trees=extra_trees)
 
     has_changes = 0
     for path, file_id, kind in delta.removed:
@@ -378,17 +379,6 @@ def _patch_header_date(tree, file_id, path):
     tm = time.gmtime(tree.get_file_mtime(file_id, path))
     return time.strftime('%Y-%m-%d %H:%M:%S +0000', tm)
 
-
-def _raise_if_doubly_unversioned(specific_files, old_tree, new_tree):
-    """Complain if paths are not versioned in either tree."""
-    if not specific_files:
-        return
-    old_unversioned = old_tree.filter_unversioned_files(specific_files)
-    new_unversioned = new_tree.filter_unversioned_files(specific_files)
-    unversioned = old_unversioned.intersection(new_unversioned)
-    if unversioned:
-        raise errors.PathsNotVersionedError(sorted(unversioned))
-    
 
 def _raise_if_nonexistent(paths, old_tree, new_tree):
     """Complain if paths are not in either inventory or tree.

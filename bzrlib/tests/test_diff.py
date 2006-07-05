@@ -275,6 +275,16 @@ class TestDiffDates(TestCaseWithTransport):
 
 ''')
 
+    def test_show_diff_specified(self):
+        """A working-tree id can be used to identify a file"""
+        self.wt.rename_one('file1', 'file1b')
+        old_tree = self.b.repository.revision_tree('rev-1')
+        new_tree = self.b.repository.revision_tree('rev-4')
+        out_file = StringIO()
+        show_diff_trees(old_tree, new_tree, to_file=out_file, 
+                        specific_files=['file1b'], extra_trees=[self.wt])
+        self.assertContainsRe(out_file.getvalue(), 'file1\t')
+
 
 class TestPatienceDiffLib(TestCase):
 

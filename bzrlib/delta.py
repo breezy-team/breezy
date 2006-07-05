@@ -143,7 +143,9 @@ class TreeDelta(object):
             show_list(self.unchanged)
 
 
-def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None):
+def compare_trees(old_tree, new_tree, want_unchanged=False, 
+                  specific_files=None, require_versioned=False,
+                  extra_trees=None):
     """Describe changes from one tree to another.
 
     Returns a TreeDelta with details of added, modified, renamed, and
@@ -168,8 +170,11 @@ def compare_trees(old_tree, new_tree, want_unchanged=False, specific_files=None)
     try:
         new_tree.lock_read()
         try:
+            trees = (new_tree, old_tree)
+            if extra_trees is not None:
+                trees = trees + tuple(extra_trees)
             specific_file_ids = tree.specified_file_ids(specific_files, 
-                (new_tree, old_tree), require_versioned=False)
+                trees, require_versioned=require_versioned)
             return _compare_trees(old_tree, new_tree, want_unchanged,
                                   specific_file_ids)
         finally:
