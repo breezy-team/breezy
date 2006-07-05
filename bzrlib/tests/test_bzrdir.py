@@ -62,7 +62,7 @@ class SampleBranch(bzrlib.branch.Branch):
 class SampleBzrDir(bzrdir.BzrDir):
     """A sample BzrDir implementation to allow testing static methods."""
 
-    def create_repository(self):
+    def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
         return "A repository"
 
@@ -162,6 +162,11 @@ class TestBzrDirFormat(TestCaseWithTransport):
             self.assertEqual('A repository', repo)
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_repository_shared(self):
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        repo = bzrdir.BzrDir.create_repository('.', shared=True)
+        self.assertTrue(repo.is_shared())
 
     def test_create_repository_under_shared(self):
         # an explicit create_repository always does so.
