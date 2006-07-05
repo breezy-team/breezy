@@ -286,6 +286,9 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
     external_diff_options
         If set, use an external GNU diff and pass these options.
+
+    extra_trees
+        If set, more Trees to use for looking up file ids
     """
     old_tree.lock_read()
     try:

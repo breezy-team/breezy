@@ -345,36 +345,35 @@ def specified_file_ids(filenames, trees, require_versioned=True):
     at least one tree.
     :return: a set of file ids for the specified filenames
     """
-    not_versioned = []
     if not filenames:
-        interesting_ids = None
-    else:
-        interesting_ids = set()
-        for tree_path in filenames:
-            not_found = True
+        return None
+    not_versioned = []
+    interesting_ids = set()
+    for tree_path in filenames:
+        not_found = True
+        for tree in trees:
+            file_id = tree.inventory.path2id(tree_path)
+            if file_id is not None:
+                interesting_ids.add(file_id)
+                not_found = False
+        if not_found:
+            not_versioned.append(tree_path)
+    
+    pending = interesting_ids
+    # now handle children of interesting ids
+    # we loop so that we handle all children of each id in both trees
+    while len(pending) > 0:
+        new_pending = set()
+        for file_id in pending:
             for tree in trees:
-                file_id = tree.inventory.path2id(tree_path)
-                if file_id is not None:
-                    interesting_ids.add(file_id)
-                    not_found = False
-            if not_found:
-                not_versioned.append(tree_path)
-        
-        pending = interesting_ids
-        # now handle children of interesting ids
-        # we loop so that we handle all children of each id in both trees
-        while len(pending) > 0:
-            new_pending = set()
-            for file_id in pending:
-                for tree in trees:
-                    if file_id not in tree:
-                        continue
-                    entry = tree.inventory[file_id]
-                    for child in getattr(entry, 'children', {}).itervalues():
-                        if child.file_id not in interesting_ids:
-                            new_pending.add(child.file_id)
-            interesting_ids.update(new_pending)
-            pending = new_pending
-        if len(not_versioned) > 0 and require_versioned:
-            raise errors.PathsNotVersionedError(not_versioned)
+                if file_id not in tree:
+                    continue
+                entry = tree.inventory[file_id]
+                for child in getattr(entry, 'children', {}).itervalues():
+                    if child.file_id not in interesting_ids:
+                        new_pending.add(child.file_id)
+        interesting_ids.update(new_pending)
+        pending = new_pending
+    if len(not_versioned) > 0 and require_versioned:
+        raise errors.PathsNotVersionedError(not_versioned)
     return interesting_ids

@@ -161,8 +161,11 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
 
     specific_files
         If true, only check for changes to specified names or
-        files within them.  Any unversioned files given have no effect
-        (but this might change in the future).
+        files within them.  By default, unversioned files are ignored.
+
+    require_versioned
+        If true, an all files are required to be versioned, and
+        PathsNotVersionedError will be thrown if they are not.
     """
     # NB: show_status depends on being able to pass in non-versioned files and
     # report them as unknown
@@ -194,8 +197,6 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids):
 
     # TODO: Rather than iterating over the whole tree and then filtering, we
     # could diff just the specified files (if any) and their subtrees.  
-    # Perhaps should take a list of file-ids instead?   Need to indicate any
-    # ids or names which were not found in the trees.
 
     old_files = old_tree.list_files()
     new_files = new_tree.list_files()
