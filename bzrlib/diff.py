@@ -330,7 +330,7 @@ def _show_diff_trees(old_tree, new_tree, to_file,
     
     delta = compare_trees(old_tree, new_tree, want_unchanged=False,
                           specific_files=specific_files, 
-                          require_versioned=True, extra_trees=extra_trees)
+                          extra_trees=extra_trees, require_versioned=True)
 
     has_changes = 0
     for path, file_id, kind in delta.removed:

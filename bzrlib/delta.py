@@ -144,8 +144,8 @@ class TreeDelta(object):
 
 
 def compare_trees(old_tree, new_tree, want_unchanged=False, 
-                  specific_files=None, require_versioned=False,
-                  extra_trees=None):
+                  specific_files=None, extra_trees=None, 
+                  require_versioned=False):
     """Describe changes from one tree to another.
 
     Returns a TreeDelta with details of added, modified, renamed, and
@@ -162,6 +162,10 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
     specific_files
         If true, only check for changes to specified names or
         files within them.  By default, unversioned files are ignored.
+
+    extra_trees
+        If non-None, a list of more trees to use for looking up file_ids from
+        paths
 
     require_versioned
         If true, an all files are required to be versioned, and
