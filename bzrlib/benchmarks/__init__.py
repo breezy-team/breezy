@@ -17,9 +17,7 @@
 
 """Benchmark test suite for bzr."""
 
-import bzrlib
-from bzrlib.bzrdir import BzrDir
-import bzrlib.plugin
+from bzrlib import bzrdir, plugin
 from bzrlib.tests.TestUtil import TestLoader
 from bzrlib.tests.blackbox import ExternalBase
 
@@ -37,8 +35,8 @@ class Benchmark(ExternalBase):
         # we simulate this by three levels of dirs named 0-7, givin 512 dirs,
         # and 20 files each.
         if url is not None:
-            b = bzrlib.bzrdir.BzrDir.create_branch_convenience(url)
-            d = bzrlib.bzrdir.BzrDir.create('.')
+            b = bzrdir.BzrDir.create_branch_convenience(url)
+            d = bzrdir.BzrDir.create('.')
             bzrlib.branch.BranchReferenceFormat().initialize(d, b)
             d.create_workingtree()
         else:
@@ -123,8 +121,8 @@ def test_suite():
     suite = TestLoader().loadTestsFromModuleNames(testmod_names) 
 
     # Load any benchmarks from plugins
-    for name, plugin in bzrlib.plugin.all_plugins().items():
-        if getattr(plugin, 'bench_suite', None) is not None:
-            suite.addTest(plugin.bench_suite())
+    for name, module in plugin.all_plugins().items():
+        if getattr(module, 'bench_suite', None) is not None:
+            suite.addTest(module.bench_suite())
 
     return suite
