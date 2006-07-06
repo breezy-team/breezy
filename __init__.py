@@ -68,9 +68,8 @@ class EmailSender(object):
         """What URL to display in the subject of the mail"""
         url = self.config.get_user_option('post_commit_url')
         if url is None:
-            return self.branch.base
-        else:
-            return url
+            url = self.branch.base
+        return url
     
 
     def from_address(self):
@@ -110,16 +109,19 @@ class EmailSender(object):
     def should_send(self):
         return self.to() is not None and self.from_address() is not None
 
+    def send_maybe(self):
+        if self.should_send():
+            self.send()
+
     def subject(self):
-        print self.url ()
         return ("Rev %d: %s in %s" % 
                 (self.revno,
-                 self.revision.message.split('\n')[0].split('\r')[0],
+                 self.revision.get_summary(),
                  self.url()))
 
 
 def post_commit(branch, revision_id):
-    EmailSender(branch, revision_id, config.BranchConfig(branch)).send()
+    EmailSender(branch, revision_id, config.BranchConfig(branch)).send_maybe()
 
 
 def test_suite():
