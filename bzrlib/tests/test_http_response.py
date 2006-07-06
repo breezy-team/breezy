@@ -279,3 +279,12 @@ class TestHttpMultipartRangeResponse(TestCase):
         self.assertRaises(errors.InvalidRange, multi.read, 11)
         multi.seek(31)
         self.assertRaises(errors.InvalidRange, multi.read, 10)
+
+    def test_invalid(self):
+        content = StringIO('')
+        try:
+            response.HttpMultipartRangeResponse('http://foo',
+                        'multipart/byte;boundary=invalid', content)
+        except errors.InvalidHttpContentType, e:
+            self.assertContainsRe(str(e), 'http://foo')
+            self.assertContainsRe(str(e), 'multipart/byte;')
