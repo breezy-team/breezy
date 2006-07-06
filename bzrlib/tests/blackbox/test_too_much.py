@@ -57,36 +57,6 @@ from bzrlib.workingtree import WorkingTree
 
 class TestCommands(ExternalBase):
 
-    def test_whoami(self):
-        # this should always identify something, if only "john@localhost"
-        self.runbzr("whoami")
-        self.runbzr("whoami --email")
-
-        self.assertEquals(self.runbzr("whoami --email",
-                                      backtick=True).count('@'), 1)
-        
-    def test_whoami_branch(self):
-        """branch specific user identity works."""
-        self.runbzr('init')
-        b = bzrlib.branch.Branch.open('.')
-        b.control_files.put_utf8('email', 'Branch Identity <branch@identi.ty>')
-        bzr_email = os.environ.get('BZREMAIL')
-        if bzr_email is not None:
-            del os.environ['BZREMAIL']
-        whoami = self.runbzr("whoami",backtick=True)
-        whoami_email = self.runbzr("whoami --email",backtick=True)
-        self.assertTrue(whoami.startswith('Branch Identity <branch@identi.ty>'))
-        self.assertTrue(whoami_email.startswith('branch@identi.ty'))
-        # Verify that the environment variable overrides the value 
-        # in the file
-        os.environ['BZREMAIL'] = 'Different ID <other@environ.ment>'
-        whoami = self.runbzr("whoami",backtick=True)
-        whoami_email = self.runbzr("whoami --email",backtick=True)
-        self.assertTrue(whoami.startswith('Different ID <other@environ.ment>'))
-        self.assertTrue(whoami_email.startswith('other@environ.ment'))
-        if bzr_email is not None:
-            os.environ['BZREMAIL'] = bzr_email
-
     def test_nick_command(self):
         """bzr nick for viewing, setting nicknames"""
         os.mkdir('me.dev')
