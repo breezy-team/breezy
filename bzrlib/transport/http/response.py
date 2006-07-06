@@ -127,6 +127,9 @@ class RangeFile(object):
         return self._pos
 
 
+_CONTENT_RANGE_RE = re.compile(
+    '\s*([^\s]+)\s+([0-9]+)-([0-9]+)/([0-9]+)\s*$')
+
 def _parse_range(range, path='<unknown>'):
     """Parse an http Content-range header and return start + end
 
@@ -134,7 +137,7 @@ def _parse_range(range, path='<unknown>'):
     :param path: Provide to give better error messages.
     :return: (start, end) A tuple of integers
     """
-    match = HttpRangeResponse.CONTENT_RANGE_RE.match(range)
+    match = _CONTENT_RANGE_RE.match(range)
     if not match:
         raise errors.InvalidHttpRange(path, range,
                                       "Invalid Content-range")
@@ -157,26 +160,40 @@ def _parse_range(range, path='<unknown>'):
 class HttpRangeResponse(RangeFile):
     """A single-range HTTP response."""
 
-    CONTENT_RANGE_RE = re.compile(
-        '\s*([^\s]+)\s+([0-9]+)-([0-9]+)/([0-9]+)\s*$')
-
     def __init__(self, path, content_range, input_file):
         mutter("parsing 206 non-multipart response for %s", path)
         RangeFile.__init__(self, path, input_file)
-        start, end = _parse_range(content_range)
+        start, end = _parse_range(content_range, path)
         self._add_range(start, end, 0)
         self._finish_ranges()
 
 
+_CONTENT_TYPE_RE = re.compile(
+    '^\s*multipart/byteranges\s*;\s*boundary\s*=\s*(.*?)\s*$')
 
-class HttpMultipartRangeResponse(HttpRangeResponse):
+_BOUNDARY_PATT = (
+    "^--%s(?:\r\n(?:(?:content-range:([^\r]+))|[^\r]+))+\r\n\r\n")
+
+def _parse_boundary(ctype, path='<unknown>'):
+    """Parse the Content-type field.
+    
+    This expects a multipart Content-type, and returns a
+    regex which is capable of finding the boundaries
+    in the multipart data.
+    """
+    match = _CONTENT_TYPE_RE.match(ctype)
+    if not match:
+        raise TransportError("Invalid Content-type (%s) in HTTP multipart"
+                             "response for %s!" % (ctype, self._path))
+
+    boundary = match.group(1)
+    mutter('multipart boundary is %s', boundary)
+    self.BOUNDARY_RE = re.compile(self.BOUNDARY_PATT % re.escape(boundary),
+                                  re.IGNORECASE | re.MULTILINE)
+
+
+class HttpMultipartRangeResponse(RangeFile):
     """A multi-range HTTP response."""
-
-    CONTENT_TYPE_RE = re.compile(
-        '^\s*multipart/byteranges\s*;\s*boundary\s*=\s*(.*?)\s*$')
-
-    BOUNDARY_PATT = \
-        "^--%s(?:\r\n(?:(?:content-range:([^\r]+))|[^\r]+))+\r\n\r\n"
 
     def __init__(self, path, content_type, input_file):
         mutter("parsing 206 multipart response for %s", path)
