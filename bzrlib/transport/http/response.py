@@ -166,13 +166,15 @@ class HttpMultipartRangeResponse(HttpRangeResponse):
     """A multi-range HTTP response."""
 
     CONTENT_TYPE_RE = re.compile(
-        '^\s*multipart/byteranges\s*;\s*boundary\s*=\s*(.*)\s*$')
+        '^\s*multipart/byteranges\s*;\s*boundary\s*=\s*(.*?)\s*$')
 
     BOUNDARY_PATT = \
         "^--%s(?:\r\n(?:(?:content-range:([^\r]+))|[^\r]+))+\r\n\r\n"
 
     def __init__(self, path, content_type, input_file):
         mutter("parsing 206 multipart response for %s", path)
+        # TODO: jam 20060706 Is it valid to initialize a
+        #       grandparent without initializing parent?
         RangeFile.__init__(self, path, input_file)
 
         self._parse_boundary(content_type)

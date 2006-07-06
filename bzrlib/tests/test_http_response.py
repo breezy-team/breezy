@@ -121,25 +121,27 @@ class TestRangeFile(TestCase):
         self.assertRaises(ValueError, self.fp.seek, 0, -1)
 
 
+def assertRegexMatches(test, groups, regex, text):
+    """Check that the regex matches and returns the right values"""
+    m = regex.match(text)
+    test.assertNotEqual(None, m, "text %s did not match regex" % (text,))
+
+    test.assertEqual(groups, m.groups())
+
+
 class TestHttpRangeResponse(TestCase):
-
-    def assertMatches(self, regex, text, groups):
-        """Check that the regex matches and returns the right values"""
-        m = regex.match(text)
-        self.assertNotEqual(None, m, "text %s did not match regex" % (text,))
-
-        self.assertEqual(groups, m.groups())
 
     def test_range_re(self):
         """Test that we match valid ranges."""
         regex = response.HttpRangeResponse.CONTENT_RANGE_RE
-        self.assertMatches(regex, 'bytes 1-10/11', ('bytes', '1', '10', '11'))
-        self.assertMatches(regex,
-            '\tbytes  1-10/11   ', ('bytes', '1', '10', '11'))
-        self.assertMatches(regex,
-            '\tbytes  2123-4242/1231   ', ('bytes', '2123', '4242', '1231'))
-        self.assertMatches(regex,
-            ' chars 1-2/3', ('chars', '1', '2', '3'))
+        assertRegexMatches(self, ('bytes', '1', '10', '11'),
+                           regex, 'bytes 1-10/11')
+        assertRegexMatches(self, ('bytes', '1', '10', '11'),
+                           regex, '\tbytes  1-10/11   ')
+        assertRegexMatches(self, ('bytes', '2123', '4242', '1231'),
+                           regex, '\tbytes  2123-4242/1231   ')
+        assertRegexMatches(self, ('chars', '1', '2', '3'),
+                           regex, ' chars 1-2/3')
 
     def test__parse_range(self):
         """Test that _parse_range acts reasonably."""
@@ -166,3 +168,16 @@ class TestHttpRangeResponse(TestCase):
         self.assertRaises(errors.InvalidRange, f.read, 2)
         f.seek(1)
         self.assertEqual('012345', f.read(6))
+
+
+class TestHttpMultipartRangeResponse(TestCase):
+
+    def test_content_type_re(self):
+        regex = response.HttpMultipartRangeResponse.CONTENT_TYPE_RE
+        assertRegexMatches(self, ('xxyyzz',),
+                           regex, 'multipart/byteranges; boundary = xxyyzz')
+        assertRegexMatches(self, ('xxyyzz',),
+                           regex, 'multipart/byteranges;boundary=xxyyzz')
+        assertRegexMatches(self, ('xx yy zz',),
+                           regex, ' multipart/byteranges ; boundary= xx yy zz ')
+        self.assertEqual(None, regex.match('multipart byteranges;boundary=xx'))
