@@ -20,8 +20,9 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
                               UnversionedParent, ParentLoop)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform, CantMoveRoot, NotVersionedError,
-                           ExistingLimbo, ImmortalLimbo, LockError)
+                           ReusingTransform, CantMoveRoot, 
+                           PathsNotVersionedError, ExistingLimbo,
+                           ImmortalLimbo, LockError)
 from bzrlib.osutils import file_kind, has_symlinks, pathjoin
 from bzrlib.merge import Merge3Merger
 from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
@@ -492,7 +493,7 @@ class TestTreeTransform(TestCaseInTempDir):
         create.apply()
         self.assertEqual(find_interesting(wt, wt, ['vfile']),
                          set(['myfile-id']))
-        self.assertRaises(NotVersionedError, find_interesting, wt, wt,
+        self.assertRaises(PathsNotVersionedError, find_interesting, wt, wt,
                           ['uvfile'])
 
     def test_set_executability_order(self):
