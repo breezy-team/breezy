@@ -61,10 +61,12 @@ register_urlparse_netloc_protocol('http+pycurl')
 
 
 class CurlResponse(object):
-    """This just exists to make the curl response look like a urllib response."""
+    """Make a curl response look like a urllib response."""
 
     def __init__(self, curl_handle):
+        # This will hold all the returned data
         self._data = StringIO()
+        # And the returned headers go here
         self._header = StringIO()
         self._curl_handle = curl_handle
         self._curl_handle.setopt(pycurl.WRITEFUNCTION, self._data.write)
@@ -77,6 +79,7 @@ class CurlResponse(object):
         # Overload some functions used elsewhere
         self.read = self._data.read
         self.seek = self._data.seek
+        self.tell = self._data.tell
 
     def update(self):
         """Update self after the action has been performed."""
@@ -86,37 +89,22 @@ class CurlResponse(object):
 
     def _build_headers(self):
         """Parse the headers into RFC822 format"""
-
-        # TODO: jam 20060617 We probably don't need all of these
-        #       headers, but this is what the 'curl' wrapper around
-        #       pycurl does
-        self._header.seek(0, 0)
         url = self._curl_handle.getinfo(pycurl.EFFECTIVE_URL)
-        if url[:5] in ('http:', 'https:'):
-            self._header.readline()
-            m = mimetools.Message(self._header)
-        else:
-            m = mimetools.Message(StringIO())
+
+        # Content-type should be parsed here
+        # We need specific http headers like Content-type
+        # so for now, we must assert that content is correct
+        assert url.startswith('http:') or url.startswith('https:')
+        self._header.seek(0, 0)
+        self._header.readline()
+        m = mimetools.Message(self._header)
+
+        # jam 20060706 More headers are available if we decide to use them
+        # get the contents as of 
+        # revid: john@arbash-meinel.com-20060617155251-c445c9574fcdf6aa
+        # to see the other options
         m['effective-url'] = url
         m['http-code'] = str(self._curl_handle.getinfo(pycurl.HTTP_CODE))
-        # jam 20060617 These aren't used, so don't bother parsing them
-        # m['total-time'] = str(self._curl_handle.getinfo(pycurl.TOTAL_TIME))
-        # m['namelookup-time'] = str(self._curl_handle.getinfo(pycurl.NAMELOOKUP_TIME))
-        # m['connect-time'] = str(self._curl_handle.getinfo(pycurl.CONNECT_TIME))
-        # m['pretransfer-time'] = str(self._curl_handle.getinfo(pycurl.PRETRANSFER_TIME))
-        # m['redirect-time'] = str(self._curl_handle.getinfo(pycurl.REDIRECT_TIME))
-        # m['redirect-count'] = str(self._curl_handle.getinfo(pycurl.REDIRECT_COUNT))
-        # m['size-upload'] = str(self._curl_handle.getinfo(pycurl.SIZE_UPLOAD))
-        # m['size-download'] = str(self._curl_handle.getinfo(pycurl.SIZE_DOWNLOAD))
-        # m['speed-upload'] = str(self._curl_handle.getinfo(pycurl.SPEED_UPLOAD))
-        # m['header-size'] = str(self._curl_handle.getinfo(pycurl.HEADER_SIZE))
-        # m['request-size'] = str(self._curl_handle.getinfo(pycurl.REQUEST_SIZE))
-        # m['content-length-download'] = str(self._curl_handle.getinfo(pycurl.CONTENT_LENGTH_DOWNLOAD))
-        # m['content-length-upload'] = str(self._curl_handle.getinfo(pycurl.CONTENT_LENGTH_UPLOAD))
-
-        # Shouldn't this be 'Content-Type', I'm hoping that was already
-        # parsed by the mimetools section.
-        # m['content-type'] = (self._curl_handle.getinfo(pycurl.CONTENT_TYPE) or '').strip(';')
         self.headers = m
 
 

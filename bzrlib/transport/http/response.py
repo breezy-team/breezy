@@ -127,8 +127,10 @@ class RangeFile(object):
         return self._pos
 
 
+# TODO: jam 20060706 Consider compiling these regexes on demand
 _CONTENT_RANGE_RE = re.compile(
     '\s*([^\s]+)\s+([0-9]+)-([0-9]+)/([0-9]+)\s*$')
+
 
 def _parse_range(range, path='<unknown>'):
     """Parse an http Content-range header and return start + end
@@ -171,6 +173,7 @@ class HttpRangeResponse(RangeFile):
 _CONTENT_TYPE_RE = re.compile(
     '^\s*multipart/byteranges\s*;\s*boundary\s*=\s*(.*?)\s*$')
 
+
 # Start with --<boundary>\r\n
 # and ignore all headers ending in \r\n
 # except for content-range:
@@ -181,6 +184,7 @@ _CONTENT_TYPE_RE = re.compile(
 #       of \r\n, and use something more like (\r?\n)
 _BOUNDARY_PATT = (
     "^--%s(?:\r\n(?:(?:content-range:([^\r]+))|[^\r]+))+\r\n\r\n")
+
 
 def _parse_boundary(ctype, path='<unknown>'):
     """Parse the Content-type field.
