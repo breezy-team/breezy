@@ -209,21 +209,11 @@ class HttpMultipartRangeResponse(RangeFile):
         #       grandparent without initializing parent?
         RangeFile.__init__(self, path, input_file)
 
-        self._parse_boundary(content_type)
+        self.boundary_regex = _parse_boundary(content_type, path)
 
-        for match in self.BOUNDARY_RE.finditer(self._data):
-            ent_start, ent_end = _parse_range(match.group(1))
+        for match in self.boundary_regex.finditer(self._data):
+            ent_start, ent_end = _parse_range(match.group(1), path)
             self._add_range(ent_start, ent_end, match.end())
 
         self._finish_ranges()
 
-    def _parse_boundary(self, ctype):
-        match = self.CONTENT_TYPE_RE.match(ctype)
-        if not match:
-            raise TransportError("Invalid Content-type (%s) in HTTP multipart"
-                                 "response for %s!" % (ctype, self._path))
-
-        boundary = match.group(1)
-        mutter('multipart boundary is %s', boundary)
-        self.BOUNDARY_RE = re.compile(self.BOUNDARY_PATT % re.escape(boundary),
-                                      re.IGNORECASE | re.MULTILINE)

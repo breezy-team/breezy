@@ -170,7 +170,7 @@ content-range: bytes 41-50/20\r
 \r
 zyxwvutsrq
 --xxyyzz\r
-content-range: bytes 61-70/20\r
+content-range: bytes 51-60/20\r
 \r
 xxyyzz fbd
 """
@@ -213,7 +213,7 @@ class TestHelpers(TestCase):
         self.assertEqual(simple_data.find('abcdefghij'), matches[1].end())
         self.assertEqual(' bytes 41-50/20', matches[2].group(1))
         self.assertEqual(simple_data.find('zyxwvutsrq'), matches[2].end())
-        self.assertEqual(' bytes 61-70/20', matches[3].group(1))
+        self.assertEqual(' bytes 51-60/20', matches[3].group(1))
         self.assertEqual(simple_data.find('xxyyzz fbd'), matches[3].end())
 
     def test__parse_boundary_invalid(self):
@@ -225,7 +225,6 @@ class TestHelpers(TestCase):
             self.assertContainsRe(str(e), 'multipart/bytes;boundary=xxyyzz')
         else:
             self.fail('Did not raise InvalidHttpContentType')
-
 
 
 class TestHttpRangeResponse(TestCase):
@@ -254,3 +253,29 @@ class TestHttpRangeResponse(TestCase):
 
 class TestHttpMultipartRangeResponse(TestCase):
     """Test the handling of multipart range responses"""
+
+    def test_simple(self):
+        content = StringIO(simple_data)
+        multi = response.HttpMultipartRangeResponse('http://foo', 
+                    'multipart/byteranges; boundary = xxyyzz', content)
+
+        self.assertEqual(4, len(multi._ranges))
+
+        multi.seek(1)
+        self.assertEqual('1234567890', multi.read(10))
+        multi.seek(21)
+        self.assertEqual('abcdefghij', multi.read(10))
+        multi.seek(41)
+        self.assertEqual('zyxwvutsrq', multi.read(10))
+        multi.seek(51)
+        self.assertEqual('xxyyzz fbd', multi.read(10))
+        # TODO: jam 20060706 Currently RangeFile does not support
+        #       reading across ranges. Consider adding it.
+        multi.seek(41)
+        # self.assertEqual('zyxwvutsrqxxyyzz fbd', multi.read(20))
+        self.assertRaises(errors.InvalidRange, multi.read, 20)
+
+        multi.seek(21)
+        self.assertRaises(errors.InvalidRange, multi.read, 11)
+        multi.seek(31)
+        self.assertRaises(errors.InvalidRange, multi.read, 10)
