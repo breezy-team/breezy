@@ -4,6 +4,11 @@ address is set, and should allow format specifiers too.
 
 Until then, it is activated by setting 
 post_commit=bzrlib.plugins.email.post_commit in bazaar.conf or locations.conf.
+The plugin must be installed as "email" (i.e. ~/.bazaar/plugins/email/).
 
 The address to sent to is read from 'post_commit_to' and the address to send
 from from 'post_commit_sender'.
+
+If 'post_commit_url' is set, it is used instead of the branch URL
+(useful since in most cases, you commit to a private url, and you want
+the public HTTP url in the commit message).
