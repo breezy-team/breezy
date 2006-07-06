@@ -25,7 +25,7 @@ responses.
 from bisect import bisect
 import re
 
-from bzrlib.errors import InvalidRange
+from bzrlib import errors
 from bzrlib.trace import mutter
 
 
@@ -94,14 +94,14 @@ class RangeFile(object):
         i = bisect(self._ranges, self._pos) - 1
 
         if i < 0 or self._pos > self._ranges[i]._ent_end:
-            raise InvalidRange(self._path, self._pos)
+            raise errors.InvalidRange(self._path, self._pos)
 
         r = self._ranges[i]
 
         mutter('found range %s %s for pos %s', i, self._ranges[i], self._pos)
 
         if (self._pos + size - 1) > r._ent_end:
-            raise InvalidRange(self._path, self._pos)
+            raise errors.InvalidRange(self._path, self._pos)
 
         start = r._data_start + (self._pos - r._ent_start)
         end   = start + size
@@ -141,22 +141,23 @@ class HttpRangeResponse(RangeFile):
         self._finish_ranges()
 
     def _parse_range(self, range):
+        """Parse an http Content-range header and return start + end"""
         match = self.CONTENT_RANGE_RE.match(range)
         if not match:
-            raise TransportError("Invalid Content-range in HTTP response!")
+            raise errors.InvalidHttpRange(self._path, range,
+                                          "Invalid Content-range")
 
         rtype, start, end, total = match.groups()
 
         if rtype != 'bytes':
-            raise TransportError("Unsupported range type '%s' in HTTP "
-                                 "response for %s!" % (rtype, self._path))
+            raise errors.InvalidHttpRange(self._path, range,
+                    "Unsupported range type '%s'" % (rtype,))
 
         try:
             start = int(start)
             end = int(end)
-        except ValueError:
-            raise TransportError("Invalid Content-range in HTTP "
-                                 "response for %s!" % self._path)
+        except ValueError, e:
+            raise errors.InvalidHttpRange(self._path, range, str(e))
 
         return start, end
 

@@ -18,31 +18,33 @@
 
 from cStringIO import StringIO
 
+from bzrlib import errors
+from bzrlib.transport.http import response
 from bzrlib.tests import TestCase
-from bzrlib.transport.http.response import RangeFile, ResponseRange
-from bzrlib.errors import InvalidRange
 
 
 class TestResponseRange(TestCase):
     """Test the ResponseRange class."""
 
     def test_cmp(self):
-        r1 = ResponseRange(0, 10, 0)
-        r2 = ResponseRange(15, 20, 10)
+        RR = response.ResponseRange
+        r1 = RR(0, 10, 0)
+        r2 = RR(15, 20, 10)
         self.assertTrue(r1 < r2)
         self.assertFalse(r1 > r2)
         self.assertTrue(r1 < 5)
         self.assertFalse(r2 < 5)
 
-        self.assertEqual(ResponseRange(0, 10, 5), ResponseRange(0, 10, 5))
-        self.assertNotEqual(ResponseRange(0, 10, 5), ResponseRange(0, 8, 5))
-        self.assertNotEqual(ResponseRange(0, 10, 5), ResponseRange(0, 10, 6))
+        self.assertEqual(RR(0, 10, 5), RR(0, 10, 5))
+        self.assertNotEqual(RR(0, 10, 5), RR(0, 8, 5))
+        self.assertNotEqual(RR(0, 10, 5), RR(0, 10, 6))
 
     def test_sort_list(self):
-        lst = [ResponseRange(3, 8, 0), 5, ResponseRange(3, 7, 0), 6]
+        """Ensure longer ranges are sorted after shorter ones"""
+        RR = response.ResponseRange
+        lst = [RR(3, 8, 0), 5, RR(3, 7, 0), 6]
         lst.sort()
-        self.assertEqual([ResponseRange(3,7,0), ResponseRange(3,8,0), 5, 6],
-                         lst)
+        self.assertEqual([RR(3,7,0), RR(3,8,0), 5, 6], lst)
 
 
 class TestRangeFile(TestCase):
@@ -50,7 +52,7 @@ class TestRangeFile(TestCase):
 
     def setUp(self):
         content = "abcdefghijklmnopqrstuvwxyz"
-        self.fp = RangeFile('foo', StringIO(content))
+        self.fp = response.RangeFile('foo', StringIO(content))
         self.fp._add_range(0,  9,   0)
         self.fp._add_range(20, 29, 10)
         self.fp._add_range(30, 39, 15)
@@ -74,11 +76,11 @@ class TestRangeFile(TestCase):
     def test_invalid_accesses(self):
         """Test so that invalid accesses trigger errors."""
         self.fp.seek(9)
-        self.assertRaises(InvalidRange, self.fp.read, 2)
+        self.assertRaises(errors.InvalidRange, self.fp.read, 2)
         self.fp.seek(39)
-        self.assertRaises(InvalidRange, self.fp.read, 2)
+        self.assertRaises(errors.InvalidRange, self.fp.read, 2)
         self.fp.seek(19)
-        self.assertRaises(InvalidRange, self.fp.read, 2)
+        self.assertRaises(errors.InvalidRange, self.fp.read, 2)
 
     def test__finish_ranges(self):
         """Test that after RangeFile._finish_ranges the list is sorted."""
@@ -117,3 +119,50 @@ class TestRangeFile(TestCase):
 
         self.assertRaises(ValueError, self.fp.seek, 0, 4)
         self.assertRaises(ValueError, self.fp.seek, 0, -1)
+
+
+class TestHttpRangeResponse(TestCase):
+
+    def assertMatches(self, regex, text, groups):
+        """Check that the regex matches and returns the right values"""
+        m = regex.match(text)
+        self.assertNotEqual(None, m, "text %s did not match regex" % (text,))
+
+        self.assertEqual(groups, m.groups())
+
+    def test_range_re(self):
+        """Test that we match valid ranges."""
+        regex = response.HttpRangeResponse.CONTENT_RANGE_RE
+        self.assertMatches(regex, 'bytes 1-10/11', ('bytes', '1', '10', '11'))
+        self.assertMatches(regex,
+            '\tbytes  1-10/11   ', ('bytes', '1', '10', '11'))
+        self.assertMatches(regex,
+            '\tbytes  2123-4242/1231   ', ('bytes', '2123', '4242', '1231'))
+        self.assertMatches(regex,
+            ' chars 1-2/3', ('chars', '1', '2', '3'))
+
+    def test__parse_range(self):
+        """Test that _parse_range acts reasonably."""
+        content = StringIO('')
+        # Ignore this for now, we only need a class because
+        # _parse_range is not static, and it isn't static
+        # because it tries to be nice and tell you what path
+        # is failing
+        f = response.HttpRangeResponse('', 'bytes 1-3/2', content)
+
+        self.assertEqual((1,2), f._parse_range('bytes 1-2/3'))
+        self.assertEqual((10,20), f._parse_range('bytes 10-20/2'))
+
+        self.assertRaises(errors.InvalidHttpRange, f._parse_range, 'char 1-3/2')
+        self.assertRaises(errors.InvalidHttpRange, f._parse_range, 'bytes a-3/2')
+
+    def test_smoketest(self):
+        """A basic test that HttpRangeResponse is reasonable."""
+        content = StringIO('0123456789')
+        f = response.HttpRangeResponse('http://foo', 'bytes 1-10/9', content)
+        self.assertEqual([response.ResponseRange(1,10,0)], f._ranges)
+
+        f.seek(0)
+        self.assertRaises(errors.InvalidRange, f.read, 2)
+        f.seek(1)
+        self.assertEqual('012345', f.read(6))
