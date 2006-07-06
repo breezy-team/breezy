@@ -336,17 +336,36 @@ def find_renames(old_inv, new_inv):
             yield (old_name, new_name)
             
 
-def specified_file_ids(filenames, trees, require_versioned=True):
+def find_ids_across_trees(filenames, trees, require_versioned=True):
     """Find the ids corresponding to specified filenames.
     
+    All matches in all trees will be used, and all children of matched
+    directories will be used.
+
+    :param filenames: The filenames to find file_ids for
+    :param trees: The trees to find file_ids within
+    :param require_versioned: if true, all specified filenames must occur in
+    at least one tree.
+    :return: a set of file ids for the specified filenames and their children.
+    """
+    if not filenames:
+        return None
+    specified_ids = _find_filename_ids_across_trees(filenames, trees, 
+                                                    require_versioned)
+    return _find_children_across_trees(specified_ids, trees)
+
+
+def _find_filename_ids_across_trees(filenames, trees, require_versioned):
+    """Find the ids corresponding to specified filenames.
+    
+    All matches in all trees will be used.
+
     :param filenames: The filenames to find file_ids for
     :param trees: The trees to find file_ids within
     :param require_versioned: if true, all specified filenames must occur in
     at least one tree.
     :return: a set of file ids for the specified filenames
     """
-    if not filenames:
-        return None
     not_versioned = []
     interesting_ids = set()
     for tree_path in filenames:
@@ -358,7 +377,20 @@ def specified_file_ids(filenames, trees, require_versioned=True):
                 not_found = False
         if not_found:
             not_versioned.append(tree_path)
+    if len(not_versioned) > 0 and require_versioned:
+        raise errors.PathsNotVersionedError(not_versioned)
+    return interesting_ids
+
+
+def _find_children_across_trees(specified_ids, trees):
+    """Return a set including specified ids and their children
     
+    All matches in all trees will be used.
+
+    :param trees: The trees to find file_ids within
+    :return: a set containing all specified ids and their children 
+    """
+    interesting_ids = set(specified_ids)
     pending = interesting_ids
     # now handle children of interesting ids
     # we loop so that we handle all children of each id in both trees
@@ -374,6 +406,4 @@ def specified_file_ids(filenames, trees, require_versioned=True):
                         new_pending.add(child.file_id)
         interesting_ids.update(new_pending)
         pending = new_pending
-    if len(not_versioned) > 0 and require_versioned:
-        raise errors.PathsNotVersionedError(not_versioned)
     return interesting_ids

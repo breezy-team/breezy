@@ -1000,7 +1000,7 @@ def create_entry_executability(tt, entry, trans_id):
 def find_interesting(working_tree, target_tree, filenames):
     """Find the ids corresponding to specified filenames."""
     trees = (working_tree, target_tree)
-    return tree.specified_file_ids(filenames, trees)
+    return tree.find_ids_across_trees(filenames, trees)
 
 
 def change_entry(tt, file_id, working_tree, target_tree, 

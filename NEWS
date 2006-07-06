@@ -102,6 +102,10 @@ IN DEVELOPMENT
     * Cleanup win32 test suite, and general cleanup of places where
       file handles were being held open. (John Arbash Meinel)
 
+    * When specifying filenames for 'diff -r x..y', the name of the file in the
+      working directory can be used, even if its name is different in both x
+      and y.
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over

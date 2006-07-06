@@ -160,8 +160,10 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
         the next.
 
     specific_files
-        If true, only check for changes to specified names or
-        files within them.  By default, unversioned files are ignored.
+        If supplied, only check for changes to specified names or
+        files within them.  When mapping filenames to ids, all matches in all
+        trees (including optional extra_trees) are used, and all children of
+        matched directories are included.
 
     extra_trees
         If non-None, a list of more trees to use for looking up file_ids from
@@ -180,7 +182,7 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
             trees = (new_tree, old_tree)
             if extra_trees is not None:
                 trees = trees + tuple(extra_trees)
-            specific_file_ids = tree.specified_file_ids(specific_files, 
+            specific_file_ids = tree.find_ids_across_trees(specific_files, 
                 trees, require_versioned=require_versioned)
             return _compare_trees(old_tree, new_tree, want_unchanged,
                                   specific_file_ids)
