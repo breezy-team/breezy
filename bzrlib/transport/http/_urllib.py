@@ -73,7 +73,7 @@ class HttpTransport_urllib(HttpTransportBase):
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
 
-    def _get_url_impl(self, url, method, ranges, tail_amount):
+    def _get_url_impl(self, url, method, ranges, tail_amount=0):
         """Actually pass get request into urllib
 
         :returns: urllib Response object
