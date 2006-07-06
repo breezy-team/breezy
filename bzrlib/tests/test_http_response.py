@@ -19,8 +19,30 @@
 from cStringIO import StringIO
 
 from bzrlib.tests import TestCase
-from bzrlib.transport.http.response import RangeFile
+from bzrlib.transport.http.response import RangeFile, ResponseRange
 from bzrlib.errors import InvalidRange
+
+
+class TestResponseRange(TestCase):
+    """Test the ResponseRange class."""
+
+    def test_cmp(self):
+        r1 = ResponseRange(0, 10, 0)
+        r2 = ResponseRange(15, 20, 10)
+        self.assertTrue(r1 < r2)
+        self.assertFalse(r1 > r2)
+        self.assertTrue(r1 < 5)
+        self.assertFalse(r2 < 5)
+
+        self.assertEqual(ResponseRange(0, 10, 5), ResponseRange(0, 10, 5))
+        self.assertNotEqual(ResponseRange(0, 10, 5), ResponseRange(0, 8, 5))
+        self.assertNotEqual(ResponseRange(0, 10, 5), ResponseRange(0, 10, 6))
+
+    def test_sort_list(self):
+        lst = [ResponseRange(3, 8, 0), 5, ResponseRange(3, 7, 0), 6]
+        lst.sort()
+        self.assertEqual([ResponseRange(3,7,0), ResponseRange(3,8,0), 5, 6],
+                         lst)
 
 
 class TestRangeFile(TestCase):
@@ -57,5 +79,41 @@ class TestRangeFile(TestCase):
         self.assertRaises(InvalidRange, self.fp.read, 2)
         self.fp.seek(19)
         self.assertRaises(InvalidRange, self.fp.read, 2)
-        
 
+    def test__finish_ranges(self):
+        """Test that after RangeFile._finish_ranges the list is sorted."""
+        self.fp._add_range(1, 2, 3)
+        self.fp._add_range(8, 9, 10)
+        self.fp._add_range(3, 4, 5)
+
+        # TODO: jam 20060706 If we switch to inserting
+        #       in sorted order, remove this test
+        self.assertNotEqual(self.fp._ranges, sorted(self.fp._ranges))
+
+        self.fp._finish_ranges()
+        self.assertEqual(self.fp._ranges, sorted(self.fp._ranges))
+
+    def test_seek_and_tell(self):
+        # Check for seeking before start
+        self.fp.seek(-2, 0)
+        self.assertEqual(0, self.fp.tell())
+
+        self.fp.seek(5, 0)
+        self.assertEqual(5, self.fp.tell())
+
+        self.fp.seek(-2, 1)
+        self.assertEqual(3, self.fp.tell())
+
+        # TODO: jam 20060706 following tests will fail if this 
+        #       is not true, and would be difficult to debug
+        #       but it is a layering violation
+        self.assertEqual(39, self.fp._len)
+
+        self.fp.seek(0, 2)
+        self.assertEqual(39, self.fp.tell())
+
+        self.fp.seek(-10, 2)
+        self.assertEqual(29, self.fp.tell())
+
+        self.assertRaises(ValueError, self.fp.seek, 0, 4)
+        self.assertRaises(ValueError, self.fp.seek, 0, -1)

@@ -32,27 +32,31 @@ from bzrlib.trace import mutter
 class ResponseRange(object):
     """A range in a RangeFile-object."""
 
+    __slots__ = ['_ent_start', '_ent_end', '_data_start']
+
     def __init__(self, ent_start, ent_end, data_start):
         self._ent_start = ent_start
         self._ent_end = ent_end
-        self._len = ent_end - ent_start + 1
         self._data_start = data_start
 
     def __cmp__(self, other):
-        if type(other) is int:
-            start = other
-        else:
-            start = other._ent_start
+        """Compare this to other.
 
-        if self._ent_start < start:
-            return -1
-        elif self._ent_start == start:
-            return 0
+        We need this both for sorting, and so that we can
+        bisect the list of ranges.
+        """
+        if isinstance(other, int):
+            # Later on we bisect for a starting point
+            # so we allow comparing against a single integer
+            return cmp(self._ent_start, other)
         else:
-            return 1
+            return cmp((self._ent_start, self._ent_end, self._data_start),
+                       (other._ent_start, other._ent_end, other._data_start))
 
     def __str__(self):
-        return "%s-%s" % (self._ent_start, self._ent_end)
+        return "%s(%s-%s,%s)" % (self.__class__.__name__,
+                                 self._ent_start, self._ent_end,
+                                 self._data_start)
 
 
 class RangeFile(object):
