@@ -33,7 +33,7 @@ from bzrlib.errors import (TransportNotPossible, NoSuchFile,
                            DependencyNotPresent)
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
-from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
+from bzrlib.transport.http import HttpTransportBase, HttpServer
 
 try:
     import pycurl
