@@ -3,7 +3,7 @@ This should eventually automatically activate if an email
 address is set, and should allow format specifiers too.
 
 Until then, it is activated by setting 
-post_commit=bzrlib.plugins.email.post_commit in bazaar.conf or branches.conf.
+post_commit=bzrlib.plugins.email.post_commit in bazaar.conf or locations.conf.
 
 The address to sent to is read from 'post_commit_to' and the address to send
 from from 'post_commit_sender'.
