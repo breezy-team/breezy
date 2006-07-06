@@ -171,6 +171,14 @@ class HttpRangeResponse(RangeFile):
 _CONTENT_TYPE_RE = re.compile(
     '^\s*multipart/byteranges\s*;\s*boundary\s*=\s*(.*?)\s*$')
 
+# Start with --<boundary>\r\n
+# and ignore all headers ending in \r\n
+# except for content-range:
+# and find the two trailing \r\n separators
+# indicating the start of the text
+# TODO: jam 20060706 This requires exact conformance
+#       to the spec, we probably could relax the requirement
+#       of \r\n, and use something more like (\r?\n)
 _BOUNDARY_PATT = (
     "^--%s(?:\r\n(?:(?:content-range:([^\r]+))|[^\r]+))+\r\n\r\n")
 
@@ -183,13 +191,13 @@ def _parse_boundary(ctype, path='<unknown>'):
     """
     match = _CONTENT_TYPE_RE.match(ctype)
     if not match:
-        raise TransportError("Invalid Content-type (%s) in HTTP multipart"
-                             "response for %s!" % (ctype, self._path))
+        raise errors.InvalidHttpContentType(path, ctype,
+                "Expected multipart/byteranges with boundary")
 
     boundary = match.group(1)
     mutter('multipart boundary is %s', boundary)
-    self.BOUNDARY_RE = re.compile(self.BOUNDARY_PATT % re.escape(boundary),
-                                  re.IGNORECASE | re.MULTILINE)
+    return re.compile(_BOUNDARY_PATT % re.escape(boundary),
+                      re.IGNORECASE | re.MULTILINE)
 
 
 class HttpMultipartRangeResponse(RangeFile):

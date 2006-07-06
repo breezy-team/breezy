@@ -154,7 +154,30 @@ class TestRegexes(TestCase):
                 self.regex.match('multipart byteranges;boundary=xx'))
 
 
-class TestHttpRangeResponse(TestCase):
+simple_data = """
+--xxyyzz\r
+foo\r
+Content-range: bytes 1-10/20\r
+\r
+1234567890
+--xxyyzz\r
+Content-Range: bytes 21-30/20\r
+bar\r
+\r
+abcdefghij
+--xxyyzz\r
+content-range: bytes 41-50/20\r
+\r
+zyxwvutsrq
+--xxyyzz\r
+content-range: bytes 61-70/20\r
+\r
+xxyyzz fbd
+"""
+
+
+class TestHelpers(TestCase):
+    """Test the helper functions"""
 
     def test__parse_range(self):
         """Test that _parse_range acts reasonably."""
@@ -170,8 +193,42 @@ class TestHttpRangeResponse(TestCase):
             parse_range('bytes x-10/3', path='http://foo/bar')
         except errors.InvalidHttpRange, e:
             self.assertContainsRe(str(e), 'http://foo/bar')
+            self.assertContainsRe(str(e), 'bytes x-10/3')
         else:
             self.fail('Did not raise InvalidHttpRange')
+
+    def test__parse_boundary_simple(self):
+        """Test that _parse_boundary handles Content-type properly"""
+        m = response._parse_boundary(' multipart/byteranges; boundary=xxyyzz')
+        self.assertNotEqual(None, m)
+        # Check that the returned regex is capable of splitting simple_data
+        matches = list(m.finditer(simple_data))
+        self.assertEqual(4, len(matches))
+
+        # match.group() should be the content-range entry
+        # and match.end() should be the start of the content
+        self.assertEqual(' bytes 1-10/20', matches[0].group(1))
+        self.assertEqual(simple_data.find('1234567890'), matches[0].end())
+        self.assertEqual(' bytes 21-30/20', matches[1].group(1))
+        self.assertEqual(simple_data.find('abcdefghij'), matches[1].end())
+        self.assertEqual(' bytes 41-50/20', matches[2].group(1))
+        self.assertEqual(simple_data.find('zyxwvutsrq'), matches[2].end())
+        self.assertEqual(' bytes 61-70/20', matches[3].group(1))
+        self.assertEqual(simple_data.find('xxyyzz fbd'), matches[3].end())
+
+    def test__parse_boundary_invalid(self):
+        try:
+            response._parse_boundary(' multipart/bytes;boundary=xxyyzz',
+                                     path='http://foo/bar')
+        except errors.InvalidHttpContentType, e:
+            self.assertContainsRe(str(e), 'http://foo/bar')
+            self.assertContainsRe(str(e), 'multipart/bytes;boundary=xxyyzz')
+        else:
+            self.fail('Did not raise InvalidHttpContentType')
+
+
+
+class TestHttpRangeResponse(TestCase):
 
     def test_smoketest(self):
         """A basic test that HttpRangeResponse is reasonable."""
@@ -184,6 +241,16 @@ class TestHttpRangeResponse(TestCase):
         f.seek(1)
         self.assertEqual('012345', f.read(6))
 
+    def test_invalid(self):
+        try:
+            f = response.HttpRangeResponse('http://foo', 'bytes x-10/9',
+                                           StringIO('0123456789'))
+        except errors.InvalidHttpRange, e:
+            self.assertContainsRe(str(e), 'http://foo')
+            self.assertContainsRe(str(e), 'bytes x-10/9')
+        else:
+            self.fail('Failed to raise InvalidHttpRange')
+
 
 class TestHttpMultipartRangeResponse(TestCase):
-    pass
+    """Test the handling of multipart range responses"""

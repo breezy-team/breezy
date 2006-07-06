@@ -752,16 +752,31 @@ class InvalidRange(TransportError):
                                        % (path, offset)))
 
 
-class InvalidHttpRange(TransportError):
-    """Invalid http range "%(range)s" for %(path)s: %(msg)s"""
-    
-    def __init__(self, path, range, msg):
+class InvalidHttpResponse(TransportError):
+    """Invalid http response for %(path)s: %(msg)s"""
+
+    def __init__(self, path, msg):
         # TODO: This is ready for a transition to BzrNewError
         self.path = path
-        self.range = range
         self.msg = msg
         msg = self.__doc__ % self.__dict__
         TransportError.__init__(self, msg)
+
+
+class InvalidHttpRange(InvalidHttpResponse):
+    """Invalid http range "%(range)s" for %(path)s: %(msg)s"""
+    
+    def __init__(self, path, range, msg):
+        self.range = range
+        InvalidHttpResponse.__init__(self, path, msg)
+
+
+class InvalidHttpContentType(InvalidHttpResponse):
+    """Invalid http Content-type "%(ctype)s" for %(path)s: %(msg)s"""
+    
+    def __init__(self, path, ctype, msg):
+        self.ctype = ctype
+        InvalidHttpResponse.__init__(self, path, msg)
 
 
 class ConflictsInTree(BzrError):
