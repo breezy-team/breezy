@@ -51,11 +51,12 @@ class HttpTransport_urllib(HttpTransportBase):
         """Set the base path where files will be stored."""
         super(HttpTransport_urllib, self).__init__(base)
 
-    def _get(self, relpath, ranges):
+    def _get(self, relpath, ranges, tail_amount=0):
         path = relpath
         try:
             path = self._real_abspath(relpath)
-            response = self._get_url_impl(path, method='GET', ranges=ranges)
+            response = self._get_url_impl(path, method='GET', ranges=ranges,
+                                          tail_amount=tail_amount)
             return response.code, self._handle_response(path, response)
         except urllib2.HTTPError, e:
             mutter('url error code: %s for has url: %r', e.code, path)
@@ -72,7 +73,7 @@ class HttpTransport_urllib(HttpTransportBase):
                              % (self.abspath(relpath), str(e)),
                              orig_error=e)
 
-    def _get_url_impl(self, url, method, ranges):
+    def _get_url_impl(self, url, method, ranges, tail_amount):
         """Actually pass get request into urllib
 
         :returns: urllib Response object
@@ -86,8 +87,8 @@ class HttpTransport_urllib(HttpTransportBase):
         request.add_header('Pragma', 'no-cache')
         request.add_header('Cache-control', 'max-age=0')
         request.add_header('User-Agent', 'bzr/%s (urllib)' % bzrlib.__version__)
-        if ranges:
-            request.add_header('Range', self._range_header(ranges))
+        if ranges or tail_amount:
+            request.add_header('Range', self._range_header(ranges, tail_amount))
         mutter("GET %s [%s]" % (url, request.get_header('Range')))
         response = opener.open(request)
         return response

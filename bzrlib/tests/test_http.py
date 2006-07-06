@@ -27,7 +27,9 @@ from bzrlib.transport.http import extract_auth
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 
+
 class FakeManager (object):
+
     def __init__(self):
         self.credentials = []
         
@@ -36,6 +38,7 @@ class FakeManager (object):
 
 
 class TestHttpUrls(TestCase):
+
     def test_url_parsing(self):
         f = FakeManager()
         url = extract_auth('http://example.com', f)
@@ -90,6 +93,7 @@ class TestHttpUrls(TestCase):
         except DependencyNotPresent:
             raise TestSkipped('pycurl not present')
 
+
 class TestHttpMixins(object):
 
     def _prep_tree(self):
@@ -124,6 +128,7 @@ class TestHttpMixins(object):
 
 
 class TestHttpConnections_urllib(TestCaseWithWebserver, TestHttpMixins):
+
     _transport = HttpTransport_urllib
 
     def setUp(self):

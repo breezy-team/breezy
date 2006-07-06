@@ -984,10 +984,14 @@ class TestTransportImplementation(TestCaseInTempDir):
         if transport.is_readonly():
             file('a', 'w').write('0123456789')
         else:
-            transport.put('a', StringIO('01234567890'))
+            transport.put('a', StringIO('0123456789'))
 
         d = list(transport.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
         self.assertEqual(d[0], (0, '0'))
         self.assertEqual(d[1], (1, '1'))
         self.assertEqual(d[2], (3, '34'))
         self.assertEqual(d[3], (9, '9'))
+
+        d = list(transport.readv('a', ((-1, 1), (-7, 2))))
+        self.assertEqual(d[0], (9, '9'))
+        self.assertEqual(d[1], (3, '34'))

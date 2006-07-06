@@ -25,11 +25,13 @@ responses.
 from bisect import bisect
 import re
 
-from bzrlib.errors import TransportError
+from bzrlib.errors import InvalidRange
 from bzrlib.trace import mutter
 
 
 class ResponseRange(object):
+    """A range in a RangeFile-object."""
+
     def __init__(self, ent_start, ent_end, data_start):
         self._ent_start = ent_start
         self._ent_end = ent_end
@@ -54,6 +56,10 @@ class ResponseRange(object):
 
 
 class RangeFile(object):
+    """File-like object that allow access to partial available data.
+
+    Specified by a set of ranges.
+    """
 
     def __init__(self, path, input_file):
         self._path = path
@@ -62,8 +68,14 @@ class RangeFile(object):
         self._ranges = []
         self._data = input_file.read()
 
-    def _add_range(self, ent_start, ent_end, data_end):
-        self._ranges.append(ResponseRange(ent_start, ent_end, data_end))
+    def _add_range(self, ent_start, ent_end, data_start):
+        """Add an entity range.
+
+        :param ent_start: Start offset of entity
+        :param ent_end: End offset of entity (inclusive)
+        :param data_start: Start offset of data in data stream.
+        """
+        self._ranges.append(ResponseRange(ent_start, ent_end, data_start))
         self._len = max(self._len, ent_end)
 
     def _finish_ranges(self):
@@ -78,22 +90,20 @@ class RangeFile(object):
         i = bisect(self._ranges, self._pos) - 1
 
         if i < 0 or self._pos > self._ranges[i]._ent_end:
-            raise TransportError("Range response does not contain any data "
-                   "at offset %d for %s!" % (self._pos, self._path))
+            raise InvalidRange(self._path, self._pos)
 
         r = self._ranges[i]
 
         mutter('found range %s %s for pos %s', i, self._ranges[i], self._pos)
 
         if (self._pos + size - 1) > r._ent_end:
-            raise TransportError("Read past end of range (%s) at %d size "
-                                 "%d for %s!" % (r, self._pos,
-                                 size, self._path))
+            raise InvalidRange(self._path, self._pos)
 
         start = r._data_start + (self._pos - r._ent_start)
         end   = start + size
         mutter("range read %d bytes at %d == %d-%d", size, self._pos,
                 start, end)
+        self._pos += (end-start)
         return self._data[start:end]
 
     def seek(self, offset, whence=0):
@@ -108,6 +118,9 @@ class RangeFile(object):
 
         if self._pos < 0:
             self._pos = 0
+
+    def tell(self):
+        return self._pos
 
 
 class HttpRangeResponse(RangeFile):

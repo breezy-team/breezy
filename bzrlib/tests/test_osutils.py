@@ -429,3 +429,35 @@ class TestTerminalEncoding(TestCase):
         # and in the worst case, use bzrlib.user_encoding
         self.assertEqual('user_encoding', osutils.get_terminal_encoding())
 
+
+class TestOffsets(TestCase):
+    """Test test_offsets_to_ranges method that is used to convert
+    readv into combined ranges."""
+
+    def test_offsets_to_http_ranges(self):
+        ranges, tail = osutils.offsets_to_http_ranges([(10, 1), (20, 2), (22, 5)])
+        self.assertEquals(tuple(ranges[0]), (10, 10))
+        self.assertEquals(tuple(ranges[1]), (20, 26))
+        self.assertEquals(tail, 0)
+
+        ranges, tail = osutils.offsets_to_http_ranges([(10, 1), (11, 2), (22, 5), (-4, 4)])
+        self.assertEquals(tuple(ranges[0]), (10, 12))
+        self.assertEquals(tuple(ranges[1]), (22, 26))
+        self.assertEquals(tail, 4)
+
+        ranges, tail = osutils.offsets_to_http_ranges([(-4, 4), (-8, 8)])
+        self.assertEquals(tuple(ranges), ())
+        self.assertEquals(tail, 8)
+
+        ranges, tail = osutils.offsets_to_http_ranges([(10, 1), (20, 2)], fudge_factor=9)
+        self.assertEquals(tuple(ranges[0]), (10, 21))
+        self.assertEquals(len(ranges), 1)
+        self.assertEquals(tail, 0)
+
+        ranges, tail = osutils.offsets_to_http_ranges([(10, 1), (20, 2)], fudge_factor=8)
+        self.assertEquals(tuple(ranges[0]), (10, 10))
+        self.assertEquals(tuple(ranges[1]), (20, 21))
+        self.assertEquals(tail, 0)
+
+
+

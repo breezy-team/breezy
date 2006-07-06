@@ -160,7 +160,7 @@ class PyCurlTransport(HttpTransportBase):
         else:
             self._raise_curl_http_error(curl)
         
-    def _get(self, relpath, ranges):
+    def _get(self, relpath, ranges, tail_amount=0):
         # Documentation says 'Pass in NULL to disable the use of ranges'
         # None is the closest we have, but at least with pycurl 7.13.1
         # It raises an 'invalid arguments' response
@@ -178,8 +178,8 @@ class PyCurlTransport(HttpTransportBase):
 
         response = CurlResponse(curl)
 
-        if ranges is not None:
-            curl.setopt(pycurl.RANGE, self._range_header(ranges))
+        if ranges is not None or tail_amount:
+            curl.setopt(pycurl.RANGE, self._range_header(ranges, tail_amount))
         self._curl_perform(curl)
         response.update()
         if response.code == 0:

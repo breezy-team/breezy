@@ -307,7 +307,7 @@ class Transport(object):
         
         Note that some transports MAY allow querying on directories, but this
         is not part of the protocol.  In other words, the results of 
-        t.has("a_directory_name") are undefined."
+        t.has("a_directory_name") are undefined.
         """
         raise NotImplementedError(self.has)
 
@@ -366,8 +366,20 @@ class Transport(object):
                 yield offset, data[pos:pos + size]
                 pos += size
 
+        def normalize_offsets(offsets):
+            stat = None
+            new_offsets = []
+            for (offset, size) in offsets:
+                if offset < 0:
+                    if stat is None:
+                        stat = self.stat(relpath)
+                    offset = stat.st_size + offset
+                new_offsets.append((offset, size))
+            return new_offsets
+        
         if not len(offsets):
             return
+        offsets = normalize_offsets(offsets)
         fp = self.get(relpath)
         pending_offsets = deque(offsets)
         combined_offsets = []

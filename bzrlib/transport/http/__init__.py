@@ -39,9 +39,10 @@ from bzrlib.errors import (TransportNotPossible, NoSuchFile,
 from bzrlib.branch import Branch
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport, register_transport, Server
-from bzrlib.transport.http._response import (HttpMultipartRangeResponse,
-                                             HttpRangeResponse)
+from bzrlib.transport.http.response import (HttpMultipartRangeResponse,
+                                            HttpRangeResponse)
 from bzrlib.ui import ui_factory
+from bzrlib.osutils import offsets_to_http_ranges
 
 
 def extract_auth(url, password_manager):
@@ -178,12 +179,14 @@ class HttpTransportBase(Transport):
         code, response_file = self._get(relpath, None)
         return response_file
 
-    def _get(self, relpath, ranges):
+    def _get(self, relpath, ranges, tail_amount=0):
         """Get a file, or part of a file.
 
         :param relpath: Path relative to transport base URL
         :param byte_range: None to get the whole file;
             or [(start,end)] to fetch parts of a file.
+        :param tail_amount: How much data to fetch from the tail of
+        the file.
 
         :returns: (http_code, result_file)
 
@@ -199,10 +202,11 @@ class HttpTransportBase(Transport):
         :param return: A list or generator of (offset, data) tuples
         """
         mutter('readv of %s [%s]', relpath, offsets)
-        ranges = self._offsets_to_ranges(offsets)
-        code, f = self._get(relpath, ranges)
+        ranges, tail_amount = offsets_to_http_ranges(offsets)
+        code, f = self._get(relpath, ranges, tail_amount)
         for start, size in offsets:
-            f.seek(start, 0)
+            f.seek(start, (start < 0) and 2 or 0)
+            start = f.tell()
             data = f.read(size)
             assert len(data) == size
             yield start, data
@@ -331,37 +335,7 @@ class HttpTransportBase(Transport):
         else:
             return self.__class__(self.abspath(offset))
 
-    def _offsets_to_ranges(self, offsets):
-        """Turn a list of offsets and sizes into a list of byte ranges.
-
-        :param offsets: A list of tuples of (start, size).
-        An empty list is not accepted.
-
-        :return: a list of byte ranges (start, end). Adjacent ranges will
-        be combined in the result.
-        """
-        # We need a copy of the offsets, as the caller might expect it to
-        # remain unsorted. This doesn't seem expensive for memory at least.
-        offsets = sorted(offsets)
-
-        start, size = offsets[0]
-        prev_end = start + size - 1
-        combined = [[start, prev_end]]
-
-        for start, size in offsets[1:]:
-            end = start + size - 1
-            if start <= prev_end + 1:
-                combined[-1][1] = end
-            else:
-                combined.append([start, end])
-            prev_end = end
-
-        mutter("combined %d offsets into %d ranges", len(offsets),
-                    len(combined))
-
-        return combined
-
-    def _range_header(self, ranges):
+    def _range_header(self, ranges, tail_amount):
         """Turn a list of bytes ranges into a HTTP Range header value.
 
         :param offsets: A list of byte ranges, (start, end). An empty list
@@ -372,6 +346,9 @@ class HttpTransportBase(Transport):
         strings = []
         for start, end in ranges:
             strings.append('%d-%d' % (start, end))
+
+        if tail_amount:
+            strings.append('-%d' % tail_amount)
 
         return 'bytes=' + ', '.join(strings)
 

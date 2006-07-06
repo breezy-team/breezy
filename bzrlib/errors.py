@@ -744,6 +744,14 @@ class ConnectionReset(TransportError):
     pass
 
 
+class InvalidRange(TransportError):
+    """Invalid range access."""
+    
+    def __init__(self, path, offset):
+        TransportError.__init__(self, ("Invalid range access in %s at %d"
+                                       % (path, offset)))
+
+
 class ConflictsInTree(BzrError):
     def __init__(self):
         BzrError.__init__(self, "Working tree has conflicts.")
