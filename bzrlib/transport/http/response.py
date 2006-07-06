@@ -127,6 +127,33 @@ class RangeFile(object):
         return self._pos
 
 
+def _parse_range(range, path='<unknown>'):
+    """Parse an http Content-range header and return start + end
+
+    :param range: The value for Content-range
+    :param path: Provide to give better error messages.
+    :return: (start, end) A tuple of integers
+    """
+    match = HttpRangeResponse.CONTENT_RANGE_RE.match(range)
+    if not match:
+        raise errors.InvalidHttpRange(path, range,
+                                      "Invalid Content-range")
+
+    rtype, start, end, total = match.groups()
+
+    if rtype != 'bytes':
+        raise errors.InvalidHttpRange(path, range,
+                "Unsupported range type '%s'" % (rtype,))
+
+    try:
+        start = int(start)
+        end = int(end)
+    except ValueError, e:
+        raise errors.InvalidHttpRange(path, range, str(e))
+
+    return start, end
+
+
 class HttpRangeResponse(RangeFile):
     """A single-range HTTP response."""
 
@@ -136,30 +163,10 @@ class HttpRangeResponse(RangeFile):
     def __init__(self, path, content_range, input_file):
         mutter("parsing 206 non-multipart response for %s", path)
         RangeFile.__init__(self, path, input_file)
-        start, end = self._parse_range(content_range)
+        start, end = _parse_range(content_range)
         self._add_range(start, end, 0)
         self._finish_ranges()
 
-    def _parse_range(self, range):
-        """Parse an http Content-range header and return start + end"""
-        match = self.CONTENT_RANGE_RE.match(range)
-        if not match:
-            raise errors.InvalidHttpRange(self._path, range,
-                                          "Invalid Content-range")
-
-        rtype, start, end, total = match.groups()
-
-        if rtype != 'bytes':
-            raise errors.InvalidHttpRange(self._path, range,
-                    "Unsupported range type '%s'" % (rtype,))
-
-        try:
-            start = int(start)
-            end = int(end)
-        except ValueError, e:
-            raise errors.InvalidHttpRange(self._path, range, str(e))
-
-        return start, end
 
 
 class HttpMultipartRangeResponse(HttpRangeResponse):
@@ -180,7 +187,7 @@ class HttpMultipartRangeResponse(HttpRangeResponse):
         self._parse_boundary(content_type)
 
         for match in self.BOUNDARY_RE.finditer(self._data):
-            ent_start, ent_end = self._parse_range(match.group(1))
+            ent_start, ent_end = _parse_range(match.group(1))
             self._add_range(ent_start, ent_end, match.end())
 
         self._finish_ranges()

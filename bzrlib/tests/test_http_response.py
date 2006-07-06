@@ -146,17 +146,19 @@ class TestHttpRangeResponse(TestCase):
     def test__parse_range(self):
         """Test that _parse_range acts reasonably."""
         content = StringIO('')
-        # Ignore this for now, we only need a class because
-        # _parse_range is not static, and it isn't static
-        # because it tries to be nice and tell you what path
-        # is failing
-        f = response.HttpRangeResponse('', 'bytes 1-3/2', content)
+        parse_range = response._parse_range
+        self.assertEqual((1,2), parse_range('bytes 1-2/3'))
+        self.assertEqual((10,20), parse_range('bytes 10-20/2'))
 
-        self.assertEqual((1,2), f._parse_range('bytes 1-2/3'))
-        self.assertEqual((10,20), f._parse_range('bytes 10-20/2'))
+        self.assertRaises(errors.InvalidHttpRange, parse_range, 'char 1-3/2')
+        self.assertRaises(errors.InvalidHttpRange, parse_range, 'bytes a-3/2')
 
-        self.assertRaises(errors.InvalidHttpRange, f._parse_range, 'char 1-3/2')
-        self.assertRaises(errors.InvalidHttpRange, f._parse_range, 'bytes a-3/2')
+        try:
+            parse_range('bytes x-10/3', path='http://foo/bar')
+        except errors.InvalidHttpRange, e:
+            self.assertContainsRe(str(e), 'http://foo/bar')
+        else:
+            self.fail('Did not raise InvalidHttpRange')
 
     def test_smoketest(self):
         """A basic test that HttpRangeResponse is reasonable."""
