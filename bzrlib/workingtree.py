@@ -1087,9 +1087,9 @@ class WorkingTree(bzrlib.tree.Tree):
                     continue
                 ignore_globs.append(line)
 
-        global_ignore_filename = pathjoin(config.config_dir(), 'ignore')
+        user_ignore_filename = config.user_ignore_config_filename()
         try:
-            f = open(global_ignore_filename, 'rb')
+            f = open(user_ignore_filename, 'rb')
         except (IOError, OSError), e:
             if e.errno not in (errno.ENOENT, errno.EPERM):
                 raise

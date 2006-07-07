@@ -81,7 +81,7 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
 
         config.ensure_config_dir_exists()
-        user_ignore_file = osutils.pathjoin(config.config_dir(), 'ignore')
+        user_ignore_file = config.user_ignore_config_filename()
         f = open(user_ignore_file, 'wb')
         try:
             f.write('*.py[co]\n'
