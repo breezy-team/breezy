@@ -1943,6 +1943,48 @@ class cmd_selftest(Command):
             ui.ui_factory = save_ui
 
 
+class cmd_setup_default_ignores(Command):
+    """Setup the default list of ignored files.
+
+    bzr 0.8 had a builtin list of files that were ignored by default.
+    Version 0.9 removed this list, but switched to having a per-user
+    default ignore list.
+
+    After running this command the user default ignore list is filled
+    with the old default list.
+
+    This command will fail if the user default ignore list already exists.
+    """
+
+    takes_args = []
+    takes_options = []
+
+    encoding_type = 'replace'
+
+    def run(self):
+        user_ignore_filename = config.user_ignore_config_filename()
+
+        helpful_filename = '~/.bazaar/ignore'
+        if sys.platform == 'win32':
+            helpful_filename = user_ignore_filename
+
+        if os.path.exists(user_ignore_filename):
+            raise BzrCommandError('%s already exists. Not overriding' 
+                                  % (helpful_filename,))
+
+        config.ensure_config_dir_exists()
+        # The extra '' ensures we have a trailing newline
+        out_patterns = u'\n'.join(bzrlib.DEFAULT_IGNORE + [''])
+        f = open(user_ignore_filename, 'wb')
+        try:
+            f.write(out_patterns.encode('utf8'))
+        finally:
+            f.close()
+
+        self.outf.write('Wrote %d patterns to %s\n'
+                        % (len(bzrlib.DEFAULT_IGNORE), helpful_filename))
+
+
 def _get_bzr_branch():
     """If bzr is run from a branch, return Branch or None"""
     from os.path import dirname
