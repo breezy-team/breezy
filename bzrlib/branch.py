@@ -40,7 +40,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       deprecated_method,
                                       DEPRECATED_PARAMETER,
                                       deprecated_passed,
-                                      zero_eight,
+                                      zero_eight, zero_nine,
                                       )
 from bzrlib.trace import mutter, note
 
@@ -97,10 +97,10 @@ class Branch(object):
         
     @staticmethod
     def open(base, _unsupported=False):
-        """Open the repository rooted at base.
+        """Open the branch rooted at base.
 
-        For instance, if the repository is at URL/.bzr/repository,
-        Repository.open(URL) -> a Repository instance.
+        For instance, if the branch is at URL/.bzr/branch,
+        Branch.open(URL) -> a Branch instance.
         """
         control = bzrdir.BzrDir.open(base, _unsupported)
         return control.open_branch(_unsupported)
@@ -138,14 +138,14 @@ class Branch(object):
         warn('%s is deprecated' % self.setup_caching)
         self.cache_root = cache_root
 
+    def get_config(self):
+        return bzrlib.config.BranchConfig(self)
+
     def _get_nick(self):
-        cfg = self.tree_config()
-        return cfg.get_option(u"nickname", default=self.base.split('/')[-2])
+        return self.get_config().get_nickname()
 
     def _set_nick(self, nick):
-        cfg = self.tree_config()
-        cfg.set_option(nick, "nickname")
-        assert cfg.get_option("nickname") == nick
+        self.get_config().set_user_option('nickname', nick)
 
     nick = property(_get_nick, _set_nick)
 
@@ -245,7 +245,7 @@ class Branch(object):
         """
 
         if config is None:
-            config = bzrlib.config.BranchConfig(self)
+            config = self.get_config()
         
         return self.repository.get_commit_builder(self, parents, config, 
             timestamp, timezone, committer, revprops, revision_id)
@@ -400,6 +400,24 @@ class Branch(object):
         location.
         """
         raise NotImplementedError('get_parent is abstract')
+
+    def get_submit_branch(self):
+        """Return the submit location of the branch.
+
+        This is the default location for bundle.  The usual
+        pattern is that the user can override it by specifying a
+        location.
+        """
+        return self.get_config().get_user_option('submit_branch')
+
+    def set_submit_branch(self, location):
+        """Return the submit location of the branch.
+
+        This is the default location for bundle.  The usual
+        pattern is that the user can override it by specifying a
+        location.
+        """
+        self.get_config().set_user_option('submit_branch', location)
 
     def get_push_location(self):
         """Return the None or the location to push this branch to."""
@@ -1154,14 +1172,13 @@ class BzrBranch(Branch):
 
     def get_push_location(self):
         """See Branch.get_push_location."""
-        config = bzrlib.config.BranchConfig(self)
-        push_loc = config.get_user_option('push_location')
+        push_loc = self.get_config().get_user_option('push_location')
         return push_loc
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
-        config = bzrlib.config.LocationConfig(self.base)
-        config.set_user_option('push_location', location)
+        self.get_config().set_user_option('push_location', location, 
+                                          local=True)
 
     @needs_write_lock
     def set_parent(self, url):
@@ -1185,7 +1202,10 @@ class BzrBranch(Branch):
             url = urlutils.relative_url(self.base, url)
             self.control_files.put('parent', url + '\n')
 
+    @deprecated_function(zero_nine)
     def tree_config(self):
+        """DEPRECATED; call get_config instead.  
+        TreeConfig has become part of BranchConfig."""
         return TreeConfig(self)
 
 

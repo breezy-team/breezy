@@ -86,7 +86,7 @@ class Action(object):
         to_file.write(text_line+'\n')
 
 
-class BundleSerializerV07(BundleSerializer):
+class BundleSerializerV08(BundleSerializer):
     def read(self, f):
         """Read the rest of the bundles from the supplied file.
 
@@ -123,7 +123,7 @@ class BundleSerializerV07(BundleSerializer):
         """Write the header for the changes"""
         f = self.to_file
         f.write(BUNDLE_HEADER)
-        f.write('0.7\n')
+        f.write('0.8\n')
         f.write('#\n')
 
     def _write(self, key, value, indent=1):
