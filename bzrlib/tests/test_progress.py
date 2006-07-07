@@ -120,3 +120,25 @@ class TestProgress(TestCase):
         # Updates after a second should not be squelched
         pb.update('me', 1, 1)
         self.assertFalse(pb.always_throttled)
+
+    def test_clear(self):
+        sio = StringIO()
+        pb = TTYProgressBar(to_file=sio, show_eta=False)
+        pb.width = 20 # Just make it easier to test
+        # This should not output anything
+        pb.clear()
+        # These two should not be displayed because
+        # of throttling
+        pb.update('foo', 1, 3)
+        pb.update('bar', 2, 3)
+        # So pb.clear() has nothing to do
+        pb.clear()
+
+        # Make sure the next update isn't throttled
+        pb.start_time -= 1
+        pb.update('baz', 3, 3)
+        pb.clear()
+
+        self.assertEqual('\r[=========] baz 3/3'
+                         '\r                   \r',
+                         sio.getvalue())

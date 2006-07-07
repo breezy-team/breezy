@@ -264,6 +264,7 @@ class TTYProgressBar(_BaseProgressBar):
         self.width = terminal_width()
         self.last_updates = deque()
         self.child_fraction = 0
+        self._have_output = False
     
 
     def throttle(self, old_msg):
@@ -405,10 +406,13 @@ class TTYProgressBar(_BaseProgressBar):
 
         assert len(m) < self.width
         self.to_file.write('\r' + m.ljust(self.width - 1))
+        self._have_output = True
         #self.to_file.flush()
             
     def clear(self):        
-        self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
+        if self._have_output:
+            self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
+        self._have_output = False
         #self.to_file.flush()        
 
 
