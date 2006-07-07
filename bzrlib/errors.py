@@ -451,10 +451,6 @@ class LockNotHeld(LockError):
         self.lock = lock
 
 
-class TestPreventLocking(LockError):
-    """A test exception for forcing locking failure: %(message)s"""
-
-
 class PointlessCommit(BzrNewError):
     """No changes to commit"""
 
