@@ -51,11 +51,10 @@ import stat
 from time import time
 import warnings
 
+from bzrlib import bzrdir, config, errors, urlutils
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
-import bzrlib.bzrdir as bzrdir
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-import bzrlib.errors as errors
 from bzrlib.errors import (BzrCheckError,
                            BzrError,
                            ConflictFormatError,
@@ -103,7 +102,6 @@ from bzrlib.transform import build_tree
 from bzrlib.trace import mutter, note
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
-import bzrlib.urlutils as urlutils
 import bzrlib.ui
 import bzrlib.xml5
 
@@ -1079,14 +1077,38 @@ class WorkingTree(bzrlib.tree.Tree):
         if hasattr(self, '_ignorelist'):
             return self._ignorelist
 
-        l = []
+        ignore_globs = []
+
+        def process_file(f):
+            """Handle breaking up the text into individual ignore globs"""
+            for line in f.read().decode('utf8').split('\n'):
+                line = line.rstrip('\r\n')
+                if not line or line.startswith('#'):
+                    continue
+                ignore_globs.append(line)
+
+        global_ignore_filename = pathjoin(config.config_dir(), 'ignore')
+        try:
+            f = open(global_ignore_filename, 'rb')
+        except (IOError, OSError), e:
+            if e.errno not in (errno.ENOENT, errno.EPERM):
+                raise
+        else:
+            try:
+                process_file(f)
+            finally:
+                f.close()
+
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
-            l.extend([line.rstrip("\n\r").decode('utf-8') 
-                      for line in f.readlines()])
-        self._ignorelist = l
-        self._ignore_regex = self._combine_ignore_rules(l)
-        return l
+            try:
+                process_file(f)
+            finally:
+                f.close()
+
+        self._ignorelist = ignore_globs
+        self._ignore_regex = self._combine_ignore_rules(ignore_globs)
+        return ignore_globs
 
     def _get_ignore_rules_as_regex(self):
         """Return a regex of the ignore rules and a mapping dict.
