@@ -71,10 +71,30 @@ class UITests(TestCase):
             result = pb.note('t')
             self.assertEqual(None, result)
             self.assertEqual("t\n", stdout.getvalue())
+            # Since there was no update() call, there should be no clear() call
+            self.failIf(re.search(r'^\r {10,}\r$', stderr.getvalue()) is not None,
+                        'We cleared the stderr without anything to put there')
+        finally:
+            pb.finished()
+
+    def test_progress_note_clears(self):
+        stderr = StringIO()
+        stdout = StringIO()
+        ui_factory = TextUIFactory()
+        pb = ui_factory.nested_progress_bar()
+        try:
+            pb.to_messages_file = stdout
+            ui_factory._progress_bar_stack.bottom().to_file = stderr
+            # Create a progress update that isn't throttled
+            pb.start_time -= 10
+            pb.update('x', 1, 1)
+            result = pb.note('t')
+            self.assertEqual(None, result)
+            self.assertEqual("t\n", stdout.getvalue())
             # the exact contents will depend on the terminal width and we don't
             # care about that right now - but you're probably running it on at
             # least a 10-character wide terminal :)
-            self.assertContainsRe(stderr.getvalue(), r'^\r {10,}\r$')
+            self.assertContainsRe(stderr.getvalue(), r'\r {10,}\r$')
         finally:
             pb.finished()
 
