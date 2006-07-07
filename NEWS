@@ -8,7 +8,8 @@ IN DEVELOPMENT
      running 'bzr ignore --old-default-rules'.
 
    * Per-user global ignores can now be set in ~/.bazaar/ignore. This list
-     of ignores will be applied to every tree.
+     of ignores will be applied to every tree. To restore bzr 0.8 behavior
+     run 'bzr setup-default-ignores'. Which will populate ~/.bazaar/ignore.
      (John Arbash Meinel)
 
    * Tests updates to ensure proper URL handling, UNICODE support, and
