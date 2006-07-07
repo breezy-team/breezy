@@ -126,6 +126,9 @@ except ImportError:
                     overlapped = pywintypes.OVERLAPPED()
                     win32file.LockFileEx(self.hfile, lockmode, 0, 0x7fff0000, overlapped)
                 except Exception, e:
+                    if self.f:
+                        self.f.close()
+                        self.f = None
                     raise LockError(e)
 
             def unlock(self):

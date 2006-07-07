@@ -388,6 +388,9 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
                           'rev3':['rev2'],
                           },
                          self.bzrdir.open_repository().get_revision_graph('rev3'))
+        # and we can ask for the NULLREVISION graph
+        self.assertEqual({},
+            self.bzrdir.open_repository().get_revision_graph(NULL_REVISION))
 
     def test_get_revision_graph_with_ghosts(self):
         # we can get a graph object with roots, ghosts, ancestors and
@@ -410,6 +413,10 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
                           'rev4':{},
                           },
                           graph.get_descendants())
+        # and we can ask for the NULLREVISION graph
+        graph = repo.get_revision_graph_with_ghosts([NULL_REVISION])
+        self.assertEqual({}, graph.get_ancestors())
+        self.assertEqual({}, graph.get_descendants())
 
 
 class TestCaseWithCorruptRepository(TestCaseWithRepository):

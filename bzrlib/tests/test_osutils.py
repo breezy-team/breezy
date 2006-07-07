@@ -176,7 +176,20 @@ class TestWin32Funcs(TestCase):
         self.assertEqual('path/to/foo', osutils._win32_normpath('path//from/../to/./foo'))
 
     def test_getcwd(self):
-        self.assertEqual(os.getcwdu().replace('\\', '/'), osutils._win32_getcwd())
+        cwd = osutils._win32_getcwd()
+        os_cwd = os.getcwdu()
+        self.assertEqual(os_cwd[1:].replace('\\', '/'), cwd[1:])
+        # win32 is inconsistent whether it returns lower or upper case
+        # and even if it was consistent the user might type the other
+        # so we force it to uppercase
+        # running python.exe under cmd.exe return capital C:\\
+        # running win32 python inside a cygwin shell returns lowercase
+        self.assertEqual(os_cwd[0].upper(), cwd[0])
+
+    def test_fixdrive(self):
+        self.assertEqual('H:/foo', osutils._win32_fixdrive('h:/foo'))
+        self.assertEqual('H:/foo', osutils._win32_fixdrive('H:/foo'))
+        self.assertEqual('C:\\foo', osutils._win32_fixdrive('c:\\foo'))
 
 
 class TestWin32FuncsDirs(TestCaseInTempDir):
@@ -212,6 +225,36 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         self.failUnlessExists('a')
         self.failIfExists('b')
         self.assertFileEqual('baz\n', 'a')
+
+    def test_rename_missing_file(self):
+        a = open('a', 'wb')
+        a.write('foo\n')
+        a.close()
+
+        try:
+            osutils._win32_rename('b', 'a')
+        except (IOError, OSError), e:
+            self.assertEqual(errno.ENOENT, e.errno)
+        self.assertFileEqual('foo\n', 'a')
+
+    def test_rename_missing_dir(self):
+        os.mkdir('a')
+        try:
+            osutils._win32_rename('b', 'a')
+        except (IOError, OSError), e:
+            self.assertEqual(errno.ENOENT, e.errno)
+
+    def test_rename_current_dir(self):
+        os.mkdir('a')
+        os.chdir('a')
+        # You can't rename the working directory
+        # doing rename non-existant . usually
+        # just raises ENOENT, since non-existant
+        # doesn't exist.
+        try:
+            osutils._win32_rename('b', '.')
+        except (IOError, OSError), e:
+            self.assertEqual(errno.ENOENT, e.errno)
 
 
 class TestSplitLines(TestCase):
