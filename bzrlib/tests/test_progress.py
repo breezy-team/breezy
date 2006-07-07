@@ -142,3 +142,34 @@ class TestProgress(TestCase):
         self.assertEqual('\r[=========] baz 3/3'
                          '\r                   \r',
                          sio.getvalue())
+
+    def test_no_eta(self):
+        # An old version of the progress bar would
+        # store every update if show_eta was false
+        # because the eta routine was where it was
+        # cleaned out
+        pb = InstrumentedProgress(to_file=StringIO(), show_eta=False)
+        # Just make sure this first few are throttled
+        pb.start_time += 5
+
+        # These messages are throttled, and don't contribute
+        for count in xrange(100):
+            pb.update('x', count, 300)
+        self.assertEqual(0, len(pb.last_updates))
+
+        # Unthrottle by time
+        pb.start_time -= 10
+
+        # These happen too fast, so only one gets through
+        for count in xrange(100):
+            pb.update('x', count+100, 200)
+        self.assertEqual(1, len(pb.last_updates))
+
+        pb.MIN_PAUSE = 0.0
+
+        # But all of these go through, don't let the
+        # last_update list grow without bound
+        for count in xrange(100):
+            pb.update('x', count+100, 200)
+
+        self.assertEqual(pb._max_last_updates, len(pb.last_updates))

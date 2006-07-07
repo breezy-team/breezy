@@ -39,8 +39,6 @@ not to clutter log files.
 import sys
 import time
 import os
-from collections import deque
-
 
 import bzrlib.errors as errors
 from bzrlib.trace import mutter 
@@ -262,7 +260,8 @@ class TTYProgressBar(_BaseProgressBar):
         _BaseProgressBar.__init__(self, **kwargs)
         self.spin_pos = 0
         self.width = terminal_width()
-        self.last_updates = deque()
+        self.last_updates = []
+        self._max_last_updates = 20
         self.child_fraction = 0
         self._have_output = False
     
@@ -285,6 +284,8 @@ class TTYProgressBar(_BaseProgressBar):
             return True
 
         self.last_updates.append(now - self.last_update)
+        # Don't let the queue grow without bound
+        self.last_updates = self.last_updates[-self._max_last_updates:]
         self.last_update = now
         return False
         
@@ -491,8 +492,7 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_r
     assert total_duration >= elapsed
 
     if last_updates and len(last_updates) >= n_recent:
-        while len(last_updates) > n_recent:
-            last_updates.popleft()
+        last_updates[:] = last_updates[-n_recent:]
         avg = sum(last_updates) / float(len(last_updates))
         time_left = avg * (total - current)
 
