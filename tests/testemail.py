@@ -35,6 +35,17 @@ sample_config=("[DEFAULT]\n"
 unconfigured_config=("[DEFAULT]\n"
                      "email=Robert <foo@example.com>\n")
 
+sender_configured_config=("[DEFAULT]\n"
+                          "post_commit_sender=Sample <foo@example.com>\n")
+
+to_configured_config=("[DEFAULT]\n"
+                      "post_commit_to=Sample <foo@example.com>\n")
+
+with_url_config=("[DEFAULT]\n"
+                 "post_commit_url=http://some.fake/url/\n"
+                 "post_commit_to=demo@example.com\n"
+                 "post_commit_sender=Sample <foo@example.com>\n")
+
 class TestGetTo(TestCaseInTempDir):
 
     def test_body(self):
@@ -77,6 +88,22 @@ class TestGetTo(TestCaseInTempDir):
     def test_should_not_send(self):
         sender = self.get_sender(unconfigured_config)
         self.assertEqual(False, sender.should_send())
+
+    def test_should_not_send_sender_configured(self):
+        sender = self.get_sender(sender_configured_config)
+        self.assertEqual(False, sender.should_send())
+
+    def test_should_not_send_to_configured(self):
+        sender = self.get_sender(to_configured_config)
+        self.assertEqual(True, sender.should_send())
+
+    def test_url_set(self):
+        sender = self.get_sender(with_url_config)
+        self.assertEqual(sender.url(), 'http://some.fake/url/')
+
+    def test_url_unset(self):
+        sender = self.get_sender()
+        self.assertEqual(sender.url(), sender.branch.base)
 
     def test_subject(self):
         sender = self.get_sender()
