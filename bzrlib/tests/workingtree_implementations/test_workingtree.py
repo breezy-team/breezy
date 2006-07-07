@@ -22,7 +22,7 @@ import sys
 import bzrlib
 from bzrlib import branch, bzrdir, errors, urlutils, workingtree
 from bzrlib.errors import (NotBranchError, NotVersionedError, 
-                           UnsupportedOperation)
+                           UnsupportedOperation, PathsNotVersionedError)
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
@@ -128,7 +128,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['hello.txt'])
         file('hello.txt', 'w').write('initial hello')
 
-        self.assertRaises(NotVersionedError,
+        self.assertRaises(PathsNotVersionedError,
                           tree.revert, ['hello.txt'])
         tree.add(['hello.txt'])
         tree.commit('create initial hello.txt')

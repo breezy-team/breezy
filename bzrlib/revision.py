@@ -240,6 +240,8 @@ def common_ancestor(revision_a, revision_b, revision_source,
                     pb=DummyProgress()):
     if None in (revision_a, revision_b):
         return None
+    if NULL_REVISION in (revision_a, revision_b):
+        return NULL_REVISION
     # trivial optimisation
     if revision_a == revision_b:
         return revision_a
