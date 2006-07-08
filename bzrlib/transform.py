@@ -26,7 +26,9 @@ from bzrlib.osutils import (file_kind, supports_executable, pathjoin, lexists,
                             delete_any)
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.trace import mutter, warning
+from bzrlib import tree
 import bzrlib.ui 
+import bzrlib.urlutils as urlutils
 
 
 ROOT_PARENT = "root-parent"
@@ -79,7 +81,8 @@ class TreeTransform(object):
         self._tree.lock_write()
         try:
             control_files = self._tree._control_files
-            self._limbodir = control_files.controlfilename('limbo')
+            self._limbodir = urlutils.local_path_from_url(
+                control_files.controlfilename('limbo'))
             try:
                 os.mkdir(self._limbodir)
             except OSError, e:
@@ -257,11 +260,22 @@ class TreeTransform(object):
         New file takes the permissions of any existing file with that id,
         unless mode_id is specified.
         """
-        f = file(self._limbo_name(trans_id), 'wb')
-        unique_add(self._new_contents, trans_id, 'file')
-        for segment in contents:
-            f.write(segment)
-        f.close()
+        name = self._limbo_name(trans_id)
+        f = open(name, 'wb')
+        try:
+            try:
+                unique_add(self._new_contents, trans_id, 'file')
+            except:
+                # Clean up the file, it never got registered so
+                # TreeTransform.finalize() won't clean it up.
+                f.close()
+                os.unlink(name)
+                raise
+
+            for segment in contents:
+                f.write(segment)
+        finally:
+            f.close()
         self._set_mode(trans_id, mode_id, S_ISREG)
 
     def _set_mode(self, trans_id, mode_id, typefunc):
@@ -537,9 +551,9 @@ class TreeTransform(object):
         if child_id is None:
             return lexists(self._tree.abspath(childpath))
         else:
-            if tt.final_parent(child_id) != parent_id:
+            if self.final_parent(child_id) != parent_id:
                 return False
-            if child_id in tt._removed_contents:
+            if child_id in self._removed_contents:
                 # XXX What about dangling file-ids?
                 return False
             else:
@@ -845,9 +859,12 @@ class TreeTransform(object):
         parent_id is the transaction id of the parent directory of the file.
         contents is an iterator of bytestrings, which will be used to produce
         the file.
-        file_id is the inventory ID of the file, if it is to be versioned.
+        :param file_id: The inventory ID of the file, if it is to be versioned.
+        :param executable: Only valid when a file_id has been supplied.
         """
         trans_id = self._new_entry(name, parent_id, file_id)
+        # TODO: rather than scheduling a set_executable call,
+        # have create_file create the file with the right mode.
         self.create_file(contents, trans_id)
         if executable is not None:
             self.set_executability(executable, trans_id)
@@ -982,20 +999,8 @@ def create_entry_executability(tt, entry, trans_id):
 
 def find_interesting(working_tree, target_tree, filenames):
     """Find the ids corresponding to specified filenames."""
-    if not filenames:
-        interesting_ids = None
-    else:
-        interesting_ids = set()
-        for tree_path in filenames:
-            not_found = True
-            for tree in (working_tree, target_tree):
-                file_id = tree.inventory.path2id(tree_path)
-                if file_id is not None:
-                    interesting_ids.add(file_id)
-                    not_found = False
-            if not_found:
-                raise NotVersionedError(path=tree_path)
-    return interesting_ids
+    trees = (working_tree, target_tree)
+    return tree.find_ids_across_trees(filenames, trees)
 
 
 def change_entry(tt, file_id, working_tree, target_tree, 
@@ -1061,9 +1066,7 @@ def _entry_changes(file_id, entry, working_tree):
     try:
         working_kind = working_tree.kind(file_id)
         has_contents = True
-    except OSError, e:
-        if e.errno != errno.ENOENT:
-            raise
+    except NoSuchFile:
         has_contents = False
         contents_mod = True
         meta_mod = False

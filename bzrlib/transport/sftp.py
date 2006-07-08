@@ -22,6 +22,8 @@ import getpass
 import os
 import random
 import re
+import select
+import socket
 import stat
 import subprocess
 import sys
@@ -39,16 +41,16 @@ from bzrlib.errors import (ConnectionError,
                            PathError,
                            ParamikoNotPresent,
                            )
-from bzrlib.osutils import pathjoin, fancy_rename
+from bzrlib.osutils import pathjoin, fancy_rename, getcwd
 from bzrlib.trace import mutter, warning, error
 from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     Server,
     split_url,
     Transport,
-    urlescape,
     )
 import bzrlib.ui
+import bzrlib.urlutils as urlutils
 
 try:
     import paramiko
@@ -100,10 +102,15 @@ def os_specific_subprocess_params():
                 }
 
 
-# don't use prefetch unless paramiko version >= 1.5.2 (there were bugs earlier)
-_default_do_prefetch = False
-if getattr(paramiko, '__version_info__', (0, 0, 0)) >= (1, 5, 5):
-    _default_do_prefetch = True
+_paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
+# don't use prefetch unless paramiko version >= 1.5.5 (there were bugs earlier)
+_default_do_prefetch = (_paramiko_version >= (1, 5, 5))
+
+# Paramiko 1.5 tries to open a socket.AF_UNIX in order to connect
+# to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
+# so we get an AttributeError exception. So we will not try to
+# connect to an agent if we are on win32 and using Paramiko older than 1.6
+_use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0)) 
 
 
 _ssh_vendor = None
@@ -302,6 +309,7 @@ class SFTPLock(object):
             # What specific errors should we catch here?
             pass
 
+
 class SFTPTransport (Transport):
     """
     Transport implementation for SFTP access.
@@ -355,7 +363,7 @@ class SFTPTransport (Transport):
         """
         # FIXME: share the common code across transports
         assert isinstance(relpath, basestring)
-        relpath = urllib.unquote(relpath).split('/')
+        relpath = urlutils.unescape(relpath).split('/')
         basepath = self._path.split('/')
         if len(basepath) > 0 and basepath[-1] == '':
             basepath = basepath[:-1]
@@ -373,6 +381,7 @@ class SFTPTransport (Transport):
                 basepath.append(p)
 
         path = '/'.join(basepath)
+        # mutter('relpath => remotepath %s => %s', relpath, path)
         return path
 
     def relpath(self, abspath):
@@ -496,8 +505,8 @@ class SFTPTransport (Transport):
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
+        path = self._remote_path(relpath)
         try:
-            path = self._remote_path(relpath)
             # In the paramiko documentation, it says that passing a mode flag 
             # will filtered against the server umask.
             # StubSFTPServer does not do this, which would be nice, because it is
@@ -702,7 +711,11 @@ class SFTPTransport (Transport):
         vendor = _get_ssh_vendor()
         if vendor == 'loopback':
             sock = socket.socket()
-            sock.connect((self._host, self._port))
+            try:
+                sock.connect((self._host, self._port))
+            except socket.error, e:
+                raise ConnectionError('Unable to connect to SSH host %s:%s: %s'
+                                      % (self._host, self._port, e))
             self._sftp = SFTPClient(LoopbackSFTP(sock))
         elif vendor != 'none':
             sock = SFTPSubprocess(self._host, vendor, self._port,
@@ -723,8 +736,8 @@ class SFTPTransport (Transport):
             t.set_log_channel('bzr.paramiko')
             t.start_client()
         except paramiko.SSHException, e:
-            raise ConnectionError('Unable to reach SSH host %s:%d' %
-                                  (self._host, self._port), e)
+            raise ConnectionError('Unable to reach SSH host %s:%s: %s' 
+                                  % (self._host, self._port, e))
             
         server_key = t.get_remote_server_key()
         server_key_hex = paramiko.util.hexify(server_key.get_fingerprint())
@@ -767,11 +780,7 @@ class SFTPTransport (Transport):
         # Also, it would mess up the self.relpath() functionality
         username = self._username or getpass.getuser()
 
-        # Paramiko tries to open a socket.AF_UNIX in order to connect
-        # to ssh-agent. That attribute doesn't exist on win32 (it does in cygwin)
-        # so we get an AttributeError exception. For now, just don't try to
-        # connect to an agent if we are on win32
-        if sys.platform != 'win32':
+        if _use_ssh_agent:
             agent = paramiko.Agent()
             for key in agent.get_keys():
                 mutter('Trying SSH agent key %s' % paramiko.util.hexify(key.get_fingerprint()))
@@ -844,6 +853,7 @@ class SFTPTransport (Transport):
         :param mode: The mode permissions bits for the new file
         """
         path = self._sftp._adjust_cwd(abspath)
+        # mutter('sftp abspath %s => %s', abspath, path)
         attr = SFTPAttributes()
         if mode is not None:
             attr.st_mode = mode
@@ -883,9 +893,9 @@ HhathJt636Eg7oIjAkA8ht3MQ+XSl9yIJIS8gVpbPxSw5OMfw0PjVE7tBdQruiSc
 nvuQES5C9BMHjF39LZiGH1iLQy7FgdHyoP+eodI7
 -----END RSA PRIVATE KEY-----
 """
-    
 
-class SingleListener(threading.Thread):
+
+class SocketListener(threading.Thread):
 
     def __init__(self, callback):
         threading.Thread.__init__(self)
@@ -895,25 +905,39 @@ class SingleListener(threading.Thread):
         self._socket.bind(('localhost', 0))
         self._socket.listen(1)
         self.port = self._socket.getsockname()[1]
-        self.stop_event = threading.Event()
-
-    def run(self):
-        s, _ = self._socket.accept()
-        # now close the listen socket
-        self._socket.close()
-        try:
-            self._callback(s, self.stop_event)
-        except socket.error:
-            pass #Ignore socket errors
-        except Exception, x:
-            # probably a failed test
-            warning('Exception from within unit test server thread: %r' % x)
+        self._stop_event = threading.Event()
 
     def stop(self):
-        self.stop_event.set()
+        # called from outside this thread
+        self._stop_event.set()
         # use a timeout here, because if the test fails, the server thread may
         # never notice the stop_event.
         self.join(5.0)
+        self._socket.close()
+
+    def run(self):
+        while True:
+            readable, writable_unused, exception_unused = \
+                select.select([self._socket], [], [], 0.1)
+            if self._stop_event.isSet():
+                return
+            if len(readable) == 0:
+                continue
+            try:
+                s, addr_unused = self._socket.accept()
+                # because the loopback socket is inline, and transports are
+                # never explicitly closed, best to launch a new thread.
+                threading.Thread(target=self._callback, args=(s,)).start()
+            except socket.error, x:
+                sys.excepthook(*sys.exc_info())
+                warning('Socket error during accept() within unit test server'
+                        ' thread: %r' % x)
+            except Exception, x:
+                # probably a failed test; unit test thread will log the
+                # failure/error
+                sys.excepthook(*sys.exc_info())
+                warning('Exception from within unit test server thread: %r' % 
+                        x)
 
 
 class SFTPServer(Server):
@@ -937,10 +961,12 @@ class SFTPServer(Server):
         """StubServer uses this to log when a new server is created."""
         self.logs.append(message)
 
-    def _run_server(self, s, stop_event):
+    def _run_server(self, s):
         ssh_server = paramiko.Transport(s)
-        key_file = os.path.join(self._homedir, 'test_rsa.key')
-        file(key_file, 'w').write(STUB_SERVER_KEY)
+        key_file = pathjoin(self._homedir, 'test_rsa.key')
+        f = open(key_file, 'w')
+        f.write(STUB_SERVER_KEY)
+        f.close()
         host_key = paramiko.RSAKey.from_private_key_file(key_file)
         ssh_server.add_server_key(host_key)
         server = StubServer(self)
@@ -950,18 +976,23 @@ class SFTPServer(Server):
         event = threading.Event()
         ssh_server.start_server(event, server)
         event.wait(5.0)
-        stop_event.wait(30.0)
     
     def setUp(self):
         global _ssh_vendor
         self._original_vendor = _ssh_vendor
         _ssh_vendor = self._vendor
-        self._homedir = os.getcwdu()
+        if sys.platform == 'win32':
+            # Win32 needs to use the UNICODE api
+            self._homedir = getcwd()
+        else:
+            # But Linux SFTP servers should just deal in bytestreams
+            self._homedir = os.getcwd()
         if self._server_homedir is None:
             self._server_homedir = self._homedir
         self._root = '/'
-        # FIXME WINDOWS: _root should be _server_homedir[0]:/
-        self._listener = SingleListener(self._run_server)
+        if sys.platform == 'win32':
+            self._root = ''
+        self._listener = SocketListener(self._run_server)
         self._listener.setDaemon(True)
         self._listener.start()
 
@@ -971,13 +1002,20 @@ class SFTPServer(Server):
         self._listener.stop()
         _ssh_vendor = self._original_vendor
 
+    def get_bogus_url(self):
+        """See bzrlib.transport.Server.get_bogus_url."""
+        # this is chosen to try to prevent trouble with proxies, wierd dns,
+        # etc
+        return 'sftp://127.0.0.1:1/'
+
+
 
 class SFTPFullAbsoluteServer(SFTPServer):
     """A test server for sftp transports, using absolute urls and ssh."""
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlescape(self._homedir[1:]))
+        return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
 
 
 class SFTPServerWithoutSSH(SFTPServer):
@@ -987,7 +1025,7 @@ class SFTPServerWithoutSSH(SFTPServer):
         super(SFTPServerWithoutSSH, self).__init__()
         self._vendor = 'loopback'
 
-    def _run_server(self, sock, stop_event):
+    def _run_server(self, sock):
         class FakeChannel(object):
             def get_transport(self):
                 return self
@@ -1002,7 +1040,17 @@ class SFTPServerWithoutSSH(SFTPServer):
 
         server = paramiko.SFTPServer(FakeChannel(), 'sftp', StubServer(self), StubSFTPServer,
                                      root=self._root, home=self._server_homedir)
-        server.start_subsystem('sftp', None, sock)
+        try:
+            server.start_subsystem('sftp', None, sock)
+        except socket.error, e:
+            if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
+                # it's okay for the client to disconnect abruptly
+                # (bug in paramiko 1.6: it should absorb this exception)
+                pass
+            else:
+                raise
+        except Exception, e:
+            import sys; sys.stderr.write('\nEXCEPTION %r\n\n' % e.__class__)
         server.finish_subsystem()
 
 
@@ -1011,7 +1059,10 @@ class SFTPAbsoluteServer(SFTPServerWithoutSSH):
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
-        return self._get_sftp_url(urlescape(self._homedir[1:]))
+        if sys.platform == 'win32':
+            return self._get_sftp_url(urlutils.escape(self._homedir))
+        else:
+            return self._get_sftp_url(urlutils.escape(self._homedir[1:]))
 
 
 class SFTPHomeDirServer(SFTPServerWithoutSSH):

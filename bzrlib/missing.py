@@ -1,4 +1,4 @@
-"""Display what revisions are missing in 'other' from 'this' and vice verca."""
+"""Display what revisions are missing in 'other' from 'this' and vice versa."""
 
 import bzrlib.ui as ui
 

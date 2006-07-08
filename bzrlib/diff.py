@@ -1,33 +1,45 @@
 # Copyright (C) 2004, 2005, 2006 Canonical Ltd.
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import errno
+import os
+import subprocess
+import sys
+import tempfile
+import time
+
 from bzrlib.delta import compare_trees
 from bzrlib.errors import BzrError
 import bzrlib.errors as errors
-from bzrlib.patiencediff import SequenceMatcher, unified_diff
-from bzrlib.symbol_versioning import *
+import bzrlib.osutils
+from bzrlib.patiencediff import unified_diff
+import bzrlib.patiencediff
+from bzrlib.symbol_versioning import (deprecated_function,
+        zero_eight)
 from bzrlib.textfile import check_text_lines
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, warning
+
 
 # TODO: Rather than building a changeset object, we should probably
 # invoke callbacks on an object.  That object can either accumulate a
 # list, write them out directly, etc etc.
 
 def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
-                  allow_binary=False, sequence_matcher=None):
+                  allow_binary=False, sequence_matcher=None,
+                  path_encoding='utf8'):
     # FIXME: difflib is wrong if there is no trailing newline.
     # The syntax used by patch seems to be "\ No newline at
     # end of file" following the last diff line from that
@@ -49,10 +61,10 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
         check_text_lines(newlines)
 
     if sequence_matcher is None:
-        sequence_matcher = SequenceMatcher
+        sequence_matcher = bzrlib.patiencediff.PatienceSequenceMatcher
     ud = unified_diff(oldlines, newlines,
-                      fromfile=old_filename+'\t', 
-                      tofile=new_filename+'\t',
+                      fromfile=old_filename.encode(path_encoding),
+                      tofile=new_filename.encode(path_encoding),
                       sequencematcher=sequence_matcher)
 
     ud = list(ud)
@@ -76,20 +88,20 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
 def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                   diff_opts):
     """Display a diff by calling out to the external diff program."""
-    import sys
+    if hasattr(to_file, 'fileno'):
+        out_file = to_file
+        have_fileno = True
+    else:
+        out_file = subprocess.PIPE
+        have_fileno = False
     
-    if to_file != sys.stdout:
-        raise NotImplementedError("sorry, can't send external diff other than to stdout yet",
-                                  to_file)
-
     # make sure our own output is properly ordered before the diff
     to_file.flush()
 
-    from tempfile import NamedTemporaryFile
-    import os
-
-    oldtmpf = NamedTemporaryFile()
-    newtmpf = NamedTemporaryFile()
+    oldtmp_fd, old_abspath = tempfile.mkstemp(prefix='bzr-diff-old-')
+    newtmp_fd, new_abspath = tempfile.mkstemp(prefix='bzr-diff-new-')
+    oldtmpf = os.fdopen(oldtmp_fd, 'wb')
+    newtmpf = os.fdopen(newtmp_fd, 'wb')
 
     try:
         # TODO: perhaps a special case for comparing to or from the empty
@@ -102,16 +114,18 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         oldtmpf.writelines(oldlines)
         newtmpf.writelines(newlines)
 
-        oldtmpf.flush()
-        newtmpf.flush()
+        oldtmpf.close()
+        newtmpf.close()
 
         if not diff_opts:
             diff_opts = []
         diffcmd = ['diff',
-                   '--label', old_filename+'\t',
-                   oldtmpf.name,
-                   '--label', new_filename+'\t',
-                   newtmpf.name]
+                   '--label', old_filename,
+                   old_abspath,
+                   '--label', new_filename,
+                   new_abspath,
+                   '--binary',
+                  ]
 
         # diff only allows one style to be specified; they don't override.
         # note that some of these take optargs, and the optargs can be
@@ -137,7 +151,19 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
         if diff_opts:
             diffcmd.extend(diff_opts)
 
-        rc = os.spawnvp(os.P_WAIT, 'diff', diffcmd)
+        try:
+            pipe = subprocess.Popen(diffcmd,
+                                    stdin=subprocess.PIPE,
+                                    stdout=out_file)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                raise errors.NoDiff(str(e))
+            raise
+        pipe.stdin.close()
+
+        if not have_fileno:
+            bzrlib.osutils.pumpfile(pipe.stdout, to_file)
+        rc = pipe.wait()
         
         if rc != 0 and rc != 1:
             # returns 1 if files differ; that's OK
@@ -150,6 +176,21 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
     finally:
         oldtmpf.close()                 # and delete
         newtmpf.close()
+        # Clean up. Warn in case the files couldn't be deleted
+        # (in case windows still holds the file open, but not
+        # if the files have already been deleted)
+        try:
+            os.remove(old_abspath)
+        except OSError, e:
+            if e.errno not in (errno.ENOENT,):
+                warning('Failed to delete temporary file: %s %s',
+                        old_abspath, e)
+        try:
+            os.remove(new_abspath)
+        except OSError:
+            if e.errno not in (errno.ENOENT,):
+                warning('Failed to delete temporary file: %s %s',
+                        new_abspath, e)
 
 
 @deprecated_function(zero_eight)
@@ -169,7 +210,6 @@ def show_diff(b, from_spec, specific_files, external_diff_options=None,
     supplies any two trees.
     """
     if output is None:
-        import sys
         output = sys.stdout
 
     if from_spec is None:
@@ -216,7 +256,6 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
-    import sys
     output = sys.stdout
     def spec_tree(spec):
         if tree:
@@ -235,15 +274,21 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
         new_tree = tree
     else:
         new_tree = spec_tree(new_revision_spec)
+    if new_tree is not tree:
+        extra_trees = (tree,)
+    else:
+        extra_trees = None
 
     return show_diff_trees(old_tree, new_tree, sys.stdout, specific_files,
                            external_diff_options,
-                           old_label=old_label, new_label=new_label)
+                           old_label=old_label, new_label=new_label,
+                           extra_trees=extra_trees)
 
 
 def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     external_diff_options=None,
-                    old_label='a/', new_label='b/'):
+                    old_label='a/', new_label='b/',
+                    extra_trees=None):
     """Show in text form the changes from one tree to another.
 
     to_files
@@ -251,6 +296,9 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
     external_diff_options
         If set, use an external GNU diff and pass these options.
+
+    extra_trees
+        If set, more Trees to use for looking up file ids
     """
     old_tree.lock_read()
     try:
@@ -258,7 +306,8 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
         try:
             return _show_diff_trees(old_tree, new_tree, to_file,
                                     specific_files, external_diff_options,
-                                    old_label=old_label, new_label=new_label)
+                                    old_label=old_label, new_label=new_label,
+                                    extra_trees=extra_trees)
         finally:
             new_tree.unlock()
     finally:
@@ -267,17 +316,14 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
 def _show_diff_trees(old_tree, new_tree, to_file,
                      specific_files, external_diff_options, 
-                     old_label='a/', new_label='b/' ):
+                     old_label='a/', new_label='b/', extra_trees=None):
 
-    DEVNULL = '/dev/null'
-    # Windows users, don't panic about this filename -- it is a
-    # special signal to GNU patch that the file should be created or
-    # deleted respectively.
+    # GNU Patch uses the epoch date to detect files that are being added
+    # or removed in a diff.
+    EPOCH_DATE = '1970-01-01 00:00:00 +0000'
 
     # TODO: Generation of pseudo-diffs for added/deleted files could
     # be usefully made into a much faster special case.
-
-    _raise_if_doubly_unversioned(specific_files, old_tree, new_tree)
 
     if external_diff_options:
         assert isinstance(external_diff_options, basestring)
@@ -288,51 +334,64 @@ def _show_diff_trees(old_tree, new_tree, to_file,
         diff_file = internal_diff
     
     delta = compare_trees(old_tree, new_tree, want_unchanged=False,
-                          specific_files=specific_files)
+                          specific_files=specific_files, 
+                          extra_trees=extra_trees, require_versioned=True)
 
     has_changes = 0
     for path, file_id, kind in delta.removed:
         has_changes = 1
-        print >>to_file, '=== removed %s %r' % (kind, path)
-        old_tree.inventory[file_id].diff(diff_file, old_label + path, old_tree,
-                                         DEVNULL, None, None, to_file)
+        print >>to_file, '=== removed %s %r' % (kind, path.encode('utf8'))
+        old_name = '%s%s\t%s' % (old_label, path,
+                                 _patch_header_date(old_tree, file_id, path))
+        new_name = '%s%s\t%s' % (new_label, path, EPOCH_DATE)
+        old_tree.inventory[file_id].diff(diff_file, old_name, old_tree,
+                                         new_name, None, None, to_file)
     for path, file_id, kind in delta.added:
         has_changes = 1
-        print >>to_file, '=== added %s %r' % (kind, path)
-        new_tree.inventory[file_id].diff(diff_file, new_label + path, new_tree,
-                                         DEVNULL, None, None, to_file, 
+        print >>to_file, '=== added %s %r' % (kind, path.encode('utf8'))
+        old_name = '%s%s\t%s' % (old_label, path, EPOCH_DATE)
+        new_name = '%s%s\t%s' % (new_label, path,
+                                 _patch_header_date(new_tree, file_id, path))
+        new_tree.inventory[file_id].diff(diff_file, new_name, new_tree,
+                                         old_name, None, None, to_file, 
                                          reverse=True)
     for (old_path, new_path, file_id, kind,
          text_modified, meta_modified) in delta.renamed:
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
         print >>to_file, '=== renamed %s %r => %r%s' % (
-                    kind, old_path, new_path, prop_str)
-        _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
-                                    new_label, new_path, new_tree,
+                    kind, old_path.encode('utf8'),
+                    new_path.encode('utf8'), prop_str)
+        old_name = '%s%s\t%s' % (old_label, old_path,
+                                 _patch_header_date(old_tree, file_id,
+                                                    old_path))
+        new_name = '%s%s\t%s' % (new_label, new_path,
+                                 _patch_header_date(new_tree, file_id,
+                                                    new_path))
+        _maybe_diff_file_or_symlink(old_name, old_tree, file_id,
+                                    new_name, new_tree,
                                     text_modified, kind, to_file, diff_file)
     for path, file_id, kind, text_modified, meta_modified in delta.modified:
         has_changes = 1
         prop_str = get_prop_change(meta_modified)
-        print >>to_file, '=== modified %s %r%s' % (kind, path, prop_str)
+        print >>to_file, '=== modified %s %r%s' % (kind, path.encode('utf8'), prop_str)
+        old_name = '%s%s\t%s' % (old_label, path,
+                                 _patch_header_date(old_tree, file_id, path))
+        new_name = '%s%s\t%s' % (new_label, path,
+                                 _patch_header_date(new_tree, file_id, path))
         if text_modified:
-            _maybe_diff_file_or_symlink(old_label, path, old_tree, file_id,
-                                        new_label, path, new_tree,
+            _maybe_diff_file_or_symlink(old_name, old_tree, file_id,
+                                        new_name, new_tree,
                                         True, kind, to_file, diff_file)
 
     return has_changes
 
 
-def _raise_if_doubly_unversioned(specific_files, old_tree, new_tree):
-    """Complain if paths are not versioned in either tree."""
-    if not specific_files:
-        return
-    old_unversioned = old_tree.filter_unversioned_files(specific_files)
-    new_unversioned = new_tree.filter_unversioned_files(specific_files)
-    unversioned = old_unversioned.intersection(new_unversioned)
-    if unversioned:
-        raise errors.PathsNotVersionedError(sorted(unversioned))
-    
+def _patch_header_date(tree, file_id, path):
+    """Returns a timestamp suitable for use in a patch header."""
+    tm = time.gmtime(tree.get_file_mtime(file_id, path))
+    return time.strftime('%Y-%m-%d %H:%M:%S +0000', tm)
+
 
 def _raise_if_nonexistent(paths, old_tree, new_tree):
     """Complain if paths are not in either inventory or tree.
@@ -360,12 +419,12 @@ def get_prop_change(meta_modified):
         return  ""
 
 
-def _maybe_diff_file_or_symlink(old_label, old_path, old_tree, file_id,
-                                new_label, new_path, new_tree, text_modified,
+def _maybe_diff_file_or_symlink(old_path, old_tree, file_id,
+                                new_path, new_tree, text_modified,
                                 kind, to_file, diff_file):
     if text_modified:
         new_entry = new_tree.inventory[file_id]
         old_tree.inventory[file_id].diff(diff_file,
-                                         old_label + old_path, old_tree,
-                                         new_label + new_path, new_entry, 
+                                         old_path, old_tree,
+                                         new_path, new_entry, 
                                          new_tree, to_file)

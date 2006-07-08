@@ -28,11 +28,13 @@ class TestAdd(ExternalBase):
         """add command prints the names of added files."""
         self.runbzr('init')
         self.build_tree(['top.txt', 'dir/', 'dir/sub.txt', 'CVS'])
+        self.build_tree_contents([('.bzrignore', 'CVS\n')])
         out = self.run_bzr_captured(['add'], retcode=0)[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
         self.assertEquals(['If you wish to add some of these files, please'\
                            ' add them by name.',
+                           'added .bzrignore',
                            'added dir',
                            'added dir/sub.txt',
                            'added top.txt',
@@ -119,3 +121,8 @@ class TestAdd(ExternalBase):
         self.run_bzr('add')
         self.assertEquals(self.capture('unknowns'), '')
         self.run_bzr('check')
+
+    def test_add_missing(self):
+        """bzr add foo where foo is missing should error."""
+        self.make_branch_and_tree('.')
+        self.run_bzr('add', 'missing-file', retcode=3)

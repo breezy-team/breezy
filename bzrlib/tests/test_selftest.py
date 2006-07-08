@@ -35,6 +35,7 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.TestUtil import _load_module_by_name
 import bzrlib.errors as errors
+from bzrlib.trace import note
 
 
 class SelftestTests(TestCase):
@@ -458,13 +459,13 @@ class TestTestResult(TestCase):
         self.time(time.sleep, 0.001)
         result.extractBenchmarkTime(self)
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^    [0-9]ms/   [ 1-9][0-9]ms$")
+        self.assertContainsRe(timed_string, "^   [ 1-9][0-9]ms/   [ 1-9][0-9]ms$")
         # extracting the time from a non-bzrlib testcase sets to None
         result._recordTestStartTime()
         result.extractBenchmarkTime(
             unittest.FunctionTestCase(self.test_elapsed_time_with_benchmarking))
         timed_string = result._testTimeString()
-        self.assertContainsRe(timed_string, "^          [0-9]ms$")
+        self.assertContainsRe(timed_string, "^         [ 1-9][0-9]ms$")
         # cheat. Yes, wash thy mouth out with soap.
         self._benchtime = None
 
@@ -506,14 +507,15 @@ class TestTestResult(TestCase):
         #           1        0            ???         ???       ???(sleep) 
         # and then repeated but with 'world', rather than 'hello'.
         # this should appear in the output stream of our test result.
-        self.assertContainsRe(result_stream.getvalue(), 
-            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)\n"
-            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
-            r" +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n"
-            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n"
-            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n"
-            r" +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n"
-            )
+        output = result_stream.getvalue()
+        self.assertContainsRe(output,
+            r"LSProf output for <type 'unicode'>\(\('hello',\), {'errors': 'replace'}\)")
+        self.assertContainsRe(output,
+            r" *CallCount *Recursive *Total\(ms\) *Inline\(ms\) *module:lineno\(function\)\n")
+        self.assertContainsRe(output,
+            r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?")
+        self.assertContainsRe(output,
+            r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
 
 
 class TestRunner(TestCase):
@@ -679,3 +681,24 @@ class TestSelftest(TestCase):
         self.apply_redirected(out, err, None, bzrlib.tests.selftest, 
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
+
+    def test_run_bzr_subprocess(self):
+        """The run_bzr_helper_external comand behaves nicely."""
+        result = self.run_bzr_subprocess('--version')
+        result = self.run_bzr_subprocess('--version', retcode=None)
+        self.assertContainsRe(result[0], 'is free software')
+        self.assertRaises(AssertionError, self.run_bzr_subprocess, 
+                          '--versionn')
+        result = self.run_bzr_subprocess('--versionn', retcode=3)
+        result = self.run_bzr_subprocess('--versionn', retcode=None)
+        self.assertContainsRe(result[1], 'unknown command')
+        err = self.run_bzr_subprocess('merge', '--merge-type', 'magic merge', 
+                                      retcode=3)[1]
+        self.assertContainsRe(err, 'No known merge type magic merge')
+
+    def test_run_bzr_error(self):
+        out, err = self.run_bzr_error(['^$'], 'rocks', retcode=0)
+        self.assertEqual(out, 'it sure does!\n')
+
+        out, err = self.run_bzr_error(["'foobarbaz' is not a versioned file"],
+                                      'file-id', 'foobarbaz')

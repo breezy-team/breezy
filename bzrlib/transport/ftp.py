@@ -670,7 +670,7 @@ def _setup_medusa():
             *why* it cannot make a directory.
             """
             if len (line) != 2:
-                self.command_not_understood (string.join (line))
+                self.command_not_understood(''.join(line))
             else:
                 path = line[1]
                 try:

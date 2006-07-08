@@ -20,16 +20,19 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
                               UnversionedParent, ParentLoop)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform, CantMoveRoot, NotVersionedError,
-                           ExistingLimbo, ImmortalLimbo, LockError)
+                           ReusingTransform, CantMoveRoot, 
+                           PathsNotVersionedError, ExistingLimbo,
+                           ImmortalLimbo, LockError)
 from bzrlib.osutils import file_kind, has_symlinks, pathjoin
 from bzrlib.merge import Merge3Merger
 from bzrlib.tests import TestCaseInTempDir, TestSkipped, TestCase
 from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths, 
                               resolve_conflicts, cook_conflicts, 
                               find_interesting, build_tree, get_backup_name)
+import bzrlib.urlutils as urlutils
 
 class TestTreeTransform(TestCaseInTempDir):
+
     def setUp(self):
         super(TestTreeTransform, self).setUp()
         self.wt = BzrDir.create_standalone_workingtree('.')
@@ -41,7 +44,8 @@ class TestTreeTransform(TestCaseInTempDir):
         return transform, transform.trans_id_tree_file_id(self.wt.get_root_id())
 
     def test_existing_limbo(self):
-        limbo_name = self.wt._control_files.controlfilename('limbo')
+        limbo_name = urlutils.local_path_from_url(
+            self.wt._control_files.controlfilename('limbo'))
         transform, root = self.get_transform()
         os.mkdir(pathjoin(limbo_name, 'hehe'))
         self.assertRaises(ImmortalLimbo, transform.apply)
@@ -489,8 +493,29 @@ class TestTreeTransform(TestCaseInTempDir):
         create.apply()
         self.assertEqual(find_interesting(wt, wt, ['vfile']),
                          set(['myfile-id']))
-        self.assertRaises(NotVersionedError, find_interesting, wt, wt,
+        self.assertRaises(PathsNotVersionedError, find_interesting, wt, wt,
                           ['uvfile'])
+
+    def test_set_executability_order(self):
+        """Ensure that executability behaves the same, no matter what order.
+        
+        - create file and set executability simultaneously
+        - create file and set executability afterward
+        - unsetting the executability of a file whose executability has not been
+        declared should throw an exception (this may happen when a
+        merge attempts to create a file with a duplicate ID)
+        """
+        transform, root = self.get_transform()
+        wt = transform._tree
+        transform.new_file('set_on_creation', root, 'Set on creation', 'soc',
+                           True)
+        sac = transform.new_file('set_after_creation', root, 'Set after creation', 'sac')
+        transform.set_executability(True, sac)
+        uws = transform.new_file('unset_without_set', root, 'Unset badly', 'uws')
+        self.assertRaises(KeyError, transform.set_executability, None, uws)
+        transform.apply()
+        self.assertTrue(wt.is_executable('soc'))
+        self.assertTrue(wt.is_executable('sac'))
 
 
 class TransformGroup(object):
