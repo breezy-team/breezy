@@ -61,15 +61,20 @@ class UnicodeFilename(TestCaseWithTransport):
             self.assertEqual((a_circle_d, False), unicode_filename(a_circle_d))
 
     def test_platform(self):
+        # With FAT32 and certain encodings on win32
+        # a_circle_c and a_dots_c actually map to the same file
+        # adding a suffix kicks in the 'preserving but insensitive'
+        # route, and maintains the right files
+        files = [a_circle_c+'.1', a_dots_c+'.2', z_umlat_c+'.3']
         try:
-            self.build_tree([a_circle_c, a_dots_c, z_umlat_c])
+            self.build_tree(files)
         except UnicodeError:
             raise TestSkipped("filesystem cannot create unicode files")
 
         if sys.platform == 'darwin':
-            expected = sorted([a_circle_d, a_dots_d, z_umlat_d])
+            expected = sorted([a_circle_d+'.1', a_dots_d+'.2', z_umlat_d+'.3'])
         else:
-            expected = sorted([a_circle_c, a_dots_c, z_umlat_c])
+            expected = sorted(files)
 
         present = sorted(os.listdir(u'.'))
         self.assertEqual(expected, present)
@@ -77,7 +82,11 @@ class UnicodeFilename(TestCaseWithTransport):
     def test_access(self):
         # We should always be able to access files by the path returned
         # from unicode_filename
-        files = [a_circle_c, a_dots_c, z_umlat_c]
+        # With FAT32 and certain encodings on win32
+        # a_circle_c and a_dots_c actually map to the same file
+        # adding a suffix kicks in the 'preserving but insensitive'
+        # route, and maintains the right files
+        files = [a_circle_c+'.1', a_dots_c+'.2', z_umlat_c+'.3']
         try:
             self.build_tree(files)
         except UnicodeError:
@@ -88,6 +97,15 @@ class UnicodeFilename(TestCaseWithTransport):
             # We should get an exception if we can't open the file at
             # this location.
             f = open(path, 'rb')
-            f.close()
+            try:
+                # Check the contents
+                shouldbe = 'contents of %s%s' % (path.encode('utf8'),
+                                                 os.linesep)
+                actual = f.read()
+            finally:
+                f.close()
+            self.assertEqual(shouldbe, actual, 
+                             'contents of %s is incorrect: %r != %r'
+                             % (path, shouldbe, actual))
 
 
