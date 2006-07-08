@@ -31,15 +31,15 @@ from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.commands import Command, display_command
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
-                           NoSuchFile, NoWorkingTree, FileInWrongBranch,
-                           NotVersionedError, NotABundle)
+                           NoSuchFile, NoWorkingTree, FileExists,
+                           FileInWrongBranch, NotVersionedError, NotABundle)
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
-import  bzrlib.transport
+import bzrlib.transport
 from bzrlib.transport.local import LocalTransport
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
@@ -1006,17 +1006,21 @@ class cmd_init(Command):
     def run(self, location=None, format=None):
         if format is None:
             format = get_format_type('default')
-        transport = bzrlib.transport.get_transport(location)
         if location is None:
             location = u'.'
-        else:
-            # The path has to exist to initialize a
-            # branch inside of it.
-            # Just using os.mkdir, since I don't
-            # believe that we want to create a bunch of
-            # locations if the user supplies an extended path
-            if not transport.has('.'):
-                transport.mkdir('')
+
+        transport = bzrlib.transport.get_transport(location)
+
+        # The path has to exist to initialize a
+        # branch inside of it.
+        # Just using os.mkdir, since I don't
+        # believe that we want to create a bunch of
+        # locations if the user supplies an extended path
+        # TODO: create-prefix
+        try:
+            transport.mkdir('.')
+        except FileExists:
+            pass
                     
         try:
             existing_bzrdir = bzrdir.BzrDir.open(location)
@@ -1062,9 +1066,16 @@ class cmd_init_repository(Command):
     def run(self, location, format=None, trees=False):
         if format is None:
             format = get_format_type('default')
+
+        if location is None:
+            location = '.'
+
         transport = bzrlib.transport.get_transport(location)
-        if not transport.has('.'):
-            transport.mkdir('')
+        try:
+            transport.mkdir('.')
+        except FileExists:
+            pass
+
         newdir = format.initialize_on_transport(transport)
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(trees)

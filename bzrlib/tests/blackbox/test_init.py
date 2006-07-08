@@ -117,6 +117,11 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         # rely on SFTPServer get_url() pointing at '.'
         out, err = self.run_bzr('init', self.get_url(), retcode=3)
         self.assertContainsRe(err, 'Already a branch')
+        self.run_bzr_error(['Already a branch'], 'init', self.get_url())
+
+        # make sure using 'bzr checkout' is not suggested
+        # for remote locations missing a working tree
+        self.assertFalse(re.search(r'checkout', err))
 
     def test_init_existing_branch_with_workingtree(self):
         # don't distinguish between the branch having a working tree or not
@@ -124,5 +129,4 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.make_branch_and_tree('.')
 
         # rely on SFTPServer get_url() pointing at '.'
-        out, err = self.run_bzr('init', self.get_url(), retcode=3)
-        self.assertFalse(re.search(r'checkout', err))
+        self.run_bzr_error(['Already a branch'], 'init', self.get_url())
