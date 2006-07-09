@@ -17,7 +17,7 @@
 """Test locks across all branch implemenations"""
 
 from bzrlib.tests.branch_implementations.test_branch import TestCaseWithBranch
-from bzrlib.tests.LockHelpers import TestPreventLocking, LockWrapper
+from bzrlib.tests.lock_helpers import TestPreventLocking, LockWrapper
 
 
 class TestBranchLocking(TestCaseWithBranch):
