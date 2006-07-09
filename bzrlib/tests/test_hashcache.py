@@ -46,85 +46,98 @@ class FixThisError(Exception):
 
 class TestHashCache(TestCaseInTempDir):
 
-    def test_hashcache(self):
-        """Functional tests for hashcache"""
-
+    def make_hashcache(self):
         # make a dummy bzr directory just to hold the cache
         os.mkdir('.bzr')
         hc = HashCache('.', '.bzr/stat-cache')
+        return hc
 
-        file('foo', 'wb').write('hello')
-        os.mkdir('subdir')
-        pause()
+    def reopen_hashcache(self):
+        hc = HashCache('.', '.bzr/stat-cache')
+        hc.read()
+        return hc
 
+    def test_hashcache_initial_miss(self):
+        """Get correct hash from an empty hashcache"""
+        hc = self.make_hashcache()
+        self.build_tree_contents([('foo', 'hello')])
         self.assertEquals(hc.get_sha1('foo'),
                           'aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d')
         self.assertEquals(hc.miss_count, 1)
         self.assertEquals(hc.hit_count, 0)
 
-        # check we hit without re-reading
+    def test_hashcache_hit_old_file(self):
+        """An old file gives a cache hit"""
+        hc = self.make_hashcache()
+        self.build_tree_contents([('foo', 'hello')])
+        pause() # make sure file's old enough to cache
+        self.assertEquals(hc.get_sha1('foo'),
+                          'aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d')
+        self.assertEquals(hc.miss_count, 1)
+        self.assertEquals(hc.hit_count, 0)
+        # now should hit on second try
         self.assertEquals(hc.get_sha1('foo'),
                           'aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d')
         self.assertEquals(hc.miss_count, 1)
         self.assertEquals(hc.hit_count, 1)
-
-        # check again without re-reading
+        # and hit again on third try
         self.assertEquals(hc.get_sha1('foo'),
                           'aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d')
         self.assertEquals(hc.miss_count, 1)
         self.assertEquals(hc.hit_count, 2)
 
-        # write new file and make sure it is seen
-        file('foo', 'wb').write('goodbye')
-        pause()
-        self.assertEquals(hc.get_sha1('foo'),
-                          '3c8ec4874488f6090a157b014ce3397ca8e06d4f')
-        self.assertEquals(hc.miss_count, 2)
+    def test_hashcache_new_file(self):
+        hc = self.make_hashcache()
+        self.build_tree_contents([('foo', 'goodbye')])
+        # now read without pausing; it may not be possible to cache it as its
+        # so new
+        self.assertEquals(hc.get_sha1('foo'), sha1('goodbye'))
 
-        # quickly write new file of same size and make sure it is seen
-        # this may rely on detection of timestamps that are too close
-        # together to be safe
-        file('foo', 'wb').write('g00dbye')
-        self.assertEquals(hc.get_sha1('foo'),
-                          sha1('g00dbye'))
+    def test_hashcache_nonexistent_file(self):
+        hc = self.make_hashcache()
+        self.assertEquals(hc.get_sha1('no-name-yet'), None)
 
-        file('foo2', 'wb').write('other file')
-        self.assertEquals(hc.get_sha1('foo2'), sha1('other file'))
+    def test_hashcache_replaced_file(self):
+        hc = self.make_hashcache()
+        self.build_tree_contents([('foo', 'goodbye')])
+        self.assertEquals(hc.get_sha1('foo'), sha1('goodbye'))
+        os.remove('foo')
+        self.assertEquals(hc.get_sha1('foo'), None)
+        self.build_tree_contents([('foo', 'new content')])
+        self.assertEquals(hc.get_sha1('foo'), sha1('new content'))
 
-        os.remove('foo2')
-        self.assertEquals(hc.get_sha1('foo2'), None)
-
-        file('foo2', 'wb').write('new content')
-        self.assertEquals(hc.get_sha1('foo2'), sha1('new content'))
-
+    def test_hashcache_not_file(self):
+        hc = self.make_hashcache()
+        self.build_tree(['subdir/'])
         self.assertEquals(hc.get_sha1('subdir'), None)
 
-        # pause briefly to make sure they're not treated as new uncacheable
-        # files
+    def test_hashcache_load(self):
+        hc = self.make_hashcache()
+        self.build_tree_contents([('foo', 'contents')])
         pause()
-
-        self.assertEquals(hc.get_sha1('foo'), sha1('g00dbye'))
-        self.assertEquals(hc.get_sha1('foo2'), sha1('new content'))
-
-        # write out, read back in and check that we don't need to
-        # re-read any files
+        self.assertEquals(hc.get_sha1('foo'), sha1('contents'))
         hc.write()
-        del hc
-
-        hc = HashCache('.', '.bzr/stat-cache')
-        hc.read()
-
-        self.assertEquals(len(hc._cache), 2)
-        self.assertEquals(hc.get_sha1('foo'), sha1('g00dbye'))
+        hc = self.reopen_hashcache()
+        self.assertEquals(len(hc._cache), 1)
+        self.assertEquals(hc.get_sha1('foo'), sha1('contents'))
         self.assertEquals(hc.hit_count, 1)
-        self.assertEquals(hc.miss_count, 0)
-        self.assertEquals(hc.get_sha1('foo2'), sha1('new content'))
+
+    def test_hammer_hashcache(self):
+        hc = self.make_hashcache()
+        for i in xrange(50000):
+            f = file('foo', 'w')
+            try:
+                last_content = '%08x' % i
+                f.write(last_content)
+            finally:
+                f.close()
+            self.assertEquals(hc.get_sha1('foo'), sha1(last_content))
+            hc.write()
+            hc = self.reopen_hashcache()
 
     def test_hashcache_raise(self):
         """check that hashcache can raise BzrError"""
-
-        os.mkdir('.bzr')
-        hc = HashCache('.', '.bzr/stat-cache')
+        hc = self.make_hashcache()
         ok = False
 
         # make a best effort to create a weird kind of file

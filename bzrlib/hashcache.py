@@ -218,10 +218,10 @@ class HashCache(object):
                 print >>outf
             outf.commit()
             self.needs_write = False
-            mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
-                   self.cache_file_name(), self.hit_count, self.miss_count,
-                   self.stat_count,
-                   self.danger_count, self.update_count)
+            ## mutter("write hash cache: %s hits=%d misses=%d stat=%d recent=%d updates=%d",
+            ##        self.cache_file_name(), self.hit_count, self.miss_count,
+            ##        self.stat_count,
+            ##        self.danger_count, self.update_count)
         finally:
             if not outf.closed:
                 outf.abort()
