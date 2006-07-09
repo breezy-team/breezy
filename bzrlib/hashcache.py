@@ -164,11 +164,12 @@ class HashCache(object):
             cache_sha1, cache_fp = None, None
 
         if cache_fp == file_fp:
+            ## mutter("hashcache hit for %s %r -> %s", path, file_fp, cache_sha1)
+            ## mutter("now = %s", time.time())
             self.hit_count += 1
             return cache_sha1
         
         self.miss_count += 1
-
 
         mode = file_fp[FP_MODE_COLUMN]
         if stat.S_ISREG(mode):
@@ -178,8 +179,11 @@ class HashCache(object):
         else:
             raise BzrError("file %r: unknown file stat mode: %o"%(abspath,mode))
 
-        now = int(time.time())
-        if file_fp[FP_MTIME_COLUMN] >= now or file_fp[FP_CTIME_COLUMN] >= now:
+        # window of 3 seconds to allow for 2s resolution on windows,
+        # unsynchronized file servers, etc.
+        cutoff = int(time.time()) - 3
+        if file_fp[FP_MTIME_COLUMN] >= cutoff \
+                or file_fp[FP_CTIME_COLUMN] >= cutoff:
             # changed too recently; can't be cached.  we can
             # return the result and it could possibly be cached
             # next time.
@@ -191,12 +195,16 @@ class HashCache(object):
             # need to let sufficient time elapse before we may cache this entry
             # again.  If we didn't do this, then, for example, a very quick 1
             # byte replacement in the file might go undetected.
-            self.danger_count += 1 
+            ## mutter('%r modified too recently; not caching', path)
+            self.danger_count += 1
             if cache_fp:
                 self.removed_count += 1
                 self.needs_write = True
                 del self._cache[path]
         else:
+            ## mutter('%r added to cache: now=%f, mtime=%d, ctime=%d',
+            ##        path, time.time(), file_fp[FP_MTIME_COLUMN],
+            ##        file_fp[FP_CTIME_COLUMN])
             self.update_count += 1
             self.needs_write = True
             self._cache[path] = (digest, file_fp)
