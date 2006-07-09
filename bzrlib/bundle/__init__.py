@@ -41,4 +41,13 @@ def read_bundle_from_url(url):
         return read_bundle(f)
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
+    except (IOError,), e:
+        # jam 20060707
+        # Abstraction leakage, SFTPTransport.get('directory')
+        # doesn't always fail at get() time. Sometimes it fails
+        # during read. And that raises a generic IOError with
+        # just the string 'Failure'
+        # StubSFTPServer does fail during get() (because of prefetch) 
+        # so it has an opportunity to translate the error.
+        raise errors.NotABundle(str(e))
 
