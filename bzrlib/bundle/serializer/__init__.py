@@ -124,6 +124,8 @@ def format_highres_date(t, offset=0):
     'Thu 2005-06-30 12:38:52.350850105 -0500'
     >>> format_highres_date(1120153132.350850105, 7200)
     'Thu 2005-06-30 19:38:52.350850105 +0200'
+    >>> format_highres_date(1152428738.867522, 19800)
+    'Sun 2006-07-09 12:35:38.867522001 +0530'
     """
     import time
     assert isinstance(t, float)
@@ -155,6 +157,8 @@ def unpack_highres_date(date):
     (1120153132.3508501, 0)
     >>> unpack_highres_date('Thu 2005-06-30 19:38:52.350850105 +0200')
     (1120153132.3508501, 7200)
+    >>> unpack_highres_date('Sun 2006-07-09 12:35:38.867522001 +0530')
+    (1152428738.867522, 19800)
     >>> from bzrlib.osutils import local_time_offset
     >>> t = time.time()
     >>> o = local_time_offset()
@@ -186,7 +190,7 @@ def unpack_highres_date(date):
     fract_seconds, offset = date[dot_loc:].split()
     fract_seconds = float(fract_seconds)
     offset = int(offset)
-    offset = int(offset / 100) * 3600 + offset % 100
+    offset = int(offset / 100) * 3600 + (offset%100) * 60
     
     # time.mktime returns localtime, but calendar.timegm returns UTC time
     timestamp = calendar.timegm(base_time)
