@@ -32,6 +32,7 @@ from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
 
 
+
 class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_list_files(self):
@@ -630,3 +631,5 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual((u'.bzrignore', '?', 'file', None), files[0][:-1])
         self.assertEqual((u'foo.pyc', 'V', 'file', 'anid'), files[1][:-1])
         self.assertEqual(2, len(files))
+
+
