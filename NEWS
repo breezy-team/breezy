@@ -110,6 +110,9 @@ IN DEVELOPMENT
       working directory can be used, even if its name is different in both x
       and y.
 
+    * File-ids containing single- or double-quotes are handled correctly by
+      push.  (#52227, Aaron Bentley)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
