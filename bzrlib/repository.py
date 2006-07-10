@@ -2152,23 +2152,25 @@ class CommitBuilder(object):
         versionedfile.clear_cache()
 
 
-_unsafe_entities = None
+_unescape_map = {
+    'apos':"'",
+    'quot':'"',
+    'amp':'&',
+    'lt':'<',
+    'gt':'>'
+}
 
 
-# Copied from xml.sax.saxutils
-# ADHB xml.sax.saxutils is horrendously broken!  apos and quot are predefined
-# according to XML 1.0 section 4.6
+def _unescaper(match, _map=_unescape_map):
+    return _map[match.group(1)]
+
+
+_unescape_re = None
+
+
 def _unescape_xml(data):
-    """Unescape predefined entities in a string of data.
-    """
-    global _unsafe_entities
-    if _unsafe_entities is None:
-        _unsafe_entities = re.compile('\&(?!amp;|lt;|gt;|apos;|quot;)[^;]*')
-    unsafe = _unsafe_entities.search(data)
-    assert unsafe is None, 'Unhandled entity: %s' % unsafe.group(0)
-    data = data.replace("&lt;", "<")
-    data = data.replace("&gt;", ">")
-    data = data.replace("&quot;", '"')
-    data = data.replace("&apos;", "'")
-    # must do ampersand last
-    return data.replace("&amp;", "&")
+    """Unescape predefined XML entities in a string of data."""
+    global _unescape_re
+    if _unescape_re is None:
+	_unescape_re = re.compile('\&([^;]*);')
+    return _unescape_re.sub(_unescaper, data)
