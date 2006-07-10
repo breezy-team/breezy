@@ -189,15 +189,19 @@ def unpack_highres_date(date):
     base_time = time.strptime(date[:dot_loc], "%a %Y-%m-%d %H:%M:%S")
     fract_seconds, offset = date[dot_loc:].split()
     fract_seconds = float(fract_seconds)
+
     offset = int(offset)
-    offset = int(offset / 100) * 3600 + (offset%100) * 60
+
+    hours = int(offset / 100)
+    minutes = (offset % 100)
+    seconds_offset = (hours * 3600) + (minutes * 60)
     
     # time.mktime returns localtime, but calendar.timegm returns UTC time
     timestamp = calendar.timegm(base_time)
-    timestamp -= offset
+    timestamp -= seconds_offset
     # Add back in the fractional seconds
     timestamp += fract_seconds
-    return (timestamp, offset)
+    return (timestamp, seconds_offset)
 
 
 class BundleSerializer(object):
