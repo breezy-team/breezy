@@ -45,6 +45,20 @@ class InstrumentedProgress(TTYProgressBar):
             self.always_throttled = False
         
 
+class _TTYStringIO(StringIO):
+    """A helper class which makes a StringIO look like a terminal"""
+
+    def isatty(self):
+        return True
+
+
+class _NonTTYStringIO(StringIO):
+    """Helper that implements isatty() but returns False"""
+
+    def isatty(self):
+        return False
+
+
 class TestProgress(TestCase):
     def setUp(self):
         q = DummyProgress()
@@ -175,31 +189,52 @@ class TestProgress(TestCase):
 
         self.assertEqual(pb._max_last_updates, len(pb.last_updates))
 
-    def test_tty_progress(self):
-        # Make sure the ProgressBarStack thinks it is
-        # writing out to a terminal, and thus uses a TTYProgressBar
-        class TTYStringIO(StringIO):
-            def isatty(self):
-                return True
+
+class TestProgressTypes(TestCase):
+    """Test that the right ProgressBar gets instantiated at the right time."""
+
+    def get_nested(self, outf, term, env_progress=None):
+        """Setup so that ProgressBar thinks we are in the supplied terminal."""
         orig_term = os.environ.get('TERM')
-        try:
-            os.environ['TERM'] = 'xterm'
-            out = TTYStringIO()
-            stack = ProgressBarStack(to_file=out)
-            pb = stack.get_nested()
-            self.assertIsInstance(pb, TTYProgressBar)
-            try:
-                pb.start_time -= 1
-                pb.width = 20
-                pb.update('foo', 1, 2)
-                pb.update('bar', 2, 2)
-            finally:
-                pb.finished()
-        finally:
+        orig_progress = os.environ.get('BZR_PROGRESS_BAR')
+        os.environ['TERM'] = term
+        if env_progress is not None:
+            os.environ['BZR_PROGRESS_BAR'] = env_progress
+        elif orig_progress is not None:
+            del os.environ['BZR_PROGRESS_BAR']
+
+        def reset():
             if orig_term is None:
                 del os.environ['TERM']
             else:
                 os.environ['TERM'] = orig_term
+            # We may have never created BZR_PROGRESS_BAR
+            # So we can't just delete like we can 'TERM' (which is always set)
+            if orig_progress is None:
+                if 'BZR_PROGRESS_BAR' in os.environ:
+                    del os.environ['BZR_PROGRESS_BAR']
+            else:
+                os.environ['BZR_PROGRESS_BAR'] = orig_progress
+
+        self.addCleanup(reset)
+
+        stack = ProgressBarStack(to_file=outf)
+        pb = stack.get_nested()
+        pb.start_time -= 1 # Make sure it is ready to write
+        pb.width = 20 # And it is of reasonable size
+        return pb
+
+    def test_tty_progress(self):
+        # Make sure the ProgressBarStack thinks it is
+        # writing out to a terminal, and thus uses a TTYProgressBar
+        out = _TTYStringIO()
+        pb = self.get_nested(out, 'xterm')
+        self.assertIsInstance(pb, TTYProgressBar)
+        try:
+            pb.update('foo', 1, 2)
+            pb.update('bar', 2, 2)
+        finally:
+            pb.finished()
 
         self.assertEqual('\r/ [====   ] foo 1/2'
                          '\r- [=======] bar 2/2'
@@ -210,62 +245,33 @@ class TestProgress(TestCase):
         # Make sure the ProgressBarStack thinks it is
         # not writing out to a terminal, and thus uses a 
         # DotsProgressBar
-        class NonTTYStringIO(StringIO):
-            def isatty(self):
-                return False
-        orig_term = os.environ.get('TERM')
+        out = _NonTTYStringIO()
+        pb = self.get_nested(out, 'xterm')
+        self.assertIsInstance(pb, DotsProgressBar)
         try:
-            os.environ['TERM'] = 'xterm'
-            out = NonTTYStringIO()
-            stack = ProgressBarStack(to_file=out)
-            pb = stack.get_nested()
-            try:
-                pb.start_time -= 1
-                pb.width = 20
-                pb.update('foo', 1, 2)
-                pb.update('bar', 2, 2)
-            finally:
-                pb.finished()
+            pb.update('foo', 1, 2)
+            pb.update('bar', 2, 2)
         finally:
-            if orig_term is None:
-                del os.environ['TERM']
-            else:
-                os.environ['TERM'] = orig_term
+            pb.finished()
 
         self.assertEqual('foo: .'
                          '\nbar: .'
                          '\n',
                          out.getvalue())
+
+    def test_no_isatty_progress(self):
+        # Make sure ProgressBarStack handles a plain StringIO()
+        import cStringIO
+        out = cStringIO.StringIO()
+        pb = self.get_nested(out, 'xterm')
+        pb.finished()
+        self.assertIsInstance(pb, DotsProgressBar)
 
     def test_dumb_progress(self):
         # Make sure the ProgressBarStack thinks it is writing out to a 
         # terminal, but it is the emacs 'dumb' terminal, so it uses
         # Dots
-        class TTYStringIO(StringIO):
-            def isatty(self):
-                return True
-        orig_term = os.environ.get('TERM')
-        try:
-            os.environ['TERM'] = 'dumb'
-            out = TTYStringIO()
-            stack = ProgressBarStack(to_file=out)
-            pb = stack.get_nested()
-            self.assertIsInstance(pb, DotsProgressBar)
-            try:
-                pb.start_time -= 1
-                pb.width = 20
-                pb.update('foo', 1, 2)
-                pb.update('bar', 2, 2)
-            finally:
-                pb.finished()
-        finally:
-            if orig_term is None:
-                del os.environ['TERM']
-            else:
-                os.environ['TERM'] = orig_term
-
-        self.assertEqual('foo: .'
-                         '\nbar: .'
-                         '\n',
-                         out.getvalue())
-
+        out = _TTYStringIO()
+        pb = self.get_nested(out, 'dumb')
+        pb.finished()
+        self.assertIsInstance(pb, DotsProgressBar)
