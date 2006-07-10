@@ -698,12 +698,14 @@ def get_transport(base):
     if base is None:
         base = '.'
 
+    last_err = None
+
     def convert_path_to_url(base, error_str):
         m = _urlRE.match(base)
         if m:
             # This looks like a URL, but we weren't able to 
             # instantiate it as such raise an appropriate error
-            raise errors.InvalidURL(base, error_str % m.group('proto'))
+            raise errors.UnsupportedProtocol(base, last_err)
         # This doesn't look like a protocol, consider it a local path
         new_base = urlutils.local_path_to_url(base)
         mutter('converting os path %r => url %s', base, new_base)
@@ -719,7 +721,7 @@ def get_transport(base):
     
     for proto, factory_list in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
-            t = _try_transport_factories(base, factory_list)
+            t, last_err = _try_transport_factories(base, factory_list)
             if t:
                 return t
 
@@ -728,18 +730,20 @@ def get_transport(base):
     base = convert_path_to_url(base, 'Unsupported protocol: %s')
 
     # The default handler is the filesystem handler, stored as protocol None
-    return _try_transport_factories(base, _protocol_handlers[None])
+    return _try_transport_factories(base, _protocol_handlers[None])[0]
 
 
 def _try_transport_factories(base, factory_list):
+    last_err = None
     for factory in factory_list:
         try:
-            return factory(base)
+            return factory(base), None
         except DependencyNotPresent, e:
             mutter("failed to instantiate transport %r for %r: %r" %
                     (factory, base, e))
+            last_err = e
             continue
-    return None
+    return None, last_err
 
 
 class Server(object):

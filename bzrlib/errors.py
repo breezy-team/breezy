@@ -258,6 +258,13 @@ class InvalidURLJoin(PathError):
         self.args.extend(args)
 
 
+class UnsupportedProtocol(PathError):
+    """Unsupported protocol for url "%(path)s"%(extra)s"""
+
+    def __init__(self, url, extra):
+        PathError.__init__(self, url, extra=extra)
+
+
 class PathNotChild(BzrNewError):
     """Path %(path)r is not a child of path %(base)r%(extra)s"""
 
