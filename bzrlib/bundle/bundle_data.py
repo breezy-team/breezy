@@ -109,10 +109,11 @@ class BundleInfo(object):
         split up, based on the assumptions that can be made
         when information is missing.
         """
-        from bzrlib.bundle.common import unpack_highres_date
+        from bzrlib.bundle.serializer import unpack_highres_date
         # Put in all of the guessable information.
         if not self.timestamp and self.date:
             self.timestamp, self.timezone = unpack_highres_date(self.date)
+            mutter('bundle date %s => %s, %s', self.date, self.timestamp, self.timezone)
 
         self.real_revisions = []
         for rev in self.revisions:
@@ -120,6 +121,7 @@ class BundleInfo(object):
                 if rev.date is not None:
                     rev.timestamp, rev.timezone = \
                             unpack_highres_date(rev.date)
+                    mutter('date %s => %s, %s', rev.date, rev.timestamp, rev.timezone)
                 else:
                     rev.timestamp = self.timestamp
                     rev.timezone = self.timezone
