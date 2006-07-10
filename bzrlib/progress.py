@@ -91,7 +91,7 @@ class ProgressBarStack(object):
         self._show_count = show_count
         self._to_messages_file = to_messages_file
         self._stack = []
-        self._klass = klass or TTYProgressBar
+        self._klass = klass or ProgressBar
 
     def top(self):
         if len(self._stack) != 0:
