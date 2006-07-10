@@ -610,32 +610,43 @@ class BundleTester(TestCaseWithTransport):
         self.tree1 = BzrDir.create_standalone_workingtree('b1')
         self.b1 = self.tree1.branch
         tt = TreeTransform(self.tree1)
-        tt.new_file('file', tt.root, '\x00\xff', 'binary-1')
-        tt.new_file('file2', tt.root, '\x00\xff', 'binary-2')
+        
+        # Add
+        tt.new_file('file', tt.root, '\x00\n\x00\r\x01\n\x02\r\xff', 'binary-1')
+        tt.new_file('file2', tt.root, '\x01\n\x02\r\x03\n\x04\r\xff', 'binary-2')
         tt.apply()
         self.tree1.commit('add binary', rev_id='b@cset-0-1')
         self.get_valid_bundle(None, 'b@cset-0-1')
+
+        # Delete
         tt = TreeTransform(self.tree1)
         trans_id = tt.trans_id_tree_file_id('binary-1')
         tt.delete_contents(trans_id)
         tt.apply()
         self.tree1.commit('delete binary', rev_id='b@cset-0-2')
         self.get_valid_bundle('b@cset-0-1', 'b@cset-0-2')
+
+        # Rename & modify
         tt = TreeTransform(self.tree1)
         trans_id = tt.trans_id_tree_file_id('binary-2')
         tt.adjust_path('file3', tt.root, trans_id)
         tt.delete_contents(trans_id)
-        tt.create_file('filecontents\x00', trans_id)
+        tt.create_file('file\rcontents\x00\n\x00', trans_id)
         tt.apply()
         self.tree1.commit('rename and modify binary', rev_id='b@cset-0-3')
         self.get_valid_bundle('b@cset-0-2', 'b@cset-0-3')
+
+        # Modify
         tt = TreeTransform(self.tree1)
         trans_id = tt.trans_id_tree_file_id('binary-2')
         tt.delete_contents(trans_id)
-        tt.create_file('\x00filecontents', trans_id)
+        tt.create_file('\x00file\rcontents', trans_id)
         tt.apply()
         self.tree1.commit('just modify binary', rev_id='b@cset-0-4')
         self.get_valid_bundle('b@cset-0-3', 'b@cset-0-4')
+
+        # Rollup
+        self.get_valid_bundle(None, 'b@cset-0-4')
 
     def test_last_modified(self):
         self.tree1 = BzrDir.create_standalone_workingtree('b1')
