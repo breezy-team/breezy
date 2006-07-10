@@ -769,6 +769,24 @@ class BundleTester(TestCaseWithTransport):
         # Now test a complet roll-up
         bundle = self.get_valid_bundle(None, 'white-4')
 
+    def test_alt_timezone_bundle(self):
+        self.tree1 = self.make_branch_and_tree('b1')
+        self.b1 = self.tree1.branch
+
+        self.build_tree(['b1/newfile'])
+        self.tree1.add(['newfile'])
+
+        # Asia/Colombo offset = 5 hours 30 minutes
+        self.tree1.commit('non-hour offset timezone', rev_id='tz-1',
+                          timezone=19800, timestamp=1152544886.0)
+
+        bundle = self.get_valid_bundle(None, 'tz-1')
+        
+        rev = bundle.revisions[0]
+        self.assertEqual('Mon 2006-07-10 20:51:26.000000000 +0530', rev.date)
+        self.assertEqual(19800, rev.timezone)
+        self.assertEqual(1152544886.0, rev.timestamp)
+
 
 class MungedBundleTester(TestCaseWithTransport):
 
