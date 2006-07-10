@@ -261,7 +261,7 @@ class TTYProgressBar(_BaseProgressBar):
         self.spin_pos = 0
         self.width = terminal_width()
         self.last_updates = []
-        self._max_last_updates = 20
+        self._max_last_updates = 10
         self.child_fraction = 0
         self._have_output = False
     
@@ -492,7 +492,6 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_r
     assert total_duration >= elapsed
 
     if last_updates and len(last_updates) >= n_recent:
-        last_updates[:] = last_updates[-n_recent:]
         avg = sum(last_updates) / float(len(last_updates))
         time_left = avg * (total - current)
 
