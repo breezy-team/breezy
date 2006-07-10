@@ -41,13 +41,14 @@ import time
 import os
 
 import bzrlib.errors as errors
-from bzrlib.trace import mutter 
+from bzrlib.trace import mutter
 
 
 def _supports_progress(f):
-    if not hasattr(f, 'isatty'):
+    isatty = getattr(f, 'isatty', None)
+    if isatty is None:
         return False
-    if not f.isatty():
+    if not isatty():
         return False
     if os.environ.get('TERM') == 'dumb':
         # e.g. emacs compile window
@@ -55,16 +56,31 @@ def _supports_progress(f):
     return True
 
 
+_progress_bar_types = {}
+
 
 def ProgressBar(to_file=None, **kwargs):
     """Abstract factory"""
     if to_file is None:
         to_file = sys.stderr
-    if _supports_progress(to_file):
-        return TTYProgressBar(to_file=to_file, **kwargs)
+    requested_bar_type = os.environ.get('BZR_PROGRESS_BAR')
+    # An value of '' or not set reverts to standard processing
+    if requested_bar_type in (None, ''):
+        if _supports_progress(to_file):
+            return TTYProgressBar(to_file=to_file, **kwargs)
+        else:
+            return DotsProgressBar(to_file=to_file, **kwargs)
     else:
-        return DotsProgressBar(to_file=to_file, **kwargs)
-    
+        # Minor sanitation to prevent spurious errors
+        requested_bar_type = requested_bar_type.lower().strip()
+        # TODO: jam 20060710 Arguably we shouldn't raise an exception
+        #       but should instead just disable progress bars if we
+        #       don't recognize the type
+        if requested_bar_type not in _progress_bar_types:
+            raise errors.InvalidProgressBarType(requested_bar_type,
+                                                _progress_bar_types.keys())
+        return _progress_bar_types[requested_bar_type](to_file=to_file, **kwargs)
+
  
 class ProgressBarStack(object):
     """A stack of progress bars."""
@@ -204,6 +220,10 @@ class DummyProgress(_BaseProgressBar):
         return DummyProgress(**kwargs)
 
 
+_progress_bar_types['dummy'] = DummyProgress
+_progress_bar_types['none'] = DummyProgress
+
+
 class DotsProgressBar(_BaseProgressBar):
 
     def __init__(self, **kwargs):
@@ -230,6 +250,9 @@ class DotsProgressBar(_BaseProgressBar):
         
     def child_update(self, message, current, total):
         self.tick()
+
+
+_progress_bar_types['dots'] = DotsProgressBar
 
     
 class TTYProgressBar(_BaseProgressBar):
@@ -415,6 +438,9 @@ class TTYProgressBar(_BaseProgressBar):
             self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
         self._have_output = False
         #self.to_file.flush()        
+
+
+_progress_bar_types['tty'] = TTYProgressBar
 
 
 class ChildProgress(_BaseProgressBar):

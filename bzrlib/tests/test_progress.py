@@ -17,6 +17,7 @@
 import os
 from StringIO import StringIO
 
+from bzrlib import errors
 from bzrlib.progress import (
         DummyProgress, ChildProgress,
         TTYProgressBar,
@@ -24,6 +25,7 @@ from bzrlib.progress import (
         ProgressBarStack,
         )
 from bzrlib.tests import TestCase
+
 
 class FakeStack:
     def __init__(self, top):
@@ -275,3 +277,34 @@ class TestProgressTypes(TestCase):
         pb = self.get_nested(out, 'dumb')
         pb.finished()
         self.assertIsInstance(pb, DotsProgressBar)
+
+    def test_progress_env_tty(self):
+        # The environ variable BZR_PROGRESS_BAR controls what type of
+        # progress bar we will get, even if it wouldn't usually be that type
+        import cStringIO
+
+        # Usually, this would be a DotsProgressBar
+        out = cStringIO.StringIO()
+        pb = self.get_nested(out, 'dumb', 'tty')
+        pb.finished()
+        # Even though we are not a tty, the env_var will override
+        self.assertIsInstance(pb, TTYProgressBar)
+
+    def test_progress_env_dots(self):
+        # Even though we are in a tty, the env_var will override
+        out = _TTYStringIO()
+        pb = self.get_nested(out, 'xterm', 'dots')
+        pb.finished()
+        self.assertIsInstance(pb, DotsProgressBar)
+
+    def test_progress_env_none(self):
+        # Even though we are in a valid tty, no progress
+        out = _TTYStringIO()
+        pb = self.get_nested(out, 'xterm', 'none')
+        pb.finished()
+        self.assertIsInstance(pb, DummyProgress)
+
+    def test_progress_env_invalid(self):
+        out = _TTYStringIO()
+        self.assertRaises(errors.InvalidProgressBarType, self.get_nested,
+            out, 'xterm', 'nonexistant')
