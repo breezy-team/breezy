@@ -79,6 +79,11 @@ IN DEVELOPMENT
    * 'bzr revert DIRECTORY' now reverts the contents of the directory as well.
      (Aaron Bentley)
 
+   * New env variable BZR_PROGRESS_BAR, sets the default progress bar type.
+     Can be set to 'none' or 'dummy' to disable the progress bar, 'dots' or 
+     'tty' to create the respective type. (John Arbash Meinel, #42197, #51107)
+
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
