@@ -40,7 +40,8 @@ without losing data.
 """)
 
     dir = os.path.join(cache_dir, uuid)
-    os.mkdir(dir)
+    if not os.path.exists(dir):
+        os.mkdir(dir)
     return dir
 
 
@@ -105,7 +106,7 @@ class LogWalker(object):
                     }
 
         # Don't bother for only a few revisions
-        if abs(self.saved_revnum-to_revnum) < 100:
+        if abs(self.saved_revnum-to_revnum) < 10:
             pb = DummyProgress()
         else:
             pb = ProgressBar()

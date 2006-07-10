@@ -140,7 +140,7 @@ class SvnRaTransport(Transport):
         
         :return: A new instance of SvnRaTransport connected to the root.
         """
-        return SvnRaTransport(svn.ra.get_repos_root(self.ra), ra=self.ra)
+        return SvnRaTransport(svn_to_bzr_url(svn.ra.get_repos_root(self.ra)), ra=self.ra)
 
     def listable(self):
         """See Transport.listable().
@@ -168,4 +168,4 @@ class SvnRaTransport(Transport):
         if offset is None:
             return self.__class__(self.base)
 
-        return SvnRaTransport(urlutils.join(self.svn_url, offset), ra=self.ra)
+        return SvnRaTransport(urlutils.join(self.base, offset), ra=self.ra)

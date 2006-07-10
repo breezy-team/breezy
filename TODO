@@ -1,1 +1,4 @@
 - fix weird samba bug
+- small optimization for big repositories:
+  - if parent revision doesn't have ancestors set, there's no need to set 
+    anything for child

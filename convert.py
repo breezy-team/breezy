@@ -31,6 +31,7 @@ from bzrlib.branch import Branch
 from bzrlib.errors import BzrError
 import bzrlib.osutils as osutils
 from bzrlib.repository import Repository
+from bzrlib.trace import info
 
 from format import SvnRemoteAccess
 from repository import SvnRepository
@@ -46,27 +47,30 @@ def convert_repository(url, output_dir, create_shared_repo=True):
         except SubversionException, (svn.core.SVN_ERR_STREAM_MALFORMED_DATA, _):            
             raise BzrError("%s is not a dump file" % url)
         
-        url = "file://%s" % tmp_repos
+        url = "svn+file://%s" % tmp_repos
 
     if create_shared_repo:
-        BzrDir.create_repository(output_dir, shared=True)
+        def c():
+            BzrDir.create_repository(output_dir, shared=True)
+        c()
 
     try:
         source_repos = Repository.open(url)
-        if not isinstance(source_repos, SvnRepository):
-            raise BzrError("Not a Subversion repository")
+        if not hasattr(source_repos, '_log'):
+            raise BzrError("Not a Subversion repository: %s" % url)
 
         branches = source_repos._log.find_branches(source_repos._latest_revnum)
+        existing_branches = filter(lambda (bp,revnum,exists): exists, branches)
+        info('Importing branches: \n%s' % "".join(map(lambda (bp,revnum,exists): "%s\n" % bp, existing_branches)))
 
-        for (branch, revnum, exists) in branches:
-            if not exists:
-                continue
-            
+        for (branch, revnum, exists) in existing_branches:
             source_branch = Branch.open("%s/%s" % (source_repos.base, branch))
 
             target_dir = os.path.join(output_dir, branch)
             os.makedirs(target_dir)
             source_branch.bzrdir.sprout(target_dir, source_branch.last_revision())
+            
+            info('Converted %s:%d\n' % (branch, revnum))
 
     finally:
         if tmp_repos:

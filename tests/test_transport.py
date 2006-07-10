@@ -65,7 +65,7 @@ class SvnRaTest(TestCaseWithSubversionRepository):
 
         t = SvnRaTransport("%s/dir" % repos_url)
         root = t.get_root()
-        self.assertEqual(repos_url, root.base)
+        self.assertEqual("svn+"+repos_url, root.base)
  
 
 class UrlConversionTest(TestCase):
