@@ -87,6 +87,9 @@ class CurlResponse(object):
         self._build_headers()
         self._data.seek(0, 0)
 
+        mutter('headers: %s', self._header.getvalue())
+        mutter('data: %r', self._data.getvalue())
+
     def _build_headers(self):
         """Parse the headers into RFC822 format"""
         url = self._curl_handle.getinfo(pycurl.EFFECTIVE_URL)

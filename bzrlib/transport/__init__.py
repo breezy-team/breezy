@@ -366,6 +366,9 @@ class Transport(object):
                 yield offset, data[pos:pos + size]
                 pos += size
 
+        # Allow all Transports to implement negative offsets
+        # If they haven't fast-pathed readv(), then we
+        # support it by getting the file length and subtracting.
         def normalize_offsets(offsets):
             stat = None
             new_offsets = []

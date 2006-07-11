@@ -150,7 +150,7 @@ class TestRegexes(TestCase):
                                 'multipart/byteranges;boundary=xxyyzz')
         self.assertRegexMatches(('xx yy zz',),
                                 ' multipart/byteranges ; boundary= xx yy zz ')
-        self.assertEqual(None, 
+        self.assertEqual(None,
                 self.regex.match('multipart byteranges;boundary=xx'))
 
 
@@ -256,7 +256,7 @@ class TestHttpMultipartRangeResponse(TestCase):
 
     def test_simple(self):
         content = StringIO(simple_data)
-        multi = response.HttpMultipartRangeResponse('http://foo', 
+        multi = response.HttpMultipartRangeResponse('http://foo',
                     'multipart/byteranges; boundary = xxyyzz', content)
 
         self.assertEqual(4, len(multi._ranges))
@@ -288,3 +288,109 @@ class TestHttpMultipartRangeResponse(TestCase):
         except errors.InvalidHttpContentType, e:
             self.assertContainsRe(str(e), 'http://foo')
             self.assertContainsRe(str(e), 'multipart/byte;')
+
+
+# Taken from real request responses
+_full_text_response = """HTTP/1.1 200 OK\r
+Date: Tue, 11 Jul 2006 04:32:56 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
+ETag: "56691-23-38e9ae00"\r
+Accept-Ranges: bytes\r
+Content-Length: 35\r
+Connection: close\r
+Content-Type: text/plain; charset=UTF-8\r
+\r
+
+Bazaar-NG meta directory, format 1
+"""
+
+
+_missing_response = """HTTP/1.1 404 Not Found\r
+Date: Tue, 11 Jul 2006 04:32:56 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Content-Length: 336\r
+Connection: close\r
+Content-Type: text/html; charset=iso-8859-1\r
+\r
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>404 Not Found</title>
+</head><body>
+<h1>Not Found</h1>
+<p>The requested URL /branches/bzr/jam-integration/.bzr/repository/format was not found on this server.</p>
+<hr>
+<address>Apache/2.0.54 (Fedora) Server at bzr.arbash-meinel.com Port 80</address>
+</body></html>
+"""
+
+
+_single_range_response = """HTTP/1.1 206 Partial Content\r
+Date: Tue, 11 Jul 2006 04:45:22 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
+ETag: "238a3c-16ec2-805c5540"\r
+Accept-Ranges: bytes\r
+Content-Length: 100\r
+Content-Range: bytes 0-99/93890\r
+Connection: close\r
+Content-Type: text/plain; charset=UTF-8\r
+\r
+
+mbp@sourcefrog.net-20050309040815-13242001617e4a06
+mbp@sourcefrog.net-20050309040929-eee0eb3e6d1e762
+"""
+
+
+_multipart_range_response = """HTTP/1.1 206 Partial Content\r
+Date: Tue, 11 Jul 2006 04:49:48 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
+ETag: "238a3c-16ec2-805c5540"\r
+Accept-Ranges: bytes\r
+Content-Length: 1534\r
+Connection: close\r
+Content-Type: multipart/byteranges; boundary=418470f848b63279b\r
+\r
+\r
+--418470f848b63279b\r
+Content-type: text/plain; charset=UTF-8\r
+Content-range: bytes 0-254/93890\r
+\r
+mbp@sourcefrog.net-20050309040815-13242001617e4a06
+mbp@sourcefrog.net-20050309040929-eee0eb3e6d1e7627
+mbp@sourcefrog.net-20050309040957-6cad07f466bb0bb8
+mbp@sourcefrog.net-20050309041501-c840e09071de3b67
+mbp@sourcefrog.net-20050309044615-c24a3250be83220a
+\r
+--418470f848b63279b\r
+Content-type: text/plain; charset=UTF-8\r
+Content-range: bytes 1000-2049/93890\r
+\r
+40-fd4ec249b6b139ab
+mbp@sourcefrog.net-20050311063625-07858525021f270b
+mbp@sourcefrog.net-20050311231934-aa3776aff5200bb9
+mbp@sourcefrog.net-20050311231953-73aeb3a131c3699a
+mbp@sourcefrog.net-20050311232353-f5e33da490872c6a
+mbp@sourcefrog.net-20050312071639-0a8f59a34a024ff0
+mbp@sourcefrog.net-20050312073432-b2c16a55e0d6e9fb
+mbp@sourcefrog.net-20050312073831-a47c3335ece1920f
+mbp@sourcefrog.net-20050312085412-13373aa129ccbad3
+mbp@sourcefrog.net-20050313052251-2bf004cb96b39933
+mbp@sourcefrog.net-20050313052856-3edd84094687cb11
+mbp@sourcefrog.net-20050313053233-e30a4f28aef48f9d
+mbp@sourcefrog.net-20050313053853-7c64085594ff3072
+mbp@sourcefrog.net-20050313054757-a86c3f5871069e22
+mbp@sourcefrog.net-20050313061422-418f1f73b94879b9
+mbp@sourcefrog.net-20050313120651-497bd231b19df600
+mbp@sourcefrog.net-20050314024931-eae0170ef25a5d1a
+mbp@sourcefrog.net-20050314025438-d52099f915fe65fc
+mbp@sourcefrog.net-20050314025539-637a636692c055cf
+mbp@sourcefrog.net-20050314025737-55eb441f430ab4ba
+mbp@sourcefrog.net-20050314025901-d74aa93bb7ee8f62
+mbp@source\r
+--418470f848b63279b--\r\n'
+"""
+
+class TestHandleResponse(TestCase):
+    """Test that we can handle different http responses"""
