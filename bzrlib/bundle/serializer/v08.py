@@ -493,8 +493,9 @@ class BundleReader(object):
         """
         for line in self._next():
             self._handle_next(line)
-            if not self._next_line.startswith('#'):
-                self._next().next()
-                break
             if self._next_line is None:
+                break
+            if not self._next_line.startswith('#'):
+                # Consume the trailing \n and stop processing
+                self._next().next()
                 break
