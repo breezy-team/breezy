@@ -4,65 +4,64 @@ Test the uncommit command.
 
 import os
 
+from bzrlib import uncommit, workingtree
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.errors import BzrError, BoundBranchOutOfDate
-from bzrlib.uncommit import uncommit
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib.tests import TestCaseWithTransport
 
-class TestUncommit(TestCaseInTempDir):
+
+class TestUncommit(TestCaseWithTransport):
+    def create_simple_tree(self):
+        wt = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/b', 'tree/c'])
+        wt.add(['a', 'b', 'c'])
+        wt.commit('initial', rev_id='a1')
+
+        open('tree/a', 'wb').write('new contents of a\n')
+        wt.commit('second', rev_id='a2')
+
+        return wt
+
     def test_uncommit(self):
         """Test uncommit functionality."""
-        bzr = self.capture 
-        os.mkdir('branch')
-        os.chdir('branch')
-        bzr('init')
-        self.build_tree(['a', 'b', 'c'])
+        wt = self.create_simple_tree()
 
-        bzr('add')
-        bzr('commit -m initial')
+        os.chdir('tree')
+        out, err = self.run_bzr('uncommit', '--dry-run', '--force')
+        self.assertContainsRe(out, 'Dry-run')
 
-        self.assertEquals(bzr('revno'), '1\n')
+        # Nothing has changed
+        self.assertEqual('a2', wt.last_revision())
 
-        open('a', 'wb').write('new contents of a\n')
-        self.assertEquals(bzr('status'), 'modified:\n  a\n')
-        bzr('commit -m second')
+        # Uncommit, don't prompt
+        self.run_bzr('uncommit', '--force')
 
-        self.assertEquals(bzr('status'), '')
-        self.assertEquals(bzr('revno'), '2\n')
+        # This should look like we are back in revno 1
+        self.assertEqual('a1', wt.last_revision())
+        out, err = self.run_bzr('status')
+        self.assertEquals(out, 'modified:\n  a\n')
 
-        txt = bzr('uncommit --dry-run --force')
-        self.failIfEqual(txt.find('Dry-run'), -1)
+    def test_uncommit_checkout(self):
+        wt = self.create_simple_tree()
 
-        self.assertEquals(bzr('status'), '')
-        self.assertEquals(bzr('revno'), '2\n')
+        checkout_tree = wt.bzrdir.sprout('checkout').open_workingtree()
+        checkout_tree.branch.bind(wt.branch)
 
-        txt = bzr('uncommit --force')
+        self.assertEqual('a2', checkout_tree.last_revision())
 
-        self.assertEquals(bzr('revno'), '1\n')
-        self.assertEquals(bzr('status'), 'modified:\n  a\n')
-        
-        bzr('checkout . ../checkout')
-        os.chdir('../checkout')
-        self.assertEquals("", bzr('status'))
-        self.assertEquals(bzr('revno'), '1\n')
+        os.chdir('checkout')
+        out, err = self.run_bzr('uncommit', '--dry-run', '--force')
+        self.assertContainsRe(out, 'Dry-run')
 
-        open('a', 'wb').write('new contents of a\n')
-        self.assertEquals(bzr('status'), 'modified:\n  a\n')
-        bzr('commit -m second')
+        self.assertEqual('a2', checkout_tree.last_revision())
 
-        self.assertEquals(bzr('status'), '')
-        self.assertEquals(bzr('revno'), '2\n')
+        out, err = self.run_bzr('uncommit', '--force')
 
-        txt = bzr('uncommit --dry-run --force')
-        self.failIfEqual(txt.find('Dry-run'), -1)
-
-        self.assertEquals(bzr('status'), '')
-        self.assertEquals(bzr('revno'), '2\n')
-
-        txt = bzr('uncommit --force')
-
-        self.assertEquals(bzr('revno'), '1\n')
-        self.assertEquals(bzr('status'), 'modified:\n  a\n')
+        # uncommit in a checkout should uncommit the parent branch
+        # (but doesn't effect the other working tree)
+        self.assertEquals('a1', checkout_tree.last_revision())
+        self.assertEquals('a1', wt.branch.last_revision())
+        self.assertEquals('a2', wt.last_revision())
 
     def test_uncommit_bound(self):
         os.mkdir('a')
@@ -75,12 +74,12 @@ class TestUncommit(TestCaseInTempDir):
         t.commit('commit 3')
         b = t.bzrdir.sprout('b').open_branch()
         b.bind(t.branch)
-        uncommit(b)
+        uncommit.uncommit(b)
         t.set_last_revision(t.branch.last_revision())
         self.assertEqual(len(b.revision_history()), 2)
         self.assertEqual(len(t.branch.revision_history()), 2)
         t.commit('commit 3b')
-        self.assertRaises(BoundBranchOutOfDate, uncommit, b)
+        self.assertRaises(BoundBranchOutOfDate, uncommit.uncommit, b)
         b.pull(t.branch)
-        uncommit(b)
+        uncommit.uncommit(b)
 
