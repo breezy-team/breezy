@@ -113,6 +113,9 @@ IN DEVELOPMENT
     * File-ids containing single- or double-quotes are handled correctly by
       push.  (#52227, Aaron Bentley)
 
+    * Removals are only committed if they match the filespec (or if there is
+      no filespec).  (#46635, Aaron Bentley)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
