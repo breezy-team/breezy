@@ -367,6 +367,8 @@ class BundleReader(object):
             # which does not start with '#'
             if line is None or line == '\n':
                 break
+            if not line.startswith('#'):
+                continue
             found_something = True
             self._handle_next(line)
         if not found_something:

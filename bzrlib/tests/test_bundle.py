@@ -865,3 +865,21 @@ class MungedBundleTester(TestCaseWithTransport):
         bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)
 
+    def test_opening_text(self):
+        bundle_txt = self.build_test_bundle()
+
+        bundle_txt = StringIO("Some random\nemail comments\n"
+                              + bundle_txt.getvalue())
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+
+    def test_trailing_text(self):
+        bundle_txt = self.build_test_bundle()
+
+        bundle_txt = StringIO(bundle_txt.getvalue() +
+                              "Some trailing\nrandom\ntext\n")
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+

@@ -31,7 +31,7 @@ BUNDLE_HEADER_RE = re.compile(r'^# Bazaar revision bundle v(?P<version>\d+[\w.]*
 CHANGESET_OLD_HEADER_RE = re.compile(r'^# Bazaar-NG changeset v(?P<version>\d+[\w.]*)\n$')
 
 
-_serializers = {} 
+_serializers = {}
 
 
 def _get_filename(f):
