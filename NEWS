@@ -116,6 +116,8 @@ IN DEVELOPMENT
     * Bundles can properly read binary files with a plain '\r' in them.
       (John Arbash Meinel, #51927)
 
+    * Tuning iter_entries() to be more efficient (John Arbash Meinel, #5444)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
