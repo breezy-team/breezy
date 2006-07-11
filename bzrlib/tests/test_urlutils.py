@@ -17,6 +17,7 @@
 """Tests for the urlutils wrapper."""
 
 import os
+import re
 import sys
 
 from bzrlib import osutils, urlutils
@@ -471,14 +472,11 @@ class TestCwdToURL(TestCaseInTempDir):
 
     def test_dot(self):
         # This test will fail if getcwd is not ascii
-        cwd = osutils.getcwd()
-        try:
-            cwd = cwd.encode('ascii')
-        except UnicodeError:
-            raise TestSkipped('test must be run in an ASCII directory')
+        os.mkdir('mytest')
+        os.chdir('mytest')
 
         url = urlutils.local_path_to_url('.')
-        self.assertEndsWith(url, cwd)
+        self.assertEndsWith(url, '/mytest')
 
     def test_non_ascii(self):
         try:
