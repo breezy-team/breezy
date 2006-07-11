@@ -568,3 +568,5 @@ class TestFormat(TestCaseWithBranch):
             return
         self.assertEqual(self.branch_format,
                          branch.BranchFormat.find_format(opened_control))
+
+
