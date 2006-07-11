@@ -19,8 +19,9 @@
 
 import os
 
-from bzrlib.bundle.serializer import (BundleSerializer, 
-                                      BUNDLE_HEADER, 
+from bzrlib import errors
+from bzrlib.bundle.serializer import (BundleSerializer,
+                                      BUNDLE_HEADER,
                                       format_highres_date,
                                       unpack_highres_date,
                                      )
@@ -28,7 +29,6 @@ from bzrlib.bundle.serializer import binary_diff
 from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
 from bzrlib.delta import compare_trees
 from bzrlib.diff import internal_diff
-import bzrlib.errors as errors
 from bzrlib.osutils import pathjoin
 from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
@@ -378,7 +378,7 @@ class BundleReader(object):
         """Read in a key-value pair
         """
         if not line.startswith('#'):
-            raise MalformedHeader('Bzr header did not start with #')
+            raise errors.MalformedHeader('Bzr header did not start with #')
         line = line[1:-1].decode('utf-8') # Remove the '#' and '\n'
         if line[:indent] == ' '*indent:
             line = line[indent:]
@@ -395,7 +395,7 @@ class BundleReader(object):
             key = line[:-1]
             value = self._read_many(indent=indent+2)
         else:
-            raise MalformedHeader('While looking for key: value pairs,'
+            raise errors.MalformedHeader('While looking for key: value pairs,'
                     ' did not find the colon %r' % (line))
 
         key = key.replace(' ', '_')
@@ -415,10 +415,10 @@ class BundleReader(object):
             if getattr(revision_info, key) is None:
                 setattr(revision_info, key, value)
             else:
-                raise MalformedHeader('Duplicated Key: %s' % key)
+                raise errors.MalformedHeader('Duplicated Key: %s' % key)
         else:
             # What do we do with a key we don't recognize
-            raise MalformedHeader('Unknown Key: "%s"' % key)
+            raise errors.MalformedHeader('Unknown Key: "%s"' % key)
     
     def _read_many(self, indent):
         """If a line ends with no entry, that means that it should be
@@ -455,7 +455,7 @@ class BundleReader(object):
         for line in self._next():
             if first:
                 if not line.startswith('==='):
-                    raise MalformedPatches('The first line of all patches'
+                    raise errors.MalformedPatches('The first line of all patches'
                         ' should be a bzr meta line "==="'
                         ': %r' % line)
                 action = line[4:-1].decode('utf-8')
