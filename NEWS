@@ -83,6 +83,10 @@ IN DEVELOPMENT
      Also updates things like 'http+pycurl://' if pycurl is not present.
      (John Arbash Meinel) (Malone #47821, #52204)
 
+   * 'bzr uncommit -r 10' now uncommits revisions 11.. rather than uncommitting
+     revision 10. This makes -r10 more in line with what other commands do.
+     (John Arbash Meinel, #32526)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
