@@ -205,10 +205,15 @@ class TestDiffDates(TestCaseWithTransport):
         # set the date stamps for files in the working tree to known values
         os.utime('file1', (1144195200, 1144195200)) # 2006-04-05 00:00:00 UTC
 
-    def get_diff(self, tree1, tree2):
+    def get_diff(self, tree1, tree2, specific_files=None, working_tree=None):
         output = StringIO()
-        show_diff_trees(tree1, tree2, output,
-                        old_label='old/', new_label='new/')
+        if working_tree is not None:
+            extra_trees = (working_tree,)
+        else:
+            extra_trees = ()
+        show_diff_trees(tree1, tree2, output, specific_files=specific_files,
+                        extra_trees=extra_trees, old_label='old/', 
+                        new_label='new/')
         return output.getvalue()
 
     def test_diff_rev_tree_working_tree(self):
@@ -275,6 +280,29 @@ class TestDiffDates(TestCaseWithTransport):
 
 ''')
 
+    def test_show_diff_specified(self):
+        """A working tree filename can be used to identify a file"""
+        self.wt.rename_one('file1', 'file1b')
+        old_tree = self.b.repository.revision_tree('rev-1')
+        new_tree = self.b.repository.revision_tree('rev-4')
+        out = self.get_diff(old_tree, new_tree, specific_files=['file1b'], 
+                            working_tree=self.wt)
+        self.assertContainsRe(out, 'file1\t')
+
+    def test_recursive_diff(self):
+        """Children of directories are matched"""
+        os.mkdir('dir1')
+        os.mkdir('dir2')
+        self.wt.add(['dir1', 'dir2'])
+        self.wt.rename_one('file1', 'dir1/file1')
+        old_tree = self.b.repository.revision_tree('rev-1')
+        new_tree = self.b.repository.revision_tree('rev-4')
+        out = self.get_diff(old_tree, new_tree, specific_files=['dir1'], 
+                            working_tree=self.wt)
+        self.assertContainsRe(out, 'file1\t')
+        out = self.get_diff(old_tree, new_tree, specific_files=['dir2'], 
+                            working_tree=self.wt)
+        self.assertNotContainsRe(out, 'file1\t')
 
 class TestPatienceDiffLib(TestCase):
 

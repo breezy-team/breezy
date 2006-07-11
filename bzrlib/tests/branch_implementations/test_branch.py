@@ -29,6 +29,7 @@ from bzrlib.errors import (FileExists,
                            NotBranchError,
                            )
 from bzrlib.osutils import getcwd
+import bzrlib.revision
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.trace import mutter
@@ -358,6 +359,12 @@ class TestBranch(TestCaseWithBranch):
         tree.branch.generate_revision_history(rev1)
         self.assertEqual(orig_history, tree.branch.revision_history())
 
+    def test_generate_revision_history_NULL_REVISION(self):
+        tree = self.make_branch_and_tree('.')
+        rev1 = tree.commit('foo')
+        tree.branch.generate_revision_history(bzrlib.revision.NULL_REVISION)
+        self.assertEqual([], tree.branch.revision_history())
+
 
 class ChrootedTests(TestCaseWithBranch):
     """A support class that provides readonly urls outside the local namespace.
@@ -561,3 +568,5 @@ class TestFormat(TestCaseWithBranch):
             return
         self.assertEqual(self.branch_format,
                          branch.BranchFormat.find_format(opened_control))
+
+
