@@ -85,7 +85,9 @@ IN DEVELOPMENT
 
    * 'bzr uncommit -r 10' now uncommits revisions 11.. rather than uncommitting
      revision 10. This makes -r10 more in line with what other commands do.
-     (John Arbash Meinel, #32526)
+     'bzr uncommit' also now saves the pending merges of the revisions that
+     were removed. So it is safe to uncommit after a merge, fix something,
+     and commit again. (John Arbash Meinel, #32526, #31426)
 
   BUG FIXES:
 
