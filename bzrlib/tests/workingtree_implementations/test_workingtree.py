@@ -20,7 +20,7 @@ import os
 import sys
 
 import bzrlib
-from bzrlib import branch, bzrdir, errors, urlutils, workingtree
+from bzrlib import branch, bzrdir, errors, osutils, urlutils, workingtree
 from bzrlib.errors import (NotBranchError, NotVersionedError, 
                            UnsupportedOperation, PathsNotVersionedError)
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
@@ -631,5 +631,35 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual((u'.bzrignore', '?', 'file', None), files[0][:-1])
         self.assertEqual((u'foo.pyc', 'V', 'file', 'anid'), files[1][:-1])
         self.assertEqual(2, len(files))
+
+    def test_non_normalized_add_accessible(self):
+        try:
+            self.build_tree([u'a\u030a'])
+        except UnicodeError:
+            raise TestSkipped('Filesystem does not support unicode filenames')
+        tree = self.make_branch_and_tree('.')
+        orig = osutils.normalized_filename
+        osutils.normalized_filename = osutils._accessible_normalized_filename
+        try:
+            tree.add([u'a\u030a'])
+            self.assertEqual([(u'\xe5', 'file')],
+                    [(path, ie.kind) for path,ie in 
+                                tree.inventory.iter_entries()])
+        finally:
+            osutils.normalized_filename = orig
+
+    def test_non_normalized_add_inaccessible(self):
+        try:
+            self.build_tree([u'a\u030a'])
+        except UnicodeError:
+            raise TestSkipped('Filesystem does not support unicode filenames')
+        tree = self.make_branch_and_tree('.')
+        orig = osutils.normalized_filename
+        osutils.normalized_filename = osutils._inaccessible_normalized_filename
+        try:
+            self.assertRaises(errors.InvalidNormalization,
+                tree.add, [u'a\u030a'])
+        finally:
+            osutils.normalized_filename = orig
 
 
