@@ -15,10 +15,10 @@ class TestUncommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a', 'tree/b', 'tree/c'])
         wt.add(['a', 'b', 'c'])
-        wt.commit('initial', rev_id='a1')
+        wt.commit('initial commit', rev_id='a1')
 
         open('tree/a', 'wb').write('new contents of a\n')
-        wt.commit('second', rev_id='a2')
+        wt.commit('second commit', rev_id='a2')
 
         return wt
 
@@ -29,12 +29,16 @@ class TestUncommit(TestCaseWithTransport):
         os.chdir('tree')
         out, err = self.run_bzr('uncommit', '--dry-run', '--force')
         self.assertContainsRe(out, 'Dry-run')
+        self.assertNotContainsRe(out, 'initial commit')
+        self.assertContainsRe(out, 'second commit')
 
         # Nothing has changed
         self.assertEqual('a2', wt.last_revision())
 
         # Uncommit, don't prompt
-        self.run_bzr('uncommit', '--force')
+        out, err = self.run_bzr('uncommit', '--force')
+        self.assertNotContainsRe(out, 'initial commit')
+        self.assertContainsRe(out, 'second commit')
 
         # This should look like we are back in revno 1
         self.assertEqual('a1', wt.last_revision())
@@ -52,10 +56,14 @@ class TestUncommit(TestCaseWithTransport):
         os.chdir('checkout')
         out, err = self.run_bzr('uncommit', '--dry-run', '--force')
         self.assertContainsRe(out, 'Dry-run')
+        self.assertNotContainsRe(out, 'initial commit')
+        self.assertContainsRe(out, 'second commit')
 
         self.assertEqual('a2', checkout_tree.last_revision())
 
         out, err = self.run_bzr('uncommit', '--force')
+        self.assertNotContainsRe(out, 'initial commit')
+        self.assertContainsRe(out, 'second commit')
 
         # uncommit in a checkout should uncommit the parent branch
         # (but doesn't effect the other working tree)
@@ -83,3 +91,19 @@ class TestUncommit(TestCaseWithTransport):
         b.pull(t.branch)
         uncommit.uncommit(b)
 
+    def test_uncommit_revision(self):
+        wt = self.create_simple_tree()
+
+        os.chdir('tree')
+        out, err = self.run_bzr('uncommit', '-r1', '--force')
+
+        self.assertNotContainsRe(out, 'initial commit')
+        self.assertContainsRe(out, 'second commit')
+        self.assertEqual('a1', wt.last_revision())
+        self.assertEqual('a1', wt.branch.last_revision())
+
+    def test_uncommit_neg_1(self):
+        wt = self.create_simple_tree()
+        os.chdir('tree')
+        out, err = self.run_bzr('uncommit', '-r', '-1', retcode=1)
+        self.assertEqual('No revisions to uncommit.\n', out)

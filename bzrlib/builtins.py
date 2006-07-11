@@ -2617,10 +2617,10 @@ class cmd_uncommit(Command):
     takes_args = ['location?']
     aliases = []
 
-    def run(self, location=None, 
+    def run(self, location=None,
             dry_run=False, verbose=False,
             revision=None, force=False):
-        from bzrlib.log import log_formatter
+        from bzrlib.log import log_formatter, show_log
         import sys
         from bzrlib.uncommit import uncommit
 
@@ -2634,18 +2634,33 @@ class cmd_uncommit(Command):
             tree = None
             b = control.open_branch()
 
+        rev_id = None
         if revision is None:
             revno = b.revno()
-            rev_id = b.last_revision()
         else:
-            revno, rev_id = revision[0].in_history(b)
-        if rev_id is None:
-            print 'No revisions to uncommit.'
+            # 'bzr uncommit -r 10' actually means uncommit
+            # so that the final tree is at revno 10.
+            # but bzrlib.uncommit.uncommit() actually uncommits
+            # the revisions that are supplied.
+            # So we need to offset it by one
+            revno = revision[0].in_history(b).revno+1
 
-        for r in range(revno, b.revno()+1):
-            rev_id = b.get_rev_id(r)
-            lf = log_formatter('short', to_file=sys.stdout,show_timezone='original')
-            lf.show(r, b.repository.get_revision(rev_id), None)
+        if revno <= b.revno():
+            rev_id = b.get_rev_id(revno)
+        if rev_id is None:
+            self.outf.write('No revisions to uncommit.\n')
+            return 1
+
+        lf = log_formatter('short',
+                           to_file=self.outf,
+                           show_timezone='original')
+
+        show_log(b,
+                 lf,
+                 verbose=False,
+                 direction='forward',
+                 start_revision=revno,
+                 end_revision=b.revno())
 
         if dry_run:
             print 'Dry-run, pretending to remove the above revisions.'
