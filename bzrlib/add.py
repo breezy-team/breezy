@@ -117,6 +117,12 @@ class FastPath(object):
             self.base_path = base_path
         self.raw_path = path
 
+    def __cmp__(self, other):
+        return cmp(self.raw_path, other.raw_path)
+
+    def __hash__(self):
+        return hash(self.raw_path)
+
 
 def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
     """Add files to version, optionally recursing into directories.
@@ -160,7 +166,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
         kind = bzrlib.osutils.file_kind(abspath)
         if kind == 'directory':
             # schedule the dir for scanning
-            user_dirs.add(rf.raw_path)
+            user_dirs.add(rf)
         else:
             if not InventoryEntry.versionable_kind(kind):
                 raise errors.BadFileKindError(filename=abspath, kind=kind)
@@ -182,11 +188,12 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
     # only walk the minimal parents needed: we have user_dirs to override
     # ignores.
     prev_dir = None
+
+    is_inside = bzrlib.osutils.is_inside_or_parent_of_any
     for path in sorted(user_dirs):
-        if (prev_dir is None or not
-            bzrlib.osutils.is_inside_or_parent_of_any([prev_dir], path)):
-            dirs_to_add.append((rf, None))
-        prev_dir = path
+        if (prev_dir is None or not is_inside([prev_dir], path.raw_path)):
+            dirs_to_add.append((path, None))
+        prev_dir = path.raw_path
 
     # this will eventually be *just* directories, right now it starts off with 
     # just directories.
