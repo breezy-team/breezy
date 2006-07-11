@@ -22,7 +22,7 @@ import sys
 import bzrlib
 from bzrlib import branch, bzrdir, errors, urlutils, workingtree
 from bzrlib.errors import (NotBranchError, NotVersionedError, 
-                           UnsupportedOperation)
+                           UnsupportedOperation, PathsNotVersionedError)
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
@@ -30,6 +30,7 @@ from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
+
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):
@@ -128,7 +129,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.build_tree(['hello.txt'])
         file('hello.txt', 'w').write('initial hello')
 
-        self.assertRaises(NotVersionedError,
+        self.assertRaises(PathsNotVersionedError,
                           tree.revert, ['hello.txt'])
         tree.add(['hello.txt'])
         tree.commit('create initial hello.txt')
@@ -630,3 +631,5 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual((u'.bzrignore', '?', 'file', None), files[0][:-1])
         self.assertEqual((u'foo.pyc', 'V', 'file', 'anid'), files[1][:-1])
         self.assertEqual(2, len(files))
+
+

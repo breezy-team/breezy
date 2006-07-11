@@ -301,7 +301,7 @@ class BzrDir(object):
         that child class desires.
         """
         bzrdir = BzrDir.create(base)
-        return bzrdir.create_repository()
+        return bzrdir.create_repository(shared)
 
     @staticmethod
     def create_standalone_workingtree(base):
