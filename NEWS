@@ -83,6 +83,9 @@ IN DEVELOPMENT
      Also updates things like 'http+pycurl://' if pycurl is not present.
      (John Arbash Meinel) (Malone #47821, #52204)
 
+   * Improve the help text for 'bzr diff' to explain what various options do.
+     (John Arbash Meinel, #6391)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
