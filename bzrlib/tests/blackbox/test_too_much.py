@@ -73,30 +73,6 @@ class TestCommands(ExternalBase):
         self.runbzr("--pants off", retcode=3)
         self.runbzr("diff --message foo", retcode=3)
 
-    def test_ignore_patterns(self):
-        self.runbzr('init')
-        self.assertEquals(self.capture('unknowns'), '')
-
-        file('foo.c', 'wt').write('int main() {}')
-        self.assertEquals(self.capture('unknowns'), 'foo.c\n')
-
-        self.runbzr(['add', 'foo.c'])
-        self.assertEquals(self.capture('unknowns'), '')
-
-        # 'ignore' works when creating the .bzignore file
-        file('foo.blah', 'wt').write('blah')
-        self.assertEquals(self.capture('unknowns'), 'foo.blah\n')
-        self.runbzr('ignore *.blah')
-        self.assertEquals(self.capture('unknowns'), '')
-        self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\n')
-
-        # 'ignore' works when then .bzrignore file already exists
-        file('garh', 'wt').write('garh')
-        self.assertEquals(self.capture('unknowns'), 'garh\n')
-        self.runbzr('ignore garh')
-        self.assertEquals(self.capture('unknowns'), '')
-        self.assertEquals(file('.bzrignore', 'rU').read(), '*.blah\ngarh\n')
-
     def test_revert(self):
         self.runbzr('init')
 

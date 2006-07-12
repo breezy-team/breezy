@@ -7,6 +7,7 @@ from bzrlib.errors import NoSuchFile
 from bzrlib.inventory import InventoryFile, Inventory
 from bzrlib.workingtree import WorkingTree
 
+
 class TestSmartAdd(TestCaseWithTransport):
 
     def test_add_dot_from_root(self):
@@ -121,17 +122,14 @@ class TestSmartAdd(TestCaseWithTransport):
         from bzrlib.commands import run_bzr
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
-        # no files should be ignored by default, so we need to create
-        # an ignore rule - we create one for the pyc files, which means
-        # CVS should not be ignored.
-        self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS', 
+        # The default ignore list includes '*.py[co]', but not CVS
+        self.build_tree(['inertiatic/', 'inertiatic/esp', 'inertiatic/CVS',
                         'inertiatic/foo.pyc'])
-        self.build_tree_contents([('.bzrignore', '*.py[oc]\n')])
         added, ignored = smart_add_tree(wt, u'.')
         self.assertSubset(('inertiatic', 'inertiatic/esp', 'inertiatic/CVS'),
                           added)
-        self.assertSubset(('*.py[oc]',), ignored)
-        self.assertSubset(('inertiatic/foo.pyc',), ignored['*.py[oc]'])
+        self.assertSubset(('*.py[co]',), ignored)
+        self.assertSubset(('inertiatic/foo.pyc',), ignored['*.py[co]'])
 
 
 class TestSmartAddTree(TestCaseWithTransport):

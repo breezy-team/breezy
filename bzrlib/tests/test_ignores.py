@@ -45,21 +45,8 @@ class TestParseIgnoreFile(TestCase):
         self.assertEqual([], ignored)
 
 
-class TestGetUserIgnores(TestCaseInTempDir):
+class TestUserIgnores(TestCaseInTempDir):
     
-    def create_ignores(self, patterns):
-        """Fill out the ignore file with the given patterns"""
-        ignore_path = config.user_ignore_config_filename()
-        config.ensure_config_dir_exists()
-
-        # Create an empty file
-        f = open(ignore_path, 'wb')
-        try:
-            for pattern in patterns:
-                f.write(pattern.encode('utf8') + '\n')
-        finally:
-            f.close()
-
     def test_create_if_missing(self):
         # $HOME should be set to '.'
         ignore_path = config.user_ignore_config_filename()
@@ -77,23 +64,32 @@ class TestGetUserIgnores(TestCaseInTempDir):
 
     def test_use_existing(self):
         patterns = ['*.o', '*.py[co]', u'\xe5*']
-        self.create_ignores(patterns)
+        ignores.set_user_ignores(patterns)
 
         user_ignores = ignores.get_user_ignores()
         self.assertEqual(patterns, user_ignores)
 
     def test_use_empty(self):
+        ignores.set_user_ignores([])
         ignore_path = config.user_ignore_config_filename()
-        config.ensure_config_dir_exists()
-        f = open(ignore_path, 'wb')
-        f.close()
+        self.check_file_contents(ignore_path, '')
 
         self.assertEqual([], ignores.get_user_ignores())
+
+    def test_set(self):
+        patterns = ['*.py[co]', '*.py[oc]']
+        ignores.set_user_ignores(patterns)
+
+        self.assertEqual(patterns, ignores.get_user_ignores())
+
+        patterns = ['vim', '*.swp']
+        ignores.set_user_ignores(patterns)
+        self.assertEqual(patterns, ignores.get_user_ignores())
 
     def test_add(self):
         """Test that adding will not duplicate ignores"""
         # Create an empty file
-        self.create_ignores([])
+        ignores.set_user_ignores([])
 
         patterns = ['foo', './bar', u'b\xe5z']
         added = ignores.add_unique_user_ignores(patterns)
@@ -102,7 +98,7 @@ class TestGetUserIgnores(TestCaseInTempDir):
 
     def test_add_unique(self):
         """Test that adding will not duplicate ignores"""
-        self.create_ignores(['foo', './bar', u'b\xe5z'])
+        ignores.set_user_ignores(['foo', './bar', u'b\xe5z'])
 
         added = ignores.add_unique_user_ignores(['xxx', './bar', 'xxx'])
         self.assertEqual(['xxx'], added)

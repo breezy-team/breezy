@@ -106,27 +106,6 @@ def parse_ignore_file(f):
     return ignored
 
 
-def _create_default_user_ignores():
-    """Create ~/.bazaar/ignore, and fill it with the defaults"""
-
-    # We need to create the file
-    path = config.user_ignore_config_filename()
-    config.ensure_config_dir_exists()
-    try:
-        f = open(path, 'wb')
-    except (IOError, OSError), e:
-        if e.errno not in (errno.EPERM,):
-            raise
-        # if EPERM, we don't have write access to home dir
-        # so we won't save anything
-    else:
-        try:
-            for pattern in USER_DEFAULTS:
-                f.write(pattern.encode('utf8') + '\n')
-        finally:
-            f.close()
-
-
 def get_user_ignores():
     """Get the list of user ignored files, possibly creating it."""
     path = config.user_ignore_config_filename()
@@ -137,11 +116,35 @@ def get_user_ignores():
         if e.errno not in (errno.ENOENT,):
             raise
         # Create the ignore file, and just return the default
-        _create_default_user_ignores()
+        # We want to ignore if we can't write to the file
+        # since get_* should be a safe operation
+        try:
+            set_user_ignores(USER_DEFAULTS)
+        except (IOError, OSError), e:
+            if e.errno not in (errno.EPERM,):
+                raise
         return patterns
 
     try:
         return parse_ignore_file(f)
+    finally:
+        f.close()
+
+
+def set_user_ignores(patterns):
+    """Fill out the user ignore file with the given patterns
+
+    This may raise an error if it doesn't have permission to
+    write to the user ignore file.
+    """
+    ignore_path = config.user_ignore_config_filename()
+    config.ensure_config_dir_exists()
+
+    # Create an empty file
+    f = open(ignore_path, 'wb')
+    try:
+        for pattern in patterns:
+            f.write(pattern.encode('utf8') + '\n')
     finally:
         f.close()
 

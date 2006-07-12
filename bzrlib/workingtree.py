@@ -51,7 +51,7 @@ import stat
 from time import time
 import warnings
 
-from bzrlib import bzrdir, config, errors, urlutils
+from bzrlib import bzrdir, config, errors, ignores, urlutils
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -1074,35 +1074,18 @@ class WorkingTree(bzrlib.tree.Tree):
 
         Cached in the Tree object after the first call.
         """
-        if hasattr(self, '_ignorelist'):
-            return self._ignorelist
+        ignorelist = getattr(self, '_ignorelist', None)
+        if ignorelist is not None:
+            return ignorelist
 
         ignore_globs = []
 
-        def process_file(f):
-            """Handle breaking up the text into individual ignore globs"""
-            for line in f.read().decode('utf8').split('\n'):
-                line = line.rstrip('\r\n')
-                if not line or line.startswith('#'):
-                    continue
-                ignore_globs.append(line)
-
-        user_ignore_filename = config.user_ignore_config_filename()
-        try:
-            f = open(user_ignore_filename, 'rb')
-        except (IOError, OSError), e:
-            if e.errno not in (errno.ENOENT, errno.EPERM):
-                raise
-        else:
-            try:
-                process_file(f)
-            finally:
-                f.close()
+        ignore_globs.extend(ignores.get_user_ignores())
 
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
             try:
-                process_file(f)
+                ignore_globs.extend(ignores.parse_ignore_file(f))
             finally:
                 f.close()
 

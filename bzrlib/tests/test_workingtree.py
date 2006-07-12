@@ -18,6 +18,7 @@
 from cStringIO import StringIO
 import os
 
+from bzrlib import ignores
 import bzrlib
 from bzrlib.branch import Branch
 from bzrlib import bzrdir, conflicts, errors, workingtree
@@ -314,6 +315,9 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
 
     def test__get_ignore_rules_as_regex(self):
         tree = self.make_branch_and_tree('.')
+        # Setup the default ignore list to be empty
+        ignores.set_user_ignores([])
+
         self.build_tree_contents([('.bzrignore', 'CVS\n.hg\n')])
         reference_output = tree._combine_ignore_rules(['CVS', '.hg'])[0]
         regex_rules = tree._get_ignore_rules_as_regex()[0]
