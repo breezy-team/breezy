@@ -2,6 +2,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * The revision specifier "revno:" is extended to accept the syntax
+     revno:N:branch. For example,
+     revno:42:http://bazaar-vcs.org/bzr/bzr.dev/ means revision 42 in
+     bzr.dev.  (Matthieu Moy)
+
    * No default ignore rules are applied by bzr - only the rules in .bzrignore
      are considered. This fixes bugs with default rules being enforced no
      matter what. The old list of ignore rules from bzr is available by
