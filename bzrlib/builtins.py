@@ -1830,6 +1830,13 @@ class cmd_whoami(Command):
                 self.outf.write(c.username() + '\n')
             return
 
+        # display a warning if an email address isn't included in the given name.
+        try:
+            config.extract_email_address(name)
+        except BzrError, e:
+            warning('"%s" does not seem to contain an email address.  '
+                    'This is allowed, but not recommended.', name)
+        
         # use global config unless --branch given
         if branch:
             c = Branch.open_containing('.')[0].get_config()
