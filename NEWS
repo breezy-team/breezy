@@ -148,6 +148,9 @@ IN DEVELOPMENT
     * Removals are only committed if they match the filespec (or if there is
       no filespec).  (#46635, Aaron Bentley)
 
+    * smart-add recurses through all supplied directories 
+      (John Arbash Meinel, #52578)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
