@@ -266,9 +266,7 @@ def smart_add_tree(tree, file_list, recurse=True, action=None, save=True):
                     ignore_glob = tree.is_ignored(subp)
                     if ignore_glob is not None:
                         # mutter("skip ignored sub-file %r", subp)
-                        if ignore_glob not in ignored:
-                            ignored[ignore_glob] = []
-                        ignored[ignore_glob].append(subp)
+                        ignored.setdefault(ignore_glob, []).append(subp)
                     else:
                         #mutter("queue to add sub-file %r", subp)
                         dirs_to_add.append((FastPath(subp, subf), this_ie))

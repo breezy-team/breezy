@@ -113,6 +113,9 @@ IN DEVELOPMENT
     * File-ids containing single- or double-quotes are handled correctly by
       push.  (#52227, Aaron Bentley)
 
+    * Normalize unicode filenames to ensure cross-platform consistency.
+      (John Arbash Meinel, #43689)
+
     * Bundles can properly read binary files with a plain '\r' in them.
       (John Arbash Meinel, #51927)
 

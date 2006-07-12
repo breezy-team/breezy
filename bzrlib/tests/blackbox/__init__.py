@@ -64,6 +64,7 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_logformats',
                      'bzrlib.tests.blackbox.test_merge',
                      'bzrlib.tests.blackbox.test_missing',
+                     'bzrlib.tests.blackbox.test_mv',
                      'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pull',
                      'bzrlib.tests.blackbox.test_push',

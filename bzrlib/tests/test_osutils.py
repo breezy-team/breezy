@@ -198,16 +198,16 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
     def test_getcwd(self):
         # Make sure getcwd can handle unicode filenames
         try:
-            os.mkdir(u'B\xe5gfors')
+            os.mkdir(u'mu-\xb5')
         except UnicodeError:
             raise TestSkipped("Unable to create Unicode filename")
 
-        os.chdir(u'B\xe5gfors')
+        os.chdir(u'mu-\xb5')
         # TODO: jam 20060427 This will probably fail on Mac OSX because
         #       it will change the normalization of B\xe5gfors
         #       Consider using a different unicode character, or make
         #       osutils.getcwd() renormalize the path.
-        self.assertTrue(osutils._win32_getcwd().endswith(u'/B\xe5gfors'))
+        self.assertEndsWith(osutils._win32_getcwd(), u'mu-\xb5')
 
     def test_mkdtemp(self):
         tmpdir = osutils._win32_mkdtemp(dir='.')
@@ -256,6 +256,30 @@ class TestWin32FuncsDirs(TestCaseInTempDir):
         except (IOError, OSError), e:
             self.assertEqual(errno.ENOENT, e.errno)
 
+
+class TestMacFuncsDirs(TestCaseInTempDir):
+    """Test mac special functions that require directories."""
+
+    def test_getcwd(self):
+        # On Mac, this will actually create Ba\u030agfors
+        # but chdir will still work, because it accepts both paths
+        try:
+            os.mkdir(u'B\xe5gfors')
+        except UnicodeError:
+            raise TestSkipped("Unable to create Unicode filename")
+
+        os.chdir(u'B\xe5gfors')
+        self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
+
+    def test_getcwd_nonnorm(self):
+        # Test that _mac_getcwd() will normalize this path
+        try:
+            os.mkdir(u'Ba\u030agfors')
+        except UnicodeError:
+            raise TestSkipped("Unable to create Unicode filename")
+
+        os.chdir(u'Ba\u030agfors')
+        self.assertEndsWith(osutils._mac_getcwd(), u'B\xe5gfors')
 
 class TestSplitLines(TestCase):
 
