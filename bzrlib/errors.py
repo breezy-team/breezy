@@ -1,15 +1,15 @@
 # Copyright (C) 2005, 2006 Canonical
-
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
 # (at your option) any later version.
-
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -258,6 +258,13 @@ class InvalidURLJoin(PathError):
         self.args.extend(args)
 
 
+class UnsupportedProtocol(PathError):
+    """Unsupported protocol for url "%(path)s"%(extra)s"""
+
+    def __init__(self, url, extra):
+        PathError.__init__(self, url, extra=extra)
+
+
 class PathNotChild(BzrNewError):
     """Path %(path)r is not a child of path %(base)r%(extra)s"""
 
@@ -271,6 +278,10 @@ class PathNotChild(BzrNewError):
             self.extra = ': ' + str(extra)
         else:
             self.extra = ''
+
+
+class InvalidNormalization(PathError):
+    """Path %(path)r is not unicode normalized"""
 
 
 # TODO: This is given a URL; we try to unescape it but doing that from inside
@@ -710,38 +721,32 @@ class NoSuchExportFormat(BzrNewError):
         self.format = format
 
 
-class TransportError(BzrError):
-    """All errors thrown by Transport implementations should derive
-    from this class.
-    """
+class TransportError(BzrNewError):
+    """Transport error: %(msg)s %(orig_error)s"""
+
     def __init__(self, msg=None, orig_error=None):
         if msg is None and orig_error is not None:
             msg = str(orig_error)
-        BzrError.__init__(self, msg)
+        if orig_error is None:
+            orig_error = ''
+        if msg is None:
+            msg =  ''
         self.msg = msg
         self.orig_error = orig_error
+        BzrNewError.__init__(self)
 
 
 # A set of semi-meaningful errors which can be thrown
 class TransportNotPossible(TransportError):
-    """This is for transports where a specific function is explicitly not
-    possible. Such as pushing files to an HTTP server.
-    """
-    pass
+    """Transport operation not possible: %(msg)s %(orig_error)%"""
 
 
 class ConnectionError(TransportError):
-    """A connection problem prevents file retrieval.
-    This does not indicate whether the file exists or not; it indicates that a
-    precondition for requesting the file was not met.
-    """
-    def __init__(self, msg=None, orig_error=None):
-        TransportError.__init__(self, msg=msg, orig_error=orig_error)
+    """Connection error: %(msg)s %(orig_error)s"""
 
 
 class ConnectionReset(TransportError):
-    """The connection has been closed."""
-    pass
+    """Connection closed: %(msg)s %(orig_error)s"""
 
 
 class ConflictsInTree(BzrError):

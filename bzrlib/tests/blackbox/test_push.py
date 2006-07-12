@@ -153,3 +153,10 @@ class TestPush(ExternalBase):
         self.assertFalse(pushed_repo.has_revision('a-2'))
         self.assertTrue(pushed_repo.has_revision('b-1'))
 
+    def test_push_funky_id(self):
+        t = self.make_branch_and_tree('tree')
+        os.chdir('tree')
+        self.build_tree(['filename'])
+        t.add('filename', 'funky-chars<>%&;"\'')
+        t.commit('commit filename')
+        self.run_bzr('push', '../new-tree')

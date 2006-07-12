@@ -79,10 +79,13 @@ IN DEVELOPMENT
    * 'bzr revert DIRECTORY' now reverts the contents of the directory as well.
      (Aaron Bentley)
 
+   * 'bzr get sftp://foo' gives a better error when paramiko is not present.
+     Also updates things like 'http+pycurl://' if pycurl is not present.
+     (John Arbash Meinel) (Malone #47821, #52204)
+
    * New env variable BZR_PROGRESS_BAR, sets the default progress bar type.
      Can be set to 'none' or 'dummy' to disable the progress bar, 'dots' or 
      'tty' to create the respective type. (John Arbash Meinel, #42197, #51107)
-
 
   BUG FIXES:
 
@@ -110,6 +113,12 @@ IN DEVELOPMENT
     * When specifying filenames for 'diff -r x..y', the name of the file in the
       working directory can be used, even if its name is different in both x
       and y.
+
+    * File-ids containing single- or double-quotes are handled correctly by
+      push.  (#52227, Aaron Bentley)
+
+    * Normalize unicode filenames to ensure cross-platform consistency.
+      (John Arbash Meinel, #43689)
 
   INTERNALS:
 

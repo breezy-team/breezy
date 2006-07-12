@@ -916,8 +916,12 @@ class TestTransportImplementation(TestCaseInTempDir):
         """Test that we can read/write files with Unicode names."""
         t = self.get_transport()
 
-        files = [u'\xe5', # a w/ circle iso-8859-1
-                 u'\xe4', # a w/ dots iso-8859-1
+        # With FAT32 and certain encodings on win32
+        # '\xe5' and '\xe4' actually map to the same file
+        # adding a suffix kicks in the 'preserving but insensitive'
+        # route, and maintains the right files
+        files = [u'\xe5.1', # a w/ circle iso-8859-1
+                 u'\xe4.2', # a w/ dots iso-8859-1
                  u'\u017d', # Z with umlat iso-8859-2
                  u'\u062c', # Arabic j
                  u'\u0410', # Russian A

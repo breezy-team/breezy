@@ -179,6 +179,14 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
         self.assertFalse(target.has_revision('b'))
 
+    def test_fetch_funky_file_id(self):
+        from_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/filename'])
+        from_tree.add('filename', 'funky-chars<>%&;"\'')
+        from_tree.commit('commit filename')
+        to_repo = self.make_to_repository('to')
+        to_repo.fetch(from_tree.branch.repository, from_tree.last_revision())
+
 
 class TestCaseWithComplexRepository(TestCaseWithInterRepository):
 
