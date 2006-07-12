@@ -1,8 +1,9 @@
 import os
 import unittest
 
+from bzrlib import errors, osutils
 from bzrlib.add import smart_add, smart_add_tree
-from bzrlib.tests import TestCaseWithTransport, TestCase
+from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 from bzrlib.errors import NoSuchFile
 from bzrlib.inventory import InventoryFile, Inventory
 from bzrlib.workingtree import WorkingTree
@@ -210,6 +211,64 @@ class TestSmartAddTree(TestCaseWithTransport):
         for path in not_added:
             self.assertEqual(None, wt.path2id(path.rstrip('/')),
                     'Accidentally added path: %s' % (path,))
+
+
+class TestAddNonNormalized(TestCaseWithTransport):
+
+    def make(self):
+        try:
+            self.build_tree([u'a\u030a'])
+        except UnicodeError:
+            raise TestSkipped('Filesystem cannot create unicode filenames')
+
+        self.wt = self.make_branch_and_tree('.')
+
+    def test_accessible_explicit(self):
+        self.make()
+        orig = osutils.normalized_filename
+        osutils.normalized_filename = osutils._accessible_normalized_filename
+        try:
+            smart_add_tree(self.wt, [u'a\u030a'])
+            self.assertEqual([(u'\xe5', 'file')],
+                    [(path, ie.kind) for path,ie in 
+                        self.wt.inventory.iter_entries()])
+        finally:
+            osutils.normalized_filename = orig
+
+    def test_accessible_implicit(self):
+        self.make()
+        orig = osutils.normalized_filename
+        osutils.normalized_filename = osutils._accessible_normalized_filename
+        try:
+            smart_add_tree(self.wt, [])
+            self.assertEqual([(u'\xe5', 'file')],
+                    [(path, ie.kind) for path,ie in 
+                        self.wt.inventory.iter_entries()])
+        finally:
+            osutils.normalized_filename = orig
+
+    def test_inaccessible_explicit(self):
+        self.make()
+        orig = osutils.normalized_filename
+        osutils.normalized_filename = osutils._inaccessible_normalized_filename
+        try:
+            self.assertRaises(errors.InvalidNormalization,
+                    smart_add_tree, self.wt, [u'a\u030a'])
+        finally:
+            osutils.normalized_filename = orig
+
+    def test_inaccessible_implicit(self):
+        self.make()
+        orig = osutils.normalized_filename
+        osutils.normalized_filename = osutils._inaccessible_normalized_filename
+        try:
+            # TODO: jam 20060701 In the future, this should probably
+            #       just ignore files that don't fit the normalization
+            #       rules, rather than exploding
+            self.assertRaises(errors.InvalidNormalization,
+                    smart_add_tree, self.wt, [])
+        finally:
+            osutils.normalized_filename = orig
 
 
 class TestAddActions(TestCase):
