@@ -47,6 +47,19 @@ class TestParseIgnoreFile(TestCase):
 
 class TestGetUserIgnores(TestCaseInTempDir):
     
+    def create_ignores(self, patterns):
+        """Fill out the ignore file with the given patterns"""
+        ignore_path = config.user_ignore_config_filename()
+        config.ensure_config_dir_exists()
+
+        # Create an empty file
+        f = open(ignore_path, 'wb')
+        try:
+            for pattern in patterns:
+                f.write(pattern.encode('utf8') + '\n')
+        finally:
+            f.close()
+
     def test_create_if_missing(self):
         # $HOME should be set to '.'
         ignore_path = config.user_ignore_config_filename()
@@ -63,15 +76,35 @@ class TestGetUserIgnores(TestCaseInTempDir):
         self.assertEqual(ignores.USER_DEFAULTS, user_ignores)
 
     def test_use_existing(self):
-        ignore_path = config.user_ignore_config_filename()
-        config.ensure_config_dir_exists()
-        f = open(ignore_path, 'wb')
         patterns = ['*.o', '*.py[co]', u'\xe5*']
-        try:
-            for pattern in patterns:
-                f.write(pattern.encode('utf8') + '\n')
-        finally:
-            f.close()
+        self.create_ignores(patterns)
 
         user_ignores = ignores.get_user_ignores()
         self.assertEqual(patterns, user_ignores)
+
+    def test_use_empty(self):
+        ignore_path = config.user_ignore_config_filename()
+        config.ensure_config_dir_exists()
+        f = open(ignore_path, 'wb')
+        f.close()
+
+        self.assertEqual([], ignores.get_user_ignores())
+
+    def test_add(self):
+        """Test that adding will not duplicate ignores"""
+        # Create an empty file
+        self.create_ignores([])
+
+        patterns = ['foo', './bar', u'b\xe5z']
+        added = ignores.add_unique_user_ignores(patterns)
+        self.assertEqual(patterns, added)
+        self.assertEqual(patterns, ignores.get_user_ignores())
+
+    def test_add_unique(self):
+        """Test that adding will not duplicate ignores"""
+        self.create_ignores(['foo', './bar', u'b\xe5z'])
+
+        added = ignores.add_unique_user_ignores(['xxx', './bar', 'xxx'])
+        self.assertEqual(['xxx'], added)
+        self.assertEqual(['foo', './bar', u'b\xe5z', 'xxx'],
+                         ignores.get_user_ignores())

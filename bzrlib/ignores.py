@@ -106,7 +106,7 @@ def parse_ignore_file(f):
     return ignored
 
 
-def _create_user_ignores():
+def _create_default_user_ignores():
     """Create ~/.bazaar/ignore, and fill it with the defaults"""
 
     # We need to create the file
@@ -137,10 +137,36 @@ def get_user_ignores():
         if e.errno not in (errno.ENOENT,):
             raise
         # Create the ignore file, and just return the default
-        _create_user_ignores()
+        _create_default_user_ignores()
         return patterns
 
     try:
         return parse_ignore_file(f)
     finally:
         f.close()
+
+
+def add_unique_user_ignores(new_ignores):
+    """Add entries to the user's ignore list if not present.
+
+    :param new_ignores: A list of ignore patterns
+    :return: The list of ignores that were added
+    """
+    ignored = set(get_user_ignores())
+    to_add = []
+    for ignore in new_ignores:
+        if ignore not in ignored:
+            ignored.add(ignore)
+            to_add.append(ignore)
+
+    if not to_add:
+        return []
+
+    f = open(config.user_ignore_config_filename(), 'ab')
+    try:
+        for pattern in to_add:
+            f.write(pattern.encode('utf8') + '\n')
+    finally:
+        f.close()
+
+    return to_add
