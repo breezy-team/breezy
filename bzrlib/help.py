@@ -128,8 +128,7 @@ def help_on_command(cmdname, outfile=None):
 
 
 def help_on_command_options(cmd, outfile=None):
-    from bzrlib.option import Option
-    from commands import get_optparser
+    from bzrlib.option import Option, get_optparser
     if outfile is None:
         outfile = sys.stdout
     options = cmd.options()

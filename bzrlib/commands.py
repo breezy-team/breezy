@@ -30,7 +30,6 @@
 
 import codecs
 import errno
-import optparse
 import os
 from warnings import warn
 import sys
@@ -38,9 +37,9 @@ import sys
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import (BzrError,
-                           BzrCommandError,
-                           BzrCheckError,
+                           BzrCommandError, BzrCheckError,
                            NotBranchError)
+from bzrlib import option
 from bzrlib.option import Option
 import bzrlib.osutils
 from bzrlib.revisionspec import RevisionSpec
@@ -342,42 +341,6 @@ def parse_spec(spec):
     return parsed
 
 
-class OptionParser(optparse.OptionParser):
-    """OptionParser that raises exceptions instead of exiting"""
-
-    DEFAULT_VALUE = "DEFAULT"
-
-    def error(self, message):
-        raise BzrCommandError(message)
-
-
-def get_optparser(options):
-    """Generate an optparse parser for bzrlib-style options"""
-    def type_callback(option, opt, value, parser, name, optargfn):
-        setattr(parser.values, name, optargfn(value))
-
-    parser = OptionParser()
-    parser.remove_option('--help')
-    short_options = dict((k.name, (v, k)) for v, k in 
-                         Option.SHORT_OPTIONS.iteritems())
-    for name, option in options.iteritems():
-        option_strings = ['--%s' % name]
-        if name in short_options:
-            short_name, short_option = short_options[name]
-            option_strings.append('-%s' % short_name)
-        optargfn = option.type
-        if optargfn is None:
-            parser.add_option(action='store_true', dest=name, help=option.help,
-                              default=OptionParser.DEFAULT_VALUE, 
-                              *option_strings)
-        else:
-            parser.add_option(action='callback', callback=type_callback, 
-                              type='string', help=option.help,
-                              default=OptionParser.DEFAULT_VALUE, 
-                              callback_args=(name, optargfn), *option_strings)
-    return parser
-
-
 def parse_args(command, argv, alias_argv=None):
     """Parse command line.
     
@@ -387,7 +350,7 @@ def parse_args(command, argv, alias_argv=None):
     they take, and which commands will accept them.
     """
     # TODO: make it a method of the Command?
-    parser = get_optparser(command.options())
+    parser = option.get_optparser(command.options())
     argsover = False
     if alias_argv is not None:
         args = alias_argv + argv
@@ -396,7 +359,7 @@ def parse_args(command, argv, alias_argv=None):
 
     options, args = parser.parse_args(args)
     opts = dict([(k, v) for k, v in options.__dict__.iteritems() if 
-                 v is not OptionParser.DEFAULT_VALUE])
+                 v is not option.OptionParser.DEFAULT_VALUE])
     return args, opts
 
 
