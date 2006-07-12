@@ -142,6 +142,9 @@ IN DEVELOPMENT
 
     * Support ftp APPE (append) to allow Knits to be used over ftp (#42592)
 
+    * Removals are only committed if they match the filespec (or if there is
+      no filespec).  (#46635, Aaron Bentley)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
