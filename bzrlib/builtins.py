@@ -25,8 +25,8 @@ import sys
 
 import bzrlib
 from bzrlib.branch import Branch, BranchReferenceFormat
-from bzrlib import (bundle, branch, bzrdir, errors, osutils, ui, config,
-    repository, log)
+from bzrlib import (bundle, branch, bzrdir, errors, ignores,
+                    osutils, ui, config, repository, log)
 from bzrlib.bundle import read_bundle_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.conflicts import ConflictList
@@ -1467,7 +1467,7 @@ class cmd_ignore(Command):
         from bzrlib.atomicfile import AtomicFile
         if old_default_rules is not None:
             # dump the rules and exit
-            for pattern in bzrlib.DEFAULT_IGNORE:
+            for pattern in ignores.OLD_DEFAULTS:
                 print pattern
             return
         if name_pattern is None:
