@@ -168,7 +168,8 @@ class Option(object):
         else:
             parser.add_option(action='callback', 
                               callback=self._optparse_callback, 
-                              type='string', help=self.help,
+                              type='string', metavar=self.argname,
+                              help=self.help,
                               default=OptionParser.DEFAULT_VALUE, 
                               *option_strings)
 
