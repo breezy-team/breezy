@@ -181,10 +181,7 @@ def _win32_local_path_from_url(url):
         or win32_url[2] != '/'):
         raise errors.InvalidURL(url, 'Win32 file urls start with'
                 ' file:///x:/, where x is a valid drive letter')
-    # Preferentially using .lower() because os.getcwd() returns
-    # paths with lowercase drive letters, and that helps
-    # bzrlib.osutils.relpath() work correctly
-    return win32_url[0].lower() + u':' + unescape(win32_url[2:])
+    return win32_url[0].upper() + u':' + unescape(win32_url[2:])
 
 
 def _win32_local_path_to_url(path):
@@ -200,7 +197,7 @@ def _win32_local_path_to_url(path):
     #       semantics, since 'nt' is not an available module.
     win32_path = bzrlib.osutils._nt_normpath(
         bzrlib.osutils._win32_abspath(path)).replace('\\', '/')
-    return 'file:///' + win32_path[0].lower() + ':' + escape(win32_path[2:])
+    return 'file:///' + win32_path[0].upper() + ':' + escape(win32_path[2:])
 
 
 local_path_to_url = _posix_local_path_to_url

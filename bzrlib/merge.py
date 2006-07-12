@@ -391,14 +391,11 @@ class Merge3Merger(object):
             results = self.tt.apply()
             self.write_modified(results)
             try:
-                working_tree.set_conflicts(ConflictList(self.cooked_conflicts))
+                working_tree.add_conflicts(self.cooked_conflicts)
             except UnsupportedOperation:
                 pass
         finally:
-            try:
-                self.tt.finalize()
-            except:
-                pass
+            self.tt.finalize()
             working_tree.unlock()
             self.pb.clear()
 
@@ -720,7 +717,7 @@ class Merge3Merger(object):
         if winner == "conflict":
         # There must be a None in here, if we have a conflict, but we
         # need executability since file status was not deleted.
-            if self.other_tree.is_executable(file_id) is None:
+            if self.executable(self.other_tree, file_id) is None:
                 winner = "this"
             else:
                 winner = "other"
@@ -872,12 +869,16 @@ class WeaveMerger(Merge3Merger):
 
 class Diff3Merger(Merge3Merger):
     """Three-way merger using external diff3 for text merging"""
+
     def dump_file(self, temp_dir, name, tree, file_id):
         out_path = pathjoin(temp_dir, name)
-        out_file = file(out_path, "wb")
-        in_file = tree.get_file(file_id)
-        for line in in_file:
-            out_file.write(line)
+        out_file = open(out_path, "wb")
+        try:
+            in_file = tree.get_file(file_id)
+            for line in in_file:
+                out_file.write(line)
+        finally:
+            out_file.close()
         return out_path
 
     def text_merge(self, file_id, trans_id):
@@ -895,7 +896,11 @@ class Diff3Merger(Merge3Merger):
             status = bzrlib.patch.diff3(new_file, this, base, other)
             if status not in (0, 1):
                 raise BzrError("Unhandled diff3 exit code")
-            self.tt.create_file(file(new_file, "rb"), trans_id)
+            f = open(new_file, 'rb')
+            try:
+                self.tt.create_file(f, trans_id)
+            finally:
+                f.close()
             if status == 1:
                 name = self.tt.final_name(trans_id)
                 parent_id = self.tt.final_parent(trans_id)

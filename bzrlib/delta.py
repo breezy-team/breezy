@@ -16,6 +16,7 @@
 
 from bzrlib.inventory import InventoryEntry
 from bzrlib.trace import mutter
+from bzrlib import tree
 
 
 class TreeDelta(object):
@@ -90,6 +91,7 @@ class TreeDelta(object):
             
 
     def show(self, to_file, show_ids=False, show_unchanged=False):
+        """output this delta in status-like form to to_file."""
         def show_list(files):
             for item in files:
                 path, fid, kind = item[:3]
@@ -141,9 +143,9 @@ class TreeDelta(object):
             show_list(self.unchanged)
 
 
-
 def compare_trees(old_tree, new_tree, want_unchanged=False, 
-                  specific_files=None, include_root=False):
+                  specific_files=None, extra_trees=None, 
+                  require_versioned=False, include_root=False):
     """Describe changes from one tree to another.
 
     Returns a TreeDelta with details of added, modified, renamed, and
@@ -158,9 +160,18 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
         the next.
 
     specific_files
-        If true, only check for changes to specified names or
-        files within them.  Any unversioned files given have no effect
-        (but this might change in the future).
+        If supplied, only check for changes to specified names or
+        files within them.  When mapping filenames to ids, all matches in all
+        trees (including optional extra_trees) are used, and all children of
+        matched directories are included.
+
+    extra_trees
+        If non-None, a list of more trees to use for looking up file_ids from
+        paths
+
+    require_versioned
+        If true, an all files are required to be versioned, and
+        PathsNotVersionedError will be thrown if they are not.
     """
     # NB: show_status depends on being able to pass in non-versioned files and
     # report them as unknown
@@ -168,15 +179,20 @@ def compare_trees(old_tree, new_tree, want_unchanged=False,
     try:
         new_tree.lock_read()
         try:
+            trees = (new_tree, old_tree)
+            if extra_trees is not None:
+                trees = trees + tuple(extra_trees)
+            specific_file_ids = tree.find_ids_across_trees(specific_files, 
+                trees, require_versioned=require_versioned)
             return _compare_trees(old_tree, new_tree, want_unchanged,
-                                  specific_files, include_root)
+                                  specific_file_ids, include_root)
         finally:
             new_tree.unlock()
     finally:
         old_tree.unlock()
 
 
-def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
+def _compare_trees(old_tree, new_tree, want_unchanged, specific_file_ids,
                    include_root):
 
     from osutils import is_inside_any
@@ -188,8 +204,6 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
 
     # TODO: Rather than iterating over the whole tree and then filtering, we
     # could diff just the specified files (if any) and their subtrees.  
-    # Perhaps should take a list of file-ids instead?   Need to indicate any
-    # ids or names which were not found in the trees.
 
     old_files = old_tree.list_files(include_root)
     new_files = new_tree.list_files(include_root)
@@ -213,9 +227,9 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
         """We have matched up 2 file_ids, check for changes."""
         assert old_entry.kind == new_entry.kind
 
-        if specific_files:
-            if (not is_inside_any(specific_files, old_path)
-                and not is_inside_any(specific_files, new_path)):
+        if specific_file_ids:
+            if (old_file_id not in specific_file_ids and 
+                new_file_id not in specific_file_ids):
                 return
 
         # temporary hack until all entries are populated before clients 
@@ -312,13 +326,13 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
 
     # Now we have a set of added and removed files, mark them all
     for old_path, old_entry in removed.itervalues():
-        if specific_files:
-            if not is_inside_any(specific_files, old_path):
+        if specific_file_ids:
+            if not old_entry.file_id in specific_file_ids:
                 continue
         delta.removed.append((old_path, old_entry.file_id, old_entry.kind))
     for new_path, new_entry in added.itervalues():
-        if specific_files:
-            if not is_inside_any(specific_files, new_path):
+        if specific_file_ids:
+            if not new_entry.file_id in specific_file_ids:
                 continue
         delta.added.append((new_path, new_entry.file_id, new_entry.kind))
 

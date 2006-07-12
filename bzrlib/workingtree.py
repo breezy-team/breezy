@@ -657,9 +657,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         try:
             merges_file = self._control_files.get_utf8('pending-merges')
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
+        except NoSuchFile:
             return []
         p = []
         for l in merges_file.readlines():
@@ -1085,7 +1083,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if hasattr(self, '_ignorelist'):
             return self._ignorelist
 
-        l = bzrlib.DEFAULT_IGNORE[:]
+        l = []
         if self.has_filename(bzrlib.IGNORE_FILENAME):
             f = self.get_file_byname(bzrlib.IGNORE_FILENAME)
             l.extend([line.rstrip("\n\r").decode('utf-8') 
@@ -1446,6 +1444,9 @@ class WorkingTree(bzrlib.tree.Tree):
     def set_conflicts(self, arg):
         raise UnsupportedOperation(self.set_conflicts, self)
 
+    def add_conflicts(self, arg):
+        raise UnsupportedOperation(self.add_conflicts, self)
+
     @needs_read_lock
     def conflicts(self):
         conflicts = ConflictList()
@@ -1510,6 +1511,13 @@ class WorkingTree3(WorkingTree):
     def set_conflicts(self, conflicts):
         self._put_rio('conflicts', conflicts.to_stanzas(), 
                       CONFLICT_HEADER_1)
+
+    @needs_write_lock
+    def add_conflicts(self, new_conflicts):
+        conflict_set = set(self.conflicts())
+        conflict_set.update(set(list(new_conflicts)))
+        self.set_conflicts(ConflictList(sorted(conflict_set,
+                                               key=Conflict.sort_key)))
 
     @needs_read_lock
     def conflicts(self):

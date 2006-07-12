@@ -20,6 +20,7 @@
 import codecs
 import errno
 import os
+import os.path
 import sys
 
 import bzrlib
@@ -28,6 +29,7 @@ from bzrlib import (bundle, branch, bzrdir, errors, osutils, ui, config,
     repository, log)
 from bzrlib.bundle import read_bundle_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
+from bzrlib.conflicts import ConflictList
 from bzrlib.commands import Command, display_command
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
@@ -400,10 +402,6 @@ class cmd_pull(Command):
     from one into the other.  Once one branch has merged, the other should
     be able to pull it again.
 
-    If branches have diverged, you can use 'bzr merge' to pull the text changes
-    from one into the other.  Once one branch has merged, the other should
-    be able to pull it again.
-
     If you want to forget your local changes and just update your branch to
     match the remote one, use pull --overwrite.
 
@@ -709,6 +707,7 @@ class cmd_checkout(Command):
                                  "such access, and also support local commits."
                             ),
                      ]
+    aliases = ['co']
 
     def run(self, branch_location=None, to_location=None, revision=None, basis=None,
             lightweight=False):
@@ -793,15 +792,17 @@ class cmd_update(Command):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_write()
         try:
-            if tree.last_revision() == tree.branch.last_revision():
+            last_rev = tree.last_revision() 
+            if last_rev == tree.branch.last_revision():
                 # may be up to date, check master too.
                 master = tree.branch.get_master_branch()
-                if master is None or master.last_revision == tree.last_revision():
-                    note("Tree is up to date.")
-                    return
+                if master is None or last_rev == master.last_revision():
+                    revno = tree.branch.revision_id_to_revno(last_rev)
+                    note("Tree is up to date at revision %d." % (revno,))
+                    return 0
             conflicts = tree.update()
-            note('Updated to revision %d.' %
-                 (tree.branch.revision_id_to_revno(tree.last_revision()),))
+            revno = tree.branch.revision_id_to_revno(tree.last_revision())
+            note('Updated to revision %d.' % (revno,))
             if conflicts != 0:
                 return 1
             else:
@@ -1448,15 +1449,23 @@ class cmd_ignore(Command):
         bzr ignore '*.class'
     """
     # TODO: Complain if the filename is absolute
-    takes_args = ['name_pattern']
+    takes_args = ['name_pattern?']
+    takes_options = [
+                     Option('old-default-rules',
+                            help='Out the ignore rules bzr < 0.9 always used.')
+                     ]
     
-    def run(self, name_pattern):
+    def run(self, name_pattern=None, old_default_rules=None):
         from bzrlib.atomicfile import AtomicFile
-        import os.path
-
+        if old_default_rules is not None:
+            # dump the rules and exit
+            for pattern in bzrlib.DEFAULT_IGNORE:
+                print pattern
+            return
+        if name_pattern is None:
+            raise BzrCommandError("ignore requires a NAME_PATTERN")
         tree, relpath = WorkingTree.open_containing(u'.')
         ifn = tree.abspath('.bzrignore')
-
         if os.path.exists(ifn):
             f = open(ifn, 'rt')
             try:
@@ -1547,7 +1556,6 @@ class cmd_export(Command):
     takes_args = ['dest']
     takes_options = ['revision', 'format', 'root']
     def run(self, dest, revision=None, format=None, root=None):
-        import os.path
         from bzrlib.export import export
         tree = WorkingTree.open_containing(u'.')[0]
         b = tree.branch
@@ -1694,8 +1702,8 @@ class cmd_commit(Command):
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
             # perhaps prepare the commit; get the message; then actually commit
-            raise BzrCommandError("no changes to commit",
-                                  ["use --unchanged to commit anyhow"])
+            raise BzrCommandError("no changes to commit."
+                                  " use --unchanged to commit anyhow")
         except ConflictsInTree:
             raise BzrCommandError("Conflicts detected in working tree.  "
                 'Use "bzr conflicts" to list, "bzr resolve FILE" to resolve.')
@@ -1772,19 +1780,41 @@ class cmd_upgrade(Command):
 
 
 class cmd_whoami(Command):
-    """Show bzr user id."""
-    takes_options = ['email']
+    """Show or set bzr user id.
+    
+    examples:
+        bzr whoami --email
+        bzr whoami 'Frank Chu <fchu@example.com>'
+    """
+    takes_options = [ Option('email',
+                             help='display email address only'),
+                      Option('branch',
+                             help='set identity for the current branch instead of '
+                                  'globally'),
+                    ]
+    takes_args = ['name?']
+    encoding_type = 'replace'
     
     @display_command
-    def run(self, email=False):
-        try:
-            c = WorkingTree.open_containing(u'.')[0].branch.get_config()
-        except NotBranchError:
-            c = config.GlobalConfig()
-        if email:
-            print c.user_email()
+    def run(self, email=False, branch=False, name=None):
+        if name is None:
+            # use branch if we're inside one; otherwise global config
+            try:
+                c = Branch.open_containing('.')[0].get_config()
+            except NotBranchError:
+                c = config.GlobalConfig()
+            if email:
+                self.outf.write(c.user_email() + '\n')
+            else:
+                self.outf.write(c.username() + '\n')
+            return
+
+        # use global config unless --branch given
+        if branch:
+            c = Branch.open_containing('.')[0].get_config()
         else:
-            print c.username()
+            c = config.GlobalConfig()
+        c.set_user_option('email', name)
 
 
 class cmd_nick(Command):
@@ -2173,14 +2203,16 @@ class cmd_remerge(Command):
             pending_merges = tree.pending_merges() 
             if len(pending_merges) != 1:
                 raise BzrCommandError("Sorry, remerge only works after normal"
-                                      + " merges.  Not cherrypicking or"
-                                      + "multi-merges.")
+                                      " merges.  Not cherrypicking or"
+                                      " multi-merges.")
             repository = tree.branch.repository
             base_revision = common_ancestor(tree.branch.last_revision(), 
                                             pending_merges[0], repository)
             base_tree = repository.revision_tree(base_revision)
             other_tree = repository.revision_tree(pending_merges[0])
             interesting_ids = None
+            new_conflicts = []
+            conflicts = tree.conflicts()
             if file_list is not None:
                 interesting_ids = set()
                 for filename in file_list:
@@ -2193,7 +2225,9 @@ class cmd_remerge(Command):
                     
                     for name, ie in tree.inventory.iter_entries(file_id):
                         interesting_ids.add(ie.file_id)
+                new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
             transform_tree(tree, tree.basis_tree(), interesting_ids)
+            tree.set_conflicts(ConflictList(new_conflicts))
             if file_list is None:
                 restore_files = list(tree.iter_conflicts())
             else:
@@ -2203,13 +2237,13 @@ class cmd_remerge(Command):
                     restore(tree.abspath(filename))
                 except NotConflicted:
                     pass
-            conflicts =  merge_inner(tree.branch, other_tree, base_tree,
-                                     this_tree=tree,
-                                     interesting_ids = interesting_ids, 
-                                     other_rev_id=pending_merges[0], 
-                                     merge_type=merge_type, 
-                                     show_base=show_base,
-                                     reprocess=reprocess)
+            conflicts = merge_inner(tree.branch, other_tree, base_tree,
+                                    this_tree=tree,
+                                    interesting_ids=interesting_ids, 
+                                    other_rev_id=pending_merges[0], 
+                                    merge_type=merge_type, 
+                                    show_base=show_base,
+                                    reprocess=reprocess)
         finally:
             tree.unlock()
         if conflicts > 0:
@@ -2320,7 +2354,9 @@ class cmd_missing(Command):
                      'show-ids',
                      'verbose'
                      ]
+    encoding_type = 'replace'
 
+    @display_command
     def run(self, other_branch=None, reverse=False, mine_only=False,
             theirs_only=False, log_format=None, long=False, short=False, line=False, 
             show_ids=False, verbose=False):
@@ -2345,7 +2381,8 @@ class cmd_missing(Command):
                     default = local_branch.get_config().log_format()
                     log_format = get_log_format(long=long, short=short, 
                                                 line=line, default=default)
-                lf = log_formatter(log_format, sys.stdout,
+                lf = log_formatter(log_format,
+                                   to_file=self.outf,
                                    show_ids=show_ids,
                                    show_timezone='original')
                 if reverse is False:
@@ -2447,7 +2484,7 @@ class cmd_annotate(Command):
     # TODO: annotate directories; showing when each file was last changed
     # TODO: if the working copy is modified, show annotations on that 
     #       with new uncommitted lines marked
-    aliases = ['blame', 'praise']
+    aliases = ['ann', 'blame', 'praise']
     takes_args = ['filename']
     takes_options = [Option('all', help='show annotations on all lines'),
                      Option('long', help='show date in annotations'),
