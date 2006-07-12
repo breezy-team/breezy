@@ -129,25 +129,12 @@ def help_on_command(cmdname, outfile=None):
 
 def help_on_command_options(cmd, outfile=None):
     from bzrlib.option import Option
-    options = cmd.options()
-    if not options:
-        return
-    if outfile == None:
+    from commands import get_optparser
+    if outfile is None:
         outfile = sys.stdout
-    outfile.write('\noptions:\n')
-    for option_name, option in sorted(options.items()):
-        l = '    --' + option_name
-        if option.type is not None:
-            l += ' ' + option.argname.upper()
-        short_name = option.short_name()
-        if short_name:
-            assert len(short_name) == 1
-            l += ', -' + short_name
-        l += (30 - len(l)) * ' ' + option.help
-        # TODO: split help over multiple lines with correct indenting and 
-        # wrapping
-        wrapped = textwrap.fill(l, initial_indent='', subsequent_indent=30*' ')
-        outfile.write(wrapped + '\n')
+    options = cmd.options()
+    outfile.write('\n')
+    outfile.write(get_optparser(options).format_option_help())
 
 
 def help_commands(outfile=None):

@@ -367,12 +367,12 @@ def get_optparser(options):
             option_strings.append('-%s' % short_name)
         optargfn = option.type
         if optargfn is None:
-            parser.add_option(action='store_true', dest=name, 
+            parser.add_option(action='store_true', dest=name, help=option.help,
                               default=OptionParser.DEFAULT_VALUE, 
                               *option_strings)
         else:
             parser.add_option(action='callback', callback=type_callback, 
-                              type='string',
+                              type='string', help=option.help,
                               default=OptionParser.DEFAULT_VALUE, 
                               callback_args=(name, optargfn), *option_strings)
     return parser
