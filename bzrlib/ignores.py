@@ -16,6 +16,10 @@
 
 """Lists of ignore files, etc."""
 
+import errno
+
+from bzrlib import config
+
 # This was the full ignore list for bzr 0.8
 # please keep these sorted (in C locale order) to aid merging
 OLD_DEFAULTS = [
@@ -89,3 +93,54 @@ USER_DEFAULTS = [
     '.#*',
     '[#]*#',
 ]
+
+
+def parse_ignore_file(f):
+    """Read in all of the lines in the file and turn it into an ignore list"""
+    ignored = []
+    for line in f.read().decode('utf8').split('\n'):
+        line = line.rstrip('\r\n')
+        if not line or line.startswith('#'):
+            continue
+        ignored.append(line)
+    return ignored
+
+
+def _create_user_ignores():
+    """Create ~/.bazaar/ignore, and fill it with the defaults"""
+
+    # We need to create the file
+    path = config.user_ignore_config_filename()
+    config.ensure_config_dir_exists()
+    try:
+        f = open(path, 'wb')
+    except (IOError, OSError), e:
+        if e.errno not in (errno.EPERM,):
+            raise
+        # if EPERM, we don't have write access to home dir
+        # so we won't save anything
+    else:
+        try:
+            for pattern in USER_DEFAULTS:
+                f.write(pattern.encode('utf8') + '\n')
+        finally:
+            f.close()
+
+
+def get_user_ignores():
+    """Get the list of user ignored files, possibly creating it."""
+    path = config.user_ignore_config_filename()
+    patterns = USER_DEFAULTS[:]
+    try:
+        f = open(path, 'rb')
+    except (IOError, OSError), e:
+        if e.errno not in (errno.ENOENT,):
+            raise
+        # Create the ignore file, and just return the default
+        _create_user_ignores()
+        return patterns
+
+    try:
+        return parse_ignore_file(f)
+    finally:
+        f.close()
