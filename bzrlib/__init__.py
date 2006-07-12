@@ -60,7 +60,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                      )
 
 DEFAULT_IGNORE = deprecated_list(zero_nine, 'DEFAULT_IGNORE', [],
-                    'Add entries to ~/.bazaar/ignore instead')
+                    'Consider using bzrlib.ignores.add_unique_user_ignores')
 
 
 @deprecated_function(zero_seven)

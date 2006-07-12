@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from bzrlib import config, osutils
+from bzrlib import config, ignores, osutils
 
 from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
 
@@ -133,3 +133,14 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         # Blank line should also be ignored
         self.assertEqual(None, tree.is_ignored(''))
         self.assertEqual(None, tree.is_ignored('baz/'))
+
+    def test_mixed_is_ignored(self):
+        tree = self.make_branch_and_tree('.')
+        ignores.set_user_ignores(['*.py[co]', './.shelf'])
+        self.build_tree_contents([('.bzrignore', './rootdir\n*.swp\n')])
+
+        self.assertEqual('*.py[co]', tree.is_ignored('foo.pyc'))
+        self.assertEqual('./.shelf', tree.is_ignored('.shelf'))
+        self.assertEqual('./rootdir', tree.is_ignored('rootdir'))
+        self.assertEqual('*.swp', tree.is_ignored('.foo.py.swp'))
+        self.assertEqual(None, tree.is_ignored('.foo.py.swo'))
