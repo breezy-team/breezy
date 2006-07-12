@@ -116,6 +116,11 @@ IN DEVELOPMENT
     * Normalize unicode filenames to ensure cross-platform consistency.
       (John Arbash Meinel, #43689)
 
+    * The argument parser can now handle '-' as an argument. Currently
+      no code interprets it specially (it is mostly handled as a file named 
+      '-'). But plugins, and future operations can use it.
+      (John Arbash meinel, #50984)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
