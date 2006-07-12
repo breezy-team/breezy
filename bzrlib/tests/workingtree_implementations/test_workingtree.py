@@ -181,15 +181,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEquals(list(tree.unknowns()),
                           ['hello.txt'])
 
-    def test_hashcache(self):
-        tree = self.make_branch_and_tree('.')
-        self.build_tree(['hello.txt',
-                         'hello.txt.~1~'])
-        tree.add('hello.txt')
-        sha = tree.get_file_sha1(tree.path2id('hello.txt'))
-        tree2 = WorkingTree.open('.')
-        sha2 = tree2.get_file_sha1(tree2.path2id('hello.txt'))
-
     def test_initialize(self):
         # initialize should create a working tree and branch in an existing dir
         t = self.make_branch_and_tree('.')

@@ -42,20 +42,6 @@ FP_MTIME_COLUMN = 1
 FP_CTIME_COLUMN = 2
 FP_MODE_COLUMN = 5
 
-def _fingerprint(abspath):
-    try:
-        fs = os.lstat(abspath)
-    except OSError:
-        # might be missing, etc
-        return None
-
-    if stat.S_ISDIR(fs.st_mode):
-        return None
-
-    # we discard any high precision because it's not reliable; perhaps we
-    # could do better on some systems?
-    return (fs.st_size, long(fs.st_mtime),
-            long(fs.st_ctime), fs.st_ino, fs.st_dev, fs.st_mode)
 
 
 class HashCache(object):
@@ -131,7 +117,7 @@ class HashCache(object):
         
         for inum, path, cache_entry in prep:
             abspath = pathjoin(self.root, path)
-            fp = _fingerprint(abspath)
+            fp = self._fingerprint(abspath)
             self.stat_count += 1
             
             cache_fp = cache_entry[1]
@@ -142,13 +128,12 @@ class HashCache(object):
                 self.needs_write = True
                 del self._cache[path]
 
-
     def get_sha1(self, path):
         """Return the sha1 of a file.
         """
         abspath = pathjoin(self.root, path)
         self.stat_count += 1
-        file_fp = _fingerprint(abspath)
+        file_fp = self._fingerprint(abspath)
         
         if not file_fp:
             # not a regular file or not existing
@@ -173,7 +158,7 @@ class HashCache(object):
 
         mode = file_fp[FP_MODE_COLUMN]
         if stat.S_ISREG(mode):
-            digest = sha_file(file(abspath, 'rb', buffering=65000))
+            digest = self._really_sha1_file(abspath)
         elif stat.S_ISLNK(mode):
             digest = sha.new(os.readlink(abspath)).hexdigest()
         else:
@@ -181,7 +166,7 @@ class HashCache(object):
 
         # window of 3 seconds to allow for 2s resolution on windows,
         # unsynchronized file servers, etc.
-        cutoff = int(time.time()) - 3
+        cutoff = self._cutoff_time()
         if file_fp[FP_MTIME_COLUMN] >= cutoff \
                 or file_fp[FP_CTIME_COLUMN] >= cutoff:
             # changed too recently; can't be cached.  we can
@@ -209,6 +194,10 @@ class HashCache(object):
             self.needs_write = True
             self._cache[path] = (digest, file_fp)
         return digest
+
+    def _really_sha1_file(self, abspath):
+        """Calculate the SHA1 of a file by reading the full text"""
+        return sha_file(file(abspath, 'rb', buffering=65000))
         
     def write(self):
         """Write contents of cache to file."""
@@ -252,7 +241,6 @@ class HashCache(object):
             self.needs_write = True
             return
 
-
         hdr = inf.readline()
         if hdr != CACHE_HEADER:
             mutter('cache header marker not found at top of %s;'
@@ -283,7 +271,24 @@ class HashCache(object):
             self._cache[path] = (sha1, fp)
 
         self.needs_write = False
+
+    def _cutoff_time(self):
+        """Return cutoff time.
+
+        Files modified more recently than this time are at risk of being
+        undetectably modified and so can't be cached.
+        """
+        return int(time.time()) - 3
            
-
-
-        
+    def _fingerprint(self, abspath):
+        try:
+            fs = os.lstat(abspath)
+        except OSError:
+            # might be missing, etc
+            return None
+        if stat.S_ISDIR(fs.st_mode):
+            return None
+        # we discard any high precision because it's not reliable; perhaps we
+        # could do better on some systems?
+        return (fs.st_size, long(fs.st_mtime),
+                long(fs.st_ctime), fs.st_ino, fs.st_dev, fs.st_mode)
