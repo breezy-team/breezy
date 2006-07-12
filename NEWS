@@ -92,6 +92,9 @@ IN DEVELOPMENT
      Can be set to 'none' or 'dummy' to disable the progress bar, 'dots' or 
      'tty' to create the respective type. (John Arbash Meinel, #42197, #51107)
 
+   * Improve the help text for 'bzr diff' to explain what various options do.
+     (John Arbash Meinel, #6391)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
