@@ -256,7 +256,6 @@ def diff_cmd_helper(tree, specific_files, external_diff_options,
     The more general form is show_diff_trees(), where the caller
     supplies any two trees.
     """
-    output = sys.stdout
     def spec_tree(spec):
         revision_id = spec.in_store(tree.branch).rev_id
         return tree.branch.repository.revision_tree(revision_id)

@@ -83,6 +83,10 @@ IN DEVELOPMENT
      Also updates things like 'http+pycurl://' if pycurl is not present.
      (John Arbash Meinel) (Malone #47821, #52204)
 
+   * New env variable BZR_PROGRESS_BAR, sets the default progress bar type.
+     Can be set to 'none' or 'dummy' to disable the progress bar, 'dots' or 
+     'tty' to create the respective type. (John Arbash Meinel, #42197, #51107)
+
    * Improve the help text for 'bzr diff' to explain what various options do.
      (John Arbash Meinel, #6391)
 
@@ -115,6 +119,26 @@ IN DEVELOPMENT
 
     * File-ids containing single- or double-quotes are handled correctly by
       push.  (#52227, Aaron Bentley)
+
+    * Normalize unicode filenames to ensure cross-platform consistency.
+      (John Arbash Meinel, #43689)
+
+    * The argument parser can now handle '-' as an argument. Currently
+      no code interprets it specially (it is mostly handled as a file named 
+      '-'). But plugins, and future operations can use it.
+      (John Arbash meinel, #50984)
+
+    * Bundles can properly read binary files with a plain '\r' in them.
+      (John Arbash Meinel, #51927)
+
+    * Tuning iter_entries() to be more efficient (John Arbash Meinel, #5444)
+
+    * Lots of win32 fixes (the test suite passes again).
+      (John Arbash Meinel, #50155)
+
+    * Handle openbsd returning None for sys.getfilesystemencoding() (#41183) 
+
+    * Support ftp APPE (append) to allow Knits to be used over ftp (#42592)
 
   INTERNALS:
 
