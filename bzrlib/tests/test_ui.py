@@ -26,6 +26,7 @@ import bzrlib
 import bzrlib.errors as errors
 from bzrlib.progress import TTYProgressBar, ProgressBarStack
 from bzrlib.tests import TestCase
+from bzrlib.tests.test_progress import _TTYStringIO
 from bzrlib.ui import SilentUIFactory
 from bzrlib.ui.text import TextUIFactory
 
@@ -63,7 +64,7 @@ class UITests(TestCase):
     def test_progress_note(self):
         stderr = StringIO()
         stdout = StringIO()
-        ui_factory = TextUIFactory()
+        ui_factory = TextUIFactory(bar_type=TTYProgressBar)
         pb = ui_factory.nested_progress_bar()
         try:
             pb.to_messages_file = stdout
@@ -80,7 +81,10 @@ class UITests(TestCase):
     def test_progress_note_clears(self):
         stderr = StringIO()
         stdout = StringIO()
-        ui_factory = TextUIFactory()
+        # The PQM redirects the output to a file, so it
+        # defaults to creating a Dots progress bar. we
+        # need to force it to believe we are a TTY
+        ui_factory = TextUIFactory(bar_type=TTYProgressBar)
         pb = ui_factory.nested_progress_bar()
         try:
             pb.to_messages_file = stdout
@@ -173,7 +177,7 @@ class UITests(TestCase):
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
         factory = bzrlib.ui.text.TextUIFactory()
-        factory.stdout = StringIO()
+        factory.stdout = _TTYStringIO()
         factory.stdin = StringIO("yada\ny\n")
         pb = self.apply_redirected(
             factory.stdin, factory.stdout, factory.stdout, factory.nested_progress_bar)
@@ -194,4 +198,4 @@ class UITests(TestCase):
             "\r   *" 
             "\rwhat do you want\\? \\[y/n\\]:what do you want\\? \\[y/n\\]:", 
             output):
-            self.fail("didn't match factory output %r" % factory)
+            self.fail("didn't match factory output %r, %s" % (factory, output))
