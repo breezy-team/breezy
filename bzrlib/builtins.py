@@ -1834,7 +1834,8 @@ class cmd_whoami(Command):
         try:
             config.extract_email_address(name)
         except BzrError, e:
-            warning(str(e))
+            warning('"%s" does not seem to contain an email address.  '
+                    'This is allowed, but not recommended.', name)
         
         # use global config unless --branch given
         if branch:

@@ -107,5 +107,6 @@ class TestWhoami(ExternalBase):
         """verify that a warning is displayed if no email is given."""
         self.make_branch_and_tree('.')
         display = self.run_bzr('whoami', 'Branch Identity')[1]
-        self.assertEquals("'Branch Identity' doesn't seem to contain a " +
-                          "reasonable email address\n", display)
+        self.assertEquals('"Branch Identity" does not seem to contain an '
+                          'email address.  This is allowed, but not '
+                          'recommended.\n', display)
