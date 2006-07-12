@@ -76,7 +76,6 @@ def test_suite():
                      'bzrlib.tests.blackbox.test_revision_history',
                      'bzrlib.tests.blackbox.test_revision_info',
                      'bzrlib.tests.blackbox.test_selftest',
-                     'bzrlib.tests.blackbox.test_setup_default_ignores',
                      'bzrlib.tests.blackbox.test_shared_repository',
                      'bzrlib.tests.blackbox.test_sign_my_commits',
                      'bzrlib.tests.blackbox.test_status',
