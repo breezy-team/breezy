@@ -375,6 +375,9 @@ class cmd_mv(Command):
     encoding_type = 'replace'
 
     def run(self, names_list):
+        if names_list is None:
+            names_list = []
+
         if len(names_list) < 2:
             raise BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list)
@@ -1075,7 +1078,7 @@ class cmd_init_repository(Command):
 
 
 class cmd_diff(Command):
-    """Show differences in working tree.
+    """Show differences in the working tree or between revisions.
     
     If files are listed, only the changes in those files are listed.
     Otherwise, all changes for the tree are listed.
@@ -1085,11 +1088,17 @@ class cmd_diff(Command):
 
     examples:
         bzr diff
+            Shows the difference in the working tree versus the last commit
         bzr diff -r1
+            Difference between the working tree and revision 1
         bzr diff -r1..2
+            Difference between revision 2 and revision 1
         bzr diff --diff-prefix old/:new/
+            Same as 'bzr diff' but prefix paths with old/ and new/
         bzr diff bzr.mine bzr.dev
+            Show the differences between the two working trees
         bzr diff foo.c
+            Show just the differences for 'foo.c'
     """
     # TODO: Option to use external diff command; could be GNU diff, wdiff,
     #       or a graphical diff.
@@ -1139,6 +1148,10 @@ class cmd_diff(Command):
                 # FIXME diff those two files. rbc 20051123
                 raise BzrCommandError("Files are in different branches")
             file_list = None
+        except NotBranchError:
+            # Don't raise an error when bzr diff is called from
+            # outside a working tree.
+            tree1, tree2 = None, None
         if revision is not None:
             if tree2 is not None:
                 raise BzrCommandError("Can't specify -r with two branches")
