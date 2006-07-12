@@ -2,6 +2,11 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * The revision specifier "revno:" is extended to accept the syntax
+     revno:N:branch. For example,
+     revno:42:http://bazaar-vcs.org/bzr/bzr.dev/ means revision 42 in
+     bzr.dev.  (Matthieu Moy)
+
    * No default ignore rules are applied by bzr - only the rules in .bzrignore
      are considered. This fixes bugs with default rules being enforced no
      matter what. The old list of ignore rules from bzr is available by
@@ -83,6 +88,10 @@ IN DEVELOPMENT
      Also updates things like 'http+pycurl://' if pycurl is not present.
      (John Arbash Meinel) (Malone #47821, #52204)
 
+   * New env variable BZR_PROGRESS_BAR, sets the default progress bar type.
+     Can be set to 'none' or 'dummy' to disable the progress bar, 'dots' or 
+     'tty' to create the respective type. (John Arbash Meinel, #42197, #51107)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
@@ -112,6 +121,26 @@ IN DEVELOPMENT
 
     * File-ids containing single- or double-quotes are handled correctly by
       push.  (#52227, Aaron Bentley)
+
+    * Normalize unicode filenames to ensure cross-platform consistency.
+      (John Arbash Meinel, #43689)
+
+    * The argument parser can now handle '-' as an argument. Currently
+      no code interprets it specially (it is mostly handled as a file named 
+      '-'). But plugins, and future operations can use it.
+      (John Arbash meinel, #50984)
+
+    * Bundles can properly read binary files with a plain '\r' in them.
+      (John Arbash Meinel, #51927)
+
+    * Tuning iter_entries() to be more efficient (John Arbash Meinel, #5444)
+
+    * Lots of win32 fixes (the test suite passes again).
+      (John Arbash Meinel, #50155)
+
+    * Handle openbsd returning None for sys.getfilesystemencoding() (#41183) 
+
+    * Support ftp APPE (append) to allow Knits to be used over ftp (#42592)
 
     * Removals are only committed if they match the filespec (or if there is
       no filespec).  (#46635, Aaron Bentley)

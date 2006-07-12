@@ -375,6 +375,9 @@ class cmd_mv(Command):
     encoding_type = 'replace'
 
     def run(self, names_list):
+        if names_list is None:
+            names_list = []
+
         if len(names_list) < 2:
             raise BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list)
@@ -1139,6 +1142,10 @@ class cmd_diff(Command):
                 # FIXME diff those two files. rbc 20051123
                 raise BzrCommandError("Files are in different branches")
             file_list = None
+        except NotBranchError:
+            # Don't raise an error when bzr diff is called from
+            # outside a working tree.
+            tree1, tree2 = None, None
         if revision is not None:
             if tree2 is not None:
                 raise BzrCommandError("Can't specify -r with two branches")
