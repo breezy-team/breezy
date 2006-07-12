@@ -83,6 +83,10 @@ IN DEVELOPMENT
      Also updates things like 'http+pycurl://' if pycurl is not present.
      (John Arbash Meinel) (Malone #47821, #52204)
 
+   * New env variable BZR_PROGRESS_BAR, sets the default progress bar type.
+     Can be set to 'none' or 'dummy' to disable the progress bar, 'dots' or 
+     'tty' to create the respective type. (John Arbash Meinel, #42197, #51107)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
