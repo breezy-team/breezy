@@ -125,6 +125,18 @@ IN DEVELOPMENT
       '-'). But plugins, and future operations can use it.
       (John Arbash meinel, #50984)
 
+    * Bundles can properly read binary files with a plain '\r' in them.
+      (John Arbash Meinel, #51927)
+
+    * Tuning iter_entries() to be more efficient (John Arbash Meinel, #5444)
+
+    * Lots of win32 fixes (the test suite passes again).
+      (John Arbash Meinel, #50155)
+
+    * Handle openbsd returning None for sys.getfilesystemencoding() (#41183) 
+
+    * Support ftp APPE (append) to allow Knits to be used over ftp (#42592)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
