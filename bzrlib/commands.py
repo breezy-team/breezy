@@ -351,7 +351,6 @@ def parse_args(command, argv, alias_argv=None):
     """
     # TODO: make it a method of the Command?
     parser = option.get_optparser(command.options())
-    argsover = False
     if alias_argv is not None:
         args = alias_argv + argv
     else:
