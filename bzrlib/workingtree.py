@@ -51,6 +51,7 @@ import stat
 from time import time
 import warnings
 
+import bzrlib
 from bzrlib import bzrdir, config, errors, ignores, urlutils
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
@@ -1078,7 +1079,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if ignorelist is not None:
             return ignorelist
 
-        ignore_globs = []
+        ignore_globs = bzrlib.DEFAULT_IGNORE[:]
 
         ignore_globs.extend(ignores.get_user_ignores())
 
