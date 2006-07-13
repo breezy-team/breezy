@@ -273,12 +273,13 @@ class HttpTransportBase(Transport):
                     combined[-1][1] = end
                 else:
                     combined.append([start, end])
-                prev_end = end 
+                prev_end = end
 
         mutter("combined %d offsets into %d ranges; tail access %d", len(offsets),
                len(combined), -max_negative)
 
         return combined, -max_negative
+
     def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
 

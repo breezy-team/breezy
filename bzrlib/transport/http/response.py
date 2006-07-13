@@ -127,85 +127,64 @@ class RangeFile(object):
         return self._pos
 
 
-# TODO: jam 20060706 Consider compiling these regexes on demand
-_CONTENT_RANGE_RE = re.compile(
-    '\s*([^\s]+)\s+([0-9]+)-([0-9]+)/([0-9]+)\s*$')
-
-
-def _parse_range(range, path='<unknown>'):
-    """Parse an http Content-range header and return start + end
-
-    :param range: The value for Content-range
-    :param path: Provide to give better error messages.
-    :return: (start, end) A tuple of integers
-    """
-    match = _CONTENT_RANGE_RE.match(range)
-    if not match:
-        raise errors.InvalidHttpRange(path, range,
-                                      "Invalid Content-range")
-
-    rtype, start, end, total = match.groups()
-
-    if rtype != 'bytes':
-        raise errors.InvalidHttpRange(path, range,
-                "Unsupported range type '%s'" % (rtype,))
-
-    try:
-        start = int(start)
-        end = int(end)
-    except ValueError, e:
-        raise errors.InvalidHttpRange(path, range, str(e))
-
-    return start, end
-
-
 class HttpRangeResponse(RangeFile):
     """A single-range HTTP response."""
+
+    # TODO: jam 20060706 Consider compiling these regexes on demand
+    _CONTENT_RANGE_RE = re.compile(
+        '\s*([^\s]+)\s+([0-9]+)-([0-9]+)/([0-9]+)\s*$')
 
     def __init__(self, path, content_range, input_file):
         mutter("parsing 206 non-multipart response for %s", path)
         RangeFile.__init__(self, path, input_file)
-        start, end = _parse_range(content_range, path)
+        start, end = self._parse_range(content_range, path)
         self._add_range(start, end, 0)
         self._finish_ranges()
 
+    @staticmethod
+    def _parse_range(range, path='<unknown>'):
+        """Parse an http Content-range header and return start + end
 
-_CONTENT_TYPE_RE = re.compile(
-    '^\s*multipart/byteranges\s*;\s*boundary\s*=\s*(.*?)\s*$')
+        :param range: The value for Content-range
+        :param path: Provide to give better error messages.
+        :return: (start, end) A tuple of integers
+        """
+        match = HttpRangeResponse._CONTENT_RANGE_RE.match(range)
+        if not match:
+            raise errors.InvalidHttpRange(path, range,
+                                          "Invalid Content-range")
 
+        rtype, start, end, total = match.groups()
 
-# Start with --<boundary>\r\n
-# and ignore all headers ending in \r\n
-# except for content-range:
-# and find the two trailing \r\n separators
-# indicating the start of the text
-# TODO: jam 20060706 This requires exact conformance
-#       to the spec, we probably could relax the requirement
-#       of \r\n, and use something more like (\r?\n)
-_BOUNDARY_PATT = (
-    "^--%s(?:\r\n(?:(?:content-range:([^\r]+))|[^\r]+))+\r\n\r\n")
+        if rtype != 'bytes':
+            raise errors.InvalidHttpRange(path, range,
+                    "Unsupported range type '%s'" % (rtype,))
 
+        try:
+            start = int(start)
+            end = int(end)
+        except ValueError, e:
+            raise errors.InvalidHttpRange(path, range, str(e))
 
-def _parse_boundary(ctype, path='<unknown>'):
-    """Parse the Content-type field.
-    
-    This expects a multipart Content-type, and returns a
-    regex which is capable of finding the boundaries
-    in the multipart data.
-    """
-    match = _CONTENT_TYPE_RE.match(ctype)
-    if not match:
-        raise errors.InvalidHttpContentType(path, ctype,
-                "Expected multipart/byteranges with boundary")
-
-    boundary = match.group(1)
-    mutter('multipart boundary is %s', boundary)
-    return re.compile(_BOUNDARY_PATT % re.escape(boundary),
-                      re.IGNORECASE | re.MULTILINE)
+        return start, end
 
 
 class HttpMultipartRangeResponse(RangeFile):
     """A multi-range HTTP response."""
+    
+    _CONTENT_TYPE_RE = re.compile(
+        '^\s*multipart/byteranges\s*;\s*boundary\s*=\s*(.*?)\s*$')
+    
+    # Start with --<boundary>\r\n
+    # and ignore all headers ending in \r\n
+    # except for content-range:
+    # and find the two trailing \r\n separators
+    # indicating the start of the text
+    # TODO: jam 20060706 This requires exact conformance
+    #       to the spec, we probably could relax the requirement
+    #       of \r\n, and use something more like (\r?\n)
+    _BOUNDARY_PATT = (
+        "^--%s(?:\r\n(?:(?:content-range:([^\r]+))|[^\r]+))+\r\n\r\n")
 
     def __init__(self, path, content_type, input_file):
         mutter("parsing 206 multipart response for %s", path)
@@ -213,18 +192,32 @@ class HttpMultipartRangeResponse(RangeFile):
         #       grandparent without initializing parent?
         RangeFile.__init__(self, path, input_file)
 
-        self.boundary_regex = _parse_boundary(content_type, path)
+        self.boundary_regex = self._parse_boundary(content_type, path)
 
         for match in self.boundary_regex.finditer(self._data):
-            ent_start, ent_end = _parse_range(match.group(1), path)
+            ent_start, ent_end = HttpRangeResponse._parse_range(match.group(1), path)
             self._add_range(ent_start, ent_end, match.end())
 
         self._finish_ranges()
 
+    @staticmethod
+    def _parse_boundary(ctype, path='<unknown>'):
+        """Parse the Content-type field.
+        
+        This expects a multipart Content-type, and returns a
+        regex which is capable of finding the boundaries
+        in the multipart data.
+        """
+        match = HttpMultipartRangeResponse._CONTENT_TYPE_RE.match(ctype)
+        if not match:
+            raise errors.InvalidHttpContentType(path, ctype,
+                    "Expected multipart/byteranges with boundary")
 
-def _is_multipart(content_type):
-    """Check if a Content-Type field indicates a multipart dataset."""
-    return content_type.startswith('multipart/byteranges;')
+        boundary = match.group(1)
+        mutter('multipart boundary is %s', boundary)
+        pattern = HttpMultipartRangeResponse._BOUNDARY_PATT
+        return re.compile(pattern % re.escape(boundary),
+                          re.IGNORECASE | re.MULTILINE)
 
 
 def handle_response(url, code, headers, response):

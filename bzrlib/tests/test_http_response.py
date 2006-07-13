@@ -132,7 +132,7 @@ class TestRegexes(TestCase):
 
     def test_range_re(self):
         """Test that we match valid ranges."""
-        self.regex = response._CONTENT_RANGE_RE
+        self.regex = response.HttpRangeResponse._CONTENT_RANGE_RE
         self.assertRegexMatches(('bytes', '1', '10', '11'),
                            'bytes 1-10/11')
         self.assertRegexMatches(('bytes', '1', '10', '11'),
@@ -143,7 +143,7 @@ class TestRegexes(TestCase):
                            ' chars 1-2/3')
 
     def test_content_type_re(self):
-        self.regex = response._CONTENT_TYPE_RE
+        self.regex = response.HttpMultipartRangeResponse._CONTENT_TYPE_RE
         self.assertRegexMatches(('xxyyzz',),
                                 'multipart/byteranges; boundary = xxyyzz')
         self.assertRegexMatches(('xxyyzz',),
@@ -182,7 +182,7 @@ class TestHelpers(TestCase):
     def test__parse_range(self):
         """Test that _parse_range acts reasonably."""
         content = StringIO('')
-        parse_range = response._parse_range
+        parse_range = response.HttpRangeResponse._parse_range
         self.assertEqual((1,2), parse_range('bytes 1-2/3'))
         self.assertEqual((10,20), parse_range('bytes 10-20/2'))
 
@@ -199,7 +199,8 @@ class TestHelpers(TestCase):
 
     def test__parse_boundary_simple(self):
         """Test that _parse_boundary handles Content-type properly"""
-        m = response._parse_boundary(' multipart/byteranges; boundary=xxyyzz')
+        parse_boundary = response.HttpMultipartRangeResponse._parse_boundary
+        m = parse_boundary(' multipart/byteranges; boundary=xxyyzz')
         self.assertNotEqual(None, m)
         # Check that the returned regex is capable of splitting simple_data
         matches = list(m.finditer(simple_data))
@@ -217,9 +218,10 @@ class TestHelpers(TestCase):
         self.assertEqual(simple_data.find('xxyyzz fbd'), matches[3].end())
 
     def test__parse_boundary_invalid(self):
+        parse_boundary = response.HttpMultipartRangeResponse._parse_boundary
         try:
-            response._parse_boundary(' multipart/bytes;boundary=xxyyzz',
-                                     path='http://foo/bar')
+            parse_boundary(' multipart/bytes;boundary=xxyyzz',
+                           path='http://foo/bar')
         except errors.InvalidHttpContentType, e:
             self.assertContainsRe(str(e), 'http://foo/bar')
             self.assertContainsRe(str(e), 'multipart/bytes;boundary=xxyyzz')
