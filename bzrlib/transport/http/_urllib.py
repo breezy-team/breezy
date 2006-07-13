@@ -22,7 +22,8 @@ from StringIO import StringIO
 import bzrlib  # for the version
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
-from bzrlib.transport.http import HttpTransportBase, extract_auth, HttpServer
+from bzrlib.transport.http import (HttpTransportBase, HttpServer,
+                                   extract_auth, response)
 from bzrlib.errors import (TransportNotPossible, NoSuchFile, BzrError,
                            TransportError, ConnectionError)
 
@@ -55,9 +56,10 @@ class HttpTransport_urllib(HttpTransportBase):
         path = relpath
         try:
             path = self._real_abspath(relpath)
-            response = self._get_url_impl(path, method='GET', ranges=ranges,
-                                          tail_amount=tail_amount)
-            return response.code, self._handle_response(path, response)
+            resp = self._get_url_impl(path, method='GET', ranges=ranges,
+                                      tail_amount=tail_amount)
+            return resp.code, response.handle_response(path,
+                                resp.code, resp.headers, resp)
         except urllib2.HTTPError, e:
             mutter('url error code: %s for has url: %r', e.code, path)
             if e.code == 404:
@@ -88,7 +90,7 @@ class HttpTransport_urllib(HttpTransportBase):
         request.add_header('Cache-control', 'max-age=0')
         request.add_header('User-Agent', 'bzr/%s (urllib)' % bzrlib.__version__)
         if ranges or tail_amount:
-            request.add_header('Range', self._range_header(ranges, tail_amount))
+            request.add_header('Range', self.range_header(ranges, tail_amount))
         mutter("GET %s [%s]" % (url, request.get_header('Range')))
         response = opener.open(request)
         return response

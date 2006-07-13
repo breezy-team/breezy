@@ -17,6 +17,7 @@
 """Tests from HTTP response parsing."""
 
 from cStringIO import StringIO
+import mimetools
 
 from bzrlib import errors
 from bzrlib.transport import http
@@ -448,6 +449,13 @@ class TestExtractHeader(TestCase):
         self.check_header('Content-Type',
                           'multipart/byteranges; boundary=418470f848b63279b')
 
+
+
+def parse_response(response):
+    """Turn one of the static HTTP responses into an in-flight response."""
+    resp = StringIO(response)
+    http_response = resp.readline()
+    assert http_response.startswith('HTTP/1.1 ')
 
 class TestHandleResponse(TestCase):
     

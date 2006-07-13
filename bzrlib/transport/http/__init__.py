@@ -360,7 +360,8 @@ class HttpTransportBase(Transport):
         else:
             return self.__class__(self.abspath(offset))
 
-    def _range_header(self, ranges, tail_amount):
+    @staticmethod
+    def range_header(ranges, tail_amount):
         """Turn a list of bytes ranges into a HTTP Range header value.
 
         :param offsets: A list of byte ranges, (start, end). An empty list
@@ -469,6 +470,7 @@ class TestingHTTPServer(BaseHTTPServer.HTTPServer):
         BaseHTTPServer.HTTPServer.__init__(self, server_address,
                                                 RequestHandlerClass)
         self.test_case = test_case
+
 
 class HttpServer(Server):
     """A test server for http transports."""

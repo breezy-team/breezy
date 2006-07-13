@@ -709,8 +709,8 @@ class TestTransportImplementation(TestCaseInTempDir):
         except (ConnectionError, NoSuchFile), e:
             pass
         except (Exception), e:
-            self.fail('Wrong exception thrown (%s): %s' 
-                        % (e.__class__.__name__, e))
+            self.fail('Wrong exception thrown (%s.%s): %s' 
+                        % (e.__class__.__module__, e.__class__.__name__, e))
         else:
             self.fail('Did not get the expected ConnectionError or NoSuchFile.')
 

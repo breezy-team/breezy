@@ -23,6 +23,7 @@ responses.
 
 
 from bisect import bisect
+from cStringIO import StringIO
 import re
 
 from bzrlib import errors
@@ -224,7 +225,7 @@ def _is_multipart(content_type):
     return content_type.startswith('multipart/byteranges;')
 
 
-def handle_response(url, code, headers, response):
+def handle_response(url, code, headers, data):
     """Interpret the code & headers and return a HTTP response.
 
     This is a factory method which returns an appropriate HTTP response
@@ -233,8 +234,8 @@ def handle_response(url, code, headers, response):
     :param url: The url being processed. Mostly for error reporting
     :param code: The integer HTTP response code
     :param headers: A dict-like object that contains the HTTP response headers
-    :param response: A file-like object that can be read() to get the
-                     requested data
+    :param data: A file-like object that can be read() to get the
+                 requested data
     :return: A file-like object that can seek()+read() the 
              ranges indicated by the headers.
     """
@@ -248,7 +249,7 @@ def handle_response(url, code, headers, response):
 
         if _is_multipart(content_type):
             # Full fledged multipart response
-            return HttpMultipartRangeResponse(url, content_type, response)
+            return HttpMultipartRangeResponse(url, content_type, data)
         else:
             # A response to a range request, but not multipart
             try:
@@ -256,14 +257,14 @@ def handle_response(url, code, headers, response):
             except KeyError:
                 raise errors.InvalidHttpResponse(url,
                     'Missing the Content-Range header in a 206 range response')
-            return HttpRangeResponse(url, content_range, response)
+            return HttpRangeResponse(url, content_range, data)
     elif code == 200:
         # A regular non-range response, unfortunately the result from
         # urllib doesn't support seek, so we wrap it in a StringIO
-        tell = getattr(response, 'tell', None)
+        tell = getattr(data, 'tell', None)
         if tell is None:
-            return StringIO(response.read())
-        return response
+            return StringIO(data.read())
+        return data
     elif code == 404:
         raise errors.NoSuchFile(url)
 
