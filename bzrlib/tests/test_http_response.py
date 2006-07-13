@@ -450,13 +450,6 @@ class TestExtractHeader(TestCase):
                           'multipart/byteranges; boundary=418470f848b63279b')
 
 
-
-def parse_response(response):
-    """Turn one of the static HTTP responses into an in-flight response."""
-    resp = StringIO(response)
-    http_response = resp.readline()
-    assert http_response.startswith('HTTP/1.1 ')
-
 class TestHandleResponse(TestCase):
     
     def get_response(self, a_response):

@@ -1,4 +1,5 @@
 # Copyright (C) 2006 Michael Ellerman
+#           modified by John Arbash Meinel (Canonical Ltd)
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -196,7 +197,8 @@ class HttpMultipartRangeResponse(RangeFile):
         self.boundary_regex = self._parse_boundary(content_type, path)
 
         for match in self.boundary_regex.finditer(self._data):
-            ent_start, ent_end = HttpRangeResponse._parse_range(match.group(1), path)
+            ent_start, ent_end = HttpRangeResponse._parse_range(match.group(1),
+                                                                path)
             self._add_range(ent_start, ent_end, match.end())
 
         self._finish_ranges()
@@ -267,6 +269,10 @@ def handle_response(url, code, headers, data):
         return data
     elif code == 404:
         raise errors.NoSuchFile(url)
+
+    # TODO: jam 20060713 Properly handle redirects (302 Found, etc)
+    #       The '_get' code says to follow redirects, we probably 
+    #       should actually handle the return values
 
     raise errors.InvalidHttpResponse(url, "Unknown response code %s" % (code,))
 

@@ -20,12 +20,12 @@ import errno
 from StringIO import StringIO
 
 import bzrlib  # for the version
+from bzrlib.errors import (TransportNotPossible, NoSuchFile, BzrError,
+                           TransportError, ConnectionError)
 from bzrlib.trace import mutter
 from bzrlib.transport import register_urlparse_netloc_protocol
 from bzrlib.transport.http import (HttpTransportBase, HttpServer,
                                    extract_auth, response)
-from bzrlib.errors import (TransportNotPossible, NoSuchFile, BzrError,
-                           TransportError, ConnectionError)
 
 register_urlparse_netloc_protocol('http+urllib')
 
@@ -43,8 +43,7 @@ class Request(urllib2.Request):
 
 
 class HttpTransport_urllib(HttpTransportBase):
-    """Python urllib transport for http and https.
-    """
+    """Python urllib transport for http and https."""
 
     # TODO: Implement pipelined versions of all of the *_multi() functions.
 
@@ -90,7 +89,8 @@ class HttpTransport_urllib(HttpTransportBase):
         request.method = method
         request.add_header('Pragma', 'no-cache')
         request.add_header('Cache-control', 'max-age=0')
-        request.add_header('User-Agent', 'bzr/%s (urllib)' % bzrlib.__version__)
+        request.add_header('User-Agent',
+                           'bzr/%s (urllib)' % (bzrlib.__version__,))
         if ranges or tail_amount:
             request.add_header('Range', self.range_header(ranges, tail_amount))
         response = opener.open(request)

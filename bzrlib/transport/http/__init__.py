@@ -203,8 +203,7 @@ class HttpTransportBase(Transport):
         :param relpath: Path relative to transport base URL
         :param byte_range: None to get the whole file;
             or [(start,end)] to fetch parts of a file.
-        :param tail_amount: How much data to fetch from the tail of
-        the file.
+        :param tail_amount: How much data to fetch from the tail of the file.
 
         :returns: (http_code, result_file)
 
@@ -243,8 +242,7 @@ class HttpTransportBase(Transport):
             amount of data to fetch from the tail of the file. 
             Adjacent ranges will be combined.
         """
-        # We need a copy of the offsets, as the caller might expect it to
-        # remain unsorted. This doesn't seem expensive for memory at least.
+        # Make sure we process sorted offsets
         offsets = sorted(offsets)
 
         max_negative = 0

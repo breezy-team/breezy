@@ -166,9 +166,10 @@ class PyCurlTransport(HttpTransportBase):
         curl = self._range_curl
         abspath, data, header = self._setup_get_request(curl, relpath)
 
-        curl.setopt(pycurl.RANGE,
-                                self.range_header(ranges, tail_amount))
+        curl.setopt(pycurl.RANGE, self.range_header(ranges, tail_amount))
         self._curl_perform(curl)
+        data.seek(0)
+
         code = curl.getinfo(pycurl.HTTP_CODE)
         headers = _extract_headers(header, skip_first=True)
         # handle_response will raise NoSuchFile, etc based on the response code
@@ -195,7 +196,7 @@ class PyCurlTransport(HttpTransportBase):
                    'Connection: Keep-Alive']
         ## curl.setopt(pycurl.VERBOSE, 1)
         # TODO: maybe include a summary of the pycurl version
-        ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__)
+        ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__,)
         curl.setopt(pycurl.USERAGENT, ua_str)
         curl.setopt(pycurl.HTTPHEADER, headers)
         curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
