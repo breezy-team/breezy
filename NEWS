@@ -113,6 +113,10 @@ IN DEVELOPMENT
     * File-ids containing single- or double-quotes are handled correctly by
       push.  (#52227, Aaron Bentley)
 
+    * Make the bundle reader extra lines before and after the bundle text.
+      This allows you to parse an email with the bundle inline.
+      (John Arbash Meinel, #49182)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
