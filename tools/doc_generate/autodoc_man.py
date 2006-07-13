@@ -169,7 +169,7 @@ Path where
 .B "%(bzrcmd)s"
 is to look for external command.
 .TP
-.I "BZREMAIL"
+.I "BZR_EMAIL"
 E-Mail address of the user. Overrides default user config.
 .TP
 .I "EMAIL"

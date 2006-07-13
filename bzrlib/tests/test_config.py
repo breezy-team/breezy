@@ -713,8 +713,8 @@ class TestBranchConfigItems(TestCaseInTempDir):
         my_config.branch.control_files.email = "John"
         self.assertEqual("John", my_config._get_user_id())
 
-    def test_BZREMAIL_OVERRIDES(self):
-        os.environ['BZREMAIL'] = "Robert Collins <robertc@example.org>"
+    def test_BZR_EMAIL_OVERRIDES(self):
+        os.environ['BZR_EMAIL'] = "Robert Collins <robertc@example.org>"
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.org>",

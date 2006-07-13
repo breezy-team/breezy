@@ -32,20 +32,20 @@ class TestNonAscii(TestCaseWithTransport):
 
     def setUp(self):
         super(TestNonAscii, self).setUp()
-        self._orig_email = os.environ.get('BZREMAIL', None)
+        self._orig_email = os.environ.get('BZR_EMAIL', None)
         self._orig_encoding = bzrlib.user_encoding
 
         bzrlib.user_encoding = self.encoding
         email = self.info['committer'] + ' <joe@foo.com>'
-        os.environ['BZREMAIL'] = email.encode(bzrlib.user_encoding)
+        os.environ['BZR_EMAIL'] = email.encode(bzrlib.user_encoding)
         self.create_base()
 
     def tearDown(self):
         if self._orig_email is not None:
-            os.environ['BZREMAIL'] = self._orig_email
+            os.environ['BZR_EMAIL'] = self._orig_email
         else:
-            if os.environ.get('BZREMAIL', None) is not None:
-                del os.environ['BZREMAIL']
+            if os.environ.get('BZR_EMAIL', None) is not None:
+                del os.environ['BZR_EMAIL']
         bzrlib.user_encoding = self._orig_encoding
         super(TestNonAscii, self).tearDown()
 
