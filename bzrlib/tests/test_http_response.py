@@ -294,7 +294,7 @@ class TestHttpMultipartRangeResponse(TestCase):
 
 
 # Taken from real request responses
-_full_text_response = ("""HTTP/1.1 200 OK\r
+_full_text_response = (200, """HTTP/1.1 200 OK\r
 Date: Tue, 11 Jul 2006 04:32:56 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
@@ -308,7 +308,7 @@ Content-Type: text/plain; charset=UTF-8\r
 """)
 
 
-_missing_response = ("""HTTP/1.1 404 Not Found\r
+_missing_response = (404, """HTTP/1.1 404 Not Found\r
 Date: Tue, 11 Jul 2006 04:32:56 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Content-Length: 336\r
@@ -327,23 +327,22 @@ Content-Type: text/html; charset=iso-8859-1\r
 """)
 
 
-_single_range_response = ("""HTTP/1.1 206 Partial Content\r
+_single_range_response = (206, """HTTP/1.1 206 Partial Content\r
 Date: Tue, 11 Jul 2006 04:45:22 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
 ETag: "238a3c-16ec2-805c5540"\r
 Accept-Ranges: bytes\r
 Content-Length: 100\r
-Content-Range: bytes 0-99/93890\r
+Content-Range: bytes 100-199/93890\r
 Connection: close\r
 Content-Type: text/plain; charset=UTF-8\r
 \r
 """, """mbp@sourcefrog.net-20050309040815-13242001617e4a06
-mbp@sourcefrog.net-20050309040929-eee0eb3e6d1e762
-""")
+mbp@sourcefrog.net-20050309040929-eee0eb3e6d1e762""")
 
 
-_multipart_range_response = ("""HTTP/1.1 206 Partial Content\r
+_multipart_range_response = (206, """HTTP/1.1 206 Partial Content\r
 Date: Tue, 11 Jul 2006 04:49:48 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
@@ -393,12 +392,29 @@ mbp@source\r
 """)
 
 
+# This is made up
+_invalid_response = (444, """HTTP/1.1 444 Bad Response\r
+Date: Tue, 11 Jul 2006 04:32:56 GMT\r
+Connection: close\r
+Content-Type: text/html; charset=iso-8859-1\r
+\r
+""", """<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>404 Not Found</title>
+</head><body>
+<h1>Not Found</h1>
+<p>I don't know what I'm doing</p>
+<hr>
+</body></html>
+""")
+
+
 # This should be in test_http.py, but the headers we
 # want to parse are here
 class TestExtractHeader(TestCase):
     
     def use_response(self, response):
-        self.headers = http._extract_headers(StringIO(response[0]))
+        self.headers = http._extract_headers(StringIO(response[1]))
 
     def check_header(self, header, value):
         self.assertEqual(value, self.headers[header])
@@ -422,7 +438,7 @@ class TestExtractHeader(TestCase):
         self.use_response(_single_range_response)
 
         self.check_header('Content-Length', '100')
-        self.check_header('Content-Range', 'bytes 0-99/93890')
+        self.check_header('Content-Range', 'bytes 100-199/93890')
         self.check_header('Content-Type', 'text/plain; charset=UTF-8')
 
     def test_multi_range(self):
@@ -431,3 +447,79 @@ class TestExtractHeader(TestCase):
         self.check_header('Content-Length', '1534')
         self.check_header('Content-Type',
                           'multipart/byteranges; boundary=418470f848b63279b')
+
+
+class TestHandleResponse(TestCase):
+    
+    def get_response(self, a_response):
+        """Process a supplied response, and return the result."""
+        headers = http._extract_headers(StringIO(a_response[1]))
+        return response.handle_response('http://foo', a_response[0], headers,
+                                        StringIO(a_response[2]))
+
+    def test_full_text(self):
+        out = self.get_response(_full_text_response)
+        # It is a StringIO from the original data
+        self.assertEqual(_full_text_response[2], out.read())
+
+    def test_missing_response(self):
+        self.assertRaises(errors.NoSuchFile,
+            self.get_response, _missing_response)
+
+    def test_single_range(self):
+        out = self.get_response(_single_range_response)
+        self.assertIsInstance(out, response.HttpRangeResponse)
+
+        self.assertRaises(errors.InvalidRange, out.read, 20)
+
+        out.seek(100)
+        self.assertEqual(_single_range_response[2], out.read(100))
+
+    def test_multi_range(self):
+        out = self.get_response(_multipart_range_response)
+        self.assertIsInstance(out, response.HttpMultipartRangeResponse)
+
+        # Just make sure we can read the right contents
+        out.seek(0)
+        out.read(255)
+
+        out.seek(1000)
+        out.read(1050)
+
+    def test_invalid_response(self):
+        self.assertRaises(errors.InvalidHttpResponse,
+            self.get_response, _invalid_response)
+
+    def test_full_text_no_content_type(self):
+        # We should not require Content-Type for a full response
+        a_response = _full_text_response
+        headers = http._extract_headers(StringIO(a_response[1]))
+        del headers['Content-Type']
+        out = response.handle_response('http://foo', a_response[0], headers,
+                                        StringIO(a_response[2]))
+        self.assertEqual(_full_text_response[2], out.read())
+
+    def test_missing_no_content_type(self):
+        # Without Content-Type we should still raise NoSuchFile on a 404
+        a_response = _missing_response
+        headers = http._extract_headers(StringIO(a_response[1]))
+        del headers['Content-Type']
+        self.assertRaises(errors.NoSuchFile,
+            response.handle_response, 'http://missing', a_response[0], headers,
+                                      StringIO(a_response[2]))
+
+    def test_missing_content_type(self):
+        a_response = _single_range_response
+        headers = http._extract_headers(StringIO(a_response[1]))
+        del headers['Content-Type']
+        self.assertRaises(errors.InvalidHttpContentType,
+            response.handle_response, 'http://nocontent', a_response[0],
+                                      headers, StringIO(a_response[2]))
+
+    def test_missing_content_range(self):
+        a_response = _single_range_response
+        headers = http._extract_headers(StringIO(a_response[1]))
+        del headers['Content-Range']
+        self.assertRaises(errors.InvalidHttpResponse,
+            response.handle_response, 'http://nocontent', a_response[0],
+                                      headers, StringIO(a_response[2]))

@@ -238,16 +238,25 @@ def handle_response(url, code, headers, response):
     :return: A file-like object that can seek()+read() the 
              ranges indicated by the headers.
     """
-    content_type = headers['Content-Type']
-    mutter('handling response code %s ctype %s', code, content_type)
 
-    if code == 206 and _is_multipart(content_type):
-        # Full fledged multipart response
-        return HttpMultipartRangeResponse(url, content_type, response)
-    elif code == 206:
-        # A response to a range request, but not multipart
-        content_range = headers['Content-Range']
-        return HttpRangeResponse(url, content_range, response)
+    if code == 206:
+        try:
+            content_type = headers['Content-Type']
+        except KeyError:
+            raise errors.InvalidHttpContentType(url, '',
+                msg = 'Missing Content-Type')
+
+        if _is_multipart(content_type):
+            # Full fledged multipart response
+            return HttpMultipartRangeResponse(url, content_type, response)
+        else:
+            # A response to a range request, but not multipart
+            try:
+                content_range = headers['Content-Range']
+            except KeyError:
+                raise errors.InvalidHttpResponse(url,
+                    'Missing the Content-Range header in a 206 range response')
+            return HttpRangeResponse(url, content_range, response)
     elif code == 200:
         # A regular non-range response, unfortunately the result from
         # urllib doesn't support seek, so we wrap it in a StringIO
@@ -256,7 +265,7 @@ def handle_response(url, code, headers, response):
             return StringIO(response.read())
         return response
     elif code == 404:
-        raise NoSuchFile(url)
+        raise errors.NoSuchFile(url)
 
-    raise BzrError("HTTP couldn't handle code %s", code)
+    raise errors.InvalidHttpResponse(url, "Unknown response code %s" % (code,))
 
