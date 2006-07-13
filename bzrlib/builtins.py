@@ -980,6 +980,20 @@ class cmd_ancestry(Command):
         for revision_id in revision_ids:
             self.outf.write(revision_id + '\n')
 
+branch_format_option = EnumOption('Branch Format', get_format_type, 
+                                  [('default', 
+                                    'The current best format (knit)'),
+                                   ('knit', '0.8+ append-only format'),
+                                   ('metaweave', '0.8 transitional format'),
+                                   ('weave', '0.1+ format')
+                                  ])
+
+repo_format_option = EnumOption('Repository Format', get_format_type, 
+                                [('default', 
+                                  'The current best format (knit)'),
+                                 ('knit', '0.8+ append-only format'),
+                                 ('metaweave', '0.8 transitional format'),
+                                ])
 
 class cmd_init(Command):
     """Make a directory into a versioned branch.
@@ -1003,17 +1017,10 @@ class cmd_init(Command):
         bzr commit -m 'imported project'
     """
     takes_args = ['location?']
-    takes_options = [
-                     Option('format', 
-                            help='Specify a format for this branch. Current'
-                                 ' formats are: default, knit, metaweave and'
-                                 ' weave. Default is knit; metaweave and'
-                                 ' weave are deprecated',
-                            type=get_format_type),
-                     ]
-    def run(self, location=None, format=None):
-        if format is None:
-            format = get_format_type('default')
+    takes_options = [branch_format_option]
+    def run(self, location=None, branch_format=None):
+        if branch_format is None:
+            branch_format = get_format_type('default')
         if location is None:
             location = u'.'
         else:
@@ -1028,7 +1035,8 @@ class cmd_init(Command):
             existing_bzrdir = bzrdir.BzrDir.open(location)
         except NotBranchError:
             # really a NotBzrDir error...
-            bzrdir.BzrDir.create_branch_convenience(location, format=format)
+            bzrdir.BzrDir.create_branch_convenience(location, 
+                                                    format=branch_format)
         else:
             if existing_bzrdir.has_branch():
                 if existing_bzrdir.has_workingtree():
@@ -1055,24 +1063,19 @@ class cmd_init_repository(Command):
         (add files here)
     """
     takes_args = ["location"] 
-    takes_options = [Option('format', 
-                            help='Specify a format for this repository.'
-                                 ' Current formats are: default, knit,'
-                                 ' metaweave and weave. Default is knit;'
-                                 ' metaweave and weave are deprecated',
-                            type=get_format_type),
+    takes_options = [repo_format_option,
                      Option('trees',
                              help='Allows branches in repository to have'
                              ' a working tree')]
     aliases = ["init-repo"]
-    def run(self, location, format=None, trees=False):
+    def run(self, location, repository_format=None, trees=False):
         from bzrlib.transport import get_transport
-        if format is None:
-            format = get_format_type('default')
+        if repository_format is None:
+            repository_format = get_format_type('default')
         transport = get_transport(location)
         if not transport.has('.'):
             transport.mkdir('')
-        newdir = format.initialize_on_transport(transport)
+        newdir = repository_format.initialize_on_transport(transport)
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(trees)
 

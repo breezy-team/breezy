@@ -121,18 +121,23 @@ class EnumOption(object):
         self.choices = choices 
         self.default = None
 
+    def python_name(self):
+        return self.name.lower().replace(' ', '_')
+
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser"""
+        group = optparse.OptionGroup(parser, self.name)
         for name, help in self.choices:
             option_strings = ['--%s' % name]
-            parser.add_option(action='callback', 
+            group.add_option(action='callback', 
                               callback=self._optparse_callback,
                               callback_args=(name,),
                               metavar=self.name,
                               help=help,
                               default=OptionParser.DEFAULT_VALUE,
-                              dest=self.name,
+                              dest=self.python_name(),
                               *option_strings)
+        parser.add_option_group(group)
 
     def _optparse_callback(self, option, opt, value, parser, evalue):
         setattr(parser.values, option.dest, self.factory(evalue))
@@ -227,15 +232,15 @@ def _global_option(name, **kwargs):
     """Register o as a global option."""
     Option.OPTIONS[name] = Option(name, **kwargs)
 
-Option.OPTIONS['merge-type']=EnumOption('merge-type', get_merge_type, [
+Option.OPTIONS['merge-type']=EnumOption('Merge type', get_merge_type, [
                             ('merge3', 'Use built-in diff3-style merge'),
                             ('diff3', 'Use external diff3 merge'),
                             ('weave', 'Use knit merge')])
 
-Option.OPTIONS['log-format']=EnumOption('log-format', str, [
-                            ('short', 'Use built-in diff3-style merge'),
-                            ('long', 'Use external diff3 merge'),
-                            ('line', 'Use knit merge')])
+Option.OPTIONS['log-format']=EnumOption('Log format', str, [
+                            ('long', 'Multi-line logs with merges shown'),
+                            ('short', 'Two-line logs'),
+                            ('line', 'One-line logs')])
 
 _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '

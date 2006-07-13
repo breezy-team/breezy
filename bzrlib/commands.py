@@ -221,7 +221,7 @@ class Command(object):
         r = dict()
         r['help'] = Option.OPTIONS['help']
         for o in self.takes_options:
-            if not isinstance(o, Option):
+            if isinstance(o, basestring):
                 o = Option.OPTIONS[o]
             r[o.name] = o
         return r
