@@ -99,15 +99,15 @@ class RangeFile(object):
 
         r = self._ranges[i]
 
-        mutter('found range %s %s for pos %s', i, self._ranges[i], self._pos)
+        # mutter('found range %s %s for pos %s', i, self._ranges[i], self._pos)
 
         if (self._pos + size - 1) > r._ent_end:
             raise errors.InvalidRange(self._path, self._pos)
 
         start = r._data_start + (self._pos - r._ent_start)
         end   = start + size
-        mutter("range read %d bytes at %d == %d-%d", size, self._pos,
-                start, end)
+        # mutter("range read %d bytes at %d == %d-%d", size, self._pos,
+        #         start, end)
         self._pos += (end-start)
         return self._data[start:end]
 
@@ -136,7 +136,7 @@ class HttpRangeResponse(RangeFile):
         '\s*([^\s]+)\s+([0-9]+)-([0-9]+)/([0-9]+)\s*$')
 
     def __init__(self, path, content_range, input_file):
-        mutter("parsing 206 non-multipart response for %s", path)
+        # mutter("parsing 206 non-multipart response for %s", path)
         RangeFile.__init__(self, path, input_file)
         start, end = self._parse_range(content_range, path)
         self._add_range(start, end, 0)
@@ -188,7 +188,7 @@ class HttpMultipartRangeResponse(RangeFile):
         "^--%s(?:\r\n(?:(?:content-range:([^\r]+))|[^\r]+))+\r\n\r\n")
 
     def __init__(self, path, content_type, input_file):
-        mutter("parsing 206 multipart response for %s", path)
+        # mutter("parsing 206 multipart response for %s", path)
         # TODO: jam 20060706 Is it valid to initialize a
         #       grandparent without initializing parent?
         RangeFile.__init__(self, path, input_file)
@@ -215,7 +215,7 @@ class HttpMultipartRangeResponse(RangeFile):
                     "Expected multipart/byteranges with boundary")
 
         boundary = match.group(1)
-        mutter('multipart boundary is %s', boundary)
+        # mutter('multipart boundary is %s', boundary)
         pattern = HttpMultipartRangeResponse._BOUNDARY_PATT
         return re.compile(pattern % re.escape(boundary),
                           re.IGNORECASE | re.MULTILINE)

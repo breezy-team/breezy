@@ -920,5 +920,3 @@ def compare_paths_prefix_order(path_a, path_b):
     key_a = path_prefix_key(path_a)
     key_b = path_prefix_key(path_b)
     return cmp(key_a, key_b)
-
-

@@ -48,9 +48,11 @@ class HttpTransport_urllib(HttpTransportBase):
 
     # TODO: Implement pipelined versions of all of the *_multi() functions.
 
-    def __init__(self, base):
+    def __init__(self, base, from_transport=None):
         """Set the base path where files will be stored."""
         super(HttpTransport_urllib, self).__init__(base)
+        # HttpTransport_urllib doesn't maintain any per-transport state yet
+        # so nothing to do with from_transport
 
     def _get(self, relpath, ranges, tail_amount=0):
         path = relpath
@@ -91,7 +93,6 @@ class HttpTransport_urllib(HttpTransportBase):
         request.add_header('User-Agent', 'bzr/%s (urllib)' % bzrlib.__version__)
         if ranges or tail_amount:
             request.add_header('Range', self.range_header(ranges, tail_amount))
-        mutter("GET %s [%s]" % (url, request.get_header('Range')))
         response = opener.open(request)
         return response
 

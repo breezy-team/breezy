@@ -78,6 +78,9 @@ def extract_auth(url, password_manager):
 def _extract_headers(header_file, skip_first=True):
     """Extract the mapping for an rfc822 header
 
+    This is a helper function for the test suite, and for _pycurl.
+    (urllib already parses the headers for us)
+
     :param header_file: A file-like object to read
     :param skip_first: HTTP headers start with the HTTP response as
                        the first line. Skip this line while parsing
@@ -216,8 +219,9 @@ class HttpTransportBase(Transport):
         :param offsets: A list of (offset, size) tuples.
         :param return: A list or generator of (offset, data) tuples
         """
-        mutter('readv of %s [%s]', relpath, offsets)
         ranges, tail_amount = self.offsets_to_ranges(offsets)
+        mutter('readv of %s %s => %s tail:%s',
+                relpath, offsets, ranges, tail_amount)
         code, f = self._get(relpath, ranges, tail_amount)
         for start, size in offsets:
             f.seek(start, (start < 0) and 2 or 0)
@@ -231,13 +235,13 @@ class HttpTransportBase(Transport):
         """Turn a list of offsets and sizes into a list of byte ranges.
 
         :param offsets: A list of tuples of (start, size).  An empty list
-        is not accepted.
+            is not accepted.
         :param fudge_factor: Fudge together ranges that are fudge_factor
-        bytes from eachother together.
+            bytes apart
 
-        :return: a list of byte ranges (start, end) and the amount of data
-        to fetch from the tail of the file.. Adjacent ranges will be
-        combined in the result.
+        :return: a list of inclusive byte ranges (start, end) and the 
+            amount of data to fetch from the tail of the file. 
+            Adjacent ranges will be combined.
         """
         # We need a copy of the offsets, as the caller might expect it to
         # remain unsorted. This doesn't seem expensive for memory at least.
@@ -259,9 +263,6 @@ class HttpTransportBase(Transport):
                 else:
                     combined.append([start, end])
                 prev_end = end
-
-        mutter("combined %d offsets into %d ranges; tail access %d", len(offsets),
-               len(combined), -max_negative)
 
         return combined, -max_negative
 

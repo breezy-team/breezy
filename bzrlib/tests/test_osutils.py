@@ -453,4 +453,3 @@ class TestTerminalEncoding(TestCase):
         # and in the worst case, use bzrlib.user_encoding
         self.assertEqual('user_encoding', osutils.get_terminal_encoding())
 
-

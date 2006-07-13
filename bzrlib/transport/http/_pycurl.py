@@ -71,11 +71,15 @@ class PyCurlTransport(HttpTransportBase):
     set headers to allow caching.
     """
 
-    def __init__(self, base):
+    def __init__(self, base, from_transport=None):
         super(PyCurlTransport, self).__init__(base)
-        mutter('using pycurl %s' % pycurl.version)
-        self._base_curl = pycurl.Curl()
-        self._range_curl = pycurl.Curl()
+        if from_transport is not None:
+            self._base_curl = from_transport._base_curl
+            self._range_curl = from_transport._range_curl
+        else:
+            mutter('using pycurl %s' % pycurl.version)
+            self._base_curl = pycurl.Curl()
+            self._range_curl = pycurl.Curl()
 
     def should_cache(self):
         """Return True if the data pulled across should be cached locally.
@@ -83,10 +87,12 @@ class PyCurlTransport(HttpTransportBase):
         return True
 
     def has(self, relpath):
-        curl = pycurl.Curl()
+        """See Transport.has()"""
+        # We set NO BODY=0 in _get_full, so it should be safe
+        # to re-use the non-range curl object
+        curl = self._base_curl
         abspath = self._real_abspath(relpath)
         curl.setopt(pycurl.URL, abspath)
-        curl.setopt(pycurl.FOLLOWLOCATION, 1) # follow redirect responses
         self._set_curl_options(curl)
         # don't want the body - ie just do a HEAD request
         # This means "NO BODY" not 'nobody'
