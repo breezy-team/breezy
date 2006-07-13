@@ -196,5 +196,8 @@ class SoukServerTests(tests.TestCaseWithTransport):
         server = souk.SoukServer(self.get_transport())
         response = server.dispatch_command('get_bundle', ('.', 'rev-1'))
         self.assert_(response.body.startswith('# Bazaar revision bundle '),
-                repr(response.body))
+                     "doesn't look like a bundle: %r" % response.body)
 
+# TODO: Client feature that does get_bundle and then installs that into a
+# branch; this can be used in place of the regular pull/fetch operation when
+# coming from a smart server.
