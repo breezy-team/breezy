@@ -186,8 +186,11 @@ class SFTPNonServerTest(TestCase):
             self.fail('expected exception not raised')
         except TransportError, e:
             self.assertEquals(str(e),
+                    'Transport error: '
                     'invalid port number ~janneke in url '
-                    'sftp://lilypond.org:~janneke/public_html/bzr/gub')
+                    'sftp://lilypond.org:~janneke/public_html/bzr/gub ')
+##             self.assertEquals(str(e), 
+##                     'Transport error: ~janneke: invalid port number ')
 
 
 class SFTPBranchTest(TestCaseWithSFTPServer):

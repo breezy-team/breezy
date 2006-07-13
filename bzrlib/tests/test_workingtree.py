@@ -20,17 +20,14 @@ import os
 
 import bzrlib
 from bzrlib.branch import Branch
-import bzrlib.bzrdir as bzrdir
+from bzrlib import bzrdir, conflicts, errors, workingtree
 from bzrlib.bzrdir import BzrDir
-from bzrlib.conflicts import *
-import bzrlib.errors as errors
 from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.lockdir import LockDir
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
-import bzrlib.workingtree as workingtree
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
 
@@ -205,6 +202,14 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         tree.unlock()
         self.assertEquals(our_lock.peek(), None)
 
+    def test_missing_pending_merges(self):
+        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        control.create_repository()
+        control.create_branch()
+        tree = workingtree.WorkingTreeFormat3().initialize(control)
+        tree._control_files._transport.delete("pending-merges")
+        self.assertEqual([], tree.pending_merges())
+
 
 class TestFormat2WorkingTree(TestCaseWithTransport):
     """Tests that are specific to format 2 trees."""
@@ -219,20 +224,20 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         self.assertRaises(errors.UnsupportedOperation, tree.set_conflicts,
                           None)
         file('lala.BASE', 'wb').write('labase')
-        expected = ContentsConflict('lala')
+        expected = conflicts.ContentsConflict('lala')
         self.assertEqual(list(tree.conflicts()), [expected])
         file('lala', 'wb').write('la')
         tree.add('lala', 'lala-id')
-        expected = ContentsConflict('lala', file_id='lala-id')
+        expected = conflicts.ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
         file('lala.THIS', 'wb').write('lathis')
         file('lala.OTHER', 'wb').write('laother')
         # When "text conflict"s happen, stem, THIS and OTHER are text
-        expected = TextConflict('lala', file_id='lala-id')
+        expected = conflicts.TextConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
         os.unlink('lala.OTHER')
         os.mkdir('lala.OTHER')
-        expected = ContentsConflict('lala', file_id='lala-id')
+        expected = conflicts.ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
 
 
@@ -309,8 +314,8 @@ class TestNonFormatSpecificCode(TestCaseWithTransport):
 
     def test__get_ignore_rules_as_regex(self):
         tree = self.make_branch_and_tree('.')
-        # test against the default rules.
-        reference_output = tree._combine_ignore_rules(bzrlib.DEFAULT_IGNORE)[0]
+        self.build_tree_contents([('.bzrignore', 'CVS\n.hg\n')])
+        reference_output = tree._combine_ignore_rules(['CVS', '.hg'])[0]
         regex_rules = tree._get_ignore_rules_as_regex()[0]
         self.assertEqual(len(reference_output[1]), regex_rules[0].groups)
         self.assertEqual(reference_output[1], regex_rules[1])

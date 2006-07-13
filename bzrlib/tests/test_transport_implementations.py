@@ -186,6 +186,9 @@ class TestTransportImplementation(TestCaseInTempDir):
 
         if t.is_readonly():
             return
+        if not t._can_roundtrip_unix_modebits():
+            # Can't roundtrip, so no need to run this test
+            return
         t.put('mode644', StringIO('test text\n'), mode=0644)
         self.assertTransportMode(t, 'mode644', 0644)
         t.put('mode666', StringIO('test text\n'), mode=0666)
@@ -921,8 +924,12 @@ class TestTransportImplementation(TestCaseInTempDir):
         """Test that we can read/write files with Unicode names."""
         t = self.get_transport()
 
-        files = [u'\xe5', # a w/ circle iso-8859-1
-                 u'\xe4', # a w/ dots iso-8859-1
+        # With FAT32 and certain encodings on win32
+        # '\xe5' and '\xe4' actually map to the same file
+        # adding a suffix kicks in the 'preserving but insensitive'
+        # route, and maintains the right files
+        files = [u'\xe5.1', # a w/ circle iso-8859-1
+                 u'\xe4.2', # a w/ dots iso-8859-1
                  u'\u017d', # Z with umlat iso-8859-2
                  u'\u062c', # Arabic j
                  u'\u0410', # Russian A
@@ -930,7 +937,7 @@ class TestTransportImplementation(TestCaseInTempDir):
                 ]
 
         try:
-            self.build_tree(files, transport=t)
+            self.build_tree(files, transport=t, line_endings='binary')
         except UnicodeError:
             raise TestSkipped("cannot handle unicode paths in current encoding")
 

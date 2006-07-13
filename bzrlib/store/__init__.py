@@ -32,7 +32,7 @@ from zlib import adler32
 import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import BzrError, UnlistableStore, TransportNotPossible
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_function, zero_eight)
 from bzrlib.trace import mutter
 from bzrlib.transport import Transport
 from bzrlib.transport.local import LocalTransport
@@ -295,12 +295,12 @@ class TransportStore(Store):
                 self._check_fileid(suffix)
         else:
             suffixes = []
+        fileid = self._escape_file_id(fileid)
         if self._prefixed:
             # hash_prefix adds the '/' separator
-            prefix = self.hash_prefix(fileid)
+            prefix = self.hash_prefix(fileid, escaped=True)
         else:
             prefix = ''
-        fileid = self._escape_file_id(fileid)
         path = prefix + fileid
         full_path = u'.'.join([path] + suffixes)
         return urlutils.escape(full_path)
@@ -324,9 +324,9 @@ class TransportStore(Store):
              for c in file_id]
         return ''.join(r)
 
-    def hash_prefix(self, fileid):
+    def hash_prefix(self, fileid, escaped=False):
         # fileid should be unescaped
-        if self._escaped:
+        if not escaped and self._escaped:
             fileid = self._escape_file_id(fileid)
         return "%02x/" % (adler32(fileid) & 0xff)
 

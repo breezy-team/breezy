@@ -23,8 +23,9 @@ so this is primarily useful for testing.
 import os
 import errno
 import re
-from stat import *
+from stat import S_IFREG, S_IFDIR
 from cStringIO import StringIO
+import warnings
 
 from bzrlib.errors import TransportError, NoSuchFile, FileExists, LockError
 from bzrlib.trace import mutter
@@ -253,7 +254,7 @@ class _MemoryLock(object):
     def __del__(self):
         # Should this warn, or actually try to cleanup?
         if self.transport:
-            warn("MemoryLock %r not explicitly unlocked" % (self.path,))
+            warnings.warn("MemoryLock %r not explicitly unlocked" % (self.path,))
             self.unlock()
 
     def unlock(self):

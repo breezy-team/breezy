@@ -23,7 +23,8 @@ import getpass
 import sys
 
 import bzrlib.progress
-from bzrlib.symbol_versioning import *
+from bzrlib.symbol_versioning import (deprecated_method, 
+        zero_eight)
 from bzrlib.ui import CLIUIFactory
 
 

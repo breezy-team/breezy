@@ -62,7 +62,7 @@ class SampleBranch(bzrlib.branch.Branch):
 class SampleBzrDir(bzrdir.BzrDir):
     """A sample BzrDir implementation to allow testing static methods."""
 
-    def create_repository(self):
+    def create_repository(self, shared=False):
         """See BzrDir.create_repository."""
         return "A repository"
 
@@ -163,6 +163,16 @@ class TestBzrDirFormat(TestCaseWithTransport):
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
 
+    def test_create_repository_shared(self):
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        repo = bzrdir.BzrDir.create_repository('.', shared=True)
+        self.assertTrue(repo.is_shared())
+
+    def test_create_repository_nonshared(self):
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        repo = bzrdir.BzrDir.create_repository('.')
+        self.assertFalse(repo.is_shared())
+
     def test_create_repository_under_shared(self):
         # an explicit create_repository always does so.
         # we trust the format is right from the 'create_repository test'
@@ -250,6 +260,20 @@ class TestBzrDirFormat(TestCaseWithTransport):
         try:
             branch = bzrdir.BzrDir.create_branch_convenience('.')
             branch.bzrdir.open_workingtree()
+            branch.bzrdir.open_repository()
+        finally:
+            bzrdir.BzrDirFormat.set_default_format(old_format)
+
+    def test_create_branch_convenience_root(self):
+        """Creating a branch at the root of a fs should work."""
+        self.transport_server = MemoryServer
+        # outside a repo the default convenience output is a repo+branch_tree
+        old_format = bzrdir.BzrDirFormat.get_default_format()
+        bzrdir.BzrDirFormat.set_default_format(bzrdir.BzrDirMetaFormat1())
+        try:
+            branch = bzrdir.BzrDir.create_branch_convenience(self.get_url())
+            self.assertRaises(errors.NoWorkingTree,
+                              branch.bzrdir.open_workingtree)
             branch.bzrdir.open_repository()
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
@@ -463,6 +487,71 @@ class TestFormat6(TestCaseWithTransport):
             self.assertTrue(dir.needs_format_conversion())
         finally:
             bzrdir.BzrDirFormat.set_default_format(old_format)
+
+
+class NotBzrDir(bzrlib.bzrdir.BzrDir):
+    """A non .bzr based control directory."""
+
+    def __init__(self, transport, format):
+        self._format = format
+        self.root_transport = transport
+        self.transport = transport.clone('.not')
+
+
+class NotBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
+    """A test class representing any non-.bzr based disk format."""
+
+    def initialize_on_transport(self, transport):
+        """Initialize a new .not dir in the base directory of a Transport."""
+        transport.mkdir('.not')
+        return self.open(transport)
+
+    def open(self, transport):
+        """Open this directory."""
+        return NotBzrDir(transport, self)
+
+    @classmethod
+    def _known_formats(self):
+        return set([NotBzrDirFormat()])
+
+    @classmethod
+    def probe_transport(self, transport):
+        """Our format is present if the transport ends in '.not/'."""
+        if transport.has('.not'):
+            return NotBzrDirFormat()
+
+
+class TestNotBzrDir(TestCaseWithTransport):
+    """Tests for using the bzrdir api with a non .bzr based disk format.
+    
+    If/when one of these is in the core, we can let the implementation tests
+    verify this works.
+    """
+
+    def test_create_and_find_format(self):
+        # create a .notbzr dir 
+        format = NotBzrDirFormat()
+        dir = format.initialize(self.get_url())
+        self.assertIsInstance(dir, NotBzrDir)
+        # now probe for it.
+        bzrlib.bzrdir.BzrDirFormat.register_control_format(format)
+        try:
+            found = bzrlib.bzrdir.BzrDirFormat.find_format(
+                get_transport(self.get_url()))
+            self.assertIsInstance(found, NotBzrDirFormat)
+        finally:
+            bzrlib.bzrdir.BzrDirFormat.unregister_control_format(format)
+
+    def test_included_in_known_formats(self):
+        bzrlib.bzrdir.BzrDirFormat.register_control_format(NotBzrDirFormat)
+        try:
+            formats = bzrlib.bzrdir.BzrDirFormat.known_formats()
+            for format in formats:
+                if isinstance(format, NotBzrDirFormat):
+                    return
+            self.fail("No NotBzrDirFormat in %s" % formats)
+        finally:
+            bzrlib.bzrdir.BzrDirFormat.unregister_control_format(NotBzrDirFormat)
 
 
 class NonLocalTests(TestCaseWithTransport):

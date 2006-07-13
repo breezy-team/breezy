@@ -39,17 +39,16 @@ not to clutter log files.
 import sys
 import time
 import os
-from collections import deque
-
 
 import bzrlib.errors as errors
-from bzrlib.trace import mutter 
+from bzrlib.trace import mutter
 
 
 def _supports_progress(f):
-    if not hasattr(f, 'isatty'):
+    isatty = getattr(f, 'isatty', None)
+    if isatty is None:
         return False
-    if not f.isatty():
+    if not isatty():
         return False
     if os.environ.get('TERM') == 'dumb':
         # e.g. emacs compile window
@@ -57,16 +56,31 @@ def _supports_progress(f):
     return True
 
 
+_progress_bar_types = {}
+
 
 def ProgressBar(to_file=None, **kwargs):
     """Abstract factory"""
     if to_file is None:
         to_file = sys.stderr
-    if _supports_progress(to_file):
-        return TTYProgressBar(to_file=to_file, **kwargs)
+    requested_bar_type = os.environ.get('BZR_PROGRESS_BAR')
+    # An value of '' or not set reverts to standard processing
+    if requested_bar_type in (None, ''):
+        if _supports_progress(to_file):
+            return TTYProgressBar(to_file=to_file, **kwargs)
+        else:
+            return DotsProgressBar(to_file=to_file, **kwargs)
     else:
-        return DotsProgressBar(to_file=to_file, **kwargs)
-    
+        # Minor sanitation to prevent spurious errors
+        requested_bar_type = requested_bar_type.lower().strip()
+        # TODO: jam 20060710 Arguably we shouldn't raise an exception
+        #       but should instead just disable progress bars if we
+        #       don't recognize the type
+        if requested_bar_type not in _progress_bar_types:
+            raise errors.InvalidProgressBarType(requested_bar_type,
+                                                _progress_bar_types.keys())
+        return _progress_bar_types[requested_bar_type](to_file=to_file, **kwargs)
+
  
 class ProgressBarStack(object):
     """A stack of progress bars."""
@@ -93,7 +107,7 @@ class ProgressBarStack(object):
         self._show_count = show_count
         self._to_messages_file = to_messages_file
         self._stack = []
-        self._klass = klass or TTYProgressBar
+        self._klass = klass or ProgressBar
 
     def top(self):
         if len(self._stack) != 0:
@@ -137,7 +151,7 @@ class _BaseProgressBar(object):
                  to_file=None,
                  show_pct=False,
                  show_spinner=False,
-                 show_eta=True,
+                 show_eta=False,
                  show_bar=True,
                  show_count=True,
                  to_messages_file=None,
@@ -206,6 +220,10 @@ class DummyProgress(_BaseProgressBar):
         return DummyProgress(**kwargs)
 
 
+_progress_bar_types['dummy'] = DummyProgress
+_progress_bar_types['none'] = DummyProgress
+
+
 class DotsProgressBar(_BaseProgressBar):
 
     def __init__(self, **kwargs):
@@ -232,6 +250,9 @@ class DotsProgressBar(_BaseProgressBar):
         
     def child_update(self, message, current, total):
         self.tick()
+
+
+_progress_bar_types['dots'] = DotsProgressBar
 
     
 class TTYProgressBar(_BaseProgressBar):
@@ -262,26 +283,32 @@ class TTYProgressBar(_BaseProgressBar):
         _BaseProgressBar.__init__(self, **kwargs)
         self.spin_pos = 0
         self.width = terminal_width()
-        self.start_time = None
-        self.last_updates = deque()
+        self.last_updates = []
+        self._max_last_updates = 10
         self.child_fraction = 0
+        self._have_output = False
     
 
-    def throttle(self):
+    def throttle(self, old_msg):
         """Return True if the bar was updated too recently"""
         # time.time consistently takes 40/4000 ms = 0.01 ms.
         # but every single update to the pb invokes it.
         # so we use time.clock which takes 20/4000 ms = 0.005ms
         # on the downside, time.clock() appears to have approximately
         # 10ms granularity, so we treat a zero-time change as 'throttled.'
-        
         now = time.clock()
+        if self.start_time is not None and (now - self.start_time) < 1:
+            return True
+        if old_msg != self.last_msg:
+            return False
         interval = now - self.last_update
         # if interval > 0
         if interval < self.MIN_PAUSE:
             return True
 
         self.last_updates.append(now - self.last_update)
+        # Don't let the queue grow without bound
+        self.last_updates = self.last_updates[-self._max_last_updates:]
         self.last_update = now
         return False
         
@@ -341,7 +368,7 @@ class TTYProgressBar(_BaseProgressBar):
         # but multiple that by 4000 calls -> starts to cost.
         # so anything to make this function call faster
         # will improve base 'diff' time by up to 0.1 seconds.
-        if old_msg == self.last_msg and self.throttle():
+        if self.throttle(old_msg):
             return
 
         if self.show_eta and self.start_time and self.last_total:
@@ -403,11 +430,17 @@ class TTYProgressBar(_BaseProgressBar):
 
         assert len(m) < self.width
         self.to_file.write('\r' + m.ljust(self.width - 1))
+        self._have_output = True
         #self.to_file.flush()
             
     def clear(self):        
-        self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
+        if self._have_output:
+            self.to_file.write('\r%s\r' % (' ' * (self.width - 1)))
+        self._have_output = False
         #self.to_file.flush()        
+
+
+_progress_bar_types['tty'] = TTYProgressBar
 
 
 class ChildProgress(_BaseProgressBar):
@@ -485,8 +518,6 @@ def get_eta(start_time, current, total, enough_samples=3, last_updates=None, n_r
     assert total_duration >= elapsed
 
     if last_updates and len(last_updates) >= n_recent:
-        while len(last_updates) > n_recent:
-            last_updates.popleft()
         avg = sum(last_updates) / float(len(last_updates))
         time_left = avg * (total - current)
 

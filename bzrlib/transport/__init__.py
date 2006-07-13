@@ -30,16 +30,21 @@ import errno
 from collections import deque
 from copy import deepcopy
 import re
-from stat import *
+from stat import S_ISDIR
 import sys
 from unittest import TestSuite
 import urllib
 import urlparse
+import warnings
 
+import bzrlib
 import bzrlib.errors as errors
 from bzrlib.errors import DependencyNotPresent
 import bzrlib.osutils as osutils
-from bzrlib.symbol_versioning import *
+from bzrlib.osutils import pumpfile
+from bzrlib.symbol_versioning import (deprecated_passed, deprecated_method, deprecated_function, 
+        DEPRECATED_PARAMETER,
+        zero_eight)
 from bzrlib.trace import mutter, warning
 import bzrlib.urlutils as urlutils
 
@@ -61,7 +66,7 @@ def register_transport(prefix, klass, override=DEPRECATED_PARAMETER):
     # working, etc.
     global _protocol_handlers
     if deprecated_passed(override):
-        warn("register_transport(override) is deprecated")
+        warnings.warn("register_transport(override) is deprecated")
     _protocol_handlers.setdefault(prefix, []).insert(0, klass)
 
 
@@ -222,7 +227,6 @@ class Transport(object):
         if isinstance(from_file, basestring):
             to_file.write(from_file)
         else:
-            from bzrlib.osutils import pumpfile
             pumpfile(from_file, to_file)
 
     def _get_total(self, multi):
@@ -742,15 +746,17 @@ def get_transport(base):
     if base is None:
         base = '.'
 
+    last_err = None
+
     def convert_path_to_url(base, error_str):
         m = _urlRE.match(base)
         if m:
             # This looks like a URL, but we weren't able to 
             # instantiate it as such raise an appropriate error
-            raise errors.InvalidURL(base, error_str % m.group('proto'))
+            raise errors.UnsupportedProtocol(base, last_err)
         # This doesn't look like a protocol, consider it a local path
         new_base = urlutils.local_path_to_url(base)
-        mutter('converting os path %r => url %s' , base, new_base)
+        mutter('converting os path %r => url %s', base, new_base)
         return new_base
 
     # Catch any URLs which are passing Unicode rather than ASCII
@@ -763,7 +769,7 @@ def get_transport(base):
     
     for proto, factory_list in _protocol_handlers.iteritems():
         if proto is not None and base.startswith(proto):
-            t = _try_transport_factories(base, factory_list)
+            t, last_err = _try_transport_factories(base, factory_list)
             if t:
                 return t
 
@@ -772,18 +778,20 @@ def get_transport(base):
     base = convert_path_to_url(base, 'Unsupported protocol: %s')
 
     # The default handler is the filesystem handler, stored as protocol None
-    return _try_transport_factories(base, _protocol_handlers[None])
+    return _try_transport_factories(base, _protocol_handlers[None])[0]
 
 
 def _try_transport_factories(base, factory_list):
+    last_err = None
     for factory in factory_list:
         try:
-            return factory(base)
+            return factory(base), None
         except DependencyNotPresent, e:
             mutter("failed to instantiate transport %r for %r: %r" %
                     (factory, base, e))
+            last_err = e
             continue
-    return None
+    return None, last_err
 
 
 class Server(object):
@@ -916,6 +924,6 @@ register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTranspor
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
-register_lazy_transport('bzr://',
-                        'bzrlib.transport.souk',
-                        'SoukTCPClient')
+## register_lazy_transport('bzr://',
+##                         'bzrlib.transport.souk',
+##                         'SoukTCPClient')

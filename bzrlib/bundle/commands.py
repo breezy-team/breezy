@@ -15,6 +15,8 @@ from bzrlib.option import Option
 from bzrlib.revision import (common_ancestor, MultipleRevisionSources,
                              NULL_REVISION)
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.trace import note
+from bzrlib import urlutils
 
 
 class cmd_send_changeset(Command):
@@ -65,78 +67,76 @@ class cmd_bundle_revisions(Command):
     You can apply it to another tree using 'bzr merge'.
 
     bzr bundle-revisions
-        - Bundle for the last commit
+        - Generate a bundle relative to a remembered location
     bzr bundle-revisions BASE
         - Bundle to apply the current tree into BASE
     bzr bundle-revisions --revision A
-        - Bundle for revision A
+        - Bundle to apply revision A to remembered location 
     bzr bundle-revisions --revision A..B
         - Bundle to transform A into B
-    bzr bundle-revisions --revision A..B BASE
-        - Bundle to transform revision A of BASE into revision B
-          of the local tree
     """
-    takes_options = ['verbose', 'revision',
+    takes_options = ['verbose', 'revision', 'remember',
                      Option("output", help="write bundle to specified file",
                             type=unicode)]
     takes_args = ['base?']
     aliases = ['bundle']
 
-    def run(self, base=None, revision=None, output=None):
+    def run(self, base=None, revision=None, output=None, remember=False):
         from bzrlib import user_encoding
         from bzrlib.bundle.serializer import write_bundle
 
-        if base is None:
-            base_branch = None
-        else:
-            base_branch = Branch.open(base)
-
-        # We don't want to lock the same branch across
-        # 2 different branches
         target_branch = Branch.open_containing(u'.')[0]
-        if base_branch is not None and target_branch.base == base_branch.base:
-            base_branch = None
 
-        base_revision = None
+        if base is None:
+            base_specified = False
+        else:
+            base_specified = True
+
         if revision is None:
             target_revision = target_branch.last_revision()
-        elif len(revision) == 1:
-            target_revision = revision[0].in_history(target_branch).rev_id
-            if base_branch is not None:
-                base_revision = base_branch.last_revision()
-        elif len(revision) == 2:
-            target_revision = revision[1].in_history(target_branch).rev_id
-            if base_branch is not None:
-                base_revision = revision[0].in_history(base_branch).rev_id
-            else:
+        elif len(revision) < 3:
+            target_revision = revision[-1].in_history(target_branch).rev_id
+            if len(revision) == 2:
+                if base_specified:
+                    raise errors.BzrCommandError('Cannot specify base as well'
+                                                 ' as two revision arguments.')
                 base_revision = revision[0].in_history(target_branch).rev_id
         else:
             raise errors.BzrCommandError('--revision takes 1 or 2 parameters')
 
-        if revision is None or len(revision) == 1:
-            if base_branch is not None:
-                # XXX: This writes into the target branch, but you should be
-                # able to do this without needing write access; can't
-                # common_ancestor work with graphs in two repositories?
-                target_branch.repository.fetch(base_branch.repository,
-                                               base_branch.last_revision())
-                base_revision = common_ancestor(base_branch.last_revision(),
-                                                target_revision,
-                                                target_branch.repository)
-                if base_revision is None:
-                    base_revision = NULL_REVISION
+        if revision is None or len(revision) < 2:
+            submit_branch = target_branch.get_submit_branch()
+            if base is None:
+                base = submit_branch
+            if base is None:
+                base = target_branch.get_parent()
+            if base is None:
+                raise errors.BzrCommandError("No base branch known or"
+                                             " specified.")
+            elif not base_specified:
+                # FIXME:
+                # note() doesn't pay attention to terminal_encoding() so
+                # we must format with 'ascii' to be safe
+                note('Using saved location: %s',
+                     urlutils.unescape_for_display(base, 'ascii'))
+            base_branch = Branch.open(base)
 
-        if base_revision is None:
-            rev = target_branch.repository.get_revision(target_revision)
-            if rev.parent_ids:
-                base_revision = rev.parent_ids[0]
-            else:
-                base_revision = NULL_REVISION
-
-        if base_branch is not None:
+            # We don't want to lock the same branch across
+            # 2 different branches
+            if target_branch.base == base_branch.base:
+                base_branch = target_branch 
+            if submit_branch is None or remember:
+                if base_specified:
+                    target_branch.set_submit_branch(base_branch.base)
+                elif remember:
+                    raise errors.BzrCommandError('--remember requires a branch'
+                                                 ' to be specified.')
             target_branch.repository.fetch(base_branch.repository, 
-                                           revision_id=base_revision)
-            del base_branch
+                                           base_branch.last_revision())
+            base_revision = common_ancestor(base_branch.last_revision(),
+                                            target_revision,
+                                            target_branch.repository)
+
 
         if output is not None:
             fileobj = file(output, 'wb')

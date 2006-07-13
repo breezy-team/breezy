@@ -20,11 +20,11 @@ import warnings
 
 from bzrlib.branch import Branch
 from bzrlib.errors import NoSuchRevision
-from bzrlib.commit import commit
 from bzrlib.graph import Graph
 from bzrlib.revision import (find_present_ancestors, combined_graph,
                              common_ancestor,
-                             is_ancestor, MultipleRevisionSources)
+                             is_ancestor, MultipleRevisionSources,
+                             NULL_REVISION)
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -147,7 +147,6 @@ class TestIsAncestor(TestCaseWithTransport):
 class TestIntermediateRevisions(TestCaseWithTransport):
 
     def setUp(self):
-        from bzrlib.commit import commit
         TestCaseWithTransport.setUp(self)
         self.br1, self.br2 = make_branches(self)
         wt1 = self.br1.bzrdir.open_workingtree()
@@ -223,6 +222,12 @@ class TestCommonAncestor(TestCaseWithTransport):
         self.assertTrue(common_ancestor(revisions_2[6], revisions[5], sources),
                         (revisions[4], revisions_2[5]))
         self.assertEqual(None, common_ancestor(None, revisions[5], sources))
+        self.assertEqual(NULL_REVISION,
+            common_ancestor(NULL_REVISION, NULL_REVISION, sources))
+        self.assertEqual(NULL_REVISION,
+            common_ancestor(revisions[0], NULL_REVISION, sources))
+        self.assertEqual(NULL_REVISION,
+            common_ancestor(NULL_REVISION, revisions[0], sources))
 
     def test_combined(self):
         """combined_graph
