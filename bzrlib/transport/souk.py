@@ -135,7 +135,7 @@ import urlparse
 from bzrlib import bzrdir, errors, revision, transport, trace
 from bzrlib.transport import sftp, local
 from bzrlib.bundle.serializer import write_bundle
-
+from bzrlib.trace import mutter
 
 # must do this otherwise urllib can't parse the urls properly :(
 for scheme in ['ssh', 'bzr', 'bzr+loopback']:
@@ -379,7 +379,12 @@ class SoukTCPServer_for_testing(SoukTCPServer):
 
     def __init__(self):
         self._homedir = os.getcwd()
-        SoukTCPServer.__init__(self, transport.get_transport(self._homedir))
+        # The server is set up by default like for ssh access: the client
+        # passes filesystem-absolute paths; therefore the server must look
+        # them up relative to the root directory.  it might be better to act
+        # a public server and have the server rewrite paths into the test
+        # directory.
+        SoukTCPServer.__init__(self, transport.get_transport("file:///"))
         
     def setUp(self):
         """Set up server for testing"""
@@ -491,7 +496,10 @@ class SoukTransport(sftp.SFTPUrlHandling):
         
         :see: Transport.get()
         """
-        resp = self._call('get', self._remote_path(relpath))
+        mutter("%s.get %s", self, relpath)
+        remote = self._remote_path(relpath)
+        mutter("  remote path: %s", remote)
+        resp = self._call('get', remote)
         if resp != ('ok', ):
             self._translate_error(resp)
         body = self._recv_bulk()

@@ -924,6 +924,6 @@ register_lazy_transport('fakenfs+', 'bzrlib.transport.fakenfs', 'FakeNFSTranspor
 register_lazy_transport('vfat+',
                         'bzrlib.transport.fakevfat',
                         'FakeVFATTransportDecorator')
-## register_lazy_transport('bzr://',
-##                         'bzrlib.transport.souk',
-##                         'SoukTCPClient')
+register_lazy_transport('bzr://',
+                        'bzrlib.transport.souk',
+                        'SoukTCPClient')

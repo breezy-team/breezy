@@ -23,7 +23,15 @@ import sys
 
 import bzrlib
 from bzrlib import tests, errors, bzrdir
-from bzrlib.transport import local, memory, souk
+from bzrlib.transport import local, memory, souk, get_transport
+
+## class SoukURLTests(tests.TestCase):
+##     """Tests for handling of URLs and detection of smart servers"""
+## 
+##     def test_bzr_url_is_smart(self):
+##         t = get_transport('bzr://pippin-took/')
+##         self.assertEquals(t.has_smart_server(), True)
+
 
 class BasicSoukTests(tests.TestCase):
     
@@ -187,6 +195,7 @@ class SoukServerTests(tests.TestCaseWithTransport):
         self.assertEqual(None, response.body)
         
     def test_get_bundle(self):
+        from bzrlib.bundle import serializer
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         file('hello', 'w').write('hello world')
@@ -197,7 +206,36 @@ class SoukServerTests(tests.TestCaseWithTransport):
         response = server.dispatch_command('get_bundle', ('.', 'rev-1'))
         self.assert_(response.body.startswith('# Bazaar revision bundle '),
                      "doesn't look like a bundle: %r" % response.body)
+        bundle = serializer.read_bundle(StringIO(response.body))
 
 # TODO: Client feature that does get_bundle and then installs that into a
 # branch; this can be used in place of the regular pull/fetch operation when
 # coming from a smart server.
+#
+# TODO: Eventually, want to do a 'branch' command by fetching the whole
+# history as one big bundle.  How?  
+#
+# The branch command does 'br_from.sprout', which tries to preserve the same
+# format.  We don't necessarily even want that.  
+#
+# It might be simpler to handle cmd_pull first, which does a simpler fetch()
+# operation from one branch into another.  It already has some code for
+# pulling from a bundle, which it does by trying to see if the destination is
+# a bundle file.  So it seems the logic for pull ought to be:
+# 
+#  - if it's a smart server, get a bundle from there and install that
+#  - if it's a bundle, install that
+#  - if it's a branch, pull from there
+#
+# Getting a bundle from a smart server is a bit different from reading a
+# bundle from a URL:
+#
+#  - we can reasonably remember the URL we last read from 
+#  - you can specify a revision number to pull, and we need to pass it across
+#    to the server as a limit on what will be requested
+#
+# TODO: Given a URL, determine whether it is a smart server or not (or perhaps
+# otherwise whether it's a bundle?)  Should this be a property or method of
+# the transport?  For the ssh protocol, we always know it's a smart server.
+# For http, we potentially need to probe.  But if we're explicitly given
+# bzr+http:// then we can skip that for now. 
