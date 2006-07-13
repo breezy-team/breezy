@@ -189,7 +189,7 @@ Environment
 Files
 =====
 
-**On Linux**:  ``~/.bazaar/bazaar.conf/``
+**On Linux**:  ``~/.bazaar/bazaar.conf``
 
 **On Windows**: ``C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf``
 

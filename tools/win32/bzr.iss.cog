@@ -1,0 +1,98 @@
+; Script for Inno Setup installer
+; [[[cog cog.outl('; This script created by Cog from bzr.iss.cog source') ]]]
+; [[[end]]]
+; Cog is http://www.nedbatchelder.com/code/cog/
+
+[Setup]
+AppName=Bazaar-NG (Bzr)
+
+; [[[cog
+; import bzrlib
+; try: 
+;     VERSION = bzrlib.__version__
+;     AppVerName = 'Bazaar-NG (Bzr) %s' % VERSION
+;     OutputBaseFilename = 'bzr-setup-%s' % VERSION
+; except:
+;     VERSION = ''
+;     AppVerName = 'Bazaar-NG (Bzr)'
+;     OutputBaseFilename = 'bzr-setup'
+;
+; cog.outl('AppVerName=%s' % AppVerName)
+; cog.outl('OutputBaseFilename=%s' % OutputBaseFilename)
+; ]]]
+AppVerName=Bazaar-NG (Bzr)
+OutputBaseFilename=bzr-setup
+; [[[end]]]
+
+DefaultDirName={pf}\Bazaar-NG
+DefaultGroupName=Bazaar-NG
+
+SolidCompression=yes
+
+OutputDir="..\"
+SourceDir="..\..\win32_bzr.exe"
+
+SetupIconFile="..\bzr.ico"
+
+VersionInfoCompany="Canonical Ltd."
+VersionInfoCopyright="Canonical Ltd., 2005-2006"
+VersionInfoDescription="Installer for stand-alone bzr.exe"
+; [[[cog
+; import bzrlib
+; version_number = []
+; for i in bzrlib.version_info[:3]:
+;     try:
+;         i = int(i)
+;     except ValueError:
+;         i = 0
+;     version_number.append(i)
+; # incremental build number
+; from tools.win32.file_version import *
+; try:
+;     version_prev = get_file_version(OutputBaseFilename + '.exe')
+; except (FileNotFound, VersionNotAvailable):
+;     pass
+; else:
+;     if version_number == list(version_prev[:3]):
+;         version_number.append((version_prev[-1]+1) % 65536)
+; version_str = '.'.join(str(i) for i in version_number)
+; cog.outl('VersionInfoVersion="%s"' % version_str)
+; ]]]
+; [[[end]]]
+
+AppComments="Bzr: Friendly distributed version control system"
+AppPublisher="Canonical Ltd."
+AppPublisherURL="http://www.bazaar-vcs.org"
+AppSupportURL="http://www.bazaar-vcs.org/BzrSupport"
+AppUpdatesURL="http://www.bazaar-vcs.org/WindowsDownloads"
+; [[[cog cog.outl('AppVersion=%s' % VERSION) ]]]
+; [[[end]]]
+
+ChangesEnvironment=yes
+
+[Files]
+Source: "*.*"; DestDir: "{app}"; Flags: ignoreversion;
+Source: "lib\*.*"; DestDir: "{app}\lib"; Flags: createallsubdirs ignoreversion recursesubdirs;
+Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion recursesubdirs;
+
+[Dirs]
+Name: "{userappdata}\bazaar\2.0"
+
+[Icons]
+Name: "{group}\Documentation index"; Filename: "{app}\doc\index.htm"; WorkingDir: "{app}\doc";
+Name: "{group}\Bazaar-NG Home Page"; Filename: "{app}\bazaar.url"; Comment: "http://www.bazaar-vcs.org";
+Name: "{group}\Start Bzr in cmd shell"; Filename: "{sys}\cmd.exe"; Parameters: "/K start_bzr.bat"; WorkingDir: "{app}"; IconFilename: "{app}\bzr.exe"; Comment: "Open new Bzr session";
+Name: "{group}\Uninstall Bzr"; Filename: "{uninstallexe}"; IconFileName: "{sys}\shell32.dll"; IconIndex: 101; Comment: "Remove Bzr completely";
+
+[Tasks]
+Name: Path; Description: "Add {app} directory to PATH environment variable";
+Name: Shell; Description: "Add Bzr context menu to shell";
+
+[Run]
+Filename: "{app}\bzr_postinstall.exe"; Parameters: "--start-bzr"; Flags: skipifdoesntexist runhidden;
+Filename: "{app}\bzr_postinstall.exe"; Parameters: "--check-mfc71"; Flags: skipifdoesntexist skipifsilent runhidden;
+Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-path"; Tasks: Path; Flags: skipifdoesntexist skipifsilent runhidden;
+Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-shell-menu"; Tasks: Shell; Flags: skipifdoesntexist skipifsilent runhidden;
+
+[UninstallRun]
+Filename: "{app}\bzr_postinstall.exe"; Parameters: "--delete-path --delete-shell-menu --silent"; Flags: skipifdoesntexist runhidden; 

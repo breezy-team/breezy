@@ -1,0 +1,42 @@
+=========
+Bazaar-NG
+=========
+-------------------
+Documentation index
+-------------------
+
+These documents originally came from the Bazaar-NG wiki hosted at
+http://bazaar-vcs.org. The documents on the wiki take precedence 
+in the event of a discrepancy between what is documented here 
+and what is documented on the wiki.
+
+
+* `Tutorial <tutorial.htm>`_
+
+    Explains how to use bzr. Loaded with examples.
+
+* `Configuration <configuration.htm>`_
+
+    Information on how to configure Bazaar-NG
+
+* `Setting up email <setting_up_email.htm>`_
+
+    The various ways that exist to tell Bazaar-NG your email address for
+    commits
+
+* `Plugins <plugins.htm>`_
+    
+    Information on how to use plugins in Bazaar-NG
+
+* `Specifying revision <specifying_revisions.htm>`_
+
+    Description of the subarguments for ``-r`` as used by commands such as
+    **bzr log** and **bzr merge**
+
+* `Using aliases <using_aliases.htm>`_
+
+    How to setup and use command aliases.
+
+This document automatically created based on output of **bzr help**:
+
+* `Man page (help for bzr commands) <bzr_man.htm>`_
