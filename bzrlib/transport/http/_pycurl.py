@@ -195,7 +195,8 @@ class PyCurlTransport(HttpTransportBase):
         # to force it to always retrieve.  so just turn off the default Pragma
         # provided by Curl.
         headers = ['Cache-control: max-age=0',
-                   'Pragma: no-cache']
+                   'Pragma: no-cache',
+                   'Connection: Keep-Alive']
         ## curl.setopt(pycurl.VERBOSE, 1)
         # TODO: maybe include a summary of the pycurl version
         ua_str = 'bzr/%s (pycurl)' % (bzrlib.__version__)
