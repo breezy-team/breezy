@@ -52,7 +52,7 @@ from time import time
 import warnings
 
 import bzrlib
-from bzrlib import bzrdir, config, errors, ignores, urlutils
+from bzrlib import bzrdir, errors, ignores, osutils, urlutils
 from bzrlib.atomicfile import AtomicFile
 from bzrlib.conflicts import Conflict, ConflictList, CONFLICT_SUFFIXES
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -355,7 +355,7 @@ class WorkingTree(bzrlib.tree.Tree):
         :return: The WorkingTree that contains 'path', and the rest of path
         """
         if path is None:
-            path = os.getcwdu()
+            path = osutils.getcwd()
         control, relpath = bzrdir.BzrDir.open_containing(path)
 
         return control.open_workingtree(), relpath
@@ -376,7 +376,7 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         inv = self._inventory
         for path, ie in inv.iter_entries():
-            if bzrlib.osutils.lexists(self.abspath(path)):
+            if osutils.lexists(self.abspath(path)):
                 yield ie.file_id
 
     def __repr__(self):
@@ -448,7 +448,7 @@ class WorkingTree(bzrlib.tree.Tree):
         return relpath(self.basedir, path)
 
     def has_filename(self, filename):
-        return bzrlib.osutils.lexists(self.abspath(filename))
+        return osutils.lexists(self.abspath(filename))
 
     def get_file(self, file_id):
         return self.get_file_byname(self.id2path(file_id))
@@ -538,7 +538,7 @@ class WorkingTree(bzrlib.tree.Tree):
         if not inv.has_id(file_id):
             return False
         path = inv.id2path(file_id)
-        return bzrlib.osutils.lexists(self.abspath(path))
+        return osutils.lexists(self.abspath(path))
 
     def has_or_had_id(self, file_id):
         if file_id == self.inventory.root.file_id:
@@ -722,8 +722,8 @@ class WorkingTree(bzrlib.tree.Tree):
         """
         inv = self._inventory
         # Convert these into local objects to save lookup times
-        pathjoin = bzrlib.osutils.pathjoin
-        file_kind = bzrlib.osutils.file_kind
+        pathjoin = osutils.pathjoin
+        file_kind = osutils.file_kind
 
         # transport.base ends in a slash, we want the piece
         # between the last two slashes
@@ -767,7 +767,25 @@ class WorkingTree(bzrlib.tree.Tree):
                 elif self.is_ignored(fp[1:]):
                     c = 'I'
                 else:
-                    c = '?'
+                    # we may not have found this file, because of a unicode issue
+                    f_norm, can_access = osutils.normalized_filename(f)
+                    if f == f_norm or not can_access:
+                        # No change, so treat this file normally
+                        c = '?'
+                    else:
+                        # this file can be accessed by a normalized path
+                        # check again if it is versioned
+                        # these lines are repeated here for performance
+                        f = f_norm
+                        fp = from_dir_relpath + '/' + f
+                        fap = from_dir_abspath + '/' + f
+                        f_ie = inv.get_child(from_dir_id, f)
+                        if f_ie:
+                            c = 'V'
+                        elif self.is_ignored(fp[1:]):
+                            c = 'I'
+                        else:
+                            c = '?'
 
                 fk = file_kind(fap)
 
@@ -999,9 +1017,15 @@ class WorkingTree(bzrlib.tree.Tree):
 
             fl = []
             for subf in os.listdir(dirabs):
-                if (subf != '.bzr'
-                    and (subf not in dir_entry.children)):
-                    fl.append(subf)
+                if subf == '.bzr':
+                    continue
+                if subf not in dir_entry.children:
+                    subf_norm, can_access = osutils.normalized_filename(subf)
+                    if subf_norm != subf and can_access:
+                        if subf_norm not in dir_entry.children:
+                            fl.append(subf_norm)
+                    else:
+                        fl.append(subf)
             
             fl.sort()
             for subf in fl:
