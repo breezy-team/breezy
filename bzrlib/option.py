@@ -180,7 +180,7 @@ class Option(object):
 class OptionParser(optparse.OptionParser):
     """OptionParser that raises exceptions instead of exiting"""
 
-    DEFAULT_VALUE = "DEFAULT"
+    DEFAULT_VALUE = object()
 
     def error(self, message):
         raise BzrCommandError(message)
