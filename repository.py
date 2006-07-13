@@ -46,7 +46,7 @@ SVN_PROP_SVK_MERGE = 'svk:merge'
 SVN_PROP_BZR_REVPROP_PREFIX = 'bzr:revprop:'
 SVN_REVPROP_BZR_SIGNATURE = 'bzr:gpg-signature'
 
-_unsafe = "%/-"
+_unsafe = "%/-\t "
 def escape_svn_path(id):
     r = [((c in _unsafe) and ('%%%02x' % ord(c)) or c)
          for c in id]
@@ -125,7 +125,6 @@ def parse_revision_id(self, revid):
         raise NoSuchRevision(self, revid)
 
     return (branch_path, revnum)
-
 
 
 def svk_feature_to_revision_id(feature):

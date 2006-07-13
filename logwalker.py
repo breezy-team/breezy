@@ -20,7 +20,7 @@ from bzrlib.progress import ProgressBar, DummyProgress
 from bzrlib.trace import mutter
 
 import os
-import pickle
+import shelve
 from cStringIO import StringIO
 
 from svn.core import SubversionException
@@ -65,6 +65,8 @@ class LogWalker(object):
         if not uuid:
             uuid = svn.ra.get_uuid(ra)
 
+        self.uuid = uuid
+
         if last_revnum is None:
             last_revnum = svn.ra.get_latest_revnum(ra)
 
@@ -73,12 +75,8 @@ class LogWalker(object):
         self.scheme = scheme
 
         # Try to load cache from file
-        try:
-            self.revisions = pickle.load(open(self.cache_file))
-            self.saved_revnum = len(self.revisions)-1
-        except:
-            self.revisions = {}
-            self.saved_revnum = 0
+        self.revisions = shelve.open(self.cache_file)
+        self.saved_revnum = max(len(self.revisions)-1, 0)
 
         if self.saved_revnum < last_revnum:
             self.fetch_revisions(self.saved_revnum, last_revnum, pb)
@@ -98,7 +96,7 @@ class LogWalker(object):
                 paths[p.strip("/")] = (orig_paths[p].action,
                             copyfrom_path, orig_paths[p].copyfrom_rev)
 
-            self.revisions[rev] = {
+            self.revisions[str(rev)] = {
                     'paths': paths,
                     'author': author,
                     'date': date,
@@ -166,7 +164,7 @@ class LogWalker(object):
 
             continue_revnum = None
 
-            rev = self.revisions[i]
+            rev = self.revisions[str(i)]
             changed_paths = {}
             for p in rev['paths']:
                 if (branch_path is None or 
@@ -209,7 +207,7 @@ class LogWalker(object):
         dest = (path, orig_revnum)
 
         for i in range(revnum-orig_revnum):
-            paths = self.revisions[i+1+orig_revnum]['paths']
+            paths = self.revisions[str(i+1+orig_revnum)]['paths']
             for p in paths:
                 new_ancestors = list(ancestors)
 
@@ -238,7 +236,7 @@ class LogWalker(object):
         for i in range(revnum):
             if i == 0:
                 continue
-            rev = self.revisions[i]
+            rev = self.revisions[str(i)]
             for p in rev['paths']:
                 if self.scheme.is_branch(p):
                     if rev['paths'][p][0] in ('R', 'D'):
@@ -259,6 +257,5 @@ class LogWalker(object):
         """
         if revnum > self.last_revnum:
             self.fetch_revisions(self.saved_revnum, revnum, pb)
-        return (self.revisions[revnum]['author'], 
-                self.revisions[revnum]['message'],
-                self.revisions[revnum]['date'])
+        rev = self.revisions[str(revnum)]
+        return (rev['author'], rev['message'], rev['date'])
