@@ -167,7 +167,7 @@ class TestHttpTransportRegistration(TestCase):
 
 
 class TestOffsets(TestCase):
-    """Test test_offsets_to_ranges method"""
+    """Test offsets_to_ranges method"""
 
     def test_offsets_to_ranges_simple(self):
         to_range = HttpTransportBase.offsets_to_ranges
@@ -216,3 +216,27 @@ class TestOffsets(TestCase):
         self.assertEquals(tuple(ranges[1]), (20, 21))
         self.assertEquals(tail, 0)
 
+
+class TestRangeHeader(TestCase):
+    """Test range_header method"""
+
+    def check_header(self, value, ranges=[], tail=0):
+        range_header = HttpTransportBase.range_header
+        self.assertEqual(value, range_header(ranges, tail))
+
+    def test_range_header_single(self):
+        self.check_header('bytes=0-9', ranges=[[0,9]])
+        self.check_header('bytes=100-109', ranges=[[100,109]])
+
+    def test_range_header_tail(self):
+        self.check_header('bytes=-10', tail=10)
+        self.check_header('bytes=-50', tail=50)
+
+    def test_range_header_multi(self):
+        self.check_header('bytes=0-9,100-200,300-5000',
+                          ranges=[(0,9), (100, 200), (300,5000)])
+
+    def test_range_header_mixed(self):
+        self.check_header('bytes=0-9,300-5000,-50',
+                          ranges=[(0,9), (300,5000)],
+                          tail=50)
