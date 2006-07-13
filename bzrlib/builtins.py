@@ -24,26 +24,24 @@ import os.path
 import sys
 
 import bzrlib
+from bzrlib import (branch, bundle, bzrdir, config, errors, log, osutils,
+                    repository, transport, ui, urlutils)
 from bzrlib.branch import Branch, BranchReferenceFormat
-from bzrlib import (bundle, branch, bzrdir, errors, osutils, ui, config,
-    repository, log)
 from bzrlib.bundle import read_bundle_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.conflicts import ConflictList
 from bzrlib.commands import Command, display_command
 from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError, 
                            NotBranchError, DivergedBranches, NotConflicted,
-                           NoSuchFile, NoWorkingTree, FileExists,
-                           FileInWrongBranch, NotVersionedError, NotABundle)
+                           NoSuchFile, NoWorkingTree, FileInWrongBranch,
+                           NotVersionedError, NotABundle)
 from bzrlib.merge import Merge3Merger
 from bzrlib.option import Option
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import mutter, note, log_error, warning, is_quiet, info
-from bzrlib import transport
 from bzrlib.transport.local import LocalTransport
-import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
 
 
@@ -1026,7 +1024,7 @@ class cmd_init(Command):
         # TODO: create-prefix
         try:
             to_transport.mkdir('.')
-        except FileExists:
+        except errors.FileExists:
             pass
                     
         try:
@@ -1036,8 +1034,8 @@ class cmd_init(Command):
             bzrdir.BzrDir.create_branch_convenience(location, format=format)
         else:
             if existing_bzrdir.has_branch():
-                if isinstance(to_transport, LocalTransport):
-                    if not existing_bzrdir.has_workingtree():
+                if (isinstance(to_transport, LocalTransport)
+                    and not existing_bzrdir.has_workingtree()):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
             else:
@@ -1080,7 +1078,7 @@ class cmd_init_repository(Command):
         to_transport = transport.get_transport(location)
         try:
             to_transport.mkdir('.')
-        except FileExists:
+        except errors.FileExists:
             pass
 
         newdir = format.initialize_on_transport(to_transport)
