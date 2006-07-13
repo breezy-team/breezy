@@ -760,12 +760,9 @@ class InvalidRange(TransportError):
 class InvalidHttpResponse(TransportError):
     """Invalid http response for %(path)s: %(msg)s"""
 
-    def __init__(self, path, msg):
-        # TODO: This is ready for a transition to BzrNewError
+    def __init__(self, path, msg, orig_error=None):
         self.path = path
-        self.msg = msg
-        msg = self.__doc__ % self.__dict__
-        TransportError.__init__(self, msg)
+        TransportError.__init__(self, msg, orig_error=orig_error)
 
 
 class InvalidHttpRange(InvalidHttpResponse):
