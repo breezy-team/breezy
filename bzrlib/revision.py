@@ -75,8 +75,7 @@ class Revision(object):
         return not self.__eq__(other)
 
     def _check_properties(self):
-        """Verify that all revision properties are OK.
-        """
+        """Verify that all revision properties are OK."""
         for name, value in self.properties.iteritems():
             if not isinstance(name, basestring) or contains_whitespace(name):
                 raise ValueError("invalid property name %r" % name)

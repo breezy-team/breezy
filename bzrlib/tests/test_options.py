@@ -46,6 +46,10 @@ class OptionTests(TestCase):
         out, err = self.run_bzr_captured(['help', '-r'], retcode=3)
         self.assertContainsRe(err, r'unknown option')
 
+    def test_allow_dash(self):
+        """Test that we can pass a plain '-' as an argument."""
+        self.assertEqual((['-'], {}), parse_args(cmd_commit(), ['-']))
+
 
 #     >>> parse_args('log -r 500'.split())
 #     (['log'], {'revision': [<RevisionSpec_int 500>]})
