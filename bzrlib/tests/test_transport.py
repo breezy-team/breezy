@@ -25,7 +25,7 @@ from bzrlib.errors import (NoSuchFile, FileExists,
                            TransportNotPossible,
                            ConnectionError,
                            DependencyNotPresent,
-                           InvalidURL,
+                           UnsupportedProtocol,
                            )
 from bzrlib.tests import TestCase, TestCaseInTempDir
 from bzrlib.transport import (_get_protocol_handlers,
@@ -71,11 +71,16 @@ class TestTransport(TestCase):
         try:
             register_lazy_transport('foo', 'bzrlib.tests.test_transport',
                     'BadTransportHandler')
-            # TODO: jam 20060427 Now we get InvalidURL because it looks like 
-            #       a URL but we have no support for it.
-            #       Is it better to always fall back to LocalTransport?
-            #       I think this is a better error than a future NoSuchFile
-            self.assertRaises(InvalidURL, get_transport, 'foo://fooserver/foo')
+            try:
+                get_transport('foo://fooserver/foo')
+            except UnsupportedProtocol, e:
+                e_str = str(e)
+                self.assertEquals('Unsupported protocol'
+                                  ' for url "foo://fooserver/foo":'
+                                  ' Unable to import library "some_lib":'
+                                  ' testing missing dependency', str(e))
+            else:
+                self.fail('Did not raise UnsupportedProtocol')
         finally:
             # restore original values
             _set_protocol_handlers(saved_handlers)

@@ -101,6 +101,10 @@ class TestInit(ExternalBase):
         # suggests using checkout
         self.assertContainsRe(err, 'ontains a branch.*but no working tree.*checkout')
 
+    def test_no_defaults(self):
+        """Init creates no default ignore rules."""
+        self.run_bzr('init')
+        self.assertFalse(os.path.exists('.bzrignore'))
 
 class TestSFTPInit(TestCaseWithSFTPServer):
 

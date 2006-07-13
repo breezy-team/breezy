@@ -17,11 +17,12 @@
 """Tests for the urlutils wrapper."""
 
 import os
+import re
 import sys
 
+from bzrlib import osutils, urlutils
 import bzrlib
 from bzrlib.errors import InvalidURL, InvalidURLJoin
-import bzrlib.urlutils as urlutils
 from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
 
@@ -380,8 +381,8 @@ class TestUrlToPath(TestCase):
 
         test('http://foo', 'http://foo')
         if sys.platform == 'win32':
-            test('c:/foo/path', 'file:///C|/foo/path')
-            test('c:/foo/path', 'file:///C:/foo/path')
+            test('C:/foo/path', 'file:///C|/foo/path')
+            test('C:/foo/path', 'file:///C:/foo/path')
         else:
             test('/foo/path', 'file:///foo/path')
 
@@ -464,3 +465,30 @@ class TestUrlToPath(TestCase):
         test('http://host/', 'http://host', 'http://host/')
         #test('.', 'http://host/', 'http://host')
         test('http://host', 'http://host/', 'http://host')
+
+
+class TestCwdToURL(TestCaseInTempDir):
+    """Test that local_path_to_url works base on the cwd"""
+
+    def test_dot(self):
+        # This test will fail if getcwd is not ascii
+        os.mkdir('mytest')
+        os.chdir('mytest')
+
+        url = urlutils.local_path_to_url('.')
+        self.assertEndsWith(url, '/mytest')
+
+    def test_non_ascii(self):
+        try:
+            os.mkdir(u'dod\xe9')
+        except UnicodeError:
+            raise TestSkipped('cannot create unicode directory')
+
+        os.chdir(u'dod\xe9')
+
+        # On Mac OSX this directory is actually: 
+        #   u'/dode\u0301' => '/dode\xcc\x81
+        # but we should normalize it back to 
+        #   u'/dod\xe9' => '/dod\xc3\xa9'
+        url = urlutils.local_path_to_url('.')
+        self.assertEndsWith(url, '/dod%C3%A9')

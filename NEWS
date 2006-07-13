@@ -2,6 +2,16 @@ IN DEVELOPMENT
 
   IMPROVEMENTS:
 
+   * The revision specifier "revno:" is extended to accept the syntax
+     revno:N:branch. For example,
+     revno:42:http://bazaar-vcs.org/bzr/bzr.dev/ means revision 42 in
+     bzr.dev.  (Matthieu Moy)
+
+   * No default ignore rules are applied by bzr - only the rules in .bzrignore
+     are considered. This fixes bugs with default rules being enforced no
+     matter what. The old list of ignore rules from bzr is available by
+     running 'bzr ignore --old-default-rules'.
+
    * Tests updates to ensure proper URL handling, UNICODE support, and
      proper printing when the user's terminal encoding cannot display 
      the path of a file that has been versioned.
@@ -64,6 +74,9 @@ IN DEVELOPMENT
    * 'branches.conf' has been changed to 'locations.conf', since it can apply
      to more locations than just branch locations.
      (Aaron Bentley)
+   
+   * 'bzr whoami' can now be used to set your identity from the command line,
+     for a branch or globally.  (Robey Pointer)
 
    * 'bzr checkout' now aliased to 'bzr co', and 'bzr annotate' to 'bzr ann'.
      (Michael Ellerman)
@@ -71,8 +84,25 @@ IN DEVELOPMENT
    * 'bzr revert DIRECTORY' now reverts the contents of the directory as well.
      (Aaron Bentley)
 
+   * 'bzr get sftp://foo' gives a better error when paramiko is not present.
+     Also updates things like 'http+pycurl://' if pycurl is not present.
+     (John Arbash Meinel) (Malone #47821, #52204)
+
+   * New env variable BZR_PROGRESS_BAR, sets the default progress bar type.
+     Can be set to 'none' or 'dummy' to disable the progress bar, 'dots' or 
+     'tty' to create the respective type. (John Arbash Meinel, #42197, #51107)
+
+   * Improve the help text for 'bzr diff' to explain what various options do.
+     (John Arbash Meinel, #6391)
+
+   * 'bzr uncommit -r 10' now uncommits revisions 11.. rather than uncommitting
+     revision 10. This makes -r10 more in line with what other commands do.
+     'bzr uncommit' also now saves the pending merges of the revisions that
+     were removed. So it is safe to uncommit after a merge, fix something,
+     and commit again. (John Arbash Meinel, #32526, #31426)
+
    * 'bzr init' now also works on remote locations.
-     (Wouter van Heyst)
+     (Wouter van Heyst, #48904)
 
   BUG FIXES:
 
@@ -93,6 +123,42 @@ IN DEVELOPMENT
     
     * sftp tests now work correctly on win32 if you have a newer paramiko
       (John Arbash Meinel)
+
+    * Cleanup win32 test suite, and general cleanup of places where
+      file handles were being held open. (John Arbash Meinel)
+
+    * When specifying filenames for 'diff -r x..y', the name of the file in the
+      working directory can be used, even if its name is different in both x
+      and y.
+
+    * File-ids containing single- or double-quotes are handled correctly by
+      push.  (#52227, Aaron Bentley)
+
+    * Normalize unicode filenames to ensure cross-platform consistency.
+      (John Arbash Meinel, #43689)
+
+    * The argument parser can now handle '-' as an argument. Currently
+      no code interprets it specially (it is mostly handled as a file named 
+      '-'). But plugins, and future operations can use it.
+      (John Arbash meinel, #50984)
+
+    * Bundles can properly read binary files with a plain '\r' in them.
+      (John Arbash Meinel, #51927)
+
+    * Tuning iter_entries() to be more efficient (John Arbash Meinel, #5444)
+
+    * Lots of win32 fixes (the test suite passes again).
+      (John Arbash Meinel, #50155)
+
+    * Handle openbsd returning None for sys.getfilesystemencoding() (#41183) 
+
+    * Support ftp APPE (append) to allow Knits to be used over ftp (#42592)
+
+    * Removals are only committed if they match the filespec (or if there is
+      no filespec).  (#46635, Aaron Bentley)
+
+    * smart-add recurses through all supplied directories 
+      (John Arbash Meinel, #52578)
 
   INTERNALS:
 

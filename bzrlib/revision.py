@@ -75,8 +75,7 @@ class Revision(object):
         return not self.__eq__(other)
 
     def _check_properties(self):
-        """Verify that all revision properties are OK.
-        """
+        """Verify that all revision properties are OK."""
         for name, value in self.properties.iteritems():
             if not isinstance(name, basestring) or contains_whitespace(name):
                 raise ValueError("invalid property name %r" % name)
@@ -240,6 +239,8 @@ def common_ancestor(revision_a, revision_b, revision_source,
                     pb=DummyProgress()):
     if None in (revision_a, revision_b):
         return None
+    if NULL_REVISION in (revision_a, revision_b):
+        return NULL_REVISION
     # trivial optimisation
     if revision_a == revision_b:
         return revision_a

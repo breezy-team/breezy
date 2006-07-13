@@ -41,6 +41,7 @@ import sys
 from bzrlib.trace import mutter
 from bzrlib.errors import LockError
 
+
 class _base_Lock(object):
     def _open(self, filename, filemode):
         try:
@@ -64,10 +65,6 @@ class _base_Lock(object):
             
     def unlock(self):
         raise NotImplementedError()
-
-        
-
-
 
 
 ############################################################
@@ -129,6 +126,9 @@ except ImportError:
                     overlapped = pywintypes.OVERLAPPED()
                     win32file.LockFileEx(self.hfile, lockmode, 0, 0x7fff0000, overlapped)
                 except Exception, e:
+                    if self.f:
+                        self.f.close()
+                        self.f = None
                     raise LockError(e)
 
             def unlock(self):
@@ -141,7 +141,6 @@ except ImportError:
                     raise LockError(e)
 
 
-
         class _w32c_ReadLock(_w32c_FileLock):
             def __init__(self, filename):
                 _w32c_FileLock._lock(self, filename, 'rb',
@@ -151,7 +150,6 @@ except ImportError:
             def __init__(self, filename):
                 _w32c_FileLock._lock(self, filename, 'wb',
                                      LOCK_EX + LOCK_NB)
-
 
 
         WriteLock = _w32c_WriteLock
@@ -186,7 +184,6 @@ except ImportError:
             class _msvc_WriteLock(_msvc_FileLock):
                 def __init__(self, filename):
                     _msvc_lock(self._open(filename, 'wb'), self.LOCK_EX)
-
 
 
             def _msvc_lock(f, flags):
@@ -242,7 +239,6 @@ except ImportError:
                         os.lseek(fn, fpos, 0)
                 except Exception, e:
                     raise LockError(e)
-
 
 
             WriteLock = _msvc_WriteLock
