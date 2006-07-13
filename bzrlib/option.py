@@ -184,6 +184,12 @@ class Option(object):
             if option is self:
                 return short
 
+    def get_negation_name(self):
+        if self.name.startswith('no-'):
+            return self.name[3:]
+        else:
+            return 'no-' + self.name
+
     def add_option(self, parser, short_name):
         """Add this option to an Optparse parser"""
         option_strings = ['--%s' % self.name]
@@ -195,6 +201,11 @@ class Option(object):
                               help=self.help,
                               default=OptionParser.DEFAULT_VALUE,
                               *option_strings)
+            negation_strings = ['--%s' % self.get_negation_name()]
+            parser.add_option(action='store_const', dest=self.name, 
+                              help=optparse.SUPPRESS_HELP,
+                              const=OptionParser.DEFAULT_VALUE,
+                              *negation_strings)
         else:
             parser.add_option(action='callback', 
                               callback=self._optparse_callback, 
