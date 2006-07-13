@@ -106,6 +106,7 @@ class TestInit(ExternalBase):
         self.run_bzr('init')
         self.assertFalse(os.path.exists('.bzrignore'))
 
+
 class TestSFTPInit(TestCaseWithSFTPServer):
 
     def test_init(self):
@@ -119,9 +120,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         self.make_branch('.')
 
         # rely on SFTPServer get_url() pointing at '.'
-        out, err = self.run_bzr('init', self.get_url(), retcode=3)
-        self.assertContainsRe(err, 'Already a branch')
-        self.run_bzr_error(['Already a branch'], 'init', self.get_url())
+        out, err = self.run_bzr_error(['Already a branch'], 'init', self.get_url())
 
         # make sure using 'bzr checkout' is not suggested
         # for remote locations missing a working tree
