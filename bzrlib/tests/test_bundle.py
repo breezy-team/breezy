@@ -372,7 +372,7 @@ class BundleTester(TestCaseWithTransport):
 
     def test_crlf_bundle(self):
         try:
-            read_bundle(StringIO('# Bazaar revision bundle v0.7\r\n'))
+            read_bundle(StringIO('# Bazaar revision bundle v0.8\r\n'))
         except BadBundle:
             # It is currently permitted for bundles with crlf line endings to
             # make read_bundle raise a BadBundle, but this should be fixed.
@@ -809,7 +809,8 @@ class MungedBundleTester(TestCaseWithTransport):
         wt.commit('add one', rev_id='a@cset-0-1')
         self.build_tree(['b1/two'])
         wt.add('two')
-        wt.commit('add two', rev_id='a@cset-0-2')
+        wt.commit('add two', rev_id='a@cset-0-2',
+                  revprops={'branch-nick':'test'})
 
         bundle_txt = StringIO()
         rev_ids = write_bundle(wt.branch.repository, 'a@cset-0-2',
@@ -820,7 +821,7 @@ class MungedBundleTester(TestCaseWithTransport):
 
     def check_valid(self, bundle):
         """Check that after whatever munging, the final object is valid."""
-        self.assertEqual(['a@cset-0-2'], 
+        self.assertEqual(['a@cset-0-2'],
             [r.revision_id for r in bundle.real_revisions])
 
     def test_extra_whitespace(self):
@@ -859,7 +860,26 @@ class MungedBundleTester(TestCaseWithTransport):
         # creates a blank line at the end, and fails if that
         # line is stripped
         self.assertEqual('\n\n', raw[-2:])
-        bundle_text = StringIO(raw[:-1])
+        bundle_txt = StringIO(raw[:-1])
 
         bundle = read_bundle(bundle_txt)
         self.check_valid(bundle)
+
+    def test_opening_text(self):
+        bundle_txt = self.build_test_bundle()
+
+        bundle_txt = StringIO("Some random\nemail comments\n"
+                              + bundle_txt.getvalue())
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+
+    def test_trailing_text(self):
+        bundle_txt = self.build_test_bundle()
+
+        bundle_txt = StringIO(bundle_txt.getvalue() +
+                              "Some trailing\nrandom\ntext\n")
+
+        bundle = read_bundle(bundle_txt)
+        self.check_valid(bundle)
+

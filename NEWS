@@ -157,6 +157,10 @@ IN DEVELOPMENT
     * smart-add recurses through all supplied directories 
       (John Arbash Meinel, #52578)
 
+    * Make the bundle reader extra lines before and after the bundle text.
+      This allows you to parse an email with the bundle inline.
+      (John Arbash Meinel, #49182)
+
   INTERNALS:
 
     * Combine the ignore rules into a single regex rather than looping over
