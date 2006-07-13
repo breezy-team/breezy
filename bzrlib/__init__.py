@@ -17,9 +17,6 @@
 """bzr library"""
 
 
-# Kept for compatibility with 0.8, it is considered deprecated to modify it
-DEFAULT_IGNORE = []
-
 IGNORE_FILENAME = ".bzrignore"
 
 import os
@@ -59,6 +56,7 @@ from bzrlib.symbol_versioning import (deprecated_function,
                                       deprecated_list,
                                      )
 
+# Kept for compatibility with 0.8, it is considered deprecated to modify it
 DEFAULT_IGNORE = deprecated_list(zero_nine, 'DEFAULT_IGNORE', [],
                     'Consider using bzrlib.ignores.add_unique_user_ignores')
 
