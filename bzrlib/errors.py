@@ -127,9 +127,10 @@ class BzrNewError(BzrError):
     def __str__(self):
         try:
             return self.__doc__ % self.__dict__
-        except (NameError, ValueError, KeyError), e:
-            return 'Unprintable exception %s: %s' \
-                % (self.__class__.__name__, str(e))
+        except (TypeError, NameError, ValueError, KeyError), e:
+            return 'Unprintable exception %s(%r): %s' \
+                % (self.__class__.__name__,
+                   self.__dict__, str(e))
 
 
 class BzrCheckError(BzrNewError):

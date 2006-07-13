@@ -144,7 +144,10 @@ del scheme
 
 
 class BzrProtocolError(errors.TransportError):
-    pass
+    """Generic bzr souk protocol error: %(details)s"""
+
+    def __init__(self, details):
+        self.details = details
 
 
 def _recv_tuple(from_file):
