@@ -42,7 +42,6 @@ from bzrlib.transport import Transport, register_transport, Server
 from bzrlib.transport.http.response import (HttpMultipartRangeResponse,
                                             HttpRangeResponse)
 from bzrlib.ui import ui_factory
-from bzrlib.osutils import offsets_to_http_ranges
 
 
 def extract_auth(url, password_manager):
@@ -202,7 +201,7 @@ class HttpTransportBase(Transport):
         :param return: A list or generator of (offset, data) tuples
         """
         mutter('readv of %s [%s]', relpath, offsets)
-        ranges, tail_amount = offsets_to_http_ranges(offsets)
+        ranges, tail_amount = self.offsets_to_ranges(offsets)
         code, f = self._get(relpath, ranges, tail_amount)
         for start, size in offsets:
             f.seek(start, (start < 0) and 2 or 0)
@@ -211,10 +210,12 @@ class HttpTransportBase(Transport):
             assert len(data) == size
             yield start, data
 
-    def _is_multipart(self, content_type):
+    @staticmethod
+    def _is_multipart(content_type):
         return content_type.startswith('multipart/byteranges;')
 
-    def _handle_response(self, path, response):
+    @staticmethod
+    def _handle_response(path, response):
         """Interpret the code & headers and return a HTTP response.
 
         This is a factory method which returns an appropriate HTTP response
@@ -224,7 +225,7 @@ class HttpTransportBase(Transport):
         mutter('handling response code %s ctype %s', response.code,
             content_type)
 
-        if response.code == 206 and self._is_multipart(content_type):
+        if response.code == 206 and HttpTransportBase._is_multipart(content_type):
             # Full fledged multipart response
             return HttpMultipartRangeResponse(path, content_type, response)
         elif response.code == 206:
@@ -240,6 +241,44 @@ class HttpTransportBase(Transport):
 
         raise BzrError("HTTP couldn't handle code %s", response.code)
 
+    @staticmethod
+    def offsets_to_ranges(offsets, fudge_factor=0):
+        """Turn a list of offsets and sizes into a list of byte ranges.
+
+        :param offsets: A list of tuples of (start, size).  An empty list
+        is not accepted.
+        :param fudge_factor: Fudge together ranges that are fudge_factor
+        bytes from eachother together.
+
+        :return: a list of byte ranges (start, end) and the amount of data
+        to fetch from the tail of the file.. Adjacent ranges will be
+        combined in the result.
+        """
+        # We need a copy of the offsets, as the caller might expect it to
+        # remain unsorted. This doesn't seem expensive for memory at least.
+        offsets = sorted(offsets)
+
+        max_negative = 0
+        prev_end = None
+        combined = []
+
+        for start, size in offsets:
+            if start < 0:
+                max_negative = min(start, max_negative)
+            else:
+                end = start + size - 1
+                if prev_end is None:
+                    combined.append([start, end])
+                elif start <= prev_end + 1 + fudge_factor:
+                    combined[-1][1] = end
+                else:
+                    combined.append([start, end])
+                prev_end = end 
+
+        mutter("combined %d offsets into %d ranges; tail access %d", len(offsets),
+               len(combined), -max_negative)
+
+        return combined, -max_negative
     def put(self, relpath, f, mode=None):
         """Copy the file-like or string object into the location.
 

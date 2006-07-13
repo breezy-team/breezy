@@ -23,7 +23,7 @@ import bzrlib
 from bzrlib.errors import DependencyNotPresent
 from bzrlib.tests import TestCase, TestSkipped
 from bzrlib.transport import Transport
-from bzrlib.transport.http import extract_auth
+from bzrlib.transport.http import extract_auth, HttpTransportBase
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.tests.HTTPTestUtil import TestCaseWithWebserver
 
@@ -164,3 +164,55 @@ class TestHttpTransportRegistration(TestCase):
         t = get_transport('http+urllib://bzr.google.com/')
         self.assertIsInstance(t, Transport)
         self.assertIsInstance(t, bzrlib.transport.http._urllib.HttpTransport_urllib)
+
+
+class TestOffsets(TestCase):
+    """Test test_offsets_to_ranges method"""
+
+    def test_offsets_to_ranges_simple(self):
+        to_range = HttpTransportBase.offsets_to_ranges
+        ranges, tail = to_range([(10, 1)])
+        self.assertEqual([[10, 10]], ranges)
+        self.assertEqual(0, tail)
+
+        ranges, tail = to_range([(0, 1), (1, 1)])
+        self.assertEqual([[0, 1]], ranges)
+        self.assertEqual(0, tail)
+
+        ranges, tail = to_range([(1, 1), (0, 1)])
+        self.assertEqual([[0, 1]], ranges)
+        self.assertEqual(0, tail)
+
+    def test_offset_to_ranges_overlapped(self):
+        to_range = HttpTransportBase.offsets_to_ranges
+
+        ranges, tail = to_range([(10, 1), (20, 2), (22, 5)])
+        self.assertEquals(tuple(ranges[0]), (10, 10))
+        self.assertEquals(tuple(ranges[1]), (20, 26))
+        self.assertEquals(tail, 0)
+
+        ranges, tail = to_range([(10, 1), (11, 2), (22, 5), (-4, 4)])
+        self.assertEquals(tuple(ranges[0]), (10, 12))
+        self.assertEquals(tuple(ranges[1]), (22, 26))
+        self.assertEquals(tail, 4)
+
+    def test_offset_to_ranges_tail(self):
+        to_range = HttpTransportBase.offsets_to_ranges
+
+        ranges, tail = to_range([(-4, 4), (-8, 8)])
+        self.assertEquals(tuple(ranges), ())
+        self.assertEquals(tail, 8)
+
+    def test_offset_to_ranges_fudge(self):
+        to_range = HttpTransportBase.offsets_to_ranges
+
+        ranges, tail = to_range([(10, 1), (20, 2)], fudge_factor=9)
+        self.assertEquals(tuple(ranges[0]), (10, 21))
+        self.assertEquals(len(ranges), 1)
+        self.assertEquals(tail, 0)
+
+        ranges, tail = to_range([(10, 1), (20, 2)], fudge_factor=8)
+        self.assertEquals(tuple(ranges[0]), (10, 10))
+        self.assertEquals(tuple(ranges[1]), (20, 21))
+        self.assertEquals(tail, 0)
+
