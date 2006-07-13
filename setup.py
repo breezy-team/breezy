@@ -129,31 +129,19 @@ class bzr_build(build):
 ## Setup
 ########################
 
-if not ('py2exe' in sys.argv):
-    # std setup
-    ARGS = {'scripts': ['bzr'],
-            'data_files': [('man/man1', ['bzr.1'])],
+if 'bdist_wininst' in sys.argv:
+    # python's distutils-based win32 installer
+    ARGS = {'scripts': ['bzr', 'tools/win32/bzr-win32-bdist-postinstall.py'],
             # install the txt files from bzrlib.doc.api.
             'package_data': {'bzrlib': ['doc/api/*.txt']},
            }
 
-    # for python-based installer we don't need to use custom cmdclasses
-    if not ('bdist_wininst' in sys.argv):
-        ARGS['cmdclass'] = {'build': bzr_build,
-                            'install_scripts': my_install_scripts,
-                           }
-    else:
-        # but need to add postinstall script
-        ARGS['scripts'].append('tools/win32/bzr-win32-bdist-postinstall.py')
-    
     ARGS.update(META_INFO)
     ARGS.update(BZRLIB)
-
-    print ARGS
     
     setup(**ARGS)
 
-else:
+elif 'py2exe' in sys.argv:
     # py2exe setup
     import py2exe
 
@@ -182,6 +170,7 @@ else:
                                     )
     options_list = {"py2exe": {"packages": BZRLIB['packages'] +
                                            ['elementtree'],
+                               "excludes": ["Tkinter", "medusa"],
                                "dist_dir": "win32_bzr.exe",
                               },
                    }
@@ -191,3 +180,20 @@ else:
                    'tools/bzr_test_dependencies.py',
                   ],
           zipfile='lib/library.zip')
+
+else:
+    # std setup
+    ARGS = {'scripts': ['bzr'],
+            'data_files': [('man/man1', ['bzr.1'])],
+            # install the txt files from bzrlib.doc.api.
+            'package_data': {'bzrlib': ['doc/api/*.txt']},
+            'cmdclass': {'build': bzr_build,
+                         'install_scripts': my_install_scripts,
+                        },
+           }
+    
+    ARGS.update(META_INFO)
+    ARGS.update(BZRLIB)
+
+    setup(**ARGS)
+
