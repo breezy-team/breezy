@@ -23,7 +23,6 @@
 # whether we expect a particular file will be modified after it's committed.
 # It's probably safer to just always revalidate.  mbp 20060321
 
-import mimetools
 import os
 from StringIO import StringIO
 
@@ -58,57 +57,6 @@ except pycurl.error, e:
 
 
 register_urlparse_netloc_protocol('http+pycurl')
-
-
-class CurlResponse(object):
-    """Make a curl response look like a urllib response."""
-
-    def __init__(self, curl_handle):
-        # This will hold all the returned data
-        self._data = StringIO()
-        # And the returned headers go here
-        self._header = StringIO()
-        self._curl_handle = curl_handle
-        self._curl_handle.setopt(pycurl.WRITEFUNCTION, self._data.write)
-        self._curl_handle.setopt(pycurl.HEADERFUNCTION, self._header.write)
-        
-        # Will be filled out by calling update()
-        self.headers = None
-        self.code = None
-
-        # Overload some functions used elsewhere
-        self.read = self._data.read
-        self.seek = self._data.seek
-        self.tell = self._data.tell
-
-    def update(self):
-        """Update self after the action has been performed."""
-        self.code = self._curl_handle.getinfo(pycurl.HTTP_CODE)
-        self._build_headers()
-        self._data.seek(0, 0)
-
-        mutter('headers: %s', self._header.getvalue())
-        mutter('data: %r', self._data.getvalue())
-
-    def _build_headers(self):
-        """Parse the headers into RFC822 format"""
-        url = self._curl_handle.getinfo(pycurl.EFFECTIVE_URL)
-
-        # Content-type should be parsed here
-        # We need specific http headers like Content-type
-        # so for now, we must assert that content is correct
-        assert url.startswith('http:') or url.startswith('https:')
-        self._header.seek(0, 0)
-        self._header.readline()
-        m = mimetools.Message(self._header)
-
-        # jam 20060706 More headers are available if we decide to use them
-        # get the contents as of 
-        # revid: john@arbash-meinel.com-20060617155251-c445c9574fcdf6aa
-        # to see the other options
-        m['effective-url'] = url
-        m['http-code'] = str(self._curl_handle.getinfo(pycurl.HTTP_CODE))
-        self.headers = m
 
 
 class PyCurlTransport(HttpTransportBase):
@@ -167,7 +115,10 @@ class PyCurlTransport(HttpTransportBase):
         self._set_curl_options(curl)
         curl.setopt(pycurl.NOBODY, 0)
 
-        response = CurlResponse(curl)
+        data = StringIO()
+        header = StringIO()
+        self._curl_handle.setopt(pycurl.WRITEFUNCTION, data.write)
+        self._curl_handle.setopt(pycurl.HEADERFUNCTION, header.write)
 
         if ranges is not None or tail_amount:
             curl.setopt(pycurl.RANGE, self._range_header(ranges, tail_amount))

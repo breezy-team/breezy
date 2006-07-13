@@ -22,6 +22,7 @@ There are separate implementation modules for each http client implementation.
 from collections import deque
 from cStringIO import StringIO
 import errno
+import mimetools
 import os
 import posixpath
 import re
@@ -72,6 +73,21 @@ def extract_auth(url, password_manager):
         password_manager.add_password(None, host, username, password)
     url = urlparse.urlunsplit((scheme, netloc, path, query, fragment))
     return url
+
+
+def _extract_headers(header_file, skip_first=True):
+    """Extract the mapping for an rfc822 header
+
+    :param header_file: A file-like object to read
+    :param skip_first: HTTP headers start with the HTTP response as
+                       the first line. Skip this line while parsing
+    :return: mimetools.Message object
+    """
+    header_file.seek(0, 0)
+    if skip_first:
+        header_file.readline()
+    m = mimetools.Message(header_file)
+    return m
 
 
 class HttpTransportBase(Transport):
@@ -209,37 +225,6 @@ class HttpTransportBase(Transport):
             data = f.read(size)
             assert len(data) == size
             yield start, data
-
-    @staticmethod
-    def _is_multipart(content_type):
-        return content_type.startswith('multipart/byteranges;')
-
-    @staticmethod
-    def _handle_response(path, response):
-        """Interpret the code & headers and return a HTTP response.
-
-        This is a factory method which returns an appropriate HTTP response
-        based on the code & headers it's given.
-        """
-        content_type = response.headers['Content-Type']
-        mutter('handling response code %s ctype %s', response.code,
-            content_type)
-
-        if response.code == 206 and HttpTransportBase._is_multipart(content_type):
-            # Full fledged multipart response
-            return HttpMultipartRangeResponse(path, content_type, response)
-        elif response.code == 206:
-            # A response to a range request, but not multipart
-            content_range = response.headers['Content-Range']
-            return HttpRangeResponse(path, content_range, response)
-        elif response.code == 200:
-            # A regular non-range response, unfortunately the result from
-            # urllib doesn't support seek, so we wrap it in a StringIO
-            return StringIO(response.read())
-        elif response.code == 404:
-            raise NoSuchFile(path)
-
-        raise BzrError("HTTP couldn't handle code %s", response.code)
 
     @staticmethod
     def offsets_to_ranges(offsets, fudge_factor=0):

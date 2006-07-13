@@ -220,6 +220,10 @@ class HttpMultipartRangeResponse(RangeFile):
                           re.IGNORECASE | re.MULTILINE)
 
 
+def _is_multipart(content_type):
+    return content_type.startswith('multipart/byteranges;')
+
+
 def handle_response(url, code, headers, response):
     """Interpret the code & headers and return a HTTP response.
 
@@ -235,22 +239,24 @@ def handle_response(url, code, headers, response):
              ranges indicated by the headers.
     """
     content_type = headers['Content-Type']
-    mutter('handling response code %s ctype %s', response.code,
-        content_type)
+    mutter('handling response code %s ctype %s', code, content_type)
 
-    if response.code == 206 and _is_multipart(content_type):
+    if code == 206 and _is_multipart(content_type):
         # Full fledged multipart response
         return HttpMultipartRangeResponse(url, content_type, response)
-    elif response.code == 206:
+    elif code == 206:
         # A response to a range request, but not multipart
-        content_range = response.headers['Content-Range']
+        content_range = headers['Content-Range']
         return HttpRangeResponse(url, content_range, response)
-    elif response.code == 200:
+    elif code == 200:
         # A regular non-range response, unfortunately the result from
         # urllib doesn't support seek, so we wrap it in a StringIO
-        return StringIO(response.read())
-    elif response.code == 404:
+        tell = getattr(response, 'tell', None)
+        if tell is None:
+            return StringIO(response.read())
+        return response
+    elif code == 404:
         raise NoSuchFile(url)
 
-    raise BzrError("HTTP couldn't handle code %s", response.code)
+    raise BzrError("HTTP couldn't handle code %s", code)
 

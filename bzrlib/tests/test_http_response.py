@@ -19,6 +19,7 @@
 from cStringIO import StringIO
 
 from bzrlib import errors
+from bzrlib.transport import http
 from bzrlib.transport.http import response
 from bzrlib.tests import TestCase
 
@@ -293,7 +294,7 @@ class TestHttpMultipartRangeResponse(TestCase):
 
 
 # Taken from real request responses
-_full_text_response = """HTTP/1.1 200 OK\r
+_full_text_response = ("""HTTP/1.1 200 OK\r
 Date: Tue, 11 Jul 2006 04:32:56 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
@@ -303,19 +304,18 @@ Content-Length: 35\r
 Connection: close\r
 Content-Type: text/plain; charset=UTF-8\r
 \r
+""", """Bazaar-NG meta directory, format 1
+""")
 
-Bazaar-NG meta directory, format 1
-"""
 
-
-_missing_response = """HTTP/1.1 404 Not Found\r
+_missing_response = ("""HTTP/1.1 404 Not Found\r
 Date: Tue, 11 Jul 2006 04:32:56 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Content-Length: 336\r
 Connection: close\r
 Content-Type: text/html; charset=iso-8859-1\r
 \r
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+""", """<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
 <html><head>
 <title>404 Not Found</title>
 </head><body>
@@ -324,10 +324,10 @@ Content-Type: text/html; charset=iso-8859-1\r
 <hr>
 <address>Apache/2.0.54 (Fedora) Server at bzr.arbash-meinel.com Port 80</address>
 </body></html>
-"""
+""")
 
 
-_single_range_response = """HTTP/1.1 206 Partial Content\r
+_single_range_response = ("""HTTP/1.1 206 Partial Content\r
 Date: Tue, 11 Jul 2006 04:45:22 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
@@ -338,13 +338,12 @@ Content-Range: bytes 0-99/93890\r
 Connection: close\r
 Content-Type: text/plain; charset=UTF-8\r
 \r
-
-mbp@sourcefrog.net-20050309040815-13242001617e4a06
+""", """mbp@sourcefrog.net-20050309040815-13242001617e4a06
 mbp@sourcefrog.net-20050309040929-eee0eb3e6d1e762
-"""
+""")
 
 
-_multipart_range_response = """HTTP/1.1 206 Partial Content\r
+_multipart_range_response = ("""HTTP/1.1 206 Partial Content\r
 Date: Tue, 11 Jul 2006 04:49:48 GMT\r
 Server: Apache/2.0.54 (Fedora)\r
 Last-Modified: Thu, 06 Jul 2006 20:22:05 GMT\r
@@ -354,8 +353,7 @@ Content-Length: 1534\r
 Connection: close\r
 Content-Type: multipart/byteranges; boundary=418470f848b63279b\r
 \r
-\r
---418470f848b63279b\r
+\r""", """--418470f848b63279b\r
 Content-type: text/plain; charset=UTF-8\r
 Content-range: bytes 0-254/93890\r
 \r
@@ -392,7 +390,44 @@ mbp@sourcefrog.net-20050314025737-55eb441f430ab4ba
 mbp@sourcefrog.net-20050314025901-d74aa93bb7ee8f62
 mbp@source\r
 --418470f848b63279b--\r\n'
-"""
+""")
 
-class TestHandleResponse(TestCase):
-    """Test that we can handle different http responses"""
+
+# This should be in test_http.py, but the headers we
+# want to parse are here
+class TestExtractHeader(TestCase):
+    
+    def use_response(self, response):
+        self.headers = http._extract_headers(StringIO(response[0]))
+
+    def check_header(self, header, value):
+        self.assertEqual(value, self.headers[header])
+        
+    def test_full_text(self):
+        self.use_response(_full_text_response)
+
+        self.check_header('Date', 'Tue, 11 Jul 2006 04:32:56 GMT')
+        self.check_header('date', 'Tue, 11 Jul 2006 04:32:56 GMT')
+        self.check_header('Content-Length', '35')
+        self.check_header('Content-Type', 'text/plain; charset=UTF-8')
+        self.check_header('content-type', 'text/plain; charset=UTF-8')
+
+    def test_missing_response(self):
+        self.use_response(_missing_response)
+
+        self.check_header('Content-Length', '336')
+        self.check_header('Content-Type', 'text/html; charset=iso-8859-1')
+
+    def test_single_range(self):
+        self.use_response(_single_range_response)
+
+        self.check_header('Content-Length', '100')
+        self.check_header('Content-Range', 'bytes 0-99/93890')
+        self.check_header('Content-Type', 'text/plain; charset=UTF-8')
+
+    def test_multi_range(self):
+        self.use_response(_multipart_range_response)
+
+        self.check_header('Content-Length', '1534')
+        self.check_header('Content-Type',
+                          'multipart/byteranges; boundary=418470f848b63279b')
