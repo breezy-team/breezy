@@ -95,6 +95,12 @@ IN DEVELOPMENT
    * Improve the help text for 'bzr diff' to explain what various options do.
      (John Arbash Meinel, #6391)
 
+   * 'bzr uncommit -r 10' now uncommits revisions 11.. rather than uncommitting
+     revision 10. This makes -r10 more in line with what other commands do.
+     'bzr uncommit' also now saves the pending merges of the revisions that
+     were removed. So it is safe to uncommit after a merge, fix something,
+     and commit again. (John Arbash Meinel, #32526, #31426)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
