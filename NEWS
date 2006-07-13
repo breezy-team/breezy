@@ -92,6 +92,9 @@ IN DEVELOPMENT
      Can be set to 'none' or 'dummy' to disable the progress bar, 'dots' or 
      'tty' to create the respective type. (John Arbash Meinel, #42197, #51107)
 
+   * Improve the help text for 'bzr diff' to explain what various options do.
+     (John Arbash Meinel, #6391)
+
   BUG FIXES:
 
     * Fix shadowed definition of TestLocationConfig that caused some 
@@ -141,6 +144,12 @@ IN DEVELOPMENT
     * Handle openbsd returning None for sys.getfilesystemencoding() (#41183) 
 
     * Support ftp APPE (append) to allow Knits to be used over ftp (#42592)
+
+    * Removals are only committed if they match the filespec (or if there is
+      no filespec).  (#46635, Aaron Bentley)
+
+    * smart-add recurses through all supplied directories 
+      (John Arbash Meinel, #52578)
 
   INTERNALS:
 

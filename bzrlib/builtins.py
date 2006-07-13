@@ -1081,7 +1081,7 @@ class cmd_init_repository(Command):
 
 
 class cmd_diff(Command):
-    """Show differences in working tree.
+    """Show differences in the working tree or between revisions.
     
     If files are listed, only the changes in those files are listed.
     Otherwise, all changes for the tree are listed.
@@ -1091,11 +1091,17 @@ class cmd_diff(Command):
 
     examples:
         bzr diff
+            Shows the difference in the working tree versus the last commit
         bzr diff -r1
+            Difference between the working tree and revision 1
         bzr diff -r1..2
+            Difference between revision 2 and revision 1
         bzr diff --diff-prefix old/:new/
+            Same as 'bzr diff' but prefix paths with old/ and new/
         bzr diff bzr.mine bzr.dev
+            Show the differences between the two working trees
         bzr diff foo.c
+            Show just the differences for 'foo.c'
     """
     # TODO: Option to use external diff command; could be GNU diff, wdiff,
     #       or a graphical diff.
@@ -1809,6 +1815,13 @@ class cmd_whoami(Command):
                 self.outf.write(c.username() + '\n')
             return
 
+        # display a warning if an email address isn't included in the given name.
+        try:
+            config.extract_email_address(name)
+        except BzrError, e:
+            warning('"%s" does not seem to contain an email address.  '
+                    'This is allowed, but not recommended.', name)
+        
         # use global config unless --branch given
         if branch:
             c = Branch.open_containing('.')[0].get_config()
