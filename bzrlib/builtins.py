@@ -36,7 +36,7 @@ from bzrlib.errors import (BzrError, BzrCheckError, BzrCommandError,
                            NoSuchFile, NoWorkingTree, FileInWrongBranch,
                            NotVersionedError, NotABundle)
 from bzrlib.merge import Merge3Merger
-from bzrlib.option import Option
+from bzrlib.option import Option, EnumOption
 from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import common_ancestor
 from bzrlib.revisionspec import RevisionSpec
@@ -1263,11 +1263,9 @@ class cmd_log(Command):
                              help='show files changed in each revision'),
                      'show-ids', 'revision',
                      'log-format',
-                     'line', 'long', 
                      Option('message',
                             help='show revisions whose message matches this regexp',
                             type=str),
-                     'short',
                      ]
     encoding_type = 'replace'
 
@@ -1278,10 +1276,7 @@ class cmd_log(Command):
             forward=False,
             revision=None,
             log_format=None,
-            message=None,
-            long=False,
-            short=False,
-            line=False):
+            message=None):
         from bzrlib.log import log_formatter, show_log
         assert message is None or isinstance(message, basestring), \
             "invalid message argument %r" % message
@@ -1335,9 +1330,7 @@ class cmd_log(Command):
             (rev2, rev1) = (rev1, rev2)
 
         if (log_format == None):
-            default = b.get_config().log_format()
-            log_format = get_log_format(long=long, short=short, line=line, 
-                                        default=default)
+            log_format = b.get_config().log_format()
         lf = log_formatter(log_format,
                            show_ids=show_ids,
                            to_file=self.outf,
@@ -1351,17 +1344,6 @@ class cmd_log(Command):
                  start_revision=rev1,
                  end_revision=rev2,
                  search=message)
-
-
-def get_log_format(long=False, short=False, line=False, default='long'):
-    log_format = default
-    if long:
-        log_format = 'long'
-    if short:
-        log_format = 'short'
-    if line:
-        log_format = 'line'
-    return log_format
 
 
 class cmd_touching_revisions(Command):
@@ -2363,9 +2345,6 @@ class cmd_missing(Command):
                      Option('theirs-only', 
                             'Display changes in the remote branch only'), 
                      'log-format',
-                     'line',
-                     'long', 
-                     'short',
                      'show-ids',
                      'verbose'
                      ]
@@ -2373,7 +2352,7 @@ class cmd_missing(Command):
 
     @display_command
     def run(self, other_branch=None, reverse=False, mine_only=False,
-            theirs_only=False, log_format=None, long=False, short=False, line=False, 
+            theirs_only=False, log_format=None,
             show_ids=False, verbose=False):
         from bzrlib.missing import find_unmerged, iter_log_data
         from bzrlib.log import log_formatter
@@ -2392,10 +2371,8 @@ class cmd_missing(Command):
             remote_branch.lock_read()
             try:
                 local_extra, remote_extra = find_unmerged(local_branch, remote_branch)
-                if (log_format == None):
-                    default = local_branch.get_config().log_format()
-                    log_format = get_log_format(long=long, short=short, 
-                                                line=line, default=default)
+                if (log_format is None):
+                    log_format = local_branch.get_config().log_format()
                 lf = log_formatter(log_format,
                                    to_file=self.outf,
                                    show_ids=show_ids,

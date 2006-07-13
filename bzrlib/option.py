@@ -113,6 +113,31 @@ def get_merge_type(typestring):
             (typestring, type_list)
         raise BzrCommandError(msg)
 
+class EnumOption(object):
+
+    def __init__(self, name, factory, choices):
+        self.name = name
+        self.factory = factory
+        self.choices = choices 
+        self.default = None
+
+    def add_option(self, parser, short_name):
+        """Add this option to an Optparse parser"""
+        for name, help in self.choices:
+            option_strings = ['--%s' % name]
+            parser.add_option(action='callback', 
+                              callback=self._optparse_callback,
+                              callback_args=(name,),
+                              metavar=self.name,
+                              help=help,
+                              default=OptionParser.DEFAULT_VALUE,
+                              dest=self.name,
+                              *option_strings)
+
+    def _optparse_callback(self, option, opt, value, parser, evalue):
+        setattr(parser.values, option.dest, self.factory(evalue))
+
+
 class Option(object):
     """Description of a command line option"""
     # TODO: Some way to show in help a description of the option argument
@@ -202,6 +227,16 @@ def _global_option(name, **kwargs):
     """Register o as a global option."""
     Option.OPTIONS[name] = Option(name, **kwargs)
 
+Option.OPTIONS['merge-type']=EnumOption('merge-type', get_merge_type, [
+                            ('merge3', 'Use built-in diff3-style merge'),
+                            ('diff3', 'Use external diff3 merge'),
+                            ('weave', 'Use knit merge')])
+
+Option.OPTIONS['log-format']=EnumOption('log-format', str, [
+                            ('short', 'Use built-in diff3-style merge'),
+                            ('long', 'Use external diff3 merge'),
+                            ('line', 'Use knit merge')])
+
 _global_option('all')
 _global_option('overwrite', help='Ignore differences between branches and '
                'overwrite unconditionally')
@@ -233,14 +268,10 @@ _global_option('verbose',
 _global_option('version')
 _global_option('email')
 _global_option('update')
-_global_option('log-format', type=str, help="Use this log format")
-_global_option('long', help='Use detailed log format. Same as --log-format long')
-_global_option('short', help='Use moderately short log format. Same as --log-format short')
-_global_option('line', help='Use log format with one line per revision. Same as --log-format line')
 _global_option('root', type=str)
 _global_option('no-backup')
-_global_option('merge-type', type=_parse_merge_type, 
-               help='Select a particular merge algorithm')
+#_global_option('merge-type', type=_parse_merge_type, 
+#               help='Select a particular merge algorithm')
 _global_option('pattern', type=str)
 _global_option('quiet')
 _global_option('remember', help='Remember the specified location as a'
@@ -261,6 +292,6 @@ Option.SHORT_OPTIONS['h'] = Option.OPTIONS['help']
 Option.SHORT_OPTIONS['m'] = Option.OPTIONS['message']
 Option.SHORT_OPTIONS['r'] = Option.OPTIONS['revision']
 Option.SHORT_OPTIONS['v'] = Option.OPTIONS['verbose']
-Option.SHORT_OPTIONS['l'] = Option.OPTIONS['long']
+#Option.SHORT_OPTIONS['l'] = Option.OPTIONS['long']
 Option.SHORT_OPTIONS['q'] = Option.OPTIONS['quiet']
 Option.SHORT_OPTIONS['p'] = Option.OPTIONS['prefix']
